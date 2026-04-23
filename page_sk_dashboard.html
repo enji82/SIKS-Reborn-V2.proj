@@ -16,19 +16,19 @@
 <section class="content">
   <div class="container-fluid">
     
-    <div class="card-sultan p-3 mb-4 sultan-page-transition" style="border-left: 5px solid var(--warna-maroon); border: 1px solid rgba(0,0,0,0.08);">
+    <div class="card-sultan p-3 mb-4" style="border-left: 5px solid var(--warna-maroon); border: 1px solid rgba(0,0,0,0.08);">
         <div class="d-flex align-items-center">
-            <select id="dashsk_filterTahun" class="form-control form-control-sultan border-0 font-weight-bold bg-transparent p-0 mr-3" style="width: auto; height: auto !important; font-size: 1.1rem; color: var(--warna-maroon);"></select>
+            <select id="dashsk_filterTahun" class="form-control form-control-sultan border-0 font-weight-bold bg-transparent p-0 mr-3" style="width: auto; height: auto !important; font-size: 1.1rem; color: var(--warna-maroon); box-shadow: none;"></select>
             <div style="width: 1px; height: 20px; background: #ddd;" class="mr-3"></div>
-            <select id="dashsk_filterSemester" class="form-control form-control-sultan border-0 font-weight-bold bg-transparent p-0" style="width: auto; height: auto !important; font-size: 1.1rem; color: var(--warna-maroon);">
+            <select id="dashsk_filterSemester" class="form-control form-control-sultan border-0 font-weight-bold bg-transparent p-0" style="width: auto; height: auto !important; font-size: 1.1rem; color: var(--warna-maroon); box-shadow: none;">
                 <option value="">Semua Semester</option>
                 <option value="Semester 1">Semester 1</option>
                 <option value="Semester 2">Semester 2</option>
             </select>
             
             <div class="ml-auto">
-                <button id="dashsk_btnRefresh" class="btn btn-maroon rounded-pill px-4 shadow-sm font-weight-bold">
-                    <i class="fas fa-sync-alt mr-2"></i> REFRESH DATA
+                <button id="dashsk_btnRefresh" class="btn btn-maroon rounded-pill px-4 shadow-sm font-weight-bold" style="padding: 8px 25px;">
+                    <i class="fas fa-sync-alt mr-2"></i> Refresh Data
                 </button>
             </div>
         </div>
@@ -352,22 +352,27 @@
         var th = $('#dashsk_filterTahun').val();
         var sm = $('#dashsk_filterSemester').val();
         
-        /* Setup Visual Loading - Modern Skeleton Mode */
-        $('.dashsk-count-up').html('<span class="sultan-skeleton" style="width: 40px; height: 30px;"></span>');
-        $('#dashsk_timelineContainer').html('<div class="text-center p-5 text-muted"><i class="fas fa-circle-notch fa-spin fa-2x mb-3 text-maroon" style="opacity: 0.3;"></i><br><small class="uppercase" style="letter-spacing: 1px;">Sinkronisasi Aktivitas...</small></div>');
-        $('#dashsk_listBelumBody').html('<tr><td class="text-center p-5 text-muted"><i class="fas fa-circle-notch fa-spin fa-2x mb-3 text-danger" style="opacity: 0.3;"></i><br><small class="uppercase" style="letter-spacing: 1px;">Memvalidasi Data...</small></td></tr>');
-
-        $('#dashsk_btnRefresh').prop('disabled', true).html('<i class="fas fa-circle-notch fa-spin mr-2"></i> MEMUAT...');
+        /* Antisipasi Blink: Jangan hapus konten jika sudah ada data sebelumnya */
+        if ($('#dashsk_valTotal').text() === "0" || $('#dashsk_valTotal').find('.sultan-skeleton').length > 0) {
+            $('.dashsk-count-up').html('<span class="sultan-skeleton" style="width: 40px; height: 30px;"></span>');
+        }
+        
+        /* Berikan efek dimming pada area konten utama agar user tahu sedang memproses */
+        $('.card-sultan').css('opacity', '0.7');
+        
+        $('#dashsk_btnRefresh').prop('disabled', true).html('<i class="fas fa-circle-notch fa-spin mr-2"></i> Memuat...');
 
         google.script.run
             .withSuccessHandler(function(data) {
                 DASHSK_IS_FETCHING = false; 
-                $('#dashsk_btnRefresh').prop('disabled', false).html('<i class="fas fa-sync-alt mr-1"></i> Refresh Data');
+                $('.card-sultan').css('opacity', '1');
+                $('#dashsk_btnRefresh').prop('disabled', false).html('<i class="fas fa-sync-alt mr-2"></i> Refresh Data');
                 dashsk_renderDashboard(data);
             })
             .withFailureHandler(function(err) {
                 DASHSK_IS_FETCHING = false; 
-                $('#dashsk_btnRefresh').prop('disabled', false).html('<i class="fas fa-sync-alt text-danger mr-1"></i> Error');
+                $('.card-sultan').css('opacity', '1');
+                $('#dashsk_btnRefresh').prop('disabled', false).html('<i class="fas fa-sync-alt text-danger mr-2"></i> Error');
                 Sultan.alert('error', 'Koneksi Terputus', err.message);
             })
             .getDashboardSK(th, sm); 
