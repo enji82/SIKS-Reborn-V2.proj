@@ -298,20 +298,31 @@
             DASHSK_USER_IS_ADMIN = (user.role || "").toLowerCase().indexOf("admin") !== -1;
         } catch(e) { DASHSK_USER_IS_ADMIN = false; }
 
+        // Inisialisasi filter tanpa memicu load
         dashsk_initFilterDefault();
 
-        /* Bind Event Utama - Sangat Simple Tanpa Gembok Ruwet! */
-        $(document).off('change', '#dashsk_filterTahun, #dashsk_filterSemester').on('change', '#dashsk_filterTahun, #dashsk_filterSemester', dashsk_loadDataDashboard);
-        $(document).off('click', '#dashsk_btnRefresh').on('click', '#dashsk_btnRefresh', dashsk_loadDataDashboard);
+        /* Bind Event Utama - Gunakan Debounce sederhana untuk cegah dobel klik/change */
+        var loadTimeout;
+        function debouncedLoad() {
+            clearTimeout(loadTimeout);
+            loadTimeout = setTimeout(function() {
+                dashsk_loadDataDashboard();
+            }, 100);
+        }
+
+        $(document).off('change', '#dashsk_filterTahun, #dashsk_filterSemester').on('change', '#dashsk_filterTahun, #dashsk_filterSemester', debouncedLoad);
+        $(document).off('click', '#dashsk_btnRefresh').on('click', '#dashsk_btnRefresh', function(e) {
+            e.preventDefault();
+            dashsk_loadDataDashboard();
+        });
+        
         $(document).off('keyup', '#dashsk_cariBelumLangsung').on('keyup', '#dashsk_cariBelumLangsung', dashsk_filterBelumLangsung);
         $(document).off('keyup', '#dashsk_inputCariBelumModal').on('keyup', '#dashsk_inputCariBelumModal', dashsk_filterBelumModal);
         $(document).off('click', '#dashsk_btnSalinDaftar, #dashsk_btnSalinDaftarModal').on('click', '#dashsk_btnSalinDaftar, #dashsk_btnSalinDaftarModal', dashsk_copyListBelum);
         $(document).off('click', '#dashsk_btnModalBelum').on('click', '#dashsk_btnModalBelum', dashsk_showModalBelum);
 
-        /* Eksekusi Tarikan Data Pertama Secara Instan */
-        setTimeout(function() {
-            dashsk_loadDataDashboard();
-        }, 50);
+        /* Jalankan load data pertama kali secara eksplisit satu kali saja */
+        dashsk_loadDataDashboard();
     });
 
     function dashsk_initFilterDefault() {
@@ -339,14 +350,14 @@
        FETCH DATA SERVER DENGAN PENGAMAN DOUBLE LOAD
        ================================================================= */
     function dashsk_loadDataDashboard() {
-        var currentTime = new Date().getTime();
-        
-        /* Gembok Waktu: Tolak eksekusi jika berjarak kurang dari 1.5 detik */
-        if (currentTime - DASHSK_LAST_FETCH_TIME < 1500) { return; }
-        DASHSK_LAST_FETCH_TIME = currentTime;
-
         /* PENGUNCI SPAM LOAD Mutlak */
         if (DASHSK_IS_FETCHING) return; 
+        
+        var currentTime = new Date().getTime();
+        /* Gembok Waktu: Tolak eksekusi jika berjarak kurang dari 800ms (debounce internal) */
+        if (currentTime - DASHSK_LAST_FETCH_TIME < 800) { return; }
+        DASHSK_LAST_FETCH_TIME = currentTime;
+
         DASHSK_IS_FETCHING = true;
 
         var th = $('#dashsk_filterTahun').val();
