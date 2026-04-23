@@ -194,7 +194,7 @@ var EFILEKELOLA_CACHE_DATA = [], EFILEKELOLA_MASTER_PTK = [], EFILEKELOLA_MASTER
 var EFILEKELOLA_USER_AKTIF = "", EFILEKELOLA_IS_ADMIN = false, EFILEKELOLA_UNIT_TERKUNCI = "", EFILEKELOLA_NPSN_TERKUNCI = "", EFILEKELOLA_SELECTED_PTK_FILES = [];
 
 $(document).ready(function() {
-    $('#efilekelola_tableState').hide(); $('#efilekelola_loadingState').show();
+    $('#efilekelola_tableState').hide(); SultanUI.showLoading('#efilekelola_loadingState');
     try {
         var user = typeof getSesiUser === 'function' ? getSesiUser() : {}; EFILEKELOLA_USER_AKTIF = user.nama_lengkap || user.username || "User Web";
         var rStr = String(user.role || "").toLowerCase(); EFILEKELOLA_IS_ADMIN = (typeof checkUserRoleIsAdmin==='function' && checkUserRoleIsAdmin()) || rStr.includes("admin") || rStr.includes("verifikator");
@@ -276,7 +276,7 @@ function efilekelola_initMasterData() {
 
 function efilekelola_tarikDataServer() {
     var btn = $('#efilekelola_btnRefresh'); btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin text-maroon"></i>');
-    if (!$.fn.DataTable.isDataTable('#efilekelola_tabelUtama')) { $('#efilekelola_tableState').hide(); $('#efilekelola_loadingState').show(); }
+    if (!$.fn.DataTable.isDataTable('#efilekelola_tabelUtama')) { $('#efilekelola_tableState').hide(); SultanUI.showLoading('#efilekelola_loadingState'); }
 
     google.script.run.withSuccessHandler(function(json) {
         btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>'); var res = JSON.parse(json);
@@ -288,13 +288,13 @@ function efilekelola_tarikDataServer() {
             Object.keys(un).forEach(function(n) { su.append($('<option>', {value: n, text: un[n]})); }); if(cu) su.val(cu);
         }
         if (!$.fn.DataTable.isDataTable('#efilekelola_tabelUtama')) efilekelola_initDataTables();
-        efilekelola_terapkanFilterLokal(); $('#efilekelola_loadingState').hide(); $('#efilekelola_tableState').show();
+        efilekelola_terapkanFilterLokal(); SultanUI.hideLoading('#efilekelola_loadingState'); $('#efilekelola_tableState').show();
         if(EFILEKELOLA_TABEL_INSTANCE) setTimeout(function() { EFILEKELOLA_TABEL_INSTANCE.columns.adjust(); }, 150);
     }).withFailureHandler(function() { btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>'); $('#efilekelola_loadingText').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Terputus.</span>'); }).getEfileData(EFILEKELOLA_IS_ADMIN ? "" : EFILEKELOLA_NPSN_TERKUNCI);
 }
 
 function efilekelola_initDataTables() {
-    EFILEKELOLA_TABEL_INSTANCE = $('#efilekelola_tabelUtama').DataTable({
+    EFILEKELOLA_TABEL_INSTANCE = SultanTable.init('#efilekelola_tabelUtama', {
         "destroy": true, "ordering": false, "pageLength": 10, "autoWidth": false, "deferRender": true,
         "dom": "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" + "<'row'<'col-sm-12'<'table-responsive sultan-scroll'tr>>>" + "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
         "columnDefs": [

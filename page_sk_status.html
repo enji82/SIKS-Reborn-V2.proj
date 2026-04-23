@@ -117,7 +117,7 @@ var STATUSSK_UNIT_TERKUNCI = "";
 $(document).ready(function() {
     STATUSSK_TABEL_INSTANCE = null;
     $('#statussk_tableState').hide();
-    $('#statussk_loadingState').show();
+    SultanUI.showLoading('#statussk_loadingState');
 
     // VAKSIN EVENT: Pemusnahan event inline
     $(document).off('click', '#statussk_btnCari').on('click', '#statussk_btnCari', statussk_prosesCariData);
@@ -187,7 +187,7 @@ function statussk_tarikDataServer() {
     if (!$.fn.DataTable.isDataTable('#statussk_tabelUtama')) {
         $('#statussk_tableState').hide();
         $('#statussk_loadingText').html('Menyinkronkan data status SK...');
-        $('#statussk_loadingState').show();
+        SultanUI.showLoading('#statussk_loadingState');
     }
 
     google.script.run
@@ -196,7 +196,7 @@ function statussk_tarikDataServer() {
             
             if (res.error) {
                 $('#statussk_tableState').hide();
-                $('#statussk_loadingState').show();
+                SultanUI.showLoading('#statussk_loadingState');
                 $('#statussk_loadingText').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>' + statussk_escapeHtml(res.error) + '</span>');
                 return;
             }
@@ -211,14 +211,14 @@ function statussk_tarikDataServer() {
             } catch (e) {
                 console.error("Table Error:", e);
                 $('#statussk_tableState').hide();
-                $('#statussk_loadingState').show();
+                SultanUI.showLoading('#statussk_loadingState');
                 $('#statussk_loadingText').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>Gagal merakit tabel: ' + statussk_escapeHtml(e.message) + '</span>');
             }
         })
         .withFailureHandler(function(err) {
             btn.prop('disabled', false).html('<i class="fas fa-search text-maroon"></i>');
             $('#statussk_tableState').hide();
-            $('#statussk_loadingState').show();
+            SultanUI.showLoading('#statussk_loadingState');
             $('#statussk_loadingText').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Terputus: ' + statussk_escapeHtml(err.message) + '</span>');
         })
         .getSiabaStatusData();
@@ -282,7 +282,7 @@ function statussk_renderTabel(rows) {
 
     // --- C. INISIALISASI / SUNTIK DATA (ONE-SHOT RENDER - BAB VII) ---
     if (isFirstLoad) {
-        STATUSSK_TABEL_INSTANCE = $('#statussk_tabelUtama').DataTable({
+        STATUSSK_TABEL_INSTANCE = SultanTable.init('#statussk_tabelUtama', {
             "data": dtArray, 
             "destroy": true, 
             "ordering": false, 
@@ -308,7 +308,7 @@ function statussk_renderTabel(rows) {
         }); 
 
         // BAB VII: BUKA RUANG B SEKALI SAJA SECARA INSTAN
-        $('#statussk_loadingState').hide();
+        SultanUI.hideLoading('#statussk_loadingState');
         $('#statussk_tableState').show();
         
         // VAKSIN LEBAR KOLOM: Beri browser waktu me-render sebelum adjust kolom
@@ -319,7 +319,7 @@ function statussk_renderTabel(rows) {
         STATUSSK_TABEL_INSTANCE.clear().rows.add(dtArray).draw(false);
         
         if ($('#statussk_tableState').is(':hidden')) {
-            $('#statussk_loadingState').hide();
+            SultanUI.hideLoading('#statussk_loadingState');
             $('#statussk_tableState').show();
         }
         
