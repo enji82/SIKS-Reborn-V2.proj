@@ -188,11 +188,6 @@ function processLogin(formObj) {
   }
 }
 
-// FUNGSI INI SUDAH TIDAK DIPERLUKAN LAGI (BISA DIHAPUS ATAU BIARKAN KOSONG)
-// Karena pengecekan user sekarang dilakukan di sisi client (browser)
-function getCurrentUser() {
-  return null; 
-}
 
 function processLogout() {
   // Tidak ada yang perlu dihapus di server
