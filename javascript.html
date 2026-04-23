@@ -115,6 +115,9 @@ $(document).ready(function() {
   $(document).on('click', '.btn-home-crumb', function(e) {
       e.preventDefault(); loadContent('home');
   });
+
+  sultan_initDarkMode();
+  $(document).on('change', '#sultan_darkModeToggle', sultan_toggleDarkMode);
 });
 
 function inisialisasiAplikasi() {
@@ -154,6 +157,7 @@ function inisialisasiAplikasi() {
 function loadContent(pageName) {
   if(!pageName) return;
   const $content = $('#app-content'); 
+  $content.removeClass('sultan-page-transition');
 
   $('body > .modal').remove(); $('.modal-backdrop').remove(); $('body').removeClass('modal-open').css('padding-right', '');
   highlightSidebar(pageName); updateBreadcrumb(pageName);
@@ -167,7 +171,8 @@ function loadContent(pageName) {
     .withSuccessHandler(function(html) {
       if (typeof NProgress !== 'undefined') NProgress.done();
       setTimeout(function() {
-          $content.html(html); void $content[0].offsetWidth; $content.css('opacity', '1');
+          $content.html(html).addClass('sultan-page-transition');
+          void $content[0].offsetWidth; $content.css('opacity', '1');
           setTimeout(function() { $content.css('min-height', ''); }, 300);
       }, 200);
     })
@@ -432,4 +437,35 @@ function getBadgeSultan(status) {
 function renderBadgeSultan(text) { return getBadgeSultan(text); }
 function previewPDF(u){ $('#framePreview').attr('src',u.replace('/view','/preview')); $('#modalPreviewSK').modal('show'); }
 function formatDateForInput(s){ if(!s) return ""; if(typeof s==='string'&&s.match(/^\d{4}-\d{2}-\d{2}$/)) return s; var d=new Date(s); return isNaN(d)?s:d.toISOString().split('T')[0]; }
+
+/* =============================================================
+   8. SULTAN UI ENGINE (DARK MODE & UI HELPERS)
+   ============================================================= */
+function sultan_initDarkMode() {
+    const isDark = localStorage.getItem('sultanDarkMode') === 'true';
+    if (isDark) { $('body').addClass('dark-mode'); $('#sultan_darkModeToggle').prop('checked', true); }
+}
+
+function sultan_toggleDarkMode() {
+    const isDark = $('body').hasClass('dark-mode');
+    if (isDark) { $('body').removeClass('dark-mode'); localStorage.setItem('sultanDarkMode', 'false'); } 
+    else { $('body').addClass('dark-mode'); localStorage.setItem('sultanDarkMode', 'true'); }
+}
+
+var SultanForm = {
+    validate: function(input, isValid, message) {
+        const $el = $(input);
+        if (isValid) {
+            $el.removeClass('is-invalid').addClass('is-valid');
+            $el.next('.invalid-feedback').remove();
+        } else {
+            $el.removeClass('is-valid').addClass('is-invalid');
+            if ($el.next('.invalid-feedback').length === 0) {
+                $el.after(`<div class="invalid-feedback" style="font-size:11px;">${message}</div>`);
+            } else {
+                $el.next('.invalid-feedback').text(message);
+            }
+        }
+    }
+};
 </script>
