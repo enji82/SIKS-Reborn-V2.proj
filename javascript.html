@@ -406,6 +406,59 @@ var SultanTable = {
                 }
             }
         });
+    },
+    
+    /**
+     * Factory Method untuk Inisialisasi DataTables dengan Standar Sultan
+     * @param {string} targetId - ID tabel target
+     * @param {object} options - Opsi spesifik DataTable (data, columnDefs, dll)
+     * @returns {object} Instance DataTable
+     */
+    init: function(targetId, options = {}) {
+        var $tabel = $(targetId);
+        if ($tabel.length === 0) return null;
+
+        if ($.fn.DataTable.isDataTable(targetId)) {
+            $tabel.DataTable().clear().destroy();
+        }
+        
+        // Memastikan class standar ada
+        if (!$tabel.hasClass('table-sultan-compact')) {
+            $tabel.addClass('table table-bordered table-premium table-sultan-compact w-100');
+        }
+
+        var defaultOptions = {
+            "destroy": true, 
+            "ordering": false, 
+            "pageLength": 10, 
+            "autoWidth": false,
+            "deferRender": true,
+            "language": {
+                "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json",
+                "emptyTable": "Tidak ada data yang ditemukan."
+            },
+            "dom": "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
+                   "<'row'<'col-sm-12'<'table-responsive'tr>>>" +
+                   "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+            "initComplete": function(settings, json) {
+                var api = this.api();
+                setTimeout(function() { api.columns.adjust(); }, 100);
+                if (options.initComplete) {
+                    options.initComplete.call(this, settings, json);
+                }
+            }
+        };
+
+        // Menggabungkan opsi default dengan opsi spesifik modul
+        var finalOptions = $.extend(true, {}, defaultOptions, options);
+        
+        // Jika modul memiliki initComplete sendiri, kita sudah override di atas.
+        // Hapus dari finalOptions.initComplete bawaan options agar tidak dobel.
+        if (options.initComplete) {
+            finalOptions.initComplete = defaultOptions.initComplete;
+        }
+
+        return $tabel.DataTable(finalOptions);
     }
 };
 
