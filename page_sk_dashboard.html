@@ -402,39 +402,64 @@
        FETCH DATA SERVER DENGAN PENGAMAN DOUBLE LOAD
        ================================================================= */
     function dashsk_loadDataDashboard() {
-        /* PENGUNCI SPAM LOAD Mutlak */
         if (DASHSK_IS_FETCHING) return; 
         
         var currentTime = new Date().getTime();
-        /* Gembok Waktu: Tolak eksekusi jika berjarak kurang dari 800ms (debounce internal) */
         if (currentTime - DASHSK_LAST_FETCH_TIME < 800) { return; }
         DASHSK_LAST_FETCH_TIME = currentTime;
-
         DASHSK_IS_FETCHING = true;
 
         var th = $('#dashsk_filterTahun').val();
         var sm = $('#dashsk_filterSemester').val();
         
-        /* Antisipasi Blink: Jangan hapus konten jika sudah ada data sebelumnya */
-        if ($('#dashsk_valTotal').text() === "0" || $('#dashsk_valTotal').find('.sultan-skeleton').length > 0) {
-            $('.dashsk-count-up').html('<span class="sultan-skeleton" style="width: 40px; height: 30px;"></span>');
+        /* [SULTAN SKELETON ENGINE] - Aktifkan di semua kartu secara serempak */
+        
+        // 1. Skeleton untuk Statistik Atas
+        $('.dashsk-count-up').html('<span class="sultan-skeleton" style="width: 50px; height: 30px; border-radius: 6px;"></span>');
+        
+        // 2. Skeleton untuk Chart (Lingkaran)
+        $('#dashsk_chartStatus').css('opacity', '0');
+        if ($('#dashsk_skeletonChart').length === 0) {
+            $('#dashsk_chartStatus').parent().append(`
+                <div id="dashsk_skeletonChart" class="sultan-skeleton" style="width: 180px; height: 180px; border-radius: 50%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);"></div>
+            `);
         }
+
+        // 3. Skeleton untuk List (Prioritas & Aktivitas)
+        var listSkeleton = '';
+        for(var i=0; i<3; i++) {
+            listSkeleton += `
+                <div class="list-group-item px-3 py-3 border-0 border-bottom bg-transparent">
+                    <div class="d-flex align-items-center">
+                        <div class="sultan-skeleton mr-3" style="width: 35px; height: 35px; border-radius: 50%;"></div>
+                        <div class="w-100">
+                            <div class="sultan-skeleton mb-2" style="width: 60%; height: 15px;"></div>
+                            <div class="sultan-skeleton" style="width: 40%; height: 10px;"></div>
+                        </div>
+                    </div>
+                </div>`;
+        }
+        $('#dashsk_containerPrioritas').html(listSkeleton);
+        $('#dashsk_timelineContainer').html(listSkeleton);
         
-        /* Berikan efek dimming pada area konten utama agar user tahu sedang memproses */
-        $('.card-sultan').css('opacity', '0.7');
-        
-        $('#dashsk_btnRefresh').prop('disabled', true).html('<i class="fas fa-circle-notch fa-spin mr-2"></i> Memuat...');
+        /* Efek Dimming halus */
+        $('.card-sultan').css('opacity', '0.85');
+        $('#dashsk_btnRefresh').prop('disabled', true).html('<i class="fas fa-circle-notch fa-spin mr-2"></i> Sinkronisasi...');
 
         google.script.run
             .withSuccessHandler(function(data) {
                 DASHSK_IS_FETCHING = false; 
                 $('.card-sultan').css('opacity', '1');
+                $('#dashsk_skeletonChart').remove();
+                $('#dashsk_chartStatus').css('opacity', '1');
                 $('#dashsk_btnRefresh').prop('disabled', false).html('<i class="fas fa-sync-alt mr-2"></i> Refresh Data');
                 dashsk_renderDashboard(data);
             })
             .withFailureHandler(function(err) {
                 DASHSK_IS_FETCHING = false; 
                 $('.card-sultan').css('opacity', '1');
+                $('#dashsk_skeletonChart').remove();
+                $('#dashsk_chartStatus').css('opacity', '1');
                 $('#dashsk_btnRefresh').prop('disabled', false).html('<i class="fas fa-sync-alt text-danger mr-2"></i> Error');
                 Sultan.alert('error', 'Koneksi Terputus', err.message);
             })
