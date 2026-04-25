@@ -169,24 +169,21 @@
             </div>
           </div>
 
-          <div class="form-group mb-4">
-              <label class="form-label-sultan">Kriteria SK <span class="text-danger">*</span></label>
-              <div class="input-group">
-                  <select id="tugas_inputKriteria" class="form-control form-control-sultan font-weight-bold" required>
-                      <option value="">- Pilih Kriteria -</option>
-                      <option value="Awal Semester">Awal Semester</option>
-                      <option value="Perubahan ke 1">Perubahan ke 1</option>
-                      <option value="Perubahan ke 2">Perubahan ke 2</option>
-                      <option value="Perubahan ke 3">Perubahan ke 3</option>
-                      <option value="Perubahan ke 4">Perubahan ke 4</option>
-                      <option value="Perubahan ke 5">Perubahan ke 5</option>
-                  </select>
-                  <div class="input-group-append">
-                      <button class="sultan-btn sultan-btn-maroon" type="button" id="tugas_btnCekSlot" style="border-top-left-radius: 0 !important; border-bottom-left-radius: 0 !important; height: 100%;">
-                        <i class="fas fa-search"></i> CEK SLOT
-                      </button>
-                  </div>
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group mb-4">
+                <label class="form-label-sultan">Kriteria SK <span class="text-danger">*</span></label>
+                <select id="tugas_inputKriteria" class="form-control form-control-sultan font-weight-bold" required>
+                    <option value="">- Pilih Kriteria -</option>
+                    <option value="Awal Semester">Awal Semester</option>
+                    <option value="Perubahan ke 1">Perubahan ke 1</option>
+                    <option value="Perubahan ke 2">Perubahan ke 2</option>
+                    <option value="Perubahan ke 3">Perubahan ke 3</option>
+                    <option value="Perubahan ke 4">Perubahan ke 4</option>
+                    <option value="Perubahan ke 5">Perubahan ke 5</option>
+                </select>
               </div>
+            </div>
           </div>
 
           <fieldset id="tugas_areaTerkunci" disabled style="opacity: 0.5;">
@@ -440,8 +437,7 @@ $(document).ready(function() {
     $(document).off('click', '#tugas_btnCari').on('click', '#tugas_btnCari', tugas_tarikDataServer);
     
     $(document).off('click', '#tugas_btnTambah').on('click', '#tugas_btnTambah', tugas_bukaModalTambah);
-    $(document).off('change', '#tugas_inputNamaSd, #tugas_inputTahun, #tugas_inputSemester, #tugas_inputKriteria').on('change', '#tugas_inputNamaSd, #tugas_inputTahun, #tugas_inputSemester, #tugas_inputKriteria', tugas_cekKetersediaanSlot);
-    $(document).off('click', '#tugas_btnCekSlot').on('click', '#tugas_btnCekSlot', tugas_cekKetersediaanSlot);
+    $(document).off('change', '#tugas_inputNamaSd, #tugas_inputTahun, #tugas_inputSemester, #tugas_inputKriteria').on('change', '#tugas_inputNamaSd, #tugas_inputTahun, #tugas_inputSemester, #tugas_inputKriteria', tugas_cekKetersediaanData);
     $(document).off('submit', '#tugas_formUtama').on('submit', '#tugas_formUtama', tugas_handleSimpan);
     $(document).off('submit', '#tugas_formVerif').on('submit', '#tugas_formVerif', tugas_handleSimpanVerifikasi);
     $(document).off('submit', '#tugas_formHapus').on('submit', '#tugas_formHapus', tugas_handleSimpanHapus);
@@ -785,7 +781,7 @@ function tugas_bukaModalTambah() {
   $('#tugas_modalForm').modal('show'); 
 }
 
-function tugas_cekKetersediaanSlot() {
+function tugas_cekKetersediaanData() {
     var vSd = $('#tugas_inputNamaSd').val();
     var vTh = $('#tugas_inputTahun').val();
     var vSm = $('#tugas_inputSemester').val();
@@ -793,19 +789,16 @@ function tugas_cekKetersediaanSlot() {
 
     if(!vSd || !vTh || !vSm || !vKr) {
         $('#tugas_areaTerkunci').prop('disabled', true).css('opacity', '0.5');
-        $('#tugas_btnSimpanForm').hide().prop('disabled', true);
-        $('#tugas_alertInfo').removeClass('alert-danger alert-success').addClass('alert-info border-info').html('<i class="fas fa-info-circle mr-1"></i> Harap lengkapi semua kolom di atas.');
+        $('#tugas_btnSimpanForm').hide();
+        $('#tugas_alertInfo').removeClass('alert-danger alert-success').addClass('alert-info border-info').html('<i class="fas fa-info-circle mr-1"></i> Harap lengkapi data di atas untuk melanjutkan.');
         return;
     }
 
-    var btn = $('#tugas_btnCekSlot'); var txt = btn.html();
-    btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
-    $('#tugas_alertInfo').removeClass('alert-danger alert-success').addClass('alert-info border-info').html('<i class="fas fa-spinner fa-spin mr-1"></i> Mengecek ketersediaan slot di server...');
+    $('#tugas_alertInfo').removeClass('alert-danger alert-success').addClass('alert-info border-info').html('<i class="fas fa-spinner fa-spin mr-1"></i> Memvalidasi ketersediaan data di server...');
 
     var payload = { namaSd: vSd, tahunAjaran: vTh, semester: vSm, kriteria: vKr };
 
     google.script.run.withSuccessHandler(function(res) {
-        btn.prop('disabled', false).html(txt);
         var currentId = $('#tugas_editRowId').val();
 
         if (res.found) {
@@ -816,22 +809,21 @@ function tugas_cekKetersediaanSlot() {
             } else {
                  $('#tugas_areaTerkunci').prop('disabled', true).css('opacity', '0.5');
                  $('#tugas_btnSimpanForm').hide().prop('disabled', true);
-                 $('#tugas_alertInfo').removeClass('alert-info alert-success').addClass('alert-danger border-danger').html('<i class="fas fa-times-circle mr-1"></i> <b>SLOT PENUH:</b> Sekolah ini sudah memiliki SK untuk ' + vKr + ' pada ' + vSm + ' TA ' + vTh + '.');
+                 $('#tugas_alertInfo').removeClass('alert-info alert-success').addClass('alert-danger border-danger').html('<i class="fas fa-times-circle mr-1"></i> <b>DATA SUDAH ADA:</b> Sekolah ini sudah memiliki SK untuk ' + vKr + ' pada ' + vSm + ' TA ' + vTh + '.');
                  Sultan.alert('warning', 'Data Ganda', 'Satu sekolah hanya boleh memiliki 1 SK untuk kombinasi Tahun, Semester, dan Kriteria yang sama.');
             }
         } else {
-            // SLOT TERSEDIA! Buka field berikutnya
+            // DATA TERSEDIA! Buka field berikutnya
             $('#tugas_areaTerkunci').prop('disabled', false).css('opacity', '1');
             $('#tugas_btnSimpanForm').show().prop('disabled', false);
             $('#tugas_btnSimpanForm').html(currentId ? '<i class="fas fa-save mr-1"></i> UPDATE DATA' : '<i class="fas fa-save mr-1"></i> SIMPAN DOKUMEN');
             
-            $('#tugas_alertInfo').removeClass('alert-info alert-danger').addClass('alert-success border-success').html('<i class="fas fa-check-circle mr-1"></i> <b>SLOT TERSEDIA:</b> Silakan lengkapi Nomor SK, Tanggal, dan unggah dokumen.');
+            $('#tugas_alertInfo').removeClass('alert-info alert-danger').addClass('alert-success border-success').html('<i class="fas fa-check-circle mr-1"></i> <b>DATA TERSEDIA:</b> Silakan lengkapi Nomor SK, Tanggal, dan unggah dokumen.');
             if(!currentId) $('#tugas_inputNoSk').focus();
         }
     }).withFailureHandler(function(err) {
-        btn.prop('disabled', false).html(txt);
         $('#tugas_alertInfo').removeClass('alert-info alert-success').addClass('alert-danger border-danger').html('<i class="fas fa-exclamation-triangle mr-1"></i> Gagal terhubung ke server: ' + err.message);
-        Sultan.alert('error', 'Koneksi Gagal', 'Tidak dapat mengecek slot. Silakan coba lagi.');
+        Sultan.alert('error', 'Koneksi Gagal', 'Tidak dapat memvalidasi data. Silakan coba lagi.');
     }).cekDuplikatSK(payload); 
 }
 
