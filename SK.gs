@@ -32,7 +32,7 @@ function getMappingMasterNpsn() {
     // Kolom H (Index 7): NPSN, Kolom I (Index 8): Nama Sekolah
     for (var i = 1; i < data.length; i++) {
        var npsn = String(data[i][7] || "").trim();
-       var sekolah = String(data[i][8] || "").trim();
+       var sekolah = String(data[i][8] || "").trim().toUpperCase(); // Normalisasi ke Uppercase
        if (sekolah !== "" && npsn !== "") {
           mapping[sekolah] = npsn;
        }
