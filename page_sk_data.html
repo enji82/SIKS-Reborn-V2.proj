@@ -137,6 +137,7 @@
       <form id="tugas_formUtama">
         <div class="modal-body modal-body-sultan">
           <input type="hidden" id="tugas_editRowId">
+          <input type="hidden" id="tugas_inputNpsn">
           
           <div id="tugas_alertInfo" class="sultan-alert sultan-alert-info mb-4">
               <i class="fas fa-info-circle mt-1"></i>
@@ -410,6 +411,7 @@ var TUGAS_TABEL_INSTANCE = null;
 var TUGAS_USER_AKTIF = "";
 var TUGAS_IS_ADMIN = false;
 var TUGAS_USER_NPSN = "";
+var TUGAS_MAP_UNIT_NPSN = {}; // Pemetaan Nama -> NPSN
 var TUGAS_UNIT_TERKUNCI = "";
 
 var TUGAS_CURRENT_FILE_URL = "";
@@ -582,12 +584,16 @@ function tugas_tarikDataServer() {
 
 function tugas_populateFilterOptions() {
     var uniqueUnits = new Set();
+    TUGAS_MAP_UNIT_NPSN = {}; // Reset mapping
     
-    if (typeof DROPDOWN_STATIS !== 'undefined' && DROPDOWN_STATIS["NamaSD"]) {
-        DROPDOWN_STATIS["NamaSD"].forEach(function(u){ uniqueUnits.add(u); });
-    } else {
-        TUGAS_CACHE_DATA.forEach(row => { if(row.namaSd) uniqueUnits.add(String(row.namaSd).trim()); });
-    }
+    // Ambil data dari cache utama untuk membangun mapping
+    TUGAS_CACHE_DATA.forEach(row => { 
+        if(row.namaSd) {
+            var u = String(row.namaSd).trim();
+            uniqueUnits.add(u);
+            if(row.npsn) TUGAS_MAP_UNIT_NPSN[u] = row.npsn;
+        }
+    });
 
     var sortedUnits = Array.from(uniqueUnits).sort();
     
@@ -602,10 +608,22 @@ function tugas_populateFilterOptions() {
     var formHtml = '<option value="">- Pilih Sekolah -</option>';
     sortedUnits.forEach(u => formHtml += '<option value="' + tugas_escapeHtml(u) + '">' + tugas_escapeHtml(u) + '</option>');
     $('#tugas_inputNamaSd').html(formHtml);
+    
     if (!TUGAS_IS_ADMIN && TUGAS_UNIT_TERKUNCI) {
         $('#tugas_inputNamaSd').val(TUGAS_UNIT_TERKUNCI).prop('disabled', true);
+        $('#tugas_inputNpsn').val(TUGAS_USER_NPSN);
     }
 }
+
+// Handler saat sekolah dipilih di form
+$(document).on('change', '#tugas_inputNamaSd', function() {
+    var sel = $(this).val();
+    if(sel && TUGAS_MAP_UNIT_NPSN[sel]) {
+        $('#tugas_inputNpsn').val(TUGAS_MAP_UNIT_NPSN[sel]);
+    } else if(!TUGAS_IS_ADMIN) {
+        $('#tugas_inputNpsn').val(TUGAS_USER_NPSN);
+    }
+});
 
 // =================================================================
 // 4. INJEKSI DATA (Sorting Last Activity via Cache & Render)
@@ -752,12 +770,13 @@ function tugas_bukaModalTambah() {
   
   if (!TUGAS_IS_ADMIN && TUGAS_UNIT_TERKUNCI) { $('#tugas_inputNamaSd').val(TUGAS_UNIT_TERKUNCI); }
   
-  $('#tugas_areaTerkunci').prop('disabled', true).css('opacity', '0.5');
   $('#tugas_inputNamaSd, #tugas_inputTahun, #tugas_inputSemester, #tugas_inputKriteria').prop('disabled', false).removeClass('bg-light');
-  $('#tugas_btnCekSlot').prop('disabled', false);
-  $('#tugas_btnSimpanForm').hide().prop('disabled', true); 
+  $('#tugas_btnCekSlot').prop('disabled', false).show();
   
-  $('#tugas_alertInfo').removeClass('alert-danger alert-success').addClass('alert-info border-info').html('<i class="fas fa-info-circle mr-1"></i> Tentukan <b>Sekolah, Tahun, Semester,</b> dan <b>Kriteria</b> untuk memulai pengisian data SK.');
+  // KUNCI AWAL (Wajib Cek Slot dulu)
+  $('#tugas_areaTerkunci').prop('disabled', true).css('opacity', '0.5');
+  $('#tugas_btnSimpanForm').hide();
+  $('#tugas_alertInfo').removeClass('alert-danger alert-success').addClass('alert-info border-info').html('<i class="fas fa-info-circle mr-1"></i> Lengkapi data di atas dan klik <b>Cek Slot</b> untuk melanjutkan.');
   
   $('#tugas_labelFile').html('<i class="fas fa-file-pdf text-danger mr-1"></i> Unggah Dokumen Asli <span class="text-danger">*</span>');
   $('.custom-file-label').removeClass("selected text-success font-weight-bold").html('Pilih file PDF...'); 
@@ -801,11 +820,18 @@ function tugas_cekKetersediaanSlot() {
                  Sultan.alert('warning', 'Data Ganda', 'Satu sekolah hanya boleh memiliki 1 SK untuk kombinasi Tahun, Semester, dan Kriteria yang sama.');
             }
         } else {
+            // SLOT TERSEDIA! Buka field berikutnya
             $('#tugas_areaTerkunci').prop('disabled', false).css('opacity', '1');
-            $('#tugas_btnSimpanForm').show().prop('disabled', false).html('<i class="fas fa-save mr-1"></i> SIMPAN DOKUMEN');
-            $('#tugas_alertInfo').removeClass('alert-info alert-danger').addClass('alert-success border-success').html('<i class="fas fa-check-circle mr-1"></i> <b>SLOT TERSEDIA:</b> Silakan lanjutkan pengisian Nomor SK dan unggah dokumen.');
+            $('#tugas_btnSimpanForm').show().prop('disabled', false);
+            $('#tugas_btnSimpanForm').html(currentId ? '<i class="fas fa-save mr-1"></i> UPDATE DATA' : '<i class="fas fa-save mr-1"></i> SIMPAN DOKUMEN');
+            
+            $('#tugas_alertInfo').removeClass('alert-info alert-danger').addClass('alert-success border-success').html('<i class="fas fa-check-circle mr-1"></i> <b>SLOT TERSEDIA:</b> Silakan lengkapi Nomor SK, Tanggal, dan unggah dokumen.');
             if(!currentId) $('#tugas_inputNoSk').focus();
         }
+    }).withFailureHandler(function(err) {
+        btn.prop('disabled', false).html(txt);
+        $('#tugas_alertInfo').removeClass('alert-info alert-success').addClass('alert-danger border-danger').html('<i class="fas fa-exclamation-triangle mr-1"></i> Gagal terhubung ke server: ' + err.message);
+        Sultan.alert('error', 'Koneksi Gagal', 'Tidak dapat mengecek slot. Silakan coba lagi.');
     }).cekDuplikatSK(payload); 
 }
 
@@ -822,6 +848,7 @@ function tugas_bukaModalEdit(rowId) {
     $('#tugas_btnSimpanForm').removeClass('sultan-btn-maroon').addClass('sultan-btn-warning');
 
     $('#tugas_inputNamaSd').val(d.namaSd);
+    $('#tugas_inputNpsn').val(d.npsn || "");
     $('#tugas_inputTahun').val(d.tahun);
     $('#tugas_inputSemester').val(d.semester);
     $('#tugas_inputKriteria').val(d.kriteria);
@@ -868,6 +895,7 @@ function tugas_handleSimpan(e) {
 
     var formData = {
         editRowId: rowId, 
+        npsn: $('#tugas_inputNpsn').val(),
         namaSd: $('#tugas_inputNamaSd').val(),
         tahunAjaran: $('#tugas_inputTahun').val(),
         semester: $('#tugas_inputSemester').val(),
