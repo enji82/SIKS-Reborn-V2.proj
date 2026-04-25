@@ -35,21 +35,22 @@
           </div>
         </div>
 
-        <div id="statussk_wadahFilter" class="card-sultan p-3 mb-3">
-            <div class="d-flex-gap align-items-center flex-wrap">
-
-                <select id="statussk_filterSekolah" class="form-control form-control-sultan input-auto-width min-w-250 font-weight-bold text-maroon bg-light" disabled>
+        <div id="statussk_wadahFilter" class="sultan-filter-pill-container shadow-sm mb-4">
+            <div class="sultan-filter-item" style="min-width: 300px;">
+                <select id="statussk_filterSekolah" class="form-control" disabled>
                     <option value="">- Memvalidasi Akses... -</option>
                 </select>
+                <i class="fas fa-chevron-down"></i>
+            </div>
 
-                <div class="divider-vertical d-none d-md-block"></div>
+            <div class="divider-vertical d-none d-md-block mx-2"></div>
 
-                <button type="button" id="statussk_btnCari" class="btn bg-white border shadow-sm text-secondary" title="Terapkan Filter / Tarik Data" disabled>
-                    <i class="fas fa-search text-maroon"></i>
-                </button>
-
-                <div class="ml-auto d-none d-md-block"></div>
-                <button type="button" class="btn btn-primary font-weight-bold shadow-sm d-none">Spacer</button>
+            <button type="button" id="statussk_btnRefresh" class="btn btn-maroon rounded-pill px-4 shadow-sm font-weight-bold" title="Refresh Data" disabled>
+                <i class="fas fa-sync-alt mr-2"></i> Refresh Data
+            </button>
+            <div class="ml-2 d-none d-md-block">
+                <small class="text-muted d-block" style="font-size: 10px; line-height: 1;">Update Terakhir:</small>
+                <small id="statussk_lastUpdate" class="text-maroon font-weight-bold" style="font-size: 11px;">-</small>
             </div>
         </div>
 
@@ -142,13 +143,16 @@
         left: 0;
         z-index: 10 !important;
         background-color: #ffffff !important;
-        box-shadow: 4px 0 8px rgba(0,0,0,0.03);
+        border-right: none !important;
     }
     .dark-mode .col-sticky-left {
         background-color: #1e1e1e !important;
-        box-shadow: 4px 0 10px rgba(0,0,0,0.2);
         color: #fff !important;
     }
+    
+    /* GHOST BORDER FIX (Menghilangkan garis putih vertikal saat scroll) */
+    .table-responsive { border: none !important; }
+    #statussk_tabelUtama thead th.col-sticky-left { border-bottom: 2px solid rgba(128, 0, 0, 0.1) !important; }
     
     /* BADGE ENHANCEMENT */
     .badge-sultan { border-radius: 50px; font-weight: 800; letter-spacing: 0.3px; }
@@ -164,6 +168,7 @@
 // BAB I: Prefix Mutlak statussk_
 // ======================================================================
 var STATUSSK_CACHE_DATA = []; 
+var STATUSSK_MAP_UNIT_NPSN = {};
 var STATUSSK_TABEL_INSTANCE = null;
 
 var STATUSSK_USER_AKTIF = "";
@@ -180,7 +185,7 @@ $(document).ready(function() {
     SultanUI.showLoading('#statussk_loadingState');
 
     // VAKSIN EVENT: Pemusnahan event inline
-    $(document).off('click', '#statussk_btnCari').on('click', '#statussk_btnCari', statussk_prosesCariData);
+    $(document).off('click', '#statussk_btnRefresh').on('click', '#statussk_btnRefresh', statussk_prosesCariData);
     $(document).off('change', '#statussk_filterSekolah').on('change', '#statussk_filterSekolah', statussk_terapkanFilterLokal);
 
     // Cek Sesi Login
@@ -201,7 +206,7 @@ function statussk_validasiAksesUser() {
     if (STATUSSK_IS_ADMIN) {
         $('#statussk_wadahFilter').show(); // Admin butuh filter
         $('#statussk_loadingText').html('Mempersiapkan Database Admin...');
-        $('#statussk_filterSekolah').empty().append('<option value="SEMUA">- Memuat Database... -</option>').prop('disabled', true).removeClass('bg-light text-maroon font-weight-bold');
+        $('#statussk_filterSekolah').empty().append('<option value="SEMUA">- Memuat Database... -</option>').prop('disabled', true);
         statussk_tarikDataServer(); 
     } else {
         // VAKSIN UX: Sembunyikan blok filter untuk User (Space Saver)
@@ -229,59 +234,71 @@ function statussk_validasiAksesUser() {
 }
 
 // =================================================================
-// 3. FETCH DATA & FILTER MANUAL TRIGGER
+// 3. FETCH DATA & FILTER MANUAL TRIGGER (WITH MASTER SYNC)
 // =================================================================
 function statussk_prosesCariData() {
-    if (STATUSSK_CACHE_DATA.length > 0) {
-        statussk_tarikDataServer(); // Bypass Cache (Memaksa Refresh)
-    } else {
-        statussk_tarikDataServer();
-    }
+    statussk_tarikDataServer();
 }
 
 function statussk_tarikDataServer() {
-    var btn = $('#statussk_btnCari');
-    btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin text-maroon"></i>');
+    var btn = $('#statussk_btnRefresh');
+    btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i> Sinkronisasi...');
     
     // MUNCULKAN RUANG A JIKA TABEL BELUM PERNAH DIBUAT
     if (!$.fn.DataTable.isDataTable('#statussk_tabelUtama')) {
         $('#statussk_tableState').hide();
-        $('#statussk_loadingText').html('Menyinkronkan data status SK...');
+        $('#statussk_loadingText').html('Menyinkronkan Matrix Status & Master NPSN...');
         SultanUI.showLoading('#statussk_loadingState');
     }
 
-    google.script.run
-        .withSuccessHandler(function(res) {
-            btn.prop('disabled', false).html('<i class="fas fa-search text-maroon"></i>');
-            
-            if (res.error) {
-                $('#statussk_tableState').hide();
-                SultanUI.showLoading('#statussk_loadingState');
-                $('#statussk_loadingText').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>' + statussk_escapeHtml(res.error) + '</span>');
-                return;
-            }
+    // 1. Tarik Mapping NPSN dari Master Data User
+    google.script.run.withSuccessHandler(function(mappingRes) {
+        STATUSSK_MAP_UNIT_NPSN = mappingRes || {};
 
-            try {
-                STATUSSK_CACHE_DATA = res.rows || [];
-                statussk_populateDropdown(res.schools || []);
+        // 2. Tarik Data Matrix Status
+        google.script.run
+            .withSuccessHandler(function(res) {
+                btn.prop('disabled', false).html('<i class="fas fa-sync-alt mr-2"></i> Refresh Data');
                 
-                // Render Tabel otomatis menghandle Injeksi, & One-Shot Render
-                statussk_terapkanFilterLokal();
+                if (res.error) {
+                    $('#statussk_tableState').hide();
+                    SultanUI.showLoading('#statussk_loadingState');
+                    $('#statussk_loadingText').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>' + statussk_escapeHtml(res.error) + '</span>');
+                    return;
+                }
 
-            } catch (e) {
-                console.error("Table Error:", e);
+                try {
+                    STATUSSK_CACHE_DATA = res.rows || [];
+                    statussk_populateDropdown(res.schools || []);
+                    
+                    // Update Timestamp
+                    var now = new Date();
+                    var timeStr = now.getHours().toString().padStart(2, '0') + ":" + 
+                                  now.getMinutes().toString().padStart(2, '0') + ":" + 
+                                  now.getSeconds().toString().padStart(2, '0');
+                    $('#statussk_lastUpdate').text(timeStr + " WIB");
+
+                    statussk_terapkanFilterLokal();
+
+                } catch (e) {
+                    console.error("Table Error:", e);
+                    $('#statussk_tableState').hide();
+                    SultanUI.showLoading('#statussk_loadingState');
+                    $('#statussk_loadingText').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>Gagal merakit tabel: ' + statussk_escapeHtml(e.message) + '</span>');
+                }
+            })
+            .withFailureHandler(function(err) {
+                btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-danger mr-2"></i> Error');
                 $('#statussk_tableState').hide();
                 SultanUI.showLoading('#statussk_loadingState');
-                $('#statussk_loadingText').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>Gagal merakit tabel: ' + statussk_escapeHtml(e.message) + '</span>');
-            }
-        })
-        .withFailureHandler(function(err) {
-            btn.prop('disabled', false).html('<i class="fas fa-search text-maroon"></i>');
-            $('#statussk_tableState').hide();
-            SultanUI.showLoading('#statussk_loadingState');
-            $('#statussk_loadingText').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Terputus: ' + statussk_escapeHtml(err.message) + '</span>');
-        })
-        .getSiabaStatusData();
+                $('#statussk_loadingText').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Matrix Terputus: ' + statussk_escapeHtml(err.message) + '</span>');
+            })
+            .getSiabaStatusData();
+
+    }).withFailureHandler(function(err) {
+        btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-danger mr-2"></i> Error Master');
+        $('#statussk_loadingText').html('<span class="text-danger"><i class="fas fa-database mb-2"></i><br>Gagal Sinkron Master NPSN: ' + statussk_escapeHtml(err.message) + '</span>');
+    }).getMappingMasterNpsn();
 }
 
 function statussk_populateDropdown(schools) {
@@ -295,8 +312,8 @@ function statussk_populateDropdown(schools) {
             h += '<option value="' + safeS + '">' + safeS + '</option>'; 
         }
         
-        el.html(h).prop('disabled', false).removeClass('bg-light text-maroon font-weight-bold');
-        $('#statussk_btnCari').prop('disabled', false);
+        el.html(h).prop('disabled', false);
+        $('#statussk_btnRefresh').prop('disabled', false);
         if(currentVal && schools.includes(currentVal)) el.val(currentVal);
     }
     // Jika bukan Admin, dropdown diabaikan (karena wadahnya di-hide)
@@ -329,8 +346,16 @@ function statussk_renderTabel(rows) {
         var row = rows[j];
         var rowData = [];
         
-        // Kolom 1 (Index 0): Nama Instansi
-        rowData.push(`<div class="font-weight-bold text-dark text-nowrap text-left px-2">${statussk_escapeHtml(row[0])}</div>`); 
+        // Kolom 1 (Index 0): Nama Instansi + NPSN
+        var namaSd = String(row[0] || "").trim();
+        var npsn = STATUSSK_MAP_UNIT_NPSN[namaSd.toUpperCase()] || "-";
+        
+        rowData.push(`
+            <div style="line-height:1.2;">
+                <div class="font-weight-bold text-dark text-nowrap text-left px-2" style="font-size: 0.9rem;">${statussk_escapeHtml(namaSd)}</div>
+                <div class="text-muted text-left px-2" style="font-size: 0.75rem;">${npsn}</div>
+            </div>
+        `); 
         
         // Kolom 2 sampai 13 (Adopsi Kode Icon Sultan Baru)
         for (var i = 1; i < row.length; i++) { 
