@@ -17,6 +17,33 @@ function getOrCreateFolder(parentFolder, folderName) {
   return folders.hasNext() ? folders.next() : parentFolder.createFolder(folderName);
 }
 
+/**
+ * Mengambil mapping Nama Sekolah -> NPSN dari Spreadsheet Master Data User
+ * Sheet ID: 1wiDKez4rL5UYnpP2-OZjYowvmt1nRx-fIMy9trJlhBA
+ */
+function getMappingMasterNpsn() {
+  try {
+    const MASTER_SS_ID = "1wiDKez4rL5UYnpP2-OZjYowvmt1nRx-fIMy9trJlhBA";
+    const ss = SpreadsheetApp.openById(MASTER_SS_ID);
+    const sheet = ss.getSheetByName("Data User");
+    const data = sheet.getDataRange().getValues();
+    
+    var mapping = {};
+    // Kolom H (Index 7): NPSN, Kolom I (Index 8): Nama Sekolah
+    for (var i = 1; i < data.length; i++) {
+       var npsn = String(data[i][7] || "").trim();
+       var sekolah = String(data[i][8] || "").trim();
+       if (sekolah !== "" && npsn !== "") {
+          mapping[sekolah] = npsn;
+       }
+    }
+    return mapping;
+  } catch (e) {
+    Logger.log("Error getMappingMasterNpsn: " + e.message);
+    return {};
+  }
+}
+
 /* ======================================================================
    CORE: PROSES SIMPAN DATA BARU (INSERT)
    ====================================================================== */
@@ -48,7 +75,9 @@ function processManualForm(formData) {
       file.getUrl(),          
       formData.userInput,     
       "Diproses",             
-      "", "", "", "", ""      
+      "", "", "", "", "",     // K, L, M, N, O
+      "", "",                 // P, Q
+      "'" + formData.npsn     // R (Kolom ke-18)
     ]);
 
     return { success: true, message: "Data SK berhasil disimpan." };
@@ -78,7 +107,8 @@ function simpanPerubahanSK(form) {
       FILE_URL:  8,  
       STATUS:    10, 
       TGL_UPD:   11, 
-      USER_UPD:  12  
+      USER_UPD:  12,
+      NPSN:      18  
     };
 
     if (form.namaSd && form.namaSd !== "") sheet.getRange(rowIdx, KOLOM.NAMA_SD).setValue(form.namaSd);
@@ -112,6 +142,7 @@ function simpanPerubahanSK(form) {
     sheet.getRange(rowIdx, KOLOM.STATUS).setValue("Diproses");
     sheet.getRange(rowIdx, KOLOM.TGL_UPD).setValue("'" + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MM-yyyy HH:mm:ss"));
     sheet.getRange(rowIdx, KOLOM.USER_UPD).setValue(form.userUpdate);
+    sheet.getRange(rowIdx, KOLOM.NPSN).setValue("'" + form.npsn);
 
     rekamCCTV("SUKSES", "Data baris " + rowIdx + " berhasil diupdate.");
     return { success: true, message: "Data berhasil diperbarui." };
@@ -165,6 +196,7 @@ function getDaftarSK() {
         kriteria: row[6], fileUrl: row[7], userInput: row[8], status: row[9],
         tglUpdate: row[10], userUpdate: row[11],
         tglVerval: row[12], verifikator: row[13], keterangan: row[14],
+        npsn: row[17] || "",
         timestamp: lastActivity
       });
     }

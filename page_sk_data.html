@@ -159,12 +159,21 @@
                         <div>Isikan data di bawah ini sesuai dengan dokumen yang akan diunggah.</div>
                     </div>
 
-                    <div class="form-group mb-3">
-                        <label class="form-label-sultan">Nama Sekolah <span class="text-danger">*</span></label>
-                        <select id="tugas_inputNamaSd"
-                            class="form-control form-control-sultan font-weight-bold text-dark" required>
-                            <option value="">- Memuat Data -</option>
-                        </select>
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="form-group mb-3">
+                                <label class="form-label-sultan">Nama Sekolah <span class="text-danger">*</span></label>
+                                <select id="tugas_inputNamaSd" class="form-control form-control-sultan font-weight-bold text-dark" required>
+                                    <option value="">- Memuat Data -</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group mb-3">
+                                <label class="form-label-sultan">NPSN</label>
+                                <input type="text" id="tugas_inputNpsn" class="form-control form-control-sultan bg-light font-weight-bold" readonly placeholder="Otomatis">
+                            </div>
+                        </div>
                     </div>
 
                     <div class="row">
@@ -595,65 +604,68 @@
             SultanUI.showLoading('#tugas_loadingState');
         }
 
-        google.script.run.withSuccessHandler(function (dataRes) {
-            btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
+        // 1. Tarik Mapping NPSN dari Master Data User (Spreadsheet Eksternal)
+        google.script.run.withSuccessHandler(function (mappingRes) {
+            TUGAS_MAP_UNIT_NPSN = mappingRes || {}; 
 
-            try {
-                TUGAS_CACHE_DATA = dataRes || [];
+            // 2. Tarik Data Transaksi SK
+            google.script.run.withSuccessHandler(function (dataRes) {
+                btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
 
-                // Inisialisasi DataTables (Turbo Seamless)
-                if (!$.fn.DataTable.isDataTable('#tugas_tabelUtama')) {
-                    TUGAS_TABEL_INSTANCE = SultanTable.init('#tugas_tabelUtama', {
-                        "destroy": true, "ordering": false, "pageLength": 10, "autoWidth": false,
-                        "deferRender": true,
-                        "dom": "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
-                            "<'row'<'col-sm-12'<'table-responsive sultan-scroll'tr>>>" +
-                            "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
-                        "columnDefs": [
-                            { "targets": 8, "className": "align-middle text-center" },
-                            { "targets": [0, 5, 6, 7], "className": "text-left align-middle" },
-                            { "targets": [1, 2, 3, 4], "className": "text-center align-middle" }
-                        ],
-                        "order": [[5, "desc"]],
-                        "language": { "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json", "emptyTable": "Tidak ditemukan data SK untuk filter tersebut." }
-                    });
+                try {
+                    TUGAS_CACHE_DATA = dataRes || [];
+
+                    // Inisialisasi DataTables jika belum ada
+                    if (!$.fn.DataTable.isDataTable('#tugas_tabelUtama')) {
+                        TUGAS_TABEL_INSTANCE = SultanTable.init('#tugas_tabelUtama', {
+                            "destroy": true, "ordering": false, "pageLength": 10, "autoWidth": false,
+                            "deferRender": true,
+                            "dom": "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
+                                "<'row'<'col-sm-12'<'table-responsive sultan-scroll'tr>>>" +
+                                "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+                            "columnDefs": [
+                                { "targets": 8, "className": "align-middle text-center" },
+                                { "targets": [0, 5, 6, 7], "className": "text-left align-middle" },
+                                { "targets": [1, 2, 3, 4], "className": "text-center align-middle" }
+                            ],
+                            "order": [[5, "desc"]],
+                            "language": { "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json", "emptyTable": "Tidak ditemukan data SK untuk filter tersebut." }
+                        });
+                    }
+
+                    tugas_populateFilterOptions();
+                    tugas_terapkanFilterLokal();
+
+                    SultanUI.hideLoading('#tugas_loadingState');
+                    $('#tugas_tableState').show();
+                    if (TUGAS_TABEL_INSTANCE) {
+                        setTimeout(function () { TUGAS_TABEL_INSTANCE.columns.adjust(); }, 50);
+                    }
+
+                } catch (e) {
+                    $('#tugas_tableState').hide();
+                    SultanUI.showLoading('#tugas_loadingState');
+                    $('#tugas_loadingText').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>Gagal merakit tabel: ' + tugas_escapeHtml(e.message) + '</span>');
                 }
+            }).withFailureHandler(function (e) {
+                btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
+                Sultan.alert('error', 'Gagal Sinkron', 'Tidak dapat mengambil data SK dari server.');
+            }).getDaftarSK();
 
-                tugas_populateFilterOptions();
-                tugas_terapkanFilterLokal();
-
-                // THE MAGIC SWITCH (Tanpa Animasi, Cegah Micro-Blink)
-                SultanUI.hideLoading('#tugas_loadingState');
-                $('#tugas_tableState').show();
-                if (TUGAS_TABEL_INSTANCE) {
-                    setTimeout(function () { TUGAS_TABEL_INSTANCE.columns.adjust(); }, 50);
-                }
-
-            } catch (e) {
-                $('#tugas_tableState').hide();
-                SultanUI.showLoading('#tugas_loadingState');
-                $('#tugas_loadingText').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>Gagal merakit tabel: ' + tugas_escapeHtml(e.message) + '</span>');
-            }
         }).withFailureHandler(function (e) {
             btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
-            $('#tugas_tableState').hide();
-            SultanUI.showLoading('#tugas_loadingState');
-            $('#tugas_loadingText').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Terputus.</span>');
-        }).getDaftarSK();
+            Sultan.alert('error', 'Gagal Mapping', 'Tidak dapat memuat data Master NPSN.');
+        }).getMappingMasterNpsn();
     }
 
     function tugas_populateFilterOptions() {
         var uniqueUnits = new Set();
-        TUGAS_MAP_UNIT_NPSN = {}; // Reset mapping
-
-        // Ambil data dari cache utama untuk membangun mapping
-        TUGAS_CACHE_DATA.forEach(row => {
-            if (row.namaSd) {
-                var u = String(row.namaSd).trim();
-                uniqueUnits.add(u);
-                if (row.npsn) TUGAS_MAP_UNIT_NPSN[u] = row.npsn;
-            }
-        });
+        
+        // Ambil daftar sekolah unik dari mapping master agar sinkron
+        Object.keys(TUGAS_MAP_UNIT_NPSN).forEach(u => uniqueUnits.add(u));
+        
+        // Jika ada sekolah di data transaksi yang belum ada di master (fallback)
+        TUGAS_CACHE_DATA.forEach(row => { if(row.namaSd) uniqueUnits.add(String(row.namaSd).trim()); });
 
         var sortedUnits = Array.from(uniqueUnits).sort();
 
