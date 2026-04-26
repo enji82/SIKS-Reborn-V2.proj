@@ -33,8 +33,8 @@
         
         <div class="divider-vertical d-none d-md-block mx-2"></div>
         
-        <button type="button" id="dashlapbul_btnTampilkan" class="btn btn-maroon rounded-pill px-4 shadow-sm font-weight-bold">
-            <i class="fas fa-sync-alt mr-2"></i> TAMPILKAN DATA
+        <button type="button" id="dashlapbul_btnRefresh" class="btn btn-maroon rounded-pill px-4 shadow-sm font-weight-bold" title="Refresh Data">
+            <i class="fas fa-sync-alt mr-2"></i> Refresh Data
         </button>
 
         <div class="ml-2 d-none d-lg-block border-left pl-3">
@@ -311,6 +311,10 @@
     .dark-mode .bg-soft-success { background: rgba(40, 167, 69, 0.1); }
     .dark-mode .bg-soft-primary { background: rgba(0, 123, 255, 0.1); }
     .dark-mode .list-group-item { background-color: transparent !important; color: #ccc !important; border-color: rgba(255,255,255,0.05) !important; }
+    .dark-mode .progress { background: rgba(255,255,255,0.05) !important; }
+    
+    /* Skeleton Layout Fixes */
+    .dashlapbul-skeleton-text { width: 60%; height: 25px; border-radius: 4px; display: inline-block; }
     .dark-mode .badge-light { background-color: rgba(255,255,255,0.05) !important; color: #888 !important; border-color: rgba(255,255,255,0.1) !important; }
 </style>
 
@@ -357,8 +361,12 @@
         // 3. SET DEFAULT BULAN
         $('#dashlapbul_dashBulan').val(bln);
 
-        // VAKSIN EVENT DELEGATION
-        $(document).off('click', '#dashlapbul_btnTampilkan').on('click', '#dashlapbul_btnTampilkan', dashlapbul_loadDashboard);
+        // Inisialisasi filter
+        dashlapbul_initFilter();
+
+        /* Bind Event Utama */
+        $(document).off('change', '#dashlapbul_dashTahun, #dashlapbul_dashBulan').on('change', '#dashlapbul_dashTahun, #dashlapbul_dashBulan', dashlapbul_loadDashboard);
+        $(document).off('click', '#dashlapbul_btnRefresh').on('click', '#dashlapbul_btnRefresh', dashlapbul_loadDashboard);
         $(document).off('click', '#dashlapbul_btnCopyUtama').on('click', '#dashlapbul_btnCopyUtama', dashlapbul_copySemuaBelumLapor);
         $(document).off('click', '#dashlapbul_btnCopyModal').on('click', '#dashlapbul_btnCopyModal', dashlapbul_copySemuaBelumLapor);
         $(document).off('keyup', '#dashlapbul_cariBelumModal').on('keyup', '#dashlapbul_cariBelumModal', dashlapbul_filterBelumModal);
@@ -376,10 +384,21 @@
         // VAKSIN: Tolak eksekusi beruntun di bawah 1.5 detik
         if (currentTime - DASHLAPBUL_LAST_FETCH_TIME < 1500) return; 
         DASHLAPBUL_LAST_FETCH_TIME = currentTime;
-        if (dashlapbul_pendingRequests > 0) return;
+         dashlapbul_pendingRequests = 4;
+
+        // 1. SKELETON ANIMATION (Sultan Standard)
+        $('.dashlapbul-count').html('<span class="sultan-skeleton dashlapbul-skeleton-text"></span>');
+        $('.badge-info, .badge-warning, .badge-success, .badge-primary').css('opacity', '0.5');
         
-        dashlapbul_pendingRequests = 2; // Request SD dan PAUD
-        $('#dashlapbul_btnTampilkan').prop('disabled', true).html('<i class="fas fa-circle-notch fa-spin mr-1"></i> MEMPROSES');
+        // Skeleton for lists
+        var listSkeleton = '';
+        for(var i=0; i<4; i++){
+            listSkeleton += '<li class="list-group-item border-0 px-3 py-2 bg-transparent"><div class="sultan-skeleton" style="width: 80%; height: 12px;"></div></li>';
+        }
+        $('#dashlapbul_listBelumSd, #dashlapbul_listBelumTk, #dashlapbul_listBelumKb, #dashlapbul_listBelumSps').html(listSkeleton);
+
+        $('#dashlapbul_btnRefresh').prop('disabled', true).html('<i class="fas fa-circle-notch fa-spin mr-2"></i> Sinkronisasi...');
+        $('.card-sultan').css('opacity', '0.85');
 
         var t = $('#dashlapbul_dashTahun').val();
         var b = $('#dashlapbul_dashBulan').val();
@@ -413,8 +432,10 @@
         
         dashlapbul_pendingRequests--;
         if (dashlapbul_pendingRequests <= 0) {
-            $('#dashlapbul_lastUpdate').text(new Date().toLocaleString('id-ID'));
-            $('#dashlapbul_btnTampilkan').prop('disabled', false).html('<i class="fas fa-sync-alt mr-2"></i> TAMPILKAN DATA');
+            $('.card-sultan').css('opacity', '1');
+            $('.badge-info, .badge-warning, .badge-success, .badge-primary').css('opacity', '1');
+            $('#dashlapbul_lastUpdate').text(new Date().toLocaleTimeString('id-ID') + " WIB");
+            $('#dashlapbul_btnRefresh').prop('disabled', false).html('<i class="fas fa-sync-alt mr-2"></i> Refresh Data');
         }
     }
 
