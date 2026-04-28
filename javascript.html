@@ -154,16 +154,29 @@ function inisialisasiAplikasi() {
 /* =============================================================
    4. ENGINE ROUTING ANTI-BLINK
    ============================================================= */
+var SPA_IS_NAVIGATING = false;  // GUARD: Mencegah loadContent dipanggil ganda
+var SPA_CURRENT_PAGE = '';      // Tracking halaman aktif
+
 function loadContent(pageName) {
-  if(!pageName) return;
-  const $content = $('#app-content'); 
+  if (!pageName) return;
+
+  // GUARD 1: Tolak navigasi ke halaman yang sama jika sudah aktif
+  if (SPA_CURRENT_PAGE === pageName && SPA_IS_NAVIGATING) return;
+
+  // GUARD 2: Tolak jika sedang dalam proses navigasi halaman lain
+  if (SPA_IS_NAVIGATING) return;
+
+  SPA_IS_NAVIGATING = true;
+  SPA_CURRENT_PAGE = pageName;
+
+  const $content = $('#app-content');
   $content.removeClass('sultan-page-transition');
 
   $('body > .modal').remove(); $('.modal-backdrop').remove(); $('body').removeClass('modal-open').css('padding-right', '');
   highlightSidebar(pageName); updateBreadcrumb(pageName);
-  
+
   if (typeof NProgress !== 'undefined') { NProgress.configure({ showSpinner: false, speed: 400 }); NProgress.start(); }
-  
+
   $content.css('min-height', $content.height() + 'px');
   $content.css({'transition': 'opacity 0.2s ease', 'opacity': '0'});
 
@@ -174,18 +187,21 @@ function loadContent(pageName) {
           $content.html(html).addClass('sultan-page-transition');
           void $content[0].offsetWidth; $content.css('opacity', '1');
           setTimeout(function() { $content.css('min-height', ''); }, 300);
+          SPA_IS_NAVIGATING = false; // BUKA KUNCI setelah halaman berhasil dimuat
       }, 200);
     })
-    .withFailureHandler(function(err){
+    .withFailureHandler(function(err) {
       if (typeof NProgress !== 'undefined') NProgress.done();
       setTimeout(function() {
           $content.html('<div class="alert alert-danger m-3">Gagal memuat halaman: ' + err.message + '</div>').css('opacity', '1');
           $content.css('min-height', '');
       }, 200);
       Sultan.notif.gagal('Gagal Memuat Halaman');
+      SPA_IS_NAVIGATING = false; // BUKA KUNCI juga jika gagal agar user bisa coba lagi
     })
-    .loadPage(pageName); 
+    .loadPage(pageName);
 }
+
 
 /* =============================================================
    5. FUNGSI LOGIN & LOGOUT (FIX BLANK SCREEN)
