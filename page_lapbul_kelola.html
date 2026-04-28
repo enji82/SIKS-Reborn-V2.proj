@@ -801,6 +801,7 @@
     var LAPBULKELOLA_IS_ADMIN = false;
     var LAPBULKELOLA_UNIT_TERKUNCI = "";
     var LAPBULKELOLA_USER_NPSN = "";
+    var LAPBULKELOLA_IS_INIT = true; // FLAG UNTUK MENCEGAH DOUBLE LOAD SAAT STARTUP
 
     $(document).ready(function () {
         LAPBULKELOLA_TABEL_INSTANCE = null;
@@ -915,7 +916,9 @@
             $('#lapbulkelola_boxJenjang').removeClass('d-none');
             $('#lapbulkelola_filterUnit').empty().append('<option value="SEMUA">- Semua Unit Kerja -</option>').prop('disabled', false);
             $('#lapbulkelola_btnCari, #lapbulkelola_btnTambah').prop('disabled', false);
-            lapbulkelola_prosesCariData(false);
+            
+            LAPBULKELOLA_IS_INIT = false; // Buka kunci inisialisasi
+            lapbulkelola_prosesCariData('INIT_START');
         } else {
             $('#lapbulkelola_filterJenjang').addClass('d-none');
             if (!LAPBULKELOLA_USER_NPSN) {
@@ -937,7 +940,8 @@
                     $('#lapbulkelola_filterUnit').empty().append($('<option>', { value: LAPBULKELOLA_UNIT_TERKUNCI, text: LAPBULKELOLA_UNIT_TERKUNCI })).prop('disabled', true);
                     $('#lapbulkelola_btnCari, #lapbulkelola_btnTambah').prop('disabled', false);
 
-                    lapbulkelola_prosesCariData(false);
+                    LAPBULKELOLA_IS_INIT = false; // Buka kunci inisialisasi
+                    lapbulkelola_prosesCariData('INIT_START');
                 })
                 .withFailureHandler(function (err) {
                     $('#lapbulkelola_filterUnit').empty().append('<option value="">ERROR SERVER</option>');
@@ -987,8 +991,9 @@
         var valTahun = $('#lapbulkelola_filterTahun').val();
         if (!valTahun) { Sultan.notif.info('Pilih Tahun terlebih dahulu.'); return; }
 
-        if (isForceSync === true) {
-            LAPBULKELOLA_CACHE_TAHUN = "";
+        // Jika masih dalam proses inisialisasi awal, jangan biarkan trigger dari event listener jalan
+        if (LAPBULKELOLA_IS_INIT && isForceSync !== 'INIT_START') {
+            return;
         }
 
         if (LAPBULKELOLA_CACHE_TAHUN === valTahun && LAPBULKELOLA_CACHE_DATA.length > 0) {
