@@ -56,6 +56,39 @@ var SultanUI = {
      */
     hideLoading: function(targetId) {
         $(targetId).empty().hide();
+    },
+
+    /**
+     * Otomatis deteksi waktu terakhir dari data log (Global Standard)
+     * @param {Array} rows - Data baris dari server
+     * @param {string} txtId - ID penampung teks (default: '#statussk_txtLastUpdate')
+     * @param {string} areaId - ID penampung area (default: '#statussk_lastUpdateArea')
+     */
+    autoDetectLastUpdate: function(rows, txtId, areaId) {
+        var tglTerakhir = null;
+        if (rows && rows.length > 0) {
+            rows.forEach(function(row) {
+                var searchArea = Array.isArray(row) ? row : Object.values(row);
+                searchArea.forEach(function(val) {
+                    var sVal = String(val || "");
+                    if (sVal.includes('|')) {
+                        var parts = sVal.split('|');
+                        parts.forEach(function(p) {
+                            p = p.trim();
+                            if (p.match(/\d{2,4}[-/]\d{2}[-/]\d{2,4}/) || p.match(/\d{2}:\d{2}/)) {
+                                if (!tglTerakhir || p > tglTerakhir) tglTerakhir = p;
+                            }
+                        });
+                    }
+                });
+            });
+        }
+        if (!tglTerakhir) {
+            var now = new Date();
+            tglTerakhir = now.toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' (Sinkron)';
+        }
+        $(txtId).text(tglTerakhir);
+        $(areaId).show();
     }
 };
 </script>
