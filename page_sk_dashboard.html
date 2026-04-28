@@ -319,19 +319,21 @@
             DASHSK_USER_IS_ADMIN = (user.role || "").toLowerCase().indexOf("admin") !== -1;
         } catch(e) { DASHSK_USER_IS_ADMIN = false; }
 
-        // Inisialisasi filter tanpa memicu load
+        // LANGKAH 1: Isi filter SEBELUM event listener dipasang
         dashsk_initFilterDefault();
 
-        /* Bind Event Utama */
+        // LANGKAH 2: Jalankan load pertama kali secara eksplisit
+        dashsk_loadDataDashboard();
+
+        // LANGKAH 3: Baru pasang event listener SETELAH load pertama dipanggil
+        // Ini menjamin 100% tidak ada event change dari initFilterDefault yang tertangkap
         var loadTimeout;
         function debouncedLoad() {
-            // JANGAN JALANKAN JIKA MASIH DALAM PROSES INISIALISASI
-            if (DASHSK_IS_INIT) return;
-
             clearTimeout(loadTimeout);
             loadTimeout = setTimeout(function() {
+                if (DASHSK_IS_INIT) return; // Tolak jika load pertama belum selesai
                 dashsk_loadDataDashboard();
-            }, 100);
+            }, 150);
         }
 
         $(document).off('change', '#dashsk_filterTahun, #dashsk_filterSemester').on('change', '#dashsk_filterTahun, #dashsk_filterSemester', debouncedLoad);
@@ -344,9 +346,6 @@
         $(document).off('keyup', '#dashsk_inputCariBelumModal').on('keyup', '#dashsk_inputCariBelumModal', dashsk_filterBelumModal);
         $(document).off('click', '#dashsk_btnSalinDaftar, #dashsk_btnSalinDaftarModal').on('click', '#dashsk_btnSalinDaftar, #dashsk_btnSalinDaftarModal', dashsk_copyListBelum);
         $(document).off('click', '#dashsk_btnModalBelum').on('click', '#dashsk_btnModalBelum', dashsk_showModalBelum);
-        
-        /* Jalankan load data pertama kali secara eksplisit satu kali saja */
-        dashsk_loadDataDashboard();
     });
 
     function dashsk_initFilterDefault() {
