@@ -3,13 +3,13 @@
     <div class="row">
       <div class="col-sm-12">
         <h5 class="font-weight-bold text-uppercase">
-          <i class="fas fa-chart-bar text-maroon mr-2"></i>Status Pengiriman Laporan
+          <i class="fas fa-chart-bar text-sultan-utama mr-2"></i>Status Pengiriman Laporan
         </h5>
         <hr class="style-sultan-solid">
         <div id="lapbulstatus_lastUpdateArea" class="mt-n2 mb-3 text-right" style="display: none;">
             <small class="text-dark opacity-75 font-weight-bold">
                 <i class="fas fa-clock mr-1"></i> Terakhir Diperbarui: 
-                <span id="lapbulstatus_txtLastUpdate" class="text-maroon">-</span>
+                <span id="lapbulstatus_txtLastUpdate" class="text-sultan-utama">-</span>
             </small>
         </div>
       </div>
@@ -69,20 +69,10 @@
 
             <div class="divider-vertical d-none d-md-block mx-2"></div>
 
-            <button type="button" id="lapbulstatus_btnRefresh" class="btn btn-white border shadow-sm rounded-circle" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;" title="Refresh Data" disabled>
-                <i class="fas fa-sync-alt text-maroon"></i>
+            <button type="button" id="lapbulstatus_btnRefresh" class="sultan-btn sultan-btn-aksi-utama shadow-sm rounded-circle" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;" title="Refresh Data" disabled>
+                <i class="fas fa-sync-alt"></i>
             </button>
-                </select>
-
-                <div id="lapbulstatus_divider" class="divider-vertical d-none d-md-block"></div>
-
-                <button type="button" id="lapbulstatus_btnCari" class="btn btn-white border shadow-sm rounded-circle" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;" title="Segarkan Data dari Server" disabled>
-                    <i class="fas fa-sync-alt text-maroon"></i>
-                </button>
-
-                <div class="ml-auto d-none d-md-block"></div>
-                <button type="button" class="btn btn-primary font-weight-bold shadow-sm d-none">Spacer</button>
-            </div>
+        </div>
         </div>
 
         <div class="card-sultan">
@@ -99,7 +89,7 @@
 
               <div id="lapbulstatus_tableState" style="display: none;">
                   <table id="lapbulstatus_tabelUtama" class="table table-bordered table-hover table-premium table-sultan-compact mb-0 w-100 text-nowrap">
-                      <thead class="bg-light text-maroon text-uppercase font-weight-bold">
+                      <thead class="bg-light text-sultan-utama text-uppercase font-weight-bold">
                           <tr>
                               <th class="col-sticky-left border-right text-left px-3 align-middle bg-white" style="z-index: 5;">NAMA SEKOLAH</th>
                               <th class="text-center align-middle px-3">JENJANG</th>
@@ -124,24 +114,16 @@
     #lapbulstatus_tabelUtama { border-collapse: separate; border-spacing: 0; border: none !important; }
     #lapbulstatus_tabelUtama thead th { border-bottom: 2px solid rgba(128, 0, 0, 0.1); border-top: none; vertical-align: middle !important; }
     
-    .col-sticky-left { 
-        position: sticky !important; 
-        left: 0; 
-        z-index: 10; 
-        background-color: #ffffff !important; 
-        border-right: none !important; 
-        box-shadow: none !important; 
-        outline: none !important;
+    /* OVERRIDE UKURAN IKON AGAR ELEGAN DI MATRIX */
+    #lapbulstatus_tabelUtama .btn-icon-sultan {
+        width: 24px !important;
+        height: 24px !important;
+        min-width: 24px !important;
+        margin: 0 auto !important;
     }
-    .dark-mode .col-sticky-left { background-color: #1e1e1e !important; }
-
-    #lapbulstatus_tabelUtama tbody tr { transition: all 0.2s; }
-    #lapbulstatus_tabelUtama tbody tr:hover td { background-color: rgba(128, 0, 0, 0.02) !important; }
-    .dark-mode #lapbulstatus_tabelUtama tbody tr:hover td { background-color: rgba(255, 255, 255, 0.02) !important; }
-
-    /* Fix White Line in Freeze Column */
-    #lapbulstatus_tabelUtama td, #lapbulstatus_tabelUtama th { border-right: 1px solid rgba(0,0,0,0.05) !important; }
-    #lapbulstatus_tabelUtama td.col-sticky-left, #lapbulstatus_tabelUtama th.col-sticky-left { border-right: none !important; }
+    #lapbulstatus_tabelUtama .btn-icon-sultan i {
+        font-size: 10px !important;
+    }
 </style>
               </div>
 
@@ -165,6 +147,7 @@ var LAPBULSTATUS_USER_AKTIF = "";
 var LAPBULSTATUS_IS_ADMIN = false;
 var LAPBULSTATUS_USER_NPSN = "";
 var LAPBULSTATUS_UNIT_TERKUNCI = "";
+var LAPBULSTATUS_IS_INIT = true; // FLAG PENGAMAN STARTUP
 
 $(document).ready(function() {
     LAPBULSTATUS_TABEL_INSTANCE = null;
@@ -179,12 +162,22 @@ $(document).ready(function() {
     } catch(e) { LAPBULSTATUS_USER_NPSN = ""; LAPBULSTATUS_IS_ADMIN = false; }
 
     $(document).off('change', '#lapbulstatus_filterJenjang').on('change', '#lapbulstatus_filterJenjang', function() { 
+        if (LAPBULSTATUS_IS_INIT) return;
         lapbulstatus_updateDropdownSekolah(); 
         lapbulstatus_terapkanFilterLokal(); 
     });
-    $(document).off('change', '#lapbulstatus_filterSekolah').on('change', '#lapbulstatus_filterSekolah', lapbulstatus_terapkanFilterLokal);
-    $(document).off('change', '#lapbulstatus_filterTahun').on('change', '#lapbulstatus_filterTahun', lapbulstatus_prosesCariData);
-    $(document).off('click', '#lapbulstatus_btnCari').on('click', '#lapbulstatus_btnCari', lapbulstatus_tarikDataServer);
+    $(document).off('change', '#lapbulstatus_filterSekolah').on('change', '#lapbulstatus_filterSekolah', function() {
+        if (LAPBULSTATUS_IS_INIT) return;
+        lapbulstatus_terapkanFilterLokal();
+    });
+    $(document).off('change', '#lapbulstatus_filterTahun').on('change', '#lapbulstatus_filterTahun', function() {
+        if (LAPBULSTATUS_IS_INIT) return;
+        lapbulstatus_prosesCariData();
+    });
+    $(document).off('click', '#lapbulstatus_btnRefresh').on('click', '#lapbulstatus_btnRefresh', function(e) {
+        e.preventDefault();
+        lapbulstatus_tarikDataServer();
+    });
 
     lapbulstatus_initFilters();
 });
@@ -298,7 +291,8 @@ function lapbulstatus_tarikDataServer() {
 
     google.script.run
         .withSuccessHandler(function(res) {
-            btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
+            btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-white"></i>');
+            LAPBULSTATUS_IS_INIT = false; // BUKA KUNCI SETELAH DATA TIBA
             
             if (res.error) {
                 $('#lapbulstatus_tableState').hide();
@@ -371,7 +365,7 @@ function lapbulstatus_renderTabel(rows) {
             
             var safeNama = lapbulstatus_escapeHtml(row[0]);
             var safeNpsn = lapbulstatus_escapeHtml(row[1] || "-");
-            newRow.push('<div class="font-weight-bold text-dark text-nowrap">' + safeNama + '</div><div class="small text-muted text-nowrap">' + safeNpsn + '</div>');
+            newRow.push('<div class="sultan-table-primary text-nowrap">' + safeNama + '</div><div class="sultan-table-secondary text-nowrap">' + safeNpsn + '</div>');
             
             var j = String(row[2] || "").trim().toUpperCase();
             var badgeClass = 'badge-sultan-light-secondary';
@@ -447,16 +441,16 @@ function lapbulstatus_buildBadgeSultan(statusString) {
     var iconHtml = "";
 
     if (stLower.includes('revisi') || stLower.includes('perbaiki')) {
-        iconHtml = '<span class="badge badge-sultan badge-sultan-light-warning p-2" title="Revisi"><i class="fas fa-sync-alt"></i></span>';
+        iconHtml = '<div class="btn-icon-sultan btn-icon-sultan-warning" title="Revisi"><i class="fas fa-sync-alt"></i></div>';
     }
     else if (stLower.includes('tolak') || stLower.includes('x') || stLower.includes('salah')) {
-        iconHtml = '<span class="badge badge-sultan badge-sultan-light-danger p-2" title="Ditolak"><i class="fas fa-times"></i></span>';
+        iconHtml = '<div class="btn-icon-sultan btn-icon-sultan-danger" title="Ditolak"><i class="fas fa-times"></i></div>';
     }
     else if (stLower.includes('verif') || stLower.includes('setuju') || stLower.includes('ok') || stLower.includes('valid')) {
-        iconHtml = '<span class="badge badge-sultan badge-sultan-light-success p-2" title="Disetujui"><i class="fas fa-check"></i></span>';
+        iconHtml = '<div class="btn-icon-sultan btn-icon-sultan-success" title="Disetujui"><i class="fas fa-check"></i></div>';
     }
     else if (stLower.includes('proses') || stLower.includes('tunggu') || rawStatus.length > 5) {
-        iconHtml = '<span class="badge badge-sultan badge-sultan-light-info p-2" title="Sedang Diproses"><i class="fas fa-clock"></i></span>';
+        iconHtml = '<div class="btn-icon-sultan btn-icon-sultan-info" title="Sedang Diproses"><i class="fas fa-clock"></i></div>';
     }
     else {
         iconHtml = '<span class="text-dark font-weight-bold" title="' + lapbulstatus_escapeHtml(rawStatus) + '">' + lapbulstatus_escapeHtml(rawStatus) + '</span>';
