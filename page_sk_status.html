@@ -6,6 +6,12 @@
                     <i class="fas fa-paper-plane text-maroon mr-2"></i>Status Pengiriman SK Pembagian Tugas
                 </h5>
                 <hr class="style-sultan-solid">
+                <div id="statussk_lastUpdateArea" class="mt-n2 mb-3 text-right" style="display: none;">
+                    <small class="text-dark opacity-75 font-weight-bold">
+                        <i class="fas fa-clock mr-1"></i> Terakhir Diperbarui: 
+                        <span id="statussk_txtLastUpdate" class="text-maroon">-</span>
+                    </small>
+                </div>
             </div>
         </div>
     </div>
@@ -298,6 +304,9 @@
                     try {
                         STATUSSK_CACHE_DATA = res.rows || [];
                         statussk_populateDropdown(res.schools || []);
+                        
+                        // Deteksi Waktu Terakhir dari Data
+                        statussk_deteksiWaktuTerakhir(STATUSSK_CACHE_DATA);
 
                         statussk_terapkanFilterLokal();
 
@@ -338,6 +347,34 @@
             if (currentVal && schools.includes(currentVal)) el.val(currentVal);
         }
         // Jika bukan Admin, dropdown diabaikan (karena wadahnya di-hide)
+    }
+
+    function statussk_deteksiWaktuTerakhir(rows) {
+        if (!rows || rows.length === 0) return;
+        
+        var tglTerakhir = null;
+        
+        rows.forEach(function(row) {
+            for (var i = 1; i < row.length; i++) {
+                var val = String(row[i] || "");
+                if (val.includes('|')) {
+                    var parts = val.split('|');
+                    // Biasanya formatnya: STATUS | KET | TGL atau STATUS | TGL
+                    // Kita cari part yang mengandung format tanggal/waktu (titik dua atau dash)
+                    parts.forEach(function(p) {
+                        p = p.trim();
+                        if (p.match(/\d{2}:\d{2}/) || p.match(/\d{4}-\d{2}/)) {
+                            if (!tglTerakhir || p > tglTerakhir) tglTerakhir = p;
+                        }
+                    });
+                }
+            }
+        });
+        
+        if (tglTerakhir) {
+            $('#statussk_txtLastUpdate').text(tglTerakhir);
+            $('#statussk_lastUpdateArea').fadeIn();
+        }
     }
 
     // =================================================================
