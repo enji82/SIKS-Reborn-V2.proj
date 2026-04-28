@@ -496,6 +496,7 @@
     var TUGAS_UNIT_TERKUNCI = "";
 
     var TUGAS_CURRENT_FILE_URL = "";
+    var TUGAS_IS_INIT = true; // FLAG UNTUK MENCEGAH DOUBLE LOAD SAAT STARTUP
 
     // =================================================================
     // 1. INITIALIZATION & SPA VACCINE (BAB I)
@@ -578,6 +579,9 @@
 
             $('#tugas_btnCari, #tugas_btnTambah').prop('disabled', false);
             tugas_tarikDataServer();
+            
+            TUGAS_IS_INIT = false; // Buka kunci inisialisasi
+            tugas_tarikDataServer('INIT_START');
         } else {
             if (!TUGAS_USER_NPSN) {
                 $('#tugas_filterUnit').empty().append('<option value="">AKSES DITOLAK (NPSN KOSONG)</option>');
@@ -594,7 +598,9 @@
                 TUGAS_UNIT_TERKUNCI = dataUnit.unitKerja;
                 $('#tugas_filterUnit').empty().append('<option value="' + tugas_escapeHtml(TUGAS_UNIT_TERKUNCI) + '">' + tugas_escapeHtml(TUGAS_UNIT_TERKUNCI) + '</option>').prop('disabled', true);
                 $('#tugas_btnCari, #tugas_btnTambah').prop('disabled', false);
-                tugas_tarikDataServer();
+                
+                TUGAS_IS_INIT = false; // Buka kunci inisialisasi
+                tugas_tarikDataServer('INIT_START');
             }).withFailureHandler(function (err) {
                 $('#tugas_filterUnit').empty().append('<option value="">ERROR SERVER</option>');
                 $('#tugas_loadingText').html('<span style="color: var(--sultan-aksi-danger);"><i class="fas fa-wifi mb-2"></i><br>Koneksi Terputus: ' + tugas_escapeHtml(err.message) + '</span>');
@@ -605,7 +611,12 @@
     // =================================================================
     // 3. FETCH DATA & FILTER (BAB VII - Turbo Seamless)
     // =================================================================
-    function tugas_tarikDataServer() {
+    function tugas_tarikDataServer(isForceSync) {
+        // Jika masih dalam proses inisialisasi awal, jangan biarkan trigger dari event listener jalan
+        if (TUGAS_IS_INIT && isForceSync !== 'INIT_START') {
+            return;
+        }
+
         var btn = $('#tugas_btnCari');
         btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin" style="color: var(--sultan-aksi-utama);"></i>');
 
