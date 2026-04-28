@@ -4,7 +4,7 @@
     <div class="row">
       <div class="col-sm-12">
         <h5 class="font-weight-bold text-uppercase">
-          <i class="fas fa-tachometer-alt text-maroon mr-2"></i>Dashboard Laporan Bulan
+          <i class="fas fa-tachometer-alt text-sultan-utama mr-2"></i>Dashboard Laporan Bulan
         </h5>
         <hr class="style-sultan-solid">
       </div>
@@ -33,13 +33,13 @@
         
         <div class="divider-vertical d-none d-md-block mx-2"></div>
         
-        <button type="button" id="dashlapbul_btnRefresh" class="btn btn-maroon rounded-pill px-4 shadow-sm font-weight-bold" title="Refresh Data">
+        <button type="button" id="dashlapbul_btnRefresh" class="sultan-btn sultan-btn-aksi-utama shadow-sm" title="Refresh Data">
             <i class="fas fa-sync-alt mr-2"></i> REFRESH DATA
         </button>
 
         <div class="ml-2 d-none d-lg-block border-left pl-3">
-            <small class="text-muted d-block" style="font-size: 10px; line-height: 1;">Terakhir diperbarui:</small>
-            <small id="dashlapbul_lastUpdate" class="text-maroon font-weight-bold" style="font-size: 11px;">-</small>
+            <small class="text-muted d-block font-weight-bold" style="font-size: 10px; line-height: 1;">TERAKHIR DIPERBARUI:</small>
+            <small id="dashlapbul_lastUpdate" class="text-sultan-utama font-weight-bold" style="font-size: 11px;">-</small>
         </div>
     </div>
 
@@ -127,10 +127,10 @@
 
         <div class="col-12 mt-3">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h6 class="font-weight-bold text-maroon m-0">
+                <h6 class="font-weight-bold text-sultan-utama m-0 text-uppercase">
                     <i class="fas fa-exclamation-circle mr-2"></i>Daftar Sekolah Belum Lapor
                 </h6>
-                <button id="dashlapbul_btnCopyUtama" class="btn btn-outline-maroon btn-sm rounded-pill px-3 font-weight-bold">
+                <button id="dashlapbul_btnCopyUtama" class="sultan-btn sultan-btn-compact sultan-btn-outline-white border-maroon text-sultan-utama shadow-sm">
                     <i class="fas fa-copy mr-1"></i> Salin Semua (WA)
                 </button>
             </div>
@@ -195,7 +195,7 @@
                 <div class="col-lg-8">
                     <div class="card-sultan mb-3 h-100">
                         <div class="card-header bg-white border-bottom-0">
-                            <h6 class="card-title font-weight-bold text-maroon"><i class="fas fa-chart-bar mr-2"></i>Komparasi Status Antar Jenjang</h6>
+                            <h6 class="card-title font-weight-bold text-sultan-utama text-uppercase"><i class="fas fa-chart-bar mr-2"></i>Komparasi Status Antar Jenjang</h6>
                         </div>
                         <div class="card-body">
                             <div style="height: 350px; width: 100%;">
@@ -208,7 +208,7 @@
                 <div class="col-lg-4">
                     <div class="card-sultan mb-3 h-100">
                         <div class="card-header bg-white border-bottom-0">
-                            <h6 class="card-title font-weight-bold text-maroon"><i class="fas fa-chart-pie mr-2"></i>Proporsi Total (Semua Jenjang)</h6>
+                            <h6 class="card-title font-weight-bold text-sultan-utama text-uppercase"><i class="fas fa-chart-pie mr-2"></i>Proporsi Total (Semua Jenjang)</h6>
                         </div>
                         <div class="card-body">
                             <div style="height: 220px; position: relative;">
@@ -321,27 +321,33 @@
     };
     
     var DASHLAPBUL_GLOBAL_BELUM_LAPOR = { sd: [], tk: [], kb: [], sps: [] };
+    var DASHLAPBUL_IS_INIT = true; // FLAG PENGAMAN STARTUP
     var dashlapbul_pendingRequests = 0; 
-    var DASHLAPBUL_LAST_FETCH_TIME = 0;
 
     $(document).ready(function() {
-        // VAKSIN DOM MARKER (Mencegah inisialisasi ganda oleh Router)
-        if ($('#dashlapbul_dashTahun').data('spa-init')) return;
-        $('#dashlapbul_dashTahun').data('spa-init', true);
-
-        // 1. Inisialisasi filter
+        // 1. Inisialisasi filter dulu (TANPA memicu fetch)
         dashlapbul_initFilter();
+        
+        // 2. Inisiasi Chart
+        dashlapbul_initChart(); 
 
-        /* Bind Event Utama */
-        $(document).off('change', '#dashlapbul_dashTahun, #dashlapbul_dashBulan').on('change', '#dashlapbul_dashTahun, #dashlapbul_dashBulan', dashlapbul_loadDashboard);
-        $(document).off('click', '#dashlapbul_btnRefresh').on('click', '#dashlapbul_btnRefresh', dashlapbul_loadDashboard);
+        // 3. Tarik Data Manual Pertama Kali
+        dashlapbul_loadDashboard();
+
+        /* 4. Bind Event (Setelah data pertama mulai ditarik) */
+        $(document).off('change', '#dashlapbul_dashTahun, #dashlapbul_dashBulan').on('change', '#dashlapbul_dashTahun, #dashlapbul_dashBulan', function() {
+            if (DASHLAPBUL_IS_INIT) return;
+            dashlapbul_loadDashboard();
+        });
+        
+        $(document).off('click', '#dashlapbul_btnRefresh').on('click', '#dashlapbul_btnRefresh', function(e) {
+            e.preventDefault();
+            dashlapbul_loadDashboard();
+        });
+        
         $(document).off('click', '#dashlapbul_btnCopyUtama').on('click', '#dashlapbul_btnCopyUtama', dashlapbul_copySemuaBelumLapor);
         $(document).off('click', '#dashlapbul_btnCopyModal').on('click', '#dashlapbul_btnCopyModal', dashlapbul_copySemuaBelumLapor);
         $(document).off('keyup', '#dashlapbul_cariBelumModal').on('keyup', '#dashlapbul_cariBelumModal', dashlapbul_filterBelumModal);
-
-        // Inisiasi Langsung (Karena Chart.js sudah di-load via tag script di atas)
-        dashlapbul_initChart(); 
-        setTimeout(function() { dashlapbul_loadDashboard(); }, 100);
     });
 
     function dashlapbul_initFilter() {
@@ -369,11 +375,7 @@
     // BAB VIII: FETCH DATA SERVER (DENGAN RACE CONDITION HANDLER)
     // ======================================================================
     function dashlapbul_loadDashboard() {
-        var currentTime = new Date().getTime();
-        // VAKSIN: Tolak eksekusi beruntun di bawah 1.5 detik
-        if (currentTime - DASHLAPBUL_LAST_FETCH_TIME < 1500) return; 
-        DASHLAPBUL_LAST_FETCH_TIME = currentTime;
-         dashlapbul_pendingRequests = 4;
+        dashlapbul_pendingRequests = 2; // SD and PAUD requests
 
         // 1. SKELETON ANIMATION (Sultan Standard)
         $('.dashlapbul-count').html('<span class="sultan-skeleton dashlapbul-skeleton-text"></span>');
@@ -409,13 +411,13 @@
     }
 
     function dashlapbul_finishRequest(source) {
-        
         dashlapbul_pendingRequests--;
         if (dashlapbul_pendingRequests <= 0) {
+            DASHLAPBUL_IS_INIT = false; // BUKA KUNCI SETELAH SEMUA DATA TIBA
             $('.card-sultan').css('opacity', '1');
             $('.badge-info, .badge-warning, .badge-success, .badge-primary').css('opacity', '1');
             $('#dashlapbul_lastUpdate').text(new Date().toLocaleTimeString('id-ID') + " WIB");
-            $('#dashlapbul_btnRefresh').prop('disabled', false).html('<i class="fas fa-sync-alt mr-2"></i> Refresh Data');
+            $('#dashlapbul_btnRefresh').prop('disabled', false).html('<i class="fas fa-sync-alt mr-2"></i> REFRESH DATA');
         }
     }
 
