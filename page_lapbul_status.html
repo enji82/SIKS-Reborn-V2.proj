@@ -81,11 +81,10 @@
                 </div>
 
                 <div id="lapbulstatus_tableState" style="display: none;">
-                  <table id="lapbulstatus_tabelUtama" class="table table-bordered table-hover table-premium table-sultan-compact mb-0 w-100 text-nowrap">
+                  <table id="lapbulstatus_tabelUtama" class="table table-hover table-premium table-sultan-compact mb-0 w-100 text-nowrap">
                       <thead class="bg-light text-sultan-utama text-uppercase font-weight-bold">
                           <tr>
-                              <th class="col-sticky-left border-right text-left px-3 align-middle bg-white" style="z-index: 5;">NAMA SEKOLAH</th>
-                              <th class="text-center align-middle px-3">JENJANG</th>
+                              <th class="col-sticky-left text-left px-3 align-middle bg-white" style="z-index: 5;">NAMA SEKOLAH</th>
                               <th class="text-center align-middle">JAN</th>
                               <th class="text-center align-middle">FEB</th>
                               <th class="text-center align-middle">MAR</th>
@@ -356,16 +355,8 @@ function lapbulstatus_renderTabel(rows) {
             var safeNpsn = lapbulstatus_escapeHtml(row[1] || "-");
             newRow.push('<div class="sultan-table-primary text-nowrap">' + safeNama + '</div><div class="sultan-table-secondary text-nowrap">' + safeNpsn + '</div>');
             
-            var j = String(row[2] || "").trim().toUpperCase();
-            var badgeClass = 'badge-sultan-light-secondary';
-            if (j === 'SD') badgeClass = 'badge-sultan-light-info';
-            else if (j === 'TK') badgeClass = 'badge-sultan-light-warning';
-            else if (j === 'KB') badgeClass = 'badge-sultan-light-success';
-            else if (j === 'SPS') badgeClass = 'badge-sultan-light-primary';
-            else if (j === 'TPA') badgeClass = 'badge-sultan-light-danger';
-            
-            newRow.push('<span class="badge badge-sultan ' + badgeClass + ' px-3 py-1">' + j + '</span>');
-            
+            // SKIP INDEX 2 & 3 (Jenjang & Other internal)
+            // Bulan dimulai dari index 4
             for (var i = 4; i <= 15; i++) {
                 newRow.push(lapbulstatus_buildBadgeSultan(row[i]));
             }
@@ -414,26 +405,52 @@ function lapbulstatus_escapeHtml(text) {
     return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); 
 }
 
+function lapbulstatus_escapeJs(str) {
+    if (!str) return "";
+    return String(str).replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/"/g, "&quot;").replace(/(\r\n|\n|\r)/gm, "<br>");
+}
+
 // =================================================================
 // 6. RENDER ICON SULTAN (TOOLTIP HOVER ONLY)
 // =================================================================
+function lapbulstatus_lihatCatatanSultan(pesan) {
+    Swal.fire({
+        title: '<i class="fas fa-comment-dots text-maroon mb-2"></i><br>Catatan Admin',
+        html: '<div class="text-left bg-light p-3 rounded border text-dark" style="font-size:15px; line-height:1.5;">' + pesan + '</div>',
+        showConfirmButton: true,
+        confirmButtonText: 'Saya Mengerti',
+        confirmButtonColor: '#85144b',
+        width: '400px'
+    });
+}
+
 function lapbulstatus_buildBadgeSultan(statusString) {
     if (!statusString || statusString === "-" || statusString === "") {
         return '<i class="fas fa-minus text-black-50 opacity-25" title="Belum Lapor"></i>';
     }
     
-    // Karena kita tidak memakai data keterangan (index setelah | dibuang)
     var parts = String(statusString).split('|');
     var rawStatus = String(parts[0]).trim();
+    var ket = parts.length > 1 ? String(parts[1]).trim() : "";
     var stLower = rawStatus.toLowerCase();
     
     var iconHtml = "";
 
     if (stLower.includes('revisi') || stLower.includes('perbaiki')) {
-        iconHtml = '<div class="btn-icon-sultan btn-icon-sultan-warning" title="Revisi"><i class="fas fa-sync-alt"></i></div>';
+        if (ket.length > 2) {
+            var safeKet = lapbulstatus_escapeJs(ket);
+            iconHtml = `<button type="button" class="btn-icon-sultan btn-icon-sultan-warning border-0" onclick="lapbulstatus_lihatCatatanSultan('${safeKet}')"><i class="fas fa-sync-alt"></i></button>`;
+        } else {
+            iconHtml = '<div class="btn-icon-sultan btn-icon-sultan-warning" title="Revisi"><i class="fas fa-sync-alt"></i></div>';
+        }
     }
     else if (stLower.includes('tolak') || stLower.includes('x') || stLower.includes('salah')) {
-        iconHtml = '<div class="btn-icon-sultan btn-icon-sultan-danger" title="Ditolak"><i class="fas fa-times"></i></div>';
+        if (ket.length > 2) {
+            var safeKet = lapbulstatus_escapeJs(ket);
+            iconHtml = `<button type="button" class="btn-icon-sultan btn-icon-sultan-danger border-0" onclick="lapbulstatus_lihatCatatanSultan('${safeKet}')"><i class="fas fa-times"></i></button>`;
+        } else {
+            iconHtml = '<div class="btn-icon-sultan btn-icon-sultan-danger" title="Ditolak"><i class="fas fa-times"></i></div>';
+        }
     }
     else if (stLower.includes('verif') || stLower.includes('setuju') || stLower.includes('ok') || stLower.includes('valid')) {
         iconHtml = '<div class="btn-icon-sultan btn-icon-sultan-success" title="Disetujui"><i class="fas fa-check"></i></div>';
