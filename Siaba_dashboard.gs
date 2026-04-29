@@ -22,14 +22,14 @@ function dashParseDateIso(v) {
 }
 
 // 3. API: AMBIL DATA METRIK & TREN PER MODUL
-function getSiabaMetric(type, scope) {
+function getSiabaMetric(type, scope, unit) {
   if (!scope) scope = 'TOTAL';
+  var myUnit = (scope === 'USER') ? (unit || "") : "";
   var cache = CacheService.getScriptCache();
   var now = new Date();
   var curYear = now.getFullYear();
   var curMonth = now.getMonth();
-  var email = Session.getActiveUser().getEmail();
-  var cacheKey = "metric_v2_" + type + "_" + scope + "_" + email.replace(/[^a-zA-Z0-9]/g, "");
+  var cacheKey = "metric_v3_" + type + "_" + scope + "_" + myUnit.replace(/[^a-zA-Z0-9]/g, "");
   var cached = cache.get(cacheKey);
   if (cached) return cached;
 
@@ -61,14 +61,13 @@ function getSiabaMetric(type, scope) {
     var sh = ss.getSheetByName(config.tab);
     if (sh) {
       var data = sh.getDataRange().getValues();
-      var myUnit = (scope === 'USER') ? dashGetMyUnit() : "";
       
       for (var i = 1; i < data.length; i++) {
         var row = data[i];
         
         // FILTER UNIT KERJA (Jika scope USER)
         if (scope === 'USER' && myUnit !== "") {
-          var rowUnit = String(row[1] || "").trim(); // Asumsi Kolom B adalah Unit Kerja di semua DB Siaba
+          var rowUnit = String(row[1] || "").trim(); // Kolom B adalah Unit Kerja
           if (rowUnit !== myUnit) continue;
         }
 
@@ -121,12 +120,12 @@ function dashGetMyUnit() {
 }
 
 // 4. API: AMBIL DATA GRAFIK KEDISIPLINAN (Dari File Rekap)
-function getSiabaChartTrend(scope) {
+function getSiabaChartTrend(scope, unit) {
   if (!scope) scope = 'TOTAL';
+  var myUnit = (scope === 'USER') ? (unit || "") : "";
   var cache = CacheService.getScriptCache();
-  var email = Session.getActiveUser().getEmail();
   var curYear = new Date().getFullYear();
-  var cacheKey = "chart_trend_v2_" + scope + "_" + email.replace(/[^a-zA-Z0-9]/g, "");
+  var cacheKey = "chart_trend_v3_" + scope + "_" + myUnit.replace(/[^a-zA-Z0-9]/g, "");
   var cached = cache.get(cacheKey);
   if (cached) return cached;
 
@@ -144,12 +143,11 @@ function getSiabaChartTrend(scope) {
       if (sh) {
         var data = sh.getDataRange().getDisplayValues();
         var key = nm.includes("Terlambat") ? "terlambat" : "pulangAwal";
-        var myUnit = (scope === 'USER') ? dashGetMyUnit() : "";
         for (var i = 2; i < data.length; i++) {
           if (String(data[i][0]).trim() == curYear) {
-            // FILTER UNIT KERJA (Kolom E / Index 4 di Rekap biasanya Unit Kerja)
+            // FILTER UNIT KERJA
             if (scope === 'USER' && myUnit !== "") {
-              var rowUnit = String(data[i][1] || "").trim(); // Sesuaikan kolom unit di rekap
+              var rowUnit = String(data[i][1] || "").trim(); 
               if (rowUnit !== myUnit) continue;
             }
             for (var m = 0; m < 12; m++) {

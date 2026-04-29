@@ -429,12 +429,22 @@
         salah: { proses: 0, revisi: 0, setuju: 0, tolak: 0 }
     };
     var DASHSIABA_PIE_CHART_INSTANCE = null;
-    var dashsiaba_pendingRequests = 0; 
-    var DASHSIABA_LAST_FETCH_TIME = 0; 
-    var DASHSIABA_HTML_RINCIAN = { cuti: "", dinas: "", lupa: "", salah: "" };
-    var DASHSIABA_SCOPE = 'USER'; // Default to user-specific data
+    var DASHSIABA_SCOPE = 'USER'; 
+    var DASHSIABA_MY_UNIT = ""; // Will be populated from global USER_DATA
 
     $(document).ready(function() {
+        // Ambil Unit dari Global USER_DATA (SIKS Login System)
+        if (typeof USER_DATA !== 'undefined' && USER_DATA.unit) {
+            DASHSIABA_MY_UNIT = USER_DATA.unit;
+        } else {
+            // Coba ambil dari localStorage jika USER_DATA tidak tersedia
+            var savedUser = localStorage.getItem('siks_user');
+            if (savedUser) {
+                var u = JSON.parse(savedUser);
+                DASHSIABA_MY_UNIT = u.unit || "";
+            }
+        }
+
         if ($('#dashsiaba_dashFilterTahun').data('spa-init')) return;
         $('#dashsiaba_dashFilterTahun').data('spa-init', true);
 
@@ -523,7 +533,7 @@
                 } catch (err) { console.error("Err JS [" + type + "]:", err); } finally { dashsiaba_finishRequest(); }
             })
             .withFailureHandler(function(e) { dashsiaba_finishRequest(); })
-            .getSiabaMetric(type, DASHSIABA_SCOPE);
+            .getSiabaMetric(type, DASHSIABA_SCOPE, DASHSIABA_MY_UNIT);
     }
 
     function dashsiaba_loadChartTrend() {
@@ -531,7 +541,7 @@
             var data = JSON.parse(json);
             dashsiaba_renderBarChart(data);
             dashsiaba_finishRequest();
-        }).withFailureHandler(function(){ dashsiaba_finishRequest(); }).getSiabaChartTrend(DASHSIABA_SCOPE);
+        }).withFailureHandler(function(){ dashsiaba_finishRequest(); }).getSiabaChartTrend(DASHSIABA_SCOPE, DASHSIABA_MY_UNIT);
     }
 
     function dashsiaba_initFiltersBelumLengkap() {
@@ -581,7 +591,7 @@
                 tbody.html(strH || '<tr><td colspan="2" class="text-center text-muted py-5">Data Kosong</td></tr>');
             })
             .withFailureHandler(function(e) { $('#dashsiaba_dashBtnRefreshTable').prop('disabled', false).html('<i class="fas fa-sync-alt mr-1"></i> PERBARUI DATA'); })
-            .getSiabaTidakData(th, bl, DASHSIABA_SCOPE);
+            .getSiabaTidakData(th, bl, DASHSIABA_SCOPE, DASHSIABA_MY_UNIT);
     }
 
     function dashsiaba_initPieChart() {
