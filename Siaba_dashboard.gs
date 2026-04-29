@@ -22,14 +22,12 @@ function dashParseDateIso(v) {
 }
 
 // 3. API: AMBIL DATA METRIK & TREN PER MODUL
-function getSiabaMetric(type, scope, unit) {
-  if (!scope) scope = 'TOTAL';
-  var myUnit = (scope === 'USER') ? (unit || "") : "";
+function getSiabaMetric(type) {
   var cache = CacheService.getScriptCache();
   var now = new Date();
   var curYear = now.getFullYear();
   var curMonth = now.getMonth();
-  var cacheKey = "metric_v3_" + type + "_" + scope + "_" + myUnit.replace(/[^a-zA-Z0-9]/g, "");
+  var cacheKey = "metric_v2_final_" + type + "_" + curYear + "_" + curMonth;
   var cached = cache.get(cacheKey);
   if (cached) return cached;
 
@@ -61,15 +59,8 @@ function getSiabaMetric(type, scope, unit) {
     var sh = ss.getSheetByName(config.tab);
     if (sh) {
       var data = sh.getDataRange().getValues();
-      
       for (var i = 1; i < data.length; i++) {
         var row = data[i];
-        
-        // FILTER UNIT KERJA (Jika scope USER)
-        if (scope === 'USER' && myUnit !== "") {
-          var rowUnit = String(row[1] || "").trim(); // Kolom B adalah Unit Kerja
-          if (rowUnit !== myUnit) continue;
-        }
 
         var tgl = dashParseDateIso(row[config.idxTgl]);
         
@@ -120,12 +111,10 @@ function dashGetMyUnit() {
 }
 
 // 4. API: AMBIL DATA GRAFIK KEDISIPLINAN (Dari File Rekap)
-function getSiabaChartTrend(scope, unit) {
-  if (!scope) scope = 'TOTAL';
-  var myUnit = (scope === 'USER') ? (unit || "") : "";
+function getSiabaChartTrend() {
   var cache = CacheService.getScriptCache();
   var curYear = new Date().getFullYear();
-  var cacheKey = "chart_trend_v3_" + scope + "_" + myUnit.replace(/[^a-zA-Z0-9]/g, "");
+  var cacheKey = "chart_trend_v2_final_" + curYear;
   var cached = cache.get(cacheKey);
   if (cached) return cached;
 
@@ -145,11 +134,6 @@ function getSiabaChartTrend(scope, unit) {
         var key = nm.includes("Terlambat") ? "terlambat" : "pulangAwal";
         for (var i = 2; i < data.length; i++) {
           if (String(data[i][0]).trim() == curYear) {
-            // FILTER UNIT KERJA
-            if (scope === 'USER' && myUnit !== "") {
-              var rowUnit = String(data[i][1] || "").trim(); 
-              if (rowUnit !== myUnit) continue;
-            }
             for (var m = 0; m < 12; m++) {
               res[key][m] += (parseInt(data[i][4 + (m * 2)]) || 0);
             }
