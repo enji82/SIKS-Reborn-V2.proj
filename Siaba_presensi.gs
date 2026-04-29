@@ -239,8 +239,7 @@ function getSiabaTidakFilters() {
   }
 }
 
-function getSiabaTidakData(filterTahun, filterBulan, scope, unit) {
-  var filterUnit = (scope === 'USER') ? (unit || "") : "SEMUA";
+function getSiabaTidakData(filterTahun, filterBulan, filterUnit) {
   const ID_DB = "1wiDKez4rL5UYnpP2-OZjYowvmt1nRx-fIMy9trJlhBA";
   
   try {
@@ -282,14 +281,13 @@ function getSiabaTidakData(filterTahun, filterBulan, scope, unit) {
     
     allData.shift(); 
     
+    let result = [];
     for (let i = 0; i < allData.length; i++) {
         let row = allData[i];
         if (row.length < 3) continue;
         
         let rowUnit = row[2]; 
-        let effectiveUnit = filterUnit;
-
-        if (effectiveUnit === "SEMUA" || effectiveUnit === "" || rowUnit == effectiveUnit) {
+        if (filterUnit === "SEMUA" || rowUnit == filterUnit) {
             let rowData = row.slice(3, 3 + headerData.length);
             rowData.push(rowUnit);
             
