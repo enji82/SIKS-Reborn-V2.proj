@@ -22,12 +22,14 @@ function dashParseDateIso(v) {
 }
 
 // 3. API: AMBIL DATA METRIK & TREN PER MODUL
-function getSiabaMetric(type) {
+function getSiabaMetric(type, scope) {
+  if (!scope) scope = 'TOTAL';
   var cache = CacheService.getScriptCache();
   var now = new Date();
   var curYear = now.getFullYear();
   var curMonth = now.getMonth();
-  var cacheKey = "metric_v2_final_" + type + "_" + curYear + "_" + curMonth;
+  var email = Session.getActiveUser().getEmail();
+  var cacheKey = "metric_v2_" + type + "_" + scope + "_" + email.replace(/[^a-zA-Z0-9]/g, "");
   var cached = cache.get(cacheKey);
   if (cached) return cached;
 
@@ -59,8 +61,17 @@ function getSiabaMetric(type) {
     var sh = ss.getSheetByName(config.tab);
     if (sh) {
       var data = sh.getDataRange().getValues();
+      var myUnit = (scope === 'USER') ? dashGetMyUnit() : "";
+      
       for (var i = 1; i < data.length; i++) {
         var row = data[i];
+        
+        // FILTER UNIT KERJA (Jika scope USER)
+        if (scope === 'USER' && myUnit !== "") {
+          var rowUnit = String(row[1] || "").trim(); // Asumsi Kolom B adalah Unit Kerja di semua DB Siaba
+          if (rowUnit !== myUnit) continue;
+        }
+
         var tgl = dashParseDateIso(row[config.idxTgl]);
         
         if (!tgl || tgl.getFullYear() !== curYear) continue;
@@ -89,11 +100,33 @@ function getSiabaMetric(type) {
   return json;
 }
 
+/**
+ * HELPER: Ambil Unit Kerja User Berdasarkan Email Session
+ */
+function dashGetMyUnit() {
+  try {
+    var email = Session.getActiveUser().getEmail();
+    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.DATABASE_USER);
+    var sh = ss.getSheetByName(SPREADSHEET_IDS.SHEET_USER_NAME);
+    var data = sh.getDataRange().getValues();
+    
+    for (var i = 1; i < data.length; i++) {
+      // Username/Email di Kolom A (Index 0), Unit di Kolom F (Index 5)
+      if (String(data[i][0]).trim().toLowerCase() === email.toLowerCase()) {
+        return String(data[i][5] || "").trim();
+      }
+    }
+  } catch (e) { console.error("Error getMyUnit: " + e.message); }
+  return "";
+}
+
 // 4. API: AMBIL DATA GRAFIK KEDISIPLINAN (Dari File Rekap)
-function getSiabaChartTrend() {
+function getSiabaChartTrend(scope) {
+  if (!scope) scope = 'TOTAL';
   var cache = CacheService.getScriptCache();
+  var email = Session.getActiveUser().getEmail();
   var curYear = new Date().getFullYear();
-  var cacheKey = "chart_trend_v2_final_" + curYear;
+  var cacheKey = "chart_trend_v2_" + scope + "_" + email.replace(/[^a-zA-Z0-9]/g, "");
   var cached = cache.get(cacheKey);
   if (cached) return cached;
 
@@ -111,8 +144,14 @@ function getSiabaChartTrend() {
       if (sh) {
         var data = sh.getDataRange().getDisplayValues();
         var key = nm.includes("Terlambat") ? "terlambat" : "pulangAwal";
+        var myUnit = (scope === 'USER') ? dashGetMyUnit() : "";
         for (var i = 2; i < data.length; i++) {
           if (String(data[i][0]).trim() == curYear) {
+            // FILTER UNIT KERJA (Kolom E / Index 4 di Rekap biasanya Unit Kerja)
+            if (scope === 'USER' && myUnit !== "") {
+              var rowUnit = String(data[i][1] || "").trim(); // Sesuaikan kolom unit di rekap
+              if (rowUnit !== myUnit) continue;
+            }
             for (var m = 0; m < 12; m++) {
               res[key][m] += (parseInt(data[i][4 + (m * 2)]) || 0);
             }

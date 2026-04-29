@@ -71,9 +71,12 @@ function getSiabaPresensiHarian(filterTahun, filterBulan, filterUnit) {
     var rawRows = allData.slice(1);
 
     var cleanRows = [];
+    var effectiveUnit = filterUnit;
+    if (filterUnit === "USER") effectiveUnit = dashGetMyUnit();
+
     for (var i = 0; i < rawRows.length; i++) {
         var r = rawRows[i];
-        if (filterUnit === "SEMUA" || r[2] === filterUnit) {
+        if (effectiveUnit === "SEMUA" || effectiveUnit === "" || r[2] === effectiveUnit) {
             cleanRows.push(r);
         }
     }
@@ -174,6 +177,8 @@ function getSiabaDataApel(filterTahun, filterBulan, filterUnit) {
     allData.shift(); 
     
     let result = [];
+    let effectiveUnit = filterUnit;
+    if (filterUnit === "USER") effectiveUnit = dashGetMyUnit();
     
     for (let i = 0; i < allData.length; i++) {
         let row = allData[i];
@@ -181,7 +186,7 @@ function getSiabaDataApel(filterTahun, filterBulan, filterUnit) {
         
         let rowUnit = row[2]; 
         
-        if (filterUnit === "SEMUA" || rowUnit == filterUnit) {
+        if (effectiveUnit === "SEMUA" || effectiveUnit === "" || rowUnit == effectiveUnit) {
              let dataCells = row.slice(3, 42); 
              result.push(dataCells.concat([rowUnit]));
         }
@@ -277,6 +282,8 @@ function getSiabaTidakData(filterTahun, filterBulan, filterUnit) {
     allData.shift(); 
     
     let result = [];
+    let effectiveUnit = filterUnit;
+    if (filterUnit === "USER") effectiveUnit = dashGetMyUnit();
     
     for (let i = 0; i < allData.length; i++) {
         let row = allData[i];
@@ -284,7 +291,7 @@ function getSiabaTidakData(filterTahun, filterBulan, filterUnit) {
         
         let rowUnit = row[2]; 
         
-        if (filterUnit === "SEMUA" || rowUnit == filterUnit) {
+        if (effectiveUnit === "SEMUA" || effectiveUnit === "" || rowUnit == effectiveUnit) {
             let rowData = row.slice(3, 3 + headerData.length);
             rowData.push(rowUnit);
             
