@@ -18,27 +18,23 @@ function arsipsiaba_getDaftarUnit() {
     var lastRow = sheet.getLastRow();
     if (lastRow < 2) return { data: [] };
     
-    // PERBAIKAN: Ambil Range dari Kolom A sampai C (3 Kolom)
-    // Array Index -> 0: Kolom A (NPSN), 1: Kolom B (Jenjang), 2: Kolom C (Unit Kerja)
+    // Kolom A = NPSN, Kolom B = Jenjang, Kolom C = Unit Kerja
     var data = sheet.getRange(2, 1, lastRow - 1, 3).getDisplayValues();
     var units = [];
+    var seen = new Set();
     
     for (var i = 0; i < data.length; i++) {
-      // Prioritaskan mengambil nama dari Kolom C (Index 2)
-      var namaUnit = data[i][2]; 
+      var npsn    = data[i][0] ? data[i][0].trim() : "";
+      var namaUnit = data[i][2] ? data[i][2].trim() : (data[i][1] ? data[i][1].trim() : "");
       
-      // Fallback (Cadangan): Jika Kolom C ternyata kosong, baru ambil dari Kolom B
-      if (!namaUnit || namaUnit === "") {
-         namaUnit = data[i][1];
-      }
-      
-      if (namaUnit && namaUnit !== "") {
-        units.push(namaUnit.trim());
+      if (namaUnit && !seen.has(namaUnit)) {
+        seen.add(namaUnit);
+        units.push({ npsn: npsn, nama: namaUnit });
       }
     }
     
-    // Hapus duplikat dan urutkan abjad
-    units = [...new Set(units)].sort();
+    // Urutkan abjad berdasarkan nama
+    units.sort(function(a, b) { return a.nama.localeCompare(b.nama); });
     return { data: units };
   } catch (e) {
     return { error: e.message };
@@ -55,27 +51,30 @@ function arsipsiaba_getDataArsip(tahunFilter, bulanFilter) {
     var lastRow = sheet.getLastRow();
     if (lastRow < 2) return { data: [] };
     
-    var data = sheet.getRange(2, 1, lastRow - 1, 8).getDisplayValues();
+    // Kolom A-H: data lama, Kolom I: NPSN (baru)
+    var lastCol = sheet.getLastColumn();
+    var numCols = Math.max(9, lastCol);
+    var data = sheet.getRange(2, 1, lastRow - 1, numCols).getDisplayValues();
     var result = [];
     
     for (var i = 0; i < data.length; i++) {
       var row = data[i];
       if (!row[0]) continue;
       
-      // Filter (jika dikirim)
       if (tahunFilter && tahunFilter !== "" && row[2] !== tahunFilter) continue;
       if (bulanFilter && bulanFilter !== "" && row[1] !== bulanFilter) continue;
       
       result.push({
-        rowId: i + 2,
-        unitKerja: row[0],
-        bulan: row[1],
-        tahun: row[2],
-        fileUrl: row[3],
-        tglUnggah: row[4],
+        rowId:      i + 2,
+        unitKerja:  row[0],
+        bulan:      row[1],
+        tahun:      row[2],
+        fileUrl:    row[3],
+        tglUnggah:  row[4],
         userUnggah: row[5],
-        tglEdit: row[6],
-        userEdit: row[7]
+        tglEdit:    row[6],
+        userEdit:   row[7],
+        npsn:       row[8] || ""
       });
     }
     
@@ -139,9 +138,10 @@ function arsipsiaba_simpanArsip(payload) {
     
     if (isEdit) {
       var rowIdx = parseInt(payload.rowId);
-      sheet.getRange(rowIdx, 4).setValue(fileUrl); // Kolom D
-      sheet.getRange(rowIdx, 7).setValue(timestamp); // Kolom G
-      sheet.getRange(rowIdx, 8).setValue(payload.userLogin); // Kolom H
+      sheet.getRange(rowIdx, 4).setValue(fileUrl);
+      sheet.getRange(rowIdx, 7).setValue(timestamp);
+      sheet.getRange(rowIdx, 8).setValue(payload.userLogin);
+      if (payload.npsn) sheet.getRange(rowIdx, 9).setValue(payload.npsn);
     } else {
       var newRow = [
         payload.unitKerja, // A
@@ -150,8 +150,9 @@ function arsipsiaba_simpanArsip(payload) {
         fileUrl,           // D
         timestamp,         // E
         payload.userLogin, // F
-        "",                // G
-        ""                 // H
+        "",               // G
+        "",               // H
+        payload.npsn || "" // I (NPSN)
       ];
       sheet.appendRow(newRow);
     }
