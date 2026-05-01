@@ -3,10 +3,57 @@
 // ======================================================================
 
 var ARSIP_SIABA_CONFIG = {
-  ID_DB_UNIT: "1wiDKez4rL5UYnpP2-OZjYowvmt1nRx-fIMy9trJlhBA", // Untuk daftar unit kerja
-  ID_DB_ARSIP: "1sMLUihDFeHufn5kWFG9Sj0G8xSHHOUi8usoeL4EgjqU", // Untuk menyimpan data arsip
-  FOLDER_ROOT_ID: "1D0rwRT_tIj9QZTPPG3cRk4NRcbhMzDHm" // Folder Drive Induk
+  ID_DB_UNIT: "1wiDKez4rL5UYnpP2-OZjYowvmt1nRx-fIMy9trJlhBA",
+  ID_DB_ARSIP: "1sMLUihDFeHufn5kWFG9Sj0G8xSHHOUi8usoeL4EgjqU",
+  FOLDER_ROOT_ID: "1D0rwRT_tIj9QZTPPG3cRk4NRcbhMzDHm"
 };
+
+// 0. Dapatkan Daftar Master Sekolah + Status per Periode
+function arsipsiaba_getMasterDanStatus(tahun, bulan) {
+  try {
+    var ss = SpreadsheetApp.openById(ARSIP_SIABA_CONFIG.ID_DB_ARSIP);
+    var sheetMaster = ss.getSheetByName("master_sekolah");
+    if (!sheetMaster) return { error: "Sheet master_sekolah tidak ditemukan di spreadsheet arsip." };
+
+    var lastRow = sheetMaster.getLastRow();
+    if (lastRow < 2) return { data: [] };
+
+    // Kolom A = Unit Kerja, Kolom B = NPSN
+    var masterData = sheetMaster.getRange(2, 1, lastRow - 1, 2).getDisplayValues();
+
+    // Ambil data arsip yang sudah ada untuk periode ini
+    var arsipResult = arsipsiaba_getDataArsip(tahun, bulan);
+    var existingMap = {};
+    if (!arsipResult.error && arsipResult.data) {
+      arsipResult.data.forEach(function(row) {
+        var key = row.unitKerja.trim().toUpperCase();
+        existingMap[key] = { rowId: row.rowId, fileUrl: row.fileUrl };
+      });
+    }
+
+    var result = [];
+    masterData.forEach(function(row) {
+      var unitKerja = row[0] ? row[0].trim() : "";
+      var npsn      = row[1] ? row[1].trim() : "";
+      if (!unitKerja) return;
+
+      var key        = unitKerja.toUpperCase();
+      var sudahLapor = existingMap.hasOwnProperty(key);
+      result.push({
+        unitKerja:  unitKerja,
+        npsn:       npsn,
+        sudahLapor: sudahLapor,
+        rowId:      sudahLapor ? existingMap[key].rowId  : null,
+        fileUrl:    sudahLapor ? existingMap[key].fileUrl : null
+      });
+    });
+
+    var sudah = result.filter(function(r) { return r.sudahLapor; }).length;
+    return { data: result, sudah: sudah, total: result.length };
+  } catch(e) {
+    return { error: e.message };
+  }
+}
 
 // 1. Dapatkan Daftar Unit Kerja
 function arsipsiaba_getDaftarUnit() {
