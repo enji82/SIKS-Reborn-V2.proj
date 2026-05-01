@@ -111,11 +111,9 @@
                                 style="font-size: 0.85rem;">
                                 <thead class="thead-sultan-premium">
                                     <tr>
-                                        <th class="align-middle py-2" style="width: 1%;">NO</th>
-                                        <th class="align-middle text-left py-2">UNIT KERJA</th>
+                                        <th class="align-middle text-left py-2">UNIT KERJA / NPSN</th>
                                         <th class="align-middle py-2">PERIODE</th>
-                                        <th class="align-middle py-2">WAKTU UNGGAH</th>
-                                        <th class="align-middle py-2">USER UNGGAH</th>
+                                        <th class="align-middle py-2">DIUNGGAH</th>
                                         <th class="align-middle py-2" style="width: 1%;">AKSI</th>
                                     </tr>
                                 </thead>
@@ -186,13 +184,20 @@
                         </div>
                     </div>
 
-                    <div class="form-group mb-3">
-                        <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Unit Kerja
-                            <span class="text-danger">*</span></label>
-                        <select id="arsipsiaba_inputUnitKerja" class="form-control form-control-sultan font-weight-bold"
-                            required>
-                            <option value="">- Sedang Memuat Daftar Unit... -</option>
-                        </select>
+                    <div class="form-row">
+                        <div class="col-md-8 mb-3">
+                            <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Unit Kerja
+                                <span class="text-danger">*</span></label>
+                            <select id="arsipsiaba_inputUnitKerja" class="form-control form-control-sultan font-weight-bold"
+                                required>
+                                <option value="">- Sedang Memuat Daftar Unit... -</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">NPSN
+                                <span class="text-danger">*</span></label>
+                            <input type="text" id="arsipsiaba_inputNPSN" class="form-control form-control-sultan text-center font-weight-bold" placeholder="NPSN" required readonly>
+                        </div>
                     </div>
 
                     <div class="form-group mb-0">
@@ -534,19 +539,10 @@
                 "<'row'<'col-sm-12'<'table-responsive sultan-scroll'tr>>>" +
                 "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
             "columnDefs": [
-                { "targets": 0, "width": "1%", "className": "text-center align-middle text-dark px-2" },
-                { "targets": 1, "width": "auto", "className": "text-left align-middle font-weight-bold text-dark px-3" },
-                { "targets": [2, 3, 4, 5], "width": "1%", "className": "text-center align-middle text-nowrap px-2" }
+                { "targets": 0, "width": "auto", "className": "text-left align-middle font-weight-bold text-dark px-3" },
+                { "targets": [1, 2, 3], "width": "1%", "className": "text-center align-middle text-nowrap px-2" }
             ],
             "language": { "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json", "emptyTable": "Tidak ada data arsip SIABA." }
-        });
-
-        // VAKSIN PENOMORAN OTOMATIS (REVISI BUG OFFSET)
-        ARSIPSIABA_TABEL_INSTANCE.on('draw.dt', function () {
-            var info = ARSIPSIABA_TABEL_INSTANCE.page.info();
-            ARSIPSIABA_TABEL_INSTANCE.column(0, { search: 'applied', order: 'applied', page: 'current' }).nodes().each(function (cell, i) {
-                cell.innerHTML = i + 1 + info.start;
-            });
         });
     }
 
@@ -575,14 +571,14 @@
         dataRows.forEach(function (row) {
             var arrRow = [];
 
-            arrRow.push("");
-            arrRow.push(arsipsiaba_escapeHtml(row.unitKerja || "-"));
+            var unitDisplay = arsipsiaba_escapeHtml(row.unitKerja || "-") + '<br><small class="text-muted font-weight-bold">' + arsipsiaba_escapeHtml(row.npsn || "-") + '</small>';
+            arrRow.push(unitDisplay);
 
             var periode = `<span class="badge-sultan-premium px-3 py-1">${arsipsiaba_escapeHtml(row.bulan)} ${arsipsiaba_escapeHtml(row.tahun)}</span>`;
             arrRow.push(periode);
 
-            arrRow.push(`<span class="small font-weight-bold opacity-70">${arsipsiaba_escapeHtml(row.tglUnggah)}</span>`);
-            arrRow.push(`<span class="small font-weight-bold opacity-70">${arsipsiaba_escapeHtml(row.userUnggah)}</span>`);
+            var diunggahDisplay = arsipsiaba_escapeHtml(row.tglUnggah) + '<br><small class="text-muted font-weight-bold">' + arsipsiaba_escapeHtml(row.userUnggah) + '</small>';
+            arrRow.push(diunggahDisplay);
 
             var fileIdMatch = String(row.fileUrl || "").match(/[-\w]{25,}/);
             var fileId = fileIdMatch ? fileIdMatch[0] : "";
@@ -651,6 +647,10 @@
         $('#arsipsiaba_judulModalForm').html('<i class="fas fa-cloud-upload-alt mr-2"></i> UNGGAH ARSIP BARU');
         $('#arsipsiaba_btnSimpanForm').removeClass('sultan-btn-aksi-warning').addClass('sultan-btn-aksi-utama').html('<i class="fas fa-upload mr-1"></i> MULAI UNGGAH');
 
+        // NPSN Otomatis dari User Sesi
+        var user = typeof getSesiUser === 'function' ? getSesiUser() : {};
+        $('#arsipsiaba_inputNPSN').val(user.npsn || "");
+
         $('#arsipsiaba_inputTahun, #arsipsiaba_inputBulan, #arsipsiaba_inputUnitKerja').prop('disabled', false);
         $('#arsipsiaba_inputFile').prop('required', true);
         $('#arsipsiaba_reqFile').show();
@@ -672,6 +672,8 @@
         $('#arsipsiaba_headerModalForm').removeClass('modal-header-sultan-primary').addClass('modal-header-sultan-warning');
         $('#arsipsiaba_judulModalForm').html('<i class="fas fa-edit mr-2"></i> EDIT FILE ARSIP');
         $('#arsipsiaba_btnSimpanForm').removeClass('sultan-btn-aksi-utama').addClass('sultan-btn-aksi-warning').html('<i class="fas fa-save mr-1"></i> SIMPAN');
+
+        $('#arsipsiaba_inputNPSN').val(row.npsn || "");
 
         $('#arsipsiaba_inputTahun').val(row.tahun).prop('disabled', true);
         $('#arsipsiaba_inputBulan').val(row.bulan).prop('disabled', true);
@@ -724,6 +726,7 @@
             tahun: formAktif.find('#arsipsiaba_inputTahun').val(),
             bulan: formAktif.find('#arsipsiaba_inputBulan').val(),
             unitKerja: formAktif.find('#arsipsiaba_inputUnitKerja').val(),
+            npsn: formAktif.find('#arsipsiaba_inputNPSN').val(),
             userLogin: ARSIPSIABA_USER_AKTIF,
             fileData: null
         };
