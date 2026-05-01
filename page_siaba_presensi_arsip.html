@@ -787,12 +787,22 @@
         var unitName = $('#arsipsiaba_inputUnitKerja').val();
         if (!unitName) { $('#arsipsiaba_inputNPSN').val(""); return; }
 
-        // Tampilkan loading sebentar di field NPSN
-        $('#arsipsiaba_inputNPSN').val("Memuat...");
+        // Strategi: Cari NPSN dari cache data yang sudah ditarik (lokal)
+        var npsnFound = "";
+        if (ARSIPSIABA_CACHE_DATA && ARSIPSIABA_CACHE_DATA.length > 0) {
+            var match = ARSIPSIABA_CACHE_DATA.find(function(item) {
+                return item.unitKerja === unitName && item.npsn;
+            });
+            if (match) npsnFound = match.npsn;
+        }
 
-        google.script.run.withSuccessHandler(function (npsn) {
-            $('#arsipsiaba_inputNPSN').val(npsn || "-");
-        }).arsipsiaba_getNpsnByUnitName(unitName);
+        // Jika tidak ketemu di cache, coba cek di sesi user
+        if (!npsnFound) {
+            var user = typeof getSesiUser === 'function' ? getSesiUser() : {};
+            if (user.unitKerja === unitName) npsnFound = user.npsn;
+        }
+
+        $('#arsipsiaba_inputNPSN').val(npsnFound || "-");
     }
 
     // =================================================================
