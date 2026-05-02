@@ -157,12 +157,11 @@ function arsipsiaba_simpanArsip(payload) {
     if (!isEdit) {
       var existData = sheet.getDataRange().getDisplayValues();
       for (var i = 1; i < existData.length; i++) {
-        // VAKSIN 2: Normalisasi Data di Spreadsheet
-        var dbUnit  = String(existData[i][0]).trim().toUpperCase();
-        var dbBulan = String(existData[i][1]).trim().toUpperCase();
-        var dbTahun = String(existData[i][2]).trim().toUpperCase();
-        
-        // VAKSIN 3: Pengecekan Mutlak 3 Kombinasi Secara Presisi
+        // Normalisasi data dari sheet ke UPPERCASE untuk perbandingan yang akurat
+        var dbUnit  = String(existData[i][0] || "").trim().toUpperCase();
+        var dbBulan = String(existData[i][1] || "").trim().toUpperCase();
+        var dbTahun = String(existData[i][2] || "").trim().toUpperCase();
+
         if (dbUnit === pUnit && dbBulan === pBulan && dbTahun === pTahun) {
           return { error: "Arsip untuk " + payload.unitKerja + " bulan " + payload.bulan + " " + payload.tahun + " sudah ada. Silakan gunakan tombol Edit pada tabel." };
         }
