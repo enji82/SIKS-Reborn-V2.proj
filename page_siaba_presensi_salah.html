@@ -85,33 +85,28 @@
             </button>
         </div>
 
-        <div class="card-sultan shadow-sm overflow-hidden">
-          <div class="card-body p-0">
-            <div id="salah_loadingState">
-                <div class="sultan-loading-box">
-                    <i class="fas fa-spinner fa-spin sultan-spinner-icon"></i>
-                    <h6 class="text-muted font-weight-bold" id="salah_loadingText">Sinkronisasi Data...</h6>
-                </div>
-            </div>
+        <div class="card card-sultan shadow-sm border-0 mb-4">
+          <div class="card-body p-3">
+            <div id="salah_loadingState"></div>
 
-                <div id="salah_tableState" style="display: none;">
-                    <table id="salah_tabelUtama" class="table table-premium table-sultan-compact w-100">
-                        <thead class="thead-sultan-premium">
-                            <tr>
-                                <th>NAMA ASN / NIP</th>
-                                <th class="text-center">TANGGAL</th>
-                                <th class="text-center">JAM</th>
-                                <th class="text-center">TEREKAM</th>
-                                <th>STATUS</th>
-                                <th>DIKIRIM</th>
-                                <th>DIUBAH</th>
-                                <th>VERIFIKASI</th>
-                                <th class="text-center">AKSI</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
+            <div id="salah_tableState" style="display: none;">
+                <table id="salah_tabelUtama" class="table table-premium table-sultan-compact w-100 text-nowrap">
+                    <thead class="thead-sultan-premium">
+                        <tr>
+                            <th>NAMA ASN / NIP</th>
+                            <th class="text-center">TANGGAL</th>
+                            <th class="text-center">JAM</th>
+                            <th class="text-center">TEREKAM</th>
+                            <th>STATUS</th>
+                            <th>DIKIRIM</th>
+                            <th>DIUBAH</th>
+                            <th>VERIFIKASI</th>
+                            <th class="text-center">AKSI</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
           </div>
         </div>
       </div>
@@ -306,6 +301,11 @@ var SALAH_USER_NPSN = "";
 // 1. INITIALIZATION & SPA VACCINE
 // =================================================================
 $(document).ready(function() {
+    function salah_refreshData() {
+        SultanUI.showLoading('#salah_loadingState', 'Memuat data Salah Presensi...');
+        $('#salah_tableState').hide();
+    }
+
     SALAH_TABEL_INSTANCE = null;
     $('#salah_tableState').hide();
     SultanUI.showLoading('#salah_loadingState');
@@ -355,7 +355,7 @@ $(document).ready(function() {
 // =================================================================
 function salah_validasiAksesUser() {
     if (SALAH_IS_ADMIN) {
-        $('#salah_loadingText').html('Mempersiapkan Database Admin...');
+        SultanUI.showLoading('#salah_loadingState', 'Mempersiapkan Database Admin...');
         
         google.script.run.withSuccessHandler(function(data) {
             if(Array.isArray(data)) SALAH_DB_PEGAWAI = data;
@@ -381,16 +381,16 @@ function salah_validasiAksesUser() {
     } else {
         if (!SALAH_USER_NPSN) {
             $('#salah_filterUnit').empty().append('<option value="">AKSES DITOLAK</option>');
-            $('#salah_loadingText').html('<span class="text-danger"><i class="fas fa-ban mb-2"></i><br>Akses ditolak: Sesi login tidak valid.</span>');
+            SultanUI.showLoading('#salah_loadingState', '<span class="text-danger"><i class="fas fa-ban mb-2"></i><br>Akses ditolak: Sesi login tidak valid.</span>');
             return;
         }
 
         google.script.run
             .withSuccessHandler(function(resUnit) {
                 var dataUnit = JSON.parse(resUnit);
-                if (dataUnit.error) {
+                if (dataUnit && dataUnit.error) {
                     $('#salah_filterUnit').empty().append('<option value="">AKSES DITOLAK</option>');
-                    $('#salah_loadingText').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>'+salah_escapeHtml(dataUnit.error)+'</span>');
+                    SultanUI.showLoading('#salah_loadingState', '<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>'+salah_escapeHtml(dataUnit.error)+'</span>');
                     return;
                 }
 
@@ -408,9 +408,9 @@ function salah_validasiAksesUser() {
                 }).getDatabasePegawai();
 
             })
-            .withFailureHandler(function(err) {
-                $('#salah_filterUnit').empty().append('<option value="">ERROR SERVER</option>');
-                $('#salah_loadingText').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Terputus: '+salah_escapeHtml(err.message)+'</span>');
+            .withFailureHandler(function (err) {
+                SultanUI.showLoading('#salah_loadingState', '<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Terputus: '+salah_escapeHtml(err.message)+'</span>');
+                $('#salah_btnTambah, #salah_btnRefresh').prop('disabled', true);
             })
             .getUnitKerjaByNPSN(SALAH_USER_NPSN);
     }
@@ -444,8 +444,7 @@ function salah_tarikDataServer() {
     
     if (!$.fn.DataTable.isDataTable('#salah_tabelUtama')) {
         $('#salah_tableState').hide();
-        $('#salah_loadingText').html('Menyinkronkan data dari server...');
-        SultanUI.showLoading('#salah_loadingState');
+        SultanUI.showLoading('#salah_loadingState', 'Mempersiapkan Database Admin...');
     }
 
     google.script.run
@@ -453,10 +452,8 @@ function salah_tarikDataServer() {
             btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
             try { 
                 var responseData = JSON.parse(jsonString); 
-                if (responseData.error) { 
-                    $('#salah_tableState').hide();
-                    SultanUI.showLoading('#salah_loadingState');
-                    $('#salah_loadingText').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>' + salah_escapeHtml(responseData.error) + '</span>'); 
+                if (responseData && responseData.error) { 
+                    SultanUI.showLoading('#salah_loadingState', '<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>' + salah_escapeHtml(responseData.error) + '</span>'); 
                     return; 
                 }
                 
@@ -468,9 +465,6 @@ function salah_tarikDataServer() {
                     SALAH_TABEL_INSTANCE = SultanTable.init('#salah_tabelUtama', {
                         "destroy": true, "ordering": false, "pageLength": 10, "autoWidth": false,
                         "deferRender": true,
-                        "dom": "<'p-4 pb-0'<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>>" +
-                               "<'row'<'col-sm-12'<'sultan-table-container'tr>>>" +
-                               "<'p-4 pt-0'<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>>",
                         "columnDefs": [ 
                             { "targets": 0, "className": "text-left align-middle" },
                             { "targets": [1,2,3,4], "width": "1%", "className": "text-center align-middle text-nowrap" },
@@ -490,12 +484,12 @@ function salah_tarikDataServer() {
                 }
 
             } catch (e) { 
-                $('#salah_loadingText').html('<span class="text-danger">Gagal memproses struktur data.</span>'); 
+                SultanUI.showLoading('#salah_loadingState', '<span class="text-danger">Gagal memproses struktur data.</span>'); 
             }
         })
-        .withFailureHandler(function(e){
+        .withFailureHandler(function (err) {
             btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
-            $('#salah_loadingText').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Server Terputus.</span>');
+            SultanUI.showLoading('#salah_loadingState', '<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Server Terputus.</span>');
         }).getDaftarSalahPresensi(th, bl); 
 }
 

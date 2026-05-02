@@ -108,15 +108,12 @@
                     <div class="card-body p-3">
 
                         <div id="lupa_loadingState">
-                            <div class="sultan-loading-box">
-                                <i class="fas fa-spinner fa-spin sultan-spinner-icon"></i>
-                                <h6 class="text-muted font-weight-bold" id="lupa_loadingText">Mempersiapkan Akses Server...</h6>
-                            </div>
+                            <!-- Spinner Otomatis via SultanUI.showLoading -->
                         </div>
 
                         <div id="lupa_tableState" style="display: none;">
                             <table id="lupa_tabelUtama"
-                                class="table table-bordered table-hover table-premium table-sultan-compact w-100">
+                                class="table table-premium table-sultan-compact mb-0 w-100 text-nowrap">
                                 <thead class="thead-sultan-premium">
                                     <tr>
                                         <th class="text-left align-middle">NAMA ASN</th>
@@ -512,7 +509,7 @@
     // =================================================================
     function lupa_validasiAksesUser() {
         if (LUPA_IS_ADMIN) {
-            $('#lupa_loadingText').html('Mempersiapkan Database Admin...');
+            SultanUI.showLoading('#lupa_loadingState', 'Mempersiapkan Database Admin...');
 
             google.script.run.withSuccessHandler(function (data) {
                 if (Array.isArray(data)) LUPA_DB_PEGAWAI = data;
@@ -538,7 +535,7 @@
         } else {
             if (!LUPA_USER_NPSN) {
                 $('#lupa_filterUnit').empty().append('<option value="">AKSES DITOLAK</option>');
-                $('#lupa_loadingText').html('<span class="text-danger"><i class="fas fa-ban mb-2"></i><br>Akses ditolak: Sesi login tidak valid.</span>');
+                SultanUI.showLoading('#lupa_loadingState', '<span class="text-danger"><i class="fas fa-ban mb-2"></i><br>Akses ditolak: Sesi login tidak valid.</span>');
                 return;
             }
 
@@ -547,7 +544,7 @@
                     var dataUnit = JSON.parse(resUnit);
                     if (dataUnit.error) {
                         $('#lupa_filterUnit').empty().append('<option value="">AKSES DITOLAK</option>');
-                        $('#lupa_loadingText').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>' + lupa_escapeHtml(dataUnit.error) + '</span>');
+                        SultanUI.showLoading('#lupa_loadingState', '<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>' + lupa_escapeHtml(dataUnit.error) + '</span>');
                         return;
                     }
 
@@ -565,7 +562,8 @@
                 })
                 .withFailureHandler(function (err) {
                     $('#lupa_filterUnit').empty().append('<option value="">ERROR SERVER</option>');
-                    $('#lupa_loadingText').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Terputus: ' + lupa_escapeHtml(err.message) + '</span>');
+                    SultanUI.showLoading('#lupa_loadingState', '<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Terputus: ' + lupa_escapeHtml(err.message) + '</span>');
+                    $('#lupa_btnTambah, #lupa_btnRefresh').prop('disabled', true);
                 })
                 .getUnitKerjaByNPSN(LUPA_USER_NPSN);
         }
@@ -599,8 +597,7 @@
 
         if (!$.fn.DataTable.isDataTable('#lupa_tabelUtama')) {
             $('#lupa_tableState').hide();
-            $('#lupa_loadingText').html('Menyinkronkan data dari server...');
-            SultanUI.showLoading('#lupa_loadingState');
+            SultanUI.showLoading('#lupa_loadingState', 'Menyinkronkan data dari server...');
         }
 
         google.script.run
@@ -608,10 +605,8 @@
                 btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
                 try {
                     var responseData = JSON.parse(jsonString);
-                    if (responseData.error) {
-                        $('#lupa_tableState').hide();
-                        SultanUI.showLoading('#lupa_loadingState');
-                        $('#lupa_loadingText').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>' + lupa_escapeHtml(responseData.error) + '</span>');
+                    if (responseData && responseData.error) {
+                        SultanUI.showLoading('#lupa_loadingState', '<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>' + lupa_escapeHtml(responseData.error) + '</span>');
                         return;
                     }
 
@@ -622,12 +617,12 @@
                     lupa_terapkanFilterLokal();
 
                 } catch (e) {
-                    $('#lupa_loadingText').html('<span class="text-danger">Gagal memproses struktur data.</span>');
+                    SultanUI.showLoading('#lupa_loadingState', '<span class="text-danger">Gagal memproses struktur data.</span>');
                 }
             })
-            .withFailureHandler(function (e) {
+            .withFailureHandler(function (err) {
                 btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
-                $('#lupa_loadingText').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Server Terputus.</span>');
+                SultanUI.showLoading('#lupa_loadingState', '<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Server Terputus.</span>');
             }).getDaftarLupaPresensi(th, bl);
     }
 
@@ -727,9 +722,6 @@
                 "data": dtArray,
                 "destroy": true, "ordering": false, "pageLength": 10, "autoWidth": false,
                 "deferRender": true,
-                "dom": "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
-                    "<'row'<'col-sm-12'<'table-responsive sultan-scroll'tr>>>" +
-                    "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
                 "columnDefs": [
                     { "targets": 0, "className": "text-left align-middle" },
                     { "targets": [1, 2, 3, 4, 5], "width": "1%", "className": "text-center align-middle text-nowrap" },
