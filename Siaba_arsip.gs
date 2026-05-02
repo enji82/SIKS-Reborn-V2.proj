@@ -212,28 +212,31 @@ function arsipsiaba_simpanArsip(payload) {
 // 5. Data Dashboard (Belum Lapor)
 function arsipsiaba_getDashboardBelumLapor(tahun, bulan) {
   try {
-    // Ambil Semua Unit
+    // Ambil Semua Unit dari master (array objek {npsn, nama})
     var refUnits = arsipsiaba_getDaftarUnit();
     if (refUnits.error) return { error: refUnits.error };
-    var allUnits = refUnits.data;
-    
-    // Ambil Data Arsip yg Sudah Lapor
+    var allUnits = refUnits.data; // [{npsn, nama}, ...]
+
+    // Ambil Data Arsip yg Sudah Unggah periode ini
     var dataArsip = arsipsiaba_getDataArsip(tahun, bulan);
     if (dataArsip.error) return { error: dataArsip.error };
-    
+
+    // Buat Set nama unit yang sudah unggah (UPPERCASE untuk pencocokan case-insensitive)
     var unitSudahLapor = new Set();
     dataArsip.data.forEach(function(row) {
-      unitSudahLapor.add(row.unitKerja);
+      unitSudahLapor.add(String(row.unitKerja || "").trim().toUpperCase());
     });
-    
+
+    // Kumpulkan nama unit yang BELUM ada di set sudah
     var belumLapor = [];
     allUnits.forEach(function(u) {
-      if (!unitSudahLapor.has(u)) {
-        belumLapor.push(u);
+      var namaUnit = String(u.nama || "").trim();
+      if (namaUnit && !unitSudahLapor.has(namaUnit.toUpperCase())) {
+        belumLapor.push(namaUnit); // simpan nama asli (bukan objek)
       }
     });
-    
-    return { 
+
+    return {
       data: {
         sudah: unitSudahLapor.size,
         belum: belumLapor.length,
