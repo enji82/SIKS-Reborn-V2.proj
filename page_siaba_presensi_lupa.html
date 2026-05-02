@@ -584,8 +584,11 @@ function lupa_renderTabel(hasil) {
     hasil.forEach(function(row) {
         LUPA_DATA_MASTER[row.rowBaris] = row; 
         var id = String(row.rowBaris); 
-        var rawTgl = (row.tanggal || "").replace(/'/g, ""); var uiTgl = lupa_formatTanggalIndo(rawTgl); 
-        var badgeJenis = (row.jenis || "").includes('Datang') ? '<span class="badge badge-sultan badge-sultan-light-orange"><i class="fas fa-sun mr-1"></i>Datang</span>' : '<span class="badge badge-sultan badge-sultan-light-dark"><i class="fas fa-moon mr-1"></i>Pulang</span>';
+        var uiTgl = lupa_formatTanggalIndo(rawTgl); 
+        
+        var badgeJenis = (row.jenis || "").includes('Datang') 
+            ? '<span class="badge-sultan-datang"><i class="fas fa-sun mr-1"></i>Datang</span>' 
+            : '<span class="badge-sultan-pulang"><i class="fas fa-moon mr-1"></i>Pulang</span>';
         
         var badgeStatus = lupa_buildBadgeStatus(row.status, row.ket);
         
@@ -606,11 +609,11 @@ function lupa_renderTabel(hasil) {
         var btnFile = (row.fileUrl && row.fileUrl.length > 5) ? `<button class="sultan-btn-pdf lupa-btn-preview" data-id="${id}"><i class="fas fa-file-pdf mr-1"></i> Dokumen</button>` : '-';
         
         var txtUnitHtml = LUPA_IS_ADMIN ? `<div class="small text-danger font-weight-bold mt-1">${lupa_escapeHtml(row.unit)}</div>` : '';
-        var uiNama = `<div class="font-weight-bold text-dark text-nowrap">${lupa_escapeHtml(row.nama)}</div><div class="small text-muted text-nowrap">${lupa_escapeHtml(row.nip)}</div>${txtUnitHtml}`;
+        var uiNama = `<div class="sultan-table-primary text-nowrap">${lupa_escapeHtml(row.nama)}</div><div class="sultan-table-secondary text-nowrap">${lupa_escapeHtml(row.nip)}</div>${txtUnitHtml}`;
         
-        var metaKirim = `<div style="line-height:1.2; font-size:11px;"><span class="d-block font-weight-bold text-dark text-nowrap">${row.tglKirim||'-'}</span><span class="d-block text-muted text-nowrap">${lupa_cleanText(row.userInput)}</span></div>`;
-        var metaEdit  = `<div style="line-height:1.2; font-size:11px;"><span class="d-block font-weight-bold text-dark text-nowrap">${row.tglEdit||'-'}</span><span class="d-block text-muted text-nowrap">${lupa_cleanText(row.userEdit)}</span></div>`;
-        var metaVerif = `<div style="line-height:1.2; font-size:11px;"><span class="d-block font-weight-bold text-dark text-nowrap">${row.tglVerif||'-'}</span><span class="d-block text-muted text-nowrap">${lupa_cleanText(row.adminVerif)}</span></div>`;
+        var metaKirim = `<div class="sultan-table-secondary text-nowrap"><span class="d-block font-weight-bold text-dark">${row.tglKirim||'-'}</span><span class="d-block">${lupa_cleanText(row.userInput)}</span></div>`;
+        var metaEdit  = `<div class="sultan-table-secondary text-nowrap"><span class="d-block font-weight-bold text-dark">${row.tglEdit||'-'}</span><span class="d-block">${lupa_cleanText(row.userEdit)}</span></div>`;
+        var metaVerif = `<div class="sultan-table-secondary text-nowrap"><span class="d-block font-weight-bold text-dark">${row.tglVerif||'-'}</span><span class="d-block">${lupa_cleanText(row.adminVerif)}</span></div>`;
 
         dtArray.push([ uiNama, uiTgl, lupa_escapeHtml((row.jam || "").substring(0, 5)), badgeJenis, (row.komulatif||'-'), btnFile, badgeStatus, metaKirim, metaEdit, metaVerif, aksiHTML ]);
     });
@@ -944,15 +947,15 @@ function lupa_lihatCatatanSultan(pesan) {
 // VAKSIN: Tampilkan tombol Baca Catatan untuk SEMUA status jika ada isian ket
 function lupa_buildBadgeStatus(status, ket) { 
     var s = String(status || "").toLowerCase(); 
-    var style = 'badge-sultan-light-warning'; 
+    var style = 'badge-sultan-diproses'; 
     var icon = 'clock'; 
     var labelStatus = status || 'Diproses';
     
-    if (s.includes('ok') || s.includes('setuju')) { style = 'badge-sultan-light-success'; icon = 'check-circle'; } 
-    else if (s.includes('revisi')) { style = 'badge-sultan-light-info'; icon = 'sync-alt'; } 
-    else if (s.includes('tolak')) { style = 'badge-sultan-light-danger'; icon = 'times-circle'; } 
+    if (s.includes('ok') || s.includes('setuju')) { style = 'badge-sultan-disetujui'; icon = 'check-circle'; } 
+    else if (s.includes('revisi')) { style = 'badge-sultan-revisi'; icon = 'sync-alt'; } 
+    else if (s.includes('tolak')) { style = 'badge-sultan-ditolak'; icon = 'times-circle'; } 
     
-    var badgeHtml = '<span class="badge badge-sultan ' + style + '"><i class="fas fa-' + icon + ' mr-1"></i>' + lupa_escapeHtml(labelStatus) + '</span>';
+    var badgeHtml = '<span class="' + style + '"><i class="fas fa-' + icon + ' mr-1"></i>' + lupa_escapeHtml(labelStatus) + '</span>';
 
     if (ket && String(ket).trim().length > 2) {
         var safeKet = btoa(lupa_escapeHtml(String(ket).trim())); // Enkripsi Base64
