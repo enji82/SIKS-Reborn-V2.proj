@@ -476,6 +476,29 @@
         $(document).off('change', '#arsipsiaba_inputUnitKerja').on('change', '#arsipsiaba_inputUnitKerja', arsipsiaba_handlePerubahanUnit);
         $(document).off('click', '#arsipsiaba_btnMuatDaftar').on('click', '#arsipsiaba_btnMuatDaftar', arsipsiaba_muatDaftarBulk);
 
+        // === DRAG & DROP dari Finder ke baris tabel ===
+        $(document).on('dragover dragenter', '.arsipsiaba-drop-row', function(e) {
+            e.preventDefault(); e.stopPropagation();
+            $(this).addClass('drag-over');
+        });
+        $(document).on('dragleave', '.arsipsiaba-drop-row', function(e) {
+            if (!$(this).is($(e.relatedTarget).closest('.arsipsiaba-drop-row'))) {
+                $(this).removeClass('drag-over');
+            }
+        });
+        $(document).on('drop', '.arsipsiaba-drop-row', function(e) {
+            e.preventDefault(); e.stopPropagation();
+            $(this).removeClass('drag-over');
+            var files = e.originalEvent.dataTransfer.files;
+            if (!files || files.length === 0) return;
+            var idx   = parseInt($(this).data('idx'));
+            var unit  = $(this).data('unit');
+            var npsn  = $(this).data('npsn');
+            var tahun = $(this).data('tahun');
+            var bulan = $(this).data('bulan');
+            arsipsiaba_processBulkFile(idx, files[0], unit, npsn, tahun, bulan);
+        });
+
         // Event File Input Edit Modal
         $('#arsipsiaba_inputFile').on('change', function () {
             var fileName = $(this).val().split('\\').pop();
@@ -729,31 +752,40 @@
             var i = idx;
             var safeUnit = arsipsiaba_escapeHtml(item.unitKerja);
             var safeNpsn = arsipsiaba_escapeHtml(item.npsn || '-');
-            var safeData = arsipsiaba_escapeHtml(JSON.stringify(item));
+            var safeThn  = arsipsiaba_escapeHtml(tahun);
+            var safeBln  = arsipsiaba_escapeHtml(bulan);
 
             var badgeStatus = item.sudahLapor
                 ? '<span class="badge-sultan-unggah"><i class="fas fa-check-circle"></i> Sudah Unggah</span>'
                 : '<span class="badge-sultan-belum"><i class="fas fa-clock"></i> Belum Unggah</span>';
 
-            var btnAksi = item.sudahLapor
-                ? '<button class="sultan-btn-aksi sultan-btn-aksi-maroon" disabled title="Gunakan tombol Edit di tabel utama"><i class="fas fa-lock"></i></button>'
-                : '<button class="sultan-btn-aksi sultan-btn-aksi-utama" id="arsipsiaba_bulkBtn_' + i + '" onclick="arsipsiaba_triggerBulkUpload(' + i + ')" title="Unggah File"><i class="fas fa-upload"></i></button>';
+            var btnAksi, trAttr;
+            if (item.sudahLapor) {
+                btnAksi = '<button class="sultan-btn-aksi sultan-btn-aksi-maroon" disabled title="Gunakan tombol Edit di tabel utama"><i class="fas fa-lock"></i></button>';
+                trAttr  = 'id="arsipsiaba_bulkRow_' + i + '"';
+            } else {
+                btnAksi = '<div class="d-flex flex-column align-items-center" style="gap:3px;">'
+                    + '<button class="sultan-btn-aksi sultan-btn-aksi-utama" id="arsipsiaba_bulkBtn_' + i + '" onclick="arsipsiaba_triggerBulkUpload(' + i + ')" title="Klik untuk memilih file, atau seret file dari Finder"><i class="fas fa-upload"></i></button>'
+                    + '<span class="arsipsiaba-drop-hint">atau seret</span>'
+                    + '</div>';
+                trAttr  = 'id="arsipsiaba_bulkRow_' + i + '" class="arsipsiaba-drop-row"'
+                    + ' data-idx="' + i + '" data-unit="' + safeUnit + '" data-npsn="' + safeNpsn + '"'
+                    + ' data-tahun="' + safeThn + '" data-bulan="' + safeBln + '"';
+            }
 
-            // Hidden file input per baris
-            var fileInput = '<input type="file" id="arsipsiaba_bulkFile_' + i + '" accept="application/pdf" class="d-none" '
-                + 'data-idx="' + i + '" data-unit="' + safeUnit + '" data-npsn="' + safeNpsn + '" '
-                + 'data-tahun="' + arsipsiaba_escapeHtml(tahun) + '" data-bulan="' + arsipsiaba_escapeHtml(bulan) + '">';
+            var fileInput = '<input type="file" id="arsipsiaba_bulkFile_' + i + '" accept="application/pdf" class="d-none"'
+                + ' data-idx="' + i + '" data-unit="' + safeUnit + '" data-npsn="' + safeNpsn + '"'
+                + ' data-tahun="' + safeThn + '" data-bulan="' + safeBln + '">';
 
-            var tr = '<tr id="arsipsiaba_bulkRow_' + i + '">'
+            var tr = '<tr ' + trAttr + '>'
                 + '<td class="text-center align-middle font-weight-bold">' + (idx + 1) + '</td>'
-                + '<td class="text-left align-middle font-weight-bold text-dark">' + safeUnit + fileInput + '</td>'
+                + '<td class="text-left align-middle font-weight-bold sultan-table-primary">' + safeUnit + fileInput + '</td>'
                 + '<td class="text-center align-middle font-weight-bold text-maroon">' + safeNpsn + '</td>'
                 + '<td class="text-center align-middle" id="arsipsiaba_bulkStatus_' + i + '">' + badgeStatus + '</td>'
                 + '<td class="text-center align-middle">' + btnAksi + '</td>'
                 + '</tr>';
             tbody.append(tr);
 
-            // Pasang event listener per file input
             (function(rowIdx) {
                 $(document).off('change', '#arsipsiaba_bulkFile_' + rowIdx)
                     .on('change', '#arsipsiaba_bulkFile_' + rowIdx, function() {
@@ -770,41 +802,51 @@
     function arsipsiaba_updateBulkProgress(sudah, total) {
         var pct = total > 0 ? Math.round((sudah / total) * 100) : 0;
         $('#arsipsiaba_bulkProgressFill').css('width', pct + '%');
-        $('#arsipsiaba_bulkProgressText').text(sudah + ' / ' + total + ' sudah lapor');
+        $('#arsipsiaba_bulkProgressText').text(sudah + ' / ' + total + ' sudah unggah');
     }
 
     function arsipsiaba_triggerBulkUpload(idx) {
         $('#arsipsiaba_bulkFile_' + idx).val('').trigger('click');
     }
 
+    // Thin wrapper untuk file input change — ambil data lalu delegasi
     function arsipsiaba_handleBulkFileChange(idx, inputEl) {
-        var file = inputEl.files[0];
-        if (!file) return;
-        if (file.size > 10 * 1024 * 1024) { Sultan.alert('warning', 'File Terlalu Besar', 'Ukuran file maksimal 10 MB.'); return; }
-
-        var $btn = $('#arsipsiaba_bulkBtn_' + idx);
-        var $status = $('#arsipsiaba_bulkStatus_' + idx);
         var $input = $(inputEl);
+        arsipsiaba_processBulkFile(
+            idx, inputEl.files[0],
+            $input.data('unit'), $input.data('npsn'),
+            $input.data('tahun'), $input.data('bulan')
+        );
+    }
 
-        var unit  = $input.data('unit');
-        var npsn  = $input.data('npsn');
-        var tahun = $input.data('tahun');
-        var bulan = $input.data('bulan');
+    // FUNGSI INTI UPLOAD — dipanggil dari klik tombol MAUPUN drag & drop
+    function arsipsiaba_processBulkFile(idx, file, unit, npsn, tahun, bulan) {
+        if (!file) return;
+        if (file.type !== 'application/pdf') {
+            Sultan.alert('warning', 'Format Salah', 'Hanya file PDF yang diterima. Pastikan file berekstensi .pdf');
+            return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+            Sultan.alert('warning', 'File Terlalu Besar', 'Ukuran file maksimal 10 MB.');
+            return;
+        }
+
+        var $btn    = $('#arsipsiaba_bulkBtn_' + idx);
+        var $status = $('#arsipsiaba_bulkStatus_' + idx);
+        var $row    = $('#arsipsiaba_bulkRow_' + idx);
 
         $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
         $status.html('<span class="badge-sultan-belum"><i class="fas fa-spinner fa-spin"></i> Mengunggah...</span>');
 
         var reader = new FileReader();
         reader.onload = function(e) {
-            var base64 = e.target.result.split(',')[1];
             var payload = {
                 mode: 'insert', rowId: '', existingUrl: '',
                 tahun: tahun, bulan: bulan,
                 unitKerja: unit, npsn: npsn,
                 userLogin: ARSIPSIABA_USER_AKTIF,
-                fileData: { mimeType: file.type, data: base64 }
+                fileData: { mimeType: file.type, data: e.target.result.split(',')[1] }
             };
-
             google.script.run
                 .withSuccessHandler(function(res) {
                     if (res.error) {
@@ -814,10 +856,11 @@
                     } else {
                         $btn.prop('disabled', true).html('<i class="fas fa-lock"></i>');
                         $status.html('<span class="badge-sultan-unggah"><i class="fas fa-check-circle"></i> Sudah Unggah</span>');
+                        $row.removeClass('arsipsiaba-drop-row');
                         ARSIPSIABA_BULK_DATA[idx].sudahLapor = true;
                         var sudahNow = ARSIPSIABA_BULK_DATA.filter(function(r) { return r.sudahLapor; }).length;
                         arsipsiaba_updateBulkProgress(sudahNow, ARSIPSIABA_BULK_DATA.length);
-                        arsipsiaba_tarikDataServer(); // refresh tabel utama
+                        arsipsiaba_tarikDataServer();
                     }
                 })
                 .withFailureHandler(function(err) {
