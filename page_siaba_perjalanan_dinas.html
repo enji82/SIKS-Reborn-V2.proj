@@ -1313,15 +1313,39 @@
     function perdin_copyToClipboard(elementId, label) {
         var text = $('#' + elementId).text().trim();
         if (text === "" || text === "-") return;
-        
-        var tempInput = document.createElement("textarea");
-        tempInput.value = text;
-        document.body.appendChild(tempInput);
-        tempInput.select();
-        document.execCommand("copy");
-        document.body.removeChild(tempInput);
-        
-        Sultan.notif.sukses(label + ' berhasil disalin!');
+
+        // Modern Clipboard API
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(text).then(function () {
+                Sultan.notif.sukses(label + ' berhasil disalin!');
+            }).catch(function (err) {
+                perdin_copyFallback(text, label);
+            });
+        } else {
+            perdin_copyFallback(text, label);
+        }
+    }
+
+    function perdin_copyFallback(text, label) {
+        var textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        textArea.style.top = "0";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+            var successful = document.execCommand('copy');
+            if (successful) {
+                Sultan.notif.sukses(label + ' berhasil disalin!');
+            } else {
+                Sultan.notif.gagal('Gagal menyalin ' + label);
+            }
+        } catch (err) {
+            Sultan.notif.gagal('Gagal menyalin ' + label);
+        }
+        document.body.removeChild(textArea);
     }
 
     function perdin_lihatCatatanSultan(pesan) {
