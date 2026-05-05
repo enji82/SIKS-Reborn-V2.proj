@@ -61,6 +61,10 @@
             <button type="button" id="rekapcuti_btnRefresh" class="sultan-btn-refresh" title="Segarkan Data dari Server">
                 <i class="fas fa-sync-alt"></i>
             </button>
+
+            <button type="button" id="rekapcuti_btnExport" class="sultan-btn-aksi-success ml-2" title="Unduh Data ke Excel">
+                <i class="fas fa-file-excel mr-1"></i> <span class="d-none d-md-inline">UNDUH EXCEL</span>
+            </button>
         </div>
 
         <div class="card-sultan">
@@ -141,8 +145,9 @@ $(document).ready(function() {
         REKAPCUTI_USER_NPSN = user.npsn || user.username || ""; 
     } catch(e) { REKAPCUTI_USER_NPSN = ""; REKAPCUTI_IS_ADMIN = false; }
 
-    // VAKSINASI EVENT DELEGATION
-    $(document).off('click', '#rekapcuti_btnRefresh').on('click', '#rekapcuti_btnRefresh', rekapcuti_tarikDataServer); 
+    // VAKSINASI EVENT: Refresh & Export
+    $(document).off('click', '#rekapcuti_btnRefresh').on('click', '#rekapcuti_btnRefresh', rekapcuti_tarikDataServer);
+    $(document).off('click', '#rekapcuti_btnExport').on('click', '#rekapcuti_btnExport', rekapcuti_exportExcel); 
     $(document).off('change', '#rekapcuti_filterTahun').on('change', '#rekapcuti_filterTahun', rekapcuti_prosesCariData); 
     $(document).off('change', '#rekapcuti_filterUnit').on('change', '#rekapcuti_filterUnit', rekapcuti_terapkanFilterLokal);
 
@@ -395,5 +400,42 @@ function rekapcuti_renderTabel(dataRows) {
 function rekapcuti_escapeHtml(text) { 
     if (!text) return ""; 
     return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); 
+}
+
+// ======================================================================
+// BAB V: EKSPOR EXCEL (NATIVE HTML TO XLS)
+// ======================================================================
+function rekapcuti_exportExcel() {
+    try {
+        var table = document.getElementById("rekapcuti_tabelUtama");
+        if (!table) return;
+
+        // Clone table to modify for export (remove sticky classes/styles)
+        var clone = table.cloneNode(true);
+        $(clone).find('.col-sticky-left').removeClass('col-sticky-left bg-white');
+        
+        var htmlData = clone.outerHTML;
+        var tgl = new Date().toISOString().split('T')[0];
+        var fileName = "Rekap_Jumlah_Cuti_" + tgl + ".xls";
+
+        var template = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><style>table, th, td { border: 1px solid #ccc; border-collapse: collapse; padding: 5px; }</style></head><body>' + htmlData + '</body></html>';
+        var blob = new Blob([template], { type: 'application/vnd.ms-excel' });
+
+        if (window.navigator && window.navigator.msSaveOrOpenBlob) {
+            window.navigator.msSaveOrOpenBlob(blob, fileName);
+        } else {
+            var a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        Sultan.notif.sukses('Data Rekap Cuti berhasil diunduh.');
+    } catch (e) {
+        console.error(e);
+        Sultan.notif.gagal('Gagal mengunduh data excel.');
+    }
 }
 </script>
