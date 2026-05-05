@@ -99,8 +99,8 @@
                     <div class="divider-vertical d-none d-md-block"></div>
 
                     <button type="button" id="perdin_btnRefresh"
-                        class="sultan-btn-aksi-batal rounded-circle btn-icon-sultan-md" title="Segarkan Data">
-                        <i class="fas fa-sync-alt text-maroon"></i>
+                        class="sultan-btn-refresh" title="Segarkan Data">
+                        <i class="fas fa-sync-alt"></i>
                     </button>
 
                     <div class="ml-auto d-none d-md-block"></div>
@@ -910,10 +910,9 @@
             }
             var noSpt = String(valRaw).trim();
 
-            // Cek minimal karakter dengan fallback alert jika notifikasi mati
+            // Cek minimal karakter
             if (noSpt.length < 3) {
-                try { Sultan.notif.info('Ketik minimal 3 karakter Nomor SPT.'); }
-                catch (e) { alert('Ketik minimal 3 karakter Nomor SPT.'); }
+                Sultan.alert('info', 'Input Kurang', 'Ketik minimal 3 karakter Nomor SPT.');
                 inputEl.focus();
                 return;
             }
@@ -1006,7 +1005,7 @@
             console.error("Crash on Search SPT: ", eFatal);
             $('#perdin_inputNoSpt').prop('disabled', false);
             $('#perdin_btnCariSpt').prop('disabled', false).html('<i class="fas fa-search"></i>');
-            alert("Terjadi kesalahan sistem: " + eFatal.message);
+            Sultan.alert('error', 'Kesalahan Sistem', "Terjadi kesalahan sistem: " + eFatal.message);
         }
     };
 
@@ -1119,14 +1118,14 @@
                 // VAKSIN CLEAN LIFECYCLE
                 var $modal = $('#perdin_modalForm');
                 $modal.one('hidden.bs.modal', function () {
-                    Sultan.notif.sukses('Perjalanan Dinas berhasil disimpan.');
+                    Sultan.notif.crud.simpan(!PERDIN_UNI_IS_NEW_SPT);
                     perdin_tarikDataServer();
                 });
                 $modal.modal('hide');
-            } else { Sultan.alert('error', 'Gagal', res); }
+            } else { Sultan.notif.crud.gagal(res); }
         }).withFailureHandler(function (err) {
             btn.prop('disabled', false).html(txt);
-            Sultan.alert('error', 'Koneksi Terputus', err.message);
+            Sultan.notif.crud.gagal(err.message);
         }).simpanSptUnified(payload);
     }
 
@@ -1258,7 +1257,7 @@
                 // VAKSIN CLEAN LIFECYCLE
                 var $modal = $('#perdin_modalVerifikasi');
                 $modal.one('hidden.bs.modal', function () {
-                    Sultan.notif.sukses('Keputusan ' + st + ' tersimpan ke server!');
+                    Sultan.notif.crud.sukses('Keputusan ' + st + ' tersimpan ke server!');
                     perdin_tarikDataServer();
                 });
                 $modal.modal('hide');
@@ -1295,19 +1294,16 @@
         var payload = { recId: rowBaris, kode: kodeInput, user_login: PERDIN_USER_AKTIF };
         google.script.run.withSuccessHandler(function (res) {
             btn.prop('disabled', false).html(txt);
-            if (res === 'Sukses') {
-                // VAKSIN CLEAN LIFECYCLE
-                var $modal = $('#perdin_modalHapus');
-                $modal.one('hidden.bs.modal', function () {
-                    Sultan.notif.sukses('SPT dan pesertanya telah dihapus permanen.');
-                    perdin_tarikDataServer();
-                });
-                $modal.modal('hide');
-            } else if (res === "KODE_SALAH") {
-                Sultan.notif.gagal('Kode Validasi keamanan salah!'); $('#perdin_inputKodeHapus').focus();
-            } else { Sultan.alert('error', 'Gagal Menghapus', res); }
+            if (res === "Sukses") {
+                $('#perdin_modalHapus').modal('hide'); 
+                Sultan.notif.crud.hapus();
+                perdin_tarikDataServer();
+            } else { 
+                Sultan.notif.crud.gagal('Kode Validasi keamanan salah!'); 
+                $('#perdin_inputKodeHapus').focus(); 
+            }
         }).withFailureHandler(function (err) {
-            btn.prop('disabled', false).html(txt); Sultan.alert('error', 'Koneksi Terputus', err.message);
+            btn.prop('disabled', false).html(txt); Sultan.notif.crud.gagal(err.message);
         }).hapusDataDinas(payload);
     }
 
@@ -1362,19 +1358,7 @@
         document.body.removeChild(textArea);
     }
 
-    function perdin_lihatCatatanSultan(pesan) {
-        Swal.fire({
-            title: '<i class="fas fa-comment-dots mb-2" style="font-size: 2.5rem;"></i><br>CATATAN VERIFIKASI',
-            html: `<div class="text-left sultan-quote-box">${pesan}</div>`,
-            showConfirmButton: true,
-            confirmButtonText: 'SAYA MENGERTI',
-            confirmButtonColor: 'var(--sultan-aksi-utama)',
-            width: '450px',
-            customClass: {
-                popup: 'sultan-swal-premium'
-            }
-        });
-    }
+    function perdin_lihatCatatanSultan(pesan) { Sultan.alert('info', 'Catatan Verifikasi', pesan); }
 
     function perdin_buildBadgeStatus(status, ket) {
         var s = String(status || "").toLowerCase();

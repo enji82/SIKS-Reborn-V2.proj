@@ -91,9 +91,9 @@
                     <div class="divider-vertical d-none d-md-block"></div>
 
                     <button type="button" id="cuti_btnRefresh"
-                        class="sultan-btn-aksi-batal rounded-circle btn-icon-sultan-md"
+                        class="sultan-btn-refresh"
                         title="Segarkan Data dari Server" disabled>
-                        <i class="fas fa-sync-alt text-maroon"></i>
+                        <i class="fas fa-sync-alt"></i>
                     </button>
 
                     <div class="ml-auto d-none d-md-block"></div>
@@ -945,9 +945,11 @@
         var runner = google.script.run.withSuccessHandler(function (res) {
             btn.prop('disabled', false).html(txt);
             if (res === "Sukses") {
-                formAktif.closest('.modal').modal('hide'); Sultan.notif.sukses('Pengajuan cuti tersimpan.'); cuti_loadDataServer();
-            } else { Sultan.alert('error', 'Gagal', res); }
-        }).withFailureHandler(function (err) { btn.prop('disabled', false).html(txt); Sultan.alert('error', 'Error Server', err.toString()); });
+                formAktif.closest('.modal').modal('hide'); 
+                Sultan.notif.crud.simpan($('#cuti_editRowId').val() !== ""); 
+                cuti_loadDataServer();
+            } else { Sultan.notif.crud.gagal(res); }
+        }).withFailureHandler(function (err) { btn.prop('disabled', false).html(txt); Sultan.notif.crud.gagal(err.toString()); });
 
         if (payload.rowBaris && payload.rowBaris !== "") runner.updatePengajuanCuti(payload); else runner.simpanPengajuanCuti(payload);
     }
@@ -970,8 +972,11 @@
 
         google.script.run.withSuccessHandler(function (res) {
             btn.prop('disabled', false).html(txt);
-            if (res === 'Sukses') { formAktif.closest('.modal').modal('hide'); Sultan.notif.sukses('Cuti dihapus permanen.'); cuti_loadDataServer(); }
-            else { Sultan.alert('error', 'Gagal', res); }
+            if (res === 'Sukses') { 
+                formAktif.closest('.modal').modal('hide'); 
+                Sultan.notif.crud.hapus(); 
+                cuti_loadDataServer(); 
+            } else { Sultan.notif.crud.gagal(res); }
         }).hapusPengajuanCuti(rowBaris, kodeInput, CUTI_USER_AKTIF);
     }
 
@@ -1039,8 +1044,10 @@
         google.script.run.withSuccessHandler(function (res) {
             btn.prop('disabled', false).html(txt);
             if (res === "Sukses") {
-                formAktif.closest('.modal').modal('hide'); Sultan.notif.sukses('Verifikasi: ' + status + ' tersimpan.'); cuti_loadDataServer();
-            } else { Sultan.alert('error', 'Gagal', res); }
+                formAktif.closest('.modal').modal('hide'); 
+                Sultan.notif.crud.sukses('Verifikasi: ' + status + ' tersimpan.'); 
+                cuti_loadDataServer();
+            } else { Sultan.notif.crud.gagal(res); }
         }).verifikasiPengajuan(rowId, status, catatan, CUTI_USER_AKTIF);
     }
 
@@ -1189,19 +1196,7 @@
     function cuti_escapeHtml(text) { if (!text) return ""; return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); }
     function cuti_escapeJs(str) { if (!str) return ""; return String(str).replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/"/g, "&quot;").replace(/(\r\n|\n|\r)/gm, "<br>"); }
 
-    function cuti_lihatCatatanSultan(pesan) {
-        Swal.fire({
-            title: '<i class="fas fa-comment-dots text-maroon mb-2" style="font-size: 2.5rem;"></i><br>CATATAN VERIFIKASI',
-            html: `<div class="text-left sultan-quote-box">${pesan}</div>`,
-            showConfirmButton: true,
-            confirmButtonText: 'SAYA MENGERTI',
-            confirmButtonColor: 'var(--sultan-aksi-utama)',
-            width: '450px',
-            customClass: {
-                popup: 'sultan-swal-premium'
-            }
-        });
-    }
+    function cuti_lihatCatatanSultan(pesan) { Sultan.alert('info', 'Catatan Verifikasi', pesan); }
 
     function cuti_renderBadgeSultan(status, ket) {
         var s = String(status || "Diproses").toLowerCase();
