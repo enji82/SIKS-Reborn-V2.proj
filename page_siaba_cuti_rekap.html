@@ -79,7 +79,9 @@
                   <table id="rekapcuti_tabelUtama" class="table table-bordered table-hover table-premium table-sultan-compact table-header-compact mb-0 w-100 text-nowrap">
                     <thead class="bg-light text-maroon text-uppercase font-weight-bold">
                         <tr>
-                            <th rowspan="2" class="th-main col-sticky-left border-right align-middle text-left bg-white" style="min-width: 250px; z-index: 5;">NAMA ASN</th>
+                            <th rowspan="2" class="th-main col-sticky-left border-right align-middle text-left bg-white" style="min-width: 180px; z-index: 5;">NAMA ASN</th>
+                            <th rowspan="2" class="th-main align-middle text-center" style="min-width: 120px;">NIP</th>
+                            <th rowspan="2" class="th-main align-middle text-left" style="min-width: 200px;">UNIT KERJA</th>
                             <th colspan="2" class="th-main text-center bg-col-highlight-1">CT</th>
                             <th colspan="2" class="th-main text-center">CS</th>
                             <th colspan="2" class="th-main text-center bg-col-highlight-1">CAP</th>
@@ -310,13 +312,16 @@ function rekapcuti_renderTabel(dataRows) {
     dataRows.forEach(function(row) {
         var arrRow = [];
 
-        // Kolom 1 (Index 0): GABUNGAN NAMA & NIP (Hukum BAB IX)
-        var txtUnitHtml = REKAPCUTI_IS_ADMIN ? `<div class="small text-danger font-weight-bold mt-1">${rekapcuti_escapeHtml(row[0] || "-")}</div>` : '';
-        var uiNama = `<div class="font-weight-bold text-dark text-wrap">${rekapcuti_escapeHtml(row[1] || "-")}</div>
-                      <div class="small text-muted text-wrap">${rekapcuti_escapeHtml(row[2] || "")}</div>${txtUnitHtml}`;
-        arrRow.push(uiNama);
+        // Kolom 1: NAMA ASN
+        arrRow.push(`<div class="font-weight-bold text-dark text-wrap">${rekapcuti_escapeHtml(row[1] || "-")}</div>`);
+        
+        // Kolom 2: NIP
+        arrRow.push(`<div class="small text-muted font-weight-bold">${rekapcuti_escapeHtml(row[2] || "-")}</div>`);
 
-        // Kolom 2 - 13: DATA ANGKA (Excel Index 3 sampai 14)
+        // Kolom 3: UNIT KERJA
+        arrRow.push(`<div class="small text-muted text-wrap">${rekapcuti_escapeHtml(row[0] || "-")}</div>`);
+
+        // Kolom 4 - 15: DATA ANGKA (Excel Index 3 sampai 14)
         for (var c = 3; c <= 14; c++) {
             var val = (row[c] === undefined || row[c] === null) ? "" : String(row[c]);
             arrRow.push(rekapcuti_escapeHtml(val));
@@ -335,9 +340,9 @@ function rekapcuti_renderTabel(dataRows) {
                    "<'row'<'col-sm-12'<'table-responsive sultan-scroll'tr>>>" +
                    "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
             "columnDefs": [
-                // VAKSIN BAB IX: Class .col-sticky-left disuntikkan murni melalui columnDefs
                 { "targets": 0, "className": "col-sticky-left bg-white align-middle border-right text-left" },
-                { "targets": [1,2,3,4,5,6,7,8,9,10,11,12], "className": "text-center align-middle" }
+                { "targets": [1,2], "className": "align-middle" },
+                { "targets": [3,4,5,6,7,8,9,10,11,12,13,14], "className": "text-center align-middle" }
             ],
             "language": { 
                 "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json", 
@@ -350,19 +355,20 @@ function rekapcuti_renderTabel(dataRows) {
                      var cell = tds[i];
                      var rawVal = cell.textContent.trim();
 
-                     if (i > 0) {
+                     if (i > 2) {
                          // Warna Background Zebra menyesuaikan Header
-                         if (i === 1 || i === 2 || i === 5 || i === 6 || i === 9 || i === 10) {
+                         // Data mulai dari index 3. CT(3,4), CS(5,6), CAP(7,8), CM(9,10), CB(11,12), CLTN(13,14)
+                         // Highlight 1: CT(3,4), CAP(7,8), CB(11,12)
+                         if (i === 3 || i === 4 || i === 7 || i === 8 || i === 11 || i === 12) {
                              cell.classList.add('bg-col-highlight-1');
                          }
                          
-                         // Format Angka: Buramkan 0/-, Bold angka lain
                          if (rawVal === "0" || rawVal === "0.00" || rawVal === "-" || rawVal === "") {
                              cell.innerHTML = '<span class="text-muted opacity-50">-</span>';
                          } else {
-                             // Index Genap = Hari (Merah), Index Ganjil = Ajuan (Gelap)
-                             if (i % 2 === 0) { cell.innerHTML = `<span class="font-weight-bold text-danger">${rawVal}</span>`; } 
-                             else { cell.innerHTML = `<span class="font-weight-bold text-dark">${rawVal}</span>`; }
+                              // Sekarang index data bergeser. Ajuan (3,5,7,9,11,13) = Ganjil. Hari (4,6,8,10,12,14) = Genap.
+                              if (i % 2 === 0) { cell.innerHTML = `<span class="font-weight-bold text-danger">${rawVal}</span>`; } 
+                              else { cell.innerHTML = `<span class="font-weight-bold text-dark">${rawVal}</span>`; }
                          }
                      }
                  }
