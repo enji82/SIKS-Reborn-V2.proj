@@ -1,15 +1,52 @@
+<style>
+    /* 
+    ===================================================================
+    MAC TOUCHPAD SMOOTHNESS PATCH (ANTI-MACET)
+    ===================================================================
+    */
+    .pla-scroll-container {
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+        overscroll-behavior-x: none !important;
+        overscroll-behavior-y: auto !important;
+        contain: paint;
+        width: 100%;
+        background: transparent !important;
+        position: relative;
+    }
+
+    .pla-sticky-col {
+        position: sticky !important;
+        left: 0 !important;
+        z-index: 10 !important;
+        background-color: #fff4d4 !important; /* Krem Emas sesuai Header */
+        color: var(--warna-maroon) !important;
+        border-right: 2px solid rgba(0,0,0,0.05) !important;
+        box-shadow: 4px 0 8px rgba(0,0,0,0.02);
+        padding-top: 12px !important;
+        padding-bottom: 12px !important;
+        vertical-align: middle !important;
+    }
+
+    .dark-mode .pla-sticky-col {
+        background-color: var(--dm-bg-card) !important;
+        color: var(--warna-emas-soft) !important;
+        border-right-color: rgba(255,255,255,0.05) !important;
+    }
+
+    /* Sinkronisasi Font Size Tabel */
+    #pla_tabelUtama tbody td {
+        font-size: 13px !important;
+    }
+</style>
+
 <div class="content-header pb-0 sultan-page-header">
   <div class="container-fluid">
-    <div class="row">
-      <div class="col-sm-12">
-        <div class="sultan-page-header">
-          <h5 class="m-0 font-weight-bold text-uppercase">
-          <i class="fas fa-hourglass-end text-sultan-utama mr-2"></i>Rekap Pulang Awal
-        </h5>
-        <hr class="style-sultan-solid">
-        </div>
-      </div>
-    </div>
+      <h5 class="m-0 font-weight-bold text-uppercase">
+        <i class="fas fa-hourglass-end text-sultan-utama mr-2"></i>Rekap Pulang Awal
+    </h5>
+    <hr class="style-sultan-solid">
   </div>
 </div>
 
@@ -108,6 +145,7 @@ var PLA_USER_AKTIF = "";
 var PLA_IS_ADMIN = false;
 var PLA_UNIT_TERKUNCI = ""; 
 var PLA_USER_NPSN = "";
+var PLA_IS_LOADING = false; // GUARD: Mencegah load ganda
 
 // =================================================================
 // 1. INITIALIZATION & SPA VACCINE (Hukum Ke-1)
@@ -213,9 +251,12 @@ function pla_prosesCariData() {
 }
 
 function pla_tarikDataServer() {
+    if (PLA_IS_LOADING) return;
+
     var th = $('#pla_filterTahun').val();
     if(!th) return;
 
+    PLA_IS_LOADING = true;
     var btn = $('#pla_btnRefresh');
     btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin text-maroon"></i>');
     if(PLA_IS_ADMIN) $('#pla_filterUnit').prop('disabled', true);
@@ -258,6 +299,7 @@ function pla_tarikDataServer() {
                 
                 if(PLA_IS_ADMIN) pla_populateDropdownUnit();
 
+                PLA_IS_LOADING = false; // BUKA KUNCI
                 // Render Tabel otomatis menghandle Dynamic Header & Injeksi
                 pla_terapkanFilterLokal(); 
 
@@ -269,6 +311,7 @@ function pla_tarikDataServer() {
             }
         })
         .withFailureHandler(function(err) {
+            PLA_IS_LOADING = false; // BUKA KUNCI
             btn.prop('disabled', false).html('<i class="fas fa-search text-maroon"></i>');
             if(PLA_IS_ADMIN) $('#pla_filterUnit').prop('disabled', false);
             $('#pla_tableState').hide();
@@ -327,7 +370,7 @@ function pla_renderTabel(rows) {
         var headerSub = PLA_HEADER_SUB; 
         
         // VAKSIN LEBAR: Tag <th> tanpa paksaan min-width (Identik dengan Status SK)
-        var htmlTop = `<th rowspan="2" class="col-sticky-left text-left px-3 align-middle">Nama ASN</th>`;
+        var htmlTop = `<th rowspan="2" class="pla-sticky-col text-left px-3 align-middle">Nama ASN</th>`;
         var htmlSub = '';
 
         for (let i = 2; i < headerTop.length; i++) {
@@ -384,7 +427,7 @@ function pla_renderTabel(rows) {
             "autoWidth": false,
             "deferRender": true, // Performa Turbo
             "dom": "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
-                   "<'row'<'col-sm-12'<'table-responsive sultan-scroll'tr>>>" +
+                   "<'row'<'col-sm-12'<'pla-scroll-container sultan-scroll'tr>>>" +
                    "<'row mt-3'<'col-sm-12 col-md-5 small text-muted'i><'col-sm-12 col-md-7'p>>",
             "language": { 
                 "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json", 
@@ -392,37 +435,25 @@ function pla_renderTabel(rows) {
                 "emptyTable": '<div class="py-5 text-center text-muted"><div class="mb-3"><i class="fas fa-clipboard-list fa-3x text-gray-300" style="opacity: 0.6;"></i></div><h6 class="font-weight-bold text-dark mb-1">Belum Ada Presensi</h6><p class="small mb-0">Tidak ada data pulang awal untuk filter terpilih.</p></div>' 
             },
             "columnDefs": [
-                // VAKSIN LEBAR: target 0 pakai width: auto
-                { "targets": 0, "width": "auto", "className": "col-sticky-left bg-white align-middle font-weight-bold border-right text-dark text-left" },
-                // VAKSIN BAB VII: Array indeks otomatis dari 1 sampai akhir
+                { "targets": 0, "width": "auto", "className": "pla-sticky-col text-left px-3 align-middle font-weight-bold" },
                 { "targets": targetDynamicArray, "className": "text-center align-middle" }
             ],
-            // VAKSIN PERFORMA TURBO: Menggunakan Native DOM murni (membuang jQuery $(this).addClass)
             "createdRow": function(row, data, dataIndex) {
                  var tds = row.children;
                  var lastIdx = tds.length - 1; 
                  var secondLastIdx = tds.length - 2;
 
-                 for (var visIdx = 0; visIdx < tds.length; visIdx++) {
+                 if (tds[0]) tds[0].className = 'pla-sticky-col text-left px-3 align-middle font-weight-bold';
+
+                 for (var visIdx = 1; visIdx < tds.length; visIdx++) {
                      var cell = tds[visIdx];
                      var rawVal = cell.textContent.trim();
 
-                     if (visIdx === 0) {
-                         cell.style.position = 'sticky';
-                         cell.style.left = '0';
-                         cell.style.zIndex = '2';
-                         cell.style.backgroundColor = '#ffffff';
+                     if (rawVal === "-") {
+                         cell.classList.add('text-muted', 'opacity-50');
                      } else {
-                         // Native class manipulation
-                         if (rawVal === "-") {
-                             cell.classList.add('text-muted', 'opacity-50');
-                         } else {
-                             // Total di pojok kanan diberikan warna merah bold
-                             if (visIdx === lastIdx || visIdx === secondLastIdx) {
-                                 cell.classList.add('text-danger', 'font-weight-bold');
-                             } else {
-                                 cell.classList.add('text-dark'); 
-                             }
+                         if (visIdx === lastIdx || visIdx === secondLastIdx) {
+                             cell.classList.add('text-danger', 'font-weight-bold');
                          }
                      }
                  }
