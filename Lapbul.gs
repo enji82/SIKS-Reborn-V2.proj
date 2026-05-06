@@ -198,6 +198,7 @@ function prosesSimpanLengkap(idSpreadsheet, namaSheet, source, form, fileData) {
   try {
     var ss = SpreadsheetApp.openById(idSpreadsheet);
     var sheet = ss.getSheetByName(namaSheet);
+    var userLogin = form.user_login || "System";
     
     var fileUrl = "";
     if (fileData && fileData.data) {
