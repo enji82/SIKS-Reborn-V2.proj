@@ -58,7 +58,8 @@ function getDaftarSalahPresensi(tahun, bulan) {
         userEdit: row[11], 
         tglVerif: row[12], 
         adminVerif: row[13],
-        npsn:     row[14] || "" 
+        npsn:     row[14] || "",
+        readBy:   row[15] || "" 
       });
     }
     return JSON.stringify(result);
@@ -122,7 +123,8 @@ function simpanSalahAbsen(form) {
       "",  
       "",  
       "",  
-      form.npsn 
+      form.npsn,
+      "" // Kolom 16: readBy (Index 15)
     ];
 
     sheet.appendRow(barisBaru);
@@ -169,6 +171,7 @@ function updateSalahAbsen(form) {
     sheet.getRange(barisKetemu, 11).setValue("'" + tglEdit);       
     sheet.getRange(barisKetemu, 12).setValue(form.user_login); 
     sheet.getRange(barisKetemu, 15).setValue(form.npsn); 
+    sheet.getRange(barisKetemu, 16).setValue(""); // Reset notif
 
     return "Sukses Data Berhasil Diupdate";
   } catch (e) {
@@ -221,4 +224,126 @@ function verifikasiSalahAbsen(form) {
   } catch (e) {
     return (e.message.includes("lock")) ? "Sistem sibuk, coba lagi." : "Gagal Verifikasi: " + e.message;
   } finally { lock.releaseLock(); }
+}
+
+/* ======================================================================
+   SULTAN NOTIFIKASI ENGINE (SALAH PRESENSI)
+   ====================================================================== */
+function getNotifikasiSalah(role, unit) {
+  try {
+    var raw = getDaftarSalahPresensi();
+    var semuaData = JSON.parse(raw);
+    var rLower = String(role || "").toLowerCase();
+    var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
+    var notifList = [];
+    var unreadCount = 0;
+    
+    semuaData.forEach(function(row) {
+        var status = String(row.status || "").trim();
+        var isDiproses = (status === "Diproses" || status === "");
+        var isTarget = false;
+        
+        if (isAdmin) {
+            isTarget = isDiproses;
+        } else {
+            isTarget = (String(row.unit).trim().toUpperCase() === String(unit).trim().toUpperCase() && !isDiproses);
+        }
+        
+        if (isTarget) {
+            var isRead = false;
+            var readByList = String(row.readBy || "").split(",");
+            if (isAdmin && readByList.indexOf("Admin") > -1) isRead = true;
+            if (!isAdmin && readByList.indexOf("User") > -1) isRead = true;
+            
+            if (!isRead) {
+                unreadCount++;
+            }
+            
+            notifList.push({
+                rowId: row.rowBaris,
+                source: "SALAH",
+                nama: row.nama,
+                unit: row.unit,
+                status: status || "Diproses",
+                waktu: row.tglVerif && !isDiproses ? row.tglVerif : (row.tglEdit && isDiproses ? row.tglEdit : row.tglKirim),
+                isRead: isRead
+            });
+        }
+    });
+    
+    notifList.sort(function(a, b) {
+        if (a.isRead !== b.isRead) return a.isRead ? 1 : -1;
+        var parseDate = function(str) {
+            if (!str || str === "-") return new Date(0);
+            var p = str.split(" ");
+            var d = p[0].split("-");
+            var t = p[1] ? p[1].split(":") : [0,0,0];
+            return new Date(d[2], d[1]-1, d[0], t[0], t[1], t[2]);
+        };
+        return parseDate(b.waktu) - parseDate(a.waktu);
+    });
+    
+    return {
+        count: unreadCount,
+        recent: notifList.slice(0, 5)
+    };
+  } catch (e) {
+    return { count: 0, recent: [] };
+  }
+}
+
+function tandaiNotifSalahDibaca(rowId, role) {
+  try {
+    var ss = SpreadsheetApp.openById(KONFIG_SALAH.DB_ID);
+    var sheet = ss.getSheetByName(KONFIG_SALAH.SHEET_NAMA);
+    var rIdx = parseInt(rowId);
+    if (isNaN(rIdx)) return false;
+    
+    var currentReadBy = String(sheet.getRange(rIdx, 16).getDisplayValue() || "").trim();
+    var readMark = (role === "Admin") ? "Admin" : "User";
+    
+    if (currentReadBy === "") {
+        sheet.getRange(rIdx, 16).setValue(readMark);
+    } else {
+        var list = currentReadBy.split(",");
+        if (list.indexOf(readMark) === -1) {
+            list.push(readMark);
+            sheet.getRange(rIdx, 16).setValue(list.join(","));
+        }
+    }
+    return true;
+  } catch (e) { return false; }
+}
+
+function tandaiSemuaNotifSalahDibaca(role, unit) {
+  try {
+    var ss = SpreadsheetApp.openById(KONFIG_SALAH.DB_ID);
+    var sheet = ss.getSheetByName(KONFIG_SALAH.SHEET_NAMA);
+    var data = sheet.getDataRange().getDisplayValues();
+    
+    var rLower = String(role || "").toLowerCase();
+    var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
+    var readMark = isAdmin ? "Admin" : "User";
+    
+    for (var i = 1; i < data.length; i++) {
+        var row = data[i];
+        var status = String(row[8] || "").trim();
+        var isDiproses = (status === "Diproses" || status === "");
+        var unitRow = String(row[0] || "").trim().toUpperCase();
+        var isTarget = false;
+        
+        if (isAdmin) {
+            isTarget = isDiproses;
+        } else {
+            isTarget = (unitRow === String(unit).trim().toUpperCase() && !isDiproses);
+        }
+        
+        var currentReadBy = String(row[15] || "").trim();
+        if (isTarget && currentReadBy.indexOf(readMark) === -1) {
+            var newVal = currentReadBy === "" ? readMark : currentReadBy + "," + readMark;
+            sheet.getRange(i + 1, 16).setValue(newVal);
+        }
+    }
+    return true;
+  } catch (e) { return false; }
 }

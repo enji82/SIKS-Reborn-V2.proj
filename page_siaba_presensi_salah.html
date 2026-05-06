@@ -103,6 +103,7 @@
                                 class="table table-premium table-sultan-compact w-100 text-nowrap">
                                 <thead class="thead-sultan-premium">
                                     <tr>
+                                        <th class="text-center salah-sticky-col">AKSI</th>
                                         <th>NAMA ASN / NIP</th>
                                         <th class="text-center">TANGGAL</th>
                                         <th class="text-center">JAM</th>
@@ -111,11 +112,27 @@
                                         <th>DIKIRIM</th>
                                         <th>DIUBAH</th>
                                         <th>VERIFIKASI</th>
-                                        <th class="text-center">AKSI</th>
                                     </tr>
                                 </thead>
                                 <tbody></tbody>
                             </table>
+<style>
+    /* Freeze Kolom Pertama (Aksi) */
+    .salah-sticky-col {
+        position: sticky !important;
+        left: 0;
+        z-index: 10;
+        background-color: #fff !important;
+        box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+    }
+    .dark-mode .salah-sticky-col {
+        background-color: #1a1c1e !important;
+        box-shadow: 2px 0 5px rgba(0,0,0,0.2);
+    }
+    .table-premium thead th.salah-sticky-col {
+        z-index: 11;
+    }
+</style>
                         </div>
                     </div>
                 </div>
@@ -392,7 +409,34 @@
         $('#salah_filterStatus').val('');
 
         salah_validasiAksesUser();
+        
+        // Cek Parameter URL untuk notifikasi
+        var urlParams = new URLSearchParams(window.location.search);
+        var barisId = urlParams.get('id');
+        if (barisId) {
+            salah_tandaiDibaca(barisId);
+        }
     });
+
+    /**
+     * Membantu membersihkan notifikasi secara lokal dan server
+     */
+    function salah_tandaiDibaca(rowId) {
+        var user = (typeof getSesiUser === 'function') ? getSesiUser() : {};
+        if (!user) return;
+        
+        // 1. Bersihkan di Bell Dropdown
+        var $notifItem = $('#nav-notif-list a[onclick*="\'SALAH\'"]').filter(function() {
+            return $(this).attr('onclick').includes(rowId + ',');
+        });
+        
+        if ($notifItem.length > 0 && !$notifItem.hasClass('bg-light')) {
+            $notifItem.trigger('click');
+        }
+        
+        // 2. Jika tidak ketemu di bell (mungkin sudah tertutup), paksa backend
+        google.script.run.tandaiNotifSalahDibaca(rowId, user.role || "User");
+    }
 
     // =================================================================
     // 2. GATEKEEPER & CHAINED FETCH
@@ -510,11 +554,11 @@
                             "destroy": true, "ordering": false, "pageLength": 10, "autoWidth": false,
                             "deferRender": true,
                             "columnDefs": [
-                                { "targets": 0, "className": "text-left align-middle" },
-                                { "targets": [1, 2, 3], "width": "1%", "className": "text-center align-middle text-nowrap" },
-                                { "targets": 4, "width": "8%", "className": "text-center align-middle text-nowrap" },
-                                { "targets": [5, 6, 7], "width": "15%", "className": "text-left align-middle" },
-                                { "targets": 8, "width": "1%", "className": "text-center align-middle text-nowrap" }
+                                { "targets": 0, "width": "1%", "className": "text-center align-middle text-nowrap salah-sticky-col" },
+                                { "targets": 1, "className": "text-left align-middle" },
+                                { "targets": [2, 3, 4], "width": "1%", "className": "text-center align-middle text-nowrap" },
+                                { "targets": 5, "width": "8%", "className": "text-center align-middle text-nowrap" },
+                                { "targets": [6, 7, 8], "width": "15%", "className": "text-left align-middle" }
                             ],
                             "language": { "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json", "emptyTable": "Tidak ada riwayat Salah Presensi." }
                         });
@@ -623,7 +667,7 @@
             var metaEdit = `<div class="sultan-table-secondary"><span class="font-weight-bold text-dark d-block">${row.tglEdit || '-'}</span><span>${salah_cleanText(row.userEdit)}</span></div>`;
             var metaVerif = `<div class="sultan-table-secondary"><span class="font-weight-bold text-dark d-block">${row.tglVerif || '-'}</span><span>${salah_cleanText(row.adminVerif)}</span></div>`;
 
-            dtArray.push([uiNama, uiTgl, salah_escapeHtml((row.jam || "").substring(0, 5)), uiJenis, badgeStatus, metaKirim, metaEdit, metaVerif, aksiHTML]);
+            dtArray.push([aksiHTML, uiNama, uiTgl, salah_escapeHtml((row.jam || "").substring(0, 5)), uiJenis, badgeStatus, metaKirim, metaEdit, metaVerif]);
         });
 
         SALAH_TABEL_INSTANCE.clear().rows.add(dtArray).draw(false);
@@ -661,6 +705,7 @@
 
     function salah_bukaModalEdit(id) {
         if (SALAH_DB_PEGAWAI.length === 0) { Sultan.notif.info('Sistem sedang memuat Database Pegawai. Mohon tunggu sebentar.'); return; }
+        salah_tandaiDibaca(id);
 
         var row = SALAH_DATA_MASTER[id]; if (!row) return;
 
@@ -747,6 +792,7 @@
     }
 
     function salah_bukaModalHapus(id) {
+        salah_tandaiDibaca(id);
         var row = SALAH_DATA_MASTER[id]; if (!row) return; $('#salah_hapusIdData').val(id);
         var detailNip = row.nip ? ' (' + salah_cleanText(row.nip) + ')' : ''; $('#salah_hapusNamaView').text(salah_cleanText(row.nama) + detailNip);
         $('#salah_hapusKode').val(''); $('#salah_modalHapus').modal('show');
@@ -779,6 +825,7 @@
     }
 
     function salah_bukaModalVerif(id) {
+        salah_tandaiDibaca(id);
         var row = SALAH_DATA_MASTER[id]; if (!row) return;
         $('#salah_verifIdData').val(row.rowBaris); $('#salah_verifStatus').val(''); $('#salah_verifCatatan').val(row.ket || '');
         $('#salah_vNama').text(row.nama || '-'); $('#salah_vNip').text(row.nip || '-'); $('#salah_vUnit').text(row.unit || '-');
