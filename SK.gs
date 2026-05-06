@@ -573,7 +573,8 @@ function getDashboardSK(filterTahun, filterSemester) {
 function getNotifikasiSK(role, unit) {
   try {
     var semuaData = getDaftarSK();
-    var isAdmin = (role === "Admin");
+    var rLower = String(role || "").toLowerCase();
+    var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
     var notifList = [];
     var unreadCount = 0;
     
