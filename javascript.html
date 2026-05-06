@@ -560,8 +560,8 @@ function sultan_fetchNotifikasi() {
             } else {
                 var html = '';
                 recent.forEach(function(n) {
-                    var bg = n.isRead ? 'bg-light' : '';
-                    var fw = n.isRead ? 'font-weight-normal text-muted' : 'font-weight-bold text-dark';
+                    var bg = n.isRead ? 'bg-light opacity-75' : '';
+                    var fw = n.isRead ? 'font-weight-normal text-muted' : 'font-weight-bold';
                     var icon = 'fa-file-signature text-maroon';
                     if (n.status.toLowerCase().includes('tolak')) icon = 'fa-times-circle text-danger';
                     if (n.status.toLowerCase().includes('setuju')) icon = 'fa-check-circle text-success';
@@ -570,12 +570,12 @@ function sultan_fetchNotifikasi() {
                     html += `
                         <a href="#" class="dropdown-item ${bg} py-2" onclick="sultan_markNotifRead(event, ${n.rowId}, this)">
                             <div class="media align-items-center">
-                                <div class="mr-3 text-center" style="width: 30px;"><i class="fas ${icon}"></i></div>
+                                <div class="mr-3 text-center" style="width: 25px;"><i class="fas ${icon}" style="font-size: 0.9rem;"></i></div>
                                 <div class="media-body">
-                                    <h3 class="dropdown-item-title ${fw} mb-1" style="font-size: 0.85rem; white-space: normal;">
-                                        ${n.namaSd} <span class="badge badge-secondary float-right ml-1" style="font-size:0.6rem">${n.status}</span>
+                                    <h3 class="dropdown-item-title ${fw} mb-1" style="font-size: 0.8rem; white-space: normal; line-height: 1.2;">
+                                        ${n.namaSd} <span class="badge badge-secondary float-right ml-1" style="font-size:0.55rem; padding: 2px 5px;">${n.status}</span>
                                     </h3>
-                                    <p class="text-sm text-muted mb-0"><i class="far fa-clock mr-1"></i> ${n.waktu}</p>
+                                    <p class="text-sm text-muted mb-0" style="font-size: 0.7rem;"><i class="far fa-clock mr-1"></i> ${n.waktu}</p>
                                 </div>
                             </div>
                         </a>
@@ -599,8 +599,8 @@ function sultan_markNotifRead(e, rowId, el) {
     if (!user) return;
     
     // UI Feedback Cepat
-    $(el).addClass('bg-light');
-    $(el).find('.dropdown-item-title').removeClass('font-weight-bold text-dark').addClass('font-weight-normal text-muted');
+    $(el).addClass('bg-light opacity-75');
+    $(el).find('.dropdown-item-title').removeClass('font-weight-bold').addClass('font-weight-normal text-muted');
     
     // Kurangi hitungan lokal sementara
     var currentCount = parseInt($('#sidebar-notif-sk').text()) || 0;
@@ -609,11 +609,11 @@ function sultan_markNotifRead(e, rowId, el) {
         if (currentCount > 0) {
             $('#nav-notif-count').text(currentCount > 99 ? '99+' : currentCount);
             $('#sidebar-notif-sk').text(currentCount);
-            $('#nav-notif-count-header').text(currentCount + ' Baru');
+            $('#nav-notif-count-header').text(currentCount);
         } else {
             $('#nav-notif-count').hide();
             $('#sidebar-notif-sk').addClass('d-none');
-            $('#nav-notif-count-header').text('0 Baru').removeClass('badge-warning text-dark').addClass('bg-white text-maroon');
+            $('#nav-notif-count-header').text('0');
         }
     }
     
@@ -622,6 +622,29 @@ function sultan_markNotifRead(e, rowId, el) {
             if (!res) sultan_fetchNotifikasi(); // Reload jika gagal update db
         })
         .tandaiNotifDibaca(rowId, user.role || "User");
+}
+
+function sultan_markAllNotifRead(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    var user = getSesiUser();
+    if (!user) return;
+    
+    // UI Feedback Cepat
+    $('#nav-notif-count').hide();
+    $('#sidebar-notif-sk').addClass('d-none');
+    $('#nav-notif-count-header').text('0');
+    
+    $('#nav-notif-list .dropdown-item').addClass('bg-light opacity-75');
+    $('#nav-notif-list .dropdown-item-title').removeClass('font-weight-bold').addClass('font-weight-normal text-muted');
+    
+    // Panggil backend
+    google.script.run
+        .withSuccessHandler(function() {
+            // Optional: bisa panggil sultan_fetchNotifikasi() kembali setelah selesai
+        })
+        .tandaiSemuaNotifDibaca(user.role || "User", user.unit || user.nama_lengkap);
 }
 
 /* =============================================================

@@ -652,3 +652,49 @@ function tandaiNotifDibaca(rowId, role) {
     return false;
   }
 }
+
+function tandaiSemuaNotifDibaca(role, unit) {
+  try {
+    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.SK_DATA);
+    var sheet = ss.getSheetByName("Unggah_SK");
+    var data = sheet.getDataRange().getDisplayValues();
+    
+    var rLower = String(role || "").toLowerCase();
+    var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
+    var readMark = isAdmin ? "Admin" : "User";
+    
+    // Siapkan array untuk update sekaligus agar performa cepat
+    var valuesToUpdate = [];
+    for (var i = 1; i < data.length; i++) {
+        var row = data[i];
+        var status = String(row[9] || "").trim();
+        var isDiproses = (status === "Diproses" || status === "");
+        var namaSd = String(row[1] || "").trim().toUpperCase();
+        var isTarget = false;
+        
+        if (isAdmin) {
+            isTarget = isDiproses;
+        } else {
+            isTarget = (namaSd === String(unit).trim().toUpperCase() && !isDiproses);
+        }
+        
+        var currentReadBy = String(row[15] || "").trim();
+        if (isTarget && currentReadBy.indexOf(readMark) === -1) {
+            var newVal = currentReadBy === "" ? readMark : currentReadBy + "," + readMark;
+            valuesToUpdate.push({row: i + 1, val: newVal});
+        }
+    }
+    
+    if (valuesToUpdate.length > 0) {
+        // Tulis kembali ke sheet
+        valuesToUpdate.forEach(function(item) {
+            sheet.getRange(item.row, 16).setValue(item.val);
+        });
+        SpreadsheetApp.flush();
+    }
+    
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
