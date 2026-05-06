@@ -254,9 +254,9 @@ function prosesSimpanLengkap(idSpreadsheet, namaSheet, source, form, fileData) {
     
     var now = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss");
     isi(["waktu kirim", "tgl kirim", "tanggal kirim", "timestamp"], "'" + now);
-    isi(["status data", "status"], "Diproses");
-    var userLogin = form.user_login || "Admin";
     isi(["user kirim", "user input", "pengirim"], userLogin);
+    isi(["dibaca oleh", "read by"], ""); // Reset status baca
+
 
     sheet.appendRow(rowData);
     
@@ -358,6 +358,7 @@ function prosesUpdateLengkap(idSS, namaSheet, form, fileData) {
         else if (rawHeader.includes("user edit") || rawHeader.includes("penyunting")) newRowData.push("'" + strUserEdit); 
         else if (rawHeader.includes("status data") || rawHeader === "status") newRowData.push("Diproses"); 
         else if (rawHeader.includes("dokumen") || rawHeader.includes("file")) newRowData.push(fileUrl);
+        else if (rawHeader.includes("dibaca oleh") || rawHeader.includes("read by")) newRowData.push(""); // Reset status baca
         else if (form[keyForm] !== undefined) {
              var val = form[keyForm];
              if (rawHeader.includes("tgl") || rawHeader.includes("tanggal")) newRowData.push("'" + val); 
@@ -434,6 +435,13 @@ function processVerifikasiLapbul(source, rowId, status, keterangan, userLogin) {
     sheet.getRange(r, config.colKet).setValue(keterangan);          
     sheet.getRange(r, config.colTglVerif).setValue("'" + strTgl);   
     sheet.getRange(r, config.colUserVerif).setValue(userLogin);     
+
+    // Reset status baca agar User melihat notifikasi verifikasi baru
+    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(function(h) { return String(h).toLowerCase().trim(); });
+    var idxRead = headers.indexOf("dibaca oleh") > -1 ? headers.indexOf("dibaca oleh") : headers.indexOf("read by");
+    if (idxRead > -1) {
+        sheet.getRange(r, idxRead + 1).setValue("");
+    }
 
     return { 
       success: true, message: "Berhasil verifikasi",
@@ -613,8 +621,182 @@ function processSheetDashboard(idSS, sheetName, tahun, bulan, targetJenjangArray
        s.persen = s.total === 0 ? 0 : Math.round((s.sudah / s.total) * 100);
        s.listBelum.sort(); 
     });
-
   } catch (e) { result.error = e.toString(); }
 
   return JSON.stringify(result);
+}
+
+/* ======================================================================
+   6. MODULE: NOTIFIKASI LAPBUL (GLOBAL)
+   ====================================================================== */
+function getNotifikasiLapbul(role, unit) {
+  try {
+    var rLower = String(role || "").toLowerCase();
+    var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
+    var notifList = [];
+    var unreadCount = 0;
+
+    var fetchNotifSource = function(idSS, sheetName, sourceLabel) {
+      try {
+        var ss = SpreadsheetApp.openById(idSS);
+        var sheet = ss.getSheetByName(sheetName);
+        if (!sheet) return;
+
+        var lastRow = sheet.getLastRow();
+        if (lastRow < 2) return;
+
+        var lastCol = sheet.getLastColumn();
+        var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(function(h) { return String(h).toLowerCase().trim(); });
+        
+        var idx = {
+          nama: headers.indexOf("nama sekolah") > -1 ? headers.indexOf("nama sekolah") : headers.indexOf("nama"),
+          bulan: headers.indexOf("bulan"),
+          tahun: headers.indexOf("tahun"),
+          status: headers.indexOf("status data") > -1 ? headers.indexOf("status data") : headers.indexOf("status"),
+          tglKirim: headers.indexOf("tgl kirim") > -1 ? headers.indexOf("tgl kirim") : headers.indexOf("waktu kirim"),
+          tglVerif: headers.indexOf("tgl verif") > -1 ? headers.indexOf("tgl verif") : headers.indexOf("waktu verif"),
+          readBy: headers.indexOf("dibaca oleh") > -1 ? headers.indexOf("dibaca oleh") : headers.indexOf("read by")
+        };
+
+        // Jika kolom readBy tidak ada, jangan hitung unread (atau asumsikan read)
+        if (idx.readBy === -1) return;
+
+        var data = sheet.getRange(2, 1, lastRow - 1, lastCol).getDisplayValues();
+        
+        data.forEach(function(row, i) {
+          var rowNum = i + 2;
+          var status = String(row[idx.status] || "Diproses").trim();
+          var isDiproses = (status === "Diproses" || status === "");
+          var isTarget = false;
+          var rNama = String(row[idx.nama] || "").trim();
+
+          if (isAdmin) {
+            isTarget = isDiproses;
+          } else {
+            isTarget = (rNama.toUpperCase() === String(unit).trim().toUpperCase() && !isDiproses);
+          }
+
+          if (isTarget) {
+            var readBy = String(row[idx.readBy] || "").trim();
+            var readByList = readBy === "" ? [] : readBy.split(",");
+            var isRead = false;
+            
+            if (isAdmin && readByList.indexOf("Admin") > -1) isRead = true;
+            if (!isAdmin && readByList.indexOf("User") > -1) isRead = true;
+
+            if (!isRead) unreadCount++;
+
+            notifList.push({
+              rowId: rowNum,
+              source: sourceLabel, // SD atau PAUD
+              namaSd: rNama,
+              kriteria: "Laporan Bulan " + row[idx.bulan] + " " + row[idx.tahun],
+              status: status,
+              waktu: (idx.tglVerif > -1 && row[idx.tglVerif] && !isDiproses) ? row[idx.tglVerif] : row[idx.tglKirim],
+              isRead: isRead
+            });
+          }
+        });
+      } catch (e) {}
+    };
+
+    fetchNotifSource(IDS.SD_DATA, "Input SD", "SD");
+    fetchNotifSource(IDS.PAUD_DATA, "Input PAUD", "PAUD");
+
+    // Urutkan (Paling baru dulu)
+    notifList.sort(function(a, b) {
+       // Kita asumsikan format dd/mm/yyyy hh:mm:ss, tapi untuk notif sortir sederhana saja
+       return 0; 
+    });
+
+    return {
+      count: unreadCount,
+      recent: notifList
+    };
+  } catch (e) {
+    return { count: 0, recent: [] };
+  }
+}
+
+function tandaiNotifLapbulDibaca(rowId, source, role) {
+  try {
+    var idSS = (source === "SD") ? IDS.SD_DATA : IDS.PAUD_DATA;
+    var sheetName = (source === "SD") ? "Input SD" : "Input PAUD";
+    
+    var ss = SpreadsheetApp.openById(idSS);
+    var sheet = ss.getSheetByName(sheetName);
+    var rIdx = parseInt(rowId);
+    
+    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(function(h) { return String(h).toLowerCase().trim(); });
+    var idxRead = headers.indexOf("dibaca oleh") > -1 ? headers.indexOf("dibaca oleh") : headers.indexOf("read by");
+    
+    if (idxRead === -1) return false;
+
+    var currentReadBy = String(sheet.getRange(rIdx, idxRead + 1).getDisplayValue() || "").trim();
+    var readMark = (role === "Admin") ? "Admin" : "User";
+    
+    if (currentReadBy === "") {
+        sheet.getRange(rIdx, idxRead + 1).setValue(readMark);
+    } else {
+        var list = currentReadBy.split(",");
+        if (list.indexOf(readMark) === -1) {
+            list.push(readMark);
+            sheet.getRange(rIdx, idxRead + 1).setValue(list.join(","));
+        }
+    }
+    return true;
+  } catch (e) { return false; }
+}
+
+function tandaiSemuaNotifLapbulDibaca(role, unit) {
+  try {
+    var rLower = String(role || "").toLowerCase();
+    var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
+    var readMark = isAdmin ? "Admin" : "User";
+
+    var processSheet = function(idSS, sheetName) {
+      var ss = SpreadsheetApp.openById(idSS);
+      var sheet = ss.getSheetByName(sheetName);
+      var lastRow = sheet.getLastRow();
+      if (lastRow < 2) return;
+
+      var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(function(h) { return String(h).toLowerCase().trim(); });
+      var idxRead = headers.indexOf("dibaca oleh") > -1 ? headers.indexOf("dibaca oleh") : headers.indexOf("read by");
+      var idxStatus = headers.indexOf("status data") > -1 ? headers.indexOf("status data") : headers.indexOf("status");
+      var idxNama = headers.indexOf("nama sekolah") > -1 ? headers.indexOf("nama sekolah") : headers.indexOf("nama");
+      
+      if (idxRead === -1) return;
+
+      var data = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getDisplayValues();
+      var range = sheet.getRange(2, idxRead + 1, lastRow - 1, 1);
+      var values = range.getValues();
+
+      for (var i = 0; i < data.length; i++) {
+        var status = String(data[i][idxStatus] || "Diproses").trim();
+        var isDiproses = (status === "Diproses" || status === "");
+        var rNama = String(data[i][idxNama] || "").trim();
+        
+        var isTarget = false;
+        if (isAdmin) isTarget = isDiproses;
+        else isTarget = (rNama.toUpperCase() === String(unit).trim().toUpperCase() && !isDiproses);
+
+        if (isTarget) {
+          var current = String(values[i][0]).trim();
+          if (current === "") values[i][0] = readMark;
+          else {
+            var list = current.split(",");
+            if (list.indexOf(readMark) === -1) {
+              list.push(readMark);
+              values[i][0] = list.join(",");
+            }
+          }
+        }
+      }
+      range.setValues(values);
+    };
+
+    processSheet(IDS.SD_DATA, "Input SD");
+    processSheet(IDS.PAUD_DATA, "Input PAUD");
+    return true;
+  } catch (e) { return false; }
 }

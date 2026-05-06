@@ -601,6 +601,7 @@ function getNotifikasiSK(role, unit) {
             
             notifList.push({
                 rowId: row.rowBaris,
+                source: "SK",
                 namaSd: row.namaSd,
                 kriteria: row.kriteria,
                 status: status || "Diproses",
@@ -624,8 +625,43 @@ function getNotifikasiSK(role, unit) {
         recent: recentNotif
     };
   } catch (e) {
-      return { count: 0, recent: [] };
+    return { count: 0, recent: [] };
   }
+}
+
+/* ======================================================================
+   NEW: NOTIFIKASI GLOBAL (SK + LAPBUL)
+   ====================================================================== */
+function getNotifikasiGlobal(role, unit) {
+  try {
+    var resSK = getNotifikasiSK(role, unit);
+    var resLapbul = getNotifikasiLapbul(role, unit);
+    
+    var combinedRecent = resSK.recent.concat(resLapbul.recent);
+    
+    // Urutkan (Belum dibaca di atas, lalu berdasarkan waktu terbaru jika bisa)
+    combinedRecent.sort(function(a, b) {
+      if (a.isRead === b.isRead) return 0;
+      return a.isRead ? 1 : -1;
+    });
+    
+    return {
+      count: resSK.count + resLapbul.count,
+      countSK: resSK.count,
+      countLapbul: resLapbul.count,
+      recent: combinedRecent.slice(0, 10) // Tampilkan 10 terbaru
+    };
+  } catch (e) {
+    return { count: 0, recent: [] };
+  }
+}
+
+function tandaiSemuaNotifGlobalDibaca(role, unit) {
+  try {
+    tandaiSemuaNotifDibaca(role, unit);
+    tandaiSemuaNotifLapbulDibaca(role, unit);
+    return true;
+  } catch (e) { return false; }
 }
 
 function tandaiNotifDibaca(rowId, role) {

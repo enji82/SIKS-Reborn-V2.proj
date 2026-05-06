@@ -563,18 +563,30 @@ function sultan_fetchNotifikasi() {
             
             // Update Badges
             var $bellBadge = $('#nav-notif-count');
-            var $sideBadge = $('#sidebar-notif-sk');
+            var $sideSK = $('#sidebar-notif-sk');
+            var $sideLapbul = $('#sidebar-notif-lapbul');
             var $headerBadge = $('#nav-notif-count-header');
             
-            if (count > 0) {
-                $bellBadge.text(count > 99 ? '99+' : count).fadeIn();
-                $sideBadge.text(count).removeClass('d-none');
-                $headerBadge.text(count + ' Baru').removeClass('bg-white text-maroon').addClass('badge-warning text-dark');
+            var totalCount = parseInt(res.count || 0);
+            var countSK = parseInt(res.countSK || 0);
+            var countLapbul = parseInt(res.countLapbul || 0);
+
+            // 1. Bell Badge (Navbar)
+            if (totalCount > 0) {
+                $bellBadge.text(totalCount > 99 ? '99+' : totalCount).fadeIn();
+                $headerBadge.text(totalCount + ' Baru').removeClass('bg-white text-maroon').addClass('badge-warning text-dark');
             } else {
                 $bellBadge.hide();
-                $sideBadge.addClass('d-none');
                 $headerBadge.text('0 Baru').removeClass('badge-warning text-dark').addClass('bg-white text-maroon');
             }
+
+            // 2. Sidebar SK
+            if (countSK > 0) $sideSK.text(countSK).removeClass('d-none');
+            else $sideSK.addClass('d-none');
+
+            // 3. Sidebar Lapbul
+            if (countLapbul > 0) $sideLapbul.text(countLapbul).removeClass('d-none');
+            else $sideLapbul.addClass('d-none');
             
             // Update List
             var $list = $('#nav-notif-list');
@@ -591,7 +603,7 @@ function sultan_fetchNotifikasi() {
                     if (n.status.toLowerCase().includes('revisi')) icon = 'fa-exclamation-circle text-warning';
                     
                     html += `
-                        <a href="#" class="dropdown-item ${bg} py-2" onclick="sultan_markNotifRead(event, ${n.rowId}, this)">
+                        <a href="#" class="dropdown-item ${bg} py-2" onclick="sultan_markNotifRead(event, ${n.rowId}, '${n.source}', this)">
                             <div class="media align-items-center">
                                 <div class="mr-3 text-center" style="width: 25px;"><i class="fas ${icon}" style="font-size: 0.9rem;"></i></div>
                                 <div class="media-body">
@@ -608,10 +620,10 @@ function sultan_fetchNotifikasi() {
                 $list.html(html);
             }
         })
-        .getNotifikasiSK(role, unit);
+        .getNotifikasiGlobal(role, unit);
 }
 
-function sultan_markNotifRead(e, rowId, el) {
+function sultan_markNotifRead(e, rowId, source, el) {
     e.preventDefault();
     e.stopPropagation(); // Mencegah dropdown tertutup otomatis jika belum diinginkan
     
@@ -626,25 +638,29 @@ function sultan_markNotifRead(e, rowId, el) {
     $(el).find('.dropdown-item-title').removeClass('font-weight-bold').addClass('font-weight-normal text-muted');
     
     // Kurangi hitungan lokal sementara
-    var currentCount = parseInt($('#sidebar-notif-sk').text()) || 0;
+    var isSK = (source === "SK");
+    var targetBadge = isSK ? '#sidebar-notif-sk' : '#sidebar-notif-lapbul';
+    var currentCount = parseInt($(targetBadge).text()) || 0;
     if (currentCount > 0) {
         currentCount--;
-        if (currentCount > 0) {
-            $('#nav-notif-count').text(currentCount > 99 ? '99+' : currentCount);
-            $('#sidebar-notif-sk').text(currentCount);
-            $('#nav-notif-count-header').text(currentCount);
-        } else {
-            $('#nav-notif-count').hide();
-            $('#sidebar-notif-sk').addClass('d-none');
-            $('#nav-notif-count-header').text('0');
+        if (currentCount > 0) $(targetBadge).text(currentCount);
+        else $(targetBadge).addClass('d-none');
+        
+        // Update bell count
+        var bellCount = parseInt($('#nav-notif-count').text()) || 0;
+        if (bellCount > 0) {
+            bellCount--;
+            if (bellCount > 0) $('#nav-notif-count').text(bellCount);
+            else $('#nav-notif-count').hide();
         }
     }
     
-    google.script.run
-        .withSuccessHandler(function(res) {
-            if (!res) sultan_fetchNotifikasi(); // Reload jika gagal update db
-        })
-        .tandaiNotifDibaca(rowId, user.role || "User");
+    // Backend call
+    if (source === "SK") {
+        google.script.run.tandaiNotifDibaca(rowId, user.role || "User"); 
+    } else {
+        google.script.run.tandaiNotifLapbulDibaca(rowId, source, user.role || "User");
+    }
 }
 
 function sultan_markAllNotifRead(e) {
@@ -656,8 +672,8 @@ function sultan_markAllNotifRead(e) {
     
     // UI Feedback Cepat
     $('#nav-notif-count').hide();
-    $('#sidebar-notif-sk').addClass('d-none');
-    $('#nav-notif-count-header').text('0');
+    $('#sidebar-notif-sk, #sidebar-notif-lapbul').addClass('d-none');
+    $('#nav-notif-count-header').text('0 Baru');
     
     $('#nav-notif-list .dropdown-item').addClass('bg-light opacity-75');
     $('#nav-notif-list .dropdown-item-title').removeClass('font-weight-bold').addClass('font-weight-normal text-muted');
@@ -667,7 +683,7 @@ function sultan_markAllNotifRead(e) {
         .withSuccessHandler(function() {
             // Optional: bisa panggil sultan_fetchNotifikasi() kembali setelah selesai
         })
-        .tandaiSemuaNotifDibaca(user.role || "User", user.unit || user.nama_lengkap);
+        .tandaiSemuaNotifGlobalDibaca(user.role || "User", user.unit || user.nama_lengkap);
 }
 
 /* =============================================================
