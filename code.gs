@@ -382,46 +382,8 @@ function getMonitoring_Users() {
 /* ======================================================================
    MODUL: LOGGER PENGUNJUNG (REQUIRED FOR HOME & MONITORING)
    ====================================================================== */
+// (Fungsi logUserVisit yang pertama dihapus karena duplikat dengan versi di bawah yang lebih lengkap)
 
-function logUserVisit(userData) {
-  if (!userData) return;
-  
-  // 1. UPDATE STATUS ONLINE
-  updateOnlineStatus(userData.username || userData.nama); // Pakai Username untuk ID Unik
-
-  // 2. SIMPAN LOG
-  try {
-    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.DATABASE_USER);
-    var sheet = ss.getSheetByName("LOG_ACCESS");
-    
-    if (!sheet) {
-        sheet = ss.insertSheet("LOG_ACCESS");
-        sheet.appendRow(["Timestamp", "Tanggal", "Bulan", "Nama User", "Role", "Jenis Hari"]);
-    }
-    
-    var now = new Date();
-    var timestamp = Utilities.formatDate(now, "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss");
-    var tgalOnly  = Utilities.formatDate(now, "Asia/Jakarta", "yyyy-MM-dd");
-    var blnOnly   = Utilities.formatDate(now, "Asia/Jakarta", "yyyy-MM");
-    
-    // LOGIC HARI LIBUR... (Sama seperti sebelumnya)
-    var dayIndex = now.getDay();
-    var jenisHari = (dayIndex === 0 || dayIndex === 6) ? "Hari Libur" : "Hari Efektif";
-    
-    // PRIORITAS NAMA: Cek nama_lengkap dulu, baru nama, baru username
-    var namaLog = userData.nama_lengkap || userData.nama || userData.username || "Unknown";
-
-    sheet.appendRow([
-        timestamp, 
-        tgalOnly, 
-        blnOnly, 
-        namaLog, // <--- INI SUDAH DIPERBAIKI
-        userData.role, 
-        jenisHari
-    ]);
-    
-  } catch (e) { console.log("Log Error: " + e.message); }
-}
 
 /* ======================================================================
    MODUL: LOGGER PENGUNJUNG & ONLINE TRACKER (WAJIB ADA)

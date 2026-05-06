@@ -146,6 +146,7 @@ function simpanLupaPresensi(dataKirim) {
 
     var timestamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MM-yyyy HH:mm:ss");
     
+    var rowData = [
       dataKirim.unit_kerja, dataKirim.nama_asn, dataKirim.nip_asn,
       "'" + tglSimpan, "'" + jamSimpan, dataKirim.jenis, "'" + dataKirim.komulatif,
       timestamp, dataKirim.user_login, fileUrl, "Diproses", "", "", "", "", "",
