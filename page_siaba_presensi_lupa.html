@@ -560,19 +560,36 @@
         if (LUPA_IS_ADMIN) {
             SultanUI.showLoading('#lupa_loadingState', 'Mempersiapkan Database Admin...');
 
-            google.script.run.withSuccessHandler(function (data) {
-                if (Array.isArray(data)) LUPA_DB_PEGAWAI = data;
-
-                var unikUnit = [...new Set(LUPA_DB_PEGAWAI.map(item => item.unit))].sort();
-                var optFilter = '<option value="SEMUA">- Semua Unit Kerja -</option>';
-                var optInput = '<option value="">- Pilih Unit -</option>';
-
-                unikUnit.forEach(function (u) {
-                    if (u) {
-                        optFilter += '<option value="' + lupa_escapeHtml(u) + '">' + lupa_escapeHtml(u) + '</option>';
-                        optInput += '<option value="' + lupa_escapeHtml(u) + '">' + lupa_escapeHtml(u) + '</option>';
-                    }
+            // VAKSIN DROPDOWN: Isi dari DROPDOWN_STATIS dulu sebagai fallback cepat
+            if (typeof DROPDOWN_STATIS !== 'undefined' && DROPDOWN_STATIS.UnitKerjaSiaba) {
+                var optS = '<option value="SEMUA">- Semua Unit Kerja -</option>';
+                var optI = '<option value="">- Pilih Unit -</option>';
+                DROPDOWN_STATIS.UnitKerjaSiaba.forEach(u => {
+                    optS += '<option value="' + lupa_escapeHtml(u) + '">' + lupa_escapeHtml(u) + '</option>';
+                    optI += '<option value="' + lupa_escapeHtml(u) + '">' + lupa_escapeHtml(u) + '</option>';
                 });
+                $('#lupa_filterUnit').html(optS).prop('disabled', false);
+                $('#lupa_inputUnit').html(optI).prop('disabled', false);
+            }
+
+            google.script.run.withSuccessHandler(function (data) {
+                if (Array.isArray(data)) {
+                    LUPA_DB_PEGAWAI = data;
+                    var unikUnit = [...new Set(LUPA_DB_PEGAWAI.map(item => String(item.unit).trim()))].sort();
+                    
+                    if (unikUnit.length > 0) {
+                        var optFilter = '<option value="SEMUA">- Semua Unit Kerja -</option>';
+                        var optInput = '<option value="">- Pilih Unit -</option>';
+                        unikUnit.forEach(function (u) {
+                            if (u) {
+                                optFilter += '<option value="' + lupa_escapeHtml(u) + '">' + lupa_escapeHtml(u) + '</option>';
+                                optInput += '<option value="' + lupa_escapeHtml(u) + '">' + lupa_escapeHtml(u) + '</option>';
+                            }
+                        });
+                        $('#lupa_filterUnit').html(optFilter);
+                        $('#lupa_inputUnit').html(optInput);
+                    }
+                }
 
                 $('#lupa_filterUnit').html(optFilter).prop('disabled', false).removeClass('bg-light text-maroon font-weight-bold');
                 $('#lupa_inputUnit').html(optInput).prop('disabled', false).removeClass('bg-light text-maroon font-weight-bold');
