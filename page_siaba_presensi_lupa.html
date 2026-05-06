@@ -40,27 +40,7 @@
         font-size: 13px !important;
     }
 
-    /* WhatsApp Icon Style */
-    .btn-wa-sultan {
-        width: 42px;
-        height: 42px;
-        border-radius: 12px;
-        background: #25d366;
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 20px;
-        transition: all 0.3s ease;
-        border: none;
-        box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
-    }
-    .btn-wa-sultan:hover {
-        transform: translateY(-3px) scale(1.05);
-        background: #20ba5a;
-        color: white;
-        box-shadow: 0 6px 15px rgba(37, 211, 102, 0.4);
-    }
+
 </style>
 
 <div class="content-header pb-0 sultan-page-header">
@@ -155,11 +135,7 @@
                     <i class="fas fa-sync-alt"></i>
                 </button>
 
-                    <div class="divider-vertical d-none d-md-block mx-2"></div>
 
-                    <button type="button" id="lupa_btnCopyWA" class="btn-wa-sultan" title="Salin Daftar Lupa Presensi ke WhatsApp">
-                        <i class="fab fa-whatsapp"></i>
-                    </button>
 
                     <div class="ml-auto d-none d-md-block"></div>
 
@@ -519,7 +495,6 @@
     var LUPA_UNIT_TERKUNCI = "";
     var LUPA_USER_NPSN = "";
     var LUPA_IS_LOADING = false; // GUARD: Mencegah load ganda
-    var LUPA_HASIL_FILTER = []; // Cache hasil filter untuk WA
 
     $(document).ready(function () {
         // Reset SPA State
@@ -539,7 +514,6 @@
         $(document).off('change', '#lupa_filterUnit').on('change', '#lupa_filterUnit', lupa_terapkanFilterLokal);
 
         $(document).off('click', '#lupa_btnRefresh').on('click', '#lupa_btnRefresh', lupa_tarikDataServer);
-        $(document).off('click', '#lupa_btnCopyWA').on('click', '#lupa_btnCopyWA', lupa_salinDataKeWA);
         $(document).off('click', '#lupa_btnTambah').on('click', '#lupa_btnTambah', lupa_bukaModalTambah);
 
         $(document).off('submit', '#lupa_formUtama').on('submit', '#lupa_formUtama', lupa_submitFormUtama);
@@ -753,7 +727,6 @@
             return pSekolah && pStat && pBulan;
         });
 
-        LUPA_HASIL_FILTER = hasil;
         hasil.sort(function (a, b) { return Math.max(lupa_parseDateLogic(b.tglKirim), lupa_parseDateLogic(b.tglEdit), lupa_parseDateLogic(b.tglVerif)) - Math.max(lupa_parseDateLogic(a.tglKirim), lupa_parseDateLogic(a.tglEdit), lupa_parseDateLogic(a.tglVerif)); });
 
         lupa_renderTabel(hasil);
@@ -831,58 +804,6 @@
         }
     }
 
-    // =================================================================
-    // FITUR COPY TO WA (ALGORITMA GROUPING + DETAIL)
-    // =================================================================
-    function lupa_salinDataKeWA() {
-        if (LUPA_HASIL_FILTER.length === 0) {
-            Sultan.alert('warning', 'Tabel Kosong', 'Tidak ada data Lupa Presensi yang bisa disalin.');
-            return;
-        }
-
-        var bln = $('#lupa_filterBulan').val() || "SEMUA";
-        var thn = $('#lupa_filterTahun').val();
-        var fUnit = $('#lupa_filterUnit').val();
-
-        var txt = "*DATA LUPA PRESENSI SIABA - PERIODE " + String(bln).toUpperCase() + " " + thn + "*\n";
-        txt += "--------------------------------------------------\n";
-
-        function formatBarisWA(row) {
-            var nama = String(row.nama || "-").trim();
-            var tglRaw = (row.tanggal || "").replace(/'/g, "");
-            var tgl = lupa_formatTanggalIndo(tglRaw);
-            var jam = (row.jam || "").substring(0, 5);
-            var stat = String(row.status || "Diproses").toUpperCase();
-            var icon = stat.includes("SETUJU") ? "✅" : (stat.includes("TOLAK") ? "❌" : (stat.includes("REVISI") ? "🔄" : "⏳"));
-            
-            return "- " + icon + " " + nama + " (" + tgl + " pkl " + jam + ") - *ST: " + stat + "*\n";
-        }
-
-        if (fUnit !== "SEMUA" && fUnit !== "" && !LUPA_IS_ADMIN) {
-            txt += "*UNIT:* " + String(fUnit).toUpperCase() + "\n";
-            LUPA_HASIL_FILTER.forEach(function(row) { txt += formatBarisWA(row); });
-        } else {
-            var dataGroup = {};
-            LUPA_HASIL_FILTER.forEach(function(row) {
-                var unit = String(row.unit || "UNIT TIDAK DIKETAHUI").trim().toUpperCase();
-                if (!dataGroup[unit]) { dataGroup[unit] = []; }
-                dataGroup[unit].push(formatBarisWA(row));
-            });
-
-            Object.keys(dataGroup).sort().forEach(function(unitKey) {
-                txt += "\n*UNIT:* " + unitKey + "\n";
-                dataGroup[unitKey].forEach(function(strBaris) { txt += strBaris; });
-            });
-        }
-
-        txt += "\n_Mohon admin unit segera memverifikasi data yang berstatus ⏳ (Diproses) / 🔄 (Revisi)._";
-
-        navigator.clipboard.writeText(txt).then(function() {
-            Sultan.notif.sukses('Daftar Lupa Presensi berhasil disalin! Silakan tempel di Grup WhatsApp.');
-        }).catch(function(err) {
-            Sultan.alert('error', 'Gagal Menyalin', 'Browser Anda tidak mengizinkan akses ke Clipboard.');
-        });
-    }
 
     // =================================================================
     // KONTROLER MODAL & CRUD
