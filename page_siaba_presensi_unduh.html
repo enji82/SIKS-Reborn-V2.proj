@@ -1,15 +1,40 @@
+<style>
+    /* 
+    ===================================================================
+    MAC TOUCHPAD SMOOTHNESS PATCH (ANTI-MACET)
+    ===================================================================
+    */
+    .unduh-scroll-container {
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+        overscroll-behavior-x: none !important;
+        overscroll-behavior-y: auto !important;
+        contain: paint;
+        width: 100%;
+        background: transparent !important;
+        position: relative;
+    }
+
+    /* Modal Preview Optimization */
+    .unduh-modal-preview {
+        max-width: 1100px !important; /* Lebar optimal untuk dokumen */
+        margin: 1.75rem auto;
+    }
+
+    @media (max-width: 1200px) {
+        .unduh-modal-preview {
+            max-width: 95% !important;
+        }
+    }
+</style>
+
 <div class="content-header pb-0 sultan-page-header">
   <div class="container-fluid">
-    <div class="row">
-      <div class="col-sm-12">
-        <div class="sultan-page-header">
-          <h5 class="m-0 font-weight-bold text-uppercase">
-          <i class="fas fa-cloud-download-alt text-sultan-utama mr-2"></i>Unduh Rekap Bulanan
-        </h5>
-        <hr class="style-sultan-solid">
-        </div>
-      </div>
-    </div>
+      <h5 class="m-0 font-weight-bold text-uppercase">
+        <i class="fas fa-cloud-download-alt text-sultan-utama mr-2"></i>Unduh Rekap Bulanan
+    </h5>
+    <hr class="style-sultan-solid">
   </div>
 </div>
 
@@ -106,7 +131,7 @@
 </section>
 
 <div class="modal fade" id="unduh_modalPreview" tabindex="-1" role="dialog" data-backdrop="static">
-  <div class="modal-dialog modal-dialog-full" role="document"> 
+  <div class="modal-dialog unduh-modal-preview" role="document"> 
     <div class="modal-content modal-content-full-height border-0 shadow-lg modal-content-sultan"> 
       
       <div class="modal-header modal-header-sultan-primary flex-shrink-0">
@@ -140,6 +165,7 @@
   var UNDUH_CURRENT_FOLDER = null; 
   var UNDUH_PARENT_FOLDER = null;
   var UNDUH_TABEL_INSTANCE = null;
+  var UNDUH_IS_LOADING = false; // GUARD: Mencegah load ganda
 
   // =================================================================
   // 1. INITIALIZATION & VAKSIN SPA EVENT DELEGATION
@@ -182,6 +208,9 @@
   // 2. LOGIKA LOAD FOLDER (ZERO-BLINK FETCH)
   // =================================================================
   function unduh_loadFolder(folderId) {
+      if (UNDUH_IS_LOADING) return;
+      UNDUH_IS_LOADING = true;
+
       $('#unduh_folderNameLabel').html('<i class="fas fa-spinner fa-spin mr-2"></i> MEMUAT...');
       
       // VAKSIN BLINK: Jika tabel sudah ada, JANGAN SEMBUNYIKAN WADAHNYA. Cukup berikan info di dalam tabel
@@ -195,8 +224,12 @@
       }
       
       google.script.run
-        .withSuccessHandler(unduh_renderArsipTable)
+        .withSuccessHandler(function(res) {
+            UNDUH_IS_LOADING = false;
+            unduh_renderArsipTable(res);
+        })
         .withFailureHandler(function(err) {
+           UNDUH_IS_LOADING = false;
            if ($.fn.DataTable.isDataTable('#unduh_tabelUtama')) {
                $('.dataTables_empty').html(`<div class="py-5 text-center text-danger font-weight-bold"><i class="fas fa-wifi fa-2x mb-3"></i><br>Gagal memuat folder:<br>${unduh_escapeHtml(err.message)}</div>`);
            } else {
@@ -279,7 +312,7 @@
               "autoWidth": false, // VAKSIN: Matikan autowidth js, biarkan CSS tag <th> bekerja
               "deferRender": true, 
               "dom": "<'row mb-3'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
-                     "<'row'<'col-sm-12'<'table-responsive sultan-scroll'tr>>>" +
+                     "<'row'<'col-sm-12'<'unduh-scroll-container sultan-scroll'tr>>>" +
                      "<'row mt-3'<'col-sm-12 col-md-5 small text-muted'i><'col-sm-12 col-md-7'p>>",
               "language": { 
                   "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json", 
