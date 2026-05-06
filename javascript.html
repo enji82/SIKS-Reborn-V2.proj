@@ -304,6 +304,11 @@ function updateUI(u) {
   $('.user-capsule span, .user-menu .nav-link span, .dropdown-user .dropdown-toggle span').text(name);
 
   if($('#uniUserLogin').length) $('#uniUserLogin').val(name);
+  
+  // Panggil Notifikasi Global
+  if (typeof sultan_fetchNotifikasi === "function") {
+      sultan_fetchNotifikasi();
+  }
 }
 
 function tampilkanMenuAdmin(user) {
@@ -519,8 +524,110 @@ function previewPDF(u){ $('#framePreview').attr('src',u.replace('/view','/previe
 function formatDateForInput(s){ if(!s) return ""; if(typeof s==='string'&&s.match(/^\d{4}-\d{2}-\d{2}$/)) return s; var d=new Date(s); return isNaN(d)?s:d.toISOString().split('T')[0]; }
 
 /* =============================================================
-   8. SULTAN UI ENGINE (DARK MODE & UI HELPERS)
+   8. SULTAN NOTIFIKASI ENGINE
    ============================================================= */
+function sultan_fetchNotifikasi() {
+    var user = getSesiUser();
+    if (!user) return;
+    var role = user.role || "User";
+    var unit = user.unit || user.nama_lengkap;
+    
+    google.script.run
+        .withSuccessHandler(function(res) {
+            if (!res) return;
+            var count = parseInt(res.count || 0);
+            var recent = res.recent || [];
+            
+            // Update Badges
+            var $bellBadge = $('#nav-notif-count');
+            var $sideBadge = $('#sidebar-notif-sk');
+            var $headerBadge = $('#nav-notif-count-header');
+            
+            if (count > 0) {
+                $bellBadge.text(count > 99 ? '99+' : count).fadeIn();
+                $sideBadge.text(count).removeClass('d-none');
+                $headerBadge.text(count + ' Baru').removeClass('bg-white text-maroon').addClass('badge-warning text-dark');
+            } else {
+                $bellBadge.hide();
+                $sideBadge.addClass('d-none');
+                $headerBadge.text('0 Baru').removeClass('badge-warning text-dark').addClass('bg-white text-maroon');
+            }
+            
+            // Update List
+            var $list = $('#nav-notif-list');
+            if (recent.length === 0) {
+                $list.html('<div class="text-center p-4 text-muted"><i class="fas fa-bell-slash fa-2x mb-2" style="opacity:0.3"></i><br><small>Tidak ada notifikasi baru.</small></div>');
+            } else {
+                var html = '';
+                recent.forEach(function(n) {
+                    var bg = n.isRead ? 'bg-light' : '';
+                    var fw = n.isRead ? 'font-weight-normal text-muted' : 'font-weight-bold text-dark';
+                    var icon = 'fa-file-signature text-maroon';
+                    if (n.status.toLowerCase().includes('tolak')) icon = 'fa-times-circle text-danger';
+                    if (n.status.toLowerCase().includes('setuju')) icon = 'fa-check-circle text-success';
+                    if (n.status.toLowerCase().includes('revisi')) icon = 'fa-exclamation-circle text-warning';
+                    
+                    html += `
+                        <a href="#" class="dropdown-item ${bg} py-2" onclick="sultan_markNotifRead(event, ${n.rowId}, this)">
+                            <div class="media align-items-center">
+                                <div class="mr-3 text-center" style="width: 30px;"><i class="fas ${icon}"></i></div>
+                                <div class="media-body">
+                                    <h3 class="dropdown-item-title ${fw} mb-1" style="font-size: 0.85rem; white-space: normal;">
+                                        ${n.namaSd} <span class="badge badge-secondary float-right ml-1" style="font-size:0.6rem">${n.status}</span>
+                                    </h3>
+                                    <p class="text-sm text-muted mb-0"><i class="far fa-clock mr-1"></i> ${n.waktu}</p>
+                                </div>
+                            </div>
+                        </a>
+                        <div class="dropdown-divider m-0"></div>
+                    `;
+                });
+                $list.html(html);
+            }
+        })
+        .getNotifikasiSK(role, unit);
+}
+
+function sultan_markNotifRead(e, rowId, el) {
+    e.preventDefault();
+    e.stopPropagation(); // Mencegah dropdown tertutup otomatis jika belum diinginkan
+    
+    // Jangan proses ulang jika sudah ditandai
+    if ($(el).hasClass('bg-light')) return;
+    
+    var user = getSesiUser();
+    if (!user) return;
+    
+    // UI Feedback Cepat
+    $(el).addClass('bg-light');
+    $(el).find('.dropdown-item-title').removeClass('font-weight-bold text-dark').addClass('font-weight-normal text-muted');
+    
+    // Kurangi hitungan lokal sementara
+    var currentCount = parseInt($('#sidebar-notif-sk').text()) || 0;
+    if (currentCount > 0) {
+        currentCount--;
+        if (currentCount > 0) {
+            $('#nav-notif-count').text(currentCount > 99 ? '99+' : currentCount);
+            $('#sidebar-notif-sk').text(currentCount);
+            $('#nav-notif-count-header').text(currentCount + ' Baru');
+        } else {
+            $('#nav-notif-count').hide();
+            $('#sidebar-notif-sk').addClass('d-none');
+            $('#nav-notif-count-header').text('0 Baru').removeClass('badge-warning text-dark').addClass('bg-white text-maroon');
+        }
+    }
+    
+    google.script.run
+        .withSuccessHandler(function(res) {
+            if (!res) sultan_fetchNotifikasi(); // Reload jika gagal update db
+        })
+        .tandaiNotifDibaca(rowId, user.role || "User");
+}
+
+/* =============================================================
+   9. SULTAN UI ENGINE (DARK MODE & UI HELPERS)
+   ============================================================= */
+
 function sultan_initDarkMode() {
     const isDark = localStorage.getItem('sultanDarkMode') === 'true';
     if (isDark) { 

@@ -143,6 +143,7 @@ function simpanPerubahanSK(form) {
     sheet.getRange(rowIdx, KOLOM.TGL_UPD).setValue("'" + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MM-yyyy HH:mm:ss"));
     sheet.getRange(rowIdx, KOLOM.USER_UPD).setValue(form.userUpdate);
     sheet.getRange(rowIdx, KOLOM.NPSN).setValue("'" + form.npsn);
+    sheet.getRange(rowIdx, 16).setValue(""); // Reset Telah Dibaca jika User Edit
 
     rekamCCTV("SUKSES", "Data baris " + rowIdx + " berhasil diupdate.");
     return { success: true, message: "Data berhasil diperbarui." };
@@ -197,6 +198,7 @@ function getDaftarSK() {
         tglUpdate: row[10], userUpdate: row[11],
         tglVerval: row[12], verifikator: row[13], keterangan: row[14],
         npsn: row[17] || "",
+        readBy: row[15] || "",
         timestamp: lastActivity
       });
     }
@@ -318,6 +320,7 @@ function verifikasiDataSK(form) {
     sheet.getRange(rowIdx, 13).setValue("'" + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MM-yyyy HH:mm:ss")); 
     sheet.getRange(rowIdx, 14).setValue(form.verifikator); 
     sheet.getRange(rowIdx, 15).setValue("'" + form.verifKeterangan);
+    sheet.getRange(rowIdx, 16).setValue(""); // Reset Telah Dibaca jika Admin Verifikasi
 
     SpreadsheetApp.flush();
     return { success: true, message: "Data diverifikasi: " + form.verifStatus };
@@ -562,4 +565,89 @@ function getDashboardSK(filterTahun, filterSemester) {
     return stats;
 
   } catch (e) { return { error: "Terjadi kesalahan statistik." }; }
+}
+
+/* ======================================================================
+   MODULE: NOTIFIKASI GLOBAL SK
+   ====================================================================== */
+function getNotifikasiSK(role, unit) {
+  try {
+    var semuaData = getDaftarSK();
+    var isAdmin = (role === "Admin");
+    var notifList = [];
+    var unreadCount = 0;
+    
+    semuaData.forEach(function(row) {
+        var status = String(row.status || "").trim();
+        var isDiproses = (status === "Diproses" || status === "");
+        var isTarget = false;
+        
+        if (isAdmin) {
+            isTarget = isDiproses;
+        } else {
+            isTarget = (String(row.namaSd).trim().toUpperCase() === String(unit).trim().toUpperCase() && !isDiproses);
+        }
+        
+        if (isTarget) {
+            var isRead = false;
+            var readByList = String(row.readBy || "").split(",");
+            if (isAdmin && readByList.indexOf("Admin") > -1) isRead = true;
+            if (!isAdmin && readByList.indexOf("User") > -1) isRead = true;
+            
+            if (!isRead) {
+                unreadCount++;
+            }
+            
+            notifList.push({
+                rowId: row.rowBaris,
+                namaSd: row.namaSd,
+                kriteria: row.kriteria,
+                status: status || "Diproses",
+                waktu: row.tglVerval && !isDiproses ? row.tglVerval : (row.tglUpdate && isDiproses ? row.tglUpdate : row.tglUnggah),
+                isRead: isRead
+            });
+        }
+    });
+    
+    // Urutkan notifikasi (belum dibaca di atas, lalu berdasarkan waktu terbaru)
+    notifList.sort(function(a, b) {
+        if (a.isRead === b.isRead) return 0;
+        return a.isRead ? 1 : -1;
+    });
+    
+    // Ambil 5 notifikasi teratas untuk ditampilkan di dropdown
+    var recentNotif = notifList.slice(0, 5);
+    
+    return {
+        count: unreadCount,
+        recent: recentNotif
+    };
+  } catch (e) {
+      return { count: 0, recent: [] };
+  }
+}
+
+function tandaiNotifDibaca(rowId, role) {
+  try {
+    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.SK_DATA);
+    var sheet = ss.getSheetByName("Unggah_SK");
+    var rIdx = parseInt(rowId);
+    if (isNaN(rIdx)) return false;
+    
+    var currentReadBy = String(sheet.getRange(rIdx, 16).getDisplayValue() || "").trim();
+    var readMark = (role === "Admin") ? "Admin" : "User";
+    
+    if (currentReadBy === "") {
+        sheet.getRange(rIdx, 16).setValue(readMark);
+    } else {
+        var list = currentReadBy.split(",");
+        if (list.indexOf(readMark) === -1) {
+            list.push(readMark);
+            sheet.getRange(rIdx, 16).setValue(list.join(","));
+        }
+    }
+    return true;
+  } catch (e) {
+    return false;
+  }
 }
