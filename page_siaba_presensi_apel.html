@@ -1,13 +1,45 @@
-<div class="content-header pb-0">
+<style>
+    /* 
+    ===================================================================
+    MAC TOUCHPAD SMOOTHNESS PATCH (ANTI-MACET)
+    ===================================================================
+    */
+    .apel-scroll-container {
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+        overscroll-behavior-x: none !important; /* MATIKAN TOTAL BOUNCE */
+        overscroll-behavior-y: auto !important;
+        contain: paint;
+        width: 100%;
+        border-radius: 8px;
+        background: #ffffff;
+        position: relative;
+    }
+
+    .dark-mode .apel-scroll-container { background: #343a40; }
+
+    .apel-sticky-col {
+        position: sticky !important;
+        left: 0 !important;
+        z-index: 10 !important;
+        background-color: #ffffff !important;
+        border-right: 2px solid rgba(0,0,0,0.05) !important;
+        box-shadow: 4px 0 8px rgba(0,0,0,0.02);
+    }
+
+    .dark-mode .apel-sticky-col {
+        background-color: #343a40 !important;
+        border-right-color: rgba(255,255,255,0.05) !important;
+    }
+</style>
+
+<div class="content-header pb-0 sultan-page-header">
   <div class="container-fluid">
-    <div class="sultan-page-header">
-        <div class="sultan-page-header">
-          <h5 class="m-0 font-weight-bold text-uppercase">
-            <i class="fas fa-flag text-sultan-utama mr-2"></i>Rekap Apel & Upacara
-        </h5>
-        <hr class="style-sultan-solid">
-        </div>
-    </div>
+      <h5 class="m-0 font-weight-bold text-uppercase">
+        <i class="fas fa-flag text-sultan-utama mr-2"></i>Rekap Apel & Upacara
+    </h5>
+    <hr class="style-sultan-solid">
   </div>
 </div>
 
@@ -151,6 +183,7 @@ var APEL_USER_AKTIF = "";
 var APEL_IS_ADMIN = false;
 var APEL_UNIT_TERKUNCI = ""; 
 var APEL_USER_NPSN = "";
+var APEL_IS_LOADING = false; // GUARD: Mencegah load ganda
 
 // =================================================================
 // 1. INITIALIZATION & SPA VACCINE
@@ -261,10 +294,13 @@ function apel_prosesCariData() {
 }
 
 function apel_tarikDataServer() {
+    if (APEL_IS_LOADING) return; // TOLAK JIKA SEDANG PROSES
+    
     var th = $('#apel_filterTahun').val(); 
     var bl = $('#apel_filterBulan').val();
     if(!th || !bl) return;
 
+    APEL_IS_LOADING = true; // KUNCI
     var btn = $('#apel_btnRefresh');
     btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin text-maroon"></i>');
     
@@ -277,6 +313,7 @@ function apel_tarikDataServer() {
 
     google.script.run
         .withSuccessHandler(function(res) {
+            APEL_IS_LOADING = false; // BUKA KUNCI
             btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
             
             var data;
@@ -320,6 +357,7 @@ function apel_tarikDataServer() {
             }
         })
         .withFailureHandler(function(err) {
+            APEL_IS_LOADING = false; // BUKA KUNCI
             btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
             $('#apel_tableState').hide();
             SultanUI.showLoading('#apel_loadingState');
@@ -434,9 +472,9 @@ function apel_renderTabel(dataRows) {
         APEL_TABEL_INSTANCE = SultanTable.init('#apel_tabelUtama', {
             "data": dtArray,
             "destroy": true, "ordering": false, "pageLength": 10, "autoWidth": false,
-            "deferRender": true, // Sangat vital untuk tabel lebar
+            "deferRender": true,
             "dom": "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
-                   "<'row'<'col-sm-12'<'table-responsive sultan-scroll'tr>>>" +
+                   "<'row'<'col-sm-12'<'apel-scroll-container sultan-scroll'tr>>>" +
                    "<'row mt-3'<'col-sm-12 col-md-5 small text-muted'i><'col-sm-12 col-md-7'p>>",
             "language": { 
                 "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json", 
@@ -444,7 +482,6 @@ function apel_renderTabel(dataRows) {
                 "emptyTable": '<div class="py-4 text-center text-muted"><i class="fas fa-clipboard-list fa-3x text-gray-300 mb-3" style="opacity: 0.6;"></i><br><h6 class="font-weight-bold text-dark mb-1">Belum Ada Presensi</h6><p class="small mb-0">Tidak ada data apel & upacara untuk filter terpilih.</p></div>' 
             },
             "columnDefs": [
-                // VAKSIN LEBAR: target 0 pakai width: auto
                 { "targets": 0, "width": "auto", "className": "col-sticky-left bg-white align-middle font-weight-bold text-dark text-left" },
                 // VAKSIN ANTI _all (BAB VII): Membuat array dinamis untuk kolom 1 sampai 37
                 { "targets": Array.from({length: 37}, function(_, i) { return i + 1; }), "className": "text-center align-middle" }
@@ -458,10 +495,7 @@ function apel_renderTabel(dataRows) {
                      var textVal = cell.textContent.trim(); 
 
                      if (visIdx === 0) {
-                         cell.style.position = 'sticky';
-                         cell.style.left = '0';
-                         cell.style.zIndex = '2';
-                         cell.classList.add('bg-white');
+                         cell.className = 'apel-sticky-col text-left px-3 align-middle font-weight-bold';
                      } else if (visIdx >= 1 && visIdx <= 3) {
                          cell.classList.add('bg-soft-success');
                      } else if (visIdx >= 4 && visIdx <= 6) {
