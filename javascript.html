@@ -573,11 +573,13 @@ function sultan_fetchNotifikasi() {
             var $bellBadge = $('#nav-notif-count');
             var $sideSK = $('#sidebar-notif-sk');
             var $sideLapbul = $('#sidebar-notif-lapbul');
+            var $sideLupa = $('#sidebar-notif-lupa');
             var $headerBadge = $('#nav-notif-count-header');
             
             var totalCount = parseInt(res.count || 0);
             var countSK = parseInt(res.countSK || 0);
             var countLapbul = parseInt(res.countLapbul || 0);
+            var countLupa = parseInt(res.countLupa || 0);
 
             // 1. Bell Badge (Navbar)
             if (totalCount > 0) {
@@ -595,6 +597,10 @@ function sultan_fetchNotifikasi() {
             // 3. Sidebar Lapbul
             if (countLapbul > 0) $sideLapbul.text(countLapbul).removeClass('d-none');
             else $sideLapbul.addClass('d-none');
+
+            // 4. Sidebar Lupa Presensi
+            if (countLupa > 0) $sideLupa.text(countLupa).removeClass('d-none');
+            else $sideLupa.addClass('d-none');
             
             // Update List
             var $list = $('#nav-notif-list');
@@ -606,9 +612,12 @@ function sultan_fetchNotifikasi() {
                     var bg = n.isRead ? 'bg-light opacity-75' : '';
                     var fw = n.isRead ? 'font-weight-normal text-muted' : 'font-weight-bold';
                     var icon = 'fa-file-signature text-maroon';
+                    if (n.source === "LUPA") icon = 'fa-fingerprint text-success';
                     if (n.status.toLowerCase().includes('tolak')) icon = 'fa-times-circle text-danger';
                     if (n.status.toLowerCase().includes('setuju')) icon = 'fa-check-circle text-success';
                     if (n.status.toLowerCase().includes('revisi')) icon = 'fa-exclamation-circle text-warning';
+                    
+                    var nTitle = n.namaSd || n.nama || "Pemberitahuan";
                     
                     html += `
                         <a href="#" class="dropdown-item ${bg} py-2" onclick="sultan_markNotifRead(event, ${n.rowId}, '${n.source}', this)">
@@ -616,7 +625,7 @@ function sultan_fetchNotifikasi() {
                                 <div class="mr-3 text-center" style="width: 25px;"><i class="fas ${icon}" style="font-size: 0.9rem;"></i></div>
                                 <div class="media-body">
                                     <h3 class="dropdown-item-title ${fw} mb-1" style="font-size: 0.8rem; white-space: normal; line-height: 1.2;">
-                                        ${n.namaSd} <span class="badge badge-secondary float-right ml-1" style="font-size:0.55rem; padding: 2px 5px;">${n.status}</span>
+                                        ${nTitle} <span class="badge badge-secondary float-right ml-1" style="font-size:0.55rem; padding: 2px 5px;">${n.status}</span>
                                     </h3>
                                     <p class="text-sm text-muted mb-0" style="font-size: 0.7rem;"><i class="far fa-clock mr-1"></i> ${n.waktu}</p>
                                 </div>
@@ -646,8 +655,10 @@ function sultan_markNotifRead(e, rowId, source, el) {
     $(el).find('.dropdown-item-title').removeClass('font-weight-bold').addClass('font-weight-normal text-muted');
     
     // Kurangi hitungan lokal sementara
-    var isSK = (source === "SK");
-    var targetBadge = isSK ? '#sidebar-notif-sk' : '#sidebar-notif-lapbul';
+    var targetBadge = '#sidebar-notif-sk';
+    if (source === "LAPBUL") targetBadge = '#sidebar-notif-lapbul';
+    if (source === "LUPA") targetBadge = '#sidebar-notif-lupa';
+
     var currentCount = parseInt($(targetBadge).text()) || 0;
     if (currentCount > 0) {
         currentCount--;
@@ -666,6 +677,8 @@ function sultan_markNotifRead(e, rowId, source, el) {
     // Backend call
     if (source === "SK") {
         google.script.run.tandaiNotifDibaca(rowId, user.role || "User"); 
+    } else if (source === "LUPA") {
+        google.script.run.tandaiNotifLupaDibaca(rowId, user.role || "User");
     } else {
         google.script.run.tandaiNotifLapbulDibaca(rowId, source, user.role || "User");
     }
@@ -680,7 +693,7 @@ function sultan_markAllNotifRead(e) {
     
     // UI Feedback Cepat
     $('#nav-notif-count').hide();
-    $('#sidebar-notif-sk, #sidebar-notif-lapbul').addClass('d-none');
+    $('#sidebar-notif-sk, #sidebar-notif-lapbul, #sidebar-notif-lupa').addClass('d-none');
     $('#nav-notif-count-header').text('0 Baru');
     
     $('#nav-notif-list .dropdown-item').addClass('bg-light opacity-75');

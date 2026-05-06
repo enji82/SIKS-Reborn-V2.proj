@@ -643,8 +643,9 @@ function getNotifikasiGlobal(role, unit) {
   try {
     var resSK = getNotifikasiSK(role, unit);
     var resLapbul = getNotifikasiLapbul(role, unit);
+    var resLupa = getNotifikasiLupa(role, unit);
     
-    var combinedRecent = resSK.recent.concat(resLapbul.recent);
+    var combinedRecent = resSK.recent.concat(resLapbul.recent).concat(resLupa.recent);
     
     // Urutkan (Paling baru dulu, prioritaskan belum dibaca)
     combinedRecent.sort(function(a, b) {
@@ -660,9 +661,10 @@ function getNotifikasiGlobal(role, unit) {
     });
     
     return {
-      count: resSK.count + resLapbul.count,
+      count: resSK.count + resLapbul.count + resLupa.count,
       countSK: resSK.count,
       countLapbul: resLapbul.count,
+      countLupa: resLupa.count,
       recent: combinedRecent.slice(0, 10) // Tampilkan 10 terbaru
     };
   } catch (e) {
@@ -674,6 +676,7 @@ function tandaiSemuaNotifGlobalDibaca(role, unit) {
   try {
     tandaiSemuaNotifDibaca(role, unit);
     tandaiSemuaNotifLapbulDibaca(role, unit);
+    tandaiSemuaNotifLupaDibaca(role, unit);
     return true;
   } catch (e) { return false; }
 }

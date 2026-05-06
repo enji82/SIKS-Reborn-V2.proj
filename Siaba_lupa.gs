@@ -78,7 +78,8 @@ function getDaftarLupaPresensi(tahun, bulan) {
         tanggal: row[3], jam: row[4], jenis: row[5], komulatif: row[6],     
         tglKirim: row[7], userInput: row[8], fileUrl: row[9], status: row[10],       
         tglEdit: row[11], userEdit: row[12], tglVerif: row[13], adminVerif: row[14], ket: row[15],
-        npsn: row[16] || "" 
+        npsn: row[16] || "",
+        readBy: row[17] || "" 
       });
     }
     return JSON.stringify(result);
@@ -145,11 +146,10 @@ function simpanLupaPresensi(dataKirim) {
 
     var timestamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MM-yyyy HH:mm:ss");
     
-    var rowData = [
       dataKirim.unit_kerja, dataKirim.nama_asn, dataKirim.nip_asn,
       "'" + tglSimpan, "'" + jamSimpan, dataKirim.jenis, "'" + dataKirim.komulatif,
       timestamp, dataKirim.user_login, fileUrl, "Diproses", "", "", "", "", "",
-      dataKirim.npsn 
+      dataKirim.npsn, "" // Kolom 18: readBy (Index 17)
     ];
     sheet.appendRow(rowData);
     return "Sukses Data Berhasil Disimpan";
@@ -284,6 +284,130 @@ function verifikasiLupaPresensi(form) {
   } catch (e) {
     return (e.message.includes("lock")) ? "Sistem sibuk, coba lagi." : "Gagal Verifikasi: " + e.message;
   } finally { lock.releaseLock(); }
+}
+
+/* ======================================================================
+   SULTAN NOTIFIKASI ENGINE (LUPA PRESENSI)
+   ====================================================================== */
+function getNotifikasiLupa(role, unit) {
+  try {
+    var raw = getDaftarLupaPresensi();
+    var semuaData = JSON.parse(raw);
+    var rLower = String(role || "").toLowerCase();
+    var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
+    var notifList = [];
+    var unreadCount = 0;
+    
+    semuaData.forEach(function(row) {
+        var status = String(row.status || "").trim();
+        var isDiproses = (status === "Diproses" || status === "");
+        var isTarget = false;
+        
+        if (isAdmin) {
+            isTarget = isDiproses;
+        } else {
+            // User mendapat notifikasi jika status sudah berubah (Sudah di-verval)
+            isTarget = (String(row.unit).trim().toUpperCase() === String(unit).trim().toUpperCase() && !isDiproses);
+        }
+        
+        if (isTarget) {
+            var isRead = false;
+            var readByList = String(row.readBy || "").split(",");
+            if (isAdmin && readByList.indexOf("Admin") > -1) isRead = true;
+            if (!isAdmin && readByList.indexOf("User") > -1) isRead = true;
+            
+            if (!isRead) {
+                unreadCount++;
+            }
+            
+            notifList.push({
+                rowId: row.rowBaris,
+                source: "LUPA",
+                nama: row.nama,
+                unit: row.unit,
+                status: status || "Diproses",
+                waktu: row.tglVerif && !isDiproses ? row.tglVerif : (row.tglEdit && isDiproses ? row.tglEdit : row.tglKirim),
+                isRead: isRead
+            });
+        }
+    });
+    
+    // Urutkan (Paling baru dulu, prioritaskan belum dibaca)
+    notifList.sort(function(a, b) {
+        if (a.isRead !== b.isRead) return a.isRead ? 1 : -1;
+        var parseDate = function(str) {
+            if (!str || str === "-") return new Date(0);
+            var p = str.split(" ");
+            var d = p[0].split("-");
+            var t = p[1] ? p[1].split(":") : [0,0,0];
+            return new Date(d[2], d[1]-1, d[0], t[0], t[1], t[2]);
+        };
+        return parseDate(b.waktu) - parseDate(a.waktu);
+    });
+    
+    return {
+        count: unreadCount,
+        recent: notifList.slice(0, 5)
+    };
+  } catch (e) {
+    return { count: 0, recent: [] };
+  }
+}
+
+function tandaiNotifLupaDibaca(rowId, role) {
+  try {
+    var ss = SpreadsheetApp.openById(KONFIG_LUPA.DB_ID);
+    var sheet = ss.getSheetByName(KONFIG_LUPA.SHEET_NAMA);
+    var rIdx = parseInt(rowId);
+    if (isNaN(rIdx)) return false;
+    
+    var currentReadBy = String(sheet.getRange(rIdx, 18).getDisplayValue() || "").trim();
+    var readMark = (role === "Admin") ? "Admin" : "User";
+    
+    if (currentReadBy === "") {
+        sheet.getRange(rIdx, 18).setValue(readMark);
+    } else {
+        var list = currentReadBy.split(",");
+        if (list.indexOf(readMark) === -1) {
+            list.push(readMark);
+            sheet.getRange(rIdx, 18).setValue(list.join(","));
+        }
+    }
+    return true;
+  } catch (e) { return false; }
+}
+
+function tandaiSemuaNotifLupaDibaca(role, unit) {
+  try {
+    var ss = SpreadsheetApp.openById(KONFIG_LUPA.DB_ID);
+    var sheet = ss.getSheetByName(KONFIG_LUPA.SHEET_NAMA);
+    var data = sheet.getDataRange().getDisplayValues();
+    
+    var rLower = String(role || "").toLowerCase();
+    var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
+    var readMark = isAdmin ? "Admin" : "User";
+    
+    for (var i = 1; i < data.length; i++) {
+        var row = data[i];
+        var status = String(row[10] || "").trim();
+        var isDiproses = (status === "Diproses" || status === "");
+        var unitRow = String(row[0] || "").trim().toUpperCase();
+        var isTarget = false;
+        
+        if (isAdmin) {
+            isTarget = isDiproses;
+        } else {
+            isTarget = (unitRow === String(unit).trim().toUpperCase() && !isDiproses);
+        }
+        
+        var currentReadBy = String(row[17] || "").trim();
+        if (isTarget && currentReadBy.indexOf(readMark) === -1) {
+            var newVal = currentReadBy === "" ? readMark : currentReadBy + "," + readMark;
+            sheet.getRange(i + 1, 18).setValue(newVal);
+        }
+    }
+    return true;
+  } catch (e) { return false; }
 }
 
 /* ======================================================================
