@@ -422,20 +422,23 @@
      * Membantu membersihkan notifikasi secara lokal dan server
      */
     function salah_tandaiDibaca(rowId) {
-        var user = (typeof getSesiUser === 'function') ? getSesiUser() : {};
-        if (!user) return;
-        
-        // 1. Bersihkan di Bell Dropdown
-        var $notifItem = $('#nav-notif-list a[onclick*="\'SALAH\'"]').filter(function() {
-            return $(this).attr('onclick').includes(rowId + ',');
-        });
-        
-        if ($notifItem.length > 0 && !$notifItem.hasClass('bg-light')) {
-            $notifItem.trigger('click');
-        }
-        
-        // 2. Jika tidak ketemu di bell (mungkin sudah tertutup), paksa backend
-        google.script.run.tandaiNotifSalahDibaca(rowId, user.role || "User");
+        try {
+            var user = (typeof getSesiUser === 'function') ? getSesiUser() : {};
+            if (!user) return;
+            
+            // 1. Bersihkan di Bell Dropdown secara aman
+            $('#nav-notif-list a').each(function() {
+                var oc = $(this).attr('onclick') || "";
+                if (oc.indexOf("'SALAH'") > -1 && oc.indexOf("'" + rowId + "'") > -1) {
+                    if (!$(this).hasClass('bg-light')) {
+                        $(this).trigger('click');
+                    }
+                }
+            });
+            
+            // 2. Paksa backend secara async agar tidak menghambat UI
+            google.script.run.tandaiNotifSalahDibaca(rowId, user.role || "User");
+        } catch (e) { console.error("Salah Notif Error:", e); }
     }
 
     // =================================================================
@@ -536,44 +539,41 @@
         }
 
         google.script.run
-            .withSuccessHandler(function (jsonString) {
+            .withSuccessHandler(function (res) {
                 btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
-                try {
-                    var responseData = JSON.parse(jsonString);
-                    if (responseData && responseData.error) {
-                        SultanUI.showLoading('#salah_loadingState', '<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>' + salah_escapeHtml(responseData.error) + '</span>');
-                        return;
-                    }
+                var hasil = [];
+                try { hasil = JSON.parse(res); } catch (e) { console.error("Parse Error:", res); }
 
-                    SALAH_CACHE_DATA = responseData;
-                    SALAH_CACHE_THN = th;
-                    SALAH_CACHE_BLN = bl;
+                if (hasil && hasil.error) {
+                    SultanUI.showLoading('#salah_loadingState', '<span class="text-danger">' + salah_escapeHtml(hasil.error) + '</span>');
+                    return;
+                }
 
-                    if (!$.fn.DataTable.isDataTable('#salah_tabelUtama')) {
-                        SALAH_TABEL_INSTANCE = SultanTable.init('#salah_tabelUtama', {
-                            "destroy": true, "ordering": false, "pageLength": 10, "autoWidth": false,
-                            "deferRender": true,
-                            "columnDefs": [
-                                { "targets": 0, "width": "1%", "className": "text-center align-middle text-nowrap salah-sticky-col" },
-                                { "targets": 1, "className": "text-left align-middle" },
-                                { "targets": [2, 3, 4], "width": "1%", "className": "text-center align-middle text-nowrap" },
-                                { "targets": 5, "width": "8%", "className": "text-center align-middle text-nowrap" },
-                                { "targets": [6, 7, 8], "width": "15%", "className": "text-left align-middle" }
-                            ],
-                            "language": { "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json", "emptyTable": "Tidak ada riwayat Salah Presensi." }
-                        });
-                    }
+                SALAH_CACHE_DATA = Array.isArray(hasil) ? hasil : [];
+                SALAH_CACHE_THN = th;
+                SALAH_CACHE_BLN = bl;
 
-                    salah_terapkanFilterLokal();
+                if (!$.fn.DataTable.isDataTable('#salah_tabelUtama')) {
+                    SALAH_TABEL_INSTANCE = SultanTable.init('#salah_tabelUtama', {
+                        "destroy": true, "ordering": false, "pageLength": 10, "autoWidth": false,
+                        "deferRender": true,
+                        "columnDefs": [
+                            { "targets": 0, "width": "1%", "className": "text-center align-middle text-nowrap salah-sticky-col" },
+                            { "targets": 1, "className": "text-left align-middle" },
+                            { "targets": [2, 3, 4], "width": "1%", "className": "text-center align-middle text-nowrap" },
+                            { "targets": 5, "width": "8%", "className": "text-center align-middle text-nowrap" },
+                            { "targets": [6, 7, 8], "width": "15%", "className": "text-left align-middle" }
+                        ],
+                        "language": { "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json", "emptyTable": "Tidak ada riwayat Salah Presensi." }
+                    });
+                }
 
-                    SultanUI.hideLoading('#salah_loadingState');
-                    $('#salah_tableState').show();
-                    if (SALAH_TABEL_INSTANCE) {
-                        setTimeout(function () { SALAH_TABEL_INSTANCE.columns.adjust(); }, 100);
-                    }
+                salah_terapkanFilterLokal();
 
-                } catch (e) {
-                    SultanUI.showLoading('#salah_loadingState', '<span class="text-danger">Gagal memproses struktur data.</span>');
+                SultanUI.hideLoading('#salah_loadingState');
+                $('#salah_tableState').show();
+                if (SALAH_TABEL_INSTANCE) {
+                    setTimeout(function () { SALAH_TABEL_INSTANCE.columns.adjust(); }, 100);
                 }
             })
             .withFailureHandler(function (err) {
@@ -718,13 +718,18 @@
         $('#salah_judulModalForm').html('<i class="fas fa-edit mr-2"></i> EDIT DATA SALAH PRESENSI');
         $('#salah_btnSimpanForm').removeClass('sultan-btn-aksi-utama').addClass('sultan-btn-aksi-edit').html('<i class="fas fa-save mr-1"></i> PERBARUI DATA');
 
-        $('#salah_inputUnit').val(row.unit).prop('disabled', true);
-
         setTimeout(() => {
-            var tNama = String(row.nama).trim(); var tNip = String(row.nip).trim();
-            $('#salah_inputNama').empty().append('<option value="' + salah_escapeHtml(tNama) + '">' + salah_escapeHtml(tNama) + '</option>').prop('disabled', true);
-            $('#salah_inputNip').empty().append('<option value="' + salah_escapeHtml(tNip) + '">' + salah_escapeHtml(tNip) + '</option>').prop('disabled', true);
-        }, 200);
+            var valUnit = String(row.unit || "").trim();
+            var $selUnit = $('#salah_inputUnit');
+            
+            if ($selUnit.find('option[value="' + valUnit + '"]').length === 0) {
+                $selUnit.append('<option value="' + salah_escapeHtml(valUnit) + '">' + salah_escapeHtml(valUnit) + '</option>');
+            }
+            $selUnit.val(valUnit).prop('disabled', true);
+
+            $('#salah_inputNama').empty().append('<option value="' + salah_escapeHtml(row.nama) + '">' + salah_escapeHtml(row.nama) + '</option>').prop('disabled', true);
+            $('#salah_inputNip').empty().append('<option value="' + salah_escapeHtml(row.nip) + '">' + salah_escapeHtml(row.nip) + '</option>').prop('disabled', true);
+        }, 150);
 
         // VAKSIN FORMAT TANGGAL
         var rawTgl = row.tanggal ? row.tanggal.replace(/'/g, "") : "";

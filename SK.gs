@@ -617,9 +617,12 @@ function getNotifikasiSK(role, unit) {
         var parseDate = function(str) {
             if (!str || str === "-") return new Date(0);
             var p = str.split(" ");
-            var d = p[0].split("/");
+            var d = p[0].split(/[/-]/);
             var t = p[1] ? p[1].split(":") : [0,0,0];
-            return new Date(d[2], d[1]-1, d[0], t[0], t[1], t[2]);
+            var y = (d[2].length === 4) ? d[2] : d[0];
+            var m = d[1];
+            var dy = (d[2].length === 4) ? d[0] : d[2];
+            return new Date(y, m-1, dy, t[0], t[1], t[2]);
         };
         return parseDate(b.waktu) - parseDate(a.waktu);
     });
@@ -646,7 +649,12 @@ function getNotifikasiGlobal(role, unit) {
     var resLupa = getNotifikasiLupa(role, unit);
     var resSalah = getNotifikasiSalah(role, unit);
     
-    var combinedRecent = resSK.recent.concat(resLapbul.recent).concat(resLupa.recent).concat(resSalah.recent);
+    var listSK = (resSK && Array.isArray(resSK.recent)) ? resSK.recent : [];
+    var listLapbul = (resLapbul && Array.isArray(resLapbul.recent)) ? resLapbul.recent : [];
+    var listLupa = (resLupa && Array.isArray(resLupa.recent)) ? resLupa.recent : [];
+    var listSalah = (resSalah && Array.isArray(resSalah.recent)) ? resSalah.recent : [];
+    
+    var combinedRecent = listSK.concat(listLapbul).concat(listLupa).concat(listSalah);
     
     // Urutkan (Paling baru dulu, prioritaskan belum dibaca)
     combinedRecent.sort(function(a, b) {
@@ -654,9 +662,12 @@ function getNotifikasiGlobal(role, unit) {
       var parseDate = function(str) {
           if (!str || str === "-") return new Date(0);
           var p = str.split(" ");
-          var d = p[0].split("/");
+          var d = p[0].split(/[/-]/);
           var t = p[1] ? p[1].split(":") : [0,0,0];
-          return new Date(d[2], d[1]-1, d[0], t[0], t[1], t[2]);
+          var y = (d[2].length === 4) ? d[2] : d[0];
+          var m = d[1];
+          var dy = (d[2].length === 4) ? d[0] : d[2];
+          return new Date(y, m-1, dy, t[0], t[1], t[2]);
       };
       return parseDate(b.waktu) - parseDate(a.waktu);
     });

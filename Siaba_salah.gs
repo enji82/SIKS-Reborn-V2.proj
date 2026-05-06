@@ -171,7 +171,7 @@ function updateSalahAbsen(form) {
     sheet.getRange(barisKetemu, 11).setValue("'" + tglEdit);       
     sheet.getRange(barisKetemu, 12).setValue(form.user_login); 
     sheet.getRange(barisKetemu, 15).setValue(form.npsn); 
-    sheet.getRange(barisKetemu, 16).setValue(""); // Reset notif
+    sheet.getRange(barisKetemu, 16).setValue(""); // Reset notif saat update
 
     return "Sukses Data Berhasil Diupdate";
   } catch (e) {
@@ -237,6 +237,8 @@ function getNotifikasiSalah(role, unit) {
     var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
     var notifList = [];
     var unreadCount = 0;
+    
+    if (!Array.isArray(semuaData)) return { count: 0, recent: [] };
     
     semuaData.forEach(function(row) {
         var status = String(row.status || "").trim();
