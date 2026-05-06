@@ -2,12 +2,9 @@
    FILE MASTER HELPER (Fungsi Global yang dipakai semua halaman)
    ====================================================================== */
 
-function getDatabasePegawai() {
-  // Menggunakan ID dari SPREADSHEET_IDS jika tersedia (Pusat Data)
-  var ID_DB = (typeof SPREADSHEET_IDS !== 'undefined' && SPREADSHEET_IDS.SIABA_PNS_DB) 
-              ? SPREADSHEET_IDS.SIABA_PNS_DB 
-              : "1wiDKez4rL5UYnpP2-OZjYowvmt1nRx-fIMy9trJlhBA"; 
-  var SHEET_NAME = "Database";
+function getDatabasePegawai(targetId, targetSheet) {
+  var ID_DB = targetId || "1wiDKez4rL5UYnpP2-OZjYowvmt1nRx-fIMy9trJlhBA"; 
+  var SHEET_NAME = targetSheet || "Database";
 
   try {
     var ss = SpreadsheetApp.openById(ID_DB);
