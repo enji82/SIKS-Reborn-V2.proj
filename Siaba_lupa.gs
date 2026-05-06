@@ -30,22 +30,8 @@ function getUnitKerjaByNPSN(npsn) {
   }
 }
 
-function getDatabasePegawai() {
-  try {
-    const ss = SpreadsheetApp.openById(KONFIG_LUPA.DB_ID);
-    const sheet = ss.getSheetByName("Database_ASN");
-    if (!sheet) return [];
+// (Fungsi getDatabasePegawai dihapus karena sudah ada di Siaba_helper.gs)
 
-    const data = sheet.getDataRange().getDisplayValues();
-    let result = [];
-    for (let i = 1; i < data.length; i++) {
-      result.push({ unit: data[i][0], nip: data[i][1], nama: data[i][2], npsn: data[i][3] });
-    }
-    return result;
-  } catch (e) {
-    return [];
-  }
-}
 
 /* ======================================================================
    FUNGSI BACA DATA (GET)

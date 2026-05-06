@@ -27,7 +27,8 @@ function getDatabasePegawai() {
       result.push({
         unit: String(row[0]).trim(), // Kolom A: Unit Kerja
         nip:  String(row[1]).trim(), // Kolom B: NIP
-        nama: String(row[2]).trim()  // Kolom C: Nama ASN
+        nama: String(row[2]).trim(), // Kolom C: Nama ASN
+        npsn: String(row[3] || "").trim() // Kolom D: NPSN
       });
     }
     
