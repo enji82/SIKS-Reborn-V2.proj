@@ -1,13 +1,52 @@
+<style>
+    /* 
+    ===================================================================
+    MAC TOUCHPAD SMOOTHNESS PATCH (ANTI-MACET)
+    ===================================================================
+    */
+    .lup-scroll-container {
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+        overscroll-behavior-x: none !important;
+        overscroll-behavior-y: auto !important;
+        contain: paint;
+        width: 100%;
+        background: transparent !important;
+        position: relative;
+    }
+
+    .lup-sticky-col {
+        position: sticky !important;
+        left: 0 !important;
+        z-index: 10 !important;
+        background-color: #fff4d4 !important; /* Krem Emas sesuai Header */
+        color: var(--warna-maroon) !important;
+        border-right: 2px solid rgba(0,0,0,0.05) !important;
+        box-shadow: 4px 0 8px rgba(0,0,0,0.02);
+        padding-top: 10px !important;
+        padding-bottom: 10px !important;
+        vertical-align: middle !important;
+    }
+
+    .dark-mode .lup-sticky-col {
+        background-color: var(--dm-bg-card) !important;
+        color: var(--warna-emas-soft) !important;
+        border-right-color: rgba(255,255,255,0.05) !important;
+    }
+
+    /* Sinkronisasi Font Size Tabel */
+    #lupa_tabelUtama tbody td {
+        font-size: 13px !important;
+    }
+</style>
+
 <div class="content-header pb-0 sultan-page-header">
     <div class="container-fluid">
-        <div class="row">
-            <div class="col-sm-12">
-                <h5 class="font-weight-bold text-uppercase">
-                    <i class="fas fa-question-circle text-maroon mr-2"></i>Data Lupa Presensi
-                </h5>
-                <hr class="style-sultan-solid">
-            </div>
-        </div>
+        <h5 class="font-weight-bold text-uppercase">
+            <i class="fas fa-question-circle text-maroon mr-2"></i>Data Lupa Presensi
+        </h5>
+        <hr class="style-sultan-solid">
     </div>
 </div>
 
@@ -113,6 +152,7 @@
                                 class="table table-premium table-sultan-compact mb-0 w-100 text-nowrap">
                                 <thead class="thead-sultan-premium">
                                     <tr>
+                                        <th class="lup-sticky-col text-center align-middle" style="width: 1%;">AKSI</th>
                                         <th class="text-left align-middle">NAMA ASN</th>
                                         <th class="text-center align-middle">TANGGAL</th>
                                         <th class="text-center align-middle">JAM</th>
@@ -123,7 +163,6 @@
                                         <th class="text-left align-middle">DIKIRIM</th>
                                         <th class="text-left align-middle">DIUBAH</th>
                                         <th class="text-left align-middle">VERIFIKASI</th>
-                                        <th class="text-center align-middle">AKSI</th>
                                     </tr>
                                 </thead>
                                 <tbody></tbody>
@@ -451,6 +490,7 @@
     var LUPA_IS_ADMIN = false;
     var LUPA_UNIT_TERKUNCI = "";
     var LUPA_USER_NPSN = "";
+    var LUPA_IS_LOADING = false; // GUARD: Mencegah load ganda
 
     $(document).ready(function () {
         // Reset SPA State
@@ -591,10 +631,13 @@
     }
 
     function lupa_tarikDataServer() {
+        if (LUPA_IS_LOADING) return;
+
         var th = $('#lupa_filterTahun').val();
         var bl = $('#lupa_filterBulan').val();
         if (!th) return;
 
+        LUPA_IS_LOADING = true;
         var btn = $('#lupa_btnRefresh');
         btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin text-maroon"></i>');
 
@@ -617,6 +660,7 @@
                     LUPA_CACHE_THN = th;
                     LUPA_CACHE_BLN = bl;
 
+                    LUPA_IS_LOADING = false;
                     lupa_terapkanFilterLokal();
 
                 } catch (e) {
@@ -624,6 +668,7 @@
                 }
             })
             .withFailureHandler(function (err) {
+                LUPA_IS_LOADING = false;
                 btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
                 SultanUI.showLoading('#lupa_loadingState', '<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Server Terputus.</span>');
             }).getDaftarLupaPresensi(th, bl);
@@ -717,20 +762,28 @@
             var metaEdit = `<div class="sultan-table-secondary"><span class="font-weight-bold text-dark">${row.tglEdit || '-'}</span><span>${lupa_cleanText(row.userEdit)}</span></div>`;
             var metaVerif = `<div class="sultan-table-secondary"><span class="font-weight-bold text-dark">${row.tglVerif || '-'}</span><span>${lupa_cleanText(row.adminVerif)}</span></div>`;
 
-            dtArray.push([uiNama, uiTgl, lupa_escapeHtml((row.jam || "").substring(0, 5)), badgeJenis, (row.komulatif || '-'), btnFile, badgeStatus, metaKirim, metaEdit, metaVerif, aksiHTML]);
+            dtArray.push([aksiHTML, uiNama, uiTgl, lupa_escapeHtml((row.jam || "").substring(0, 5)), badgeJenis, (row.komulatif || '-'), btnFile, badgeStatus, metaKirim, metaEdit, metaVerif]);
         });
 
         if (isFirstLoad) {
             LUPA_TABEL_INSTANCE = SultanTable.init('#lupa_tabelUtama', {
                 "data": dtArray,
-                "destroy": true, "ordering": false, "pageLength": 10, "autoWidth": true,
+                "destroy": true, "ordering": false, "pageLength": 10, "autoWidth": false,
                 "deferRender": true,
+                "dom": "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
+                       "<'row'<'col-sm-12'<'lup-scroll-container sultan-scroll'tr>>>" +
+                       "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
                 "columnDefs": [
-                    { "targets": 0, "className": "text-left align-middle" }, // NAMA ASN
-                    { "targets": [1, 2, 3, 4, 5, 6, 10], "className": "text-center align-middle text-nowrap" }, // TGL, JAM, JENIS, KUM, LIHAT, STATUS, AKSI
-                    { "targets": [7, 8, 9], "className": "text-left align-middle" } // KIRIM, UBAH, VERIF
+                    { "targets": 0, "className": "lup-sticky-col text-center align-middle" }, // AKSI
+                    { "targets": 1, "className": "text-left align-middle" }, // NAMA ASN
+                    { "targets": [2, 3, 4, 5, 6, 7], "className": "text-center align-middle text-nowrap" }, // TGL, JAM, JENIS, KUM, LIHAT, STATUS
+                    { "targets": [8, 9, 10], "className": "text-left align-middle" } // KIRIM, UBAH, VERIF
                 ],
-                "language": { "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json", "emptyTable": "Tidak ada riwayat Lupa Presensi." }
+                "language": { "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json", "emptyTable": "Tidak ada riwayat Lupa Presensi." },
+                "createdRow": function(row, data, dataIndex) {
+                     var tds = row.children;
+                     if (tds[0]) tds[0].className = 'lup-sticky-col text-center align-middle';
+                }
             });
 
             SultanUI.hideLoading('#lupa_loadingState');
