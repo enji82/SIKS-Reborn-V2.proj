@@ -659,8 +659,8 @@ function getNotifikasiLapbul(role, unit) {
           readBy: headers.indexOf("dibaca oleh") > -1 ? headers.indexOf("dibaca oleh") : headers.indexOf("read by")
         };
 
-        // Jika kolom readBy tidak ada, jangan hitung unread (atau asumsikan read)
-        if (idx.readBy === -1) return;
+        // Kolom readBy bersifat opsional (jika belum dibuat, asumsikan belum dibaca)
+        var readByMissing = (idx.readBy === -1);
 
         var data = sheet.getRange(2, 1, lastRow - 1, lastCol).getDisplayValues();
         
@@ -678,12 +678,13 @@ function getNotifikasiLapbul(role, unit) {
           }
 
           if (isTarget) {
-            var readBy = String(row[idx.readBy] || "").trim();
-            var readByList = readBy === "" ? [] : readBy.split(",");
             var isRead = false;
-            
-            if (isAdmin && readByList.indexOf("Admin") > -1) isRead = true;
-            if (!isAdmin && readByList.indexOf("User") > -1) isRead = true;
+            if (!readByMissing) {
+                var readBy = String(row[idx.readBy] || "").trim();
+                var readByList = readBy === "" ? [] : readBy.split(",");
+                if (isAdmin && readByList.indexOf("Admin") > -1) isRead = true;
+                if (!isAdmin && readByList.indexOf("User") > -1) isRead = true;
+            }
 
             if (!isRead) unreadCount++;
 
@@ -706,8 +707,14 @@ function getNotifikasiLapbul(role, unit) {
 
     // Urutkan (Paling baru dulu)
     notifList.sort(function(a, b) {
-       // Kita asumsikan format dd/mm/yyyy hh:mm:ss, tapi untuk notif sortir sederhana saja
-       return 0; 
+        var parseDate = function(str) {
+            if (!str || str === "-") return new Date(0);
+            var p = str.split(" ");
+            var d = p[0].split("/");
+            var t = p[1] ? p[1].split(":") : [0,0,0];
+            return new Date(d[2], d[1]-1, d[0], t[0], t[1], t[2]);
+        };
+        return parseDate(b.waktu) - parseDate(a.waktu);
     });
 
     return {

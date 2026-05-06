@@ -611,10 +611,17 @@ function getNotifikasiSK(role, unit) {
         }
     });
     
-    // Urutkan notifikasi (belum dibaca di atas, lalu berdasarkan waktu terbaru)
+    // Urutkan (Paling baru dulu, prioritaskan belum dibaca)
     notifList.sort(function(a, b) {
-        if (a.isRead === b.isRead) return 0;
-        return a.isRead ? 1 : -1;
+        if (a.isRead !== b.isRead) return a.isRead ? 1 : -1;
+        var parseDate = function(str) {
+            if (!str || str === "-") return new Date(0);
+            var p = str.split(" ");
+            var d = p[0].split("/");
+            var t = p[1] ? p[1].split(":") : [0,0,0];
+            return new Date(d[2], d[1]-1, d[0], t[0], t[1], t[2]);
+        };
+        return parseDate(b.waktu) - parseDate(a.waktu);
     });
     
     // Ambil 5 notifikasi teratas untuk ditampilkan di dropdown
@@ -639,10 +646,17 @@ function getNotifikasiGlobal(role, unit) {
     
     var combinedRecent = resSK.recent.concat(resLapbul.recent);
     
-    // Urutkan (Belum dibaca di atas, lalu berdasarkan waktu terbaru jika bisa)
+    // Urutkan (Paling baru dulu, prioritaskan belum dibaca)
     combinedRecent.sort(function(a, b) {
-      if (a.isRead === b.isRead) return 0;
-      return a.isRead ? 1 : -1;
+      if (a.isRead !== b.isRead) return a.isRead ? 1 : -1;
+      var parseDate = function(str) {
+          if (!str || str === "-") return new Date(0);
+          var p = str.split(" ");
+          var d = p[0].split("/");
+          var t = p[1] ? p[1].split(":") : [0,0,0];
+          return new Date(d[2], d[1]-1, d[0], t[0], t[1], t[2]);
+      };
+      return parseDate(b.waktu) - parseDate(a.waktu);
     });
     
     return {
