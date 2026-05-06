@@ -3,8 +3,10 @@
    ====================================================================== */
 
 function getDatabasePegawai() {
-  // ID Spreadsheet Database Master Pegawai Boss
-  var ID_DB = "160IjN8aiDAgDYXjgDLStS4nCZLKn3Ny-dq3BOFAfDrU"; 
+  // Menggunakan ID dari SPREADSHEET_IDS jika tersedia (Pusat Data)
+  var ID_DB = (typeof SPREADSHEET_IDS !== 'undefined' && SPREADSHEET_IDS.SIABA_PNS_DB) 
+              ? SPREADSHEET_IDS.SIABA_PNS_DB 
+              : "1wiDKez4rL5UYnpP2-OZjYowvmt1nRx-fIMy9trJlhBA"; 
   var SHEET_NAME = "Database";
 
   try {
