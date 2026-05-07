@@ -156,7 +156,17 @@ function inisialisasiAplikasi() {
         return;
       }
       $('#gerbang-login').hide(); $('#konten-aplikasi').fadeIn('fast');
-      updateUI(user); tampilkanMenuAdmin(user); loadContent('home'); 
+
+      // Render sidebar dari MENU_CONFIG (SSOT)
+      renderSidebar();
+
+      updateUI(user); 
+      tampilkanMenuAdmin(user); 
+      
+      // Filter sidebar sesuai hak akses user
+      filterSidebarByAkses(user.aksesMenu || []);
+
+      loadContent('home'); 
       if (preloader.length) preloader.fadeOut('fast');
 
       var isInvalidName = !user.nama_lengkap || user.nama_lengkap === "User Web" || user.nama_lengkap === user.username;
@@ -336,16 +346,242 @@ function updateUI(u) {
 
 function tampilkanMenuAdmin(user) {
   if (!user) return;
-  var daftarMenuAdmin = ["menuTrashSK", "menu-setting-admin", "menu-monitoring-admin"];
-  var isAdmin = checkUserRoleIsAdmin(); 
+  var isAdmin = checkUserRoleIsAdmin();
+  // Tampilkan/sembunyikan menu khusus admin dari MENU_CONFIG
+  MENU_CONFIG.forEach(function(item) {
+    if (!item.adminOnly) return;
+    var el = $('[data-page="' + item.id + '"]').closest('.nav-item');
+    if (isAdmin) { el.removeClass('d-none').show(); }
+    else { el.addClass('d-none').hide(); }
+  });
+  // Legacy: ID-based admin menu
+  var daftarMenuAdmin = ["menuTrashSK", "menu-monitoring-admin"];
   daftarMenuAdmin.forEach(function(id) {
     var el = document.getElementById(id);
     if (el) {
-      if (isAdmin) { el.classList.remove("d-none"); el.style.display = "block"; } 
+      if (isAdmin) { el.classList.remove("d-none"); el.style.display = ""; }
       else { el.classList.add("d-none"); }
     }
   });
 }
+
+/* =============================================================
+   MENU_CONFIG — SINGLE SOURCE OF TRUTH
+   Semua perubahan menu cukup dilakukan di sini.
+   Sidebar dan panel Pengaturan keduanya dibaca dari config ini.
+   ============================================================= */
+var MENU_CONFIG = [
+  {
+    id: "home",
+    label: "Beranda",
+    icon: "fas fa-home text-maroon",
+    alwaysVisible: true
+  },
+  {
+    label: "SK Pembagian Tugas",
+    icon: "fas fa-file-signature text-maroon",
+    children: [
+      { id: "sk_dashboard", label: "Dashboard", icon: "far fa-circle" },
+      { id: "sk_data",      label: "Kelola Data", icon: "far fa-circle", badge: "sidebar-notif-sk" },
+      { id: "sk_status",   label: "Status Data",  icon: "far fa-circle" }
+    ]
+  },
+  {
+    label: "Laporan Bulanan",
+    icon: "fas fa-file-invoice text-maroon",
+    children: [
+      { id: "lapbul_dashboard", label: "Dashboard",     icon: "far fa-circle" },
+      { id: "lapbul_kelola",    label: "Kelola Data",   icon: "fas fa-calendar-alt text-maroon", badge: "sidebar-notif-lapbul" },
+      { id: "lapbul_status",    label: "Status Data",   icon: "far fa-circle" },
+      { id: "lapbul_format",    label: "Format Laporan",icon: "fas fa-file-excel" }
+    ]
+  },
+  {
+    label: "SIABA",
+    icon: "fas fa-fingerprint text-maroon",
+    children: [
+      { id: "siaba_dashboard", label: "Dashboard", icon: "far fa-circle" },
+      {
+        label: "Presensi",
+        icon: "far fa-circle",
+        children: [
+          { id: "siaba_presensi_harian",    label: "Harian",              icon: "far fa-dot-circle" },
+          { id: "siaba_presensi_apel",      label: "Apel dan Upacara",    icon: "far fa-dot-circle" },
+          { id: "siaba_presensi_tidak",     label: "Tidak Presensi",      icon: "far fa-dot-circle" },
+          { id: "siaba_presensi_terlambat", label: "Terlambat",           icon: "far fa-dot-circle" },
+          { id: "siaba_presensi_pulang",    label: "Pulang Awal",         icon: "far fa-dot-circle" },
+          { id: "siaba_presensi_unduh",     label: "Unduh Rekap Bulanan", icon: "far fa-dot-circle" },
+          { id: "siaba_presensi_arsip",     label: "Arsip Siaba",         icon: "far fa-dot-circle" }
+        ]
+      },
+      { id: "siaba_presensi_lupa",    label: "Lupa Presensi",    icon: "far fa-circle", badge: "sidebar-notif-lupa" },
+      { id: "siaba_presensi_salah",   label: "Salah Presensi",   icon: "far fa-circle", badge: "sidebar-notif-salah" },
+      { id: "siaba_perjalanan_dinas", label: "Perjalanan Dinas", icon: "far fa-circle" },
+      {
+        label: "Cuti",
+        icon: "far fa-circle",
+        children: [
+          { id: "siaba_cuti_data",      label: "Pengajuan",          icon: "far fa-dot-circle" },
+          { id: "siaba_cuti_sisa",      label: "Sisa Cuti Tahunan",  icon: "far fa-dot-circle" },
+          { id: "siaba_cuti_rekap",     label: "Rekapitulasi",       icon: "far fa-dot-circle" },
+          { id: "siaba_cuti_unggah",    label: "Unggah Surat Cuti",  icon: "far fa-dot-circle" },
+          { id: "siaba_cuti_informasi", label: "Informasi",          icon: "far fa-dot-circle" }
+        ]
+      },
+      { id: "siaba_format_panduan", label: "Format dan Panduan", icon: "far fa-circle" }
+    ]
+  },
+  {
+    id: "tata_naskah_dinas",
+    label: "Tata Naskah Dinas",
+    icon: "fas fa-file-signature text-maroon"
+  },
+  {
+    label: "Data PTK",
+    icon: "fas fa-users text-maroon",
+    children: [
+      { id: "ptk_dashboard", label: "Dashboard", icon: "far fa-circle" },
+      {
+        label: "PAUD",
+        icon: "fas fa-child",
+        children: [
+          { id: "ptk_kelola_paud",  label: "Daftar Nama", icon: "far fa-circle" },
+          { id: "ptk_keadaan_paud", label: "Keadaan",     icon: "far fa-circle" }
+        ]
+      },
+      {
+        label: "SD Negeri",
+        icon: "fas fa-school",
+        children: [
+          { id: "ptk_kelola_sdn",    label: "Daftar Nama",   icon: "far fa-circle" },
+          { id: "ptk_keadaan_sdn",   label: "Keadaan",       icon: "far fa-circle" },
+          { id: "ptk_kebutuhan_sdn", label: "Kebutuhan Guru",icon: "far fa-circle" }
+        ]
+      },
+      {
+        label: "SD Swasta",
+        icon: "fas fa-school",
+        children: [
+          { id: "ptk_kelola_sds",    label: "Daftar Nama",   icon: "far fa-circle" },
+          { id: "ptk_keadaan_sds",   label: "Keadaan",       icon: "far fa-circle" },
+          { id: "ptk_kebutuhan_sds", label: "Kebutuhan Guru",icon: "far fa-circle" }
+        ]
+      }
+    ]
+  },
+  {
+    label: "Data Murid",
+    icon: "fas fa-user-graduate text-maroon",
+    children: [
+      { id: "murid_dashboard", label: "Dashboard", icon: "far fa-circle" },
+      {
+        label: "PAUD",
+        icon: "fas fa-child",
+        children: [
+          { id: "murid_paud_rombel",        label: "Menurut Rombel",  icon: "far fa-circle" },
+          { id: "murid_paud_jenis_kelamin", label: "Menurut Gender",  icon: "far fa-circle" }
+        ]
+      },
+      {
+        label: "SD",
+        icon: "fas fa-school",
+        children: [
+          { id: "murid_sd_kelas",  label: "Menurut Kelas",  icon: "far fa-circle" },
+          { id: "murid_sd_rombel", label: "Menurut Rombel", icon: "far fa-circle" },
+          { id: "murid_sd_agama",  label: "Menurut Agama",  icon: "far fa-circle" }
+        ]
+      }
+    ]
+  },
+  {
+    label: "E-File Pegawai",
+    icon: "fas fa-folder-open text-maroon",
+    children: [
+      { id: "efile_dashboard", label: "Dashboard",   icon: "fas fa-tachometer-alt" },
+      { id: "efile_kelola",    label: "Kelola Data", icon: "fas fa-upload" },
+      { id: "efile_viewer",    label: "Lihat Berkas",icon: "fas fa-search" }
+    ]
+  },
+  // --- Khusus Admin: tidak masuk ke checklist hak akses user ---
+  { id: "page_setting",    label: "Pengaturan",          icon: "fas fa-cogs text-warning",  adminOnly: true },
+  { id: "page_monitoring", label: "Monitoring Aktivitas", icon: "fas fa-chart-pie text-info", adminOnly: true }
+];
+
+/* =============================================================
+   RENDER SIDEBAR DARI MENU_CONFIG
+   ============================================================= */
+function renderSidebar() {
+  function buildItem(item, level) {
+    var iconClass = item.icon || (level === 0 ? "fas fa-circle text-maroon" : level === 1 ? "far fa-circle" : "far fa-dot-circle");
+    var badgeHtml = item.badge
+      ? '<span id="' + item.badge + '" class="badge shadow-sm d-none" style="position:absolute;top:6px;right:15px;font-size:0.65rem;font-weight:bold;background-color:#ffc107!important;color:#dc3545!important;border-radius:4px;padding:2px 5px;min-width:18px;text-align:center;">0</span>'
+      : '';
+
+    if (item.children && item.children.length) {
+      var childrenHtml = item.children.map(function(c) { return buildItem(c, level + 1); }).join('');
+      return '<li class="nav-item">' +
+        '<a href="#" class="nav-link">' +
+          '<i class="nav-icon ' + iconClass + '"></i>' +
+          '<p>' + item.label + '<i class="right fas fa-angle-left"></i></p>' +
+        '</a>' +
+        '<ul class="nav nav-treeview">' + childrenHtml + '</ul>' +
+      '</li>';
+    } else if (item.id) {
+      var liId = item.adminOnly ? ' id="menu-' + item.id.replace('page_', '') + '-admin"' : '';
+      return '<li class="nav-item position-relative"' + liId + '>' +
+        '<a href="#" class="nav-link" data-page="' + item.id + '">' +
+          '<i class="nav-icon ' + iconClass + '"></i>' +
+          '<p>' + item.label + '</p>' +
+          badgeHtml +
+        '</a>' +
+      '</li>';
+    }
+    return '';
+  }
+
+  var html = MENU_CONFIG.map(function(item) { return buildItem(item, 0); }).join('');
+  var $nav = $('#sidebar-container nav ul');
+  if ($nav.length) {
+    $nav.html(html);
+  }
+}
+
+/* =============================================================
+   FILTER SIDEBAR BERDASARKAN HAK AKSES USER
+   ============================================================= */
+function filterSidebarByAkses(aksesMenu) {
+  var isAdmin = checkUserRoleIsAdmin();
+  if (isAdmin) return; // Admin melihat semua menu
+
+  var whitelist = aksesMenu || [];
+
+  // Sembunyikan semua nav-link yang punya data-page (kecuali alwaysVisible)
+  $('.nav-sidebar [data-page]').each(function() {
+    var page = $(this).data('page');
+    // Cek apakah item ini alwaysVisible dari MENU_CONFIG
+    var isAlways = false;
+    MENU_CONFIG.forEach(function(m) { if (m.id === page && m.alwaysVisible) isAlways = true; });
+
+    if (!isAlways && whitelist.indexOf(page) === -1) {
+      $(this).closest('.nav-item').hide();
+    }
+  });
+
+  // Sembunyikan menu induk (yang tidak punya data-page) jika semua anaknya tersembunyi
+  cleanupEmptyParents();
+}
+
+function cleanupEmptyParents() {
+  // Dari level terdalam ke paling atas
+  $('.nav-sidebar .nav-treeview').each(function() {
+    var $treeview = $(this);
+    var visibleItems = $treeview.children('.nav-item:visible').length;
+    if (visibleItems === 0) {
+      $treeview.closest('.nav-item').hide();
+    }
+  });
+}
+
 
 // VAKSIN ROUTING: Penambahan Dictionary E-File di baris ini
 var MENU_MAPPING = {

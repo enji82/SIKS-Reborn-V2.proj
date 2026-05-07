@@ -166,12 +166,13 @@ function processLogin(formObj) {
 
         var userObj = {
           username: row[0],
-          nama_lengkap: realName, // KUNCI UTAMA
-          nama: realName,         // KUNCI CADANGAN (Legacy Support)
-          role: row[3],     
-          photo: row[4] || "", 
-          unit: row[5] || "",     // Sesuaikan dengan kolom Unit Anda
-          isLoggedIn: true
+          nama_lengkap: realName,
+          nama: realName,
+          role: row[3],
+          photo: row[4] || "",
+          unit: row[5] || "",
+          isLoggedIn: true,
+          aksesMenu: getAksesMenuUser(row[0]) // Sertakan whitelist hak akses
         };
         
         return { 
@@ -190,13 +191,179 @@ function processLogin(formObj) {
 
 
 function processLogout() {
-  // Tidak ada yang perlu dihapus di server
   return { status: 'success' };
 }
 
+// ==========================================
+// 4. MANAJEMEN USER & HAK AKSES
+// ==========================================
+
+function initSheetHakAkses() {
+  try {
+    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.DATABASE_USER);
+    var sheet = ss.getSheetByName("Hak_Akses");
+    if (!sheet) {
+      sheet = ss.insertSheet("Hak_Akses");
+      sheet.getRange(1, 1, 1, 3).setValues([["Username", "Menu_Diizinkan", "Diperbarui"]]);
+      sheet.getRange(1, 1, 1, 3).setFontWeight("bold");
+    }
+    return true;
+  } catch (e) { return false; }
+}
+
+function getAksesMenuUser(username) {
+  try {
+    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.DATABASE_USER);
+    var sheet = ss.getSheetByName("Hak_Akses");
+    if (!sheet) return []; // Sheet belum ada = akses kosong
+    var data = sheet.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === String(username).trim()) {
+        var raw = String(data[i][1] || "").trim();
+        return raw ? JSON.parse(raw) : [];
+      }
+    }
+    return []; // User belum diatur = hanya home yang tampil
+  } catch (e) { return []; }
+}
+
+function getDaftarUser() {
+  try {
+    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.DATABASE_USER);
+    var sheet = ss.getSheetByName(SPREADSHEET_IDS.SHEET_USER_NAME);
+    if (!sheet) return JSON.stringify([]);
+    var data = sheet.getDataRange().getValues();
+    var result = [];
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      if (!row[0] || String(row[0]).trim() === "") continue;
+      result.push({
+        username: String(row[0]).trim(),
+        nama: String(row[2] || row[0]).trim(),
+        role: String(row[3] || "user").trim(),
+        unit: String(row[5] || "").trim()
+      });
+    }
+    return JSON.stringify(result);
+  } catch (e) { return JSON.stringify({ error: e.message }); }
+}
+
+function getDetailUser(username) {
+  try {
+    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.DATABASE_USER);
+    var sheetUser = ss.getSheetByName(SPREADSHEET_IDS.SHEET_USER_NAME);
+    var data = sheetUser.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === String(username).trim()) {
+        return JSON.stringify({
+          username: String(data[i][0]).trim(),
+          password: String(data[i][1] || "").trim(),
+          nama: String(data[i][2] || "").trim(),
+          role: String(data[i][3] || "user").trim(),
+          photo: String(data[i][4] || "").trim(),
+          unit: String(data[i][5] || "").trim(),
+          aksesMenu: getAksesMenuUser(username)
+        });
+      }
+    }
+    return JSON.stringify({ error: "User tidak ditemukan." });
+  } catch (e) { return JSON.stringify({ error: e.message }); }
+}
+
+function simpanUser(payload) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.DATABASE_USER);
+    var sheetUser = ss.getSheetByName(SPREADSHEET_IDS.SHEET_USER_NAME);
+    var data = sheetUser.getDataRange().getValues();
+    var username = String(payload.username || "").trim();
+    if (!username) return JSON.stringify({ error: "Username tidak boleh kosong." });
+
+    var existingRow = -1;
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === username) { existingRow = i + 1; break; }
+    }
+
+    var rowData = [
+      username,
+      String(payload.password || "").trim(),
+      String(payload.nama || username).trim(),
+      String(payload.role || "user").trim(),
+      String(payload.photo || "").trim(),
+      String(payload.unit || "").trim()
+    ];
+
+    if (existingRow > 0) {
+      sheetUser.getRange(existingRow, 1, 1, 6).setValues([rowData]);
+    } else {
+      sheetUser.appendRow(rowData);
+    }
+
+    // Simpan hak akses jika disertakan
+    if (payload.aksesMenu !== undefined) {
+      simpanAksesMenuUser(username, payload.aksesMenu);
+    }
+
+    SpreadsheetApp.flush();
+    return JSON.stringify({ status: "Sukses" });
+  } catch (e) {
+    return JSON.stringify({ error: e.message });
+  } finally { lock.releaseLock(); }
+}
+
+function simpanAksesMenuUser(username, arrayMenu) {
+  try {
+    initSheetHakAkses();
+    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.DATABASE_USER);
+    var sheet = ss.getSheetByName("Hak_Akses");
+    var data = sheet.getDataRange().getValues();
+    var now = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MM-yyyy HH:mm");
+    var jsonMenu = JSON.stringify(arrayMenu || []);
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === String(username).trim()) {
+        sheet.getRange(i + 1, 2, 1, 2).setValues([[jsonMenu, now]]);
+        return;
+      }
+    }
+    sheet.appendRow([username, jsonMenu, now]);
+  } catch (e) { Logger.log("simpanAksesMenuUser error: " + e.message); }
+}
+
+function hapusUser(username) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    if (!username || String(username).trim() === "") return JSON.stringify({ error: "Username kosong." });
+    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.DATABASE_USER);
+    
+    // Hapus dari Data User
+    var sheetUser = ss.getSheetByName(SPREADSHEET_IDS.SHEET_USER_NAME);
+    var data = sheetUser.getDataRange().getValues();
+    for (var i = data.length - 1; i >= 1; i--) {
+      if (String(data[i][0]).trim() === String(username).trim()) {
+        sheetUser.deleteRow(i + 1); break;
+      }
+    }
+    // Hapus dari Hak_Akses
+    var sheetAkses = ss.getSheetByName("Hak_Akses");
+    if (sheetAkses) {
+      var dataAkses = sheetAkses.getDataRange().getValues();
+      for (var j = dataAkses.length - 1; j >= 1; j--) {
+        if (String(dataAkses[j][0]).trim() === String(username).trim()) {
+          sheetAkses.deleteRow(j + 1); break;
+        }
+      }
+    }
+    SpreadsheetApp.flush();
+    return JSON.stringify({ status: "Sukses" });
+  } catch (e) {
+    return JSON.stringify({ error: e.message });
+  } finally { lock.releaseLock(); }
+}
 
 // ==========================================
-// 4. VISITOR COUNTER & SETTING
+// 5. VISITOR COUNTER & SETTING
 // ==========================================
 function getVisitorStats() {
   var props = PropertiesService.getScriptProperties();
