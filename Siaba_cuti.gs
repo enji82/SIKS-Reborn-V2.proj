@@ -738,10 +738,10 @@ function getNotifikasiSuratCuti(role, unit) {
 
     for (var i = 1; i < data.length; i++) {
         var row = data[i];
-        var tglRaw = String(row[13] || "").trim();
+        var tglRaw = String(row[4] || "").trim(); // Tgl Mulai di Indeks 4
         if (tglRaw === "") continue;
 
-        // Deteksi Tahun yang lebih robust (bisa 4 Mei 2026 atau 2026-05-04)
+        // Deteksi Tahun yang lebih robust
         var rowYear = "";
         if (tglRaw.includes(" ")) rowYear = tglRaw.split(" ").pop(); // 4 Mei 2026
         else if (tglRaw.includes("-")) rowYear = tglRaw.split("-")[0]; // 2026-05-04
@@ -749,11 +749,11 @@ function getNotifikasiSuratCuti(role, unit) {
 
         if (rowYear !== currentYear) continue;
 
-        var statusUtama = String(row[15] || "").trim(); // Status Pengajuan Cuti
+        var statusUtama = String(row[10] || "").trim(); // Status Pengajuan Cuti di Indeks 10
         var statusUnggah = String(row[42] || "").trim(); 
         
-        // HANYA HITUNG JIKA PENGAJUAN SUDAH DISETUJUI (Baru bisa unggah)
-        if (statusUtama !== "Disetujui") continue;
+        // HANYA HITUNG JIKA PENGAJUAN SUDAH DISETUJUI
+        if (statusUtama.toLowerCase() !== "disetujui") continue;
 
         var isDiproses = (statusUnggah === "Diproses");
         var isTarget = false;
