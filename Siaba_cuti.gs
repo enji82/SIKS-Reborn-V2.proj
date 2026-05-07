@@ -737,16 +737,40 @@ function getNotifikasiSuratCuti(role, unit) {
     for (var i = 1; i < data.length; i++) {
         var row = data[i];
         var statusUnggah = String(row[42] || "").trim(); 
-        if (statusUnggah === "") continue; 
-        
         var isDiproses = (statusUnggah === "Diproses");
-        var isTarget = isAdmin ? isDiproses : (String(row[1]).trim().toUpperCase() === String(unit).trim().toUpperCase() && !isDiproses);
+        var isTarget = false;
+
+        if (isAdmin) {
+            // ADMIN: Hanya notif yang berstatus 'Diproses'
+            isTarget = isDiproses;
+        } else {
+            // USER: Hanya notif yang butuh aksi (Belum Unggah, Ditolak, Revisi)
+            // Diproses & Disetujui TIDAK muncul di notifikasi User
+            var isUserUnit = (String(row[1]).trim().toUpperCase() === String(unit).trim().toUpperCase());
+            var butuhAksi = (statusUnggah === "" || statusUnggah === "Ditolak" || statusUnggah === "Revisi");
+            isTarget = (isUserUnit && butuhAksi);
+        }
         
         if (isTarget) {
+            var labelStatus = (statusUnggah === "") ? "Belum Unggah" : statusUnggah;
             var readByList = String(row[50] || "").split(","); 
             var isRead = (isAdmin && readByList.indexOf("Admin") > -1) || (!isAdmin && readByList.indexOf("User") > -1);
             if (!isRead) unreadCount++;
-            notifList.push({ rowId: i + 1, source: "SuratCuti", nama: row[1], jenis: row[3], status: statusUnggah, waktu: row[47] && !isDiproses ? row[47] : (row[45] && isDiproses ? row[45] : row[43]), isRead: isRead });
+
+            // Penentuan Waktu Notifikasi
+            var waktuNotif = row[47]; // Tgl Verif
+            if (isDiproses) waktuNotif = row[45]; // Tgl Unggah
+            if (labelStatus === "Belum Unggah") waktuNotif = row[13] || row[15]; // Tgl Pengajuan Cuti
+
+            notifList.push({ 
+                rowId: i + 1, 
+                source: "SuratCuti", 
+                nama: row[1], 
+                jenis: row[3], 
+                status: labelStatus, 
+                waktu: waktuNotif || "-", 
+                isRead: isRead 
+            });
         }
     }
     notifList.sort(function(a, b) { if (a.isRead !== b.isRead) return a.isRead ? 1 : -1; return parseTime(b.waktu) - parseTime(a.waktu); });
