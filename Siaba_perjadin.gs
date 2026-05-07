@@ -327,3 +327,118 @@ function parseTime(val) {
   
   return new Date(parseInt(year), parseInt(month)-1, parseInt(day), parseInt(tP[0]||0), parseInt(tP[1]||0), parseInt(tP[2]||0)).getTime(); 
 }
+
+
+/* ----------------------------------------------------------------------
+   6. NOTIFIKASI PERJADIN (BAB VIII COMPLIANT)
+   ---------------------------------------------------------------------- */
+function getNotifikasiPerdin(role, unit) {
+  try {
+    var ss = SpreadsheetApp.openById(ID_SS_DINAS);
+    var sheet = ss.getSheetByName("Perjalanan_Dinas");
+    if (!sheet) return { count: 0, recent: [] };
+
+    var data = sheet.getDataRange().getDisplayValues();
+    var rLower = String(role || "").toLowerCase();
+    var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
+    var notifList = [];
+    var unreadCount = 0;
+
+    for (var i = 1; i < data.length; i++) {
+        var row = data[i];
+        var status = String(row[9] || "").trim();
+        var isDiproses = (status === "Diproses" || status === "");
+        var isTarget = false;
+        
+        // Admin melihat yang "Diproses", User melihat yang sudah direspon (selain Diproses)
+        if (isAdmin) {
+            isTarget = isDiproses;
+        } else {
+            // Untuk Perjadin, pengecekan user berdasarkan Nama yang menginput atau peserta?
+            // Biasanya berdasarkan user yang menginput (kolom 13 / Index 12)
+            isTarget = (String(row[12]).trim().toUpperCase() === String(unit).trim().toUpperCase() && !isDiproses);
+        }
+        
+        if (isTarget) {
+            var isRead = false;
+            var readByList = String(row[18] || "").split(","); // Kolom S (Index 18)
+            if (isAdmin && readByList.indexOf("Admin") > -1) isRead = true;
+            if (!isAdmin && readByList.indexOf("User") > -1) isRead = true;
+            
+            if (!isRead) {
+                unreadCount++;
+            }
+            
+            notifList.push({
+                rowId: i + 1,
+                source: "Perjadin",
+                nomor: row[1],
+                tujuan: row[5],
+                status: status || "Diproses",
+                waktu: row[15] && !isDiproses ? row[15] : (row[13] && isDiproses ? row[13] : row[11]),
+                isRead: isRead
+            });
+        }
+    }
+
+    notifList.sort(function(a, b) {
+        if (a.isRead !== b.isRead) return a.isRead ? 1 : -1;
+        return parseTime(b.waktu) - parseTime(a.waktu);
+    });
+
+    return {
+        count: unreadCount,
+        recent: notifList.slice(0, 5)
+    };
+  } catch (e) {
+    return { count: 0, recent: [] };
+  }
+}
+
+function tandaiNotifPerdinDibaca(rowId, role) {
+  try {
+    var ss = SpreadsheetApp.openById(ID_SS_DINAS);
+    var sheet = ss.getSheetByName("Perjalanan_Dinas");
+    var rIdx = parseInt(rowId);
+    if (isNaN(rIdx)) return false;
+    
+    var currentReadBy = String(sheet.getRange(rIdx, 19).getDisplayValue() || "").trim(); // Kolom S
+    var readMark = (role === "Admin") ? "Admin" : "User";
+    
+    if (currentReadBy === "") {
+        sheet.getRange(rIdx, 19).setValue(readMark);
+    } else {
+        var list = currentReadBy.split(",");
+        if (list.indexOf(readMark) === -1) {
+            list.push(readMark);
+            sheet.getRange(rIdx, 19).setValue(list.join(","));
+        }
+    }
+    return true;
+  } catch (e) { return false; }
+}
+
+function tandaiSemuaNotifPerdinDibaca(role, unit) {
+  try {
+    var ss = SpreadsheetApp.openById(ID_SS_DINAS);
+    var sheet = ss.getSheetByName("Perjalanan_Dinas");
+    var data = sheet.getDataRange().getDisplayValues();
+    var rLower = String(role || "").toLowerCase();
+    var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
+    var readMark = isAdmin ? "Admin" : "User";
+    
+    for (var i = 1; i < data.length; i++) {
+        var row = data[i];
+        var status = String(row[9] || "").trim();
+        var isDiproses = (status === "Diproses" || status === "");
+        var isTarget = isAdmin ? isDiproses : (String(row[12]).trim().toUpperCase() === String(unit).trim().toUpperCase() && !isDiproses);
+        
+        var currentReadBy = String(row[18] || "").trim();
+        if (isTarget && currentReadBy.indexOf(readMark) === -1) {
+            var newVal = currentReadBy === "" ? readMark : currentReadBy + "," + readMark;
+            sheet.getRange(i + 1, 19).setValue(newVal);
+        }
+    }
+    return true;
+  } catch (e) { return false; }
+}
