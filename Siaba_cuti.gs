@@ -734,14 +734,20 @@ function getNotifikasiSuratCuti(role, unit) {
     var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
     var notifList = []; var unreadCount = 0;
 
-    var currentYear = new Date().getFullYear();
+    var currentYear = new Date().getFullYear().toString();
 
     for (var i = 1; i < data.length; i++) {
         var row = data[i];
-        
-        // FILTER TAHUN: Hanya data tahun berjalan yang masuk notifikasi
-        var rowYear = String(row[13] || "").split(" ").pop(); // Ambil tahun dari Tgl Mulai
-        if (rowYear != currentYear) continue;
+        var tglRaw = String(row[13] || "").trim();
+        if (tglRaw === "") continue;
+
+        // Deteksi Tahun yang lebih robust (bisa 4 Mei 2026 atau 2026-05-04)
+        var rowYear = "";
+        if (tglRaw.includes(" ")) rowYear = tglRaw.split(" ").pop(); // 4 Mei 2026
+        else if (tglRaw.includes("-")) rowYear = tglRaw.split("-")[0]; // 2026-05-04
+        else if (tglRaw.includes("/")) rowYear = tglRaw.split("/").pop(); // 04/05/2026
+
+        if (rowYear !== currentYear) continue;
 
         var statusUtama = String(row[15] || "").trim(); // Status Pengajuan Cuti
         var statusUnggah = String(row[42] || "").trim(); 
