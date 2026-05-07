@@ -255,16 +255,8 @@ function getNotifikasiSalah(role, unit) {
         }
         
         if (isTarget) {
-            var readBy = String(row.readBy || "").trim();
-            var readByList = readBy === "" ? [] : readBy.split(",");
+            unreadCount++; // PAKSA INCREMENT UNTUK TEST
             var isRead = false;
-            
-            if (isAdmin && readByList.indexOf("Admin") > -1) isRead = true;
-            if (!isAdmin && readByList.indexOf("User") > -1) isRead = true;
-            
-            if (!isRead) {
-                unreadCount++;
-            }
             
             notifList.push({
                 rowId: row.rowBaris,
