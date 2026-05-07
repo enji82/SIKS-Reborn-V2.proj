@@ -26,8 +26,17 @@
   .notif-sultan-sub { color: #6c757d !important; }
   .dark-mode .notif-sultan-sub { color: #adb5bd !important; }
 
-  /* Item Background */
-  .dropdown-header.notif-sultan-group { background: rgba(128,0,0,0.05) !important; }
+  /* Item Background & Collapsible */
+  .dropdown-header.notif-sultan-group { 
+    background: rgba(128,0,0,0.05) !important; 
+    cursor: pointer; 
+    transition: background 0.2s;
+  }
+  .dropdown-header.notif-sultan-group:hover { background: rgba(128,0,0,0.1) !important; }
+  
+  .notif-group-content { display: none; overflow: hidden; }
+  .notif-chevron { transition: transform 0.3s; }
+  .notif-chevron.rotate { transform: rotate(180deg); }
 </style>
 
 <script>
@@ -897,10 +906,15 @@ function sultan_fetchNotifikasi() {
         for (var mKey in res.modules) {
             var mData = res.modules[mKey];
             if (mData.count > 0 || (mData.recent && mData.recent.length > 0)) {
-                html += `<div class="dropdown-header notif-sultan-group d-flex justify-content-between align-items-center py-2 px-3 border-bottom">
-                            <span class="notif-sultan-header font-weight-bold" style="font-size: 13px !important; letter-spacing: 0.5px;">${labels[mKey].toUpperCase()}</span>
+                // Header Kelompok (Clickable)
+                html += `<div class="dropdown-header notif-sultan-group d-flex justify-content-between align-items-center py-2 px-3 border-bottom" onclick="sultan_toggleNotifGroup(this)">
+                            <div>
+                                <i class="fas fa-chevron-down notif-chevron mr-2" style="font-size: 10px; opacity: 0.5;"></i>
+                                <span class="notif-sultan-header font-weight-bold" style="font-size: 13px !important; letter-spacing: 0.5px;">${labels[mKey].toUpperCase()}</span>
+                            </div>
                             <span class="badge badge-pill badge-secondary" style="font-size: 10px; opacity: 0.8;">${mData.count}</span>
-                         </div>`;
+                         </div>
+                         <div class="notif-group-content">`; // Mulai pembungkus isi
                 
                 mData.recent.forEach(function(notif) {
                     var content = notif.nama || notif.namaSd || notif.nomor || 'Pemberitahuan';
@@ -929,6 +943,8 @@ function sultan_fetchNotifikasi() {
                         </div>
                     </a>`;
                 });
+                
+                html += `</div>`; // Tutup pembungkus isi
             }
         }
         $list.append(html);
@@ -987,6 +1003,23 @@ function sultan_applyNotifColors() {
     document.querySelectorAll('.notif-sultan-footer').forEach(function(el) {
         el.style.setProperty('color', headerColor, 'important');
     });
+}
+
+// Fungsi Toggle Accordion Notifikasi
+function sultan_toggleNotifGroup(header) {
+    var $content = $(header).next('.notif-group-content');
+    var $chevron = $(header).find('.notif-chevron');
+    
+    // Tutup kelompok lain (Optional, agar lebih rapi)
+    $('.notif-group-content').not($content).slideUp(200);
+    $('.notif-chevron').not($chevron).removeClass('rotate');
+    
+    // Toggle kelompok ini
+    $content.slideToggle(250);
+    $chevron.toggleClass('rotate');
+    
+    // Stop propagation agar dropdown tidak tertutup
+    event.stopPropagation();
 }
 
 // Jalankan paksa beberapa kali untuk melawan script tema lain
