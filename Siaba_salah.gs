@@ -242,7 +242,8 @@ function getNotifikasiSalah(role, unit) {
     
     semuaData.forEach(function(row) {
         var status = String(row.status || "").trim();
-        var isDiproses = (status === "Diproses" || status === "");
+        var sLower = status.toLowerCase();
+        var isDiproses = (sLower === "diproses" || sLower === "");
         var isTarget = false;
         
         if (isAdmin) {
@@ -278,7 +279,8 @@ function getNotifikasiSalah(role, unit) {
         var parseDate = function(str) {
             if (!str || str === "-") return new Date(0);
             var p = str.split(" ");
-            var d = p[0].split("-");
+            var sep = p[0].includes("/") ? "/" : "-";
+            var d = p[0].split(sep);
             var t = p[1] ? p[1].split(":") : [0,0,0];
             return new Date(d[2], d[1]-1, d[0], t[0], t[1], t[2]);
         };
