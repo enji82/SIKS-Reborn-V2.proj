@@ -1,3 +1,21 @@
+<style>
+  /* CSS LOKAL KHUSUS NOTIFIKASI - Agar adaptif Terang/Gelap tanpa JS */
+  #nav-notif-count-header span { color: #800000; } /* Default Terang */
+  .dark-mode #nav-notif-count-header span { color: #ffcccc !important; } /* Mode Gelap */
+
+  .notif-sultan-header { color: #800000; }
+  .dark-mode .notif-sultan-header { color: #ff9999 !important; }
+
+  .notif-sultan-name { color: #1a1c1e; }
+  .dark-mode .notif-sultan-name { color: #ffffff !important; }
+
+  .notif-sultan-sub { color: #6c757d; }
+  .dark-mode .notif-sultan-sub { color: #adb5bd !important; }
+
+  .notif-sultan-item:hover { background-color: rgba(128,0,0,0.05) !important; }
+  .dark-mode .notif-sultan-item:hover { background-color: rgba(255,255,255,0.1) !important; }
+</style>
+
 <script>
 /* =============================================================
    1. GLOBAL HELPER: NOTIFIKASI SULTAN (THEME FIX)
@@ -821,12 +839,10 @@ function sultan_fetchNotifikasi() {
         var totalCount = parseInt(res.count || 0);
         if (totalCount > 0) {
             $('#nav-notif-count').text(totalCount).show();
-            // Gunakan warna Merah Maroon tegas agar terlihat di mode terang (atas latar putih) 
-            // dan tetap terbaca di mode gelap (atas navbar maroon)
-            $('#nav-notif-count-header').html('<span style="color: #800000; font-weight: 800; font-size: 13px;">' + totalCount + ' Baru</span>');
+            $('#nav-notif-count-header').html('<span class="font-weight-bold" style="font-size: 13px;">' + totalCount + ' Baru</span>');
         } else {
             $('#nav-notif-count').hide();
-            $('#nav-notif-count-header').html('<span style="color: #666; font-size: 13px;">0 Baru</span>');
+            $('#nav-notif-count-header').html('<span style="font-size: 13px; opacity: 0.6;">0 Baru</span>');
         }
 
         // 2. Update Sidebar Badges
@@ -859,47 +875,35 @@ function sultan_fetchNotifikasi() {
             surat_cuti: 'Surat Cuti', efile: 'E-File'
         };
 
-        // Deteksi Mode Terang/Gelap
-        var isDarkMode = $('body').hasClass('dark-mode');
-
         for (var mKey in res.modules) {
             var mData = res.modules[mKey];
             if (mData.count > 0 || (mData.recent && mData.recent.length > 0)) {
-                // Header Kategori (Warna Maroon tegas di terang, Maroon terang di gelap)
-                var headerColor = isDarkMode ? '#ff9999' : '#800000';
-                
                 html += `<div class="dropdown-header d-flex justify-content-between align-items-center py-2 px-3 border-bottom" style="background: rgba(128,0,0,0.05);">
-                            <span class="font-weight-bold" style="font-size: 13px !important; color: ${headerColor} !important; letter-spacing: 0.5px;">${labels[mKey].toUpperCase()}</span>
+                            <span class="notif-sultan-header font-weight-bold" style="font-size: 13px !important; letter-spacing: 0.5px;">${labels[mKey].toUpperCase()}</span>
                             <span class="badge badge-pill badge-secondary" style="font-size: 10px; opacity: 0.8;">${mData.count}</span>
                          </div>`;
                 
                 mData.recent.forEach(function(notif) {
-                    var isUnread = !notif.isRead;
                     var content = notif.nama || notif.namaSd || notif.nomor || 'Pemberitahuan';
                     var sub = notif.kriteria || notif.tujuan || notif.berkas || notif.jenis || '';
-                    
                     var tglRaw = notif.waktu || notif.tglVerif || notif.tglInput || notif.tglUnggah || "";
                     var tglDisplay = tglRaw ? String(tglRaw).split(' ')[0].replace(/'/g, "") : "-";
 
-                    // Warna ASN: Hitam pekat di mode terang, Putih bersih di mode gelap
-                    var nameColor = isDarkMode ? '#ffffff' : '#1a1c1e';
-                    var subColor = isDarkMode ? '#adb5bd' : '#6c757d';
-
                     var statusStyle = '';
-                    if (notif.status === 'Diproses') statusStyle = 'color: #f6c23e !important;'; // Kuning Gold
-                    else if (notif.status.toLowerCase().includes('setuju') || notif.status.toLowerCase().includes('ok')) statusStyle = 'color: #28a745 !important;'; // Hijau
-                    else if (notif.status.toLowerCase().includes('tolak')) statusStyle = 'color: #dc3545 !important;'; // Merah
+                    if (notif.status === 'Diproses') statusStyle = 'color: #f6c23e !important;'; 
+                    else if (notif.status.toLowerCase().includes('setuju') || notif.status.toLowerCase().includes('ok')) statusStyle = 'color: #28a745 !important;'; 
+                    else if (notif.status.toLowerCase().includes('tolak')) statusStyle = 'color: #dc3545 !important;'; 
 
                     html += `
-                    <a href="#" class="dropdown-item py-2 border-bottom" onclick="sultan_handleNotifClick('${notif.rowId}', '${notif.source}', this)" style="background: transparent !important;">
+                    <a href="#" class="dropdown-item notif-sultan-item py-2 border-bottom" onclick="sultan_handleNotifClick('${notif.rowId}', '${notif.source}', this)" style="background: transparent !important;">
                         <div class="media align-items-center">
                             <div class="media-body">
                                 <div class="d-flex justify-content-between align-items-center mb-0">
-                                    <h3 class="font-weight-bold" style="font-size: 12px !important; margin: 0 !important; color: ${nameColor} !important;">${content}</h3>
-                                    <span style="font-size: 10px !important; color: ${subColor} !important;"><i class="far fa-clock mr-1"></i>${tglDisplay}</span>
+                                    <h3 class="notif-sultan-name font-weight-bold" style="font-size: 12px !important; margin: 0 !important;">${content}</h3>
+                                    <span class="notif-sultan-sub" style="font-size: 10px !important;"><i class="far fa-clock mr-1"></i>${tglDisplay}</span>
                                 </div>
                                 <div class="d-flex align-items-center justify-content-between">
-                                    <span style="font-size: 10px !important; color: ${subColor} !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px;">${sub}</span>
+                                    <span class="notif-sultan-sub" style="font-size: 10px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px;">${sub}</span>
                                     <span class="font-weight-bold" style="font-size: 10px !important; letter-spacing: 0.5px !important; ${statusStyle}">${notif.status.toUpperCase()}</span>
                                 </div>
                             </div>
