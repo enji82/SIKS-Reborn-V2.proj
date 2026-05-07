@@ -509,17 +509,23 @@ var MENU_CONFIG = [
 
 /* =============================================================
    RENDER SIDEBAR DARI MENU_CONFIG
+   Setiap item mendapat data-menu-id agar bisa ditarget saat filter
    ============================================================= */
 function renderSidebar() {
+  var _counter = 0;
   function buildItem(item, level) {
-    var iconClass = item.icon || (level === 0 ? "fas fa-circle text-maroon" : level === 1 ? "far fa-circle" : "far fa-dot-circle");
+    var iconClass = item.icon || (level === 0 ? 'fas fa-circle text-maroon' : level === 1 ? 'far fa-circle' : 'far fa-dot-circle');
     var badgeHtml = item.badge
       ? '<span id="' + item.badge + '" class="badge shadow-sm d-none" style="position:absolute;top:6px;right:15px;font-size:0.65rem;font-weight:bold;background-color:#ffc107!important;color:#dc3545!important;border-radius:4px;padding:2px 5px;min-width:18px;text-align:center;">0</span>'
       : '';
 
     if (item.children && item.children.length) {
+      _counter++;
+      var menuId = 'mgrp_' + _counter;
+      // Simpan menu-id ke item config agar bisa direferensi saat filter
+      item._menuId = menuId;
       var childrenHtml = item.children.map(function(c) { return buildItem(c, level + 1); }).join('');
-      return '<li class="nav-item">' +
+      return '<li class="nav-item" data-menu-id="' + menuId + '">' +
         '<a href="#" class="nav-link">' +
           '<i class="nav-icon ' + iconClass + '"></i>' +
           '<p>' + item.label + '<i class="right fas fa-angle-left"></i></p>' +
@@ -528,7 +534,7 @@ function renderSidebar() {
       '</li>';
     } else if (item.id) {
       var liId = item.adminOnly ? ' id="menu-' + item.id.replace('page_', '') + '-admin"' : '';
-      return '<li class="nav-item position-relative"' + liId + '>' +
+      return '<li class="nav-item position-relative"' + liId + ' data-menu-id="' + item.id + '">' +
         '<a href="#" class="nav-link" data-page="' + item.id + '">' +
           '<i class="nav-icon ' + iconClass + '"></i>' +
           '<p>' + item.label + '</p>' +
@@ -541,46 +547,55 @@ function renderSidebar() {
 
   var html = MENU_CONFIG.map(function(item) { return buildItem(item, 0); }).join('');
   var $nav = $('#sidebar-container nav ul');
-  if ($nav.length) {
-    $nav.html(html);
-  }
+  if ($nav.length) { $nav.html(html); }
 }
 
 /* =============================================================
    FILTER SIDEBAR BERDASARKAN HAK AKSES USER
+   Menggunakan MENU_CONFIG (bukan DOM :visible) untuk menentukan
+   apakah sebuah grup punya child yang diizinkan.
    ============================================================= */
 function filterSidebarByAkses(aksesMenu) {
   var isAdmin = checkUserRoleIsAdmin();
-  if (isAdmin) return; // Admin melihat semua menu
+  if (isAdmin) return;
 
   var whitelist = aksesMenu || [];
 
-  // Sembunyikan semua nav-link yang punya data-page (kecuali alwaysVisible)
-  $('.nav-sidebar [data-page]').each(function() {
-    var page = $(this).data('page');
-    // Cek apakah item ini alwaysVisible dari MENU_CONFIG
-    var isAlways = false;
-    MENU_CONFIG.forEach(function(m) { if (m.id === page && m.alwaysVisible) isAlways = true; });
+  // Cek apakah sebuah item (atau salah satu descendant-nya) ada di whitelist
+  function hasAllowedChild(item) {
+    if (item.alwaysVisible) return true;
+    if (item.adminOnly) return false;
+    if (item.id) return whitelist.indexOf(item.id) !== -1;
+    if (item.children) return item.children.some(function(c) { return hasAllowedChild(c); });
+    return false;
+  }
 
-    if (!isAlways && whitelist.indexOf(page) === -1) {
-      $(this).closest('.nav-item').hide();
+  // Proses setiap item secara rekursif
+  function processItem(item) {
+    if (item.alwaysVisible) return; // Selalu tampil
+    if (item.adminOnly) return;     // Ditangani tampilkanMenuAdmin
+
+    var allowed = hasAllowedChild(item);
+
+    if (item.id) {
+      // Leaf item: sembunyikan jika tidak diizinkan
+      if (!allowed) {
+        $('[data-menu-id="' + item.id + '"]').hide();
+      }
+    } else if (item.children) {
+      // Group item: sembunyikan seluruh li jika tidak ada child yang diizinkan
+      if (!allowed) {
+        $('[data-menu-id="' + item._menuId + '"]').hide();
+      } else {
+        // Ada child yang diizinkan — proses child satu per satu
+        item.children.forEach(function(c) { processItem(c); });
+      }
     }
-  });
+  }
 
-  // Sembunyikan menu induk (yang tidak punya data-page) jika semua anaknya tersembunyi
-  cleanupEmptyParents();
+  MENU_CONFIG.forEach(function(item) { processItem(item); });
 }
 
-function cleanupEmptyParents() {
-  // Dari level terdalam ke paling atas
-  $('.nav-sidebar .nav-treeview').each(function() {
-    var $treeview = $(this);
-    var visibleItems = $treeview.children('.nav-item:visible').length;
-    if (visibleItems === 0) {
-      $treeview.closest('.nav-item').hide();
-    }
-  });
-}
 
 
 // VAKSIN ROUTING: Penambahan Dictionary E-File di baris ini
