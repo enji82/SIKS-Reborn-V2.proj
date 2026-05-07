@@ -374,6 +374,13 @@ function updateUI(u) {
   if (typeof sultan_fetchNotifikasi === "function") {
       sultan_fetchNotifikasi();
   }
+  
+  // Paksa update warna setiap kali dropdown notif dibuka
+  $(document).on('show.bs.dropdown', '.nav-item.dropdown', function() {
+      setTimeout(function() {
+          if (typeof sultan_applyNotifColors === 'function') sultan_applyNotifColors();
+      }, 50);
+  });
 }
 
 function tampilkanMenuAdmin(user) {
@@ -929,7 +936,39 @@ function sultan_fetchNotifikasi() {
         $list.append(html);
         $list.append('<a href="#" class="dropdown-item dropdown-footer text-center py-2 bg-transparent font-weight-bold notif-sultan-footer" onclick="sultan_markAllNotifRead(event)" style="font-size: 11px; border-top: 1px solid rgba(128,0,0,0.1);">' +
                      '<i class="fas fa-check-double mr-2"></i>TANDAI SEMUA SUDAH DIBACA</a>');
+        
+        // Paksa warna dengan setProperty (tidak bisa dikalahkan oleh CSS manapun)
+        sultan_applyNotifColors();
     }).getNotifikasiGlobal(role, unit);
+}
+
+// Fungsi warna notifikasi: menggunakan setProperty agar tidak bisa dikalahkan CSS manapun
+function sultan_applyNotifColors() {
+    var isDark = document.body.classList.contains('dark-mode');
+    var nameColor    = isDark ? '#ffffff' : '#1a1c1e';
+    var headerColor  = isDark ? '#ffcccc' : '#800000';
+    var subColor     = isDark ? '#adb5bd' : '#6c757d';
+
+    // Judul utama "X Baru"
+    var headerEl = document.querySelector('#nav-notif-count-header span');
+    if (headerEl) headerEl.style.setProperty('color', headerColor, 'important');
+
+    // Header Kategori (SURAT CUTI, dll)
+    document.querySelectorAll('.notif-sultan-header').forEach(function(el) {
+        el.style.setProperty('color', headerColor, 'important');
+    });
+    // Nama ASN
+    document.querySelectorAll('.notif-sultan-name').forEach(function(el) {
+        el.style.setProperty('color', nameColor, 'important');
+    });
+    // Teks Keterangan & Tanggal
+    document.querySelectorAll('.notif-sultan-sub').forEach(function(el) {
+        el.style.setProperty('color', subColor, 'important');
+    });
+    // Footer "Tandai Semua"
+    document.querySelectorAll('.notif-sultan-footer').forEach(function(el) {
+        el.style.setProperty('color', headerColor, 'important');
+    });
 }
 
 function sultan_handleNotifClick(rowId, source, el) {
