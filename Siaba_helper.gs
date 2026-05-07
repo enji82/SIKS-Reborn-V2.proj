@@ -2,7 +2,7 @@
    FILE MASTER HELPER (Fungsi Global yang dipakai semua halaman)
    ====================================================================== */
 
-function getDatabasePegawai(targetId, targetSheet) {
+function getDatabasePegawaiVaksin(targetId, targetSheet) {
   var ID_DB = targetId || "1wiDKez4rL5UYnpP2-OZjYowvmt1nRx-fIMy9trJlhBA"; 
   var SHEET_NAME = targetSheet || "Database";
 
