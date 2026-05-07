@@ -821,11 +821,12 @@ function sultan_fetchNotifikasi() {
         var totalCount = parseInt(res.count || 0);
         if (totalCount > 0) {
             $('#nav-notif-count').text(totalCount).show();
-            // Gunakan warna putih bersih agar terbaca di navbar maroon (baik terang/gelap)
-            $('#nav-notif-count-header').html('<span class="text-white font-weight-bold" style="font-size: 13px;">' + totalCount + ' Baru</span>');
+            // Gunakan warna Merah Maroon tegas agar terlihat di mode terang (atas latar putih) 
+            // dan tetap terbaca di mode gelap (atas navbar maroon)
+            $('#nav-notif-count-header').html('<span style="color: #800000; font-weight: 800; font-size: 13px;">' + totalCount + ' Baru</span>');
         } else {
             $('#nav-notif-count').hide();
-            $('#nav-notif-count-header').html('<span class="text-white-50" style="font-size: 13px;">0 Baru</span>');
+            $('#nav-notif-count-header').html('<span style="color: #666; font-size: 13px;">0 Baru</span>');
         }
 
         // 2. Update Sidebar Badges
@@ -858,18 +859,18 @@ function sultan_fetchNotifikasi() {
             surat_cuti: 'Surat Cuti', efile: 'E-File'
         };
 
-        // Identifikasi Mode (Gelap/Terang)
+        // Deteksi Mode Terang/Gelap
         var isDarkMode = $('body').hasClass('dark-mode');
 
         for (var mKey in res.modules) {
             var mData = res.modules[mKey];
             if (mData.count > 0 || (mData.recent && mData.recent.length > 0)) {
-                // Warna Header Kategori: hex langsung agar tidak dikalahkan AdminLTE
-                var headerColor = isDarkMode ? '#a33b3b' : '#800000';
+                // Header Kategori (Warna Maroon tegas di terang, Maroon terang di gelap)
+                var headerColor = isDarkMode ? '#ff9999' : '#800000';
                 
-                html += `<div class="dropdown-header d-flex justify-content-between align-items-center py-2 px-3 border-bottom" style="background: rgba(128,0,0,0.03);">
-                            <span class="font-weight-bold" style="font-size: 13px; color: ${headerColor}; letter-spacing: 0.5px;">${labels[mKey].toUpperCase()}</span>
-                            <span class="badge badge-pill badge-secondary" style="font-size: 10px; opacity: 0.7;">${mData.count}</span>
+                html += `<div class="dropdown-header d-flex justify-content-between align-items-center py-2 px-3 border-bottom" style="background: rgba(128,0,0,0.05);">
+                            <span class="font-weight-bold" style="font-size: 13px !important; color: ${headerColor} !important; letter-spacing: 0.5px;">${labels[mKey].toUpperCase()}</span>
+                            <span class="badge badge-pill badge-secondary" style="font-size: 10px; opacity: 0.8;">${mData.count}</span>
                          </div>`;
                 
                 mData.recent.forEach(function(notif) {
@@ -880,26 +881,26 @@ function sultan_fetchNotifikasi() {
                     var tglRaw = notif.waktu || notif.tglVerif || notif.tglInput || notif.tglUnggah || "";
                     var tglDisplay = tglRaw ? String(tglRaw).split(' ')[0].replace(/'/g, "") : "-";
 
-                    // Gunakan hex langsung + !important agar tidak dikalahkan AdminLTE specificity
-                    var nameColor = isDarkMode ? '#f1f3f5' : '#1a1c1e';
-                    var mutedColor = isDarkMode ? '#9da5ad' : '#6c757d';
+                    // Warna ASN: Hitam pekat di mode terang, Putih bersih di mode gelap
+                    var nameColor = isDarkMode ? '#ffffff' : '#1a1c1e';
+                    var subColor = isDarkMode ? '#adb5bd' : '#6c757d';
 
-                    var statusColor = '#858796'; // default
-                    if (notif.status === 'Diproses') statusColor = '#f6c23e';
-                    else if (notif.status.toLowerCase().includes('setuju') || notif.status.toLowerCase().includes('ok')) statusColor = '#1cc88a';
-                    else if (notif.status.toLowerCase().includes('tolak')) statusColor = '#e74a3b';
+                    var statusStyle = '';
+                    if (notif.status === 'Diproses') statusStyle = 'color: #f6c23e !important;'; // Kuning Gold
+                    else if (notif.status.toLowerCase().includes('setuju') || notif.status.toLowerCase().includes('ok')) statusStyle = 'color: #28a745 !important;'; // Hijau
+                    else if (notif.status.toLowerCase().includes('tolak')) statusStyle = 'color: #dc3545 !important;'; // Merah
 
                     html += `
-                    <a href="#" class="dropdown-item notif-sultan-item py-2 border-bottom" onclick="sultan_handleNotifClick('${notif.rowId}', '${notif.source}', this)">
+                    <a href="#" class="dropdown-item py-2 border-bottom" onclick="sultan_handleNotifClick('${notif.rowId}', '${notif.source}', this)" style="background: transparent !important;">
                         <div class="media align-items-center">
                             <div class="media-body">
                                 <div class="d-flex justify-content-between align-items-center mb-0">
-                                    <h3 class="dropdown-item-title notif-sultan-name font-weight-bold" data-color="${nameColor}" style="font-size: 12px !important; margin: 0 !important; color: ${nameColor} !important;">${content}</h3>
-                                    <span style="font-size: 10px !important; color: ${mutedColor} !important;"><i class="far fa-clock mr-1"></i>${tglDisplay}</span>
+                                    <h3 class="font-weight-bold" style="font-size: 12px !important; margin: 0 !important; color: ${nameColor} !important;">${content}</h3>
+                                    <span style="font-size: 10px !important; color: ${subColor} !important;"><i class="far fa-clock mr-1"></i>${tglDisplay}</span>
                                 </div>
                                 <div class="d-flex align-items-center justify-content-between">
-                                    <span style="font-size: 10px !important; color: ${mutedColor} !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px;">${sub}</span>
-                                    <span class="font-weight-bold" style="font-size: 10px !important; letter-spacing: 0.5px !important; color: ${statusColor} !important;">${notif.status.toUpperCase()}</span>
+                                    <span style="font-size: 10px !important; color: ${subColor} !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px;">${sub}</span>
+                                    <span class="font-weight-bold" style="font-size: 10px !important; letter-spacing: 0.5px !important; ${statusStyle}">${notif.status.toUpperCase()}</span>
                                 </div>
                             </div>
                         </div>
@@ -908,7 +909,7 @@ function sultan_fetchNotifikasi() {
             }
         }
         $list.append(html);
-        $list.append('<a href="#" class="dropdown-item dropdown-footer text-center py-2 bg-transparent font-weight-bold" onclick="sultan_markAllNotifRead(event)" style="font-size: 11px; color: var(--sultan-aksi-warning); border-top: 1px solid rgba(128,0,0,0.1);">' +
+        $list.append('<a href="#" class="dropdown-item dropdown-footer text-center py-2 bg-transparent font-weight-bold" onclick="sultan_markAllNotifRead(event)" style="font-size: 11px; color: #800000; border-top: 1px solid rgba(128,0,0,0.1);">' +
                      '<i class="fas fa-check-double mr-2"></i>TANDAI SEMUA SUDAH DIBACA</a>');
     }).getNotifikasiGlobal(role, unit);
 }
