@@ -642,41 +642,55 @@ function ptkpaud_renderTabel(data) {
         PTKPAUD_DATA_MASTER[row.id] = row; 
         
         var tglLahirIndo = ptkpaud_formatTanggalIndo(row.tgl_lahir);
-        var ttl = '<span class="font-weight-bold text-dark">' + (row.tmp_lahir || '-') + '</span><br><small class="text-muted">' + tglLahirIndo + '</small>';
-        var nikRaw = String(row.nik || "-"); var nikMask = nikRaw.length > 6 ? nikRaw.substring(0, nikRaw.length - 6) + "******" : nikRaw;
+        var ttl = '<div class="text-dark font-weight-bold">' + (row.tmp_lahir || '-') + '</div><div class="small text-muted">' + tglLahirIndo + '</div>';
         
-        var pend = '<span class="font-weight-bold text-dark">' + (row.pendidikan || '-') + '</span>';
-        if(row.jurusan) pend += '<br>' + ptkpaud_escapeHtml(row.jurusan); 
-        if(row.thn_lulus) pend += '<br><small class="text-muted">Lulus: ' + ptkpaud_escapeHtml(row.thn_lulus) + '</small>';
+        var nikRaw = String(row.nik || "-"); 
+        var nikMask = nikRaw.length > 6 ? nikRaw.substring(0, nikRaw.length - 6) + "******" : nikRaw;
+        var uiNik = '<code class="text-muted font-weight-bold" style="letter-spacing:1px;">' + nikMask + '</code>';
         
-        var jab = (row.jabatan || '-'); if(row.tmt_jabatan) jab += '<br><small class="text-muted">TMT: ' + ptkpaud_formatTanggalIndo(row.tmt_jabatan) + '</small>';
-        var inpass = (row.inpassing || '-'); if(row.tmt_inpassing) inpass += '<br><small class="text-muted">TMT: ' + ptkpaud_formatTanggalIndo(row.tmt_inpassing) + '</small>';
+        var pend = '<div class="text-dark font-weight-bold">' + (row.pendidikan || '-') + '</div>';
+        if(row.jurusan) pend += '<div class="small text-muted line-height-1">' + ptkpaud_escapeHtml(row.jurusan) + '</div>'; 
+        if(row.thn_lulus) pend += '<div class="small text-muted italic">Lulus: ' + ptkpaud_escapeHtml(row.thn_lulus) + '</div>';
+        
+        var jab = '<div class="text-maroon font-weight-bold">' + (row.jabatan || '-') + '</div>'; 
+        if(row.tmt_jabatan) jab += '<div class="small text-muted italic">TMT: ' + ptkpaud_formatTanggalIndo(row.tmt_jabatan) + '</div>';
+        
+        var inpass = (row.inpassing || '-'); 
+        if(row.tmt_inpassing) inpass += '<div class="small text-muted italic">TMT: ' + ptkpaud_formatTanggalIndo(row.tmt_inpassing) + '</div>';
 
-        // BAB III: Tombol Aksi Mutlak (Ikon Saja untuk Admin)
+        // STATUS BADGE SYSTEM
+        var statusPeg = row.status_peg || '-';
+        var badgeStatus = '<span class="badge badge-soft-maroon px-2 py-1">' + statusPeg + '</span>';
+        if(statusPeg.includes('GTY') || statusPeg.includes('AS')) badgeStatus = '<span class="badge badge-soft-success px-2 py-1">' + statusPeg + '</span>';
+
+        // NUPTK & SERDIK
+        var uiNuptk = row.nuptk && row.nuptk !== '-' ? '<span class="badge bg-light text-dark border px-2 py-1 font-weight-bold">' + row.nuptk + '</span>' : '<span class="text-muted opacity-50">-</span>';
+        var uiSerdik = row.serdik === 'Sudah' ? '<span class="badge badge-soft-info px-2 py-1"><i class="fas fa-check-circle mr-1"></i>Sudah</span>' : '<span class="badge badge-soft-secondary px-2 py-1">Belum</span>';
+        var uiDapodik = row.dapodik === 'Ya' ? '<span class="badge badge-soft-success px-2 py-1">AKTIF</span>' : '<span class="badge badge-soft-danger px-2 py-1">NON-AKTIF</span>';
+
+        // GLOBAL ACTION BUTTONS
         var btnEdit = '';
         var btnHapus = '';
         
         if (PTKPAUD_IS_ADMIN) {
-            btnEdit = '<button type="button" class="btn btn-sm btn-warning text-dark font-weight-bold shadow-sm" onclick="ptkpaud_bukaModalEdit(\'' + row.id + '\')" title="Edit / Mutasi"><i class="fas fa-pencil-alt"></i></button>';
-            btnHapus = '<button type="button" class="btn btn-sm btn-danger font-weight-bold shadow-sm" onclick="ptkpaud_bukaModalHapus(\'' + row.id + '\', \'' + ptkpaud_escapeJs(row.nama_lengkap) + '\')" title="Pindah ke Arsip Non-Aktif"><i class="fas fa-archive"></i></button>';
+            btnEdit = '<button type="button" class="sultan-btn-aksi-edit sultan-btn-compact mr-1" onclick="ptkpaud_bukaModalEdit(\'' + row.id + '\')" title="Edit / Mutasi"><i class="fas fa-pencil-alt"></i></button>';
+            btnHapus = '<button type="button" class="sultan-btn-aksi-hapus sultan-btn-compact" onclick="ptkpaud_bukaModalHapus(\'' + row.id + '\', \'' + ptkpaud_escapeJs(row.nama_lengkap) + '\')" title="Pindah ke Arsip Non-Aktif"><i class="fas fa-archive"></i></button>';
         } else {
-            btnEdit = '<button type="button" class="btn btn-sm btn-warning text-dark font-weight-bold shadow-sm" onclick="ptkpaud_bukaModalEdit(\'' + row.id + '\')" title="Edit Data"><i class="fas fa-pencil-alt mr-1"></i> Edit</button>';
+            btnEdit = '<button type="button" class="sultan-btn-aksi-edit sultan-btn-compact" onclick="ptkpaud_bukaModalEdit(\'' + row.id + '\')" title="Edit Data"><i class="fas fa-pencil-alt mr-1"></i> EDIT</button>';
         }
-        var btnAksi = '<div class="d-flex flex-nowrap justify-content-center" style="gap:5px;">' + btnEdit + ' ' + btnHapus + '</div>';
+        var btnAksi = '<div class="d-flex justify-content-center">' + btnEdit + ' ' + btnHapus + '</div>';
 
-        var uiNama = '<div class="font-weight-bold text-dark text-nowrap">' + ptkpaud_escapeHtml(row.nama_lengkap) + '</div><div class="small text-muted text-nowrap">' + (ptkpaud_escapeHtml(row.niy) || '-') + '</div>';
-        if(PTKPAUD_IS_ADMIN) uiNama += '<div class="small text-danger font-weight-bold mt-1">' + (ptkpaud_escapeHtml(row.unit) || '-') + '</div>';
+        var uiNama = '<div class="text-maroon font-weight-bold mb-0" style="font-size:15px;">' + ptkpaud_escapeHtml(row.nama_lengkap) + '</div><div class="small text-muted font-weight-bold">' + (ptkpaud_escapeHtml(row.niy) || '-') + '</div>';
+        if(PTKPAUD_IS_ADMIN) uiNama += '<div class="mt-1"><span class="badge badge-soft-maroon small font-weight-bold" style="font-size:10px;"><i class="fas fa-school mr-1"></i>' + (ptkpaud_escapeHtml(row.unit) || '-') + '</span></div>';
 
-        var metaInput = '<div style="line-height:1.2; font-size:11px;" class="text-left"><span class="d-block font-weight-bold">' + (row.diinput||'-') + '</span><span class="text-muted">' + (row.user_input||'-') + '</span></div>';
-        var metaEdit  = '<div style="line-height:1.2; font-size:11px;" class="text-left"><span class="d-block font-weight-bold">' + (row.diedit||'-') + '</span><span class="text-muted">' + (row.user_edit||'-') + '</span></div>';
-        var uiEmail = '<div class="text-wrap small text-left text-primary font-weight-bold">' + (ptkpaud_escapeHtml(row.email) || '-') + '</div>';
+        var metaInput = '<div class="text-left"><div class="font-weight-bold line-height-1">' + (row.diinput||'-') + '</div><div class="small text-muted">' + (row.user_input||'-') + '</div></div>';
+        var metaEdit  = '<div class="text-left"><div class="font-weight-bold line-height-1">' + (row.diedit||'-') + '</div><div class="small text-muted">' + (row.user_edit||'-') + '</div></div>';
+        var uiEmail = '<div class="text-primary font-weight-bold small"><i class="fas fa-envelope mr-1 opacity-50"></i>' + (ptkpaud_escapeHtml(row.email) || '-') + '</div>';
 
-        // Index PAUD Tabel: 16 Kolom
         dtArray.push([
-            btnAksi, uiNama, (row.jenjang || '-'), ttl, '<span title="NIK Disensor" class="text-muted text-left">' + nikMask + '</span>', 
-            '<div class="small text-left">' + pend + '</div>', (row.status_peg || '-'), 
-            '<div class="small text-left">' + jab + '</div>', '<div class="small text-left">' + inpass + '</div>',
-            (row.nuptk || '-'), (row.serdik || '-'), (row.dapodik || '-'), (row.tugtam || '-'), uiEmail, metaInput, metaEdit
+            btnAksi, uiNama, '<span class="font-weight-bold text-maroon">' + (row.jenjang || '-') + '</span>', ttl, uiNik, 
+            pend, badgeStatus, jab, inpass, uiNuptk, uiSerdik, uiDapodik, 
+            '<div class="text-wrap" style="min-width:150px;">' + (row.tugtam || '-') + '</div>', uiEmail, metaInput, metaEdit
         ]);
     });
 
@@ -731,9 +745,9 @@ function ptkpaud_bukaModalTambah() {
     $('#ptkpaud_formUtama').removeClass('was-validated');
     $('#ptkpaud_inputMode').val('insert'); $('#ptkpaud_inputIdData').val('');
     
-    $('#ptkpaud_headerModalForm').removeClass('modal-header-sultan-warning').addClass('modal-header-sultan-primary');
+    $('#ptkpaud_headerModalForm').removeClass('modal-header-sultan-aksi-edit').addClass('modal-header-sultan-aksi-utama');
     $('#ptkpaud_judulModalForm').html('<i class="fas fa-user-plus mr-2"></i> Tambah Data PTK PAUD');
-    $('#ptkpaud_btnSimpanForm').removeClass('btn-warning text-dark').addClass('btn-maroon text-white').html('<i class="fas fa-save mr-1"></i> SIMPAN DATA');
+    $('#ptkpaud_btnSimpanForm').removeClass('sultan-btn-aksi-edit').addClass('sultan-btn-aksi-utama').html('<i class="fas fa-save mr-1"></i> SIMPAN DATA');
     
     if (PTKPAUD_IS_ADMIN) {
         var $selUnit = $('#ptkpaud_inputUnit').empty().append('<option value="">- Pilih Unit Kerja -</option>');
@@ -762,10 +776,10 @@ function ptkpaud_bukaModalEdit(id) {
     $('#ptkpaud_formUtama').removeClass('was-validated');
     $('#ptkpaud_inputMode').val('update'); $('#ptkpaud_inputIdData').val(row.id);
     
-    $('#ptkpaud_headerModalForm').removeClass('modal-header-sultan-primary').addClass('modal-header-sultan-warning');
+    $('#ptkpaud_headerModalForm').removeClass('modal-header-sultan-aksi-utama').addClass('modal-header-sultan-aksi-edit');
     var labelJudul = PTKPAUD_IS_ADMIN ? '<i class="fas fa-exchange-alt mr-2"></i> Edit / Mutasi PTK PAUD' : '<i class="fas fa-user-edit mr-2"></i> Edit Data PTK PAUD';
     $('#ptkpaud_judulModalForm').html(labelJudul);
-    $('#ptkpaud_btnSimpanForm').removeClass('btn-maroon text-white').addClass('btn-warning text-dark').html('<i class="fas fa-save mr-1"></i> UPDATE DATA');
+    $('#ptkpaud_btnSimpanForm').removeClass('sultan-btn-aksi-utama').addClass('sultan-btn-aksi-edit').html('<i class="fas fa-save mr-1"></i> UPDATE DATA');
 
     if (PTKPAUD_IS_ADMIN) {
         var $selUnit = $('#ptkpaud_inputUnit').empty().append('<option value="">- Pilih Unit Kerja -</option>');
