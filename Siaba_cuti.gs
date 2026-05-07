@@ -669,8 +669,9 @@ function simpanUnggahSurat(form, fileData) {
         sheet.getRange(row, 45).setValue(userName);     
     }
 
-    SpreadsheetApp.flush(); // VAKSIN MUTLAK: Paksa tulis memori sebelum JS menarik data lagi
-    return JSON.stringify({ status: "Sukses", url: fileUrl }); // VAKSIN ZERO BLINK: Lempar URL PDF baru
+    SpreadsheetApp.flush();
+    sheet.getRange(row, 51).setValue(""); 
+    return JSON.stringify({ status: "Sukses", url: fileUrl }); 
   } catch (e) { throw new Error("Gagal Unggah: " + e.message); }
 }
 
@@ -759,13 +760,13 @@ function getNotifikasiSuratCuti(role, unit) {
         var isTarget = false;
 
         if (isAdmin) {
+            // ADMIN: Hanya notif yang berstatus 'Diproses'
             isTarget = isDiproses;
         } else {
-            // USER: Hanya notif yang butuh aksi (Belum Unggah, Ditolak, Revisi)
-            // Diproses & Disetujui TIDAK muncul di notifikasi User
+            // USER: Hanya notif yang butuh aksi (Belum Unggah, Ditolak, Revisi) + Info (Disetujui)
             var isUserUnit = (String(row[1]).trim().toUpperCase() === String(unit).trim().toUpperCase());
-            var butuhAksi = (statusUnggah === "" || statusUnggah === "Ditolak" || statusUnggah === "Revisi");
-            isTarget = (isUserUnit && butuhAksi);
+            var isNotifUser = (statusUnggah === "" || statusUnggah === "Ditolak" || statusUnggah === "Revisi" || statusUnggah === "Disetujui");
+            isTarget = (isUserUnit && isNotifUser);
         }
         
         if (isTarget) {
