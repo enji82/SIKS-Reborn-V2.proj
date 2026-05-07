@@ -124,7 +124,7 @@ function simpanSalahAbsen(form) {
       "",  
       "",  
       form.npsn,
-      "" // Kolom 16: readBy (Index 15)
+      "" // Kolom 16: readBy (Wajib Kosong untuk data baru)
     ];
 
     sheet.appendRow(barisBaru);
@@ -171,7 +171,7 @@ function updateSalahAbsen(form) {
     sheet.getRange(barisKetemu, 11).setValue("'" + tglEdit);       
     sheet.getRange(barisKetemu, 12).setValue(form.user_login); 
     sheet.getRange(barisKetemu, 15).setValue(form.npsn); 
-    sheet.getRange(barisKetemu, 16).setValue(""); // Reset notif saat update
+    sheet.getRange(barisKetemu, 16).setValue(""); // Wajib Reset Read Status agar notif muncul kembali
 
     return "Sukses Data Berhasil Diupdate";
   } catch (e) {
@@ -249,12 +249,16 @@ function getNotifikasiSalah(role, unit) {
         if (isAdmin) {
             isTarget = isDiproses;
         } else {
-            isTarget = (String(row.unit).trim().toUpperCase() === String(unit).trim().toUpperCase() && !isDiproses);
+            var uRow = String(row.unit || "").trim().toUpperCase();
+            var uTarget = String(unit || "").trim().toUpperCase();
+            isTarget = (uRow === uTarget && !isDiproses);
         }
         
         if (isTarget) {
+            var readBy = String(row.readBy || "").trim();
+            var readByList = readBy === "" ? [] : readBy.split(",");
             var isRead = false;
-            var readByList = String(row.readBy || "").split(",");
+            
             if (isAdmin && readByList.indexOf("Admin") > -1) isRead = true;
             if (!isAdmin && readByList.indexOf("User") > -1) isRead = true;
             
