@@ -821,11 +821,11 @@ function sultan_fetchNotifikasi() {
         var totalCount = parseInt(res.count || 0);
         if (totalCount > 0) {
             $('#nav-notif-count').text(totalCount).show();
-            // Perbaikan warna "Notifikasi Baru" agar terlihat di mode gelap
-            $('#nav-notif-count-header').html('<span style="color: #ffcccc; font-weight: bold;">' + totalCount + ' Baru</span>');
+            // Gunakan warna putih bersih agar terbaca di navbar maroon (baik terang/gelap)
+            $('#nav-notif-count-header').html('<span class="text-white font-weight-bold" style="font-size: 13px;">' + totalCount + ' Baru</span>');
         } else {
             $('#nav-notif-count').hide();
-            $('#nav-notif-count-header').html('<span style="color: #cccccc;">0 Baru</span>');
+            $('#nav-notif-count-header').html('<span class="text-white-50" style="font-size: 13px;">0 Baru</span>');
         }
 
         // 2. Update Sidebar Badges
@@ -858,42 +858,48 @@ function sultan_fetchNotifikasi() {
             surat_cuti: 'Surat Cuti', efile: 'E-File'
         };
 
+        // Identifikasi Mode (Gelap/Terang)
+        var isDarkMode = $('body').hasClass('dark-mode');
+
         for (var mKey in res.modules) {
             var mData = res.modules[mKey];
             if (mData.count > 0 || (mData.recent && mData.recent.length > 0)) {
-                // Header Kategori (Patokan 13px)
-                html += `<div class="dropdown-header d-flex justify-content-between align-items-center py-2 px-3 border-bottom" style="background: rgba(255,255,255,0.05);">
-                            <span class="font-weight-bold" style="font-size: 13px; color: #ff9999; letter-spacing: 0.5px;">${labels[mKey].toUpperCase()}</span>
-                            <span class="badge badge-pill badge-secondary" style="font-size: 10px; opacity: 0.8;">${mData.count}</span>
+                // Warna Header Kategori mengambil dari variabel global --sultan-aksi-utama
+                var headerColor = isDarkMode ? 'var(--sultan-aksi-utama)' : 'var(--warna-maroon)';
+                
+                html += `<div class="dropdown-header d-flex justify-content-between align-items-center py-2 px-3 border-bottom" style="background: rgba(128,0,0,0.03);">
+                            <span class="font-weight-bold" style="font-size: 13px; color: ${headerColor}; letter-spacing: 0.5px;">${labels[mKey].toUpperCase()}</span>
+                            <span class="badge badge-pill badge-secondary" style="font-size: 10px; opacity: 0.7;">${mData.count}</span>
                          </div>`;
                 
                 mData.recent.forEach(function(notif) {
                     var isUnread = !notif.isRead;
-                    var bgClass = isUnread ? 'bg-transparent' : 'opacity-50';
                     var content = notif.nama || notif.namaSd || notif.nomor || 'Pemberitahuan';
                     var sub = notif.kriteria || notif.tujuan || notif.berkas || notif.jenis || '';
                     
                     var tglRaw = notif.waktu || notif.tglVerif || notif.tglInput || notif.tglUnggah || "";
                     var tglDisplay = tglRaw ? String(tglRaw).split(' ')[0].replace(/'/g, "") : "-";
 
-                    // Sesuai Aturan: Ukuran font isi (12px) tidak boleh lebih besar dari judulnya (13px)
-                    // Status Badge (10px) lebih kecil lagi
-                    var statusBadge = '';
-                    if (notif.status === 'Diproses') statusBadge = '<span class="text-warning font-weight-bold" style="font-size: 10px; letter-spacing: 0.5px;">DIPROSES</span>';
-                    else if (notif.status.toLowerCase().includes('setuju') || notif.status.toLowerCase().includes('ok')) statusBadge = '<span class="text-success font-weight-bold" style="font-size: 10px; letter-spacing: 0.5px;">DISETUJUI</span>';
-                    else if (notif.status.toLowerCase().includes('tolak')) statusBadge = '<span class="text-danger font-weight-bold" style="font-size: 10px; letter-spacing: 0.5px;">DITOLAK</span>';
+                    // Adaptive Colors (Gunakan variabel CSS agar otomatis)
+                    var nameColor = isDarkMode ? 'var(--dm-text-main)' : '#333333';
+                    var mutedColor = isDarkMode ? 'var(--dm-text-muted)' : '#666666';
+
+                    var statusStyle = '';
+                    if (notif.status === 'Diproses') statusStyle = 'color: var(--sultan-aksi-warning);';
+                    else if (notif.status.toLowerCase().includes('setuju') || notif.status.toLowerCase().includes('ok')) statusStyle = 'color: var(--sultan-aksi-success);';
+                    else if (notif.status.toLowerCase().includes('tolak')) statusStyle = 'color: var(--sultan-aksi-danger);';
 
                     html += `
-                    <a href="#" class="dropdown-item ${bgClass} py-2 border-bottom" onclick="sultan_handleNotifClick('${notif.rowId}', '${notif.source}', this)">
+                    <a href="#" class="dropdown-item py-2 border-bottom" onclick="sultan_handleNotifClick('${notif.rowId}', '${notif.source}', this)" style="background: transparent;">
                         <div class="media align-items-center">
                             <div class="media-body">
                                 <div class="d-flex justify-content-between align-items-center mb-0">
-                                    <h3 class="dropdown-item-title font-weight-bold text-white" style="font-size: 12px; margin: 0;">${content}</h3>
-                                    <span class="text-muted" style="font-size: 10px;"><i class="far fa-clock mr-1"></i>${tglDisplay}</span>
+                                    <h3 class="dropdown-item-title font-weight-bold" style="font-size: 12px; margin: 0; color: ${nameColor};">${content}</h3>
+                                    <span style="font-size: 10px; color: ${mutedColor};"><i class="far fa-clock mr-1"></i>${tglDisplay}</span>
                                 </div>
                                 <div class="d-flex align-items-center justify-content-between">
-                                    <span class="text-muted text-truncate" style="font-size: 10px; max-width: 150px;">${sub}</span>
-                                    ${statusBadge}
+                                    <span style="font-size: 10px; color: ${mutedColor}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px;">${sub}</span>
+                                    <span class="font-weight-bold" style="font-size: 10px; letter-spacing: 0.5px; ${statusStyle}">${notif.status.toUpperCase()}</span>
                                 </div>
                             </div>
                         </div>
@@ -902,7 +908,7 @@ function sultan_fetchNotifikasi() {
             }
         }
         $list.append(html);
-        $list.append('<a href="#" class="dropdown-item dropdown-footer text-center py-2 bg-dark text-warning font-weight-bold" onclick="sultan_markAllNotifRead(event)" style="font-size: 11px; border-top: 1px solid rgba(255,255,255,0.1);">' +
+        $list.append('<a href="#" class="dropdown-item dropdown-footer text-center py-2 bg-transparent font-weight-bold" onclick="sultan_markAllNotifRead(event)" style="font-size: 11px; color: var(--sultan-aksi-warning); border-top: 1px solid rgba(128,0,0,0.1);">' +
                      '<i class="fas fa-check-double mr-2"></i>TANDAI SEMUA SUDAH DIBACA</a>');
     }).getNotifikasiGlobal(role, unit);
 }
