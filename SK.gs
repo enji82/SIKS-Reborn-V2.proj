@@ -644,47 +644,28 @@ function getNotifikasiSK(role, unit) {
    ====================================================================== */
 function getNotifikasiGlobal(role, unit) {
   try {
-    var resSK = getNotifikasiSK(role, unit);
-    var resLapbul = getNotifikasiLapbul(role, unit);
-    var resLupa = getNotifikasiLupa(role, unit);
-    var resSalah = getNotifikasiSalah(role, unit);
-    var resPerdin = getNotifikasiPerdin(role, unit);
+    var modules = {
+        sk: getNotifikasiSK(role, unit),
+        lapbul: getNotifikasiLapbul(role, unit),
+        lupa: getNotifikasiLupa(role, unit),
+        salah: getNotifikasiSalah(role, unit),
+        perdin: getNotifikasiPerdin(role, unit),
+        cuti: getNotifikasiCuti(role, unit),
+        surat_cuti: getNotifikasiSuratCuti(role, unit),
+        efile: getNotifikasiEfile(role, unit)
+    };
     
-    var listSK = (resSK && Array.isArray(resSK.recent)) ? resSK.recent : [];
-    var listLapbul = (resLapbul && Array.isArray(resLapbul.recent)) ? resLapbul.recent : [];
-    var listLupa = (resLupa && Array.isArray(resLupa.recent)) ? resLupa.recent : [];
-    var listSalah = (resSalah && Array.isArray(resSalah.recent)) ? resSalah.recent : [];
-    var listPerdin = (resPerdin && Array.isArray(resPerdin.recent)) ? resPerdin.recent : [];
-    
-    var combinedRecent = listSK.concat(listLapbul).concat(listLupa).concat(listSalah).concat(listPerdin);
-    
-    // Urutkan (Paling baru dulu, prioritaskan belum dibaca)
-    combinedRecent.sort(function(a, b) {
-      if (a.isRead !== b.isRead) return a.isRead ? 1 : -1;
-      var parseDate = function(str) {
-          if (!str || str === "-") return new Date(0);
-          var p = str.split(" ");
-          var d = p[0].split(/[/-]/);
-          var t = p[1] ? p[1].split(":") : [0,0,0];
-          var y = (d[2].length === 4) ? d[2] : d[0];
-          var m = d[1];
-          var dy = (d[2].length === 4) ? d[0] : d[2];
-          return new Date(y, m-1, dy, t[0], t[1], t[2]);
-      };
-      return parseDate(b.waktu) - parseDate(a.waktu);
-    });
+    var totalCount = 0;
+    for (var key in modules) {
+        totalCount += modules[key].count;
+    }
     
     return {
-      count: resSK.count + resLapbul.count + resLupa.count + resSalah.count + resPerdin.count,
-      countSK: resSK.count,
-      countLapbul: resLapbul.count,
-      countLupa: resLupa.count,
-      countSalah: resSalah.count,
-      countPerdin: resPerdin.count,
-      recent: combinedRecent.slice(0, 10) // Tampilkan 10 terbaru
+      count: totalCount,
+      modules: modules
     };
   } catch (e) {
-    return { count: 0, recent: [] };
+    return { count: 0, modules: {} };
   }
 }
 
@@ -695,8 +676,27 @@ function tandaiSemuaNotifGlobalDibaca(role, unit) {
     tandaiSemuaNotifLupaDibaca(role, unit);
     tandaiSemuaNotifSalahDibaca(role, unit);
     tandaiSemuaNotifPerdinDibaca(role, unit);
+    tandaiSemuaNotifCutiDibaca_Global(role, unit); 
+    tandaiSemuaNotifEfileDibaca_Global(role, unit);
     return true;
   } catch (e) { return false; }
+}
+
+// Helper untuk Tandai Semua yang belum ada mass-update-nya
+function tandaiSemuaNotifCutiDibaca_Global(role, unit) {
+    try {
+        var res = getNotifikasiCuti(role, unit);
+        res.recent.forEach(function(item) { if(!item.isRead) tandaiNotifCutiDibaca(item.rowId, role); });
+        var res2 = getNotifikasiSuratCuti(role, unit);
+        res2.recent.forEach(function(item) { if(!item.isRead) tandaiNotifSuratCutiDibaca(item.rowId, role); });
+    } catch(e){}
+}
+
+function tandaiSemuaNotifEfileDibaca_Global(role, unit) {
+    try {
+        var res = getNotifikasiEfile(role, unit);
+        res.recent.forEach(function(item) { if(!item.isRead) tandaiNotifEfileDibaca(item.rowId, role); });
+    } catch(e){}
 }
 
 function tandaiNotifDibaca(rowId, role) {

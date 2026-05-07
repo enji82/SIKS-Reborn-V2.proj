@@ -692,3 +692,86 @@ function verifikasiUnggahSurat(form) {
     return "Sukses";
   } catch (e) { throw new Error("Gagal Verifikasi: " + e.message); }
 }
+
+/* ----------------------------------------------------------------------
+   6. NOTIFIKASI CUTI & SURAT CUTI (BAB VIII COMPLIANT)
+   ---------------------------------------------------------------------- */
+function getNotifikasiCuti(role, unit) {
+  try {
+    var ss = SpreadsheetApp.openById(KONFIG_CUTI.DB_ID);
+    var sheet = ss.getSheetByName(KONFIG_CUTI.SHEET_MAIN);
+    if (!sheet) return { count: 0, recent: [] };
+    var data = sheet.getDataRange().getDisplayValues();
+    var rLower = String(role || "").toLowerCase();
+    var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
+    var notifList = []; var unreadCount = 0;
+
+    for (var i = 1; i < data.length; i++) {
+        var row = data[i];
+        var status = String(row[10] || "").trim(); 
+        var isDiproses = (status === "Diproses" || status === "");
+        var isTarget = isAdmin ? isDiproses : (String(row[1]).trim().toUpperCase() === String(unit).trim().toUpperCase() && !isDiproses);
+        
+        if (isTarget) {
+            var readByList = String(row[19] || "").split(","); 
+            var isRead = (isAdmin && readByList.indexOf("Admin") > -1) || (!isAdmin && readByList.indexOf("User") > -1);
+            if (!isRead) unreadCount++;
+            notifList.push({ rowId: i + 1, source: "Cuti", nama: row[1], jenis: row[3], status: status || "Diproses", waktu: row[17] && !isDiproses ? row[17] : (row[15] && isDiproses ? row[15] : row[13]), isRead: isRead });
+        }
+    }
+    notifList.sort(function(a, b) { if (a.isRead !== b.isRead) return a.isRead ? 1 : -1; return parseTime(b.waktu) - parseTime(a.waktu); });
+    return { count: unreadCount, recent: notifList.slice(0, 5) };
+  } catch (e) { return { count: 0, recent: [] }; }
+}
+
+function getNotifikasiSuratCuti(role, unit) {
+  try {
+    var ss = SpreadsheetApp.openById(KONFIG_CUTI.DB_ID);
+    var sheet = ss.getSheetByName(KONFIG_CUTI.SHEET_MAIN);
+    if (!sheet) return { count: 0, recent: [] };
+    var data = sheet.getDataRange().getDisplayValues();
+    var rLower = String(role || "").toLowerCase();
+    var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
+    var notifList = []; var unreadCount = 0;
+
+    for (var i = 1; i < data.length; i++) {
+        var row = data[i];
+        var statusUnggah = String(row[42] || "").trim(); 
+        if (statusUnggah === "") continue; 
+        
+        var isDiproses = (statusUnggah === "Diproses");
+        var isTarget = isAdmin ? isDiproses : (String(row[1]).trim().toUpperCase() === String(unit).trim().toUpperCase() && !isDiproses);
+        
+        if (isTarget) {
+            var readByList = String(row[50] || "").split(","); 
+            var isRead = (isAdmin && readByList.indexOf("Admin") > -1) || (!isAdmin && readByList.indexOf("User") > -1);
+            if (!isRead) unreadCount++;
+            notifList.push({ rowId: i + 1, source: "SuratCuti", nama: row[1], jenis: row[3], status: statusUnggah, waktu: row[47] && !isDiproses ? row[47] : (row[45] && isDiproses ? row[45] : row[43]), isRead: isRead });
+        }
+    }
+    notifList.sort(function(a, b) { if (a.isRead !== b.isRead) return a.isRead ? 1 : -1; return parseTime(b.waktu) - parseTime(a.waktu); });
+    return { count: unreadCount, recent: notifList.slice(0, 5) };
+  } catch (e) { return { count: 0, recent: [] }; }
+}
+
+function tandaiNotifCutiDibaca(rowId, role) {
+    try {
+        var ss = SpreadsheetApp.openById(KONFIG_CUTI.DB_ID); var sheet = ss.getSheetByName(KONFIG_CUTI.SHEET_MAIN);
+        var r = parseInt(rowId); var mark = (role === "Admin") ? "Admin" : "User";
+        var cur = String(sheet.getRange(r, 20).getDisplayValue() || "").trim();
+        if (cur === "") sheet.getRange(r, 20).setValue(mark);
+        else { var l = cur.split(","); if (l.indexOf(mark) === -1) { l.push(mark); sheet.getRange(r, 20).setValue(l.join(",")); } }
+        return true;
+    } catch (e) { return false; }
+}
+
+function tandaiNotifSuratCutiDibaca(rowId, role) {
+    try {
+        var ss = SpreadsheetApp.openById(KONFIG_CUTI.DB_ID); var sheet = ss.getSheetByName(KONFIG_CUTI.SHEET_MAIN);
+        var r = parseInt(rowId); var mark = (role === "Admin") ? "Admin" : "User";
+        var cur = String(sheet.getRange(r, 51).getDisplayValue() || "").trim();
+        if (cur === "") sheet.getRange(r, 51).setValue(mark);
+        else { var l = cur.split(","); if (l.indexOf(mark) === -1) { l.push(mark); sheet.getRange(r, 51).setValue(l.join(",")); } }
+        return true;
+    } catch (e) { return false; }
+}

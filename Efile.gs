@@ -162,6 +162,56 @@ function perbaikiEfileData(payload, fileData) {
   } catch(e) { return JSON.stringify({ success: false, message: e.message }); } finally { lock.releaseLock(); }
 }
 
+/* ----------------------------------------------------------------------
+   11. NOTIFIKASI E-FILE (BAB VIII COMPLIANT)
+   ---------------------------------------------------------------------- */
+function getNotifikasiEfile(role, unit) {
+  try {
+    var ss = SpreadsheetApp.openById(EFILE_DB_ID);
+    var sheet = ss.getSheetByName("Database_Efile");
+    if (!sheet) return { count: 0, recent: [] };
+    var data = sheet.getDataRange().getDisplayValues();
+    var rLower = String(role || "").toLowerCase();
+    var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
+    var notifList = []; var unreadCount = 0;
+
+    for (var i = 1; i < data.length; i++) {
+        var row = data[i];
+        var status = String(row[7] || "").trim(); 
+        var isDiproses = (status === "Diproses");
+        var isTarget = isAdmin ? isDiproses : (String(row[11]).trim().toUpperCase() === String(unit).trim().toUpperCase() && !isDiproses);
+        
+        if (isTarget) {
+            var readByList = String(row[15] || "").split(","); 
+            var isRead = (isAdmin && readByList.indexOf("Admin") > -1) || (!isAdmin && readByList.indexOf("User") > -1);
+            if (!isRead) unreadCount++;
+            notifList.push({ rowId: i + 1, source: "Efile", nama: row[1], berkas: row[3], status: status, waktu: row[12] && !isDiproses ? row[12] : row[9], isRead: isRead });
+        }
+    }
+    
+    function parseEfileTime(val) { 
+        if (!val || val === "-") return 0; 
+        var s = String(val).replace(/'/g, "").trim(); 
+        var p = s.split(" "); var d = p[0].split("-"); var t = (p[1]||"00:00:00").split(":");
+        return new Date(d[2], d[1]-1, d[0], t[0], t[1], t[2]).getTime();
+    }
+
+    notifList.sort(function(a, b) { if (a.isRead !== b.isRead) return a.isRead ? 1 : -1; return parseEfileTime(b.waktu) - parseEfileTime(a.waktu); });
+    return { count: unreadCount, recent: notifList.slice(0, 5) };
+  } catch (e) { return { count: 0, recent: [] }; }
+}
+
+function tandaiNotifEfileDibaca(rowId, role) {
+    try {
+        var ss = SpreadsheetApp.openById(EFILE_DB_ID); var sheet = ss.getSheetByName("Database_Efile");
+        var r = parseInt(rowId); var mark = (role === "Admin") ? "Admin" : "User";
+        var cur = String(sheet.getRange(r, 16).getDisplayValue() || "").trim();
+        if (cur === "") sheet.getRange(r, 16).setValue(mark);
+        else { var l = cur.split(","); if (l.indexOf(mark) === -1) { l.push(mark); sheet.getRange(r, 16).setValue(l.join(",")); } }
+        return true;
+    } catch (e) { return false; }
+}
+
 function getEfileViewerData(keyword, npsnFilter) {
   try {
     var ss = SpreadsheetApp.openById(EFILE_DB_ID); 
