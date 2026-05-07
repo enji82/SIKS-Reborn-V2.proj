@@ -255,8 +255,12 @@ function getNotifikasiSalah(role, unit) {
         }
         
         if (isTarget) {
-            unreadCount++; // PAKSA INCREMENT UNTUK TEST
-            var isRead = false;
+            var readBy = String(row.readBy || "").trim().toLowerCase();
+            var isRead = (readBy.indexOf("admin") > -1); // Jika ada tulisan admin, berarti sudah dibaca
+            
+            if (!isRead) {
+                unreadCount++;
+            }
             
             notifList.push({
                 rowId: row.rowBaris,
