@@ -864,10 +864,11 @@ function sultan_fetchNotifikasi() {
 
         for (var mKey in res.modules) {
             var mData = res.modules[mKey];
+            // Tampilkan kategori jika ada count unread atau ada item recent
             if (mData.count > 0 || (mData.recent && mData.recent.length > 0)) {
-                html += `<div class="dropdown-header bg-light py-2 px-3 d-flex justify-content-between align-items-center">
-                            <span class="font-weight-bold text-maroon small text-uppercase letter-spacing-1">${labels[mKey]}</span>
-                            <span class="badge badge-maroon">${mData.count}</span>
+                html += `<div class="dropdown-header d-flex justify-content-between align-items-center py-2 px-3 border-bottom" style="background: rgba(128,0,0,0.05);">
+                            <span class="font-weight-bold text-maroon" style="font-size: 13px; letter-spacing: 0.5px;">${labels[mKey].toUpperCase()}</span>
+                            <span class="badge badge-maroon shadow-sm" style="font-size: 11px; padding: 4px 8px;">${mData.count}</span>
                          </div>`;
                 
                 mData.recent.forEach(function(notif) {
@@ -876,17 +877,32 @@ function sultan_fetchNotifikasi() {
                     var titleClass = isUnread ? 'font-weight-bold text-dark' : 'font-weight-normal text-muted';
                     var content = notif.nama || notif.namaSd || notif.nomor || 'Pemberitahuan';
                     var sub = notif.kriteria || notif.tujuan || notif.berkas || notif.jenis || '';
-                    var tgl = notif.waktu ? notif.waktu.split(' ')[0] : '-';
+                    
+                    // Logika Fallback Tanggal yang lebih kuat
+                    var tglRaw = notif.waktu || notif.tglVerif || notif.tglInput || notif.tglUnggah || "";
+                    var tglDisplay = "-";
+                    if (tglRaw) {
+                        tglDisplay = String(tglRaw).split(' ')[0].replace(/'/g, "");
+                    }
+
+                    // Badge status yang lebih adaptif
+                    var statusClass = 'badge-secondary';
+                    if (notif.status === 'Diproses') statusClass = 'badge-warning text-dark';
+                    else if (notif.status.toLowerCase().includes('setuju') || notif.status.toLowerCase().includes('ok')) statusClass = 'badge-success';
+                    else if (notif.status.toLowerCase().includes('tolak')) statusClass = 'badge-danger';
 
                     html += `
-                    <a href="#" class="dropdown-item ${bgClass} py-2 border-bottom" onclick="sultan_handleNotifClick('${notif.rowId}', '${notif.source}', this)">
-                        <div class="media">
+                    <a href="#" class="dropdown-item ${bgClass} py-3 border-bottom" onclick="sultan_handleNotifClick('${notif.rowId}', '${notif.source}', this)">
+                        <div class="media align-items-start">
                             <div class="media-body">
-                                <h3 class="dropdown-item-title ${titleClass}" style="font-size:13px;">
-                                    ${content}
-                                    <span class="float-right text-xs text-muted"><i class="far fa-clock mr-1"></i>${tgl}</span>
-                                </h3>
-                                <p class="text-xs text-muted mb-0 text-truncate" style="max-width:200px;">${sub} - <span class="badge ${notif.status === 'Diproses' ? 'badge-warning' : 'badge-info'}" style="font-size:9px">${notif.status}</span></p>
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <h3 class="dropdown-item-title ${titleClass} mb-0" style="font-size: 14px; line-height: 1.2;">${content}</h3>
+                                    <span class="text-muted" style="font-size: 11px;"><i class="far fa-clock mr-1"></i>${tglDisplay}</span>
+                                </div>
+                                <div class="d-flex align-items-center">
+                                    <span class="text-muted text-truncate" style="font-size: 12px; max-width: 180px;">${sub}</span>
+                                    <span class="ml-auto badge ${statusClass} shadow-none" style="font-size: 10px; padding: 2px 6px;">${notif.status}</span>
+                                </div>
                             </div>
                         </div>
                     </a>`;
@@ -894,7 +910,8 @@ function sultan_fetchNotifikasi() {
             }
         }
         $list.append(html);
-        $list.append('<a href="#" class="dropdown-item dropdown-footer text-center py-2 bg-white" onclick="sultan_markAllNotifRead(event)"><i class="fas fa-check-double mr-2"></i>Tandai Semua Dibaca</a>');
+        $list.append('<a href="#" class="dropdown-item dropdown-footer text-center py-3 bg-white text-maroon font-weight-bold" onclick="sultan_markAllNotifRead(event)" style="border-top: 2px solid #f4f4f4;">' +
+                     '<i class="fas fa-check-double mr-2"></i>Tandai Semua Sudah Dibaca</a>');
     }).getNotifikasiGlobal(role, unit);
 }
 
