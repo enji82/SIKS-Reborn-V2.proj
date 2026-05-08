@@ -409,3 +409,172 @@ function getJenjangByNPSN(npsn) {
 }
 
 function getDataKeadaanGTKPAUD() { var ss = SpreadsheetApp.openById(ID_SPREADSHEET_PAUD); var sheet = ss.getSheetByName("Keadaan GTK PAUD"); if (!sheet) return []; var lastRow = sheet.getLastRow(); if (lastRow < 3) return []; return sheet.getRange(3, 1, lastRow - 2, 28).getDisplayValues(); }
+
+function ajukanMutasiPTKPAUD(idPtk, jenis, tujuan, base64Data, fileName, userPengusul) {
+  try {
+    var ss = SpreadsheetApp.openById(ID_SPREADSHEET_PAUD);
+    var sheetSource = ss.getSheetByName("Master Data GTK PAUD");
+    var sheetUsulan = ss.getSheetByName("usulan_mutasi_paud");
+    
+    // Buat sheet usulan jika belum ada
+    if (!sheetUsulan) {
+      sheetUsulan = ss.insertSheet("usulan_mutasi_paud");
+      var headers = ["ID Usulan", "ID PTK", "Nama PTK", "Jenis Mutasi", "Lembaga Asal", "Lembaga Tujuan", "File SK", "Status", "Tanggal Usulan", "User Pengusul", "Tanggal Eksekusi", "User Eksekutor"];
+      sheetUsulan.getRange(1, 1, 1, headers.length).setValues([headers]);
+    }
+    
+    // Ambil data PTK untuk tahu nama dan lembaga asal
+    var dataPTK = sheetSource.getDataRange().getValues();
+    var ptkRow = null;
+    for (var i = 1; i < dataPTK.length; i++) {
+      if (String(dataPTK[i][0]) === String(idPtk)) {
+        ptkRow = dataPTK[i];
+        break;
+      }
+    }
+    
+    if (!ptkRow) return "Error: Data PTK tidak ditemukan.";
+    
+    var namaPtk = ptkRow[7]; // Kolom H (Nama Lengkap)
+    var lembagaAsal = ptkRow[2]; // Kolom C (Unit/Lembaga)
+    
+    // Upload file ke Drive
+    var folderId = "1myZbraP_DqdBdhFEcm35JNWG3v97UNqF";
+    var folder = DriveApp.getFolderById(folderId);
+    var fileBytes = Utilities.base64Decode(base64Data);
+    var blob = Utilities.newBlob(fileBytes, "application/pdf", fileName);
+    var file = folder.createFile(blob);
+    var fileUrl = file.getUrl();
+    
+    // Simpan usulan
+    var idUsulan = "USUL-" + new Date().getTime();
+    var timestamp = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss");
+    
+    var rowData = [
+      idUsulan,
+      idPtk,
+      namaPtk,
+      jenis,
+      lembagaAsal,
+      tujuan || "-",
+      fileUrl,
+      "Pending",
+      timestamp,
+      userPengusul,
+      "",
+      ""
+    ];
+    
+    sheetUsulan.appendRow(rowData);
+    return "Sukses";
+  } catch (e) {
+    return "Error: " + e.message;
+  }
+}
+
+function getUsulanMutasiPTKPAUD() {
+  try {
+    var ss = SpreadsheetApp.openById(ID_SPREADSHEET_PAUD);
+    var sheet = ss.getSheetByName("usulan_mutasi_paud");
+    if (!sheet) return JSON.stringify([]);
+    
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) return JSON.stringify([]);
+    
+    var data = sheet.getRange(2, 1, lastRow - 1, 12).getDisplayValues();
+    var result = [];
+    
+    for (var i = 0; i < data.length; i++) {
+      var row = data[i];
+      result.push({
+        id_usulan: row[0],
+        id_ptk: row[1],
+        nama_ptk: row[2],
+        jenis_mutasi: row[3],
+        lembaga_asal: row[4],
+        lembaga_tujuan: row[5],
+        file_sk: row[6],
+        status: row[7],
+        tanggal_usulan: row[8],
+        user_pengusul: row[9],
+        tanggal_eksekusi: row[10],
+        user_eksekutor: row[11]
+      });
+    }
+    return JSON.stringify(result);
+  } catch(e) { return JSON.stringify([]); }
+}
+
+function eksekusiMutasiPTKPAUD(idUsulan, keputusan, userEksekutor) {
+  try {
+    var ss = SpreadsheetApp.openById(ID_SPREADSHEET_PAUD);
+    var sheetUsulan = ss.getSheetByName("usulan_mutasi_paud");
+    var sheetSource = ss.getSheetByName("Master Data GTK PAUD");
+    
+    if (!sheetUsulan) return "Error: Sheet usulan tidak ditemukan.";
+    
+    var dataUsulan = sheetUsulan.getDataRange().getValues();
+    var usulanRowIdx = -1;
+    var usulanRow = null;
+    
+    for (var i = 1; i < dataUsulan.length; i++) {
+      if (String(dataUsulan[i][0]) === String(idUsulan)) {
+        usulanRowIdx = i + 1;
+        usulanRow = dataUsulan[i];
+        break;
+      }
+    }
+    
+    if (usulanRowIdx === -1) return "Error: Data usulan tidak ditemukan.";
+    if (usulanRow[7] !== "Pending") return "Error: Usulan sudah diproses.";
+    
+    var idPtk = usulanRow[1];
+    var jenis = usulanRow[3];
+    var tujuan = usulanRow[5];
+    
+    var timestamp = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss");
+    
+    if (keputusan === "Setuju") {
+      // Cari data PTK
+      var dataPTK = sheetSource.getDataRange().getValues();
+      var ptkRowIdx = -1;
+      
+      for (var i = 1; i < dataPTK.length; i++) {
+        if (String(dataPTK[i][0]) === String(idPtk)) {
+          ptkRowIdx = i + 1;
+          break;
+        }
+      }
+      
+      if (ptkRowIdx === -1) return "Error: Data PTK tidak ditemukan di Master Data.";
+      
+      if (jenis === "Lokal") {
+        // Mutasi Lokal: Ubah Unit/Lembaga di Master Data
+        sheetSource.getRange(ptkRowIdx, 3).setValue(tujuan);
+      } else {
+        // Mutasi Luar Kecamatan atau Tidak Aktif: Pindahkan ke sheet "gtk_non_aktif_paud"
+        var sheetTarget = ss.getSheetByName("gtk_non_aktif_paud");
+        if (!sheetTarget) {
+          sheetTarget = ss.insertSheet("gtk_non_aktif_paud");
+          var headers = sheetSource.getRange(1, 1, 1, sheetSource.getLastColumn()).getValues();
+          headers[0].push("Alasan Hapus", "Tanggal Hapus", "User Hapus");
+          sheetTarget.getRange(1, 1, 1, headers[0].length).setValues(headers);
+        }
+        
+        var rowToMove = dataPTK[ptkRowIdx - 1];
+        rowToMove.push("Mutasi: " + jenis, timestamp, userEksekutor);
+        sheetTarget.appendRow(rowToMove);
+        sheetSource.deleteRow(ptkRowIdx);
+      }
+    }
+    
+    // Update status usulan
+    sheetUsulan.getRange(usulanRowIdx, 8).setValue(keputusan);
+    sheetUsulan.getRange(usulanRowIdx, 11).setValue(timestamp);
+    sheetUsulan.getRange(usulanRowIdx, 12).setValue(userEksekutor);
+    
+    return "Sukses";
+  } catch (e) {
+    return "Error: " + e.message;
+  }
+}
