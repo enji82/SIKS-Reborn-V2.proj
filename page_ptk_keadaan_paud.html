@@ -231,20 +231,57 @@
 // =================================================================
 var KEADAANPTKPAUD_CACHE_DATA = [];
 var KEADAANPTKPAUD_TABEL_INSTANCE = null;
+var KEADAANPTKPAUD_IS_ADMIN = false;
+var KEADAANPTKPAUD_USER_NPSN = "";
+var KEADAANPTKPAUD_UNIT_TERKUNCI = "";
 
 $(document).ready(function() {
     KEADAANPTKPAUD_TABEL_INSTANCE = null;
     $('#keadaanptkpaud_tableState').hide();
     SultanUI.showLoading('#keadaanptkpaud_loadingState');
 
+    try {
+        var user = getSesiUser() || {};
+        KEADAANPTKPAUD_IS_ADMIN = (user.role || "").toLowerCase().includes("admin");
+        KEADAANPTKPAUD_USER_NPSN = user.npsn || user.username || ""; 
+    } catch(e) { KEADAANPTKPAUD_IS_ADMIN = false; KEADAANPTKPAUD_USER_NPSN = ""; }
+
     // VAKSIN DELEGASI EVENT JQUERY (Anti Memory Leak)
     $(document).off('change', '#keadaanptkpaud_filterJenjang').on('change', '#keadaanptkpaud_filterJenjang', keadaanptkpaud_updateFilterUnit);
     $(document).off('change', '#keadaanptkpaud_filterUnit').on('change', '#keadaanptkpaud_filterUnit', keadaanptkpaud_terapkanFilterLokal);
     $(document).off('click', '#keadaanptkpaud_btnSync').on('click', '#keadaanptkpaud_btnSync', keadaanptkpaud_tarikDataServer);
 
-    // HALAMAN TERBUKA: Langsung tarik data dari Server
-    keadaanptkpaud_tarikDataServer(); 
+    // HALAMAN TERBUKA: Validasi Akses dulu
+    keadaanptkpaud_validasiAksesUser(); 
 });
+
+function keadaanptkpaud_validasiAksesUser() {
+    if (KEADAANPTKPAUD_IS_ADMIN) {
+        $('#keadaanptkpaud_filterUnit').empty().append('<option value="SEMUA">- Semua Lembaga -</option>').prop('disabled', false);
+        keadaanptkpaud_tarikDataServer(); 
+    } else {
+        if (!KEADAANPTKPAUD_USER_NPSN) {
+            $('#keadaanptkpaud_filterUnit').empty().append('<option value="">AKSES DITOLAK (NPSN KOSONG)</option>');
+            $('#keadaanptkpaud_loadingText').html('<span class="text-danger"><i class="fas fa-ban fa-2x mb-2"></i><br>Akses ditolak: Sesi login tidak valid.</span>');
+            return;
+        }
+        $('#keadaanptkpaud_loadingText').html('Memvalidasi Akses...');
+        google.script.run.withSuccessHandler(function(resUnit) {
+            var dataUnit = JSON.parse(resUnit);
+            if (dataUnit.error) {
+                $('#keadaanptkpaud_filterUnit').empty().append('<option value="">AKSES DITOLAK</option>');
+                $('#keadaanptkpaud_loadingText').html('<span class="text-danger"><i class="fas fa-exclamation-triangle fa-2x mb-2"></i><br>' + keadaanptkpaud_escapeHtml(dataUnit.error) + '</span>');
+                return;
+            }
+            KEADAANPTKPAUD_UNIT_TERKUNCI = dataUnit.unitKerja;
+            $('#keadaanptkpaud_filterUnit').empty().append('<option value="' + keadaanptkpaud_escapeHtml(KEADAANPTKPAUD_UNIT_TERKUNCI) + '">' + keadaanptkpaud_escapeHtml(KEADAANPTKPAUD_UNIT_TERKUNCI) + '</option>').prop('disabled', true);
+            keadaanptkpaud_tarikDataServer();
+        }).withFailureHandler(function(err) {
+            $('#keadaanptkpaud_filterUnit').empty().append('<option value="">ERROR SERVER</option>');
+            $('#keadaanptkpaud_loadingText').html('<span class="text-danger"><i class="fas fa-wifi fa-2x mb-2"></i><br>Koneksi Terputus: ' + keadaanptkpaud_escapeHtml(err.message) + '</span>');
+        }).getUnitKerjaByNpsnPTK(KEADAANPTKPAUD_USER_NPSN); 
+    }
+}
 
 // =================================================================
 // 2. GATEKEEPER & FETCH SERVER (BAB VIII)
@@ -340,8 +377,14 @@ function keadaanptkpaud_terapkanFilterLokal() {
         var rUnit = String(row[0] || "").trim();
         var rJenjang = String(row[2] || "").trim();
         
+        var passUnit = false;
+        if (KEADAANPTKPAUD_IS_ADMIN) {
+            passUnit = (fUnit === "SEMUA" || rUnit === fUnit);
+        } else {
+            passUnit = (rUnit === KEADAANPTKPAUD_UNIT_TERKUNCI);
+        }
+        
         var passJenjang = (fJenjang === "SEMUA" || rJenjang === fJenjang);
-        var passUnit = (fUnit === "SEMUA" || rUnit === fUnit);
         return passJenjang && passUnit;
     });
 
