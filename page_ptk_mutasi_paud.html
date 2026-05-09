@@ -164,6 +164,10 @@
                                             <option value="Tolak">❌ Ditolak</option>
                                         </select>
                                     </div>
+                                    <div class="form-group mb-0 d-none" id="ptkpaud_catatanBox">
+                                        <label class="form-label-sultan font-weight-bold">Catatan Penolakan <span class="text-danger">*</span></label>
+                                        <textarea class="form-control form-control-sultan" id="ptkpaud_verifCatatan" rows="3" placeholder="Wajib diisi jika Ditolak..."></textarea>
+                                    </div>
                                 </div>
                                 <div id="ptkpaud_verifSelesaiBox" class="mt-3 text-center" style="display:none;">
                                     <i class="fas fa-check-double fa-2x text-muted mb-2" style="opacity:0.4;"></i>
@@ -221,14 +225,31 @@ $(document).ready(function() {
         e.preventDefault();
         var idUsulan = $('#ptkpaud_verifIdUsulan').val();
         var keputusan = $('#ptkpaud_verifStatus').val();
+        var catatan = $('#ptkpaud_verifCatatan').val().trim();
+        
         if (!keputusan) { Sultan.alert('warning', 'Pilih Status', 'Tentukan status verifikasi.'); return; }
-        ptkpaud_eksekusiMutasi(idUsulan, keputusan);
+        if (keputusan === 'Tolak' && !catatan) { Sultan.alert('warning', 'Catatan Wajib', 'Berikan alasan penolakan.'); return; }
+        
+        ptkpaud_eksekusiMutasi(idUsulan, keputusan, catatan);
+    });
+
+    // Toggle catatan box based on status
+    $(document).on('change', '#ptkpaud_verifStatus', function() {
+        if ($(this).val() === 'Tolak') {
+            $('#ptkpaud_catatanBox').removeClass('d-none');
+            $('#ptkpaud_verifCatatan').prop('required', true);
+        } else {
+            $('#ptkpaud_catatanBox').addClass('d-none');
+            $('#ptkpaud_verifCatatan').prop('required', false).val('');
+        }
     });
 
     // Reset modal saat ditutup
     $('#ptkpaud_modalVerifikasi').on('hidden.bs.modal', function () {
         $('#ptkpaud_verifIframe').addClass('d-none').attr('src', '');
         $('#ptkpaud_loaderVerif').removeClass('d-none');
+        $('#ptkpaud_catatanBox').addClass('d-none');
+        $('#ptkpaud_verifCatatan').val('');
     });
 });
 
@@ -515,7 +536,7 @@ function ptkpaud_bukaModalVerifikasi(row) {
     $('#ptkpaud_modalVerifikasi').modal('show');
 }
 
-function ptkpaud_eksekusiMutasi(idUsulan, keputusan) {
+function ptkpaud_eksekusiMutasi(idUsulan, keputusan, catatan) {
     Sultan.alert({
         title: 'Konfirmasi',
         text: 'Apakah Anda yakin ingin ' + (keputusan === 'Setuju' ? 'menyetujui' : 'menolak') + ' usulan ini?',
@@ -535,7 +556,7 @@ function ptkpaud_eksekusiMutasi(idUsulan, keputusan) {
                     } else { Sultan.notif.gagal(res); }
                 })
                 .withFailureHandler(function(err){ Sultan.notif.crud.gagal(err.message); })
-                .eksekusiMutasiPTKPAUD(idUsulan, keputusan, PTKPAUD_USER_AKTIF);
+                .eksekusiMutasiPTKPAUD(idUsulan, keputusan, PTKPAUD_USER_AKTIF, catatan);
         }
     });
 }
