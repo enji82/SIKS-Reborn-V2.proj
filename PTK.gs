@@ -463,7 +463,7 @@ function ajukanMutasiPTKPAUD(idPtk, jenis, tujuan, base64Data, fileName, userPen
     // Buat sheet usulan jika belum ada
     if (!sheetUsulan) {
       sheetUsulan = ss.insertSheet("usulan_mutasi_paud");
-      var headers = ["ID Usulan", "ID PTK", "Nama PTK", "Jenis Mutasi", "Lembaga Asal", "Lembaga Tujuan", "File SK", "Status", "Tanggal Usulan", "User Pengusul", "Tanggal Eksekusi", "User Eksekutor"];
+      var headers = ["ID Usulan", "ID PTK", "Nama PTK", "Jenis Mutasi", "Lembaga Asal", "Lembaga Tujuan", "File SK", "Status", "Tanggal Usulan", "User Pengusul", "Tanggal Eksekusi", "User Eksekutor", "Catatan"];
       sheetUsulan.getRange(1, 1, 1, headers.length).setValues([headers]);
     }
     
@@ -525,7 +525,7 @@ function getUsulanMutasiPTKPAUD() {
     var lastRow = sheet.getLastRow();
     if (lastRow < 2) return JSON.stringify([]);
     
-    var data = sheet.getRange(2, 1, lastRow - 1, 12).getDisplayValues();
+    var data = sheet.getRange(2, 1, lastRow - 1, 13).getDisplayValues();
     var result = [];
     
     for (var i = 0; i < data.length; i++) {
@@ -542,7 +542,8 @@ function getUsulanMutasiPTKPAUD() {
         tanggal_usulan: row[8],
         user_pengusul: row[9],
         tanggal_eksekusi: row[10],
-        user_eksekutor: row[11]
+        user_eksekutor: row[11],
+        catatan: row[12] || ""
       });
     }
     return JSON.stringify(result);
@@ -578,7 +579,11 @@ function eksekusiMutasiPTKPAUD(idUsulan, keputusan, userEksekutor) {
     
     var timestamp = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss");
     
-    if (keputusan === "Setuju") {
+    var statusParts = keputusan.split('|');
+    var mainStatus = statusParts[0];
+    var catatan = statusParts[1] || "";
+    
+    if (mainStatus === "Setuju") {
       // Cari data PTK
       var dataPTK = sheetSource.getDataRange().getValues();
       var ptkRowIdx = -1;
@@ -613,9 +618,10 @@ function eksekusiMutasiPTKPAUD(idUsulan, keputusan, userEksekutor) {
     }
     
     // Update status usulan
-    sheetUsulan.getRange(usulanRowIdx, 8).setValue(keputusan);
+    sheetUsulan.getRange(usulanRowIdx, 8).setValue(mainStatus);
     sheetUsulan.getRange(usulanRowIdx, 11).setValue(timestamp);
     sheetUsulan.getRange(usulanRowIdx, 12).setValue(userEksekutor);
+    sheetUsulan.getRange(usulanRowIdx, 13).setValue(catatan);
     
     return "Sukses";
   } catch (e) {
