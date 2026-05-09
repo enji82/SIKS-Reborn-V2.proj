@@ -232,7 +232,7 @@
                     </div>
                 </div>
                 <!-- Tabel -->
-                <div id="ptkpaud_tableUsulanState" class="ptkpaud-scroll-container sultan-scroll" style="display:none;">
+                <div id="ptkpaud_tableUsulanState" style="display:none;">
                     <table id="ptkpaud_tabelUsulan" class="table table-premium table-sultan-compact mb-0 w-100 text-nowrap">
                            <thead class="thead-sultan-premium">
                           <tr>
@@ -704,6 +704,7 @@
 var PTKPAUD_DATA_MASTER = {}; 
 var PTKPAUD_CACHE_DATA = []; 
 var PTKPAUD_TABEL_INSTANCE = null; 
+var PTKPAUD_TABEL_USULAN_INSTANCE = null; 
 
 var PTKPAUD_USER_AKTIF = "";
 var PTKPAUD_IS_ADMIN = false;
@@ -761,6 +762,7 @@ $(document).ready(function() {
     });
 
     ptkpaud_initDataTables(true);
+    ptkpaud_initDataTablesUsulan();
     ptkpaud_validasiAksesUser(); 
 
     // VAKSIN DELEGASI EVENT JQUERY (ANTI MEMORY LEAK)
@@ -839,6 +841,37 @@ function ptkpaud_initDataTables(isEmpty = false) {
                     this.scrollLeft += scrollAmount;
                     e.preventDefault();
                 }
+            });
+        }
+    });
+}
+
+function ptkpaud_initDataTablesUsulan() {
+    if ($.fn.DataTable.isDataTable('#ptkpaud_tabelUsulan')) { $('#ptkpaud_tabelUsulan').DataTable().clear().destroy(); }
+
+    PTKPAUD_TABEL_USULAN_INSTANCE = SultanTable.init('#ptkpaud_tabelUsulan', {
+        "destroy": true, "ordering": false, "pageLength": 10, "autoWidth": false,
+        "deferRender": true, 
+        "dom": "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
+               "<'row'<'col-sm-12'<'ptkpaud-scroll-container sultan-scroll'tr>>>" +
+               "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+        "columnDefs": [ 
+            { "targets": 0, "className": "col-sticky-left text-center align-middle ptkpaud-col-admin" }, 
+            { "targets": [2, 5, 6, 7], "className": "text-center align-middle" }, 
+            { "targets": 8, "className": "text-center align-middle ptkpaud-col-admin" },
+            { "targets": [1, 3, 4], "className": "text-left align-middle" } 
+        ],
+        "language": { "url": "https://cdn.datatables.net/plug-ins/1.10.21/i18n/Indonesian.json", "emptyTable": "Belum ada riwayat usulan." },
+        "initComplete": function(settings, json) {
+            var $container = $('#ptkpaud_tabUsulan .ptkpaud-scroll-container');
+            $container.attr('tabindex', '0').css('outline', 'none');
+            $('#ptkpaud_tabelUsulan').attr('tabindex', '0').css('outline', 'none');
+            
+            $container.off('keydown').on('keydown', function(e) {
+                if ($(e.target).is('input, textarea')) return;
+                var scrollAmount = 200;
+                if (e.key === 'ArrowLeft') { this.scrollLeft -= scrollAmount; e.preventDefault(); } 
+                else if (e.key === 'ArrowRight') { this.scrollLeft += scrollAmount; e.preventDefault(); }
             });
         }
     });
@@ -1388,18 +1421,17 @@ function ptkpaud_tarikDataUsulan() {
 }
 
 function ptkpaud_renderTabelUsulan(data) {
-    var tbody = $('#ptkpaud_tabelUsulan tbody').empty();
+    var dtArray = [];
     if (!data || data.length === 0) {
         $('#ptkpaud_emptyUsulan').show();
         $('#ptkpaud_tableUsulanState').hide();
         return;
     }
-    // Tampilkan wrapper tabel
+    
     $('#ptkpaud_emptyUsulan').hide();
     $('#ptkpaud_tableUsulanState').show();
 
     data.forEach(function(row) {
-        // Kolom AKSI: admin tampilkan tombol Verifikasi, non-admin tampilkan info status
         var aksiHtml;
         if (PTKPAUD_IS_ADMIN) {
             if (row.status === 'Pending') {
@@ -1411,7 +1443,6 @@ function ptkpaud_renderTabelUsulan(data) {
             aksiHtml = '<span class="text-muted" style="font-size:11px;">-</span>';
         }
 
-        // Status badge menggunakan sultan-badge-template
         var statusMap = {
             'Pending':  '<span class="sultan-badge sultan-badge-warning"><i class="fas fa-clock mr-1"></i>Menunggu</span>',
             'Setuju':   '<span class="sultan-badge sultan-badge-success"><i class="fas fa-check-circle mr-1"></i>Disetujui</span>',
@@ -1419,25 +1450,25 @@ function ptkpaud_renderTabelUsulan(data) {
         };
         var statusBadge = statusMap[row.status] || '<span class="sultan-badge sultan-badge-secondary">' + row.status + '</span>';
 
-        // File SK
         var fileLink = row.file_sk
             ? '<a href="' + row.file_sk + '" target="_blank" class="sultan-btn-aksi sultan-btn-aksi-primary" title="Lihat Dokumen"><i class="fas fa-file-pdf"></i></a>'
             : '<span class="text-muted" style="font-size:11px;">-</span>';
 
-        var tr = $('<tr>');
-        tr.append($('<td class="col-sticky-left text-center ptkpaud-col-admin">').html(aksiHtml));
-        tr.append($('<td class="text-left font-weight-bold">').text(row.nama_ptk));
-        tr.append($('<td class="text-center">').text(row.jenis_mutasi));
-        tr.append($('<td class="text-left">').text(row.lembaga_asal || '-'));
-        tr.append($('<td class="text-left">').text(row.lembaga_tujuan || '-'));
-        tr.append($('<td class="text-center">').html(statusBadge));
-        tr.append($('<td class="text-center">').text(row.tanggal_usulan || '-'));
-        tr.append($('<td class="text-center">').html(fileLink));
-        tr.append($('<td class="text-center ptkpaud-col-admin">').text(row.user_pengusul || '-'));
-        tbody.append(tr);
+        var uiNama = '<div class="sultan-table-primary">' + ptkpaud_escapeHtml(row.nama_ptk) + '</div>';
+        var uiJenis = '<div class="sultan-table-primary">' + (row.jenis_mutasi || '-') + '</div>';
+        var uiAsal = '<div class="sultan-table-primary">' + (row.lembaga_asal || '-') + '</div>';
+        var uiTujuan = '<div class="sultan-table-primary">' + (row.lembaga_tujuan || '-') + '</div>';
+
+        dtArray.push([
+            aksiHtml, uiNama, uiJenis, uiAsal, uiTujuan, statusBadge, row.tanggal_usulan || '-', fileLink, row.user_pengusul || '-'
+        ]);
     });
 
-    // Sembunyikan lagi kolom admin jika bukan admin (karena baris baru di-render)
+    if (PTKPAUD_TABEL_USULAN_INSTANCE) {
+        PTKPAUD_TABEL_USULAN_INSTANCE.clear().rows.add(dtArray).draw(false);
+        setTimeout(function(){ PTKPAUD_TABEL_USULAN_INSTANCE.columns.adjust(); }, 300);
+    }
+
     if (!PTKPAUD_IS_ADMIN) {
         $('.ptkpaud-col-admin').hide();
     }
