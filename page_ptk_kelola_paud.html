@@ -251,7 +251,7 @@
                     </table>
                 </div>
                 <!-- Empty State -->
-                <div id="ptkpaud_emptyUsulan" class="d-flex flex-column align-items-center justify-content-center py-5" style="display:none !important;">
+                <div id="ptkpaud_emptyUsulan" class="d-flex flex-column align-items-center justify-content-center py-5" style="display:none;">
                     <i class="fas fa-inbox fa-3x text-muted mb-3" style="opacity:0.3;"></i>
                     <span class="text-muted font-weight-bold">Belum ada riwayat usulan.</span>
                 </div>
@@ -1366,17 +1366,23 @@ function ptkpaud_ajukanMutasi() {
     reader.readAsDataURL(file);
 }
 function ptkpaud_tarikDataUsulan() {
-    var loadingHtml = '<tr><td colspan="9" class="text-center p-4"><i class="fas fa-spinner fa-spin fa-2x text-maroon mb-2"></i><br>Memuat data usulan...</td></tr>';
-    $('#ptkpaud_tabelUsulan tbody').html(loadingHtml);
-    
+    // Tampilkan loading, sembunyikan tabel & empty state
+    $('#ptkpaud_loadingUsulan').show();
+    $('#ptkpaud_tableUsulanState').hide();
+    $('#ptkpaud_emptyUsulan').hide();
+
     google.script.run
         .withSuccessHandler(function(res){
+            $('#ptkpaud_loadingUsulan').hide();
             var data = JSON.parse(res);
             ptkpaud_renderTabelUsulan(data);
         })
         .withFailureHandler(function(err){
+            $('#ptkpaud_loadingUsulan').hide();
             Sultan.notif.crud.gagal(err.message);
-            $('#ptkpaud_tabelUsulan tbody').html('<tr><td colspan="9" class="text-center text-danger p-4">Gagal memuat data!</td></tr>');
+            // Tetap tampilkan tabel dengan pesan error
+            $('#ptkpaud_tabelUsulan tbody').html('<tr><td colspan="9" class="text-center text-danger p-4"><i class="fas fa-exclamation-circle mr-2"></i>Gagal memuat data usulan!</td></tr>');
+            $('#ptkpaud_tableUsulanState').show();
         })
         .getUsulanMutasiPTKPAUD();
 }
@@ -1384,9 +1390,13 @@ function ptkpaud_tarikDataUsulan() {
 function ptkpaud_renderTabelUsulan(data) {
     var tbody = $('#ptkpaud_tabelUsulan tbody').empty();
     if (!data || data.length === 0) {
-        tbody.html('<tr><td colspan="9" class="text-center p-5 text-muted"><i class="fas fa-inbox fa-3x mb-3 d-block" style="opacity:0.3;"></i>Belum ada riwayat usulan.</td></tr>');
+        $('#ptkpaud_emptyUsulan').show();
+        $('#ptkpaud_tableUsulanState').hide();
         return;
     }
+    // Tampilkan wrapper tabel
+    $('#ptkpaud_emptyUsulan').hide();
+    $('#ptkpaud_tableUsulanState').show();
 
     data.forEach(function(row) {
         // Kolom AKSI: admin tampilkan tombol Verifikasi, non-admin tampilkan info status
