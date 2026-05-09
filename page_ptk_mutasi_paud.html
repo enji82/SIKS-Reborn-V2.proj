@@ -94,13 +94,6 @@
            <tbody></tbody>
         </table>
     </div>
-    <!-- Empty State -->
-    <div id="ptkpaud_emptyUsulan" style="display:none;">
-        <div class="d-flex flex-column align-items-center justify-content-center py-5">
-            <i class="fas fa-inbox fa-3x text-muted mb-3" style="opacity:0.3;"></i>
-            <span class="text-muted font-weight-bold">Belum ada data mutasi.</span>
-        </div>
-    </div>
   </div>
 </div>
 
@@ -281,7 +274,6 @@ function ptkpaud_inisialisasiHalaman() {
 function ptkpaud_tarikDataUsulan() {
     $('#ptkpaud_loadingUsulan').show();
     $('#ptkpaud_tableUsulanState').hide();
-    $('#ptkpaud_emptyUsulan').hide();
 
     // Fetch Master Data first
     google.script.run
@@ -348,17 +340,25 @@ function ptkpaud_terapkanFilterLokal() {
     ptkpaud_renderTabelUsulan(hasil);
 }
 
+function ptkpaud_updateTabelKosong(htmlContent) {
+    if(PTKPAUD_TABEL_USULAN_INSTANCE) {
+        $('#ptkpaud_tableUsulanState').show();
+        $('#ptkpaud_loadingUsulan').hide();
+        PTKPAUD_TABEL_USULAN_INSTANCE.clear().draw();
+        var emptyRow = $('#ptkpaud_tabelUsulan tbody tr td.dataTables_empty');
+        if (emptyRow.length > 0) { emptyRow.html(htmlContent); }
+    }
+}
+
 function ptkpaud_renderTabelUsulan(data) {
     var dtArray = [];
     
     if (!data || data.length === 0) {
-        $('#ptkpaud_emptyUsulan').show();
-        $('#ptkpaud_tableUsulanState').hide();
-        if (PTKPAUD_TABEL_USULAN_INSTANCE) PTKPAUD_TABEL_USULAN_INSTANCE.clear().draw();
+        ptkpaud_updateTabelKosong("<div class='py-5 text-muted'><i class='fas fa-clipboard-list fa-3x mb-3 text-light opacity-50'></i><br>Belum ada data mutasi.</div>");
         return;
     }
     
-    $('#ptkpaud_emptyUsulan').hide();
+    $('#ptkpaud_loadingUsulan').hide();
     $('#ptkpaud_tableUsulanState').show();
 
     data.forEach(function(row) {
