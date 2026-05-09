@@ -370,16 +370,60 @@ function getDataPTKPAUD() {
   } catch(e) { return JSON.stringify([]); }
 }
 
-function insertDataPTKPAUD(form) {
-  var ss = SpreadsheetApp.openById(ID_SPREADSHEET_PAUD); var sheet = ss.getSheetByName("Master Data GTK PAUD");
-  var data = sheet.getDataRange().getValues(); var inputNik = String(form.nik).trim(); 
-  for (var i = 1; i < data.length; i++) { var rowNik = String(data[i][11]).replace(/'/g, "").trim(); if (rowNik === inputNik) return "NIK " + inputNik + " sudah terdaftar atas nama " + data[i][7] + "."; }
-  var newId = "PAUD-" + new Date().getTime(); var namaFull = (form.gelar_depan ? form.gelar_depan + " " : "") + form.nama_lengkap + (form.gelar_belakang ? ", " + form.gelar_belakang : ""); var timestamp = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss");
-  var rowData = [
-    newId, form.npsn_baru || form.npsn_login || "", form.unit_kerja || form.unit_login || "", form.jenjang || "", form.gelar_depan || "", form.nama_lengkap || "", form.gelar_belakang || "", namaFull || "", form.niy || "", form.tmp_lahir || "", form.tgl_lahir || "", "'" + (form.nik || ""), form.lp || "", form.agama || "", form.pendidikan || "", form.jurusan || "", form.thn_lulus || "", 
-    form.alamat_ktp || "", form.alamat_domisili || "", "'" + (form.hp || ""), form.status_peg || "", form.jabatan || "", form.tmt_jabatan || "", form.inpassing || "", form.tmt_inpassing || "", "'" + (form.nuptk || ""), form.serdik || "", form.dapodik || "", form.tugtam || "", timestamp, form.user_login || "", "", "", form.email || ""      
-  ];
-  sheet.appendRow(rowData); return "Sukses";
+function insertDataPTKPAUD(form, base64Data, fileName, jenisDokumen, userPengusul) {
+  try {
+    var ss = SpreadsheetApp.openById(ID_SPREADSHEET_PAUD);
+    var sheet = ss.getSheetByName("Master Data GTK PAUD");
+    var data = sheet.getDataRange().getValues();
+    var inputNik = String(form.nik).trim();
+    for (var i = 1; i < data.length; i++) {
+      var rowNik = String(data[i][11]).replace(/'/g, "").trim();
+      if (rowNik === inputNik) return "NIK " + inputNik + " sudah terdaftar atas nama " + data[i][7] + ".";
+    }
+
+    var newId = "PAUD-" + new Date().getTime();
+    var namaFull = (form.gelar_depan ? form.gelar_depan + " " : "") + form.nama_lengkap + (form.gelar_belakang ? ", " + form.gelar_belakang : "");
+    var timestamp = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss");
+
+    var rowData = [
+      newId, form.npsn_baru || form.npsn_login || "", form.unit_kerja || form.unit_login || "", form.jenjang || "",
+      form.gelar_depan || "", form.nama_lengkap || "", form.gelar_belakang || "", namaFull || "", form.niy || "",
+      form.tmp_lahir || "", form.tgl_lahir || "", "'" + (form.nik || ""), form.lp || "", form.agama || "",
+      form.pendidikan || "", form.jurusan || "", form.thn_lulus || "",
+      form.alamat_ktp || "", form.alamat_domisili || "", "'" + (form.hp || ""),
+      form.status_peg || "", form.jabatan || "", form.tmt_jabatan || "", form.inpassing || "", form.tmt_inpassing || "",
+      "'" + (form.nuptk || ""), form.serdik || "", form.dapodik || "", form.tugtam || "",
+      timestamp, form.user_login || "", "", "", form.email || ""
+    ];
+    sheet.appendRow(rowData);
+
+    // Upload dokumen ke Google Drive & buat usulan otomatis
+    try {
+      var folderId = "1myZbraP_DqdBdhFEcm35JNWG3v97UNqF";
+      var folder = DriveApp.getFolderById(folderId);
+      var fileBytes = Utilities.base64Decode(base64Data);
+      var blob = Utilities.newBlob(fileBytes, "application/pdf", fileName || "dokumen_ptk_baru.pdf");
+      var file = folder.createFile(blob);
+      var fileUrl = file.getUrl();
+
+      // Buat / ambil sheet usulan
+      var sheetUsulan = ss.getSheetByName("usulan_mutasi_paud");
+      if (!sheetUsulan) {
+        sheetUsulan = ss.insertSheet("usulan_mutasi_paud");
+        var headers = ["ID Usulan","ID PTK","Nama PTK","Jenis Mutasi","Lembaga Asal","Lembaga Tujuan","File SK","Status","Tanggal Usulan","User Pengusul","Tanggal Eksekusi","User Eksekutor"];
+        sheetUsulan.getRange(1, 1, 1, headers.length).setValues([headers]);
+      }
+
+      var lembaga = form.unit_kerja || form.unit_login || "-";
+      var idUsulan = "USUL-" + new Date().getTime();
+      sheetUsulan.appendRow([idUsulan, newId, namaFull, "PTK Baru (" + (jenisDokumen || "Dokumen") + ")", lembaga, lembaga, fileUrl, "Pending", timestamp, userPengusul || form.user_login || "", "", ""]);
+    } catch(uploadErr) {
+      // Insert tetap sukses meski upload gagal; log error tapi jangan blok user
+      Logger.log("Upload dokumen gagal: " + uploadErr.message);
+    }
+
+    return "Sukses";
+  } catch(e) { return "Error: " + e.message; }
 }
 
 function updateDataPTKPAUD(form) {
