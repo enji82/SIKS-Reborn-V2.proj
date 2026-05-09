@@ -618,7 +618,23 @@ function ptkpaud_eksekusiMutasi(idUsulan, keputusan) {
 }
 
 function ptkpaud_editUsulan(idUsulan) {
-    Sultan.notif.info('Mengarahkan ke halaman Kelola PTK untuk merevisi usulan...');
+    var row = PTKPAUD_CACHE_USULAN.find(function(r) { return String(r.id_usulan) === String(idUsulan); });
+    if (!row) {
+        Sultan.notif.error('Data usulan tidak ditemukan.');
+        return;
+    }
+    
+    var isPtkBaru = (row.jenis_mutasi || '').toLowerCase().includes('baru') || (row.jenis_mutasi || '').toLowerCase().includes('tambah');
+    
+    if (isPtkBaru) {
+        localStorage.setItem('ptkpaud_action', 'tambah');
+    } else {
+        localStorage.setItem('ptkpaud_action', 'mutasi');
+        localStorage.setItem('ptkpaud_id', row.id_ptk);
+        localStorage.setItem('ptkpaud_nama', row.nama_ptk);
+    }
+    
+    Sultan.notif.info('Mengarahkan ke halaman Kelola PTK...');
     setTimeout(function() {
         loadContent('ptk_kelola_paud');
     }, 1000);
