@@ -85,6 +85,7 @@
                  <th class="text-center align-middle">JENJANG</th>
                  <th class="text-center align-middle">JENIS MUTASI</th>
                  <th class="text-left align-middle">TUJUAN/ALASAN</th>
+                 <th class="text-center align-middle">FILE SK</th>
                  <th class="text-center align-middle">STATUS</th>
                  <th class="text-center align-middle">DIINPUT</th>
                  <th class="text-center align-middle">DIUBAH</th>
@@ -193,6 +194,21 @@
                     </div>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Preview PDF -->
+<div class="modal fade" id="ptkpaud_modalPreview" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered" role="document">
+        <div class="modal-content modal-content-sultan d-flex flex-column" style="height: 85vh;">
+            <div class="modal-header modal-header-sultan-aksi-preview flex-shrink-0">
+                <h6 class="modal-title font-weight-bold"><i class="fas fa-file-pdf mr-2"></i> PREVIEW DOKUMEN SK</h6>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body p-0 modal-body-sultan flex-grow-1 overflow-hidden">
+                <iframe id="ptkpaud_framePreview" src="" style="width: 100%; height: 100%; border: none;"></iframe>
+            </div>
         </div>
     </div>
 </div>
@@ -498,6 +514,15 @@ function ptkpaud_renderTabelUsulan(data) {
         // Column 5: Tujuan/Alasan
         var uiTujuan = '<div>' + ptkpaud_escapeHtml(row.lembaga_tujuan || '-') + '</div>';
 
+        // Column 6: File SK
+        var uiFileSk = '<div class="text-center">';
+        if (row.file_sk && row.file_sk !== '-') {
+            uiFileSk += '<button type="button" class="sultan-btn-compact sultan-btn-aksi-preview" onclick="ptkpaud_previewPdf(\'' + ptkpaud_escapeHtml(row.file_sk) + '\')"><i class="fas fa-eye mr-1"></i> LIHAT</button>';
+        } else {
+            uiFileSk += '-';
+        }
+        uiFileSk += '</div>';
+
         // Column 7: Diinput
         var uiDiinput = '<div class="text-center">' + ptkpaud_escapeHtml(row.tanggal_usulan || '-') + '</div>';
         uiDiinput += '<div class="text-center sultan-table-secondary">' + ptkpaud_escapeHtml(row.user_pengusul || '-') + '</div>';
@@ -511,7 +536,7 @@ function ptkpaud_renderTabelUsulan(data) {
         uiVerifikasi += '<div class="text-center sultan-table-secondary">' + ptkpaud_escapeHtml(row.user_eksekutor || '-') + '</div>';
 
         dtArray.push([
-            aksiHtml, uiNama, uiJenjang, uiJenis, uiTujuan, statusBadge, uiDiinput, uiDiubah, uiVerifikasi
+            aksiHtml, uiNama, uiJenjang, uiJenis, uiTujuan, uiFileSk, statusBadge, uiDiinput, uiDiubah, uiVerifikasi
         ]);
     });
 
@@ -636,6 +661,7 @@ function ptkpaud_editUsulan(idUsulan) {
             fullData.id_usulan = row.id_usulan;
             fullData.status_usulan = row.status;
             fullData.jenis_mutasi = row.jenis_mutasi;
+            fullData.file_sk = row.file_sk;
         }
     }
     
@@ -653,6 +679,21 @@ function ptkpaud_editUsulan(idUsulan) {
     setTimeout(function() {
         loadContent('ptk_kelola_paud');
     }, 1000);
+}
+
+function ptkpaud_previewPdf(url) {
+    if (!url || url === '-') {
+        Sultan.notif.warning('File tidak tersedia.');
+        return;
+    }
+    var previewUrl = url;
+    if (url.includes('drive.google.com') && url.includes('id=')) {
+        var fileId = url.split('id=')[1].split('&')[0];
+        previewUrl = 'https://drive.google.com/file/d/' + fileId + '/preview';
+    }
+    
+    $('#ptkpaud_framePreview').attr('src', previewUrl);
+    $('#ptkpaud_modalPreview').modal('show');
 }
 
 function ptkpaud_hapusUsulan(idUsulan) {

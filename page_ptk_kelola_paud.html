@@ -462,6 +462,13 @@
                                         <label class="custom-file-label" for="ptkpaud_inputFileDokumen">Pilih file PDF...</label>
                                     </div>
                                     <small class="text-muted">Format: PDF. Ukuran maksimal 500KB.</small>
+                                    
+                                    <div id="ptkpaud_currentFileSection" class="mt-2 d-none">
+                                        <span class="text-muted small font-weight-bold text-uppercase">Dokumen Saat Ini:</span>
+                                        <div class="mt-1">
+                                            <button type="button" class="sultan-btn-compact sultan-btn-aksi-preview" id="ptkpaud_btnLihatFileCurrent"><i class="fas fa-eye mr-1"></i> LIHAT DOKUMEN</button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -580,6 +587,20 @@
     </div>
 </div>
 
+<!-- Modal Preview PDF -->
+<div class="modal fade" id="ptkpaud_modalPreview" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered" role="document">
+        <div class="modal-content modal-content-sultan d-flex flex-column" style="height: 85vh;">
+            <div class="modal-header modal-header-sultan-aksi-preview flex-shrink-0">
+                <h6 class="modal-title font-weight-bold"><i class="fas fa-file-pdf mr-2"></i> PREVIEW DOKUMEN SK</h6>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body p-0 modal-body-sultan flex-grow-1 overflow-hidden">
+                <iframe id="ptkpaud_framePreview" src="" style="width: 100%; height: 100%; border: none;"></iframe>
+            </div>
+        </div>
+    </div>
+</div>
 
 <script>
 // ======================================================================
@@ -845,6 +866,15 @@ function ptkpaud_tarikDataServer() {
                     $('[name="serdik"]').val(prefill.serdik || '');
                     $('[name="dapodik"]').val(prefill.dapodik || '');
                     $('[name="tugtam"]').val(prefill.tugtam || '');
+                    
+                    if (prefill.file_sk && prefill.file_sk !== '-') {
+                        $('#ptkpaud_currentFileSection').removeClass('d-none');
+                        $('#ptkpaud_btnLihatFileCurrent').off('click').on('click', function() {
+                            ptkpaud_previewPdf(prefill.file_sk);
+                        });
+                    } else {
+                        $('#ptkpaud_currentFileSection').addClass('d-none');
+                    }
                     
                     // Specific overrides for specific IDs if needed
                     if (prefill.lembaga_asal || prefill.lembaga_tujuan) {
@@ -1361,6 +1391,21 @@ function ptkpaud_ajukanMutasi() {
             .ajukanMutasiPTKPAUD(id, jenis, tujuan, base64Data, fileName, PTKPAUD_USER_AKTIF);
     };
     reader.readAsDataURL(file);
+}
+
+function ptkpaud_previewPdf(url) {
+    if (!url || url === '-') {
+        Sultan.notif.warning('File tidak tersedia.');
+        return;
+    }
+    var previewUrl = url;
+    if (url.includes('drive.google.com') && url.includes('id=')) {
+        var fileId = url.split('id=')[1].split('&')[0];
+        previewUrl = 'https://drive.google.com/file/d/' + fileId + '/preview';
+    }
+    
+    $('#ptkpaud_framePreview').attr('src', previewUrl);
+    $('#ptkpaud_modalPreview').modal('show');
 }
 
 </script>
