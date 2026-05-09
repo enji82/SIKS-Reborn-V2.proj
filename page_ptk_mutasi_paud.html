@@ -1,3 +1,50 @@
+<!-- HEADER HALAMAN -->
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="card-sultan shadow-sm">
+            <div class="card-body p-3 d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="text-maroon font-weight-bold mb-1">MUTASI PTK PAUD</h5>
+                    <span class="text-muted small">Halaman ini khusus digunakan untuk mengelola PTK mutasi dan non aktif.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- GRUP FILTER (Sultan Pill) -->
+<div class="sultan-filter-pill-container shadow-sm mb-3">
+    <div class="sultan-filter-item">
+        <select id="ptkpaud_filterJenjang">
+            <option value="SEMUA">Semua Jenjang</option>
+            <option value="TK">TK</option>
+            <option value="KB">KB</option>
+            <option value="SPS">SPS</option>
+            <option value="TPA">TPA</option>
+        </select>
+        <i class="fas fa-chevron-down"></i>
+    </div>
+
+    <div class="sultan-filter-item flex-grow-1 min-w-250">
+        <select id="ptkpaud_filterUnit" disabled>
+            <option value="">Memuat Lembaga...</option>
+        </select>
+        <i class="fas fa-chevron-down"></i>
+    </div>
+
+    <div class="divider-vertical d-none d-md-block mx-1"></div>
+
+    <button type="button" id="ptkpaud_btnSync" class="sultan-btn-refresh" title="Segarkan Data Server">
+        <i class="fas fa-sync-alt"></i>
+    </button>
+
+    <div class="ml-auto d-none d-md-block"></div>
+
+    <button type="button" id="ptkpaud_btnMutasi" class="sultan-btn-tambah shadow-sm">
+        <i class="fas fa-exchange-alt"></i> MUTASI
+    </button>
+</div>
+
 <!-- TABEL RIWAYAT USULAN MUTASI PAUD -->
 <div class="card-sultan">
   <div class="card-body p-3">
@@ -5,7 +52,7 @@
     <div id="ptkpaud_loadingUsulan" style="display:none;">
         <div class="d-flex flex-column justify-content-center align-items-center" style="min-height: 200px;">
             <i class="fas fa-spinner fa-spin fa-2x text-maroon mb-3"></i>
-            <span class="text-muted font-weight-bold">Memuat riwayat usulan...</span>
+            <span class="text-muted font-weight-bold">Memuat data mutasi...</span>
         </div>
     </div>
     <!-- Tabel -->
@@ -13,15 +60,15 @@
         <table id="ptkpaud_tabelUsulan" class="table table-premium table-sultan-compact mb-0 w-100 text-nowrap">
                <thead class="thead-sultan-premium">
               <tr>
-                 <th class="col-sticky-left text-center align-middle ptkpaud-col-admin" style="width: 1%;">AKSI</th>
+                 <th class="col-sticky-left text-center align-middle" style="width: 1%;">AKSI</th>
                  <th class="text-left align-middle">NAMA PTK</th>
-                 <th class="text-center align-middle">JENIS</th>
-                 <th class="text-left align-middle">LEMBAGA ASAL</th>
-                 <th class="text-left align-middle">LEMBAGA TUJUAN</th>
+                 <th class="text-center align-middle">JENJANG</th>
+                 <th class="text-center align-middle">JENIS MUTASI</th>
+                 <th class="text-left align-middle">TUJUAN/ALASAN</th>
                  <th class="text-center align-middle">STATUS</th>
-                 <th class="text-center align-middle">TGL USULAN</th>
-                 <th class="text-center align-middle">FILE SK</th>
-                 <th class="text-center align-middle ptkpaud-col-admin">PENGUSUL</th>
+                 <th class="text-center align-middle">DIINPUT</th>
+                 <th class="text-center align-middle">DIUBAH</th>
+                 <th class="text-center align-middle">VERIFIKASI</th>
               </tr>
            </thead>
            <tbody></tbody>
@@ -30,7 +77,7 @@
     <!-- Empty State -->
     <div id="ptkpaud_emptyUsulan" class="d-flex flex-column align-items-center justify-content-center py-5" style="display:none;">
         <i class="fas fa-inbox fa-3x text-muted mb-3" style="opacity:0.3;"></i>
-        <span class="text-muted font-weight-bold">Belum ada riwayat usulan.</span>
+        <span class="text-muted font-weight-bold">Belum ada data mutasi.</span>
     </div>
   </div>
 </div>
@@ -106,26 +153,46 @@
 var PTKPAUD_TABEL_USULAN_INSTANCE = null; 
 var PTKPAUD_USER_AKTIF = "";
 var PTKPAUD_IS_ADMIN = false;
+var PTKPAUD_USER_NPSN = "";
+var PTKPAUD_UNIT_TERKUNCI = "";
+var PTKPAUD_CACHE_MASTER = [];
+var PTKPAUD_CACHE_USULAN = [];
 
 $(document).ready(function() {
     try {
         var user = getSesiUser() || {};
         PTKPAUD_USER_AKTIF = user.nama_lengkap || user.fullname || user.nama || user.username || "User Web";
         PTKPAUD_IS_ADMIN = (user.role || "").toLowerCase().includes("admin");
-
-        // Sembunyikan kolom admin-only di tabel usulan jika bukan admin
-        if (!PTKPAUD_IS_ADMIN) {
-            $('.ptkpaud-col-admin').hide();
-        }
+        PTKPAUD_USER_NPSN = user.npsn || user.username || "";
     } catch(e) { PTKPAUD_IS_ADMIN = false; }
 
     ptkpaud_initDataTablesUsulan();
-    ptkpaud_tarikDataUsulan();
+    ptkpaud_inisialisasiHalaman();
+
+    // Event handler untuk filter
+    $(document).on('change', '#ptkpaud_filterJenjang, #ptkpaud_filterUnit', function() {
+        ptkpaud_terapkanFilterLokal();
+    });
+
+    // Event handler untuk tombol refresh
+    $('#ptkpaud_btnSync').on('click', function() {
+        ptkpaud_tarikDataUsulan();
+    });
+
+    // Event handler untuk tombol Mutasi (Tambah Usulan)
+    $('#ptkpaud_btnMutasi').on('click', function() {
+        Sultan.notif.info('Fitur untuk mengajukan mutasi sedang dikembangkan.');
+    });
 });
 
 function ptkpaud_escapeHtml(text){
     if(!text)return"";
     return String(text).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
+}
+
+function ptkpaud_cleanString(str) {
+    if (!str) return "";
+    return String(str).trim().toUpperCase();
 }
 
 function ptkpaud_initDataTablesUsulan() {
@@ -138,25 +205,34 @@ function ptkpaud_initDataTablesUsulan() {
                "<'row'<'col-sm-12'<'ptkpaud-scroll-container sultan-scroll'tr>>>" +
                "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
         "columnDefs": [ 
-            { "targets": 0, "className": "col-sticky-left text-center align-middle ptkpaud-col-admin" }, 
-            { "targets": [2, 5, 6, 7], "className": "text-center align-middle" }, 
-            { "targets": 8, "className": "text-center align-middle ptkpaud-col-admin" },
-            { "targets": [1, 3, 4], "className": "text-left align-middle" } 
+            { "targets": 0, "className": "col-sticky-left text-center align-middle" }, 
+            { "targets": [2, 3, 5, 6, 7, 8], "className": "text-center align-middle" }, 
+            { "targets": [1, 4], "className": "text-left align-middle" } 
         ],
-        "language": { "url": "https://cdn.datatables.net/plug-ins/1.10.21/i18n/Indonesian.json", "emptyTable": "Belum ada riwayat usulan." },
-        "initComplete": function(settings, json) {
-            var $container = $('.ptkpaud-scroll-container');
-            $container.attr('tabindex', '0').css('outline', 'none');
-            $('#ptkpaud_tabelUsulan').attr('tabindex', '0').css('outline', 'none');
-            
-            $container.off('keydown').on('keydown', function(e) {
-                if ($(e.target).is('input, textarea')) return;
-                var scrollAmount = 200;
-                if (e.key === 'ArrowLeft') { this.scrollLeft -= scrollAmount; e.preventDefault(); } 
-                else if (e.key === 'ArrowRight') { this.scrollLeft += scrollAmount; e.preventDefault(); }
-            });
-        }
+        "language": { "url": "https://cdn.datatables.net/plug-ins/1.10.21/i18n/Indonesian.json", "emptyTable": "Belum ada data mutasi." }
     });
+}
+
+function ptkpaud_inisialisasiHalaman() {
+    if (PTKPAUD_IS_ADMIN) {
+        $('#ptkpaud_filterUnit').prop('disabled', false).empty().append('<option value="SEMUA">Semua Lembaga</option>');
+        ptkpaud_tarikDataUsulan();
+    } else {
+        if (!PTKPAUD_USER_NPSN) {
+            $('#ptkpaud_filterUnit').empty().append('<option value="">AKSES DITOLAK (NPSN KOSONG)</option>');
+            return;
+        }
+        google.script.run.withSuccessHandler(function(resUnit) {
+            var dataUnit = JSON.parse(resUnit);
+            if (dataUnit.error) {
+                $('#ptkpaud_filterUnit').empty().append('<option value="">AKSES DITOLAK</option>');
+                return;
+            }
+            PTKPAUD_UNIT_TERKUNCI = dataUnit.unitKerja;
+            $('#ptkpaud_filterUnit').empty().append('<option value="' + ptkpaud_escapeHtml(PTKPAUD_UNIT_TERKUNCI) + '">' + ptkpaud_escapeHtml(PTKPAUD_UNIT_TERKUNCI) + '</option>').prop('disabled', true);
+            ptkpaud_tarikDataUsulan();
+        }).getUnitKerjaByNpsnPTK(PTKPAUD_USER_NPSN); 
+    }
 }
 
 function ptkpaud_tarikDataUsulan() {
@@ -164,26 +240,78 @@ function ptkpaud_tarikDataUsulan() {
     $('#ptkpaud_tableUsulanState').hide();
     $('#ptkpaud_emptyUsulan').hide();
 
+    // Fetch Master Data first
     google.script.run
-        .withSuccessHandler(function(res){
-            $('#ptkpaud_loadingUsulan').hide();
-            var data = JSON.parse(res);
-            ptkpaud_renderTabelUsulan(data);
+        .withSuccessHandler(function(resMaster){
+            PTKPAUD_CACHE_MASTER = JSON.parse(resMaster);
+            
+            // Now fetch Usulan data
+            google.script.run
+                .withSuccessHandler(function(resUsulan){
+                    $('#ptkpaud_loadingUsulan').hide();
+                    PTKPAUD_CACHE_USULAN = JSON.parse(resUsulan);
+                    ptkpaud_populateFilterLembaga();
+                    ptkpaud_terapkanFilterLokal();
+                })
+                .withFailureHandler(function(err){
+                    $('#ptkpaud_loadingUsulan').hide();
+                    Sultan.notif.crud.gagal(err.message);
+                })
+                .getUsulanMutasiPTKPAUD();
         })
         .withFailureHandler(function(err){
             $('#ptkpaud_loadingUsulan').hide();
             Sultan.notif.crud.gagal(err.message);
-            $('#ptkpaud_tabelUsulan tbody').html('<tr><td colspan="9" class="text-center text-danger p-4"><i class="fas fa-exclamation-circle mr-2"></i>Gagal memuat data usulan!</td></tr>');
-            $('#ptkpaud_tableUsulanState').show();
         })
-        .getUsulanMutasiPTKPAUD();
+        .getDataPTKPAUD();
+}
+
+function ptkpaud_populateFilterLembaga() {
+    if (!PTKPAUD_IS_ADMIN) return;
+    
+    var uniqueUnits = new Set();
+    PTKPAUD_CACHE_USULAN.forEach(function(row) {
+        if (row.lembaga_asal) uniqueUnits.add(row.lembaga_asal);
+    });
+    
+    var $selUnit = $('#ptkpaud_filterUnit').empty().append('<option value="SEMUA">Semua Lembaga</option>');
+    Array.from(uniqueUnits).sort().forEach(function(u) {
+        $selUnit.append($('<option>', {value: u, text: u}));
+    });
+}
+
+function ptkpaud_terapkanFilterLokal() {
+    var fJenjang = $('#ptkpaud_filterJenjang').val() || "SEMUA";
+    var tAdminUnit = PTKPAUD_IS_ADMIN ? ($('#ptkpaud_filterUnit').val() || "SEMUA").toUpperCase() : "";
+    var tUnitUser  = String(PTKPAUD_UNIT_TERKUNCI).trim().toUpperCase();
+
+    var clJenjang = ptkpaud_cleanString(fJenjang);
+
+    var hasil = PTKPAUD_CACHE_USULAN.filter(function(row) {
+        var master = PTKPAUD_CACHE_MASTER.find(function(m) { return String(m.id) === String(row.id_ptk); }) || {};
+        
+        var rUnit = ptkpaud_cleanString(row.lembaga_asal);
+        var rJenjang = ptkpaud_cleanString(master.jenjang);
+
+        var passUnit = false;
+        if (PTKPAUD_IS_ADMIN) { passUnit = (tAdminUnit === "SEMUA" || rUnit === tAdminUnit); } 
+        else { passUnit = (rUnit === tUnitUser); }
+
+        var passJenjang = (clJenjang === "SEMUA") || (rJenjang === clJenjang);
+        
+        return passUnit && passJenjang;
+    });
+
+    ptkpaud_renderTabelUsulan(hasil);
 }
 
 function ptkpaud_renderTabelUsulan(data) {
     var dtArray = [];
+    
     if (!data || data.length === 0) {
         $('#ptkpaud_emptyUsulan').show();
         $('#ptkpaud_tableUsulanState').hide();
+        if (PTKPAUD_TABEL_USULAN_INSTANCE) PTKPAUD_TABEL_USULAN_INSTANCE.clear().draw();
         return;
     }
     
@@ -191,16 +319,21 @@ function ptkpaud_renderTabelUsulan(data) {
     $('#ptkpaud_tableUsulanState').show();
 
     data.forEach(function(row) {
-        var aksiHtml;
+        var master = PTKPAUD_CACHE_MASTER.find(function(m) { return String(m.id) === String(row.id_ptk); }) || {};
+        
+        var nip = master.niy || master.nip || '-';
+        var jenjang = master.jenjang || '-';
+        
+        var aksiHtml = '';
         if (PTKPAUD_IS_ADMIN) {
             if (row.status === 'Pending') {
-                aksiHtml = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-primary" onclick="ptkpaud_bukaModalVerifikasi(' + JSON.stringify(row).replace(/"/g, '&quot;') + ')" title="Verifikasi"><i class="fas fa-search-plus"></i></button>';
+                aksiHtml += '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-primary" onclick="ptkpaud_bukaModalVerifikasi(' + JSON.stringify(row).replace(/"/g, '&quot;') + ')" title="Verifikasi"><i class="fas fa-search-plus"></i></button>';
             } else {
-                aksiHtml = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-secondary" onclick="ptkpaud_bukaModalVerifikasi(' + JSON.stringify(row).replace(/"/g, '&quot;') + ')" title="Lihat Detail"><i class="fas fa-eye"></i></button>';
+                aksiHtml += '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-secondary" onclick="ptkpaud_bukaModalVerifikasi(' + JSON.stringify(row).replace(/"/g, '&quot;') + ')" title="Lihat Detail"><i class="fas fa-eye"></i></button>';
             }
-        } else {
-            aksiHtml = '<span class="text-muted" style="font-size:11px;">-</span>';
         }
+        aksiHtml += ' <button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning" onclick="ptkpaud_editUsulan(\'' + row.id_usulan + '\')" title="Edit"><i class="fas fa-pencil-alt"></i></button>';
+        aksiHtml += ' <button type="button" class="sultan-btn-aksi sultan-btn-aksi-danger" onclick="ptkpaud_hapusUsulan(\'' + row.id_usulan + '\')" title="Hapus"><i class="fas fa-trash"></i></button>';
 
         var statusMap = {
             'Pending':  '<span class="sultan-badge sultan-badge-warning"><i class="fas fa-clock mr-1"></i>Menunggu</span>',
@@ -209,27 +342,39 @@ function ptkpaud_renderTabelUsulan(data) {
         };
         var statusBadge = statusMap[row.status] || '<span class="sultan-badge sultan-badge-secondary">' + row.status + '</span>';
 
-        var fileLink = row.file_sk
-            ? '<a href="' + row.file_sk + '" target="_blank" class="sultan-btn-aksi sultan-btn-aksi-primary" title="Lihat Dokumen"><i class="fas fa-file-pdf"></i></a>'
-            : '<span class="text-muted" style="font-size:11px;">-</span>';
-
+        // Column 2: Nama PTK (Stacked)
         var uiNama = '<div class="sultan-table-primary">' + ptkpaud_escapeHtml(row.nama_ptk) + '</div>';
-        var uiJenis = '<div class="sultan-table-primary">' + (row.jenis_mutasi || '-') + '</div>';
-        var uiAsal = '<div class="sultan-table-primary">' + (row.lembaga_asal || '-') + '</div>';
-        var uiTujuan = '<div class="sultan-table-primary">' + (row.lembaga_tujuan || '-') + '</div>';
+        uiNama += '<div class="sultan-table-secondary">NIP/NIY: ' + ptkpaud_escapeHtml(nip) + '</div>';
+        uiNama += '<div class="sultan-table-secondary">Asal: ' + ptkpaud_escapeHtml(row.lembaga_asal || '-') + '</div>';
+
+        // Column 3: Jenjang
+        var uiJenjang = '<div class="text-center">' + ptkpaud_escapeHtml(jenjang) + '</div>';
+
+        // Column 4: Jenis Mutasi
+        var uiJenis = '<div class="text-center">' + ptkpaud_escapeHtml(row.jenis_mutasi || '-') + '</div>';
+
+        // Column 5: Tujuan/Alasan
+        var uiTujuan = '<div>' + ptkpaud_escapeHtml(row.lembaga_tujuan || '-') + '</div>';
+
+        // Column 7: Diinput
+        var uiDiinput = '<div class="text-center">' + ptkpaud_escapeHtml(row.tanggal_usulan || '-') + '</div>';
+        uiDiinput += '<div class="text-center sultan-table-secondary">' + ptkpaud_escapeHtml(row.user_pengusul || '-') + '</div>';
+
+        // Column 8: Diubah
+        var uiDiubah = '<div class="text-center">' + ptkpaud_escapeHtml(row.tanggal_eksekusi || '-') + '</div>';
+        uiDiubah += '<div class="text-center sultan-table-secondary">' + ptkpaud_escapeHtml(row.user_eksekutor || '-') + '</div>';
+
+        // Column 9: Verifikasi
+        var uiVerifikasi = '<div class="text-center">' + statusBadge + '</div>';
 
         dtArray.push([
-            aksiHtml, uiNama, uiJenis, uiAsal, uiTujuan, statusBadge, row.tanggal_usulan || '-', fileLink, row.user_pengusul || '-'
+            aksiHtml, uiNama, uiJenjang, uiJenis, uiTujuan, statusBadge, uiDiinput, uiDiubah, uiVerifikasi
         ]);
     });
 
     if (PTKPAUD_TABEL_USULAN_INSTANCE) {
         PTKPAUD_TABEL_USULAN_INSTANCE.clear().rows.add(dtArray).draw(false);
         setTimeout(function(){ PTKPAUD_TABEL_USULAN_INSTANCE.columns.adjust(); }, 300);
-    }
-
-    if (!PTKPAUD_IS_ADMIN) {
-        $('.ptkpaud-col-admin').hide();
     }
 }
 
@@ -289,5 +434,13 @@ function ptkpaud_eksekusiMutasi(idUsulan, keputusan) {
                 .eksekusiMutasiPTKPAUD(idUsulan, keputusan, PTKPAUD_USER_AKTIF);
         }
     });
+}
+
+function ptkpaud_editUsulan(idUsulan) {
+    Sultan.notif.info('Fitur edit usulan (ID: ' + idUsulan + ') sedang dikembangkan.');
+}
+
+function ptkpaud_hapusUsulan(idUsulan) {
+    Sultan.notif.info('Fitur hapus usulan (ID: ' + idUsulan + ') sedang dikembangkan.');
 }
 </script>
