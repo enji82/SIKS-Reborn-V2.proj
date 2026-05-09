@@ -213,6 +213,48 @@
     </div>
 </div>
 
+<!-- MODAL HAPUS -->
+<div class="modal fade" id="ptkpaud_modalHapus" tabindex="-1" role="dialog" data-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content modal-content-sultan shadow-lg border-0">
+            <div class="modal-header modal-header-sultan-danger flex-shrink-0">
+                <h6 class="modal-title font-weight-bold"><i class="fas fa-trash-alt mr-2"></i> HAPUS USULAN PTK/MUTASI</h6>
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <form id="ptkpaud_formHapus" class="m-0">
+                <div class="modal-body modal-body-sultan p-4">
+                    <input type="hidden" id="ptkpaud_hapusIdData">
+                    <div class="alert alert-danger shadow-sm border-0 mb-4 d-flex align-items-center">
+                        <div class="mr-3"><i class="fas fa-exclamation-triangle fa-2x"></i></div>
+                        <div>
+                            <div class="font-weight-bold h6 mb-1">PERHATIAN!</div>
+                            <div class="small opacity-80">
+                                Anda akan menghapus data usulan atas nama:<br>
+                                <span id="ptkpaud_hapusNamaView" class="font-weight-bold text-uppercase">-</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label class="form-label-sultan"><i class="fas fa-comment-alt mr-1"></i> ALASAN PENGHAPUSAN <span class="text-danger">*</span></label>
+                        <textarea id="ptkpaud_hapusAlasan" class="form-control form-control-sultan" rows="2" placeholder="Contoh: Salah input data, Data Ganda..." required></textarea>
+                    </div>
+                    <div class="form-group mb-0">
+                        <label class="form-label-sultan"><i class="fas fa-shield-alt mr-1"></i> KODE KEAMANAN <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <div class="input-group-prepend"><span class="input-group-text bg-light"><i class="fas fa-key text-danger"></i></span></div>
+                            <input type="password" id="ptkpaud_hapusInputKode" class="form-control form-control-sultan font-weight-bold" placeholder="Masukkan kode keamanan..." required autocomplete="off">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer modal-footer-sultan border-top d-flex justify-content-between p-3">
+                    <button type="button" class="sultan-btn sultan-btn-aksi-batal px-4" data-dismiss="modal">BATAL</button>
+                    <button type="submit" id="ptkpaud_btnEksekusiHapus" class="sultan-btn sultan-btn-aksi-hapus px-4 shadow-sm"><i class="fas fa-trash-alt mr-1"></i> HAPUS DATA</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
 var PTKPAUD_TABEL_USULAN_INSTANCE = null; 
 var PTKPAUD_USER_AKTIF = "";
@@ -242,6 +284,12 @@ $(document).ready(function() {
     // Event handler untuk tombol refresh
     $('#ptkpaud_btnSync').on('click', function() {
         ptkpaud_tarikDataUsulan();
+    });
+
+    // Event handler untuk form hapus
+    $(document).off('submit', '#ptkpaud_formHapus').on('submit', '#ptkpaud_formHapus', function(e) {
+        e.preventDefault();
+        ptkpaud_submitHapus();
     });
 
     // Event handler untuk form verifikasi
@@ -696,7 +744,58 @@ function ptkpaud_previewPdf(url) {
     $('#ptkpaud_modalPreview').modal('show');
 }
 
+function ptkpaud_bukaModalHapus(idUsulan) {
+    var row = PTKPAUD_CACHE_USULAN.find(function(r) { return String(r.id_usulan) === String(idUsulan); });
+    if (!row) {
+        Sultan.notif.gagal('Data tidak ditemukan.');
+        return;
+    }
+    
+    $('#ptkpaud_hapusIdData').val(idUsulan);
+    $('#ptkpaud_hapusNamaView').text(row.nama_ptk);
+    $('#ptkpaud_hapusAlasan').val('');
+    $('#ptkpaud_hapusInputKode').val('');
+    $('#ptkpaud_modalHapus').modal('show');
+}
+
+function ptkpaud_submitHapus() {
+    var form = $('#ptkpaud_formHapus');
+    var idUsulan = $('#ptkpaud_hapusIdData').val();
+    var alasan = $('#ptkpaud_hapusAlasan').val();
+    var kode = $('#ptkpaud_hapusInputKode').val();
+    
+    var btn = $('#ptkpaud_btnEksekusiHapus');
+    var oldText = btn.html();
+    btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Menghapus...');
+    
+    var payload = {
+        recId: idUsulan,
+        kode: kode,
+        alasan: alasan,
+        user_login: PTKPAUD_USER_AKTIF
+    };
+    
+    google.script.run
+        .withSuccessHandler(function(res) {
+            btn.prop('disabled', false).html(oldText);
+            if (res === 'KODE_SALAH') {
+                Sultan.notif.gagal('Kode Validasi keamanan salah!');
+            } else if (res === 'Sukses' || String(res).includes('Sukses')) {
+                $('#ptkpaud_modalHapus').modal('hide');
+                Sultan.notif.crud.sukses('Usulan berhasil dihapus.');
+                ptkpaud_tarikDataUsulan();
+            } else {
+                Sultan.notif.gagal(res);
+            }
+        })
+        .withFailureHandler(function(err) {
+            btn.prop('disabled', false).html(oldText);
+            Sultan.notif.crud.gagal(err.message);
+        })
+        .hapusUsulanPTKPAUD(payload);
+}
+
 function ptkpaud_hapusUsulan(idUsulan) {
-    Sultan.notif.info('Fitur hapus usulan (ID: ' + idUsulan + ') sedang dikembangkan.');
+    ptkpaud_bukaModalHapus(idUsulan);
 }
 </script>

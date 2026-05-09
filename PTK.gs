@@ -628,3 +628,50 @@ function eksekusiMutasiPTKPAUD(idUsulan, keputusan, userEksekutor) {
     return "Error: " + e.message;
   }
 }
+
+function hapusUsulanPTKPAUD(dataKirim) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    var ss = SpreadsheetApp.openById(ID_SPREADSHEET_PAUD);
+    var sheetUsulan = ss.getSheetByName("usulan_mutasi_paud");
+
+    if (!sheetUsulan) throw new Error("Sheet usulan tidak ditemukan.");
+
+    var idUsulan = dataKirim.recId;
+    var data = sheetUsulan.getDataRange().getValues();
+    var rowIdx = -1;
+
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]) === String(idUsulan)) {
+        rowIdx = i + 1;
+        break;
+      }
+    }
+
+    if (rowIdx === -1) throw new Error("Data usulan tidak ditemukan.");
+
+    var now = new Date();
+    var validCode = Utilities.formatDate(now, "Asia/Jakarta", "yyyyMMdd");
+    if(String(dataKirim.kode).trim() !== validCode) throw new Error("KODE_SALAH"); 
+
+    var fileUrl = data[rowIdx-1][6]; // Kolom G (Index 6)
+    
+    // Hapus file drive jika ada
+    if (fileUrl && String(fileUrl).includes("drive")) {
+        try {
+            var fid = fileUrl.match(/[-\w]{25,}/);
+            if(fid) DriveApp.getFileById(fid[0]).setTrashed(true); 
+        } catch(e) { 
+            console.log("Abaikan: Gagal hapus file drive. " + e.message); 
+        }
+    }
+
+    sheetUsulan.deleteRow(rowIdx);
+    return "Sukses";
+
+  } catch (e) {
+    if(e.message === "KODE_SALAH") return "KODE_SALAH";
+    return (e.message.includes("lock")) ? "Sistem sibuk, coba lagi." : "Error Server: " + e.message;
+  } finally { lock.releaseLock(); }
+}
