@@ -198,6 +198,7 @@ var PTKPAUD_USER_NPSN = "";
 var PTKPAUD_UNIT_TERKUNCI = "";
 var PTKPAUD_CACHE_MASTER = [];
 var PTKPAUD_CACHE_USULAN = [];
+var PTKPAUD_ALREADY_FETCHING = false;
 
 $(document).ready(function() {
     try {
@@ -341,6 +342,9 @@ function ptkpaud_inisialisasiHalaman() {
 }
 
 function ptkpaud_tarikDataUsulan() {
+    if (PTKPAUD_ALREADY_FETCHING) return;
+    PTKPAUD_ALREADY_FETCHING = true;
+
     SultanUI.showLoading('#ptkpaud_loadingUsulan');
     $('#ptkpaud_tableUsulanState').hide();
 
@@ -352,20 +356,23 @@ function ptkpaud_tarikDataUsulan() {
             // Now fetch Usulan data
             google.script.run
                 .withSuccessHandler(function(resUsulan){
+                    PTKPAUD_ALREADY_FETCHING = false;
                     SultanUI.hideLoading('#ptkpaud_loadingUsulan');
                     PTKPAUD_CACHE_USULAN = JSON.parse(resUsulan);
                     ptkpaud_populateFilterLembaga();
                     ptkpaud_terapkanFilterLokal();
                 })
                 .withFailureHandler(function(err){
+                    PTKPAUD_ALREADY_FETCHING = false;
                     SultanUI.hideLoading('#ptkpaud_loadingUsulan');
-                    Sultan.notif.crud.gagal(err.message);
+                    Sultan.notif.crud.gagal(err.message || err || 'Gagal memuat data');
                 })
                 .getUsulanMutasiPTKPAUD();
         })
         .withFailureHandler(function(err){
+            PTKPAUD_ALREADY_FETCHING = false;
             SultanUI.hideLoading('#ptkpaud_loadingUsulan');
-            Sultan.notif.crud.gagal(err.message);
+            Sultan.notif.crud.gagal(err.message || err || 'Gagal memuat data master');
         })
         .getDataPTKPAUD();
 }
