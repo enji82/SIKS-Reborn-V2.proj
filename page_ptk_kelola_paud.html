@@ -158,6 +158,10 @@
             <button type="button" id="ptkpaud_btnTambah" class="sultan-btn-tambah shadow-sm" disabled>
                 <i class="fas fa-plus"></i> TAMBAH DATA
             </button>
+
+            <button type="button" id="ptkpaud_btnMutasiGlobal" class="btn btn-maroon shadow-sm ml-2" disabled>
+                <i class="fas fa-exchange-alt"></i> MUTASI
+            </button>
         </div>
 
         <!-- SECTION: CONTENT -->
@@ -535,6 +539,7 @@
                     <div class="form-group mb-3">
                         <label class="form-label-sultan small font-weight-bold text-uppercase text-muted">Nama PTK</label>
                         <input type="text" id="ptkpaud_mutasiNamaPtk" class="form-control form-control-sultan" disabled>
+                        <select id="ptkpaud_mutasiNamaPtkSelect" class="form-control form-control-sultan" style="display:none;"></select>
                     </div>
 
                     <div class="form-group mb-3">
@@ -638,6 +643,7 @@ $(document).ready(function() {
     // VAKSIN DELEGASI EVENT JQUERY (ANTI MEMORY LEAK)
     $(document).off('click', '#ptkpaud_btnSync').on('click', '#ptkpaud_btnSync', ptkpaud_tarikDataServer);
     $(document).off('click', '#ptkpaud_btnTambah').on('click', '#ptkpaud_btnTambah', ptkpaud_bukaModalTambah);
+    $(document).off('click', '#ptkpaud_btnMutasiGlobal').on('click', '#ptkpaud_btnMutasiGlobal', function() { ptkpaud_bukaModalMutasi(); });
     
     $(document).off('change', '#ptkpaud_filterJenjang, #ptkpaud_filterUnit, #ptkpaud_filterStatus, #ptkpaud_filterJabatan')
                .on('change', '#ptkpaud_filterJenjang, #ptkpaud_filterUnit, #ptkpaud_filterStatus, #ptkpaud_filterJabatan', ptkpaud_terapkanFilterLokal);
@@ -753,7 +759,7 @@ function ptkpaud_initDataTablesUsulan() {
 function ptkpaud_validasiAksesUser() {
     if (PTKPAUD_IS_ADMIN) {
         $('#ptkpaud_filterUnit').empty().append('<option value="SEMUA">- Semua Lembaga -</option>').prop('disabled', false).removeClass('bg-light text-maroon font-weight-bold');
-        $('#ptkpaud_btnSync, #ptkpaud_btnTambah').prop('disabled', false);
+        $('#ptkpaud_btnSync, #ptkpaud_btnTambah, #ptkpaud_btnMutasiGlobal').prop('disabled', false);
         ptkpaud_tarikDataServer(); 
     } else {
         if (!PTKPAUD_USER_NPSN) {
@@ -770,7 +776,7 @@ function ptkpaud_validasiAksesUser() {
             }
             PTKPAUD_UNIT_TERKUNCI = dataUnit.unitKerja;
             $('#ptkpaud_filterUnit').empty().append('<option value="' + ptkpaud_escapeHtml(PTKPAUD_UNIT_TERKUNCI) + '">' + ptkpaud_escapeHtml(PTKPAUD_UNIT_TERKUNCI) + '</option>').prop('disabled', true);
-            $('#ptkpaud_btnSync, #ptkpaud_btnTambah').prop('disabled', false);
+            $('#ptkpaud_btnSync, #ptkpaud_btnTambah, #ptkpaud_btnMutasiGlobal').prop('disabled', false);
             ptkpaud_tarikDataServer();
         }).withFailureHandler(function(err) {
             $('#ptkpaud_filterUnit').empty().append('<option value="">ERROR SERVER</option>');
@@ -916,7 +922,6 @@ function ptkpaud_renderTabel(data) {
         // BAB III: Tombol Aksi Mutlak (Ikon Saja untuk Admin)
         var btnEdit = '';
         var btnHapus = '';
-        var btnMutasi = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-primary" onclick="ptkpaud_bukaModalMutasi(\'' + row.id + '\', \'' + ptkpaud_escapeJs(row.nama_lengkap) + '\')" title="Usulkan Mutasi"><i class="fas fa-exchange-alt"></i></button>';
         
         if (PTKPAUD_IS_ADMIN) {
             btnEdit = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning" onclick="ptkpaud_bukaModalEdit(\'' + row.id + '\')" title="Edit Data"><i class="fas fa-pencil-alt"></i></button>';
@@ -924,7 +929,7 @@ function ptkpaud_renderTabel(data) {
         } else {
             btnEdit = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning" onclick="ptkpaud_bukaModalEdit(\'' + row.id + '\')" title="Edit Data"><i class="fas fa-pencil-alt"></i></button>';
         }
-        var btnAksi = '<div class="d-flex flex-nowrap justify-content-center" style="gap:4px;">' + btnEdit + ' ' + btnMutasi + ' ' + btnHapus + '</div>';
+        var btnAksi = '<div class="d-flex flex-nowrap justify-content-center" style="gap:4px;">' + btnEdit + ' ' + btnHapus + '</div>';
 
         var uiNama = '<div class="sultan-table-primary">' + ptkpaud_escapeHtml(row.nama_lengkap) + '</div><div class="sultan-table-secondary">' + (ptkpaud_escapeHtml(row.niy) || '-') + '</div>';
         if(PTKPAUD_IS_ADMIN) uiNama += '<div class="sultan-table-secondary">' + (ptkpaud_escapeHtml(row.unit) || '-') + '</div>';
@@ -1198,18 +1203,40 @@ function ptkpaud_submitHapusPermanen(e) {
 // ======================================================================
 // FITUR MUTASI [NEW]
 function ptkpaud_bukaModalMutasi(id, nama) {
-    $('#ptkpaud_mutasiIdData').val(id);
-    $('#ptkpaud_mutasiNamaPtk').val(nama);
+    $('#ptkpaud_formMutasi').removeClass('was-validated');
     $('#ptkpaud_mutasiJenis').val('');
     $('#ptkpaud_grpMutasiTujuan').hide();
     $('#ptkpaud_mutasiTujuan').val('');
     $('#ptkpaud_mutasiFile').val('').next('.custom-file-label').removeClass("selected").html('Pilih file...');
-    
+
     // Isi dropdown Lembaga Tujuan
     var $selTarget = $('#ptkpaud_mutasiTujuan').empty().append('<option value="">- Pilih Lembaga Tujuan -</option>');
     Object.keys(PTKPAUD_MAP_UNIT_NPSN).sort().forEach(function(u) { $selTarget.append($('<option>', {value: u, text: u})); });
+
+    if (id && typeof id === 'string') {
+        // Dipanggil dari baris tabel
+        $('#ptkpaud_mutasiIdData').val(id);
+        $('#ptkpaud_mutasiNamaPtk').val(nama).show();
+        $('#ptkpaud_mutasiNamaPtkSelect').hide();
+    } else {
+        // Dipanggil dari tombol global
+        $('#ptkpaud_mutasiIdData').val('');
+        $('#ptkpaud_mutasiNamaPtk').hide();
+        
+        // Populasi dropdown PTK
+        var $selPtk = $('#ptkpaud_mutasiNamaPtkSelect').empty().append('<option value="">- Pilih PTK -</option>').show();
+        PTKPAUD_CACHE_DATA.forEach(function(row) {
+            $selPtk.append($('<option>', {value: row.id, data_nama: row.nama_lengkap, text: row.nama_lengkap + ' (' + (row.niy || row.nip || '-') + ')'}));
+        });
+        
+        $selPtk.off('change').on('change', function() {
+            var selVal = $(this).val();
+            var selNama = $(this).find('option:selected').attr('data_nama');
+            $('#ptkpaud_mutasiIdData').val(selVal);
+            $('#ptkpaud_mutasiNamaPtk').val(selNama); // Tetap isi hidden atau input non-aktif untuk submit
+        });
+    }
     
-    $('#ptkpaud_formMutasi').removeClass('was-validated');
     $('#ptkpaud_modalMutasi').modal('show');
 }
 
