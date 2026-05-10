@@ -44,6 +44,16 @@ function getDataPTKSD(filterUnit, filterStatus) {
   var data = sheet.getDataRange().getValues();
   data.shift(); 
   
+  // Ambil data usulan untuk mencari PTK Baru yang masih pending
+  var sheetUsulan = ss.getSheetByName("usulan_mutasi_sdn");
+  var usulanData = sheetUsulan ? sheetUsulan.getDataRange().getValues() : [];
+  var pendingPtkIds = new Set();
+  for (var j = 1; j < usulanData.length; j++) {
+    if (usulanData[j][7] === "Pending" && String(usulanData[j][3]).startsWith("PTK Baru")) {
+      pendingPtkIds.add(String(usulanData[j][1]));
+    }
+  }
+  
   var result = [];
   for (var i = 0; i < data.length; i++) {
     var row = data[i];
@@ -87,7 +97,8 @@ function getDataPTKSD(filterUnit, filterStatus) {
       diinput: row[32] ? Utilities.formatDate(new Date(row[32]), Session.getScriptTimeZone(), "dd/MM/yy HH:mm") : "", // AG
       user_input: row[33],     // AH
       diedit: row[34] ? Utilities.formatDate(new Date(row[34]), Session.getScriptTimeZone(), "dd/MM/yy HH:mm") : "",  // AI
-      user_edit: row[35]       // AJ
+      user_edit: row[35],      // AJ
+      is_pending_baru: pendingPtkIds.has(String(row[0]))
     });
   }
   return JSON.stringify(result);
