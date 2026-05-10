@@ -917,6 +917,7 @@
 
                 $('#ptksdn_loadingState').hide();
                 $('#ptksdn_tableState').show();
+                ptksdn_checkExternalAction();
             } catch (e) { ptksdn_updateTabelKosong('<div class="text-danger">Format JSON gagal diparsing.</div>'); }
         }).withFailureHandler(function (e) {
             btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-danger"></i>');
@@ -1152,6 +1153,83 @@
         return dateObj.getDate() + ' ' + months[dateObj.getMonth()] + ' ' + dateObj.getFullYear();
     }
 
+    function ptksdn_checkExternalAction() {
+        var action = localStorage.getItem('ptksdn_action');
+        var prefillDataStr = localStorage.getItem('ptksdn_prefill_data');
+        
+        if (!action) return;
+        
+        var prefillData = {};
+        try {
+            if (prefillDataStr) prefillData = JSON.parse(prefillDataStr);
+        } catch(e) { console.error('Failed to parse prefill data'); }
+        
+        localStorage.removeItem('ptksdn_action');
+        localStorage.removeItem('ptksdn_prefill_data');
+        localStorage.removeItem('ptksdn_id');
+        localStorage.removeItem('ptksdn_nama');
+        
+        if (action === 'tambah') {
+            ptksdn_bukaModalTambahPrefill(prefillData);
+        } else if (action === 'mutasi') {
+            ptksdn_bukaModalMutasi(prefillData.id_ptk, prefillData.nama_ptk, prefillData);
+        }
+    }
+
+    function ptksdn_bukaModalTambahPrefill(data) {
+        ptksdn_bukaModalTambah();
+        
+        $('#ptksdn_judulModalForm').html('<i class="fas fa-user-edit mr-2"></i> Edit PTK Baru');
+        $('#ptksdn_btnSimpanForm').html('<i class="fas fa-save mr-1"></i> UPDATE DATA');
+        
+        if (data.unit) $('#ptksdn_inputUnit').val(data.unit);
+        $('[name="gelar_depan"]').val(data.gelar_depan);
+        $('[name="nama_lengkap"]').val(data.nama_no_gelar || data.nama_ptk);
+        $('[name="gelar_belakang"]').val(data.gelar_belakang);
+        $('[name="nip"]').val(data.nip);
+        $('[name="nik"]').val(data.nik);
+        $('[name="tmp_lahir"]').val(data.tmp_lahir);
+        $('[name="tgl_lahir"]').val(data.tgl_lahir);
+        $('[name="lp"]').val(data.lp);
+        $('[name="agama"]').val(data.agama);
+        $('[name="alamat_ktp"]').val(data.alamat_ktp);
+        $('[name="alamat_domisili"]').val(data.alamat_domisili);
+        $('[name="pendidikan"]').val(data.pendidikan);
+        $('[name="jurusan"]').val(data.jurusan);
+        $('[name="thn_lulus"]').val(data.thn_lulus);
+        $('[name="nuptk"]').val(data.nuptk);
+        $('[name="hp"]').val(data.hp);
+        $('[name="email"]').val(data.email);
+        
+        $('#ptksdn_selStatusPeg').val(data.status_peg);
+        ptksdn_toggleJabatanTugas();
+        $('#ptksdn_selJabatan').val(data.jabatan);
+        $('#ptksdn_selTugas').val(data.tugas);
+        ptksdn_togglePangkatFields();
+        ptksdn_toggleNipLogic();
+        
+        $('[name="tmt_jabatan"]').val(data.tmt_jabatan);
+        $('#ptksdn_selPangkat').val(data.pangkat);
+        $('#ptksdn_inputTmtGol').val(data.tmt_gol);
+        
+        if (data.mkg) {
+            var parts = data.mkg.match(/(\d+)\s*Tahun\s*(\d+)\s*Bulan/i);
+            if (parts) { $('[name="mkg_thn"]').val(parts[1]); $('[name="mkg_bln"]').val(parts[2]); }
+        }
+        
+        $('[name="serdik"]').val(data.serdik);
+        $('[name="dapodik"]').val(data.dapodik);
+        $('[name="tugtam"]').val(data.tugtam);
+        
+        ptksdn_toggleJurusanField();
+        $('#ptksdn_sectionDokumen').show();
+        
+        if (data.id_ptk) {
+            $('#ptksdn_inputMode').val('update');
+            $('#ptksdn_inputIdData').val(data.id_ptk);
+        }
+    }
+
     // =================================================================
     // 6. CRUD: TAMBAH, EDIT & MUTASI, HAPUS (MODAL BAB V)
     // =================================================================
@@ -1353,7 +1431,7 @@
 
     // ======================================================================
     // FITUR MUTASI [NEW]
-    function ptksdn_bukaModalMutasi(id, nama) {
+    function ptksdn_bukaModalMutasi(id, nama, prefillData) {
         $('#ptksdn_formMutasi').removeClass('was-validated');
         $('#ptksdn_mutasiJenis').val('');
         $('#ptksdn_grpMutasiTujuan').hide();
@@ -1364,7 +1442,19 @@
         var $selTarget = $('#ptksdn_mutasiTujuan').empty().append('<option value="">- Pilih Lembaga Tujuan -</option>');
         Object.keys(PTKSDN_MAP_UNIT_NPSN).sort().forEach(function (u) { $selTarget.append($('<option>', { value: u, text: u })); });
 
-        if (id && typeof id === 'string') {
+        if (prefillData) {
+            $('#ptksdn_mutasiIdData').val(prefillData.id_ptk);
+            $('#ptksdn_mutasiNamaPtk').val(prefillData.nama_ptk).show();
+            $('#ptksdn_mutasiNamaPtkSelect').hide();
+            
+            $('#ptksdn_mutasiJenis').val(prefillData.jenis_mutasi);
+            if (prefillData.jenis_mutasi) $('#ptksdn_grpMutasiTujuan').show();
+            $('#ptksdn_mutasiTujuan').val(prefillData.lembaga_tujuan);
+            
+            if (prefillData.file_sk) {
+                $('#ptksdn_mutasiFile').next('.custom-file-label').addClass("selected").html(prefillData.file_sk);
+            }
+        } else if (id && typeof id === 'string') {
             // Dipanggil dari baris tabel
             $('#ptksdn_mutasiIdData').val(id);
             $('#ptksdn_mutasiNamaPtk').val(nama).show();
