@@ -260,6 +260,110 @@ function insertDataPTK(form, base64Data, fileName, jenisDokumen, userPengusul) {
   return "Sukses";
 }
 
+// 5. REVISI DATA PTK BARU (Tanpa Insert Baru)
+function revisiUsulanPTKBaru(form, base64Data, fileName, jenisDokumen, userPengusul) {
+  try {
+    var ss = SpreadsheetApp.openById(ID_DB_PTK);
+    var sheet = ss.getSheetByName(SHEET_PTK);
+    if (!sheet) return "Error: Sheet 'Master Data GTK' tidak ditemukan.";
+    var data = sheet.getDataRange().getValues();
+    
+    var rowIndex = -1;
+    for(var i=1; i<data.length; i++){ 
+      if(String(data[i][0]) === String(form.id)){ rowIndex = i + 1; break; } 
+    }
+    if(rowIndex === -1) return "Error: ID PTK (" + form.id + ") tidak ditemukan di Master.";
+
+    var inputNip = String(form.nip || "").trim().replace(/[^0-9]/g, '');
+    if (inputNip !== "" && inputNip !== "-") {
+        for (var i = 1; i < data.length; i++) {
+            var rowNip = String(data[i][7]).replace(/[^0-9]/g, ''); 
+            var rowId = String(data[i][0]);
+            if (rowNip === inputNip && rowId !== String(form.id)) return "Gagal: NIP " + inputNip + " sudah dipakai oleh " + data[i][6];
+        }
+    }
+
+    var namaFull = (form.gelar_depan ? form.gelar_depan + " " : "") + form.nama_lengkap + (form.gelar_belakang ? ", " + form.gelar_belakang : "");
+    var mkg = ""; if (form.mkg_thn || form.mkg_bln) { mkg = (form.mkg_thn || "0") + " Tahun " + (form.mkg_bln || "0") + " Bulan"; }
+    var now = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm:ss");
+    var user = form.user_login || "Admin";
+
+    // Update Master Data
+    sheet.getRange(rowIndex, 4).setValue(form.gelar_depan || "");         
+    sheet.getRange(rowIndex, 5).setValue(form.nama_lengkap || "");        
+    sheet.getRange(rowIndex, 6).setValue(form.gelar_belakang || "");      
+    sheet.getRange(rowIndex, 7).setValue(namaFull);                       
+    sheet.getRange(rowIndex, 8).setValue("'"+(form.nip || ""));           
+    sheet.getRange(rowIndex, 9).setValue(form.tmp_lahir || "");           
+    sheet.getRange(rowIndex, 10).setValue(form.tgl_lahir || "");    
+    sheet.getRange(rowIndex, 11).setValue("'"+(form.nik || ""));          
+    sheet.getRange(rowIndex, 12).setValue(form.lp || "");                 
+    sheet.getRange(rowIndex, 13).setValue(form.agama || "");              
+    sheet.getRange(rowIndex, 14).setValue(form.pendidikan || "");         
+    sheet.getRange(rowIndex, 15).setValue(form.jurusan || "");            
+    sheet.getRange(rowIndex, 16).setValue(form.thn_lulus || "");          
+    sheet.getRange(rowIndex, 17).setValue(form.alamat_ktp || "");         
+    sheet.getRange(rowIndex, 18).setValue(form.alamat_domisili || "");    
+    sheet.getRange(rowIndex, 19).setValue("'"+(form.hp || ""));           
+    sheet.getRange(rowIndex, 20).setValue(form.status_peg || "");         
+    sheet.getRange(rowIndex, 21).setValue(form.jabatan || "");            
+    sheet.getRange(rowIndex, 22).setValue(form.tmt_jabatan || "");  
+    sheet.getRange(rowIndex, 23).setValue(form.pangkat || "");            
+    sheet.getRange(rowIndex, 24).setValue(form.tmt_gol || "");      
+    sheet.getRange(rowIndex, 25).setValue(mkg);                           
+    sheet.getRange(rowIndex, 27).setValue(form.tugas || "");              
+    sheet.getRange(rowIndex, 28).setValue("'"+(form.nuptk || ""));        
+    sheet.getRange(rowIndex, 29).setValue(form.serdik || "");             
+    sheet.getRange(rowIndex, 30).setValue(form.dapodik || "");            
+    sheet.getRange(rowIndex, 31).setValue(form.tugtam || "");             
+    sheet.getRange(rowIndex, 32).setValue(form.email || "");              
+    sheet.getRange(rowIndex, 35).setValue(now);                           
+    sheet.getRange(rowIndex, 36).setValue(user);                          
+
+    // Upload dokumen baru jika ada
+    var fileUrl = null;
+    if (base64Data && fileName) {
+      try {
+        var folderId = "1WScDrF-y4PyjFjneXuIqX3yRNxIcqKzB";
+        var folder = DriveApp.getFolderById(folderId);
+        var fileBytes = Utilities.base64Decode(base64Data);
+        var blob = Utilities.newBlob(fileBytes, "application/pdf", fileName || "dokumen_ptk_baru.pdf");
+        var file = folder.createFile(blob);
+        fileUrl = file.getUrl();
+      } catch(e) {
+        Logger.log("Upload revisi gagal: " + e.message);
+      }
+    }
+
+    // Update usulan_mutasi_sdn
+    var sheetUsulan = ss.getSheetByName("usulan_mutasi_sdn");
+    if (!sheetUsulan) return "Error: Sheet usulan tidak ditemukan.";
+    var usulanData = sheetUsulan.getDataRange().getValues();
+    var usulanRowIdx = -1;
+    for(var i=1; i<usulanData.length; i++) {
+       if(String(usulanData[i][0]) === String(form.id_usulan)) { usulanRowIdx = i + 1; break; }
+    }
+    
+    if(usulanRowIdx !== -1) {
+       var timestamp = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss");
+       var lembaga = form.unit_kerja || form.unit_login || "-";
+       
+       sheetUsulan.getRange(usulanRowIdx, 3).setValue(namaFull);
+       if (jenisDokumen) sheetUsulan.getRange(usulanRowIdx, 4).setValue("PTK Baru (" + jenisDokumen + ")");
+       sheetUsulan.getRange(usulanRowIdx, 5).setValue(lembaga);
+       sheetUsulan.getRange(usulanRowIdx, 6).setValue(lembaga);
+       if (fileUrl) sheetUsulan.getRange(usulanRowIdx, 7).setValue(fileUrl);
+       sheetUsulan.getRange(usulanRowIdx, 8).setValue("Pending"); // Kembalikan ke Pending
+       sheetUsulan.getRange(usulanRowIdx, 9).setValue(timestamp); // Tanggal revisi
+       sheetUsulan.getRange(usulanRowIdx, 13).setValue(""); // Kosongkan catatan penolakan
+    } else {
+       return "Error: Data usulan dengan ID " + form.id_usulan + " tidak ditemukan.";
+    }
+
+    return "Sukses";
+  } catch(e) { return "Error: " + e.message; }
+}
+
 // ======================================================================
 // MODUL: REFERENSI (TIDAK BERUBAH)
 // ======================================================================

@@ -1190,6 +1190,8 @@
         
         if (action === 'tambah') {
             ptksdn_bukaModalTambahPrefill(prefillData);
+        } else if (action === 'revisi_baru') {
+            ptksdn_bukaModalRevisiBaru(prefillData);
         } else if (action === 'mutasi') {
             ptksdn_bukaModalMutasi(prefillData.id_ptk, prefillData.nama_ptk, prefillData);
         }
@@ -1247,6 +1249,26 @@
             $('#ptksdn_inputMode').val('update');
             $('#ptksdn_inputIdData').val(data.id_ptk);
         }
+    }
+
+    function ptksdn_bukaModalRevisiBaru(data) {
+        ptksdn_bukaModalTambahPrefill(data); // Gunakan fungsi pengisian data yang sama
+        
+        // Sesuaikan state khusus untuk mode Revisi PTK Baru
+        $('#ptksdn_inputMode').val('revisi_baru');
+        $('#ptksdn_inputIdData').val(data.id || data.id_ptk);
+        
+        if ($('#ptksdn_inputIdUsulan').length === 0) {
+            $('<input>').attr({type: 'hidden', id: 'ptksdn_inputIdUsulan', name: 'id_usulan'}).appendTo('#ptksdn_formUtama');
+        }
+        $('#ptksdn_inputIdUsulan').val(data.id_usulan);
+        
+        $('#ptksdn_judulModalForm').html('<i class="fas fa-user-edit mr-2"></i> Revisi PTK Baru');
+        $('#ptksdn_btnSimpanForm').html('<i class="fas fa-paper-plane mr-1"></i> AJUKAN REVISI');
+        $('#ptksdn_lblDokumenUpload').html('Unggah Dokumen SK Baru <span class="text-muted small">(Opsional, lewati jika dokumen lama sudah benar)</span>');
+        
+        // Hapus constraint required karena dokumen opsional saat revisi
+        $('#ptksdn_inputFileDokumen').prop('required', false);
     }
 
     // =================================================================
@@ -1387,24 +1409,37 @@
         };
         var cbFail = function (err) { btn.prop('disabled', false).html(txt); Sultan.notif.crud.gagal(err.message); };
 
-        if (mode === 'insert') {
+        if (mode === 'insert' || mode === 'revisi_baru') {
             var fileInput = document.getElementById('ptksdn_inputFileDokumen');
             var file = fileInput.files[0];
-            if (!file) {
+            
+            if (mode === 'insert' && !file) {
                 Sultan.notif.gagal('Harap unggah dokumen wajib!');
                 btn.prop('disabled', false).html(txt);
                 return;
             }
 
-            var reader = new FileReader();
-            reader.onload = function (ev) {
-                var base64Data = ev.target.result.split(',')[1];
+            var processSubmission = function(base64Data, fileName) {
                 var jenisDok = $('#ptksdn_inputJenisDokumen').val();
-                var fileName = file.name;
-                google.script.run.withSuccessHandler(cbSuccess).withFailureHandler(cbFail)
-                    .insertDataPTK(formData, base64Data, fileName, jenisDok, PTKSDN_USER_AKTIF);
+                if (mode === 'insert') {
+                    google.script.run.withSuccessHandler(cbSuccess).withFailureHandler(cbFail)
+                        .insertDataPTK(formData, base64Data, fileName, jenisDok, PTKSDN_USER_AKTIF);
+                } else {
+                    google.script.run.withSuccessHandler(cbSuccess).withFailureHandler(cbFail)
+                        .revisiUsulanPTKBaru(formData, base64Data, fileName, jenisDok, PTKSDN_USER_AKTIF);
+                }
             };
-            reader.readAsDataURL(file);
+
+            if (file) {
+                var reader = new FileReader();
+                reader.onload = function (ev) {
+                    var base64Data = ev.target.result.split(',')[1];
+                    processSubmission(base64Data, file.name);
+                };
+                reader.readAsDataURL(file);
+            } else {
+                processSubmission(null, null); // Revisi tanpa upload file baru
+            }
         } else {
             google.script.run.withSuccessHandler(cbSuccess).withFailureHandler(cbFail).updateDataPTK(formData);
         }
