@@ -175,6 +175,7 @@ function insertDataPTK(form, base64Data, fileName, jenisDokumen, userPengusul) {
   var sheet = ss.getSheetByName(SHEET_PTK);
   if (!sheet) return "Error: Sheet 'Master Data GTK' tidak ditemukan.";
 
+  // Deteksi Ganda NIP
   var inputNip = String(form.nip || "").trim().replace(/[^0-9]/g, ''); 
   if (inputNip !== "" && inputNip !== "-") {
       var data = sheet.getDataRange().getValues();
@@ -184,10 +185,38 @@ function insertDataPTK(form, base64Data, fileName, jenisDokumen, userPengusul) {
       }
   }
 
+  // Deteksi Ganda NIK
+  var inputNik = String(form.nik || "").trim().replace(/[^0-9]/g, ''); 
+  if (inputNik !== "" && inputNik !== "-") {
+      var data = sheet.getDataRange().getValues();
+      for (var i = 1; i < data.length; i++) {
+        var rowNik = String(data[i][10]).replace(/[^0-9]/g, ''); // Kolom K (10)
+        if (rowNik === inputNik) return "Gagal: NIK " + inputNik + " sudah terdaftar atas nama " + data[i][6];
+      }
+  }
+
   var newId = "GTK-" + new Date().getTime();
   var namaFull = (form.gelar_depan ? form.gelar_depan + " " : "") + form.nama_lengkap + (form.gelar_belakang ? ", " + form.gelar_belakang : "");
   var mkg = ""; if (form.mkg_thn || form.mkg_bln) { mkg = (form.mkg_thn || "0") + " Tahun " + (form.mkg_bln || "0") + " Bulan"; }
   var timestamp = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss");
+
+  var fileUrl = "-";
+  var jenisDok = jenisDokumen || "-";
+
+  // Upload dokumen ke Google Drive jika ada
+  if (base64Data && fileName) {
+    try {
+      var folderId = "1WScDrF-y4PyjFjneXuIqX3yRNxIcqKzB";
+      var folder = DriveApp.getFolderById(folderId);
+      var fileBytes = Utilities.base64Decode(base64Data);
+      var blob = Utilities.newBlob(fileBytes, "application/pdf", fileName || "dokumen_ptk_baru.pdf");
+      var file = folder.createFile(blob);
+      fileUrl = file.getUrl();
+    } catch(uploadErr) {
+      Logger.log("Upload dokumen gagal: " + uploadErr.message);
+      // Tetap lanjutkan proses simpan data meskipun upload gagal
+    }
+  }
 
   var rowData = [
       newId,                  // A (0)
@@ -207,7 +236,7 @@ function insertDataPTK(form, base64Data, fileName, jenisDokumen, userPengusul) {
       form.jurusan || "",     // O (14)
       form.thn_lulus || "",   // P (15)
       form.alamat_ktp || "",  // Q (16)
-      form.alamat_domisili || "", // R (17) NEW
+      form.alamat_domisili || "", // R (17)
       "'" + (form.hp || ""),  // S (18)
       form.status_peg || "",  // T (19)
       form.jabatan || "",     // U (20)
@@ -225,37 +254,12 @@ function insertDataPTK(form, base64Data, fileName, jenisDokumen, userPengusul) {
       timestamp,              // AG (32)
       form.user_login || "",  // AH (33)
       "",                     // AI (34)
-      ""                      // AJ (35)
+      "",                     // AJ (35)
+      jenisDok,               // AK (36)
+      fileUrl                 // AL (37)
   ];
 
   sheet.appendRow(rowData);
-
-  // Upload dokumen ke Google Drive & buat usulan otomatis
-  if (base64Data && fileName) {
-    try {
-      var folderId = "1WScDrF-y4PyjFjneXuIqX3yRNxIcqKzB";
-      var folder = DriveApp.getFolderById(folderId);
-      var fileBytes = Utilities.base64Decode(base64Data);
-      var blob = Utilities.newBlob(fileBytes, "application/pdf", fileName || "dokumen_ptk_baru.pdf");
-      var file = folder.createFile(blob);
-      var fileUrl = file.getUrl();
-
-      // Buat / ambil sheet usulan
-      var sheetUsulan = ss.getSheetByName("usulan_mutasi_sdn");
-      if (!sheetUsulan) {
-        sheetUsulan = ss.insertSheet("usulan_mutasi_sdn");
-        var headers = ["ID Usulan","ID PTK","Nama PTK","Jenis Mutasi","Lembaga Asal","Lembaga Tujuan","File SK","Status","Tanggal Usulan","User Pengusul","Tanggal Eksekusi","User Eksekutor","Catatan"];
-        sheetUsulan.getRange(1, 1, 1, headers.length).setValues([headers]);
-      }
-
-      var lembaga = form.unit_kerja || form.unit_login || "-";
-      var idUsulan = "USUL-" + new Date().getTime();
-      sheetUsulan.appendRow([idUsulan, newId, namaFull, "PTK Baru (" + (jenisDokumen || "Dokumen") + ")", lembaga, lembaga, fileUrl, "Pending", timestamp, userPengusul || form.user_login || "", "", ""]);
-    } catch(uploadErr) {
-      // Insert tetap sukses meski upload gagal; log error tapi jangan blok user
-      Logger.log("Upload dokumen gagal: " + uploadErr.message);
-    }
-  }
 
   return "Sukses";
 }
@@ -823,7 +827,7 @@ function hapusUsulanPTKPAUD(dataKirim) {
 // BACKEND: KELOLA MUTASI PTK SDN [NEW]
 // =============================================================
 
-function ajukanMutasiPTKSDN(idPtk, jenis, tujuan, base64Data, fileName, userPengusul) {
+function ajukanMutasiPTKSDN(idPtk, jenis, tujuan, tanggal, base64Data, fileName, userPengusul) {
   try {
     var ss = SpreadsheetApp.openById(ID_DB_PTK);
     var sheetSource = ss.getSheetByName(SHEET_PTK);
@@ -832,7 +836,7 @@ function ajukanMutasiPTKSDN(idPtk, jenis, tujuan, base64Data, fileName, userPeng
     // Buat sheet usulan jika belum ada
     if (!sheetUsulan) {
       sheetUsulan = ss.insertSheet("usulan_mutasi_sdn");
-      var headers = ["ID Usulan", "ID PTK", "Nama PTK", "Jenis Mutasi", "Lembaga Asal", "Lembaga Tujuan", "File SK", "Status", "Tanggal Usulan", "User Pengusul", "Tanggal Eksekusi", "User Eksekutor", "Catatan"];
+      var headers = ["ID Usulan", "ID PTK", "Nama PTK", "Jenis Mutasi", "Lembaga Asal", "Lembaga Tujuan", "TMT/Tanggal", "File SK", "Status", "Tanggal Usulan", "User Pengusul", "Tanggal Eksekusi", "User Eksekutor", "Catatan"];
       sheetUsulan.getRange(1, 1, 1, headers.length).setValues([headers]);
     }
     
@@ -851,13 +855,16 @@ function ajukanMutasiPTKSDN(idPtk, jenis, tujuan, base64Data, fileName, userPeng
     var namaPtk = ptkRow[6]; // Kolom G (Nama Lengkap)
     var lembagaAsal = ptkRow[2]; // Kolom C (Unit/Lembaga)
     
-    // Upload file ke Drive
-    var folderId = "1WScDrF-y4PyjFjneXuIqX3yRNxIcqKzB";
-    var folder = DriveApp.getFolderById(folderId);
-    var fileBytes = Utilities.base64Decode(base64Data);
-    var blob = Utilities.newBlob(fileBytes, "application/pdf", fileName);
-    var file = folder.createFile(blob);
-    var fileUrl = file.getUrl();
+    // Upload file ke Drive (Conditional)
+    var fileUrl = "-";
+    if (base64Data && fileName) {
+      var folderId = "1WScDrF-y4PyjFjneXuIqX3yRNxIcqKzB";
+      var folder = DriveApp.getFolderById(folderId);
+      var fileBytes = Utilities.base64Decode(base64Data);
+      var blob = Utilities.newBlob(fileBytes, "application/pdf", fileName);
+      var file = folder.createFile(blob);
+      fileUrl = file.getUrl();
+    }
     
     // Simpan usulan
     var idUsulan = "USUL-" + new Date().getTime();
@@ -870,10 +877,12 @@ function ajukanMutasiPTKSDN(idPtk, jenis, tujuan, base64Data, fileName, userPeng
       jenis,
       lembagaAsal,
       tujuan || "-",
+      tanggal || "-",
       fileUrl,
       "Pending",
       timestamp,
       userPengusul,
+      "",
       "",
       ""
     ];
@@ -894,7 +903,7 @@ function getUsulanMutasiPTKSDN() {
     var lastRow = sheet.getLastRow();
     if (lastRow < 2) return JSON.stringify([]);
     
-    var data = sheet.getRange(2, 1, lastRow - 1, 13).getDisplayValues();
+    var data = sheet.getRange(2, 1, lastRow - 1, 14).getDisplayValues();
     var result = [];
     
     for (var i = 0; i < data.length; i++) {
@@ -906,13 +915,14 @@ function getUsulanMutasiPTKSDN() {
         jenis_mutasi: row[3],
         lembaga_asal: row[4],
         lembaga_tujuan: row[5],
-        file_sk: row[6],
-        status: row[7],
-        tanggal_usulan: row[8],
-        user_pengusul: row[9],
-        tanggal_eksekusi: row[10],
-        user_eksekutor: row[11],
-        catatan: row[12] || ""
+        tmt_tanggal: row[6],
+        file_sk: row[7],
+        status: row[8],
+        tanggal_usulan: row[9],
+        user_pengusul: row[10],
+        tanggal_eksekusi: row[11],
+        user_eksekutor: row[12],
+        catatan: row[13] || ""
       });
     }
     return JSON.stringify(result);
@@ -940,7 +950,7 @@ function eksekusiMutasiPTKSDN(idUsulan, keputusan, userEksekutor) {
     }
     
     if (usulanRowIdx === -1) return "Error: Data usulan tidak ditemukan.";
-    if (usulanRow[7] !== "Pending") return "Error: Usulan sudah diproses.";
+    if (usulanRow[8] !== "Pending") return "Error: Usulan sudah diproses.";
     
     var idPtk = usulanRow[1];
     var jenis = usulanRow[3];
@@ -966,7 +976,7 @@ function eksekusiMutasiPTKSDN(idUsulan, keputusan, userEksekutor) {
       
       if (ptkRowIdx === -1) return "Error: Data PTK tidak ditemukan di Master Data.";
       
-      if (jenis === "Lokal") {
+      if (jenis === "Dalam Kecamatan") {
         // Mutasi Lokal: Ubah Unit/Lembaga di Master Data
         sheetSource.getRange(ptkRowIdx, 3).setValue(tujuan);
       } else {
@@ -987,10 +997,10 @@ function eksekusiMutasiPTKSDN(idUsulan, keputusan, userEksekutor) {
     }
     
     // Update status usulan
-    sheetUsulan.getRange(usulanRowIdx, 8).setValue(mainStatus);
-    sheetUsulan.getRange(usulanRowIdx, 11).setValue(timestamp);
-    sheetUsulan.getRange(usulanRowIdx, 12).setValue(userEksekutor);
-    sheetUsulan.getRange(usulanRowIdx, 13).setValue(catatan);
+    sheetUsulan.getRange(usulanRowIdx, 9).setValue(mainStatus);
+    sheetUsulan.getRange(usulanRowIdx, 12).setValue(timestamp);
+    sheetUsulan.getRange(usulanRowIdx, 13).setValue(userEksekutor);
+    sheetUsulan.getRange(usulanRowIdx, 14).setValue(catatan);
     
     return "Sukses";
   } catch (e) {
