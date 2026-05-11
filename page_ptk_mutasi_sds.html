@@ -451,6 +451,7 @@ $(document).ready(function() {
 
 function ptksds_bukaModalMutasi() {
     $('#ptksds_formMutasi')[0].reset();
+    $('#ptksds_mutasiIdData').val('');
     $('#ptksds_formMutasi').removeClass('was-validated');
     $('#ptksds_mutasiNamaPtkSelect').prop('disabled', true).empty().append('<option value="">- Pilih PTK -</option>');
     
@@ -576,21 +577,28 @@ function ptksds_submitFormMutasi() {
         tanggal = $('#ptksds_mutasiTglTidakAktif').val();
     }
 
+    var idUsulan = $('#ptksds_mutasiIdData').val();
     var processSubmit = function(base64Data, fileName) {
-        google.script.run
+        var runner = google.script.run
             .withSuccessHandler(function(res) {
                 btn.prop('disabled', false).html(oldText);
                 if (res === 'Sukses') {
                     $('#ptksds_modalMutasi').modal('hide');
-                    Sultan.notif.crud.sukses('Usulan mutasi berhasil diajukan!');
+                    var msg = idUsulan ? 'Usulan mutasi berhasil diperbarui!' : 'Usulan mutasi berhasil diajukan!';
+                    Sultan.notif.crud.sukses(msg);
                     ptksds_tarikDataUsulan();
                 } else { Sultan.notif.gagal(res); }
             })
             .withFailureHandler(function(err) {
                 btn.prop('disabled', false).html(oldText);
                 Sultan.notif.crud.gagal(err.message);
-            })
-            .ajukanMutasiPTKSDS(idPtk, jenis, tujuan, tanggal, base64Data, fileName, PTKSDS_USER_AKTIF);
+            });
+
+        if (idUsulan) {
+            runner.updateUsulanMutasiPTKSDS(idUsulan, idPtk, jenis, tujuan, tanggal, base64Data, fileName, PTKSDS_USER_AKTIF);
+        } else {
+            runner.ajukanMutasiPTKSDS(idPtk, jenis, tujuan, tanggal, base64Data, fileName, PTKSDS_USER_AKTIF);
+        }
     };
 
     if (file) {
@@ -975,34 +983,30 @@ function ptksds_editUsulan(idUsulan) {
         return;
     }
     
-    var isPtkBaru = (row.jenis_mutasi || '').toLowerCase().includes('baru') || (row.jenis_mutasi || '').toLowerCase().includes('tambah');
+    // Buka modal mutasi
+    ptksds_bukaModalMutasi();
     
-    var fullData = row;
-    if (isPtkBaru) {
-        var master = PTKSDS_CACHE_MASTER.find(function(m) { return String(m.id) === String(row.id_ptk); });
-        if (master) {
-            fullData = master;
-            fullData.id_usulan = row.id_usulan;
-            fullData.status_usulan = row.status;
-            fullData.jenis_mutasi = row.jenis_mutasi;
-            fullData.file_sk = row.file_sk;
-        }
+    // Isi data ke modal
+    $('#ptksds_mutasiIdData').val(row.id_usulan);
+    $('#ptksds_mutasiUnitKerja').val(row.lembaga_asal).trigger('change');
+    $('#ptksds_mutasiNamaPtkSelect').val(row.id_ptk);
+    $('#ptksds_mutasiJenis').val(row.jenis_mutasi).trigger('change');
+    
+    // Isi field spesifik berdasarkan jenis
+    var jenis = row.jenis_mutasi;
+    if (jenis === 'Dalam Kecamatan') {
+        $('#ptksds_mutasiTujuanDropdown').val(row.lembaga_tujuan);
+        $('#ptksds_mutasiTMT').val(row.tmt_tanggal);
+    } else if (jenis === 'Luar Kecamatan') {
+        $('#ptksds_mutasiTujuanText').val(row.lembaga_tujuan);
+        $('#ptksds_mutasiTMT').val(row.tmt_tanggal);
+    } else if (jenis === 'Pensiun' || jenis === 'Resign') {
+        $('#ptksds_mutasiTMT').val(row.tmt_tanggal);
+    } else if (jenis === 'Meninggal') {
+        $('#ptksds_mutasiTglMeninggal').val(row.tmt_tanggal);
+    } else if (jenis === 'Tanpa Keterangan') {
+        $('#ptksds_mutasiTglTidakAktif').val(row.tmt_tanggal);
     }
-    
-    localStorage.setItem('ptksds_prefill_data', JSON.stringify(fullData));
-    
-    if (isPtkBaru) {
-        localStorage.setItem('ptksds_action', 'revisi_baru');
-    } else {
-        localStorage.setItem('ptksds_action', 'mutasi');
-        localStorage.setItem('ptksds_id', row.id_ptk);
-        localStorage.setItem('ptksds_nama', row.nama_ptk);
-    }
-    
-    Sultan.notif.info('Mengarahkan ke halaman Kelola PTK...');
-    setTimeout(function() {
-        loadContent('ptk_kelola_sds');
-    }, 1000);
 }
 
 function ptksds_previewPdf(url) {
