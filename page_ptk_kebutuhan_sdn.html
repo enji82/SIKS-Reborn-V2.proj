@@ -297,13 +297,13 @@ function kebutuhanptksdn_terapkanFilterLokal() {
 // =================================================================
 // 3. RENDER ENGINE MATRIKS: EXCEL SOLID COLOR (BAB VII)
 // =================================================================
-function kebutuhanptksdn_getColumnColor(index) {
-    if (index >= 4 && index <= 9) return "#e3f2fd";   
-    if (index >= 10 && index <= 17) return "#e8f5e9"; 
-    if (index >= 18 && index <= 25) return "#fff3e0"; 
-    if (index >= 26 && index <= 33) return "#f3e5f5"; 
-    if (index >= 34 && index <= 41) return "#fce4ec"; 
-    return "#ffffff"; 
+function kebutuhanptksdn_getColumnClass(index) {
+    if (index >= 4 && index <= 9) return "bg-soft-primary";   
+    if (index >= 10 && index <= 17) return "bg-soft-success"; 
+    if (index >= 18 && index <= 25) return "bg-soft-orange"; 
+    if (index >= 26 && index <= 33) return "bg-soft-purple"; 
+    if (index >= 34 && index <= 41) return "bg-soft-danger"; 
+    return ""; 
 }
 
 function kebutuhanptksdn_escapeHtml(text) {
@@ -329,11 +329,10 @@ function kebutuhanptksdn_renderTabel(dataRows) {
         // Kolom Data Numerik (Index 3 s/d 40 di DT, dari backend Index 4 s/d 41)
         for (var c = 4; c <= 41; c++) {
             var val = parseInt(row[c]) || 0;
-            // VAKSIN TEKS PUTIH: Teks TIDAK BOLEH dikunci "text-dark" agar td.addClass('text-white') bekerja.
             if (val === 0) {
                 arrRow.push('<span class="text-muted opacity-50">-</span>');
             } else {
-                arrRow.push('<span class="font-weight-bold">' + val + '</span>'); // text-dark telah dihilangkan
+                arrRow.push('<span class="font-weight-bold">' + val + '</span>');
             }
         }
         dtArray.push(arrRow);
@@ -355,10 +354,10 @@ function kebutuhanptksdn_renderTabel(dataRows) {
                 "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json", 
                 "emptyTable": '<div class="py-4 text-center text-muted"><i class="fas fa-clipboard-list fa-3x text-gray-300 mb-3" style="opacity: 0.6;"></i><br><h6 class="font-weight-bold text-dark mb-1">Belum Ada Data</h6><p class="small mb-0">Tidak ada analisis kebutuhan PTK untuk filter terpilih.</p></div>' 
             },
-            // VAKSIN EXCEL: Mewarnai tag dasar <td> agar solid penuh
             "createdRow": function(row, data, dataIndex) {
-                $('td', row).eq(1).css('background-color', '#ffffff').addClass('text-dark py-1');
-                $('td', row).eq(2).css('background-color', '#ffffff').addClass('text-dark py-1');
+                // Gunakan default background (adaptif)
+                $('td', row).eq(1).addClass('text-dark py-1');
+                $('td', row).eq(2).addClass('text-dark py-1');
 
                 // Loop index array dari DT (Index 3 sampai 40)
                 for (var i = 3; i <= 40; i++) {
@@ -367,16 +366,14 @@ function kebutuhanptksdn_renderTabel(dataRows) {
                     var valStr = String(data[i]).replace(/<[^>]*>?/gm, '').trim();
                     var val = parseInt(valStr) || 0;
                     
-                    var bgColor = kebutuhanptksdn_getColumnColor(colIndexBackend);
+                    var bgClass = kebutuhanptksdn_getColumnClass(colIndexBackend);
 
                     // LOGIKA PERINGATAN +/- (Indeks backend SDN: 7, 14, 22, 30, 38)
                     if ([7, 14, 22, 30, 38].includes(colIndexBackend)) {
                         if (val < 0) {
-                            bgColor = "#dc3545"; // Merah
-                            td.addClass('text-white'); // Ini kini akan sukses karena span telanjang
+                            bgClass = "bg-danger text-white"; // Merah
                         } else if (val > 0) {
-                            bgColor = "#007bff"; // Biru
-                            td.addClass('text-white');
+                            bgClass = "bg-primary text-white"; // Biru
                         } else {
                             td.addClass('text-dark');
                         }
@@ -388,7 +385,8 @@ function kebutuhanptksdn_renderTabel(dataRows) {
                         }
                     }
                     
-                    td.css('background-color', bgColor).addClass('py-1');
+                    if (bgClass) td.addClass(bgClass);
+                    td.addClass('py-1');
                 }
             },
             "footerCallback": function (row, data, start, end, display) {
@@ -413,15 +411,15 @@ function kebutuhanptksdn_renderTabel(dataRows) {
                 for (var i = 2; i < 40; i++) {
                     var colIndexBackend = i + 2; 
                     var val = totalArr[i];
-                    var bgColor = kebutuhanptksdn_getColumnColor(colIndexBackend); 
+                    var bgClass = kebutuhanptksdn_getColumnClass(colIndexBackend); 
                     var txtColor = "text-maroon";
 
                     if ([7, 14, 22, 30, 38].includes(colIndexBackend)) {
                         if (val < 0) {
-                            bgColor = "#dc3545";
+                            bgClass = "bg-danger";
                             txtColor = "text-white"; // Teks putih untuk total kurang
                         } else if (val > 0) {
-                            bgColor = "#007bff";
+                            bgClass = "bg-primary";
                             txtColor = "text-white"; // Teks putih untuk total lebih
                         } else {
                             txtColor = "text-dark";
@@ -430,8 +428,7 @@ function kebutuhanptksdn_renderTabel(dataRows) {
                         txtColor = "text-danger"; 
                     }
                     
-                    var style = 'background-color: ' + bgColor + ' !important; vertical-align: middle; height: 35px;';
-                    footHtml += '<th class="text-center px-2 py-1 font-weight-bold ' + txtColor + '" style="' + style + '">' + val + '</th>';
+                    footHtml += '<th class="text-center px-2 py-1 font-weight-bold ' + txtColor + ' ' + bgClass + '" style="vertical-align: middle; height: 35px;">' + val + '</th>';
                 }
 
                 // Injeksi mutlak ke tag dummy di tfoot
