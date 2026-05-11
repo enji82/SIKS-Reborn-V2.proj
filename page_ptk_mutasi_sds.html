@@ -387,6 +387,12 @@ $(document).ready(function() {
         ptksds_toggleMutasiFields(jenis);
     });
 
+    // Event handler untuk input file mutasi
+    $(document).on('change', '#ptksds_mutasiFile', function() {
+        var fileName = $(this).val().split('\\').pop();
+        $(this).next('.custom-file-label').html(fileName || 'Pilih file...');
+    });
+
     // Event handler untuk submit form mutasi
     $(document).off('submit', '#ptksds_formMutasi').on('submit', '#ptksds_formMutasi', function(e) {
         e.preventDefault();
@@ -666,7 +672,10 @@ function ptksds_inisialisasiHalaman() {
                 return;
             }
             PTKSDS_UNIT_TERKUNCI = dataUnit.unitKerja;
-            $('#ptksds_filterUnit').empty().append('<option value="' + ptksds_escapeHtml(PTKSDS_UNIT_TERKUNCI) + '">' + ptksds_escapeHtml(PTKSDS_UNIT_TERKUNCI) + '</option>').prop('disabled', true);
+            if (!PTKSDS_UNIT_TERKUNCI) {
+                Sultan.alert('warning', 'Peringatan', 'Unit kerja Anda tidak ditemukan di Database Sekolah. Data usulan mungkin tidak muncul.');
+            }
+            $('#ptksds_filterUnit').empty().append('<option value="' + ptksds_escapeHtml(PTKSDS_UNIT_TERKUNCI || '') + '">' + ptksds_escapeHtml(PTKSDS_UNIT_TERKUNCI || 'Tidak Ditemukan') + '</option>').prop('disabled', true);
             ptksds_tarikDataUsulan();
         }).getUnitKerjaByNpsnPTK(PTKSDS_USER_NPSN); 
     }
@@ -775,7 +784,7 @@ function ptksds_renderTabelUsulan(data) {
     var dtArray = [];
     
     if (!data || data.length === 0) {
-        ptksds_updateTabelKosong("<div class='py-5 text-muted'><i class='fas fa-clipboard-list fa-3x mb-3 text-light opacity-50'></i><br>Belum ada data mutasi.</div>");
+        ptksds_updateTabelKosong("<div class='py-5 text-muted'><i class='fas fa-clipboard-list fa-3x mb-3 text-light opacity-50'></i><br>Belum ada data mutasi. (Total data di cache: " + (PTKSDS_CACHE_USULAN ? PTKSDS_CACHE_USULAN.length : 0) + ")</div>");
         return;
     }
     
