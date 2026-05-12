@@ -504,6 +504,45 @@ function ptkpaud_bukaModalMutasi() {
     $('#ptkpaud_modalMutasi').modal('show');
 }
 
+function ptkpaud_bukaModalEditMutasi(row) {
+    ptkpaud_bukaModalMutasi(); 
+    
+    $('#ptkpaud_mutasiIdData').val(row.id_usulan);
+    
+    var master = PTKPAUD_CACHE_MASTER.find(function(m) { return String(m.id) === String(row.id_ptk); }) || {};
+    
+    $('#ptkpaud_mutasiUnitKerja').val(master.unit).trigger('change');
+    ptkpaud_populatePtkDropdown(master.unit);
+    
+    $('#ptkpaud_mutasiNamaPtkSelect').val(row.id_ptk);
+    $('#ptkpaud_mutasiJenis').val(row.jenis_mutasi).trigger('change');
+    
+    var dateVal = row.tmt_tanggal;
+    if (dateVal && dateVal.includes('/')) {
+        var parts = dateVal.split('/');
+        dateVal = parts[2] + '-' + parts[1] + '-' + parts[0];
+    }
+    
+    if (row.jenis_mutasi === 'Dalam Kecamatan') {
+        $('#ptkpaud_mutasiTujuanDropdown').val(row.lembaga_tujuan);
+        $('#ptkpaud_mutasiTMT').val(dateVal);
+    } else if (row.jenis_mutasi === 'Luar Kecamatan') {
+        $('#ptkpaud_mutasiTujuanText').val(row.lembaga_tujuan);
+        $('#ptkpaud_mutasiTMT').val(dateVal);
+    } else if (row.jenis_mutasi === 'Pensiun' || row.jenis_mutasi === 'Resign') {
+        $('#ptkpaud_mutasiTMT').val(dateVal);
+    } else if (row.jenis_mutasi === 'Meninggal') {
+        $('#ptkpaud_mutasiTglMeninggal').val(dateVal);
+    } else if (row.jenis_mutasi === 'Tanpa Keterangan') {
+        $('#ptkpaud_mutasiTglTidakAktif').val(dateVal);
+    }
+    
+    if (row.file_sk && row.file_sk !== '-') {
+        $('.custom-file-label').html('File sudah ada (abaikan jika tidak diubah)');
+        $('#ptkpaud_mutasiFile').prop('required', false);
+    }
+}
+
 function ptkpaud_populatePtkDropdown(unit) {
     var $selPtk = $('#ptkpaud_mutasiNamaPtkSelect').empty().append('<option value="">- Pilih PTK -</option>');
     
@@ -720,33 +759,32 @@ function ptkpaud_tarikDataUsulan() {
     SultanUI.showLoading('#ptkpaud_loadingUsulan');
     $('#ptkpaud_tableUsulanState').hide();
 
-    // Fetch Master Data first
-    google.script.run
-        .withSuccessHandler(function(resMaster){
-            PTKPAUD_CACHE_MASTER = JSON.parse(resMaster);
-            
-            // Now fetch Usulan data
-            google.script.run
-                .withSuccessHandler(function(resUsulan){
-                    PTKPAUD_ALREADY_FETCHING = false;
-                    $('#ptkpaud_loadingUsulan').hide();
-                    PTKPAUD_CACHE_USULAN = JSON.parse(resUsulan);
-                    ptkpaud_populateFilterLembaga();
-                    ptkpaud_terapkanFilterLokal();
-                })
-                .withFailureHandler(function(err){
-                    PTKPAUD_ALREADY_FETCHING = false;
-                    $('#ptkpaud_loadingUsulan').hide();
-                    Sultan.notif.crud.gagal(err.message || err || 'Gagal memuat data');
-                })
-                .getUsulanMutasiPTKPAUD();
-        })
-        .withFailureHandler(function(err){
-            PTKPAUD_ALREADY_FETCHING = false;
-            $('#ptkpaud_loadingUsulan').hide();
-            Sultan.notif.crud.gagal(err.message || err || 'Gagal memuat data master');
-        })
-        .getDataPTKPAUD();
+    var masterPromise = new Promise(function(resolve, reject) {
+        google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler(reject)
+            .getDataPTKPAUD();
+    });
+
+    var usulanPromise = new Promise(function(resolve, reject) {
+        google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler(reject)
+            .getUsulanMutasiPTKPAUD();
+    });
+
+    Promise.all([masterPromise, usulanPromise]).then(function(results) {
+        PTKPAUD_CACHE_MASTER = JSON.parse(results[0]);
+        PTKPAUD_CACHE_USULAN = JSON.parse(results[1]);
+        PTKPAUD_ALREADY_FETCHING = false;
+        $('#ptkpaud_loadingUsulan').hide();
+        ptkpaud_populateFilterLembaga();
+        ptkpaud_terapkanFilterLokal();
+    }).catch(function(err) {
+        PTKPAUD_ALREADY_FETCHING = false;
+        $('#ptkpaud_loadingUsulan').hide();
+        Sultan.notif.crud.gagal(err.message || err || 'Gagal memuat data');
+    });
 }
 
 function ptkpaud_populateFilterLembaga() {
@@ -824,13 +862,14 @@ function ptkpaud_renderTabelUsulan(data) {
             } else {
                 aksiHtml += '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-secondary" onclick="ptkpaud_bukaModalVerifikasi(' + JSON.stringify(row).replace(/"/g, '&quot;') + ')" title="Lihat Detail"><i class="fas fa-eye"></i></button>';
             }
+        } else {
+            aksiHtml += '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-secondary" onclick="ptkpaud_bukaModalVerifikasi(' + JSON.stringify(row).replace(/"/g, '&quot;') + ')" title="Lihat Detail"><i class="fas fa-eye"></i></button>';
         }
         
         if (mainStatus === 'Pending' || mainStatus === 'Tolak') {
-            
+            aksiHtml += ' <button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning" onclick="ptkpaud_bukaModalEditMutasi(' + JSON.stringify(row).replace(/"/g, '&quot;') + ')" title="Edit"><i class="fas fa-pencil-alt"></i></button>';
             aksiHtml += ' <button type="button" class="sultan-btn-aksi sultan-btn-aksi-danger" onclick="ptkpaud_hapusUsulan(\'' + row.id_usulan + '\')" title="Hapus"><i class="fas fa-trash"></i></button>';
         } else {
-            
             aksiHtml += ' <button type="button" class="sultan-btn-aksi sultan-btn-aksi-danger" disabled style="opacity: 0.4; cursor: not-allowed;" title="Sudah disetujui"><i class="fas fa-trash"></i></button>';
         }
 
@@ -1001,8 +1040,14 @@ function ptkpaud_previewPdf(url) {
         return;
     }
     var previewUrl = url;
-    if (url.includes('drive.google.com') && url.includes('id=')) {
-        var fileId = url.split('id=')[1].split('&')[0];
+    var fileId = '';
+    if (url.includes('/file/d/')) {
+        fileId = url.split('/file/d/')[1].split('/')[0];
+    } else if (url.includes('id=')) {
+        fileId = url.split('id=')[1].split('&')[0];
+    }
+    
+    if (fileId) {
         previewUrl = 'https://drive.google.com/file/d/' + fileId + '/preview';
     }
     
