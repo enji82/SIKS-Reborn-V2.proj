@@ -167,13 +167,9 @@
 
                     <div class="ml-auto d-none d-md-block"></div>
 
-                    <button type="button" id="ptkpaud_btnTambah" class="sultan-btn-tambah shadow-sm" disabled>
-                        <i class="fas fa-plus"></i> TAMBAH DATA
-                    </button>
-
-                    <button type="button" id="ptkpaud_btnMutasiGlobal" class="sultan-btn-tambah shadow-sm ml-2"
-                        disabled>
-                        <i class="fas fa-exchange-alt"></i> MUTASI
+                    <button type="button" id="ptkpaud_btnTambah" class="sultan-btn-tambah shadow-sm ml-2"
+                        title="Tambah PTK Baru">
+                        <i class="fas fa-plus"></i> TAMBAH PTK
                     </button>
                 </div>
 
@@ -677,69 +673,7 @@
     </div>
 </div>
 
-<!-- MODAL MUTASI [NEW] -->
-<div class="modal fade" id="ptkpaud_modalMutasi" tabindex="-1" role="dialog" data-backdrop="static">
-    <div class="modal-dialog modal-dialog-centered" role="document" style="max-width: 500px;">
-        <div class="modal-content border-0 shadow-lg modal-content-sultan">
-            <div class="modal-header modal-header-sultan-primary">
-                <h5 class="modal-title"><i class="fas fa-exchange-alt mr-2"></i> Usulkan Mutasi PTK</h5>
-                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
-            </div>
 
-            <form id="ptkpaud_formMutasi" novalidate>
-                <div class="modal-body modal-body-sultan p-4">
-                    <input type="hidden" id="ptkpaud_mutasiIdData">
-
-                    <div class="form-group mb-3">
-                        <label class="form-label-sultan small font-weight-bold text-uppercase text-muted">Nama
-                            PTK</label>
-                        <input type="text" id="ptkpaud_mutasiNamaPtk" class="form-control form-control-sultan" disabled>
-                        <select id="ptkpaud_mutasiNamaPtkSelect" class="form-control form-control-sultan"
-                            style="display:none;"></select>
-                    </div>
-
-                    <div class="form-group mb-3">
-                        <label class="form-label-sultan small font-weight-bold text-uppercase text-muted">Jenis Mutasi
-                            <span class="text-danger">*</span></label>
-                        <select id="ptkpaud_mutasiJenis" class="form-control form-control-sultan" required>
-                            <option value="">- Pilih Jenis Mutasi -</option>
-                            <option value="Lokal">Mutasi Lokal</option>
-                            <option value="Luar Kecamatan">Mutasi ke Luar Kecamatan</option>
-                            <option value="Tidak Aktif">Tidak Aktif</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group mb-3" id="ptkpaud_grpMutasiTujuan" style="display: none;">
-                        <label class="form-label-sultan small font-weight-bold text-uppercase text-muted">Lembaga Tujuan
-                            <span class="text-danger">*</span></label>
-                        <select id="ptkpaud_mutasiTujuan" class="form-control form-control-sultan">
-                            <option value="">- Pilih Lembaga Tujuan -</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group mb-0">
-                        <label class="form-label-sultan small font-weight-bold text-uppercase text-muted">Unggah SK
-                            Mutasi (PDF, Max 500KB) <span class="text-danger">*</span></label>
-                        <div class="custom-file">
-                            <input type="file" class="custom-file-input" id="ptkpaud_mutasiFile"
-                                accept="application/pdf" required>
-                            <label class="custom-file-label" for="ptkpaud_mutasiFile">Pilih file...</label>
-                        </div>
-                        <small class="text-muted">Pastikan file berformat PDF dan ukuran tidak melebihi 500KB.</small>
-                    </div>
-                </div>
-
-                <div class="modal-footer modal-footer-sultan justify-content-between p-3">
-                    <button type="button" class="btn btn-default border shadow-sm px-4 font-weight-bold rounded-pill"
-                        data-dismiss="modal">BATAL</button>
-                    <button type="submit" id="ptkpaud_btnAjukanMutasi"
-                        class="btn btn-primary shadow-sm px-4 font-weight-bold rounded-pill"><i
-                            class="fas fa-paper-plane mr-2"></i> AJUKAN MUTASI</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
 
 <!-- Modal Preview PDF -->
 <div class="modal fade" id="ptkpaud_modalPreview" tabindex="-1" role="dialog" aria-hidden="true">
@@ -763,7 +697,6 @@
     var PTKPAUD_DATA_MASTER = {};
     var PTKPAUD_CACHE_DATA = [];
     var PTKPAUD_TABEL_INSTANCE = null;
-    var PTKPAUD_TABEL_USULAN_INSTANCE = null;
 
     var PTKPAUD_USER_AKTIF = "";
     var PTKPAUD_IS_ADMIN = false;
@@ -778,48 +711,18 @@
             PTKPAUD_IS_ADMIN = (user.role || "").toLowerCase().includes("admin");
             PTKPAUD_USER_NPSN = user.npsn || user.username || "";
             $('#ptkpaud_inputUserLogin').val(PTKPAUD_USER_AKTIF);
-
-            // Sembunyikan kolom admin-only di tabel usulan jika bukan admin
-            if (!PTKPAUD_IS_ADMIN) {
-                $('.ptkpaud-col-admin').hide();
-            }
         } catch (e) { PTKPAUD_USER_NPSN = ""; PTKPAUD_IS_ADMIN = false; }
-
-        // EVENT LISTENER MUTASI [NEW]
-        $(document).off('change', '#ptkpaud_mutasiJenis').on('change', '#ptkpaud_mutasiJenis', function () {
-            var val = $(this).val();
-            if (val === 'Lokal') {
-                $('#ptkpaud_grpMutasiTujuan').show();
-                $('#ptkpaud_mutasiTujuan').prop('required', true);
-            } else {
-                $('#ptkpaud_grpMutasiTujuan').hide();
-                $('#ptkpaud_mutasiTujuan').prop('required', false);
-            }
-        });
-
-        $(document).off('change', '#ptkpaud_mutasiFile').on('change', '#ptkpaud_mutasiFile', function () {
-            var fileName = $(this).val().split('\\').pop();
-            $(this).next('.custom-file-label').addClass("selected").html(fileName);
-        });
 
         $(document).off('change', '#ptkpaud_inputFileDokumen').on('change', '#ptkpaud_inputFileDokumen', function () {
             var fileName = $(this).val().split('\\').pop();
             $(this).next('.custom-file-label').addClass("selected").html(fileName || 'Pilih file PDF...');
         });
 
-        $(document).off('submit', '#ptkpaud_formMutasi').on('submit', '#ptkpaud_formMutasi', function (e) {
-            e.preventDefault();
-            ptkpaud_ajukanMutasi();
-        });
-
-
-
         ptkpaud_validasiAksesUser();
 
         // VAKSIN DELEGASI EVENT JQUERY (ANTI MEMORY LEAK)
         $(document).off('click', '#ptkpaud_btnSync').on('click', '#ptkpaud_btnSync', ptkpaud_tarikDataServer);
-        $(document).off('click', '#ptkpaud_btnTambah').on('click', '#ptkpaud_btnTambah', ptkpaud_bukaModalTambah);
-        $(document).off('click', '#ptkpaud_btnMutasiGlobal').on('click', '#ptkpaud_btnMutasiGlobal', function () { ptkpaud_bukaModalMutasi(); });
+        $(document).off('click', '#ptkpaud_btnTambah').on('click', '#ptkpaud_btnTambah', function () { ptkpaud_bukaModalTambah(); });
 
         $(document).off('change', '#ptkpaud_filterJenjang, #ptkpaud_filterUnit, #ptkpaud_filterStatus, #ptkpaud_filterJabatan')
             .on('change', '#ptkpaud_filterJenjang, #ptkpaud_filterUnit, #ptkpaud_filterStatus, #ptkpaud_filterJabatan', ptkpaud_terapkanFilterLokal);
@@ -874,50 +777,8 @@
             "language": { "url": "https://cdn.datatables.net/plug-ins/1.10.21/i18n/Indonesian.json", "emptyTable": msg },
             "initComplete": function (settings, json) {
                 var $container = $('.ptkpaud-scroll-container');
-                // Membuat container bisa menerima fokus keyboard
                 $container.attr('tabindex', '0').css('outline', 'none');
-
-                // Membuat tabel juga bisa menerima fokus agar event bubbling bekerja
                 $('#ptkpaud_tabelUtama').attr('tabindex', '0').css('outline', 'none');
-
-                // Handle navigasi keypad/panah kiri-kanan
-                $container.off('keydown').on('keydown', function (e) {
-                    // Jika sedang mengetik di input/textarea, jangan interupsi
-                    if ($(e.target).is('input, textarea')) return;
-
-                    var scrollAmount = 200; // Jarak geser diperbesar
-                    if (e.key === 'ArrowLeft') {
-                        this.scrollLeft -= scrollAmount;
-                        e.preventDefault();
-                    } else if (e.key === 'ArrowRight') {
-                        this.scrollLeft += scrollAmount;
-                        e.preventDefault();
-                    }
-                });
-            }
-        });
-    }
-
-    function ptkpaud_initDataTablesUsulan() {
-        if ($.fn.DataTable.isDataTable('#ptkpaud_tabelUsulan')) { $('#ptkpaud_tabelUsulan').DataTable().clear().destroy(); }
-
-        PTKPAUD_TABEL_USULAN_INSTANCE = SultanTable.init('#ptkpaud_tabelUsulan', {
-            "destroy": true, "ordering": false, "pageLength": 10, "autoWidth": false,
-            "deferRender": true,
-            "dom": "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
-                "<'row'<'col-sm-12'<'ptkpaud-scroll-container sultan-scroll'tr>>>" +
-                "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
-            "columnDefs": [
-                { "targets": 0, "className": "col-sticky-left text-center align-middle ptkpaud-col-admin" },
-                { "targets": [2, 5, 6, 7], "className": "text-center align-middle" },
-                { "targets": 8, "className": "text-center align-middle ptkpaud-col-admin" },
-                { "targets": [1, 3, 4], "className": "text-left align-middle" }
-            ],
-            "language": { "url": "https://cdn.datatables.net/plug-ins/1.10.21/i18n/Indonesian.json", "emptyTable": "Belum ada riwayat usulan." },
-            "initComplete": function (settings, json) {
-                var $container = $('#ptkpaud_tabUsulan .ptkpaud-scroll-container');
-                $container.attr('tabindex', '0').css('outline', 'none');
-                $('#ptkpaud_tabelUsulan').attr('tabindex', '0').css('outline', 'none');
 
                 $container.off('keydown').on('keydown', function (e) {
                     if ($(e.target).is('input, textarea')) return;
@@ -935,7 +796,7 @@
     function ptkpaud_validasiAksesUser() {
         if (PTKPAUD_IS_ADMIN) {
             $('#ptkpaud_filterUnit').empty().append('<option value="SEMUA">- Semua Lembaga -</option>').prop('disabled', false).removeClass('bg-light text-maroon font-weight-bold');
-            $('#ptkpaud_btnSync, #ptkpaud_btnTambah, #ptkpaud_btnMutasiGlobal').prop('disabled', false);
+            $('#ptkpaud_btnSync, #ptkpaud_btnTambah').prop('disabled', false);
             ptkpaud_tarikDataServer();
         } else {
             if (!PTKPAUD_USER_NPSN) {
@@ -952,7 +813,7 @@
                 }
                 PTKPAUD_UNIT_TERKUNCI = dataUnit.unitKerja;
                 $('#ptkpaud_filterUnit').empty().append('<option value="' + ptkpaud_escapeHtml(PTKPAUD_UNIT_TERKUNCI) + '">' + ptkpaud_escapeHtml(PTKPAUD_UNIT_TERKUNCI) + '</option>').prop('disabled', true);
-                $('#ptkpaud_btnSync, #ptkpaud_btnTambah, #ptkpaud_btnMutasiGlobal').prop('disabled', false);
+                $('#ptkpaud_btnSync, #ptkpaud_btnTambah').prop('disabled', false);
                 ptkpaud_tarikDataServer();
             }).withFailureHandler(function (err) {
                 $('#ptkpaud_filterUnit').empty().append('<option value="">ERROR SERVER</option>');
@@ -968,7 +829,6 @@
 
         $('#ptkpaud_tableState').hide();
         ptkpaud_initDataTables(true);
-        $('#ptkpaud_loadingText').html('Mengambil data PAUD dari server...');
         SultanUI.showLoading('#ptkpaud_loadingState');
 
         google.script.run.withSuccessHandler(function (jsonStr) {
@@ -982,80 +842,6 @@
 
                 SultanUI.hideLoading('#ptkpaud_loadingState');
                 $('#ptkpaud_tableState').show();
-
-                // Cek aksi lanjutan dari halaman lain [Sultan Feature]
-                var pendingAction = localStorage.getItem('ptkpaud_action');
-                var prefillStr = localStorage.getItem('ptkpaud_prefill_data');
-
-                if (pendingAction === 'tambah') {
-                    localStorage.removeItem('ptkpaud_action');
-                    ptkpaud_bukaModalTambah();
-
-                    if (prefillStr) {
-                        var prefill = JSON.parse(prefillStr);
-
-                        // Map all possible fields for Tambah PTK
-                        $('[name="gelar_depan"]').val(prefill.gelar_depan || '');
-                        $('[name="nama_lengkap"]').val(prefill.nama_ptk || prefill.nama_lengkap || '');
-                        $('[name="gelar_belakang"]').val(prefill.gelar_belakang || '');
-                        $('[name="niy"]').val(prefill.niy || '');
-                        $('[name="nik"]').val(prefill.nik || '');
-                        $('[name="tmp_lahir"]').val(prefill.tmp_lahir || '');
-                        $('[name="tgl_lahir"]').val(prefill.tgl_lahir || '');
-                        $('[name="lp"]').val(prefill.lp || '');
-                        $('[name="agama"]').val(prefill.agama || '');
-                        $('[name="alamat_ktp"]').val(prefill.alamat_ktp || '');
-                        $('[name="alamat_domisili"]').val(prefill.alamat_domisili || '');
-                        $('[name="pendidikan"]').val(prefill.pendidikan || '');
-                        $('[name="jurusan"]').val(prefill.jurusan || '');
-                        $('[name="thn_lulus"]').val(prefill.thn_lulus || prefill.lulus || '');
-                        $('[name="nuptk"]').val(prefill.nuptk || '');
-                        $('[name="hp"]').val(prefill.hp || prefill.no_hp || '');
-                        $('[name="email"]').val(prefill.email || '');
-                        $('[name="status_peg"]').val(prefill.status_peg || '');
-                        $('[name="jabatan"]').val(prefill.jabatan || '');
-                        $('[name="tmt_jabatan"]').val(prefill.tmt_jabatan || '');
-                        $('[name="inpassing"]').val(prefill.inpassing || '');
-                        $('[name="tmt_inpassing"]').val(prefill.tmt_inpassing || '');
-                        $('[name="serdik"]').val(prefill.serdik || '');
-                        $('[name="dapodik"]').val(prefill.dapodik || '');
-                        $('[name="tugtam"]').val(prefill.tugtam || '');
-
-                        if (prefill.file_sk && prefill.file_sk !== '-') {
-                            $('#ptkpaud_currentFileSection').removeClass('d-none');
-                            $('#ptkpaud_btnLihatFileCurrent').off('click').on('click', function () {
-                                ptkpaud_previewPdf(prefill.file_sk);
-                            });
-                        } else {
-                            $('#ptkpaud_currentFileSection').addClass('d-none');
-                        }
-
-                        // Specific overrides for specific IDs if needed
-                        if (prefill.lembaga_asal || prefill.lembaga_tujuan) {
-                            $('#ptkpaud_inputUnit').val(prefill.lembaga_asal || prefill.lembaga_tujuan);
-                        }
-
-                        // Trigger custom logic like check jurusan
-                        ptkpaud_cekJurusan();
-
-                        localStorage.removeItem('ptkpaud_prefill_data');
-                    }
-                } else if (pendingAction === 'mutasi') {
-                    var pid = localStorage.getItem('ptkpaud_id');
-                    var pnama = localStorage.getItem('ptkpaud_nama');
-                    localStorage.removeItem('ptkpaud_action');
-                    localStorage.removeItem('ptkpaud_id');
-                    localStorage.removeItem('ptkpaud_nama');
-
-                    ptkpaud_bukaModalMutasi(pid, pnama);
-
-                    if (prefillStr) {
-                        var prefill = JSON.parse(prefillStr);
-                        $('#ptkpaud_mutasiJenis').val(prefill.jenis_mutasi || '').trigger('change');
-                        $('#ptkpaud_mutasiTujuan').val(prefill.lembaga_tujuan || '');
-                        localStorage.removeItem('ptkpaud_prefill_data');
-                    }
-                }
             } catch (e) { ptkpaud_updateTabelKosong('<div class="text-danger">Format JSON gagal diparsing.</div>'); }
         }).withFailureHandler(function (e) {
             btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-danger"></i>');
@@ -1161,7 +947,6 @@
             var inpass = '<div class="sultan-table-primary">' + (row.inpassing || '-') + '</div>';
             if (row.tmt_inpassing) inpass += '<div class="sultan-table-secondary">TMT: ' + ptkpaud_formatTanggalIndo(row.tmt_inpassing) + '</div>';
 
-            // STATUS BADGE SYSTEM (DIPOLOSKAN JADI FONT BIASA 13PX)
             var statusPeg = row.status_peg || '-';
             var badgeStatus = '<span class="text-maroon font-weight-bold">' + statusPeg + '</span>';
             if (statusPeg.includes('GTY') || statusPeg.includes('AS')) badgeStatus = '<span class="text-success font-weight-bold">' + statusPeg + '</span>';
@@ -1170,16 +955,8 @@
             var uiSerdik = '<span class="text-dark font-weight-bold">' + (row.serdik || '-') + '</span>';
             var uiDapodik = '<span class="text-dark font-weight-bold">' + (row.dapodik || '-') + '</span>';
 
-            // BAB III: Tombol Aksi Mutlak (Ikon Saja untuk Admin)
-            var btnEdit = '';
-            var btnHapus = '';
-
-            if (PTKPAUD_IS_ADMIN) {
-                btnEdit = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning" onclick="ptkpaud_bukaModalEdit(\'' + row.id + '\')" title="Edit Data"><i class="fas fa-pencil-alt"></i></button>';
-                btnHapus = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon" onclick="ptkpaud_bukaModalHapus(\'' + row.id + '\', \'' + ptkpaud_escapeJs(row.nama_lengkap) + '\')" title="Pindah ke Arsip Non-Aktif"><i class="fas fa-trash-alt"></i></button>';
-            } else {
-                btnEdit = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning" onclick="ptkpaud_bukaModalEdit(\'' + row.id + '\')" title="Edit Data"><i class="fas fa-pencil-alt"></i></button>';
-            }
+            var btnEdit = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning" onclick="ptkpaud_bukaModalEdit(\'' + row.id + '\')" title="Edit Data"><i class="fas fa-pencil-alt"></i></button>';
+            var btnHapus = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon" onclick="ptkpaud_bukaModalHapus(\'' + row.id + '\', \'' + ptkpaud_escapeJs(row.nama_lengkap) + '\')" title="Hapus"><i class="fas fa-trash-alt"></i></button>';
             var btnAksi = '<div class="d-flex flex-nowrap justify-content-center" style="gap:4px;">' + btnEdit + ' ' + btnHapus + '</div>';
 
             var uiNama = '<div class="sultan-table-primary">' + ptkpaud_escapeHtml(row.nama_lengkap) + '</div><div class="sultan-table-secondary">' + (ptkpaud_escapeHtml(row.niy) || '-') + '</div>';
@@ -1240,7 +1017,7 @@
     }
 
     // =================================================================
-    // 6. CRUD: TAMBAH, EDIT & MUTASI, HAPUS (MODAL BAB V)
+    // 6. CRUD: TAMBAH, EDIT & HAPUS (MODAL BAB V)
     // =================================================================
     function ptkpaud_bukaModalTambah() {
         $('#ptkpaud_formUtama')[0].reset();
@@ -1269,7 +1046,6 @@
         }
 
         ptkpaud_cekJurusan();
-        // Tampilkan Section IV hanya untuk mode tambah
         $('#ptkpaud_sectionDokumen').show();
         $('#ptkpaud_inputJenisDokumen').val('');
         $('#ptkpaud_inputFileDokumen').val('');
@@ -1284,8 +1060,7 @@
         $('#ptkpaud_inputMode').val('update'); $('#ptkpaud_inputIdData').val(row.id);
 
         $('#ptkpaud_headerModalForm').removeClass('modal-header-sultan-aksi-utama').addClass('modal-header-sultan-aksi-edit');
-        var labelJudul = PTKPAUD_IS_ADMIN ? '<i class="fas fa-exchange-alt mr-2"></i> Edit / Mutasi PTK PAUD' : '<i class="fas fa-user-edit mr-2"></i> Edit Data PTK PAUD';
-        $('#ptkpaud_judulModalForm').html(labelJudul);
+        $('#ptkpaud_judulModalForm').html('<i class="fas fa-user-edit mr-2"></i> Edit Data PTK PAUD');
         $('#ptkpaud_btnSimpanForm').removeClass('sultan-btn-aksi-utama').addClass('sultan-btn-aksi-edit').html('<i class="fas fa-save mr-1"></i> UPDATE DATA');
 
         if (PTKPAUD_IS_ADMIN) {
@@ -1332,7 +1107,7 @@
         $('[name="tugtam"]').val(row.tugtam);
 
         ptkpaud_cekJurusan();
-        $('#ptkpaud_sectionDokumen').hide(); // Sembunyikan Section IV saat edit
+        $('#ptkpaud_sectionDokumen').hide();
         $('#ptkpaud_modalForm').modal('show');
     }
 
@@ -1341,7 +1116,6 @@
         var formAktif = $('#ptkpaud_formUtama');
         var mode = $('#ptkpaud_inputMode').val();
 
-        // Validasi Section IV khusus mode insert
         if (mode === 'insert') {
             if (!$('#ptkpaud_inputJenisDokumen').val()) {
                 Sultan.alert('warning', 'Perhatian', 'Harap pilih Jenis Dokumen!');
@@ -1393,7 +1167,6 @@
         var cbFail = function (err) { btn.prop('disabled', false).html(txt); Sultan.notif.crud.gagal(err.message); };
 
         if (mode === 'insert') {
-            // Baca file sebagai base64 lalu kirim bersama formData
             var reader = new FileReader();
             reader.onload = function (ev) {
                 var base64Data = ev.target.result.split(',')[1];
@@ -1444,102 +1217,6 @@
             })
             .withFailureHandler(function (err) { btn.prop('disabled', false).html(oldText); Sultan.notif.crud.gagal(err.message); })
             .deleteDataPTKPAUD(id, alasan, PTKPAUD_USER_AKTIF);
-    }
-
-    // ======================================================================
-    // FITUR MUTASI [NEW]
-    function ptkpaud_bukaModalMutasi(id, nama) {
-        $('#ptkpaud_formMutasi').removeClass('was-validated');
-        $('#ptkpaud_mutasiJenis').val('');
-        $('#ptkpaud_grpMutasiTujuan').hide();
-        $('#ptkpaud_mutasiTujuan').val('');
-        $('#ptkpaud_mutasiFile').val('').next('.custom-file-label').removeClass("selected").html('Pilih file...');
-
-        // Isi dropdown Lembaga Tujuan
-        var $selTarget = $('#ptkpaud_mutasiTujuan').empty().append('<option value="">- Pilih Lembaga Tujuan -</option>');
-        Object.keys(PTKPAUD_MAP_UNIT_NPSN).sort().forEach(function (u) { $selTarget.append($('<option>', { value: u, text: u })); });
-
-        if (id && typeof id === 'string') {
-            // Dipanggil dari baris tabel
-            $('#ptkpaud_mutasiIdData').val(id);
-            $('#ptkpaud_mutasiNamaPtk').val(nama).show();
-            $('#ptkpaud_mutasiNamaPtkSelect').hide();
-        } else {
-            // Dipanggil dari tombol global
-            $('#ptkpaud_mutasiIdData').val('');
-            $('#ptkpaud_mutasiNamaPtk').hide();
-
-            // Populasi dropdown PTK
-            var $selPtk = $('#ptkpaud_mutasiNamaPtkSelect').empty().append('<option value="">- Pilih PTK -</option>').show();
-            PTKPAUD_CACHE_DATA.forEach(function (row) {
-                $selPtk.append($('<option>', { value: row.id, data_nama: row.nama_lengkap, text: row.nama_lengkap + ' (' + (row.niy || row.nip || '-') + ')' }));
-            });
-
-            $selPtk.off('change').on('change', function () {
-                var selVal = $(this).val();
-                var selNama = $(this).find('option:selected').attr('data_nama');
-                $('#ptkpaud_mutasiIdData').val(selVal);
-                $('#ptkpaud_mutasiNamaPtk').val(selNama); // Tetap isi hidden atau input non-aktif untuk submit
-            });
-        }
-
-        $('#ptkpaud_modalMutasi').modal('show');
-    }
-
-    function ptkpaud_ajukanMutasi() {
-        var formMutasi = $('#ptkpaud_formMutasi');
-        if (!formMutasi[0].checkValidity()) {
-            formMutasi.addClass('was-validated');
-            return;
-        }
-
-        var fileInput = $('#ptkpaud_mutasiFile')[0];
-        var file = fileInput.files[0];
-        if (!file) {
-            Sultan.notif.gagal('Harap unggah file SK Mutasi!');
-            return;
-        }
-
-        // Validasi file lagi sebelum kirim
-        if (file.type !== 'application/pdf') {
-            Sultan.notif.gagal('File harus berformat PDF!');
-            return;
-        }
-        if (file.size > 500 * 1024) {
-            Sultan.notif.gagal('Ukuran file tidak boleh melebihi 500KB!');
-            return;
-        }
-
-        // Baca file sebagai base64
-        var reader = new FileReader();
-        reader.onload = function (e) {
-            var base64Data = e.target.result.split(',')[1];
-            var fileName = file.name;
-
-            var id = $('#ptkpaud_mutasiIdData').val();
-            var jenis = $('#ptkpaud_mutasiJenis').val();
-            var tujuan = $('#ptkpaud_mutasiTujuan').val();
-
-            var btn = $('#ptkpaud_btnAjukanMutasi');
-            var oldText = btn.html();
-            btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Mengirim...');
-
-            google.script.run
-                .withSuccessHandler(function (res) {
-                    btn.prop('disabled', false).html(oldText);
-                    if (res === 'Sukses') {
-                        $('#ptkpaud_modalMutasi').modal('hide');
-                        Sultan.notif.crud.sukses('Usulan mutasi berhasil diajukan!');
-                        ptkpaud_tarikDataServer();
-                    } else { Sultan.notif.gagal(res); }
-                })
-                .withFailureHandler(function (err) {
-                    btn.prop('disabled', false).html(oldText);
-                    Sultan.notif.crud.gagal(err.message);
-                })
-                .ajukanMutasiPTKPAUD(id, jenis, tujuan, base64Data, fileName, PTKPAUD_USER_AKTIF);
-        };
-        reader.readAsDataURL(file);
     }
 
     function ptkpaud_previewPdf(url) {

@@ -600,7 +600,7 @@ function getJenjangByNPSN(npsn) {
 
 function getDataKeadaanGTKPAUD() { var ss = SpreadsheetApp.openById(ID_SPREADSHEET_PAUD); var sheet = ss.getSheetByName("Keadaan GTK PAUD"); if (!sheet) return []; var lastRow = sheet.getLastRow(); if (lastRow < 3) return []; return sheet.getRange(3, 1, lastRow - 2, 28).getDisplayValues(); }
 
-function ajukanMutasiPTKPAUD(idPtk, jenis, tujuan, base64Data, fileName, userPengusul) {
+function ajukanMutasiPTKPAUD(idPtk, jenis, tujuan, tanggal, base64Data, fileName, userPengusul) {
   try {
     var ss = SpreadsheetApp.openById(ID_SPREADSHEET_PAUD);
     var sheetSource = ss.getSheetByName("Master Data GTK PAUD");
@@ -609,7 +609,7 @@ function ajukanMutasiPTKPAUD(idPtk, jenis, tujuan, base64Data, fileName, userPen
     // Buat sheet usulan jika belum ada
     if (!sheetUsulan) {
       sheetUsulan = ss.insertSheet("usulan_mutasi_paud");
-      var headers = ["ID Usulan", "ID PTK", "Nama PTK", "Jenis Mutasi", "Lembaga Asal", "Lembaga Tujuan", "File SK", "Status", "Tanggal Usulan", "User Pengusul", "Tanggal Eksekusi", "User Eksekutor", "Catatan"];
+      var headers = ["ID Usulan", "ID PTK", "Nama PTK", "Jenis Mutasi", "Lembaga Asal", "Lembaga Tujuan", "File SK", "Status", "Tanggal Usulan", "User Pengusul", "Tanggal Eksekusi", "User Eksekutor", "Catatan", "TMT/Tanggal"];
       sheetUsulan.getRange(1, 1, 1, headers.length).setValues([headers]);
     }
     
@@ -629,12 +629,15 @@ function ajukanMutasiPTKPAUD(idPtk, jenis, tujuan, base64Data, fileName, userPen
     var lembagaAsal = ptkRow[2]; // Kolom C (Unit/Lembaga)
     
     // Upload file ke Drive
-    var folderId = "1myZbraP_DqdBdhFEcm35JNWG3v97UNqF";
-    var folder = DriveApp.getFolderById(folderId);
-    var fileBytes = Utilities.base64Decode(base64Data);
-    var blob = Utilities.newBlob(fileBytes, "application/pdf", fileName);
-    var file = folder.createFile(blob);
-    var fileUrl = file.getUrl();
+    var fileUrl = "-";
+    if (base64Data && fileName) {
+      var folderId = "1myZbraP_DqdBdhFEcm35JNWG3v97UNqF";
+      var folder = DriveApp.getFolderById(folderId);
+      var fileBytes = Utilities.base64Decode(base64Data);
+      var blob = Utilities.newBlob(fileBytes, "application/pdf", fileName);
+      var file = folder.createFile(blob);
+      fileUrl = file.getUrl();
+    }
     
     // Simpan usulan
     var idUsulan = "USUL-" + new Date().getTime();
@@ -652,7 +655,9 @@ function ajukanMutasiPTKPAUD(idPtk, jenis, tujuan, base64Data, fileName, userPen
       timestamp,
       userPengusul,
       "",
-      ""
+      "",
+      "",
+      tanggal || "-"
     ];
     
     sheetUsulan.appendRow(rowData);
@@ -671,7 +676,7 @@ function getUsulanMutasiPTKPAUD() {
     var lastRow = sheet.getLastRow();
     if (lastRow < 2) return JSON.stringify([]);
     
-    var data = sheet.getRange(2, 1, lastRow - 1, 13).getDisplayValues();
+    var data = sheet.getRange(2, 1, lastRow - 1, 14).getDisplayValues();
     var result = [];
     
     for (var i = 0; i < data.length; i++) {
@@ -689,7 +694,8 @@ function getUsulanMutasiPTKPAUD() {
         user_pengusul: row[9],
         tanggal_eksekusi: row[10],
         user_eksekutor: row[11],
-        catatan: row[12] || ""
+        catatan: row[12] || "",
+        tmt_tanggal: row[13] || "-"
       });
     }
     return JSON.stringify(result);
