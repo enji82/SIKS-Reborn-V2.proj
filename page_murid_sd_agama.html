@@ -1,3 +1,9 @@
+<style>
+    .sultan-scroll { overscroll-behavior: contain; }
+    #sdagama_tabelUtama th, #sdagama_tabelUtama td { font-size: 13px !important; }
+    .col-sticky-left { position: sticky; left: 0; z-index: 2; background-color: #ffffff; }
+</style>
+
 <div class="content-header pb-0">
   <div class="container-fluid">
     <div class="row mb-2">
@@ -84,10 +90,10 @@
             </div>
 
             <div id="sdagama_tableState" style="display: none;">
-                <table id="sdagama_tabelUtama" class="table table-bordered table-hover table-sm table-premium table-sultan-compact text-nowrap mb-0 w-100 text-center" style="font-size: 0.7rem;">
+                <table id="sdagama_tabelUtama" class="table table-bordered table-hover table-sm table-premium table-sultan-compact text-nowrap mb-0 w-100 text-center">
                     <thead id="sdagama_headData" class="font-weight-bold text-maroon bg-light text-nowrap text-uppercase"></thead>
                     <tbody></tbody>
-                    <tfoot id="sdagama_footData" class="bg-light font-weight-bold text-nowrap text-uppercase" style="border-top: 3px solid #85144b;"></tfoot>
+                    <tfoot id="sdagama_footData" class="bg-light font-weight-bold text-nowrap text-uppercase"></tfoot>
                 </table>
             </div>
 
@@ -111,14 +117,14 @@ var SDAGAMA_IS_ADMIN = false;
 var SDAGAMA_UNIT_TERKUNCI = "";
 var SDAGAMA_NPSN_TERKUNCI = "";
 
-// Peta Konfigurasi Kolom Setelah NPSN dan Status Dihapus (Mulai index 4)
+// Peta Konfigurasi Kolom (Warna dikelompokkan: K1-K3 Greenish, K4-K6 Blueish, TOT Amber)
 var SDAGAMA_GROUPS = [
-    { code: 'K1', label: 'KELAS 1', color: '#e3f2fd', startIdx: 4,  endIdx: 21 },
+    { code: 'K1', label: 'KELAS 1', color: '#e8f5e9', startIdx: 4,  endIdx: 21 },
     { code: 'K2', label: 'KELAS 2', color: '#e8f5e9', startIdx: 22, endIdx: 39 },
-    { code: 'K3', label: 'KELAS 3', color: '#fff3e0', startIdx: 40, endIdx: 57 },
-    { code: 'K4', label: 'KELAS 4', color: '#f3e5f5', startIdx: 58, endIdx: 75 },
-    { code: 'K5', label: 'KELAS 5', color: '#fce4ec', startIdx: 76, endIdx: 93 },
-    { code: 'K6', label: 'KELAS 6', color: '#e0f2f1', startIdx: 94, endIdx: 111 },
+    { code: 'K3', label: 'KELAS 3', color: '#e8f5e9', startIdx: 40, endIdx: 57 },
+    { code: 'K4', label: 'KELAS 4', color: '#e3f2fd', startIdx: 58, endIdx: 75 },
+    { code: 'K5', label: 'KELAS 5', color: '#e3f2fd', startIdx: 76, endIdx: 93 },
+    { code: 'K6', label: 'KELAS 6', color: '#e3f2fd', startIdx: 94, endIdx: 111 },
     { code: 'TOT', label: 'JUMLAH TOTAL', color: '#ffecb3', startIdx: 112, endIdx: 129 }
 ];
 
@@ -148,20 +154,15 @@ $(document).ready(function() {
     sdagama_validasiAksesUser();
 });
 
-// =================================================================
-// GENERATOR HTML HEADER & FOOTER (Murni ES5 - Anti SyntaxError)
-// =================================================================
 function sdagama_generateHeaderFooterHTML() {
     var h1 = '<tr>'; var h2 = '<tr>'; var h3 = '<tr class="small text-nowrap">'; 
 
-    // Index 0 s.d 3 (NPSN & Status Musnah)
-    var staticCols = ['Unit Kerja', 'Bln', 'Thn', 'Rombel'];
+    var staticCols = ['Lembaga', 'Bln', 'Thn', 'Rombel'];
     for (var idx = 0; idx < staticCols.length; idx++) {
         var sticky = (idx === 0) ? 'position:sticky; left:0; z-index:50; min-width:250px; border-right: 2px solid #dee2e6;' : '';
         h1 += '<th rowspan="3" class="align-middle bg-white text-maroon py-1 px-2 text-uppercase" style="' + sticky + ' border-bottom: 3px solid #85144b !important;">' + staticCols[idx].toUpperCase() + '</th>';
     }
 
-    // Data Columns (Index 4 s.d 129)
     for (var gIdx = 0; gIdx < SDAGAMA_GROUPS.length; gIdx++) {
         var g = SDAGAMA_GROUPS[gIdx];
         var borderLeft = (g.code === 'TOT') ? 'border-left: 2px solid #ffecb3 !important;' : '';
@@ -183,10 +184,11 @@ function sdagama_generateHeaderFooterHTML() {
     h1 += '</tr>'; h2 += '</tr>'; h3 += '</tr>';
     $('#sdagama_headData').html(h1 + h2 + h3);
 
-    // FOOTER
     var f = '<tr>';
-    f += '<th class="border-right text-right bg-white text-maroon pr-3 align-middle py-2 text-uppercase" colspan="3" style="position:sticky; left:0; z-index:40; border-right: 2px solid #dee2e6;">TOTAL KESELURUHAN</th>';
-    f += '<th class="text-center text-dark py-2"></th>'; 
+    f += '<th class="text-left pl-3 align-middle col-sticky-left" style="z-index:40;">TOTAL KESELURUHAN</th>';
+    f += '<th class="text-center py-2">-</th>'; // Bln
+    f += '<th class="text-center py-2">-</th>'; // Thn
+    f += '<th class="text-center py-2"></th>'; // Rombel
     
     for (var fgIdx = 0; fgIdx < SDAGAMA_GROUPS.length; fgIdx++) {
         var fg = SDAGAMA_GROUPS[fgIdx];
@@ -201,13 +203,13 @@ function sdagama_generateHeaderFooterHTML() {
 function sdagama_validasiAksesUser() {
     if (SDAGAMA_IS_ADMIN) {
         $('#sdagama_filterContainer').show();
-        $('#sdagama_loadingText').html('Mempersiapkan Akses Admin...');
-        $('#sdagama_filterUnit').empty().append('<option value="SEMUA">- Semua Unit Kerja -</option>').prop('disabled', false).removeClass('bg-light text-maroon font-weight-bold');
+        SultanUI.showLoading('#sdagama_loadingState', 'Mempersiapkan Akses Admin...');
+        $('#sdagama_filterUnit').empty().append('<option value="SEMUA">- Semua Lembaga -</option>').prop('disabled', false).removeClass('bg-light text-maroon font-weight-bold');
         sdagama_tarikDataServer(); 
     } else {
         if (!SDAGAMA_NPSN_TERKUNCI) {
             $('#sdagama_filterUnit').empty().append('<option value="">AKSES DITOLAK</option>');
-            $('#sdagama_loadingText').html('<span class="text-danger"><i class="fas fa-ban mb-2"></i><br>Akses ditolak: Sesi login tidak valid.</span>');
+            $('#sdagama_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-ban mb-2"></i><br>Akses ditolak: Sesi login tidak valid.</span>');
             return;
         }
 
@@ -216,7 +218,7 @@ function sdagama_validasiAksesUser() {
                 var dataUnit = JSON.parse(resUnit);
                 if (dataUnit.error) {
                     $('#sdagama_filterUnit').empty().append('<option value="">AKSES DITOLAK</option>');
-                    $('#sdagama_loadingText').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>' + sdagama_escapeHtml(dataUnit.error) + '</span>');
+                    $('#sdagama_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>' + sdagama_escapeHtml(dataUnit.error) + '</span>');
                     return;
                 }
                 SDAGAMA_UNIT_TERKUNCI = dataUnit.unitKerja;
@@ -225,7 +227,7 @@ function sdagama_validasiAksesUser() {
             })
             .withFailureHandler(function(err) {
                 $('#sdagama_filterUnit').empty().append('<option value="">ERROR SERVER</option>');
-                $('#sdagama_loadingText').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Terputus: ' + sdagama_escapeHtml(err.message) + '</span>');
+                $('#sdagama_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Terputus: ' + sdagama_escapeHtml(err.message) + '</span>');
             })
             .getUnitKerjaByNpsnPTK(SDAGAMA_NPSN_TERKUNCI);
     }
@@ -237,14 +239,13 @@ function sdagama_tarikDataServer() {
 
     if (!$.fn.DataTable.isDataTable('#sdagama_tabelUtama')) {
         $('#sdagama_tableState').hide();
-        $('#sdagama_loadingText').html('Mengambil Laporan Agama SD Server...');
-        SultanUI.showLoading('#sdagama_loadingState');
+        SultanUI.showLoading('#sdagama_loadingState', 'Mengambil Laporan Agama SD Server...');
     }
 
     google.script.run.withSuccessHandler(function(dataArray) {
         btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
         if (!Array.isArray(dataArray)) {
-            $('#sdagama_loadingText').html('<span class="text-danger"><i class="fas fa-times-circle mb-2"></i><br>Gagal memproses struktur JSON Server.</span>');
+            $('#sdagama_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-times-circle mb-2"></i><br>Gagal memproses struktur JSON Server.</span>');
             return;
         }
         try {
@@ -269,10 +270,10 @@ function sdagama_tarikDataServer() {
             $('#sdagama_tableState').show();
             if(SDAGAMA_TABEL_INSTANCE) { setTimeout(function() { SDAGAMA_TABEL_INSTANCE.columns.adjust(); }, 150); }
 
-        } catch (e) { $('#sdagama_loadingText').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>Gagal merakit tabel: ' + sdagama_escapeHtml(e.message) + '</span>'); }
+        } catch (e) { $('#sdagama_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>Gagal merakit tabel: ' + sdagama_escapeHtml(e.message) + '</span>'); }
     }).withFailureHandler(function(e) {
         btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
-        $('#sdagama_loadingText').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Server Terputus.</span>');
+        $('#sdagama_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Server Terputus.</span>');
     }).getDataMuridSDAgama(); 
 }
 
@@ -288,7 +289,7 @@ function sdagama_updateFilterUnit() {
     });
 
     var selUnit = $('#sdagama_filterUnit'); var curU = selUnit.val();
-    selUnit.empty().append('<option value="SEMUA">- Semua Unit Kerja -</option>');
+    selUnit.empty().append('<option value="SEMUA">- Semua Lembaga -</option>');
     Object.keys(uniqueUnit).sort().forEach(function(u) { selUnit.append('<option value="' + u + '">' + u + '</option>'); });
     if(curU && uniqueUnit[curU]) selUnit.val(curU); else selUnit.val('SEMUA');
     sdagama_terapkanFilterLokal();
@@ -303,7 +304,6 @@ function sdagama_getColGroup(i) {
 
 function sdagama_initDataTables() {
     var cols = [];
-    // Index 0 sampai 129 -> Total 130 Kolom
     for(var i=0; i<=129; i++) { cols.push(i); }
 
     SDAGAMA_TABEL_INSTANCE = SultanTable.init('#sdagama_tabelUtama', {
@@ -312,9 +312,9 @@ function sdagama_initDataTables() {
                "<'row'<'col-sm-12'<'table-responsive sultan-scroll'tr>>>" +
                "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
         "columnDefs": [ 
-            { "targets": 0, "width": "auto", "className": "col-sticky-left bg-white align-middle border-right text-left font-weight-bold text-dark text-nowrap px-3" }, 
+            { "targets": 0, "width": "auto", "className": "col-sticky-left align-middle text-left font-weight-bold text-nowrap px-3" }, 
             { "targets": [1,2], "width": "1%", "className": "text-center align-middle text-nowrap px-2" },
-            { "targets": 3, "width": "1%", "className": "text-center align-middle font-weight-bold text-dark text-nowrap px-2" },
+            { "targets": 3, "width": "1%", "className": "text-center align-middle font-weight-bold text-nowrap px-2" },
             { "targets": cols.slice(4), "width": "1%", "className": "text-center align-middle text-nowrap px-2" }
         ],
         "language": { "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json", "emptyTable": "Tidak ada data Agama SD untuk filter yang dipilih." },
@@ -338,9 +338,9 @@ function sdagama_initDataTables() {
                      if (rawVal === "0" || rawVal === "-" || rawVal === "") {
                          cell.innerHTML = '<span class="text-muted opacity-50">-</span>';
                      } else {
-                         cell.classList.add('font-weight-bold', 'text-dark');
+                         cell.classList.add('font-weight-bold');
                          var offset = i - (group ? group.startIdx : 4);
-                         if (offset % 3 === 2) cell.classList.replace('text-dark', 'text-maroon'); 
+                         if (offset % 3 === 2) cell.classList.add('text-maroon'); 
                      }
                  }
              }
@@ -358,7 +358,6 @@ function sdagama_initDataTables() {
                 return isNaN(num) ? 0 : num; 
             };
             
-            // Loop 126 Kolom Angka (Index 4 s.d 129)
             var totalArr = [];
             for (var i = 3; i <= 129; i++) {
                 var sum = api.column(i, {search: 'applied'}).data().reduce(function(a, b) {
@@ -367,11 +366,10 @@ function sdagama_initDataTables() {
                 totalArr.push(sum);
             }
 
-            // Bangun String DOM tanpa jQuery classList
             var cellRombel = api.column(3).footer();
             if (cellRombel) {
                 cellRombel.innerHTML = (totalArr[0] === 0 ? '-' : totalArr[0].toLocaleString('id-ID'));
-                cellRombel.className = 'text-center text-dark py-2 font-weight-bold';
+                cellRombel.className = 'text-center py-2 font-weight-bold';
             }
 
             for (var c = 4; c <= 129; c++) {
@@ -384,7 +382,7 @@ function sdagama_initDataTables() {
                         cellDom.style.backgroundColor = group.color;
                         if (group.code === 'TOT' && c === 112) cellDom.style.borderLeft = '2px solid #ffecb3';
                         var offset = c - group.startIdx;
-                        cellDom.className = 'text-center py-2 font-weight-bold ' + ((offset % 3 === 2) ? 'text-maroon' : 'text-dark');
+                        cellDom.className = 'text-center py-2 font-weight-bold ' + ((offset % 3 === 2) ? 'text-maroon' : '');
                     }
                 }
             }
@@ -400,11 +398,9 @@ function sdagama_toggleColumnVisibility() {
     var dt = SDAGAMA_TABEL_INSTANCE;
 
     $('#sdagama_tableState').hide();
-    $('#sdagama_loadingText').html('Menyusun Kolom Tabel...');
-    SultanUI.showLoading('#sdagama_loadingState');
+    SultanUI.showLoading('#sdagama_loadingState', 'Menyusun Kolom Tabel...');
 
     setTimeout(function() {
-        // Hide semua Data Columns (Index 4 to 129) -> 126 elemen
         var arrAll = [];
         for(var i=4; i<=129; i++) arrAll.push(i);
         dt.columns(arrAll).visible(false, false);
@@ -457,9 +453,11 @@ function sdagama_renderTabel(dataRows) {
     dataRows.forEach(function(row) {
         var arrRow = [];
         
-        arrRow.push(sdagama_escapeHtml(row[0] || "-")); // Unit
-        arrRow.push(sdagama_escapeHtml(row[3] || "-")); // Bulan (NPSN dan Status Diloncati)
-        arrRow.push(sdagama_escapeHtml(row[4] || "-")); // Tahun
+        var namaLembaga = sdagama_escapeHtml(row[0] || "-");
+        var npsn = sdagama_escapeHtml(row[1] || "-");
+        arrRow.push(namaLembaga + '<br><small class="text-muted">' + npsn + '</small>'); 
+        arrRow.push(sdagama_escapeHtml(row[3] || "-")); 
+        arrRow.push(sdagama_escapeHtml(row[4] || "-")); 
         
         var rombelVal = (row[5] === undefined || row[5] === null || String(row[5]).trim() === "" || String(row[5]).trim() === "0") ? "-" : String(row[5]).trim();
         arrRow.push(sdagama_escapeHtml(rombelVal));
