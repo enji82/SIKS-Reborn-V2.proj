@@ -544,7 +544,7 @@ function insertDataPTKPAUD(form, base64Data, fileName, jenisDokumen, userPengusu
     ];
     sheet.appendRow(rowData);
 
-    // Upload dokumen ke Google Drive & buat usulan otomatis
+    // Upload dokumen ke Google Drive
     try {
       var folderId = "1myZbraP_DqdBdhFEcm35JNWG3v97UNqF";
       var folder = DriveApp.getFolderById(folderId);
@@ -553,17 +553,16 @@ function insertDataPTKPAUD(form, base64Data, fileName, jenisDokumen, userPengusu
       var file = folder.createFile(blob);
       var fileUrl = file.getUrl();
 
-      // Buat / ambil sheet usulan
-      var sheetUsulan = ss.getSheetByName("usulan_mutasi_paud");
-      if (!sheetUsulan) {
-        sheetUsulan = ss.insertSheet("usulan_mutasi_paud");
-        var headers = ["ID Usulan","ID PTK","Nama PTK","Jenis Mutasi","Lembaga Asal","Lembaga Tujuan","File SK","Status","Tanggal Usulan","User Pengusul","Tanggal Eksekusi","User Eksekutor"];
-        sheetUsulan.getRange(1, 1, 1, headers.length).setValues([headers]);
-      }
-
-      var lembaga = form.unit_kerja || form.unit_login || "-";
-      var idUsulan = "USUL-" + new Date().getTime();
-      sheetUsulan.appendRow([idUsulan, newId, namaFull, "PTK Baru (" + (jenisDokumen || "Dokumen") + ")", lembaga, lembaga, fileUrl, "Pending", timestamp, userPengusul || form.user_login || "", "", ""]);
+      // Usulan mutasi otomatis ditiadakan sesuai permintaan (langsung tersimpan)
+      // var sheetUsulan = ss.getSheetByName("usulan_mutasi_paud");
+      // if (!sheetUsulan) {
+      //   sheetUsulan = ss.insertSheet("usulan_mutasi_paud");
+      //   var headers = ["ID Usulan","ID PTK","Nama PTK","Jenis Mutasi","Lembaga Asal","Lembaga Tujuan","File SK","Status","Tanggal Usulan","User Pengusul","Tanggal Eksekusi","User Eksekutor"];
+      //   sheetUsulan.getRange(1, 1, 1, headers.length).setValues([headers]);
+      // }
+      // var lembaga = form.unit_kerja || form.unit_login || "-";
+      // var idUsulan = "USUL-" + new Date().getTime();
+      // sheetUsulan.appendRow([idUsulan, newId, namaFull, "PTK Baru (" + (jenisDokumen || "Dokumen") + ")", lembaga, lembaga, fileUrl, "Pending", timestamp, userPengusul || form.user_login || "", "", ""]);
     } catch(uploadErr) {
       // Insert tetap sukses meski upload gagal; log error tapi jangan blok user
       Logger.log("Upload dokumen gagal: " + uploadErr.message);
