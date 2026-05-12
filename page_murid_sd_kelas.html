@@ -69,12 +69,7 @@
           <div class="card-body p-3 w-100">
             
             <div id="sdkelas_loadingState">
-                <div class="d-flex flex-column justify-content-center align-items-center" style="min-height: 50vh;">
-                    <div class="sultan-loading-container text-center">
-                        <i class="fas fa-spinner fa-spin fa-3x text-maroon mb-3"></i>
-                        <h6 class="text-muted font-weight-bold mt-3" id="sdkelas_loadingText">Mempersiapkan Akses Server...</h6>
-                    </div>
-                </div>
+                      <!-- Spinner Otomatis via SultanUI.showLoading -->
             </div>
 
             <div id="sdkelas_tableState" style="display: none;">
@@ -190,13 +185,13 @@ $(document).ready(function() {
 function sdkelas_validasiAksesUser() {
     if (SDKELAS_IS_ADMIN) {
         $('#sdkelas_filterContainer').show();
-        $('#sdkelas_loadingText').html('Mempersiapkan Akses Admin...');
+        SultanUI.showLoading('#sdkelas_loadingState', 'Mempersiapkan Akses Admin...');
         $('#sdkelas_filterUnit').empty().append('<option value="SEMUA">- Semua Unit Kerja -</option>').prop('disabled', false).removeClass('bg-light text-maroon font-weight-bold');
         sdkelas_tarikDataServer(); 
     } else {
         if (!SDKELAS_NPSN_TERKUNCI) {
             $('#sdkelas_filterUnit').empty().append('<option value="">AKSES DITOLAK</option>');
-            $('#sdkelas_loadingText').html('<span class="text-danger"><i class="fas fa-ban mb-2"></i><br>Akses ditolak: Sesi login tidak valid.</span>');
+            $('#sdkelas_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-ban mb-2"></i><br>Akses ditolak: Sesi login tidak valid.</span>');
             return;
         }
 
@@ -205,7 +200,7 @@ function sdkelas_validasiAksesUser() {
                 var dataUnit = JSON.parse(resUnit);
                 if (dataUnit.error) {
                     $('#sdkelas_filterUnit').empty().append('<option value="">AKSES DITOLAK</option>');
-                    $('#sdkelas_loadingText').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>' + sdkelas_escapeHtml(dataUnit.error) + '</span>');
+                    $('#sdkelas_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>' + sdkelas_escapeHtml(dataUnit.error) + '</span>');
                     return;
                 }
                 SDKELAS_UNIT_TERKUNCI = dataUnit.unitKerja;
@@ -214,7 +209,7 @@ function sdkelas_validasiAksesUser() {
             })
             .withFailureHandler(function(err) {
                 $('#sdkelas_filterUnit').empty().append('<option value="">ERROR SERVER</option>');
-                $('#sdkelas_loadingText').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Terputus: ' + sdkelas_escapeHtml(err.message) + '</span>');
+                $('#sdkelas_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Terputus: ' + sdkelas_escapeHtml(err.message) + '</span>');
             })
             .getUnitKerjaByNpsnPTK(SDKELAS_NPSN_TERKUNCI);
     }
@@ -226,14 +221,13 @@ function sdkelas_tarikDataServer() {
 
     if (!$.fn.DataTable.isDataTable('#sdkelas_tabelUtama')) {
         $('#sdkelas_tableState').hide();
-        $('#sdkelas_loadingText').html('Mengambil Laporan Kelas SD Server...');
-        SultanUI.showLoading('#sdkelas_loadingState');
+        SultanUI.showLoading('#sdkelas_loadingState', 'Mengambil Laporan Kelas SD Server...');
     }
 
     google.script.run.withSuccessHandler(function(dataArray) {
         btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
         if (!Array.isArray(dataArray)) {
-            $('#sdkelas_loadingText').html('<span class="text-danger"><i class="fas fa-times-circle mb-2"></i><br>Gagal memproses struktur JSON Server.</span>');
+            $('#sdkelas_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-times-circle mb-2"></i><br>Gagal memproses struktur JSON Server.</span>');
             return;
         }
 
@@ -260,11 +254,11 @@ function sdkelas_tarikDataServer() {
             if(SDKELAS_TABEL_INSTANCE) { setTimeout(function() { SDKELAS_TABEL_INSTANCE.columns.adjust(); }, 150); }
 
         } catch (e) {
-            $('#sdkelas_loadingText').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>Gagal merakit tabel: ' + sdkelas_escapeHtml(e.message) + '</span>');
+            $('#sdkelas_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>Gagal merakit tabel: ' + sdkelas_escapeHtml(e.message) + '</span>');
         }
     }).withFailureHandler(function(e) {
         btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
-        $('#sdkelas_loadingText').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Server Terputus.</span>');
+        $('#sdkelas_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Server Terputus.</span>');
     }).getDataMuridSDKelas(); 
 }
 
