@@ -643,33 +643,40 @@ function getNotifikasiSK(role, unit) {
    NEW: NOTIFIKASI GLOBAL (SK + LAPBUL)
    ====================================================================== */
 function getNotifikasiGlobal(role, unit) {
-  try {
-    var modules = {
-        sk: getNotifikasiSK(role, unit),
-        lapbul: getNotifikasiLapbul(role, unit),
-        lupa: getNotifikasiLupa(role, unit),
-        salah: getNotifikasiSalah(role, unit),
-        perdin: getNotifikasiPerdin(role, unit),
-        cuti: getNotifikasiCuti(role, unit),
-        surat_cuti: getNotifikasiSuratCuti(role, unit),
-        efile: getNotifikasiEfile(role, unit),
-        mutasi_paud: getNotifikasiMutasiPAUD(role, unit),
-        mutasi_sdn: getNotifikasiMutasiSDN(role, unit),
-        mutasi_sds: getNotifikasiMutasiSDS(role, unit)
-    };
-    
-    var totalCount = 0;
-    for (var key in modules) {
-        totalCount += modules[key].count;
+  var modules = {};
+  var totalCount = 0;
+  
+  var safeFetch = function(moduleKey, fetchFn) {
+    try {
+      var res = fetchFn(role, unit);
+      if (res && typeof res.count !== 'undefined') {
+        modules[moduleKey] = res;
+        totalCount += (parseInt(res.count) || 0);
+      } else {
+        modules[moduleKey] = { count: 0, recent: [] };
+      }
+    } catch (e) {
+      Logger.log("Error fetching notif for " + moduleKey + ": " + e.message);
+      modules[moduleKey] = { count: 0, recent: [] };
     }
-    
-    return {
-      count: totalCount,
-      modules: modules
-    };
-  } catch (e) {
-    return { count: 0, modules: {} };
-  }
+  };
+
+  safeFetch('sk', getNotifikasiSK);
+  safeFetch('lapbul', getNotifikasiLapbul);
+  safeFetch('lupa', getNotifikasiLupa);
+  safeFetch('salah', getNotifikasiSalah);
+  safeFetch('perdin', getNotifikasiPerdin);
+  safeFetch('cuti', getNotifikasiCuti);
+  safeFetch('surat_cuti', getNotifikasiSuratCuti);
+  safeFetch('efile', getNotifikasiEfile);
+  safeFetch('mutasi_paud', getNotifikasiMutasiPAUD);
+  safeFetch('mutasi_sdn', getNotifikasiMutasiSDN);
+  safeFetch('mutasi_sds', getNotifikasiMutasiSDS);
+
+  return {
+    count: totalCount,
+    modules: modules
+  };
 }
 
 function tandaiSemuaNotifGlobalDibaca(role, unit) {

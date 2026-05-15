@@ -893,7 +893,12 @@ function sultan_fetchNotifikasi() {
     var unit = user.unit || user.nama_lengkap;
     
     google.script.run.withSuccessHandler(function(res) {
-        if (!res) return;
+        if (!res) {
+            console.warn("SULTAN: Response notifikasi kosong.");
+            return;
+        }
+        
+        console.log("SULTAN: Notif Data Received", res);
         
         // 1. Update Navbar Badge & Header
         var totalCount = parseInt(res.count || 0);
@@ -915,10 +920,11 @@ function sultan_fetchNotifikasi() {
         };
 
         for (var key in badgeMapping) {
-            var count = (res.modules && res.modules[key]) ? res.modules[key].count : 0;
+            var mData = (res.modules && res.modules[key]) ? res.modules[key] : null;
+            var count = mData ? (parseInt(mData.count) || 0) : 0;
             var $b = $(badgeMapping[key]);
-            if (count > 0) $b.text(count).removeClass('d-none');
-            else $b.addClass('d-none');
+            if (count > 0) $b.text(count).removeClass('d-none').show(); // Tambahkan .show() untuk antisipasi inline style
+            else $b.addClass('d-none').hide();
         }
 
         // 3. Render List Dropdown
@@ -940,44 +946,48 @@ function sultan_fetchNotifikasi() {
 
         for (var mKey in res.modules) {
             var mData = res.modules[mKey];
-            if (mData.count > 0 || (mData.recent && mData.recent.length > 0)) {
+            if (mData && (mData.count > 0 || (mData.recent && mData.recent.length > 0))) {
+                var displayLabel = (labels[mKey] || mKey).toUpperCase();
                 // Header Kelompok (Clickable)
                 html += `<div class="dropdown-header notif-sultan-group d-flex justify-content-between align-items-center py-2 px-3 border-bottom" onclick="sultan_toggleNotifGroup(this)">
                             <div>
                                 <i class="fas fa-chevron-down notif-chevron mr-2" style="font-size: 10px; opacity: 0.5;"></i>
-                                <span class="notif-sultan-header font-weight-bold" style="font-size: 13px !important; letter-spacing: 0.5px;">${labels[mKey].toUpperCase()}</span>
+                                <span class="notif-sultan-header font-weight-bold" style="font-size: 13px !important; letter-spacing: 0.5px;">${displayLabel}</span>
                             </div>
                             <span class="notif-sultan-badge">${mData.count}</span>
                          </div>
                          <div class="notif-group-content">`; // Mulai pembungkus isi
                 
-                mData.recent.forEach(function(notif) {
-                    var content = notif.nama || notif.namaSd || notif.nomor || 'Pemberitahuan';
-                    var sub = notif.kriteria || notif.tujuan || notif.berkas || notif.jenis || '';
-                    var tglRaw = notif.waktu || notif.tglVerif || notif.tglInput || notif.tglUnggah || "";
-                    var tglDisplay = tglRaw ? String(tglRaw).split(' ')[0].replace(/'/g, "") : "-";
+                if (mData.recent && Array.isArray(mData.recent)) {
+                    mData.recent.forEach(function(notif) {
+                        var content = notif.nama || notif.namaSd || notif.nomor || 'Pemberitahuan';
+                        var sub = notif.kriteria || notif.tujuan || notif.berkas || notif.jenis || '';
+                        var tglRaw = notif.waktu || notif.tglVerif || notif.tglInput || notif.tglUnggah || "";
+                        var tglDisplay = tglRaw ? String(tglRaw).split(' ')[0].replace(/'/g, "") : "-";
 
-                    var statusStyle = '';
-                    if (notif.status === 'Diproses') statusStyle = 'color: #f6c23e !important;'; 
-                    else if (notif.status.toLowerCase().includes('setuju') || notif.status.toLowerCase().includes('ok')) statusStyle = 'color: #28a745 !important;'; 
-                    else if (notif.status.toLowerCase().includes('tolak')) statusStyle = 'color: #dc3545 !important;'; 
+                        var statusStyle = '';
+                        var statusTxt = String(notif.status || "PANDING").toUpperCase();
+                        if (statusTxt.includes('PROSES') || statusTxt.includes('PENDING')) statusStyle = 'color: #f6c23e !important;'; 
+                        else if (statusTxt.includes('SETUJU') || statusTxt.includes('OK') || statusTxt.includes('VALID')) statusStyle = 'color: #28a745 !important;'; 
+                        else if (statusTxt.includes('TOLAK') || statusTxt.includes('REVISI')) statusStyle = 'color: #dc3545 !important;'; 
 
-                    html += `
-                    <a href="#" class="dropdown-item notif-sultan-item py-2 border-bottom" onclick="sultan_handleNotifClick('${notif.rowId}', '${notif.source}', this)" style="background: transparent !important;">
-                        <div class="media align-items-center">
-                            <div class="media-body">
-                                <div class="d-flex justify-content-between align-items-center mb-0">
-                                    <h3 class="notif-sultan-name font-weight-bold" style="font-size: 12px !important; margin: 0 !important;">${content}</h3>
-                                    <span class="notif-sultan-sub" style="font-size: 10px !important;"><i class="far fa-clock mr-1"></i>${tglDisplay}</span>
-                                </div>
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <span class="notif-sultan-sub" style="font-size: 10px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px;">${sub}</span>
-                                    <span class="font-weight-bold" style="font-size: 10px !important; letter-spacing: 0.5px !important; ${statusStyle}">${notif.status.toUpperCase()}</span>
+                        html += `
+                        <a href="#" class="dropdown-item notif-sultan-item py-2 border-bottom" onclick="sultan_handleNotifClick('${notif.rowId}', '${notif.source}', this)" style="background: transparent !important;">
+                            <div class="media align-items-center">
+                                <div class="media-body">
+                                    <div class="d-flex justify-content-between align-items-center mb-0">
+                                        <h3 class="notif-sultan-name font-weight-bold" style="font-size: 12px !important; margin: 0 !important;">${content}</h3>
+                                        <span class="notif-sultan-sub" style="font-size: 10px !important;"><i class="far fa-clock mr-1"></i>${tglDisplay}</span>
+                                    </div>
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <span class="notif-sultan-sub" style="font-size: 10px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px;">${sub}</span>
+                                        <span class="font-weight-bold" style="font-size: 10px !important; letter-spacing: 0.5px !important; ${statusStyle}">${statusTxt}</span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </a>`;
-                });
+                        </a>`;
+                    });
+                }
                 
                 html += `</div>`; // Tutup pembungkus isi
             }
@@ -988,6 +998,8 @@ function sultan_fetchNotifikasi() {
         
         // Jalankan paksa
         sultan_forceApplyColors();
+    }).withFailureHandler(function(err) {
+        console.error("SULTAN: Gagal memuat notifikasi server-side", err);
     }).getNotifikasiGlobal(role, unit);
 }
 
