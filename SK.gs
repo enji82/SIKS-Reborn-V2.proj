@@ -679,10 +679,10 @@ function getNotifikasiGlobal(role, unit) {
     Logger.log("SULTAN Critical Error: " + err.message);
   }
 
-  return {
+  return JSON.stringify({
     count: totalCount,
     modules: modules
-  };
+  });
 }
 
 function tandaiSemuaNotifGlobalDibaca(role, unit) {
