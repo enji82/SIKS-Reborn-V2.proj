@@ -1613,8 +1613,9 @@ function sultan_tampilkanProfilUser() {
     const textColor = isDark ? '#f5f5f5' : '#2d2d2d';
     const labelColor = isDark ? '#aaaaaa' : '#777777';
     const primaryColor = isDark ? '#ff4d4d' : '#800000';
-    const cardBg = isDark ? 'rgba(255,255,255,0.03)' : '#f9f9f9';
-    const cardBorder = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(128,0,0,0.1)';
+    const verifiedColor = '#1DA1F2'; // Verified Blue (Twitter/FB/IG Style)
+    const cardBg = isDark ? 'rgba(255,255,255,0.03)' : '#ffffff';
+    const cardBorder = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(128,0,0,0.08)';
     
     var photoId = user.photo || "";
     var photoUrl = photoId ? "https://drive.google.com/thumbnail?id=" + photoId + "&sz=s400" : "https://ui-avatars.com/api/?name=" + encodeURIComponent(user.nama_lengkap || user.username) + "&background=800000&color=fff&size=128";
@@ -1622,54 +1623,55 @@ function sultan_tampilkanProfilUser() {
     Swal.fire({
         html: `
             <div class="sultan-profile-modal-body">
-                <!-- Header Gradient -->
-                <div style="background: linear-gradient(135deg, ${primaryColor} 0%, #300000 100%); height: 100px; margin: -1.5em -1.5em 0 -1.5em; border-radius: 20px 20px 0 0; position: relative; overflow: hidden;">
-                    <i class="fas fa-id-badge position-absolute" style="font-size: 8rem; color: rgba(255,255,255,0.05); right: -20px; top: -10px; transform: rotate(-15deg);"></i>
+                <!-- Header Image -->
+                <div style="background: linear-gradient(135deg, ${primaryColor} 0%, #300000 100%); height: 90px; margin: -1.5em -1.5em 0 -1.5em; border-radius: 20px 20px 0 0; position: relative;">
                 </div>
                 
-                <!-- Profile Image & Badge -->
-                <div class="text-center" style="margin-top: -60px; position: relative; z-index: 10;">
+                <!-- Profile Image -->
+                <div class="text-center" style="margin-top: -55px; position: relative; z-index: 10;">
                     <div class="d-inline-block position-relative">
-                        <img src="${photoUrl}" class="img-circle shadow-lg" style="width: 110px; height: 110px; object-fit: cover; border: 5px solid ${bgColor}; background: ${bgColor}; transition: transform 0.3s ease;">
-                        <div class="position-absolute" style="bottom: 5px; right: 5px; z-index: 11;">
-                            <i class="fas fa-check-circle text-success bg-white rounded-circle shadow-sm" style="font-size: 1.8rem; border: 3px solid ${bgColor};"></i>
-                        </div>
+                        <img src="${photoUrl}" class="img-circle shadow-lg" style="width: 110px; height: 110px; object-fit: cover; border: 4px solid ${bgColor}; background: ${bgColor};">
                     </div>
                     <div class="mt-3">
-                        <h4 class="font-weight-bold mb-0" style="color: ${textColor}; font-size: 1.25rem; letter-spacing: -0.5px;">PROFIL PENGGUNA</h4>
-                        <span class="badge badge-success px-3 py-1 rounded-pill mt-1 shadow-sm" style="font-size: 0.75rem; font-weight: 700; letter-spacing: 0.5px; opacity: 0.9;">TERVERIFIKASI</span>
+                        <div class="d-flex align-items-center justify-content-center">
+                            <h4 class="font-weight-bold mb-0" style="color: ${textColor}; font-size: 1.3rem; letter-spacing: -0.5px;">PROFIL PENGGUNA</h4>
+                            <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; margin-left: 6px; fill: ${verifiedColor};">
+                                <path d="M22.5 12.5c0-1.58-.88-2.95-2.18-3.65.15-.43.23-.89.23-1.35 0-2.21-1.79-4-4-4-.46 0-.92.08-1.35.23-.7-1.3-2.07-2.18-3.65-2.18s-2.95.88-3.65 2.18c-.43-.15-.89-.23-1.35-.23-2.21 0-4 1.79-4 4 0 .46.08.92.23 1.35-1.3.7-2.18 2.07-2.18 3.65s.88 2.95 2.18 3.65c-.15.43-.23.89-.23 1.35 0 2.21 1.79 4 4 4 .46 0 .92-.08 1.35-.23.7 1.3 2.07 2.18 3.65 2.18s2.95-.88 3.65-2.18c.43.15.89.23 1.35.23 2.21 0 4-1.79 4-4 0-.46-.08-.92-.23-1.35 1.3-.7 2.18-2.07 2.18-3.65zM10 17.5l-5-5 1.41-1.41L10 14.67l7.59-7.59L19 8.5l-9 9z"></path>
+                            </svg>
+                        </div>
+                        <p class="text-muted" style="font-size: 0.85rem; margin-top: 4px; font-weight: 500; opacity: 0.7;">Akun SIKS Terverifikasi</p>
                     </div>
                 </div>
 
-                <!-- Info Card -->
-                <div class="mt-4 p-4 rounded-xl text-left shadow-inner" style="background: ${cardBg}; border: 1px solid ${cardBorder};">
-                    <div class="mb-4">
-                        <label class="d-block text-uppercase mb-1" style="color: ${labelColor}; font-size: 0.65rem; font-weight: 800; letter-spacing: 1px;">Username</label>
-                        <div class="d-flex align-items-center">
-                            <i class="fas fa-at mr-2" style="color: ${primaryColor}; opacity: 0.6;"></i>
-                            <span class="font-weight-bold" style="color: ${primaryColor}; font-size: 1.1rem;">${user.username || '-'}</span>
+                <!-- Info Table -->
+                <div class="mt-4 p-1 rounded-xl overflow-hidden" style="background: ${cardBg}; border: 1px solid ${cardBorder};">
+                    <div class="p-3 border-bottom d-flex align-items-center">
+                        <div style="width: 35px;"><i class="fas fa-at text-muted" style="font-size: 0.9rem;"></i></div>
+                        <div class="text-left">
+                            <small class="d-block text-uppercase" style="color: ${labelColor}; font-size: 0.6rem; font-weight: 800; letter-spacing: 0.5px;">Username</small>
+                            <span class="font-weight-bold" style="color: ${primaryColor}; font-size: 1rem;">${user.username || '-'}</span>
                         </div>
                     </div>
                     
-                    <div class="mb-4">
-                        <label class="d-block text-uppercase mb-1" style="color: ${labelColor}; font-size: 0.65rem; font-weight: 800; letter-spacing: 1px;">Unit Kerja</label>
-                        <div class="d-flex align-items-center">
-                            <i class="fas fa-university mr-2" style="color: ${labelColor}; opacity: 0.6;"></i>
-                            <span class="font-weight-bold" style="color: ${textColor}; font-size: 1rem;">${user.nama_lengkap || '-'}</span>
+                    <div class="p-3 border-bottom d-flex align-items-center">
+                        <div style="width: 35px;"><i class="fas fa-university text-muted" style="font-size: 0.9rem;"></i></div>
+                        <div class="text-left">
+                            <small class="d-block text-uppercase" style="color: ${labelColor}; font-size: 0.6rem; font-weight: 800; letter-spacing: 0.5px;">Unit Kerja</small>
+                            <span class="font-weight-bold" style="color: ${textColor}; font-size: 0.9rem;">${user.nama_lengkap || '-'}</span>
                         </div>
                     </div>
                     
-                    <div>
-                        <label class="d-block text-uppercase mb-1" style="color: ${labelColor}; font-size: 0.65rem; font-weight: 800; letter-spacing: 1px;">Hak Akses</label>
-                        <div class="d-flex align-items-center">
-                            <i class="fas fa-shield-alt mr-2" style="color: ${labelColor}; opacity: 0.6;"></i>
-                            <span class="badge px-3 py-1 text-white" style="background: ${primaryColor}; font-size: 0.75rem; font-weight: 700; border-radius: 6px;">${(user.role || 'User').toUpperCase()}</span>
+                    <div class="p-3 d-flex align-items-center">
+                        <div style="width: 35px;"><i class="fas fa-shield-alt text-muted" style="font-size: 0.9rem;"></i></div>
+                        <div class="text-left">
+                            <small class="d-block text-uppercase" style="color: ${labelColor}; font-size: 0.6rem; font-weight: 800; letter-spacing: 0.5px;">Hak Akses</small>
+                            <div class="badge px-2 py-1 text-white mt-1" style="background: ${primaryColor}; font-size: 0.7rem; font-weight: 700; border-radius: 4px;">${(user.role || 'User').toUpperCase()}</div>
                         </div>
                     </div>
                 </div>
                 
-                <div class="mt-4 text-center">
-                    <small class="text-muted" style="font-size: 0.7rem; font-style: italic;">SIKS-REBORN • Ruang Edukasi & Layanan Digital</small>
+                <div class="mt-4 mb-2 text-center">
+                    <small class="text-muted" style="font-size: 0.65rem; font-style: italic; opacity: 0.5;">Dikelola oleh sistem SIKS-REBORN</small>
                 </div>
             </div>
         `,
@@ -1677,7 +1679,7 @@ function sultan_tampilkanProfilUser() {
         showConfirmButton: false,
         padding: '1.5em',
         background: bgColor,
-        width: '400px',
+        width: '380px',
         customClass: {
             popup: 'rounded-xl sultan-premium-modal',
             container: 'sultan-swal-container'
