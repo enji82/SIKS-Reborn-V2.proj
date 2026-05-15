@@ -682,3 +682,91 @@ function getUserProfileByName(username) {
     return { found: false, error: e.toString() };
   }
 }
+
+/**
+ * MENGAMBIL TIMELINE AKTIVITAS USER LOGIN
+ * Menggabungkan Log Access dan Log Aktivitas Modul
+ */
+function getUserActivityTimeline(username) {
+  try {
+    var activities = [];
+    var uName = String(username || "").trim().toLowerCase();
+    if (!uName) return [];
+
+    // 1. Ambil dari LOG_ACCESS (Login/Access)
+    var ssUser = SpreadsheetApp.openById(SPREADSHEET_IDS.DATABASE_USER);
+    var sheetLog = ssUser.getSheetByName("LOG_ACCESS");
+    if (sheetLog) {
+      var dataLog = sheetLog.getDataRange().getValues();
+      for (var i = dataLog.length - 1; i >= 1; i--) {
+        var row = dataLog[i];
+        var logUser = String(row[3] || "").trim().toLowerCase();
+        if (logUser === uName || logUser.includes(uName)) {
+          activities.push({
+            type: 'login',
+            title: 'Sesi Login',
+            desc: 'Berhasil masuk ke sistem (' + (row[5] || 'Reguler') + ')',
+            time: row[0],
+            icon: 'fa-sign-in-alt',
+            color: 'primary'
+          });
+        }
+        if (activities.length >= 20) break; // Batasi pencarian awal
+      }
+    }
+
+    // 2. Ambil dari SK_DATA (Jika ada aktivitas unggah/edit)
+    try {
+      var ssSK = SpreadsheetApp.openById(SPREADSHEET_IDS.SK_DATA);
+      var sheetSK = ssSK.getSheetByName("Unggah_SK");
+      if (sheetSK) {
+        var dataSK = sheetSK.getDataRange().getValues();
+        var skCount = 0;
+        for (var j = dataSK.length - 1; j >= 1; j--) {
+          var rowSK = dataSK[j];
+          var userInput = String(rowSK[8] || "").trim().toLowerCase();
+          var userUpdate = String(rowSK[11] || "").trim().toLowerCase();
+          
+          if (userInput === uName || userUpdate === uName) {
+            activities.push({
+              type: 'sk',
+              title: 'Kelola SK',
+              desc: 'Mengunggah/Memperbarui SK: ' + (rowSK[4] || '-'),
+              time: rowSK[10] || rowSK[0],
+              icon: 'fa-file-signature',
+              color: 'success'
+            });
+            skCount++;
+          }
+          if (skCount >= 5) break; 
+        }
+      }
+    } catch (e) { Logger.log("Timeline SK Error: " + e); }
+
+    // 3. Sorting Berdasarkan Waktu (Terbaru di Atas)
+    activities.sort(function(a, b) {
+      var parseDate = function(val) {
+        if (!val) return 0;
+        if (val instanceof Date) return val.getTime();
+        try {
+          var s = String(val).replace(/'/g, "").trim();
+          var parts = s.split(" ");
+          var dateParts = parts[0].split(/[-/]/);
+          var timeParts = (parts[1] || "00:00:00").split(":");
+          var d, m, y;
+          if (dateParts[0].length === 4) { y = parseInt(dateParts[0]); m = parseInt(dateParts[1]); d = parseInt(dateParts[2]); }
+          else { d = parseInt(dateParts[0]); m = parseInt(dateParts[1]); y = parseInt(dateParts[2]); }
+          return new Date(y, m - 1, d, parseInt(timeParts[0]||0), parseInt(timeParts[1]||0), parseInt(timeParts[2]||0)).getTime();
+        } catch(e) { return 0; }
+      };
+      return parseDate(b.time) - parseDate(a.time);
+    });
+
+    // Ambil 10 Terakhir
+    return activities.slice(0, 10);
+
+  } catch (e) {
+    Logger.log("getUserActivityTimeline Error: " + e);
+    return [];
+  }
+}

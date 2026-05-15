@@ -783,7 +783,82 @@
           setSidebarActive("Beranda"); 
       }
       sultan_initHomeCharts();
+      sultan_loadUserActivityTimeline();
   });
+
+  function sultan_loadUserActivityTimeline() {
+      var user = getSesiUser();
+      if (!user) return;
+      
+      var $container = $('.sultan-timeline-container');
+      $container.html('<div class="text-center p-4"><div class="spinner-border spinner-border-sm text-maroon"></div><br><small class="text-muted mt-2 d-block">Memuat aktivitas...</small></div>');
+
+      google.script.run.withSuccessHandler(function(activities) {
+          if (!activities || activities.length === 0) {
+              $container.html(SultanUI.emptyState("Belum Ada Aktivitas", "Aktivitas Anda akan muncul di sini setelah Anda mulai menggunakan sistem.", "fa-history"));
+              return;
+          }
+
+          var html = '';
+          activities.forEach(function(item, index) {
+              var isLast = (index === activities.length - 1);
+              var timeStr = sultan_formatRelativeTime(item.time);
+              
+              html += `
+                  <div class="sultan-timeline-item ${isLast ? 'pb-0 border-0' : ''}">
+                      <div class="timeline-icon bg-${item.color || 'primary'} text-white">
+                          <i class="fas ${item.icon || 'fa-dot-circle'}"></i>
+                      </div>
+                      <div class="timeline-content">
+                          <h6 class="font-weight-bold text-dark mb-0" style="font-size: 0.9rem;">${item.title}</h6>
+                          <small class="text-muted">${item.desc}</small>
+                          <div class="text-muted" style="font-size: 0.75rem; margin-top: 2px;">
+                              <i class="fas fa-clock mr-1"></i> ${timeStr}
+                          </div>
+                      </div>
+                  </div>
+              `;
+          });
+          $container.html(html);
+      }).getUserActivityTimeline(user.username || user.nama);
+  }
+
+  function sultan_formatRelativeTime(dateVal) {
+      if (!dateVal) return "-";
+      
+      var now = new Date();
+      var date;
+      
+      if (dateVal instanceof Date) {
+          date = dateVal;
+      } else {
+          try {
+              // Handle 'dd-mm-yyyy HH:mm:ss' or 'yyyy-mm-dd HH:mm:ss'
+              var s = String(dateVal).replace(/'/g, "").trim();
+              var parts = s.split(" ");
+              var dateParts = parts[0].split(/[-/]/);
+              var timeParts = (parts[1] || "00:00:00").split(":");
+              
+              var d, m, y;
+              if (dateParts[0].length === 4) { // yyyy-mm-dd
+                  y = parseInt(dateParts[0]); m = parseInt(dateParts[1]) - 1; d = parseInt(dateParts[2]);
+              } else { // dd-mm-yyyy
+                  d = parseInt(dateParts[0]); m = parseInt(dateParts[1]) - 1; y = parseInt(dateParts[2]);
+              }
+              date = new Date(y, m, d, parseInt(timeParts[0]||0), parseInt(timeParts[1]||0), parseInt(timeParts[2]||0));
+          } catch(e) { return dateVal; }
+      }
+
+      if (isNaN(date.getTime())) return String(dateVal);
+
+      var diffInSeconds = Math.floor((now - date) / 1000);
+      if (diffInSeconds < 60) return "Baru saja";
+      if (diffInSeconds < 3600) return Math.floor(diffInSeconds / 60) + " menit yang lalu";
+      if (diffInSeconds < 86400) return Math.floor(diffInSeconds / 3600) + " jam yang lalu";
+      if (diffInSeconds < 172800) return "Kemarin";
+      
+      return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
 
   function sultan_initHomeCharts() {
       // 1. Chart Aktivitas (Bar)
