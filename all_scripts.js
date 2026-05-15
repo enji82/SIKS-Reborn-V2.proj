@@ -1604,4 +1604,49 @@ var SultanForm = {
     });
 
   });
+function sultan_tampilkanProfilUser() {
+    var user = getSesiUser();
+    if (!user) return;
+    
+    var photoId = user.photo || "";
+    var photoUrl = photoId ? "https://drive.google.com/thumbnail?id=" + photoId + "&sz=s400" : "https://ui-avatars.com/api/?name=" + encodeURIComponent(user.nama_lengkap || user.username) + "&background=800000&color=fff&size=128";
+
+    Swal.fire({
+        title: '<h5 class="font-weight-bold text-maroon mb-0">PROFIL PENGGUNA</h5>',
+        html: `
+            <div class="text-center mb-4">
+                <div class="position-relative d-inline-block">
+                    <img src="${photoUrl}" class="img-circle elevation-2 shadow-sm mb-3" style="width: 120px; height: 120px; object-fit: cover; border: 4px solid #fff;">
+                    <div class="badge badge-warning position-absolute" style="bottom: 15px; right: 0; border: 2px solid #fff; border-radius: 50px; padding: 5px 12px; font-size: 10px;">
+                        <i class="fas fa-check-circle mr-1"></i> Terverifikasi
+                    </div>
+                </div>
+                <h4 class="font-weight-bold text-dark mb-0">${user.nama_lengkap || user.username}</h4>
+                <p class="text-muted text-uppercase mb-3" style="letter-spacing: 1px; font-size: 0.8rem;">${user.role || 'User'}</p>
+            </div>
+            <div class="text-left bg-light p-3 rounded-lg" style="border: 1px dashed #ddd;">
+                <div class="row mb-2">
+                    <div class="col-4 text-muted"><small>Username</small></div>
+                    <div class="col-8 font-weight-bold text-maroon">${user.username || '-'}</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-4 text-muted"><small>Unit Kerja</small></div>
+                    <div class="col-8 font-weight-bold text-dark">${user.unit || '-'}</div>
+                </div>
+                <div class="row">
+                    <div class="col-4 text-muted"><small>Hak Akses</small></div>
+                    <div class="col-8"><span class="badge badge-maroon px-2 py-1" style="font-size: 10px;">${(user.role || 'User').toUpperCase()}</span></div>
+                </div>
+            </div>
+        `,
+        showCloseButton: true,
+        showConfirmButton: false,
+        padding: '2em',
+        background: '#fff',
+        customClass: {
+            popup: 'rounded-xl',
+            container: 'sultan-swal-container'
+        }
+    });
+}
   
