@@ -1165,7 +1165,9 @@ function sultan_fetchNotifikasi() {
         var badgeMapping = {
             'sk': '#sidebar-notif-sk', 'lapbul': '#sidebar-notif-lapbul', 'lupa': '#sidebar-notif-lupa',
             'salah': '#sidebar-notif-salah', 'perdin': '#sidebar-notif-perdin', 'cuti': '#sidebar-notif-cuti',
-            'surat_cuti': '#sidebar-notif-surat-cuti', 'efile': '#sidebar-notif-efile'
+            'surat_cuti': '#sidebar-notif-surat-cuti', 'efile': '#sidebar-notif-efile',
+            'mutasi_paud': '.notif-badge-mutasi-paud', 'mutasi_sdn': '.notif-badge-mutasi-sdn',
+            'mutasi_sds': '.notif-badge-mutasi-sds'
         };
 
         for (var key in badgeMapping) {
@@ -1188,7 +1190,8 @@ function sultan_fetchNotifikasi() {
         var labels = {
             sk: 'SK Tugas', lapbul: 'Laporan Bulanan', lupa: 'Lupa Presensi', 
             salah: 'Salah Presensi', perdin: 'Perjadin', cuti: 'Pengajuan Cuti', 
-            surat_cuti: 'Surat Cuti', efile: 'E-File'
+            surat_cuti: 'Surat Cuti', efile: 'E-File',
+            mutasi_paud: 'Mutasi PAUD', mutasi_sdn: 'Mutasi SDN', mutasi_sds: 'Mutasi SDS'
         };
 
         for (var mKey in res.modules) {
@@ -1329,6 +1332,24 @@ function sultan_handleNotifClick(rowId, source, el) {
     sultan_tandaiNotifDibaca(rowId, source);
 }
 
+function sultan_tandaiNotifDibaca(rowId, source) {
+    var user = getSesiUser();
+    if (!user) return;
+    var role = user.role || "User";
+    
+    if (source === 'SK') google.script.run.tandaiNotifDibaca(rowId, role);
+    else if (source === 'Perjadin') google.script.run.tandaiNotifPerdinDibaca(rowId, role);
+    else if (source === 'Cuti') google.script.run.tandaiNotifCutiDibaca(rowId, role);
+    else if (source === 'SuratCuti') google.script.run.tandaiNotifSuratCutiDibaca(rowId, role);
+    else if (source === 'Efile') google.script.run.tandaiNotifEfileDibaca(rowId, role);
+    else if (source === 'Mutasi PAUD') google.script.run.tandaiNotifMutasiPAUDDibaca(rowId, role);
+    else if (source === 'Mutasi SDN') google.script.run.tandaiNotifMutasiSDNDibaca(rowId, role);
+    else if (source === 'Mutasi SDS') google.script.run.tandaiNotifMutasiSDSDibaca(rowId, role);
+    else if (source === 'LUPA') google.script.run.tandaiNotifLupaDibaca(rowId, role);
+    else if (source === 'SALAH') google.script.run.tandaiNotifSalahDibaca(rowId, role);
+    else if (source === 'SD' || source === 'PAUD') google.script.run.tandaiNotifLapbulDibaca(rowId, source, role);
+}
+
 function sultan_markAllNotifRead(e) {
     if(e) { e.preventDefault(); e.stopPropagation(); }
     var user = getSesiUser();
@@ -1336,7 +1357,7 @@ function sultan_markAllNotifRead(e) {
     
     // UI Feedback
     $('#nav-notif-count').hide();
-    $('#sidebar-notif-sk, #sidebar-notif-lapbul, #sidebar-notif-lupa, #sidebar-notif-salah, #sidebar-notif-perdin, #sidebar-notif-cuti, #sidebar-notif-surat-cuti, #sidebar-notif-efile').addClass('d-none');
+    $('#sidebar-notif-sk, #sidebar-notif-lapbul, #sidebar-notif-lupa, #sidebar-notif-salah, #sidebar-notif-perdin, #sidebar-notif-cuti, #sidebar-notif-surat-cuti, #sidebar-notif-efile, .notif-badge-mutasi-paud, .notif-badge-mutasi-sdn, .notif-badge-mutasi-sds').addClass('d-none');
     $('#nav-notif-count-header').text('0 Baru');
     $('#nav-notif-list .dropdown-item').addClass('bg-light opacity-75').find('.dropdown-item-title').removeClass('font-weight-bold').addClass('font-weight-normal text-muted');
     

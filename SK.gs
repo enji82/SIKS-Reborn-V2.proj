@@ -652,7 +652,10 @@ function getNotifikasiGlobal(role, unit) {
         perdin: getNotifikasiPerdin(role, unit),
         cuti: getNotifikasiCuti(role, unit),
         surat_cuti: getNotifikasiSuratCuti(role, unit),
-        efile: getNotifikasiEfile(role, unit)
+        efile: getNotifikasiEfile(role, unit),
+        mutasi_paud: getNotifikasiMutasiPAUD(role, unit),
+        mutasi_sdn: getNotifikasiMutasiSDN(role, unit),
+        mutasi_sds: getNotifikasiMutasiSDS(role, unit)
     };
     
     var totalCount = 0;
@@ -678,6 +681,7 @@ function tandaiSemuaNotifGlobalDibaca(role, unit) {
     tandaiSemuaNotifPerdinDibaca(role, unit);
     tandaiSemuaNotifCutiDibaca_Global(role, unit); 
     tandaiSemuaNotifEfileDibaca_Global(role, unit);
+    tandaiSemuaNotifMutasiDibaca_Global(role, unit);
     return true;
   } catch (e) { return false; }
 }
@@ -696,6 +700,19 @@ function tandaiSemuaNotifEfileDibaca_Global(role, unit) {
     try {
         var res = getNotifikasiEfile(role, unit);
         res.recent.forEach(function(item) { if(!item.isRead) tandaiNotifEfileDibaca(item.rowId, role); });
+    } catch(e){}
+}
+
+function tandaiSemuaNotifMutasiDibaca_Global(role, unit) {
+    try {
+        var resPAUD = getNotifikasiMutasiPAUD(role, unit);
+        resPAUD.recent.forEach(function(item) { if(!item.isRead) tandaiNotifMutasiPAUDDibaca(item.rowId, role); });
+        
+        var resSDN = getNotifikasiMutasiSDN(role, unit);
+        resSDN.recent.forEach(function(item) { if(!item.isRead) tandaiNotifMutasiSDNDibaca(item.rowId, role); });
+        
+        var resSDS = getNotifikasiMutasiSDS(role, unit);
+        resSDS.recent.forEach(function(item) { if(!item.isRead) tandaiNotifMutasiSDSDibaca(item.rowId, role); });
     } catch(e){}
 }
 

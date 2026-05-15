@@ -829,6 +829,95 @@ function hapusUsulanPTKPAUD(dataKirim) {
 }
 
 // =============================================================
+// BACKEND: NOTIFIKASI MUTASI PTK PAUD
+// =============================================================
+function getNotifikasiMutasiPAUD(role, unit) {
+  try {
+    var ss = SpreadsheetApp.openById(ID_SPREADSHEET_PAUD);
+    var sheet = ss.getSheetByName("usulan_mutasi_paud");
+    if (!sheet) return { count: 0, recent: [] };
+    
+    var data = sheet.getDataRange().getValues();
+    var rLower = String(role || "").toLowerCase();
+    var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
+    
+    var notifList = [];
+    var unreadCount = 0;
+    var userUnit = String(unit || "").trim().toUpperCase();
+    
+    for (var i = 1; i < data.length; i++) {
+        var row = data[i];
+        var status = String(row[7]).trim(); // Status
+        var lembagaAsal = String(row[4]).trim().toUpperCase();
+        var isPending = (status === "Pending" || status === "");
+        var isTarget = false;
+        
+        if (isAdmin) {
+            isTarget = isPending;
+        } else {
+            isTarget = (lembagaAsal === userUnit && !isPending);
+        }
+        
+        if (isTarget) {
+            var readStatus = String(row[14] || "").trim(); // Index 14 (Kolom O) untuk Read Status
+            var isRead = false;
+            
+            if (isAdmin && readStatus.indexOf("Admin") > -1) isRead = true;
+            if (!isAdmin && readStatus.indexOf("User") > -1) isRead = true;
+            
+            if (!isRead) {
+                unreadCount++;
+            }
+            
+            notifList.push({
+                rowId: i + 1,
+                source: "Mutasi PAUD",
+                nama: row[2], // Nama PTK
+                jenis: row[3], // Jenis Mutasi
+                status: status || "Pending",
+                waktu: (isPending ? row[8] : row[10]) || "-", // Tgl Usulan vs Tgl Eksekusi
+                isRead: isRead
+            });
+        }
+    }
+    
+    notifList.sort(function(a, b) {
+        if (a.isRead !== b.isRead) return a.isRead ? 1 : -1;
+        var parseTime = function(str) {
+            if (!str || str === "-") return 0;
+            var parts = str.split(" "); if (parts.length < 2) return 0;
+            var d = parts[0].split("/"); var t = parts[1].split(":");
+            if (d.length < 3 || t.length < 3) return 0;
+            return new Date(d[2], d[1] - 1, d[0], t[0], t[1], t[2]).getTime();
+        };
+        return parseTime(b.waktu) - parseTime(a.waktu);
+    });
+    
+    return { count: unreadCount, recent: notifList.slice(0, 5) };
+  } catch (e) {
+    return { count: 0, recent: [] };
+  }
+}
+
+function tandaiNotifMutasiPAUDDibaca(rowId, role) {
+  try {
+    var ss = SpreadsheetApp.openById(ID_SPREADSHEET_PAUD);
+    var sheet = ss.getSheetByName("usulan_mutasi_paud");
+    if (!sheet) return;
+    
+    var currentRead = String(sheet.getRange(rowId, 15).getValue() || "").trim(); // Kolom O
+    var rLower = String(role || "").toLowerCase();
+    var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
+    var marker = isAdmin ? "Admin" : "User";
+    
+    if (currentRead.indexOf(marker) === -1) {
+        var newVal = currentRead ? currentRead + "," + marker : marker;
+        sheet.getRange(rowId, 15).setValue(newVal);
+    }
+  } catch (e) {}
+}
+
+// =============================================================
 // BACKEND: KELOLA MUTASI PTK SDN [NEW]
 // =============================================================
 
@@ -1058,6 +1147,95 @@ function hapusUsulanPTKSDN(dataKirim) {
     if(e.message === "KODE_SALAH") return "KODE_SALAH";
     return (e.message.includes("lock")) ? "Sistem sibuk, coba lagi." : "Error Server: " + e.message;
   } finally { lock.releaseLock(); }
+}
+
+// =============================================================
+// BACKEND: NOTIFIKASI MUTASI PTK SDN
+// =============================================================
+function getNotifikasiMutasiSDN(role, unit) {
+  try {
+    var ss = SpreadsheetApp.openById(ID_DB_PTK);
+    var sheet = ss.getSheetByName("usulan_mutasi_sdn");
+    if (!sheet) return { count: 0, recent: [] };
+    
+    var data = sheet.getDataRange().getValues();
+    var rLower = String(role || "").toLowerCase();
+    var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
+    
+    var notifList = [];
+    var unreadCount = 0;
+    var userUnit = String(unit || "").trim().toUpperCase();
+    
+    for (var i = 1; i < data.length; i++) {
+        var row = data[i];
+        var status = String(row[8]).trim(); // Status ada di Kolom I (index 8) untuk SDN
+        var lembagaAsal = String(row[4]).trim().toUpperCase();
+        var isPending = (status === "Pending" || status === "");
+        var isTarget = false;
+        
+        if (isAdmin) {
+            isTarget = isPending;
+        } else {
+            isTarget = (lembagaAsal === userUnit && !isPending);
+        }
+        
+        if (isTarget) {
+            var readStatus = String(row[14] || "").trim(); // Index 14 (Kolom O) untuk Read Status
+            var isRead = false;
+            
+            if (isAdmin && readStatus.indexOf("Admin") > -1) isRead = true;
+            if (!isAdmin && readStatus.indexOf("User") > -1) isRead = true;
+            
+            if (!isRead) {
+                unreadCount++;
+            }
+            
+            notifList.push({
+                rowId: i + 1,
+                source: "Mutasi SDN",
+                nama: row[2], // Nama PTK
+                jenis: row[3], // Jenis Mutasi
+                status: status || "Pending",
+                waktu: (isPending ? row[9] : row[11]) || "-", // Tgl Usulan (index 9) vs Tgl Eksekusi (index 11)
+                isRead: isRead
+            });
+        }
+    }
+    
+    notifList.sort(function(a, b) {
+        if (a.isRead !== b.isRead) return a.isRead ? 1 : -1;
+        var parseTime = function(str) {
+            if (!str || str === "-") return 0;
+            var parts = str.split(" "); if (parts.length < 2) return 0;
+            var d = parts[0].split("/"); var t = parts[1].split(":");
+            if (d.length < 3 || t.length < 3) return 0;
+            return new Date(d[2], d[1] - 1, d[0], t[0], t[1], t[2]).getTime();
+        };
+        return parseTime(b.waktu) - parseTime(a.waktu);
+    });
+    
+    return { count: unreadCount, recent: notifList.slice(0, 5) };
+  } catch (e) {
+    return { count: 0, recent: [] };
+  }
+}
+
+function tandaiNotifMutasiSDNDibaca(rowId, role) {
+  try {
+    var ss = SpreadsheetApp.openById(ID_DB_PTK);
+    var sheet = ss.getSheetByName("usulan_mutasi_sdn");
+    if (!sheet) return;
+    
+    var currentRead = String(sheet.getRange(rowId, 15).getValue() || "").trim(); // Kolom O
+    var rLower = String(role || "").toLowerCase();
+    var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
+    var marker = isAdmin ? "Admin" : "User";
+    
+    if (currentRead.indexOf(marker) === -1) {
+        var newVal = currentRead ? currentRead + "," + marker : marker;
+        sheet.getRange(rowId, 15).setValue(newVal);
+    }
+  } catch (e) {}
 }
 
 // =============================================================
@@ -1341,4 +1519,93 @@ function hapusUsulanPTKSDS(dataKirim) {
     if(e.message === "KODE_SALAH") return "KODE_SALAH";
     return (e.message.includes("lock")) ? "Sistem sibuk, coba lagi." : "Error Server: " + e.message;
   } finally { lock.releaseLock(); }
+}
+
+// =============================================================
+// BACKEND: NOTIFIKASI MUTASI PTK SDS
+// =============================================================
+function getNotifikasiMutasiSDS(role, unit) {
+  try {
+    var ss = SpreadsheetApp.openById(ID_DB_PTK);
+    var sheet = ss.getSheetByName("usul_mutasi_sds");
+    if (!sheet) return { count: 0, recent: [] };
+    
+    var data = sheet.getDataRange().getValues();
+    var rLower = String(role || "").toLowerCase();
+    var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
+    
+    var notifList = [];
+    var unreadCount = 0;
+    var userUnit = String(unit || "").trim().toUpperCase();
+    
+    for (var i = 1; i < data.length; i++) {
+        var row = data[i];
+        var status = String(row[8]).trim(); // Status ada di Kolom I (index 8) untuk SDS
+        var lembagaAsal = String(row[4]).trim().toUpperCase();
+        var isPending = (status === "Pending" || status === "");
+        var isTarget = false;
+        
+        if (isAdmin) {
+            isTarget = isPending;
+        } else {
+            isTarget = (lembagaAsal === userUnit && !isPending);
+        }
+        
+        if (isTarget) {
+            var readStatus = String(row[14] || "").trim(); // Index 14 (Kolom O) untuk Read Status
+            var isRead = false;
+            
+            if (isAdmin && readStatus.indexOf("Admin") > -1) isRead = true;
+            if (!isAdmin && readStatus.indexOf("User") > -1) isRead = true;
+            
+            if (!isRead) {
+                unreadCount++;
+            }
+            
+            notifList.push({
+                rowId: i + 1,
+                source: "Mutasi SDS",
+                nama: row[2], // Nama PTK
+                jenis: row[3], // Jenis Mutasi
+                status: status || "Pending",
+                waktu: (isPending ? row[9] : row[11]) || "-", // Tgl Usulan (index 9) vs Tgl Eksekusi (index 11)
+                isRead: isRead
+            });
+        }
+    }
+    
+    notifList.sort(function(a, b) {
+        if (a.isRead !== b.isRead) return a.isRead ? 1 : -1;
+        var parseTime = function(str) {
+            if (!str || str === "-") return 0;
+            var parts = str.split(" "); if (parts.length < 2) return 0;
+            var d = parts[0].split("/"); var t = parts[1].split(":");
+            if (d.length < 3 || t.length < 3) return 0;
+            return new Date(d[2], d[1] - 1, d[0], t[0], t[1], t[2]).getTime();
+        };
+        return parseTime(b.waktu) - parseTime(a.waktu);
+    });
+    
+    return { count: unreadCount, recent: notifList.slice(0, 5) };
+  } catch (e) {
+    return { count: 0, recent: [] };
+  }
+}
+
+function tandaiNotifMutasiSDSDibaca(rowId, role) {
+  try {
+    var ss = SpreadsheetApp.openById(ID_DB_PTK);
+    var sheet = ss.getSheetByName("usul_mutasi_sds");
+    if (!sheet) return;
+    
+    var currentRead = String(sheet.getRange(rowId, 15).getValue() || "").trim(); // Kolom O
+    var rLower = String(role || "").toLowerCase();
+    var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
+    var marker = isAdmin ? "Admin" : "User";
+    
+    if (currentRead.indexOf(marker) === -1) {
+        var newVal = currentRead ? currentRead + "," + marker : marker;
+        sheet.getRange(rowId, 15).setValue(newVal);
+    }
+  } catch (e) {}
 }
