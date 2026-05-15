@@ -646,32 +646,38 @@ function getNotifikasiGlobal(role, unit) {
   var modules = {};
   var totalCount = 0;
   
-  var safeFetch = function(moduleKey, fetchFn) {
+  // Helper internal untuk memanggil fungsi secara aman
+  function callSafe(key, fnName, r, u) {
     try {
-      var res = fetchFn(role, unit);
+      // Panggil fungsi global berdasarkan namanya (lebih aman di GAS)
+      var res = this[fnName](r, u);
       if (res && typeof res.count !== 'undefined') {
-        modules[moduleKey] = res;
+        modules[key] = res;
         totalCount += (parseInt(res.count) || 0);
       } else {
-        modules[moduleKey] = { count: 0, recent: [] };
+        modules[key] = { count: 0, recent: [] };
       }
     } catch (e) {
-      Logger.log("Error fetching notif for " + moduleKey + ": " + e.message);
-      modules[moduleKey] = { count: 0, recent: [] };
+      Logger.log("SULTAN Error [" + key + "]: " + e.message);
+      modules[key] = { count: 0, recent: [] };
     }
-  };
+  }
 
-  safeFetch('sk', getNotifikasiSK);
-  safeFetch('lapbul', getNotifikasiLapbul);
-  safeFetch('lupa', getNotifikasiLupa);
-  safeFetch('salah', getNotifikasiSalah);
-  safeFetch('perdin', getNotifikasiPerdin);
-  safeFetch('cuti', getNotifikasiCuti);
-  safeFetch('surat_cuti', getNotifikasiSuratCuti);
-  safeFetch('efile', getNotifikasiEfile);
-  safeFetch('mutasi_paud', getNotifikasiMutasiPAUD);
-  safeFetch('mutasi_sdn', getNotifikasiMutasiSDN);
-  safeFetch('mutasi_sds', getNotifikasiMutasiSDS);
+  try {
+    callSafe('sk', 'getNotifikasiSK', role, unit);
+    callSafe('lapbul', 'getNotifikasiLapbul', role, unit);
+    callSafe('lupa', 'getNotifikasiLupa', role, unit);
+    callSafe('salah', 'getNotifikasiSalah', role, unit);
+    callSafe('perdin', 'getNotifikasiPerdin', role, unit);
+    callSafe('cuti', 'getNotifikasiCuti', role, unit);
+    callSafe('surat_cuti', 'getNotifikasiSuratCuti', role, unit);
+    callSafe('efile', 'getNotifikasiEfile', role, unit);
+    callSafe('mutasi_paud', 'getNotifikasiMutasiPAUD', role, unit);
+    callSafe('mutasi_sdn', 'getNotifikasiMutasiSDN', role, unit);
+    callSafe('mutasi_sds', 'getNotifikasiMutasiSDS', role, unit);
+  } catch (err) {
+    Logger.log("SULTAN Critical Error: " + err.message);
+  }
 
   return {
     count: totalCount,
