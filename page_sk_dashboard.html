@@ -335,11 +335,14 @@
         // LANGKAH 1: Selalu isi filter (karena DOM mungkin baru)
         dashsk_initFilterDefault();
         
-        // LANGKAH 2: Load data hanya jika bukan inisialisasi beruntun
-        if (!isRecentInit) {
+        // LANGKAH 2: Manajemen Load Data (Session-Aware)
+        if (window.DASHSK_IS_FETCHING) {
+            console.log("SIKS-LOG: Request sudah berjalan, menyelaraskan UI Spinner...");
+            dashsk_applyLoadingUI(); // Hanya pasang spinner di DOM baru
+        } else if (!isRecentInit) {
             dashsk_loadDataDashboard();
         } else {
-            console.log("SIKS-LOG: Melompati load data awal karena sesi sudah berjalan.");
+            console.log("SIKS-LOG: Inisialisasi ganda dibatalkan.");
         }
 
         // LANGKAH 3: Pasang event listener lainnya (non-filter)
@@ -392,64 +395,24 @@
        FETCH DATA SERVER DENGAN PENGAMAN DOUBLE LOAD
        ================================================================= */
     function dashsk_loadDataDashboard() {
-        if (DASHSK_IS_FETCHING) {
-            console.log("SIKS-LOG: Request dibatalkan (Fetching sedang aktif).");
-            return;
-        }
+        if (window.DASHSK_IS_FETCHING) return;
 
         var currentTime = new Date().getTime();
-        if (currentTime - DASHSK_LAST_FETCH_TIME < 1500) { 
-            console.log("SIKS-LOG: Request dibatalkan (Debounce 1.5 detik).");
-            return; 
-        }
+        if (currentTime - DASHSK_LAST_FETCH_TIME < 1500) return; 
         DASHSK_LAST_FETCH_TIME = currentTime;
 
-        console.log("SIKS-LOG: Mengambil data dari server...");
-        DASHSK_IS_FETCHING = true;
+        console.log("SIKS-LOG: Menjalankan request server...");
+        window.DASHSK_IS_FETCHING = true;
+        
+        dashsk_applyLoadingUI();
 
         var th = $('#dashsk_filterTahun').val();
         var sm = $('#dashsk_filterSemester').val();
 
-        /* [SULTAN SKELETON ENGINE] - Aktifkan di semua kartu secara serempak */
-
-        // 1. Spinner untuk Statistik Atas (Ukuran disesuaikan agar relevan dengan angka)
-        $('.dashsk-count-up').html('<i class="fas fa-spinner fa-spin text-muted opacity-50" style="font-size: 2rem;"></i>');
-
-        // 2. Spinner untuk Chart (Lingkaran)
-        $('#dashsk_chartStatus').css('opacity', '0.1');
-        $('#dashsk_chartCenterText').css('opacity', '0'); // Sembunyikan teks TOTAL saat loading
-        if ($('#dashsk_skeletonChart').length === 0) {
-            $('#dashsk_chartStatus').parent().append(`
-                <div id="dashsk_skeletonChart" class="text-center" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
-                    <i class="fas fa-spinner fa-spin fa-3x text-maroon opacity-75"></i>
-                    <p class="small text-muted font-weight-bold mt-2">Memuat...</p>
-                </div>
-            `);
-        }
-
-        // 3. Spinner untuk List (Prioritas & Aktivitas)
-        var listLoading = `
-            <div class="d-flex flex-column align-items-center justify-content-center py-5">
-                <i class="fas fa-spinner fa-spin fa-2x text-maroon mb-2 opacity-50"></i>
-                <span class="small text-muted font-weight-bold">Memuat Data...</span>
-            </div>`;
-
-        $('#dashsk_containerPrioritas').html(listLoading);
-        $('#dashsk_timelineContainer').html(listLoading);
-
-        /* Efek Dimming halus */
-        $('.card-sultan').css('opacity', '0.85');
-        $('#dashsk_btnRefresh').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
-
         google.script.run
             .withSuccessHandler(function (data) {
-                DASHSK_IS_INIT = false; // BUKA KUNCI HANYA SETELAH DATA PERTAMA BERHASIL DIAMBIL
-                DASHSK_IS_FETCHING = false;
-                $('.card-sultan').css('opacity', '1');
-                $('#dashsk_skeletonChart').remove();
-                $('#dashsk_chartStatus').css('opacity', '1');
-                $('#dashsk_chartCenterText').css('opacity', '1'); // Tampilkan kembali teks TOTAL
-                $('#dashsk_btnRefresh').prop('disabled', false).html('<i class="fas fa-sync-alt"></i>');
+                window.DASHSK_IS_FETCHING = false;
+                dashsk_removeLoadingUI();
 
                 // Pastikan teks tengah donut terupdate di sini juga sebagai pengaman
                 if (data.totalMasuk !== undefined) {
@@ -462,15 +425,51 @@
                 dashsk_attachFilterListeners();
             })
             .withFailureHandler(function (err) {
-                DASHSK_IS_INIT = false; // Tetap buka kunci agar user bisa coba lagi (refresh) jika gagal
-                DASHSK_IS_FETCHING = false;
-                $('.card-sultan').css('opacity', '1');
-                $('#dashsk_skeletonChart').remove();
-                $('#dashsk_chartStatus').css('opacity', '1');
-                $('#dashsk_btnRefresh').prop('disabled', false).html('<i class="fas fa-sync-alt text-danger"></i>');
+                window.DASHSK_IS_FETCHING = false;
+                dashsk_removeLoadingUI();
                 Sultan.alert('error', 'Koneksi Terputus', err.message);
             })
             .getDashboardSK(th, sm);
+    }
+
+    // Fungsi Baru: Pasang UI Loading ke DOM
+    function dashsk_applyLoadingUI() {
+        // 1. Statistik Atas
+        $('.dashsk-count-up').html('<i class="fas fa-spinner fa-spin text-muted opacity-50" style="font-size: 2rem;"></i>');
+
+        // 2. Chart (Lingkaran)
+        $('#dashsk_chartStatus').css('opacity', '0.1');
+        $('#dashsk_chartCenterText').css('opacity', '0');
+        if ($('#dashsk_skeletonChart').length === 0) {
+            $('#dashsk_chartStatus').parent().append(`
+                <div id="dashsk_skeletonChart" class="text-center" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+                    <i class="fas fa-spinner fa-spin fa-3x text-maroon opacity-75"></i>
+                    <p class="small text-muted font-weight-bold mt-2">Memuat...</p>
+                </div>
+            `);
+        }
+
+        // 3. List Container
+        var listLoading = `
+            <div class="d-flex flex-column align-items-center justify-content-center py-5">
+                <i class="fas fa-spinner fa-spin fa-2x text-maroon mb-2 opacity-50"></i>
+                <span class="small text-muted font-weight-bold">Memuat Data...</span>
+            </div>`;
+        $('#dashsk_containerPrioritas').html(listLoading);
+        $('#dashsk_timelineContainer').html(listLoading);
+
+        $('.card-sultan').css('opacity', '0.85');
+        $('#dashsk_btnRefresh').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
+    }
+
+    // Fungsi Baru: Bersihkan UI Loading dari DOM
+    function dashsk_removeLoadingUI() {
+        DASHSK_IS_INIT = false;
+        $('.card-sultan').css('opacity', '1');
+        $('#dashsk_skeletonChart').remove();
+        $('#dashsk_chartStatus').css('opacity', '1');
+        $('#dashsk_chartCenterText').css('opacity', '1');
+        $('#dashsk_btnRefresh').prop('disabled', false).html('<i class="fas fa-sync-alt"></i>');
     }
 
     function dashsk_renderDashboard(data) {
