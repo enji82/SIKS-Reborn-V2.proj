@@ -312,12 +312,15 @@
     /* =================================================================
        ISOLASI VARIABEL GLOBAL & PENGAMAN SINTAKSIS (ES5 BULLETPROOF)
        ================================================================= */
-    var DASHSK_CHART_INSTANCE = null;
-    var DASHSK_LIST_BELUM_CACHE = [];
-    var DASHSK_USER_IS_ADMIN = false;
-    var DASHSK_IS_FETCHING = false;
-    var DASHSK_LAST_FETCH_TIME = 0;
+    // ISOLASI STATE KE WINDOW (Tetap bertahan saat re-injeksi)
+    window.DASHSK_CHART_INSTANCE = window.DASHSK_CHART_INSTANCE || null;
+    window.DASHSK_LIST_BELUM_CACHE = window.DASHSK_LIST_BELUM_CACHE || [];
+    window.DASHSK_IS_FETCHING = window.DASHSK_IS_FETCHING || false;
+    window.DASHSK_LAST_FETCH_TIME = window.DASHSK_LAST_FETCH_TIME || 0;
+    window.DASHSK_CACHE_DATA = window.DASHSK_CACHE_DATA || null;
+    window.DASHSK_LAST_INIT = window.DASHSK_LAST_INIT || 0;
 
+    var DASHSK_USER_IS_ADMIN = false;
     var DASHSK_IS_INIT = true; 
 
     $(document).ready(function () {
@@ -399,8 +402,11 @@
         if (window.DASHSK_IS_FETCHING) return;
 
         var currentTime = new Date().getTime();
-        if (currentTime - DASHSK_LAST_FETCH_TIME < 1500) return; 
-        DASHSK_LAST_FETCH_TIME = currentTime;
+        if (currentTime - window.DASHSK_LAST_FETCH_TIME < 2000) {
+            console.log("SIKS-LOG: Blokir Double Load (Jeda < 2s).");
+            return;
+        }
+        window.DASHSK_LAST_FETCH_TIME = currentTime;
 
         console.log("SIKS-LOG: Menjalankan request server...");
         window.DASHSK_IS_FETCHING = true;
