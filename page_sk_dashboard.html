@@ -320,24 +320,27 @@
 
     var DASHSK_IS_INIT = true; 
 
-    // KUNCI GLOBAL: Mencegah inisialisasi ganda
-    if (window.DASHSK_LOAD_LOCK) {
-        console.warn("SIKS-LOG: Dashboard SK terdeteksi ganda, menghentikan inisialisasi tambahan.");
-    } else {
-        window.DASHSK_LOAD_LOCK = true;
+    $(document).ready(function () {
+        // PENGAMAN STARTUP: Cegah pemanggilan data ganda jika ready terpicu berkali-kali dalam < 1 detik
+        var now = new Date().getTime();
+        var isRecentInit = (window.DASHSK_LAST_INIT && (now - window.DASHSK_LAST_INIT < 1000));
+        window.DASHSK_LAST_INIT = now;
 
-        $(document).ready(function () {
-            console.log("SIKS-LOG: Memulai Inisialisasi Dashboard SK...");
+        console.log("SIKS-LOG: Inisialisasi UI Dashboard SK...");
         try {
             var user = typeof getSesiUser === 'function' ? getSesiUser() : {};
             DASHSK_USER_IS_ADMIN = (user.role || "").toLowerCase().indexOf("admin") !== -1;
         } catch (e) { DASHSK_USER_IS_ADMIN = false; }
 
-        // LANGKAH 1: Isi filter SEBELUM event listener dipasang
+        // LANGKAH 1: Selalu isi filter (karena DOM mungkin baru)
         dashsk_initFilterDefault();
         
-        // LANGKAH 2: Load data pertama kali
-        dashsk_loadDataDashboard();
+        // LANGKAH 2: Load data hanya jika bukan inisialisasi beruntun
+        if (!isRecentInit) {
+            dashsk_loadDataDashboard();
+        } else {
+            console.log("SIKS-LOG: Melompati load data awal karena sesi sudah berjalan.");
+        }
 
         // LANGKAH 3: Pasang event listener lainnya (non-filter)
         $(document).off('click', '#dashsk_btnRefresh').on('click', '#dashsk_btnRefresh', function (e) {
@@ -748,5 +751,4 @@
         }
         window.requestAnimationFrame(step);
     }
-    } // Penutup Kunci Global
 </script>
