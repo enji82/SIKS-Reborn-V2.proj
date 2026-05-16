@@ -335,14 +335,15 @@
         // LANGKAH 1: Selalu isi filter (karena DOM mungkin baru)
         dashsk_initFilterDefault();
         
-        // LANGKAH 2: Manajemen Load Data (Session-Aware)
+        // LANGKAH 2: Manajemen Load Data (Smart Cache & Session-Aware)
         if (window.DASHSK_IS_FETCHING) {
-            console.log("SIKS-LOG: Request sudah berjalan, menyelaraskan UI Spinner...");
-            dashsk_applyLoadingUI(); // Hanya pasang spinner di DOM baru
-        } else if (!isRecentInit) {
-            dashsk_loadDataDashboard();
+            console.log("SIKS-LOG: Request berjalan, memasang spinner...");
+            dashsk_applyLoadingUI(); 
+        } else if (window.DASHSK_CACHE_DATA && isRecentInit) {
+            console.log("SIKS-LOG: Menggunakan data cache (Mencegah Flash 0).");
+            dashsk_renderDashboard(window.DASHSK_CACHE_DATA);
         } else {
-            console.log("SIKS-LOG: Inisialisasi ganda dibatalkan.");
+            dashsk_loadDataDashboard();
         }
 
         // LANGKAH 3: Pasang event listener lainnya (non-filter)
@@ -411,6 +412,7 @@
 
         google.script.run
             .withSuccessHandler(function (data) {
+                window.DASHSK_CACHE_DATA = data; // Simpan ke cache global
                 window.DASHSK_IS_FETCHING = false;
                 dashsk_removeLoadingUI();
 
