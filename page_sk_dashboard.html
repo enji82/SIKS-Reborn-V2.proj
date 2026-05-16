@@ -318,9 +318,16 @@
     var DASHSK_IS_FETCHING = false;
     var DASHSK_LAST_FETCH_TIME = 0;
 
-    var DASHSK_IS_INIT = true; // FLAG PENGAMAN STARTUP
+    var DASHSK_IS_INIT = true; 
 
-    $(document).ready(function () {
+    // KUNCI GLOBAL: Mencegah inisialisasi ganda
+    if (window.DASHSK_LOAD_LOCK) {
+        console.warn("SIKS-LOG: Dashboard SK terdeteksi ganda, menghentikan inisialisasi tambahan.");
+    } else {
+        window.DASHSK_LOAD_LOCK = true;
+
+        $(document).ready(function () {
+            console.log("SIKS-LOG: Memulai Inisialisasi Dashboard SK...");
         try {
             var user = typeof getSesiUser === 'function' ? getSesiUser() : {};
             DASHSK_USER_IS_ADMIN = (user.role || "").toLowerCase().indexOf("admin") !== -1;
@@ -382,11 +389,19 @@
        FETCH DATA SERVER DENGAN PENGAMAN DOUBLE LOAD
        ================================================================= */
     function dashsk_loadDataDashboard() {
-        if (DASHSK_IS_FETCHING) return;
+        if (DASHSK_IS_FETCHING) {
+            console.log("SIKS-LOG: Request dibatalkan (Fetching sedang aktif).");
+            return;
+        }
 
         var currentTime = new Date().getTime();
-        if (currentTime - DASHSK_LAST_FETCH_TIME < 800) { return; }
+        if (currentTime - DASHSK_LAST_FETCH_TIME < 1500) { 
+            console.log("SIKS-LOG: Request dibatalkan (Debounce 1.5 detik).");
+            return; 
+        }
         DASHSK_LAST_FETCH_TIME = currentTime;
+
+        console.log("SIKS-LOG: Mengambil data dari server...");
         DASHSK_IS_FETCHING = true;
 
         var th = $('#dashsk_filterTahun').val();
@@ -733,4 +748,5 @@
         }
         window.requestAnimationFrame(step);
     }
+    } // Penutup Kunci Global
 </script>
