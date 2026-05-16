@@ -2,17 +2,16 @@
 // BACKEND: ARSIP SIABA (CRUD & DASHBOARD)
 // ======================================================================
 
-var ARSIP_SIABA_CONFIG = {
-  ID_DB_UNIT: "1wiDKez4rL5UYnpP2-OZjYowvmt1nRx-fIMy9trJlhBA",
-  ID_DB_ARSIP: "1sMLUihDFeHufn5kWFG9Sj0G8xSHHOUi8usoeL4EgjqU",
-  FOLDER_ROOT_ID: "1D0rwRT_tIj9QZTPPG3cRk4NRcbhMzDHm"
+const KONFIG_ARSIP_SIABA = {
+  DB_UNIT: "USER_DB",
+  DB_ARSIP: "ARSIP_SIABA_DB",
+  FOLDER_ROOT_ID: FOLDER_CONFIG.ARSIP_SIABA || "1D0rwRT_tIj9QZTPPG3cRk4NRcbhMzDHm"
 };
 
 // 0. Dapatkan Daftar Master Sekolah + Status per Periode
 function arsipsiaba_getMasterDanStatus(tahun, bulan) {
   try {
-    var ss = SpreadsheetApp.openById(ARSIP_SIABA_CONFIG.ID_DB_ARSIP);
-    var sheetMaster = ss.getSheetByName("master_sekolah");
+    var sheetMaster = getSheet(KONFIG_ARSIP_SIABA.DB_ARSIP, "master_sekolah");
     if (!sheetMaster) return { error: "Sheet master_sekolah tidak ditemukan di spreadsheet arsip." };
 
     var lastRow = sheetMaster.getLastRow();
@@ -58,8 +57,7 @@ function arsipsiaba_getMasterDanStatus(tahun, bulan) {
 // 1. Dapatkan Daftar Unit Kerja
 function arsipsiaba_getDaftarUnit() {
   try {
-    var ss = SpreadsheetApp.openById(ARSIP_SIABA_CONFIG.ID_DB_UNIT);
-    var sheet = ss.getSheetByName("Unit_Siaba");
+    var sheet = getSheet(KONFIG_ARSIP_SIABA.DB_UNIT, "Unit_Siaba");
     if (!sheet) return { error: "Sheet Unit_Siaba tidak ditemukan." };
     
     var lastRow = sheet.getLastRow();
@@ -91,8 +89,7 @@ function arsipsiaba_getDaftarUnit() {
 // 2. Dapatkan Data Arsip yang sudah diunggah
 function arsipsiaba_getDataArsip(tahunFilter, bulanFilter) {
   try {
-    var ss = SpreadsheetApp.openById(ARSIP_SIABA_CONFIG.ID_DB_ARSIP);
-    var sheet = ss.getSheetByName("arsip_siaba");
+    var sheet = getSheet(KONFIG_ARSIP_SIABA.DB_ARSIP, "arsip_siaba");
     if (!sheet) return { error: "Sheet arsip_siaba tidak ditemukan." };
     
     var lastRow = sheet.getLastRow();
@@ -141,8 +138,7 @@ function arsipsiaba_getOrCreateFolder(parentFolder, folderName) {
 function arsipsiaba_simpanArsip(payload) {
   try {
     var isEdit = payload.mode === "edit";
-    var ss = SpreadsheetApp.openById(ARSIP_SIABA_CONFIG.ID_DB_ARSIP);
-    var sheet = ss.getSheetByName("arsip_siaba");
+    var sheet = getSheet(KONFIG_ARSIP_SIABA.DB_ARSIP, "arsip_siaba");
     if (!sheet) return { error: "Sheet arsip_siaba tidak ditemukan." };
     
     var timestamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MM-yyyy HH:mm:ss");
@@ -170,7 +166,7 @@ function arsipsiaba_simpanArsip(payload) {
     
     // Proses File Baru Jika Ada
     if (payload.fileData && payload.fileData.data) {
-      var rootFolder = DriveApp.getFolderById(ARSIP_SIABA_CONFIG.FOLDER_ROOT_ID);
+      var rootFolder = DriveApp.getFolderById(KONFIG_ARSIP_SIABA.FOLDER_ROOT_ID);
       var folderTahun = arsipsiaba_getOrCreateFolder(rootFolder, payload.tahun);
       var folderBulan = arsipsiaba_getOrCreateFolder(folderTahun, payload.bulan);
       
@@ -252,12 +248,12 @@ function arsipsiaba_getDashboardBelumLapor(tahun, bulan) {
 // 6. Proses Hapus Arsip (Soft Delete)
 function arsipsiaba_hapusArsip(rowId, userLogin) {
   try {
-    var ss = SpreadsheetApp.openById(ARSIP_SIABA_CONFIG.ID_DB_ARSIP);
-    var sheet = ss.getSheetByName("arsip_siaba");
-    var sheetTrash = ss.getSheetByName("arsip_siaba_trash");
+    var sheet = getSheet(KONFIG_ARSIP_SIABA.DB_ARSIP, "arsip_siaba");
+    var sheetTrash = getSheet(KONFIG_ARSIP_SIABA.DB_ARSIP, "arsip_siaba_trash");
     
     // Auto-create sheet trash jika belum ada
     if (!sheetTrash) {
+      var ss = getDB(KONFIG_ARSIP_SIABA.DB_ARSIP);
       sheetTrash = ss.insertSheet("arsip_siaba_trash");
       sheetTrash.appendRow(["Unit Kerja", "Bulan", "Tahun", "File URL", "Tgl Unggah", "User Unggah", "Tgl Edit", "User Edit", "Tgl Hapus", "User Hapus"]);
     }

@@ -2,14 +2,14 @@
    MODUL: E-FILE (ARSIP DIGITAL ELEKTRONIK)
    ====================================================================== */
 
-var EFILE_DB_ID = "1HzE0EEfIJBTX39oxJpoRDgP04aD9fY-zi2Dln7FbFPQ";
-var EFILE_FOLDER_ID = "1BUHkoCanHu24ApTnfwhbBCgOEFxBAmAo";
+const KONFIG_EFILE = {
+  DB_KEY: "EFILE_DB",
+  FOLDER_ID: FOLDER_CONFIG.EFILE_DOCS
+};
 
 function getEfileMasterData(npsnFilter) {
   try {
-    var ss = SpreadsheetApp.openById(EFILE_DB_ID);
-    
-    var shKat = ss.getSheetByName("Master_Kategori_Efile");
+    var shKat = getSheet(KONFIG_EFILE.DB_KEY, "Master_Kategori_Efile");
     var dataKat = shKat ? shKat.getDataRange().getDisplayValues() : [];
     var resKat = [];
     for(var i=1; i<dataKat.length; i++) {
@@ -42,8 +42,7 @@ function getEfileMasterData(npsnFilter) {
 
 function getEfileData(npsnFilter) {
   try {
-    var ss = SpreadsheetApp.openById(EFILE_DB_ID);
-    var sheet = ss.getSheetByName("Database_Efile");
+    var sheet = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile");
     if(!sheet) return JSON.stringify({ success: false, message: "Sheet Database_Efile tidak ditemukan." });
     
     var data = sheet.getDataRange().getDisplayValues();
@@ -70,10 +69,9 @@ function simpanEfileBatch(batchData) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(30000); 
-    var ss = SpreadsheetApp.openById(EFILE_DB_ID);
-    var sheet = ss.getSheetByName("Database_Efile");
+    var sheet = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile");
     var now = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
-    var pFolder = DriveApp.getFolderById(EFILE_FOLDER_ID);
+    var pFolder = DriveApp.getFolderById(KONFIG_EFILE.FOLDER_ID);
     var rowsToAppend = [];
     
     for(var i = 0; i < batchData.length; i++) {
@@ -102,7 +100,7 @@ function verifikasiEfileData(rowId, status, catatan, adminName) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
-    var ss = SpreadsheetApp.openById(EFILE_DB_ID); var sheet = ss.getSheetByName("Database_Efile"); var r = parseInt(rowId);
+    var sheet = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile"); var r = parseInt(rowId);
     var now = "'" + Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
     sheet.getRange(r, 8).setValue(status); sheet.getRange(r, 9).setValue(catatan);
     sheet.getRange(r, 13).setValue(now); sheet.getRange(r, 14).setValue(adminName); 
@@ -116,7 +114,7 @@ function hapusEfileData(rowId, securityCode) {
     lock.waitLock(10000);
     var d = new Date(); var kd = d.getFullYear()+""+String(d.getMonth()+1).padStart(2,'0')+""+String(d.getDate()).padStart(2,'0');
     if (String(securityCode).trim() !== kd) return JSON.stringify({ success: false, message: "Kode Keamanan Salah!" });
-    var ss = SpreadsheetApp.openById(EFILE_DB_ID); var sheet = ss.getSheetByName("Database_Efile"); var r = parseInt(rowId);
+    var sheet = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile"); var r = parseInt(rowId);
     var urlDrive = sheet.getRange(r, 7).getValue();
     if(urlDrive && urlDrive.includes('drive.google.com')) {
         try { var match = urlDrive.match(/\/d\/([a-zA-Z0-9_-]+)/) || urlDrive.match(/id=([a-zA-Z0-9_-]+)/); if(match && match[1]) DriveApp.getFileById(match[1]).setTrashed(true); } catch(ex){}
@@ -130,7 +128,7 @@ function perbaikiEfileData(payload, fileData) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(20000);
-    var ss = SpreadsheetApp.openById(EFILE_DB_ID); var sheet = ss.getSheetByName("Database_Efile"); var r = parseInt(payload.rowId);
+    var sheet = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile"); var r = parseInt(payload.rowId);
     var oldUrl = sheet.getRange(r, 7).getValue(); var newFileUrl = oldUrl; 
 
     // Jika user mengunggah file baru
@@ -138,7 +136,7 @@ function perbaikiEfileData(payload, fileData) {
         if(oldUrl && oldUrl.includes('drive.google.com')) {
             try { var match = oldUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) || oldUrl.match(/id=([a-zA-Z0-9_-]+)/); if(match && match[1]) DriveApp.getFileById(match[1]).setTrashed(true); } catch(ex){} 
         }
-        var pFolder = DriveApp.getFolderById(EFILE_FOLDER_ID); var idFolder = pFolder.getFoldersByName(payload.id_ptk);
+        var pFolder = DriveApp.getFolderById(KONFIG_EFILE.FOLDER_ID); var idFolder = pFolder.getFoldersByName(payload.id_ptk);
         var fPtk = idFolder.hasNext() ? idFolder.next() : pFolder.createFolder(payload.id_ptk);
         var blob = Utilities.newBlob(Utilities.base64Decode(fileData.data), fileData.mimeType, payload.nama_file);
         var file = fPtk.createFile(blob); file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
@@ -167,8 +165,7 @@ function perbaikiEfileData(payload, fileData) {
    ---------------------------------------------------------------------- */
 function getNotifikasiEfile(role, unit) {
   try {
-    var ss = SpreadsheetApp.openById(EFILE_DB_ID);
-    var sheet = ss.getSheetByName("Database_Efile");
+    var sheet = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile");
     if (!sheet) return { count: 0, recent: [] };
     var data = sheet.getDataRange().getDisplayValues();
     var rLower = String(role || "").toLowerCase();
@@ -203,7 +200,7 @@ function getNotifikasiEfile(role, unit) {
 
 function tandaiNotifEfileDibaca(rowId, role) {
     try {
-        var ss = SpreadsheetApp.openById(EFILE_DB_ID); var sheet = ss.getSheetByName("Database_Efile");
+        var sheet = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile");
         var r = parseInt(rowId); var mark = (role === "Admin") ? "Admin" : "User";
         var cur = String(sheet.getRange(r, 16).getDisplayValue() || "").trim();
         if (cur === "") sheet.getRange(r, 16).setValue(mark);
@@ -214,13 +211,12 @@ function tandaiNotifEfileDibaca(rowId, role) {
 
 function getEfileViewerData(keyword, npsnFilter) {
   try {
-    var ss = SpreadsheetApp.openById(EFILE_DB_ID); 
     var searchKey = String(keyword).trim().toLowerCase();
     
     // VAKSIN ANTI CASE-SENSITIVE: Bersihkan dan besarkan huruf dari frontend
     var cleanFilter = String(npsnFilter || "").trim().toUpperCase();
-
-    var shPtk = ss.getSheetByName("Database_PTK"); 
+ 
+    var shPtk = getSheet(KONFIG_EFILE.DB_KEY, "Database_PTK"); 
     var dataPtk = shPtk.getDataRange().getDisplayValues(); 
     var ptkFound = null;
 
@@ -247,8 +243,8 @@ function getEfileViewerData(keyword, npsnFilter) {
     }
 
     if(!ptkFound) return JSON.stringify({ success: false, message: "PTK tidak ditemukan atau Anda tidak memiliki akses ke data tersebut." });
-
-    var shKat = ss.getSheetByName("Master_Kategori_Efile"); 
+ 
+    var shKat = getSheet(KONFIG_EFILE.DB_KEY, "Master_Kategori_Efile"); 
     var dataKat = shKat.getDataRange().getDisplayValues(); 
     var categories = [];
     for(var k = 1; k < dataKat.length; k++) { 
@@ -256,8 +252,8 @@ function getEfileViewerData(keyword, npsnFilter) {
             categories.push({ idKat: dataKat[k][0], namaKat: dataKat[k][1], parent: dataKat[k][2] }); 
         }
     }
-
-    var shFile = ss.getSheetByName("Database_Efile"); 
+ 
+    var shFile = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile"); 
     var dataFile = shFile.getDataRange().getDisplayValues(); 
     var files = [];
     for(var f = 1; f < dataFile.length; f++) {
@@ -282,10 +278,8 @@ function getEfileViewerData(keyword, npsnFilter) {
 // ======================================================================
 function getEfileDashboardInit(npsnFilter) {
   try {
-    var ss = SpreadsheetApp.openById(EFILE_DB_ID);
-    
     // 1. Tarik Menu dari Sheet "Dashboard" (A:Rekap, B:Lapor, C:Nama_Kategori)
-    var shDash = ss.getSheetByName("Dashboard");
+    var shDash = getSheet(KONFIG_EFILE.DB_KEY, "Dashboard");
     if(!shDash) return JSON.stringify({ success: false, message: "Sheet 'Dashboard' tidak ditemukan." });
     
     var dataDash = shDash.getDataRange().getDisplayValues();
@@ -301,7 +295,7 @@ function getEfileDashboardInit(npsnFilter) {
     }
     
     // 2. Evaluasi Akses Unit (Jika Admin, beri opsi semua unit)
-    var shPtk = ss.getSheetByName("Database_PTK");
+    var shPtk = getSheet(KONFIG_EFILE.DB_KEY, "Database_PTK");
     var dataPtk = shPtk ? shPtk.getDataRange().getDisplayValues() : [];
     var myUnit = "";
     
@@ -323,10 +317,8 @@ function getEfileDashboardInit(npsnFilter) {
 // ======================================================================
 function getEfileDashboardData(sheetRekapName, sheetLaporName) {
   try {
-    var ss = SpreadsheetApp.openById(EFILE_DB_ID);
-    
     // 1. Tarik Data Rekapitulasi Tabel (A:NPSN, B:Unit, C:Tahun, D:Jml, E:Sudah, F:Belum)
-    var shRekap = ss.getSheetByName(sheetRekapName);
+    var shRekap = getSheet(KONFIG_EFILE.DB_KEY, sheetRekapName);
     if(!shRekap) throw new Error("Sheet Rekap (" + sheetRekapName + ") tidak ditemukan.");
     var dataRekapRaw = shRekap.getDataRange().getDisplayValues();
     var arrRekap = [];
@@ -340,7 +332,7 @@ function getEfileDashboardData(sheetRekapName, sheetLaporName) {
     }
 
     // 2. Tarik Data Lapor (A:ID, B:Nama, C:NIP, E:Unit, F dst: Tahun dinamis)
-    var shLapor = ss.getSheetByName(sheetLaporName);
+    var shLapor = getSheet(KONFIG_EFILE.DB_KEY, sheetLaporName);
     if(!shLapor) throw new Error("Sheet Lapor (" + sheetLaporName + ") tidak ditemukan.");
     var dataLaporRaw = shLapor.getDataRange().getDisplayValues();
     

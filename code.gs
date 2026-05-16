@@ -21,13 +21,15 @@ const SPREADSHEET_IDS = {
   SIABA_DB: "1sfbvyIZurU04gictep8hI-NnvicGs0wrDqANssVXt6o",
   SIABA_TA_PA: "1tQsQY1-Ny1ie66GOZPTLtvZ7BiYCgFdNrX-AVGCtaHA",
   SIABA_SALAH_DB: "1TZGrMiTuyvh2Xbo44RhJuWlQnOC5LzClsgIoNKtRFkY",
+  SIABA_LUPA_DB: "160IjN8aiDAgDYXjgDLStS4nCZLKn3Ny-dq3BOFAfDrU",
   SIABA_DINAS_DB: "1I_2yUFGXnBJTCSW6oaT3D482YCs8TIRkKgQVBbvpa1M",
-  SIABA_CUTI_DB: "1DhBjmLHFMuJqWM6yJHsm-1EKvHzG8U4zK2GuU-dIgn8",
+  SIABA_CUTI_DB: "1UYG80gGxuC19ieaVBzJaUV8bhlS2q5gExr0-Yl7upKo",
   SIABA_REKAP_HELPER: "1wiDKez4rL5UYnpP2-OZjYowvmt1nRx-fIMy9trJlhBA",
   SIABA_SKP_SOURCE: "1ReJt2qoDE2f_8LeR8DXJbROB9EAHK8qP2kYp-ZZ3V9w", 
   SIABA_SKP_DB: "1T-AQ0jYJ_jXYEPxzu_KZauOlRTTforVtFEZ_1UrWHwk",
   SIABA_PNS_DB: "1wiDKez4rL5UYnpP2-OZjYowvmt1nRx-fIMy9trJlhBA",
   SIABA_PAK_DB: "1mAXwf7cHaOqIj2uf51Fup5tyyBzijTeIxVS8uO1E4dM",
+  SIABA_LOOKUP_DB: "1wiDKez4rL5UYnpP2-OZjYowvmt1nRx-fIMy9trJlhBA",
 };
 
 // 2. FOLDER CONFIG (Digunakan oleh semua file .gs lainnya)
@@ -45,6 +47,7 @@ const FOLDER_CONFIG = {
   SIABA_REKAP_ARCHIVE: "1MoGuseJNrOIMnkZNoqkKcK282jZpUkAm",
   SIABA_SKP_DOCS: "1DGYC8AtJFCpCZ0ou2ae9-5fc2-bWl20G",
   SIABA_PAK_DOCS: "1cvn-pOufs-OIbFQfqhmxc3fcmFuox4Sc",
+  SIABA_ARSIP_ROOT: "1D0rwRT_tIj9QZTPPG3cRk4NRcbhMzDHm",
 };
 
 // ==========================================
@@ -149,8 +152,7 @@ function processLogin(formObj) {
       return { status: 'error', message: 'Username minimal 3 karakter dan password tidak boleh kosong.' };
     }
 
-    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.DATABASE_USER); 
-    var sheet = ss.getSheetByName(SPREADSHEET_IDS.SHEET_USER_NAME);
+    var sheet = getSheet("USER_DB", SPREADSHEET_IDS.SHEET_USER_NAME);
     var data = sheet.getDataRange().getValues();
 
     for (var i = 1; i < data.length; i++) {
@@ -200,9 +202,9 @@ function processLogout() {
 
 function initSheetHakAkses() {
   try {
-    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.DATABASE_USER);
-    var sheet = ss.getSheetByName("Hak_Akses");
+    var sheet = getSheet("USER_DB", "Hak_Akses");
     if (!sheet) {
+      var ss = getDB("USER_DB");
       sheet = ss.insertSheet("Hak_Akses");
       sheet.getRange(1, 1, 1, 3).setValues([["Username", "Menu_Diizinkan", "Diperbarui"]]);
       sheet.getRange(1, 1, 1, 3).setFontWeight("bold");
@@ -213,8 +215,7 @@ function initSheetHakAkses() {
 
 function getAksesMenuUser(username) {
   try {
-    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.DATABASE_USER);
-    var sheet = ss.getSheetByName("Hak_Akses");
+    var sheet = getSheet("USER_DB", "Hak_Akses");
     if (!sheet) return []; // Sheet belum ada = akses kosong
     var data = sheet.getDataRange().getValues();
     for (var i = 1; i < data.length; i++) {
@@ -229,8 +230,7 @@ function getAksesMenuUser(username) {
 
 function getDaftarUser() {
   try {
-    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.DATABASE_USER);
-    var sheet = ss.getSheetByName(SPREADSHEET_IDS.SHEET_USER_NAME);
+    var sheet = getSheet("USER_DB", SPREADSHEET_IDS.SHEET_USER_NAME);
     if (!sheet) return JSON.stringify([]);
     var data = sheet.getDataRange().getValues();
     var result = [];
@@ -250,8 +250,7 @@ function getDaftarUser() {
 
 function getDetailUser(username) {
   try {
-    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.DATABASE_USER);
-    var sheetUser = ss.getSheetByName(SPREADSHEET_IDS.SHEET_USER_NAME);
+    var sheetUser = getSheet("USER_DB", SPREADSHEET_IDS.SHEET_USER_NAME);
     var data = sheetUser.getDataRange().getValues();
     for (var i = 1; i < data.length; i++) {
       if (String(data[i][0]).trim() === String(username).trim()) {
@@ -274,8 +273,7 @@ function simpanUser(payload) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
-    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.DATABASE_USER);
-    var sheetUser = ss.getSheetByName(SPREADSHEET_IDS.SHEET_USER_NAME);
+    var sheetUser = getSheet("USER_DB", SPREADSHEET_IDS.SHEET_USER_NAME);
     var data = sheetUser.getDataRange().getValues();
     var username = String(payload.username || "").trim();
     if (!username) return JSON.stringify({ error: "Username tidak boleh kosong." });
@@ -315,8 +313,7 @@ function simpanUser(payload) {
 function simpanAksesMenuUser(username, arrayMenu) {
   try {
     initSheetHakAkses();
-    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.DATABASE_USER);
-    var sheet = ss.getSheetByName("Hak_Akses");
+    var sheet = getSheet("USER_DB", "Hak_Akses");
     var data = sheet.getDataRange().getValues();
     var now = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MM-yyyy HH:mm");
     var jsonMenu = JSON.stringify(arrayMenu || []);
@@ -335,7 +332,7 @@ function hapusUser(username) {
   try {
     lock.waitLock(10000);
     if (!username || String(username).trim() === "") return JSON.stringify({ error: "Username kosong." });
-    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.DATABASE_USER);
+    var ss = getDB("USER_DB");
     
     // Hapus dari Data User
     var sheetUser = ss.getSheetByName(SPREADSHEET_IDS.SHEET_USER_NAME);
@@ -392,12 +389,10 @@ function getVisitorStats() {
   var infoText = "Selamat Datang di SIKS-REBORN";
 
   try {
-    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.DATABASE_USER);
-    // Hitung User
-    var sheetUser = ss.getSheetByName(SPREADSHEET_IDS.SHEET_USER_NAME);
+    var sheetUser = getSheet("USER_DB", SPREADSHEET_IDS.SHEET_USER_NAME);
     if(sheetUser) totalUsers = sheetUser.getLastRow() - 1;
     // Ambil Running Text
-    var sheetSetting = ss.getSheetByName("SETTING");
+    var sheetSetting = getSheet("USER_DB", "SETTING");
     if (sheetSetting) infoText = sheetSetting.getRange("B1").getValue();
   } catch (e) {
     infoText = "Maintenance Mode";
@@ -414,8 +409,7 @@ function getVisitorStats() {
 
 function saveRunningText(textBaru) {
   try {
-    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.DATABASE_USER);
-    var sheet = ss.getSheetByName("SETTING");
+    var sheet = getSheet("USER_DB", "SETTING");
     if (!sheet) {
       sheet = ss.insertSheet("SETTING");
       sheet.getRange("A1").setValue("RUNNING_TEXT");
@@ -439,8 +433,7 @@ function loadPageSetting() {
 // JALUR 1: STATISTIK & GRAFIK (Cepat)
 function getMonitoring_Charts() {
   try {
-    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.DATABASE_USER);
-    var sheetLog = ss.getSheetByName("LOG_ACCESS");
+    var sheetLog = getSheet("USER_DB", "LOG_ACCESS");
     if (!sheetLog) return { error: "Sheet LOG_ACCESS tidak ditemukan" };
 
     // Ambil Data: Kolom A (Timestamp) & F (Jenis Hari)
@@ -496,10 +489,8 @@ function getMonitoring_Charts() {
 // JALUR 2: ANALISA USER (Ranking & Pasif)
 function getMonitoring_Users() {
   try {
-    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.DATABASE_USER);
-    
     // 1. Ambil Log User (Kolom D = Nama User)
-    var sheetLog = ss.getSheetByName("LOG_ACCESS");
+    var sheetLog = getSheet("USER_DB", "LOG_ACCESS");
     var userActivityMap = {}; // Menghitung frekuensi login
     
     if (sheetLog && sheetLog.getLastRow() > 1) {
@@ -599,8 +590,7 @@ function logUserVisit(userData) {
 
   // B. Simpan Log Permanen ke Spreadsheet
   try {
-    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.DATABASE_USER);
-    var sheet = ss.getSheetByName("LOG_ACCESS");
+    var sheet = getSheet("USER_DB", "LOG_ACCESS");
     
     // Jika sheet belum ada, buat baru otomatis
     if (!sheet) {
@@ -659,8 +649,7 @@ function logUserVisit(userData) {
 
 function getUserProfileByName(username) {
   try {
-    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.DATABASE_USER); // Pastikan ID ini benar
-    var sheet = ss.getSheetByName(SPREADSHEET_IDS.SHEET_USER_NAME); // Pastikan Nama Sheet benar
+    var sheet = getSheet("USER_DB", "Data User");
     var data = sheet.getDataRange().getValues();
 
     // Loop cari username (Kolom A / Index 0)
@@ -694,8 +683,7 @@ function getUserActivityTimeline(username) {
     if (!uName) return [];
 
     // 1. Ambil dari LOG_ACCESS (Login/Access)
-    var ssUser = SpreadsheetApp.openById(SPREADSHEET_IDS.DATABASE_USER);
-    var sheetLog = ssUser.getSheetByName("LOG_ACCESS");
+    var sheetLog = getSheet("USER_DB", "LOG_ACCESS");
     if (sheetLog) {
       var dataLog = sheetLog.getDataRange().getValues();
       for (var i = dataLog.length - 1; i >= 1; i--) {
@@ -717,8 +705,7 @@ function getUserActivityTimeline(username) {
 
     // 2. Ambil dari SK_DATA (Jika ada aktivitas unggah/edit)
     try {
-      var ssSK = SpreadsheetApp.openById(SPREADSHEET_IDS.SK_DATA);
-      var sheetSK = ssSK.getSheetByName("Unggah_SK");
+      var sheetSK = getSheet("SK_DATA_DB", "Unggah_SK");
       if (sheetSK) {
         var dataSK = sheetSK.getDataRange().getValues();
         var skCount = 0;

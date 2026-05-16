@@ -4,7 +4,7 @@
 
 // 1. PUSAT KONTROL DATABASE
 const KONFIG_SALAH = {
-  DB_ID: "1TZGrMiTuyvh2Xbo44RhJuWlQnOC5LzClsgIoNKtRFkY", 
+  DB_KEY: "SIABA_SALAH_DB", 
   SHEET_NAMA: "Salah_Presensi"
 };
 
@@ -13,9 +13,7 @@ const KONFIG_SALAH = {
 // =================================================================
 function getDaftarSalahPresensi(tahun, bulan) {
   try {
-    var ss = SpreadsheetApp.openById(KONFIG_SALAH.DB_ID);
-    var sheet = ss.getSheetByName(KONFIG_SALAH.SHEET_NAMA);
-    if (!sheet) return JSON.stringify({ error: "Sheet 'Salah_Presensi' tidak ditemukan." });
+    var sheet = getSheet(KONFIG_SALAH.DB_KEY, KONFIG_SALAH.SHEET_NAMA);
 
     var data = sheet.getDataRange().getDisplayValues(); 
     var result = [];
@@ -77,9 +75,7 @@ function simpanSalahAbsen(form) {
   try {
     lock.waitLock(10000); 
     
-    var ss = SpreadsheetApp.openById(KONFIG_SALAH.DB_ID);
-    var sheet = ss.getSheetByName(KONFIG_SALAH.SHEET_NAMA);
-    if (!sheet) throw new Error("Sheet tidak ditemukan!");
+    var sheet = getSheet(KONFIG_SALAH.DB_KEY, KONFIG_SALAH.SHEET_NAMA);
     
     var tglSimpan = form.tanggal; 
     var jamSimpan = String(form.waktu); 
@@ -139,9 +135,8 @@ function updateSalahAbsen(form) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000); 
-
-    var ss = SpreadsheetApp.openById(KONFIG_SALAH.DB_ID);
-    var sheet = ss.getSheetByName(KONFIG_SALAH.SHEET_NAMA);
+ 
+    var sheet = getSheet(KONFIG_SALAH.DB_KEY, KONFIG_SALAH.SHEET_NAMA);
     var barisKetemu = parseInt(form.recId);
 
     var targetNip = String(form.nip_lama).trim();
@@ -183,9 +178,8 @@ function hapusSalahAbsen(dataKirim) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
-
-    var ss = SpreadsheetApp.openById(KONFIG_SALAH.DB_ID);
-    var sheetMain = ss.getSheetByName(KONFIG_SALAH.SHEET_NAMA);
+ 
+    var sheetMain = getSheet(KONFIG_SALAH.DB_KEY, KONFIG_SALAH.SHEET_NAMA);
 
     var rowIdx = parseInt(dataKirim.recId);
     if (isNaN(rowIdx)) throw new Error("ID Baris tidak valid.");
@@ -207,9 +201,8 @@ function verifikasiSalahAbsen(form) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
-
-    var ss = SpreadsheetApp.openById(KONFIG_SALAH.DB_ID);
-    var sheet = ss.getSheetByName(KONFIG_SALAH.SHEET_NAMA);
+ 
+    var sheet = getSheet(KONFIG_SALAH.DB_KEY, KONFIG_SALAH.SHEET_NAMA);
     
     var baris = parseInt(form.recId);
     if (isNaN(baris) || baris < 2) throw new Error("ID Baris tidak valid.");
@@ -298,8 +291,7 @@ function getNotifikasiSalah(role, unit) {
 
 function tandaiNotifSalahDibaca(rowId, role) {
   try {
-    var ss = SpreadsheetApp.openById(KONFIG_SALAH.DB_ID);
-    var sheet = ss.getSheetByName(KONFIG_SALAH.SHEET_NAMA);
+    var sheet = getSheet(KONFIG_SALAH.DB_KEY, KONFIG_SALAH.SHEET_NAMA);
     var rIdx = parseInt(rowId);
     if (isNaN(rIdx)) return false;
     
@@ -321,8 +313,7 @@ function tandaiNotifSalahDibaca(rowId, role) {
 
 function tandaiSemuaNotifSalahDibaca(role, unit) {
   try {
-    var ss = SpreadsheetApp.openById(KONFIG_SALAH.DB_ID);
-    var sheet = ss.getSheetByName(KONFIG_SALAH.SHEET_NAMA);
+    var sheet = getSheet(KONFIG_SALAH.DB_KEY, KONFIG_SALAH.SHEET_NAMA);
     var data = sheet.getDataRange().getDisplayValues();
     
     var rLower = String(role || "").toLowerCase();

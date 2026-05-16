@@ -3,9 +3,10 @@
    100% COMPLIANT DENGAN BAB VIII (getDisplayValues)
    ====================================================================== */
 
-var IDS = (typeof SPREADSHEET_IDS !== 'undefined') ? SPREADSHEET_IDS : {
-    PAUD_DATA: "1an0oQQPdMh6wrUJIAzTGYk3DKFvYprK5SU7RmRXjIgs", 
-    SD_DATA: "1u4tNL3uqt5xHITXYwHnytK6Kul9Siam-vNYuzmdZB4s"    
+const KONFIG_LAPBUL = {
+    SD_DB: "LAPBUL_SD_DB",
+    PAUD_DB: "LAPBUL_PAUD_DB",
+    USER_DB: "USER_DB"
 };
 
 /* ======================================================================
@@ -29,11 +30,10 @@ function getLapbulKelolaData(filterJenjang, filterBulan, filterTahun, filterStat
       return s;
   };
 
-  var fetchDataSmart = function(spreadsheetId, sheetName, sourceLabel) {
+  var fetchDataSmart = function(dbKey, sheetName, sourceLabel) {
       var sourceResult = [];
       try {
-          var ss = SpreadsheetApp.openById(spreadsheetId);
-          var sheet = ss.getSheetByName(sheetName);
+          var sheet = getSheet(dbKey, sheetName);
           if (!sheet) return [];
 
           var lastRow = sheet.getLastRow();
@@ -103,8 +103,8 @@ function getLapbulKelolaData(filterJenjang, filterBulan, filterTahun, filterStat
       return sourceResult;
   };
 
-  var dataPAUD = fetchDataSmart(IDS.PAUD_DATA, "Input PAUD", "PAUD");
-  var dataSD = fetchDataSmart(IDS.SD_DATA, "Input SD", "SD");
+  var dataPAUD = fetchDataSmart(KONFIG_LAPBUL.PAUD_DB, "Input PAUD", "PAUD");
+  var dataSD = fetchDataSmart(KONFIG_LAPBUL.SD_DB, "Input SD", "SD");
   
   return dataPAUD.concat(dataSD);
 }
@@ -114,8 +114,7 @@ function getLapbulKelolaData(filterJenjang, filterBulan, filterTahun, filterStat
    ====================================================================== */
 function getSekolahByNPSN(npsn) {
   try {
-    const ss = SpreadsheetApp.openById("1wiDKez4rL5UYnpP2-OZjYowvmt1nRx-fIMy9trJlhBA");
-    const sheet = ss.getSheetByName("Data_Sekolah");
+    const sheet = getSheet(KONFIG_LAPBUL.USER_DB, "Data_Sekolah");
     const data = sheet.getDataRange().getDisplayValues();
     
     for (var i = 1; i < data.length; i++) {
@@ -138,8 +137,7 @@ function getSekolahByNPSN(npsn) {
    ====================================================================== */
 function getAllSchoolsList() {
   try {
-    const ss = SpreadsheetApp.openById("1wiDKez4rL5UYnpP2-OZjYowvmt1nRx-fIMy9trJlhBA");
-    const sheet = ss.getSheetByName("Data_Sekolah");
+    const sheet = getSheet(KONFIG_LAPBUL.USER_DB, "Data_Sekolah");
     const lastRow = sheet.getLastRow();
     
     if (lastRow < 2) return [];
@@ -187,17 +185,16 @@ function getAllSchoolsList() {
 }
 
 function simpanLapbulSD_Complex(form, fileData) {
-  return prosesSimpanLengkap(IDS.SD_DATA, "Input SD", "SD", form, fileData);
+  return prosesSimpanLengkap(KONFIG_LAPBUL.SD_DB, "Input SD", "SD", form, fileData);
 }
 
 function simpanLapbulPAUD(form, fileData) {
-  return prosesSimpanLengkap(IDS.PAUD_DATA, "Input PAUD", "PAUD", form, fileData);
+  return prosesSimpanLengkap(KONFIG_LAPBUL.PAUD_DB, "Input PAUD", "PAUD", form, fileData);
 }
 
-function prosesSimpanLengkap(idSpreadsheet, namaSheet, source, form, fileData) {
+function prosesSimpanLengkap(dbKey, namaSheet, source, form, fileData) {
   try {
-    var ss = SpreadsheetApp.openById(idSpreadsheet);
-    var sheet = ss.getSheetByName(namaSheet);
+    var sheet = getSheet(dbKey, namaSheet);
     var userLogin = form.user_login || "System";
     
     var fileUrl = "";
@@ -274,8 +271,7 @@ function prosesSimpanLengkap(idSpreadsheet, namaSheet, source, form, fileData) {
 
 function updateDataSekolahMaster(form) {
   try {
-    const ss = SpreadsheetApp.openById("1wiDKez4rL5UYnpP2-OZjYowvmt1nRx-fIMy9trJlhBA");
-    const sheet = ss.getSheetByName("Data_Sekolah");
+    const sheet = getSheet(KONFIG_LAPBUL.USER_DB, "Data_Sekolah");
     const data = sheet.getDataRange().getValues();
     
     for (var i = 1; i < data.length; i++) {
@@ -307,14 +303,13 @@ function uploadFileToDrive(fileData, folderId, fileName) {
 /* ======================================================================
    3. MODUL: EDIT DATA (GET DETAIL & UPDATE)
    ====================================================================== */
-function getDetailRowSD(rowId) { return getDetailGeneral(IDS.SD_DATA, "Input SD", rowId); }
-function getDetailRowPAUD(rowId) { return getDetailGeneral(IDS.PAUD_DATA, "Input PAUD", rowId); }
+function getDetailRowSD(rowId) { return getDetailGeneral(KONFIG_LAPBUL.SD_DB, "Input SD", rowId); }
+function getDetailRowPAUD(rowId) { return getDetailGeneral(KONFIG_LAPBUL.PAUD_DB, "Input PAUD", rowId); }
 
-function getDetailGeneral(idSS, namaSheet, rowId) {
+function getDetailGeneral(dbKey, namaSheet, rowId) {
   var result = {};
   try {
-    var ss = SpreadsheetApp.openById(idSS);
-    var sheet = ss.getSheetByName(namaSheet);
+    var sheet = getSheet(dbKey, namaSheet);
     if (!sheet) return { error: "Sheet tidak ditemukan!" };
 
     var lastCol = sheet.getLastColumn();
@@ -327,13 +322,12 @@ function getDetailGeneral(idSS, namaSheet, rowId) {
   } catch (e) { return { error: "Error Backend: " + e.toString() }; }
 }
 
-function updateLapbulSD(form, fileData) { return prosesUpdateLengkap(IDS.SD_DATA, "Input SD", form, fileData); }
-function updateLapbulPAUD(form, fileData) { return prosesUpdateLengkap(IDS.PAUD_DATA, "Input PAUD", form, fileData); }
+function updateLapbulSD(form, fileData) { return prosesUpdateLengkap(KONFIG_LAPBUL.SD_DB, "Input SD", form, fileData); }
+function updateLapbulPAUD(form, fileData) { return prosesUpdateLengkap(KONFIG_LAPBUL.PAUD_DB, "Input PAUD", form, fileData); }
 
-function prosesUpdateLengkap(idSS, namaSheet, form, fileData) {
+function prosesUpdateLengkap(dbKey, namaSheet, form, fileData) {
   try {
-    var ss = SpreadsheetApp.openById(idSS);
-    var sheet = ss.getSheetByName(namaSheet);
+    var sheet = getSheet(dbKey, namaSheet);
     var rowId = parseInt(form.EDIT_ROW_ID);
     
     var fileUrl = form.file_url_lama || ""; 
@@ -385,12 +379,15 @@ function processDeleteData(source, rowId, inputCode, userLogin) {
     if (String(inputCode).trim() !== serverCode) return { success: false, message: "Kode Keamanan Salah!" };
 
     var config = source === 'SD' 
-      ? { ssId: IDS.SD_DATA, sheetName: "Input SD", trashName: "Trash", folderId: "1MpEgpCDrTX-SHjdNIa3aUpKUyYZpejrb" }
-      : { ssId: IDS.PAUD_DATA, sheetName: "Input PAUD", trashName: "Trash", folderId: "1EUIOthRbotJQlSphxVZ-QAdewe17UCOU" };
-
-    var ss = SpreadsheetApp.openById(config.ssId);
-    var sheetMain = ss.getSheetByName(config.sheetName);
-    var sheetTrash = ss.getSheetByName(config.trashName) || ss.insertSheet(config.trashName);
+      ? { dbKey: KONFIG_LAPBUL.SD_DB, sheetName: "Input SD", trashName: "Trash", folderId: "1MpEgpCDrTX-SHjdNIa3aUpKUyYZpejrb" }
+      : { dbKey: KONFIG_LAPBUL.PAUD_DB, sheetName: "Input PAUD", trashName: "Trash", folderId: "1EUIOthRbotJQlSphxVZ-QAdewe17UCOU" };
+ 
+    var sheetMain = getSheet(config.dbKey, config.sheetName);
+    var sheetTrash = getSheet(config.dbKey, config.trashName);
+    if (!sheetTrash) {
+      var ss = getDB(config.dbKey);
+      sheetTrash = ss.insertSheet(config.trashName);
+    }
     
     var r = parseInt(rowId);
     var lastCol = sheetMain.getLastColumn();
@@ -422,11 +419,10 @@ function processDeleteData(source, rowId, inputCode, userLogin) {
 function processVerifikasiLapbul(source, rowId, status, keterangan, userLogin) {
   try {
     var config = source === 'SD' 
-      ? { ssId: IDS.SD_DATA, sheetName: "Input SD", colStatus: 219, colKet: 225, colTglVerif: 223, colUserVerif: 224 }
-      : { ssId: IDS.PAUD_DATA, sheetName: "Input PAUD", colStatus: 49, colKet: 50, colTglVerif: 47, colUserVerif: 48 };
-
-    var ss = SpreadsheetApp.openById(config.ssId);
-    var sheet = ss.getSheetByName(config.sheetName);
+      ? { dbKey: KONFIG_LAPBUL.SD_DB, sheetName: "Input SD", colStatus: 219, colKet: 225, colTglVerif: 223, colUserVerif: 224 }
+      : { dbKey: KONFIG_LAPBUL.PAUD_DB, sheetName: "Input PAUD", colStatus: 49, colKet: 50, colTglVerif: 47, colUserVerif: 48 };
+ 
+    var sheet = getSheet(config.dbKey, config.sheetName);
     var r = parseInt(rowId);
 
     var now = new Date();
@@ -457,11 +453,10 @@ function processVerifikasiLapbul(source, rowId, status, keterangan, userLogin) {
 function getRekapLapbulStatus(filterTahun) {
   var result = { rows: [] };
   
-  var fetchData = function(id, sheetName, defaultJenjang) {
+  var fetchData = function(dbKey, sheetName, defaultJenjang) {
     var temp = [];
     try {
-      var ss = SpreadsheetApp.openById(id);
-      var sheet = ss.getSheetByName(sheetName);
+      var sheet = getSheet(dbKey, sheetName);
       if (!sheet) return [];
       
       var data = sheet.getDataRange().getDisplayValues();
@@ -481,8 +476,8 @@ function getRekapLapbulStatus(filterTahun) {
   };
 
   try {
-    var rowsSD = fetchData(IDS.SD_DATA, "Status SD", "SD");
-    var rowsPAUD = fetchData(IDS.PAUD_DATA, "Status PAUD", "PAUD");
+    var rowsSD = fetchData(KONFIG_LAPBUL.SD_DB, "Status SD", "SD");
+    var rowsPAUD = fetchData(KONFIG_LAPBUL.PAUD_DB, "Status PAUD", "PAUD");
     result.rows = rowsSD.concat(rowsPAUD);
   } catch(e) { result.error = e.toString(); }
   return result;
@@ -492,14 +487,14 @@ function getRekapLapbulStatus(filterTahun) {
    5. MODUL DASHBOARD: METRIK LAPBUL (VAKSIN BASELINE ABSOLUT)
    ====================================================================== */
 function getLapbulMetric_SD(tahun, bulan) {
-  return processSheetDashboard(IDS.SD_DATA, "Status SD", tahun, bulan, ["SD"]);
+  return processSheetDashboard(KONFIG_LAPBUL.SD_DB, "Status SD", tahun, bulan, ["SD"]);
 }
 
 function getLapbulMetric_PAUD(tahun, bulan) {
-  return processSheetDashboard(IDS.PAUD_DATA, "Status PAUD", tahun, bulan, ["TK", "KB", "SPS", "TPA"]);
+  return processSheetDashboard(KONFIG_LAPBUL.PAUD_DB, "Status PAUD", tahun, bulan, ["TK", "KB", "SPS", "TPA"]);
 }
 
-function processSheetDashboard(idSS, sheetName, tahun, bulan, targetJenjangArray) {
+function processSheetDashboard(dbKey, sheetName, tahun, bulan, targetJenjangArray) {
   var result = { recent: [] };
 
   targetJenjangArray.forEach(function(j) {
@@ -516,8 +511,7 @@ function processSheetDashboard(idSS, sheetName, tahun, bulan, targetJenjangArray
     // VAKSIN 1: TARIK MASTER SEKOLAH SEBAGAI BASELINE ABSOLUT
     // Ini menjamin "Total Sekolah" tidak akan pernah berkurang meski sekolah tsb pasif 1 tahun penuh
     try {
-        var ssMaster = SpreadsheetApp.openById("1wiDKez4rL5UYnpP2-OZjYowvmt1nRx-fIMy9trJlhBA");
-        var sheetMaster = ssMaster.getSheetByName("Data_Sekolah");
+        var sheetMaster = getSheet(KONFIG_LAPBUL.USER_DB, "Data_Sekolah");
         if (sheetMaster) {
             var masterData = sheetMaster.getDataRange().getDisplayValues();
             for (var m = 1; m < masterData.length; m++) {
@@ -542,8 +536,7 @@ function processSheetDashboard(idSS, sheetName, tahun, bulan, targetJenjangArray
     } catch(em) { Logger.log("Gagal muat Master Sekolah: " + em.toString()); }
 
     // VAKSIN 2: TARIK DATA TRANSAKSI & TIMPA STATUSNYA
-    var ss = SpreadsheetApp.openById(idSS);
-    var sheet = ss.getSheetByName(sheetName);
+    var sheet = getSheet(dbKey, sheetName);
     
     if (sheet) {
         var data = sheet.getDataRange().getDisplayValues();
@@ -637,10 +630,9 @@ function getNotifikasiLapbul(role, unit) {
     var notifList = [];
     var unreadCount = 0;
 
-    var fetchNotifSource = function(idSS, sheetName, sourceLabel) {
+    var fetchNotifSource = function(dbKey, sheetName, sourceLabel) {
       try {
-        var ss = SpreadsheetApp.openById(idSS);
-        var sheet = ss.getSheetByName(sheetName);
+        var sheet = getSheet(dbKey, sheetName);
         if (!sheet) return;
 
         var lastRow = sheet.getLastRow();
@@ -702,8 +694,8 @@ function getNotifikasiLapbul(role, unit) {
       } catch (e) {}
     };
 
-    fetchNotifSource(IDS.SD_DATA, "Input SD", "SD");
-    fetchNotifSource(IDS.PAUD_DATA, "Input PAUD", "PAUD");
+    fetchNotifSource(KONFIG_LAPBUL.SD_DB, "Input SD", "SD");
+    fetchNotifSource(KONFIG_LAPBUL.PAUD_DB, "Input PAUD", "PAUD");
 
     // Urutkan (Paling baru dulu)
     notifList.sort(function(a, b) {
@@ -728,11 +720,10 @@ function getNotifikasiLapbul(role, unit) {
 
 function tandaiNotifLapbulDibaca(rowId, source, role) {
   try {
-    var idSS = (source === "SD") ? IDS.SD_DATA : IDS.PAUD_DATA;
+    var dbKey = (source === "SD") ? KONFIG_LAPBUL.SD_DB : KONFIG_LAPBUL.PAUD_DB;
     var sheetName = (source === "SD") ? "Input SD" : "Input PAUD";
     
-    var ss = SpreadsheetApp.openById(idSS);
-    var sheet = ss.getSheetByName(sheetName);
+    var sheet = getSheet(dbKey, sheetName);
     var rIdx = parseInt(rowId);
     
     var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(function(h) { return String(h).toLowerCase().trim(); });
@@ -762,9 +753,8 @@ function tandaiSemuaNotifLapbulDibaca(role, unit) {
     var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
     var readMark = isAdmin ? "Admin" : "User";
 
-    var processSheet = function(idSS, sheetName) {
-      var ss = SpreadsheetApp.openById(idSS);
-      var sheet = ss.getSheetByName(sheetName);
+    var processSheet = function(dbKey, sheetName) {
+      var sheet = getSheet(dbKey, sheetName);
       var lastRow = sheet.getLastRow();
       if (lastRow < 2) return;
 

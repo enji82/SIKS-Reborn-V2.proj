@@ -2,18 +2,19 @@
 /* MODUL: PERJALANAN DINAS (SIABA) - FULL BACKEND SULTAN                  */
 /* ====================================================================== */
 
-var ID_SS_DINAS = "1I_2yUFGXnBJTCSW6oaT3D482YCs8TIRkKgQVBbvpa1M"; 
-var ID_FOLDER_DINAS = "1uPeOU7F_mgjZVyOLSsj-3LXGdq9rmmWl";
+const KONFIG_DINAS = {
+  DB_KEY: "SIABA_DINAS_DB", 
+  FOLDER_ID: FOLDER_CONFIG.SIABA_CUTI_DOCS,
+  SHEET_MAIN: "Perjalanan_Dinas",
+  SHEET_PESERTA: "Perjalanan_Dinas_Peserta"
+};
 
 /* ----------------------------------------------------------------------
    1. GET DAFTAR DINAS (UNTUK DATATABLES)
    ---------------------------------------------------------------------- */
 function getDaftarDinas(tahun, bulan, status, _cb) {
   try {
-    SpreadsheetApp.flush();
-    var ss = SpreadsheetApp.openById(ID_SS_DINAS);
-    var sheet = ss.getSheetByName("Perjalanan_Dinas");
-    if (!sheet) return JSON.stringify([]);
+    var sheet = getSheet(KONFIG_DINAS.DB_KEY, KONFIG_DINAS.SHEET_MAIN);
 
     var data = sheet.getDataRange().getDisplayValues();
     var result = [];
@@ -68,10 +69,9 @@ function getDaftarDinas(tahun, bulan, status, _cb) {
 function simpanSptUnified(payload) {
   var lock = LockService.getScriptLock();
   try {
-    lock.waitLock(10000); // VAKSIN ANTI TABRAKAN
-    var ss = SpreadsheetApp.openById(ID_SS_DINAS);
-    var sheetMaster = ss.getSheetByName("Perjalanan_Dinas");
-    var sheetDetail = ss.getSheetByName("Perjalanan_Dinas_Peserta");
+    lock.waitLock(10000); 
+    var sheetMaster = getSheet(KONFIG_DINAS.DB_KEY, KONFIG_DINAS.SHEET_MAIN);
+    var sheetDetail = getSheet(KONFIG_DINAS.DB_KEY, KONFIG_DINAS.SHEET_PESERTA);
     
     if (!sheetDetail) {
       sheetDetail = ss.insertSheet("Perjalanan_Dinas_Peserta");
@@ -88,7 +88,7 @@ function simpanSptUnified(payload) {
 
     var fileUrl = "";
     if (payload.fileData && payload.fileName) {
-      var folder = DriveApp.getFolderById(ID_FOLDER_DINAS);
+      var folder = DriveApp.getFolderById(KONFIG_DINAS.FOLDER_ID);
       var blob = Utilities.newBlob(Utilities.base64Decode(payload.fileData), payload.mimeType, payload.fileName);
       var file = folder.createFile(blob);
       file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
@@ -160,8 +160,7 @@ function simpanSptUnified(payload) {
    ---------------------------------------------------------------------- */
 function cariPegawaiDatabase(keyword) {
   try {
-      var ss = SpreadsheetApp.openById(ID_SS_DINAS);
-      var sheet = ss.getSheetByName("Database"); 
+      var sheet = getSheet(KONFIG_DINAS.DB_KEY, "Database"); 
       if(!sheet) return JSON.stringify([]);
 
       var data = sheet.getDataRange().getDisplayValues();
@@ -183,9 +182,7 @@ function cariPegawaiDatabase(keyword) {
 
 function cekInfoSpt(noSpt) {
   try {
-    var ss = SpreadsheetApp.openById(ID_SS_DINAS);
-    var sheet = ss.getSheetByName("Perjalanan_Dinas");
-    if (!sheet) return JSON.stringify({ found: false });
+    var sheet = getSheet(KONFIG_DINAS.DB_KEY, KONFIG_DINAS.SHEET_MAIN);
     
     var data = sheet.getDataRange().getDisplayValues();
     for (var i = 1; i < data.length; i++) {
@@ -211,9 +208,7 @@ function cekInfoSpt(noSpt) {
 
 function getPesertaDinas(noSpt) {
   try {
-      var ss = SpreadsheetApp.openById(ID_SS_DINAS);
-      var sheet = ss.getSheetByName("Perjalanan_Dinas_Peserta");
-      if (!sheet) return JSON.stringify([]);
+      var sheet = getSheet(KONFIG_DINAS.DB_KEY, KONFIG_DINAS.SHEET_PESERTA);
       
       var data = sheet.getDataRange().getDisplayValues();
       var result = [];
@@ -233,8 +228,7 @@ function verifikasiDataDinas(payload) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
-    var ss = SpreadsheetApp.openById(ID_SS_DINAS);
-    var sheet = ss.getSheetByName("Perjalanan_Dinas");
+    var sheet = getSheet(KONFIG_DINAS.DB_KEY, KONFIG_DINAS.SHEET_MAIN);
     var row = parseInt(payload.recId);
     var verifikator = payload.user_verif || "Admin";
     var now = new Date();
@@ -264,9 +258,8 @@ function hapusDataDinas(payload) {
     var d = new Date(); var kd = d.getFullYear()+""+String(d.getMonth()+1).padStart(2,'0')+""+String(d.getDate()).padStart(2,'0');
     if (payload.kode !== kd) return "KODE_SALAH";
       
-    var ss = SpreadsheetApp.openById(ID_SS_DINAS);
-    var sheetMaster = ss.getSheetByName("Perjalanan_Dinas");
-    var sheetPeserta = ss.getSheetByName("Perjalanan_Dinas_Peserta");
+    var sheetMaster = getSheet(KONFIG_DINAS.DB_KEY, KONFIG_DINAS.SHEET_MAIN);
+    var sheetPeserta = getSheet(KONFIG_DINAS.DB_KEY, KONFIG_DINAS.SHEET_PESERTA);
     
     var rowId = parseInt(payload.recId);
     var noSptDihapus = String(sheetMaster.getRange(rowId, 2).getValue()).trim().toUpperCase();
@@ -334,9 +327,7 @@ function parseTime(val) {
    ---------------------------------------------------------------------- */
 function getNotifikasiPerdin(role, unit) {
   try {
-    var ss = SpreadsheetApp.openById(ID_SS_DINAS);
-    var sheet = ss.getSheetByName("Perjalanan_Dinas");
-    if (!sheet) return { count: 0, recent: [] };
+    var sheet = getSheet(KONFIG_DINAS.DB_KEY, KONFIG_DINAS.SHEET_MAIN);
 
     var data = sheet.getDataRange().getDisplayValues();
     var rLower = String(role || "").toLowerCase();
@@ -397,8 +388,7 @@ function getNotifikasiPerdin(role, unit) {
 
 function tandaiNotifPerdinDibaca(rowId, role) {
   try {
-    var ss = SpreadsheetApp.openById(ID_SS_DINAS);
-    var sheet = ss.getSheetByName("Perjalanan_Dinas");
+    var sheet = getSheet(KONFIG_DINAS.DB_KEY, KONFIG_DINAS.SHEET_MAIN);
     var rIdx = parseInt(rowId);
     if (isNaN(rIdx)) return false;
     
@@ -420,8 +410,7 @@ function tandaiNotifPerdinDibaca(rowId, role) {
 
 function tandaiSemuaNotifPerdinDibaca(role, unit) {
   try {
-    var ss = SpreadsheetApp.openById(ID_SS_DINAS);
-    var sheet = ss.getSheetByName("Perjalanan_Dinas");
+    var sheet = getSheet(KONFIG_DINAS.DB_KEY, KONFIG_DINAS.SHEET_MAIN);
     var data = sheet.getDataRange().getDisplayValues();
     var rLower = String(role || "").toLowerCase();
     var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);

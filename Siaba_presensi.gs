@@ -4,50 +4,16 @@
    ====================================================================== */
 
 function getSiabaFilters() {
-  const ID_DB = "1wiDKez4rL5UYnpP2-OZjYowvmt1nRx-fIMy9trJlhBA";
-  try {
-    const ss = SpreadsheetApp.openById(ID_DB);
-    const sheet = ss.getSheetByName("Lookup Siaba");
-    if (!sheet) return JSON.stringify({ error: "Sheet 'Lookup Siaba' tidak ditemukan." });
-    
-    const lastRow = sheet.getLastRow();
-    if (lastRow < 2) return JSON.stringify({ years: [], months: [] });
-    
-    // Validasi BAB VIII
-    const data = sheet.getRange(2, 1, lastRow - 1, 2).getDisplayValues();
-    
-    let years = new Set();
-    let months = new Set();
-    
-    data.forEach(row => {
-      if (row[0]) years.add(row[0]); 
-      if (row[1]) months.add(row[1]); 
-    });
-
-    const URUTAN_BULAN = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-    let sortedMonths = Array.from(months).sort((a, b) => URUTAN_BULAN.indexOf(a) - URUTAN_BULAN.indexOf(b));
-
-    return JSON.stringify({
-      years: Array.from(years).sort().reverse(),
-      months: sortedMonths
-    });
-  } catch (e) {
-    return JSON.stringify({ error: e.message });
-  }
+  return JSON.stringify(getLookupFilters());
 }
 
 function getSiabaPresensiHarian(filterTahun, filterBulan, filterUnit) {
-  const ID_DB = "1wiDKez4rL5UYnpP2-OZjYowvmt1nRx-fIMy9trJlhBA"; 
-  
   try {
-    var ssLookup = SpreadsheetApp.openById(ID_DB);
-    var sheetLookup = ssLookup.getSheetByName("Lookup Siaba");
+    const sheetLookup = getSheet("SIABA_LOOKUP_DB", "Lookup Siaba");
+    const dataLookup = sheetLookup.getDataRange().getDisplayValues();
     
-    // Validasi BAB VIII
-    var dataLookup = sheetLookup.getDataRange().getDisplayValues();
-    var targetId = "", customSheet = "";
-    
-    for (var i = 1; i < dataLookup.length; i++) {
+    let targetId = "", customSheet = "";
+    for (let i = 1; i < dataLookup.length; i++) {
         if (dataLookup[i][0] == filterTahun && dataLookup[i][1] == filterBulan) {
             targetId = dataLookup[i][2];
             customSheet = dataLookup[i][3];     
@@ -57,47 +23,47 @@ function getSiabaPresensiHarian(filterTahun, filterBulan, filterUnit) {
     
     if (!targetId) return JSON.stringify({ error: "Data Periode " + filterBulan + " " + filterTahun + " belum tersedia." });
 
-    var ssTarget = SpreadsheetApp.openById(targetId);
-    var sheetTarget = customSheet ? ssTarget.getSheetByName(customSheet) : ssTarget.getSheets()[0];
+    const ssTarget = getDBById(targetId);
+    let sheetTarget = customSheet ? ssTarget.getSheetByName(customSheet) : ssTarget.getSheets()[0];
     if (!sheetTarget) sheetTarget = ssTarget.getSheetByName("Data Siaba");
+    if (!sheetTarget) return JSON.stringify({ error: "Sheet data tidak ditemukan di file target." });
 
-    var lastRow = sheetTarget.getLastRow();
-    var lastCol = sheetTarget.getLastColumn(); 
-    if (lastCol < 87) return JSON.stringify({ error: "Format kolom sheet tidak sesuai." });
+    const lastRow = sheetTarget.getLastRow();
+    const lastCol = sheetTarget.getLastColumn(); 
+    if (lastCol < 87) return JSON.stringify({ error: "Format kolom sheet tidak sesuai (Min 87 Kolom)." });
 
-    // Validasi BAB VIII
-    var allData = sheetTarget.getRange(1, 1, lastRow, lastCol).getDisplayValues();
-    var headerRow = allData[0].slice(3, 87); 
-    var rawRows = allData.slice(1);
+    const allData = sheetTarget.getRange(1, 1, lastRow, lastCol).getDisplayValues();
+    const headerRow = allData[0].slice(3, 87); 
+    const rawRows = allData.slice(1);
 
-    var cleanRows = [];
-    var effectiveUnit = filterUnit;
-    if (filterUnit === "USER") effectiveUnit = dashGetMyUnit();
+    let cleanRows = [];
+    let effectiveUnit = filterUnit;
+    if (filterUnit === "USER") {
+      // dashGetMyUnit harus tersedia secara global atau dilempar dari client
+      try { effectiveUnit = dashGetMyUnit(); } catch(e) { effectiveUnit = "SEMUA"; }
+    }
 
-    for (var i = 0; i < rawRows.length; i++) {
-        var r = rawRows[i];
+    for (let i = 0; i < rawRows.length; i++) {
+        let r = rawRows[i];
         if (effectiveUnit === "SEMUA" || effectiveUnit === "" || r[2] === effectiveUnit) {
             cleanRows.push(r);
         }
     }
 
-    cleanRows.sort(function(a, b) {
-        var tpA = parseInt(a[5]) || 0; var tpB = parseInt(b[5]) || 0;
+    cleanRows.sort((a, b) => {
+        let tpA = parseInt(a[5]) || 0; let tpB = parseInt(b[5]) || 0;
         if (tpB !== tpA) return tpB - tpA; 
-        
-        var taA = parseInt(a[20]) || 0; var taB = parseInt(b[20]) || 0;
+        let taA = parseInt(a[20]) || 0; let taB = parseInt(b[20]) || 0;
         if (taB !== taA) return taB - taA; 
-
-        var plaA = parseInt(a[22]) || 0; var plaB = parseInt(b[22]) || 0;
+        let plaA = parseInt(a[22]) || 0; let plaB = parseInt(b[22]) || 0;
         if (plaB !== plaA) return plaB - plaA; 
-
-        var laA = parseInt(a[24]) || 0; var laB = parseInt(b[24]) || 0;
+        let laA = parseInt(a[24]) || 0; let laB = parseInt(b[24]) || 0;
         return laB - laA; 
     });
 
-    var finalData = cleanRows.map(function(row) {
-        var dataD_CI = row.slice(3, 87); 
-        var unitMeta = row[2];           
+    const finalData = cleanRows.map(row => {
+        let dataD_CI = row.slice(3, 87); 
+        let unitMeta = row[2];           
         return dataD_CI.concat([unitMeta]); 
     });
 
@@ -117,43 +83,12 @@ function getSiabaPresensiHarian(filterTahun, filterBulan, filterUnit) {
    ====================================================================== */
 
 function getSiabaApelFilters() {
-  const ID_DB = "1wiDKez4rL5UYnpP2-OZjYowvmt1nRx-fIMy9trJlhBA"; 
-  try {
-    const ss = SpreadsheetApp.openById(ID_DB);
-    const sheet = ss.getSheetByName("Lookup Siaba");
-    if (!sheet) return JSON.stringify({ error: "Sheet 'Lookup Siaba' tidak ditemukan." });
-    
-    const lastRow = sheet.getLastRow();
-    if (lastRow < 2) return JSON.stringify({ years: [], months: [] });
-    
-    const data = sheet.getRange(2, 1, lastRow - 1, 2).getDisplayValues();
-    
-    let years = new Set();
-    let months = new Set();
-    
-    data.forEach(row => {
-      if (row[0]) years.add(row[0]); 
-      if (row[1]) months.add(row[1]); 
-    });
-
-    const URUTAN_BULAN = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-    let sortedMonths = Array.from(months).sort((a, b) => URUTAN_BULAN.indexOf(a) - URUTAN_BULAN.indexOf(b));
-
-    return JSON.stringify({
-      years: Array.from(years).sort().reverse(),
-      months: sortedMonths
-    });
-  } catch (e) {
-    return JSON.stringify({ error: e.message });
-  }
+  return JSON.stringify(getLookupFilters());
 }
 
 function getSiabaDataApel(filterTahun, filterBulan, filterUnit) {
-  const ID_DB = "1wiDKez4rL5UYnpP2-OZjYowvmt1nRx-fIMy9trJlhBA";
-  
   try {
-    const ssLookup = SpreadsheetApp.openById(ID_DB);
-    const sheetLookup = ssLookup.getSheetByName("Lookup Siaba");
+    const sheetLookup = getSheet("SIABA_LOOKUP_DB", "Lookup Siaba");
     const dataLookup = sheetLookup.getDataRange().getDisplayValues();
     
     let targetId = "";
@@ -164,9 +99,7 @@ function getSiabaDataApel(filterTahun, filterBulan, filterUnit) {
         }
     }
 
-    if (!targetId) return JSON.stringify({ error: `Data Apel ${filterBulan} ${filterTahun} tidak ditemukan.` });
-
-    const ssTarget = SpreadsheetApp.openById(targetId);
+    const ssTarget = getDBById(targetId);
     const sheetTarget = ssTarget.getSheetByName("Data Apel");
     if (!sheetTarget) return JSON.stringify({ error: `Sheet "Data Apel" tidak ditemukan.` });
 
@@ -207,50 +140,12 @@ function getSiabaDataApel(filterTahun, filterBulan, filterUnit) {
    ====================================================================== */
 
 function getSiabaTidakFilters() {
-  const ID_DB = "1wiDKez4rL5UYnpP2-OZjYowvmt1nRx-fIMy9trJlhBA"; 
-  try {
-    const ss = SpreadsheetApp.openById(ID_DB);
-    const sheet = ss.getSheetByName("Lookup Siaba");
-    if (!sheet) return JSON.stringify({ error: "Sheet 'Lookup Siaba' tidak ditemukan." });
-    
-    const lastRow = sheet.getLastRow();
-    if (lastRow < 2) return JSON.stringify({ years: [], months: [] });
-    
-    // Terverifikasi BAB VIII
-    const data = sheet.getRange(2, 1, lastRow - 1, 2).getDisplayValues();
-    
-    let years = new Set();
-    let months = new Set();
-    
-    data.forEach(row => {
-      if (row[0]) years.add(row[0]); 
-      if (row[1]) months.add(row[1]); 
-    });
-
-    const URUTAN_BULAN = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-    let sortedMonths = Array.from(months).sort((a, b) => URUTAN_BULAN.indexOf(a) - URUTAN_BULAN.indexOf(b));
-
-    return JSON.stringify({
-      years: Array.from(years).sort().reverse(),
-      months: sortedMonths
-    });
-  } catch (e) {
-    return JSON.stringify({ error: e.message });
-  }
+  return JSON.stringify(getLookupFilters());
 }
 
 function getSiabaTidakData(filterTahun, filterBulan, filterUnit) {
-  const ID_DB = "1wiDKez4rL5UYnpP2-OZjYowvmt1nRx-fIMy9trJlhBA";
-  
   try {
-    let ssLookup;
-    try { ssLookup = SpreadsheetApp.openById(ID_DB); } 
-    catch(e) { return JSON.stringify({ error: "Gagal buka Database Lookup." }); }
-
-    const sheetLookup = ssLookup.getSheetByName("Lookup Siaba");
-    if (!sheetLookup) return JSON.stringify({ error: "Sheet Lookup Siaba hilang." });
-
-    // Terverifikasi BAB VIII
+    const sheetLookup = getSheet("SIABA_LOOKUP_DB", "Lookup Siaba");
     const dataLookup = sheetLookup.getDataRange().getDisplayValues();
     let targetId = "";
     
@@ -264,8 +159,8 @@ function getSiabaTidakData(filterTahun, filterBulan, filterUnit) {
     if (!targetId) return JSON.stringify({ error: `Data ${filterBulan} ${filterTahun} belum ada di Lookup.` });
 
     let ssTarget;
-    try { ssTarget = SpreadsheetApp.openById(targetId); }
-    catch(e) { return JSON.stringify({ error: `Gagal akses File ID: ...${targetId.substr(-5)}` }); }
+    try { ssTarget = getDBById(targetId); }
+    catch(e) { return JSON.stringify({ error: e.message }); }
 
     const TARGET_SHEET_NAME = "Data Alpa";
     const sheetTarget = ssTarget.getSheetByName(TARGET_SHEET_NAME);
@@ -318,16 +213,11 @@ function getSiabaTidakData(filterTahun, filterBulan, filterUnit) {
    ====================================================================== */
 
 function getSiabaTerlambatFilters() {
-  const ID_DB = "1tQsQY1-Ny1ie66GOZPTLtvZ7BiYCgFdNrX-AVGCtaHA"; 
   try {
-    const ss = SpreadsheetApp.openById(ID_DB);
-    const sheet = ss.getSheetByName("Rekap_Terlambat");
-    if (!sheet) return JSON.stringify({ years: [] }); 
-    
+    const sheet = getSheet("SIABA_TA_PA", "Rekap_Terlambat");
     const lastRow = sheet.getLastRow();
     if (lastRow < 3) return JSON.stringify({ years: [] });
     
-    // Terverifikasi BAB VIII
     const data = sheet.getRange(3, 1, lastRow - 2, 1).getDisplayValues();
     
     let years = new Set();
@@ -344,13 +234,8 @@ function getSiabaTerlambatFilters() {
 }
 
 function getSiabaTerlambatData(filterTahun, filterUnit) {
-  const ID_DB = "1tQsQY1-Ny1ie66GOZPTLtvZ7BiYCgFdNrX-AVGCtaHA";
-  
   try {
-    const ss = SpreadsheetApp.openById(ID_DB);
-    const sheet = ss.getSheetByName("Rekap_Terlambat");
-    if (!sheet) return JSON.stringify({ error: "Sheet 'Rekap_Terlambat' tidak ditemukan." });
-
+    const sheet = getSheet("SIABA_TA_PA", "Rekap_Terlambat");
     const maxCol = sheet.getLastColumn(); 
     const lastRow = sheet.getLastRow();
     
@@ -404,12 +289,8 @@ function getSiabaTerlambatData(filterTahun, filterUnit) {
    ====================================================================== */
 
 function getSiabaPulangFilters() {
-  const ID_DB = "1tQsQY1-Ny1ie66GOZPTLtvZ7BiYCgFdNrX-AVGCtaHA"; 
   try {
-    const ss = SpreadsheetApp.openById(ID_DB);
-    const sheet = ss.getSheetByName("Rekap_Pulang_Awal"); 
-    if (!sheet) return JSON.stringify({ years: [] });
-    
+    const sheet = getSheet("SIABA_TA_PA", "Rekap_Pulang_Awal"); 
     const lastRow = sheet.getLastRow();
     if (lastRow < 3) return JSON.stringify({ years: [] });
     
@@ -427,13 +308,8 @@ function getSiabaPulangFilters() {
 }
 
 function getSiabaPulangData(filterTahun, filterUnit) {
-  const ID_DB = "1tQsQY1-Ny1ie66GOZPTLtvZ7BiYCgFdNrX-AVGCtaHA";
-  
   try {
-    const ss = SpreadsheetApp.openById(ID_DB);
-    const sheet = ss.getSheetByName("Rekap_Pulang_Awal"); 
-    if (!sheet) return JSON.stringify({ error: "Sheet 'Rekap_Pulang_Awal' tidak ditemukan." });
-
+    const sheet = getSheet("SIABA_TA_PA", "Rekap_Pulang_Awal"); 
     const maxCol = sheet.getLastColumn(); 
     const lastRow = sheet.getLastRow();
 
@@ -487,7 +363,7 @@ function getSiabaPulangData(filterTahun, filterUnit) {
    ====================================================================== */
 
 function getSiabaUnduhData(folderId) {
-  const ROOT_ID = "1MoGuseJNrOIMnkZNoqkKcK282jZpUkAm"; 
+  const ROOT_ID = FOLDER_CONFIG.SIABA_REKAP_ARCHIVE; 
   let targetId = folderId || ROOT_ID;
   let folder;
 
@@ -575,8 +451,7 @@ function getSiabaUnduhData(folderId) {
    ====================================================================== */
 
 function getSiabaArsipData(folderId) {
-  // ROOT ID KHUSUS HALAMAN REKAP SIABA
-  const ROOT_ID = "1D0rwRT_tIj9QZTPPG3cRk4NRcbhMzDHm"; 
+  const ROOT_ID = FOLDER_CONFIG.SIABA_ARSIP_ROOT; 
   let targetId = folderId || ROOT_ID;
   let folder;
 

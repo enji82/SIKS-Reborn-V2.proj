@@ -3,12 +3,14 @@
    ====================================================================== */
 
 // 1. CONFIG ID DATABASE TERPUSAT
-var DASH_DB_ID = {
-  CUTI:  "1UYG80gGxuC19ieaVBzJaUV8bhlS2q5gExr0-Yl7upKo",
-  DINAS: "1I_2yUFGXnBJTCSW6oaT3D482YCs8TIRkKgQVBbvpa1M",
-  LUPA:  "160IjN8aiDAgDYXjgDLStS4nCZLKn3Ny-dq3BOFAfDrU",
-  SALAH: "1TZGrMiTuyvh2Xbo44RhJuWlQnOC5LzClsgIoNKtRFkY",
-  REKAP: "1tQsQY1-Ny1ie66GOZPTLtvZ7BiYCgFdNrX-AVGCtaHA"
+const KONFIG_DASHBOARD = {
+  DB_KEYS: {
+    cuti: "SIABA_CUTI_DB",
+    dinas: "SIABA_DINAS_DB",
+    lupa: "SIABA_LUPA_DB",
+    salah: "SIABA_SALAH_DB",
+    rekap: "SIABA_TA_PA"
+  }
 };
 
 // 2. HELPER PARSER TANGGAL (Ringan & Cepat)
@@ -31,15 +33,11 @@ function getSiabaMetric(type) {
   var cached = cache.get(cacheKey);
   if (cached) return cached;
 
-  var now = new Date();
-  var curYear = now.getFullYear();
-  var curMonth = now.getMonth();
-
   var config = {};
-  if (type == 'cuti')  config = { id: DASH_DB_ID.CUTI,  tab: "Form Cuti",        idxTgl: 4, idxStat: 10 };
-  if (type == 'dinas') config = { id: DASH_DB_ID.DINAS, tab: "Perjalanan_Dinas", idxTgl: 3, idxStat: 9 };
-  if (type == 'lupa')  config = { id: DASH_DB_ID.LUPA,  tab: "Lupa_Presensi",    idxTgl: 3, idxStat: 10 };
-  if (type == 'salah') config = { id: DASH_DB_ID.SALAH, tab: "Salah_Presensi",   idxTgl: 3, idxStat: 8 };
+  if (type == 'cuti')  config = { key: KONFIG_DASHBOARD.DB_KEYS.cuti,  tab: "Form Cuti",        idxTgl: 4, idxStat: 10 };
+  if (type == 'dinas') config = { key: KONFIG_DASHBOARD.DB_KEYS.dinas, tab: "Perjalanan_Dinas", idxTgl: 3, idxStat: 9 };
+  if (type == 'lupa')  config = { key: KONFIG_DASHBOARD.DB_KEYS.lupa,  tab: "Lupa_Presensi",    idxTgl: 3, idxStat: 10 };
+  if (type == 'salah') config = { key: KONFIG_DASHBOARD.DB_KEYS.salah, tab: "Salah_Presensi",   idxTgl: 3, idxStat: 8 };
 
   var res = {
     type: type,
@@ -55,8 +53,7 @@ function getSiabaMetric(type) {
   };
 
   try {
-    var ss = SpreadsheetApp.openById(config.id);
-    var sh = ss.getSheetByName(config.tab);
+    var sh = getSheet(config.key, config.tab);
     if (sh) {
       var data = sh.getDataRange().getValues();
       for (var i = 1; i < data.length; i++) {
@@ -96,9 +93,8 @@ function getSiabaMetric(type) {
 function dashGetMyUnit() {
   try {
     var email = Session.getActiveUser().getEmail();
-    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.DATABASE_USER);
-    var sh = ss.getSheetByName(SPREADSHEET_IDS.SHEET_USER_NAME);
-    var data = sh.getDataRange().getValues();
+    var sheet = getSheet("USER_DB", SPREADSHEET_IDS.SHEET_USER_NAME);
+    var data = sheet.getDataRange().getValues();
     
     for (var i = 1; i < data.length; i++) {
       // Username/Email di Kolom A (Index 0), Unit di Kolom F (Index 5)
@@ -118,7 +114,6 @@ function getSiabaChartTrend() {
   var cached = cache.get(cacheKey);
   if (cached) return cached;
 
-  var curYear = new Date().getFullYear();
   var res = {
     labels: ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Ags", "Sep", "Okt", "Nov", "Des"],
     terlambat: new Array(12).fill(0),
@@ -126,7 +121,7 @@ function getSiabaChartTrend() {
   };
 
   try {
-    var ss = SpreadsheetApp.openById(DASH_DB_ID.REKAP);
+    var ss = getDB(KONFIG_DASHBOARD.DB_KEYS.rekap);
     ["Rekap_Terlambat", "Rekap_Pulang_Awal"].forEach(function(nm) {
       var sh = ss.getSheetByName(nm);
       if (sh) {
@@ -144,6 +139,6 @@ function getSiabaChartTrend() {
   } catch (e) {}
 
   var json = JSON.stringify(res);
-  cache.put("chart_trend_v2_final", json, 300);
+  cache.put(cacheKey, json, 300);
   return json;
 }

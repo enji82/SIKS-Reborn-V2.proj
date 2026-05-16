@@ -23,9 +23,7 @@ function getOrCreateFolder(parentFolder, folderName) {
  */
 function getMappingMasterNpsn() {
   try {
-    const MASTER_SS_ID = "1wiDKez4rL5UYnpP2-OZjYowvmt1nRx-fIMy9trJlhBA";
-    const ss = SpreadsheetApp.openById(MASTER_SS_ID);
-    const sheet = ss.getSheetByName("Data User");
+    const sheet = getSheet("USER_DB", "Data User");
     const data = sheet.getDataRange().getValues();
     
     var mapping = {};
@@ -49,8 +47,7 @@ function getMappingMasterNpsn() {
    ====================================================================== */
 function processManualForm(formData) {
   try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_IDS.SK_DATA);
-    const sheet = ss.getSheetByName("Unggah_SK");
+    const sheet = getSheet("SK_DATA_DB", "Unggah_SK");
     
     const mainFolder = DriveApp.getFolderById(FOLDER_CONFIG.MAIN_SK);
     const folderTahun = getOrCreateFolder(mainFolder, formData.tahunAjaran.replace(/\//g, '-'));
@@ -90,9 +87,8 @@ function processManualForm(formData) {
 function simpanPerubahanSK(form) {
   try {
     rekamCCTV("START EDIT", "No SK: " + form.nomorSk);
-
-    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.SK_DATA);
-    var sheet = ss.getSheetByName("Unggah_SK");
+ 
+    var sheet = getSheet("SK_DATA_DB", "Unggah_SK");
     var rowIdx = parseInt(form.editRowId);
 
     if (isNaN(rowIdx)) throw "Row ID Invalid";
@@ -159,8 +155,7 @@ function simpanPerubahanSK(form) {
    ====================================================================== */
 function getDaftarSK() {
   try {
-    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.SK_DATA);
-    var sheet = ss.getSheetByName("Unggah_SK");
+    var sheet = getSheet("SK_DATA_DB", "Unggah_SK");
     var data = sheet.getDataRange().getDisplayValues();
     var result = [];
     
@@ -214,8 +209,7 @@ function getDaftarSK() {
    ====================================================================== */
 function cekDuplikatSK(payload) {
   try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_IDS.SK_DATA);
-    const sheet = ss.getSheetByName("Unggah_SK");
+    const sheet = getSheet("SK_DATA_DB", "Unggah_SK");
     var data = sheet.getDataRange().getDisplayValues();
     
     var tSd = String(payload.namaSd).trim().toUpperCase();
@@ -254,12 +248,12 @@ function hapusDataSK(form) {
     if (String(form.hapusKode).trim() !== KODE_RAHASIA) {
       return { success: false, message: "KODE_SALAH" };
     }
-
-    const ss = SpreadsheetApp.openById(SPREADSHEET_IDS.SK_DATA);
-    const sheetSource = ss.getSheetByName("Unggah_SK");
+ 
+    const sheetSource = getSheet("SK_DATA_DB", "Unggah_SK");
     
-    var sheetTrash = ss.getSheetByName("Trash_SK");
+    var sheetTrash = getSheet("SK_DATA_DB", "Trash_SK");
     if (!sheetTrash) {
+       var ss = getDB("SK_DATA_DB");
        sheetTrash = ss.insertSheet("Trash_SK");
        var headers = sheetSource.getRange("A1:Q1").getDisplayValues();
        headers[0].push("TGL HAPUS", "USER HAPUS", "ALASAN");
@@ -310,8 +304,7 @@ function hapusDataSK(form) {
 
 function verifikasiDataSK(form) {
   try {
-    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.SK_DATA);
-    var sheet = ss.getSheetByName("Unggah_SK");
+    var sheet = getSheet("SK_DATA_DB", "Unggah_SK");
     var rowIdx = parseInt(form.verifRowId);
 
     if (isNaN(rowIdx) || rowIdx < 2) return { success: false, message: "ID Baris tidak valid!" };
@@ -335,9 +328,9 @@ function verifikasiDataSK(form) {
    ====================================================================== */
 function rekamCCTV(aktivitas, data) {
   try {
-    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.SK_DATA); 
-    var sheet = ss.getSheetByName("Log_CCTV");
+    var sheet = getSheet("SK_DATA_DB", "Log_CCTV");
     if (!sheet) {
+      var ss = getDB("SK_DATA_DB");
       sheet = ss.insertSheet("Log_CCTV");
       sheet.appendRow(["TIMESTAMP", "AKTIVITAS", "DATA MENTAH"]);
     }
@@ -350,8 +343,7 @@ function rekamCCTV(aktivitas, data) {
    CORE: GET DATA SAMPAH (TRASH)
    ====================================================================== */
 function getTrashSK() {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_IDS.SK_DATA);
-  const sheet = ss.getSheetByName("Trash_SK");
+  const sheet = getSheet("SK_DATA_DB", "Trash_SK");
   if (!sheet) return [];
 
   var data = sheet.getDataRange().getDisplayValues();
@@ -378,9 +370,8 @@ function getTrashSK() {
    ====================================================================== */
 function restoreDataSK(form) {
   try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_IDS.SK_DATA);
-    const sheetTrash = ss.getSheetByName("Trash_SK");
-    const sheetActive = ss.getSheetByName("Unggah_SK");
+    const sheetTrash = getSheet("SK_DATA_DB", "Trash_SK");
+    const sheetActive = getSheet("SK_DATA_DB", "Unggah_SK");
     
     var rowIdx = parseInt(form.rowId);
     var values = sheetTrash.getRange(rowIdx, 1, 1, sheetTrash.getLastColumn()).getDisplayValues()[0];
@@ -410,8 +401,7 @@ function restoreDataSK(form) {
    ====================================================================== */
 function getSiabaStatusData() {
   try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_IDS.SK_DATA);
-    const sheet = ss.getSheetByName("Status_SK");
+    const sheet = getSheet("SK_DATA_DB", "Status_SK");
     
     // BAB VIII: getDisplayValues Validated
     var rawData = sheet.getDataRange().getDisplayValues();
@@ -448,15 +438,13 @@ function getSiabaStatusData() {
    ====================================================================== */
 function getDashboardSK(filterTahun, filterSemester) {
   try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_IDS.SK_DATA);
-    
-    const sheetData = ss.getSheetByName("Unggah_SK");
+    const sheetData = getSheet("SK_DATA_DB", "Unggah_SK");
     if (!sheetData) return { error: "Sheet 'Unggah_SK' tidak ditemukan!" };
     var rawData = sheetData.getDataRange().getDisplayValues();
     var rows = rawData.slice(1); 
 
     var masterSekolah = [];
-    var sheetMaster = ss.getSheetByName("Master_Sekolah");
+    var sheetMaster = getSheet("SK_DATA_DB", "Master_Sekolah");
     if (sheetMaster) {
         var rawMaster = sheetMaster.getDataRange().getDisplayValues();
         for (var i = 1; i < rawMaster.length; i++) {
@@ -731,8 +719,7 @@ function tandaiSemuaNotifMutasiDibaca_Global(role, unit) {
 
 function tandaiNotifDibaca(rowId, role) {
   try {
-    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.SK_DATA);
-    var sheet = ss.getSheetByName("Unggah_SK");
+    var sheet = getSheet("SK_DATA_DB", "Unggah_SK");
     var rIdx = parseInt(rowId);
     if (isNaN(rIdx)) return false;
     
@@ -756,8 +743,7 @@ function tandaiNotifDibaca(rowId, role) {
 
 function tandaiSemuaNotifDibaca(role, unit) {
   try {
-    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.SK_DATA);
-    var sheet = ss.getSheetByName("Unggah_SK");
+    var sheet = getSheet("SK_DATA_DB", "Unggah_SK");
     var data = sheet.getDataRange().getDisplayValues();
     
     var rLower = String(role || "").toLowerCase();

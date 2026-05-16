@@ -4,8 +4,10 @@
    Sheet: Master Data GTK
    ====================================================================== */
 
-var ID_DB_PTK = "1t0-Lmy0YD_GxHzimFWJGh5R5x6RhGL13uqKeVwWoCYE";
-var SHEET_PTK = "Master Data GTK";
+const KONFIG_PTK = {
+  DB_KEY: "PTK_DB",
+  SHEET_PTK: "Master Data GTK"
+};
 
 // 1. AMBIL OPSI FILTER (UNIT & STATUS)
 function getFilterOptionsPTK() {
@@ -15,8 +17,7 @@ function getFilterOptionsPTK() {
     const cached = cache.get(cacheKey);
     if (cached) return cached;
     
-    var ss = SpreadsheetApp.openById(ID_DB_PTK);
-    var sheet = ss.getSheetByName(SHEET_PTK);
+    var sheet = getSheet(KONFIG_PTK.DB_KEY, KONFIG_PTK.SHEET_PTK);
     if (!sheet) return JSON.stringify({ units: [], statuses: [] });
     
     var lastRow = sheet.getLastRow();
@@ -39,13 +40,12 @@ function getFilterOptionsPTK() {
 
 // 2. AMBIL DATA UTAMA (OPTIMASI DISPLAY VALUES)
 function getDataPTKSD(filterUnit, filterStatus) {
-  var ss = SpreadsheetApp.openById(ID_DB_PTK);
-  var sheet = ss.getSheetByName(SHEET_PTK);
+  var sheet = getSheet(KONFIG_PTK.DB_KEY, KONFIG_PTK.SHEET_PTK);
   var data = sheet.getDataRange().getValues();
   data.shift(); 
   
   // Ambil data usulan untuk mencari PTK Baru yang masih pending
-  var sheetUsulan = ss.getSheetByName("usulan_mutasi_sdn");
+  var sheetUsulan = getSheet(KONFIG_PTK.DB_KEY, "usulan_mutasi_sdn");
   var usulanData = sheetUsulan ? sheetUsulan.getDataRange().getValues() : [];
   var pendingPtkIds = new Set();
   for (var j = 1; j < usulanData.length; j++) {
@@ -107,8 +107,7 @@ function getDataPTKSD(filterUnit, filterStatus) {
 // 3. UPDATE DATA PTK
 function updateDataPTK(form) {
   try {
-    var ss = SpreadsheetApp.openById(ID_DB_PTK);
-    var sheet = ss.getSheetByName(SHEET_PTK);
+    var sheet = getSheet(KONFIG_PTK.DB_KEY, KONFIG_PTK.SHEET_PTK);
     var data = sheet.getDataRange().getValues();
     var rowIndex = -1;
     for(var i=1; i<data.length; i++){ if(String(data[i][0]) === String(form.id)){ rowIndex = i + 1; break; } }
@@ -171,8 +170,7 @@ function updateDataPTK(form) {
 
 // 4. INSERT DATA PTK (AUTO FILL LOGIC)
 function insertDataPTK(form, base64Data, fileName, jenisDokumen, userPengusul) {
-  var ss = SpreadsheetApp.openById(ID_DB_PTK); 
-  var sheet = ss.getSheetByName(SHEET_PTK);
+  var sheet = getSheet(KONFIG_PTK.DB_KEY, KONFIG_PTK.SHEET_PTK);
   if (!sheet) return "Error: Sheet 'Master Data GTK' tidak ditemukan.";
 
   // Deteksi Ganda NIP
@@ -267,8 +265,7 @@ function insertDataPTK(form, base64Data, fileName, jenisDokumen, userPengusul) {
 // 5. REVISI DATA PTK BARU (Tanpa Insert Baru)
 function revisiUsulanPTKBaru(form, base64Data, fileName, jenisDokumen, userPengusul) {
   try {
-    var ss = SpreadsheetApp.openById(ID_DB_PTK);
-    var sheet = ss.getSheetByName(SHEET_PTK);
+    var sheet = getSheet(KONFIG_PTK.DB_KEY, KONFIG_PTK.SHEET_PTK);
     if (!sheet) return "Error: Sheet 'Master Data GTK' tidak ditemukan.";
     var data = sheet.getDataRange().getValues();
     
@@ -340,7 +337,7 @@ function revisiUsulanPTKBaru(form, base64Data, fileName, jenisDokumen, userPengu
     }
 
     // Update usulan_mutasi_sdn
-    var sheetUsulan = ss.getSheetByName("usulan_mutasi_sdn");
+    var sheetUsulan = getSheet(KONFIG_PTK.DB_KEY, "usulan_mutasi_sdn");
     if (!sheetUsulan) return "Error: Sheet usulan tidak ditemukan.";
     var usulanData = sheetUsulan.getDataRange().getValues();
     var usulanRowIdx = -1;
@@ -372,14 +369,13 @@ function revisiUsulanPTKBaru(form, base64Data, fileName, jenisDokumen, userPengu
 // MODUL: REFERENSI (TIDAK BERUBAH)
 // ======================================================================
 function getReferensiPTK() {
-  var ss = SpreadsheetApp.openById(ID_DB_PTK);
   function getColData(sheetName, colIndex) {
-    var s = ss.getSheetByName(sheetName); if (!s) return []; var last = s.getLastRow(); if (last < 2) return [];
+    var s = getSheet(KONFIG_PTK.DB_KEY, sheetName); if (!s) return []; var last = s.getLastRow(); if (last < 2) return [];
     var data = s.getRange(2, colIndex, last - 1, 1).getValues(); var res = [];
     for (var i = 0; i < data.length; i++) { var val = String(data[i][0]).trim(); if (val !== "") res.push(val); } return res;
   }
   function getPangkat() {
-     var s = ss.getSheetByName("data_pangkat"); if(!s) return []; var last = s.getLastRow(); if (last < 2) return [];
+     var s = getSheet(KONFIG_PTK.DB_KEY, "data_pangkat"); if(!s) return []; var last = s.getLastRow(); if (last < 2) return [];
      var data = s.getRange(2, 1, last-1, 1).getValues(); var res = [];
      for(var i=0; i<data.length; i++) { var val = String(data[i][0]).trim(); if(val !== "") res.push(val); } return res;
   }
@@ -388,7 +384,7 @@ function getReferensiPTK() {
 
 function getUnitKerjaByNpsnPTK(npsn) {
   try {
-    var ss = SpreadsheetApp.openById(ID_DB_PTK); var sheet = ss.getSheetByName("Database Sekolah");
+    var sheet = getSheet(KONFIG_PTK.DB_KEY, "Database Sekolah");
     if (!sheet) return JSON.stringify({ error: "Sheet 'Database Sekolah' tidak ditemukan." });
     var lastRow = sheet.getLastRow(); if (lastRow < 2) return JSON.stringify({ error: "Database Sekolah kosong." });
     var data = sheet.getRange(2, 1, lastRow - 1, 3).getDisplayValues(); var searchNpsn = String(npsn).trim().toUpperCase();
@@ -412,8 +408,15 @@ function parseIndoDate(dateStr) {
 
 function moveDataPTKToNonAktif(id, reason, userLogin) {
   try {
-    var ss = SpreadsheetApp.openById(ID_DB_PTK); var sheetSource = ss.getSheetByName(SHEET_PTK); var sheetTarget = ss.getSheetByName("gtk_non_aktif");
-    if (!sheetTarget) { sheetTarget = ss.insertSheet("gtk_non_aktif"); var headers = sheetSource.getRange(1, 1, 1, sheetSource.getLastColumn()).getValues(); headers[0].push("Alasan Hapus", "Tanggal Hapus", "User Hapus"); sheetTarget.getRange(1, 1, 1, headers[0].length).setValues(headers); }
+    var sheetSource = getSheet(KONFIG_PTK.DB_KEY, KONFIG_PTK.SHEET_PTK); 
+    var sheetTarget = getSheet(KONFIG_PTK.DB_KEY, "gtk_non_aktif");
+    if (!sheetTarget) { 
+      var ss = getDB(KONFIG_PTK.DB_KEY);
+      sheetTarget = ss.insertSheet("gtk_non_aktif"); 
+      var headers = sheetSource.getRange(1, 1, 1, sheetSource.getLastColumn()).getValues(); 
+      headers[0].push("Alasan Hapus", "Tanggal Hapus", "User Hapus"); 
+      sheetTarget.getRange(1, 1, 1, headers[0].length).setValues(headers); 
+    }
     var data = sheetSource.getDataRange().getValues(); var rowIndex = -1;
     for (var i = 1; i < data.length; i++) { if (String(data[i][0]) === String(id)) { rowIndex = i; break; } }
     if (rowIndex === -1) return "Data tidak ditemukan.";
@@ -423,17 +426,17 @@ function moveDataPTKToNonAktif(id, reason, userLogin) {
   } catch (e) { return "Error: " + e.message; }
 }
 
-function getDataKeadaanGTK() { var ss = SpreadsheetApp.openById(ID_DB_PTK); var sheet = ss.getSheetByName("Keadaan GTK"); if (!sheet) return []; var lastRow = sheet.getLastRow(); if (lastRow < 3) return []; return sheet.getRange(3, 1, lastRow - 2, 56).getDisplayValues(); }
-function getDataKebutuhanGuru() { var ss = SpreadsheetApp.openById(ID_DB_PTK); var sheet = ss.getSheetByName("Kebutuhan Guru"); if (!sheet) return []; var lastRow = sheet.getLastRow(); if (lastRow < 3) return []; return sheet.getRange(3, 1, lastRow - 2, 42).getDisplayValues(); }
+function getDataKeadaanGTK() { var sheet = getSheet(KONFIG_PTK.DB_KEY, "Keadaan GTK"); if (!sheet) return []; var lastRow = sheet.getLastRow(); if (lastRow < 3) return []; return sheet.getRange(3, 1, lastRow - 2, 56).getDisplayValues(); }
+function getDataKebutuhanGuru() { var sheet = getSheet(KONFIG_PTK.DB_KEY, "Kebutuhan Guru"); if (!sheet) return []; var lastRow = sheet.getLastRow(); if (lastRow < 3) return []; return sheet.getRange(3, 1, lastRow - 2, 42).getDisplayValues(); }
 
 // =============================================================
 // BACKEND: KELOLA DATA PTK SD SWASTA (SDS)
 // =============================================================
 function getDataPTKSDS() {
   try {
-    var ss = SpreadsheetApp.openById(ID_DB_PTK); var sheet = ss.getSheetByName("Master Data GTK SDS"); if (!sheet) return JSON.stringify([]);
+    var sheet = getSheet(KONFIG_PTK.DB_KEY, "Master Data GTK SDS"); if (!sheet) return JSON.stringify([]);
     var lastRow = sheet.getLastRow(); if (lastRow < 2) return JSON.stringify([]); 
-    var data = sheet.getRange(2, 1, lastRow - 1, 33).getDisplayValues(); // Diperlebar
+    var data = sheet.getRange(2, 1, lastRow - 1, 33).getDisplayValues(); 
     var result = [];
     for (var i = 0; i < data.length; i++) {
       var row = data[i]; if(row[0] === "") continue; 
@@ -451,7 +454,7 @@ function getDataPTKSDS() {
 }
 
 function insertDataPTKSDS(form) {
-  var ss = SpreadsheetApp.openById(ID_DB_PTK); var sheet = ss.getSheetByName("Master Data GTK SDS");
+  var sheet = getSheet(KONFIG_PTK.DB_KEY, "Master Data GTK SDS");
   var data = sheet.getDataRange().getValues(); var inputNik = String(form.nik).trim(); 
   for (var i = 1; i < data.length; i++) { var rowNik = String(data[i][10]).replace(/'/g, "").trim(); if (rowNik === inputNik) return "NIK " + inputNik + " sudah terdaftar atas nama " + data[i][6] + ", hubungi admin."; }
   var newId = "SDS-" + new Date().getTime(); var namaFull = (form.gelar_depan ? form.gelar_depan + " " : "") + form.nama_lengkap + (form.gelar_belakang ? ", " + form.gelar_belakang : ""); var timestamp = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss");
@@ -467,7 +470,8 @@ function insertDataPTKSDS(form) {
 }
 
 function updateDataPTKSDS(form) {
-  var ss = SpreadsheetApp.openById(ID_DB_PTK); var sheet = ss.getSheetByName("Master Data GTK SDS"); var data = sheet.getDataRange().getValues();
+  var sheet = getSheet(KONFIG_PTK.DB_KEY, "Master Data GTK SDS");
+  var data = sheet.getDataRange().getValues();
   var rowIdx = -1; for (var i = 0; i < data.length; i++) { if (data[i][0] == form.id) { rowIdx = i + 1; break; } }
   if (rowIdx == -1) return "Error: ID tidak ditemukan.";
   var inputNik = String(form.nik || "").trim();
@@ -481,8 +485,15 @@ function updateDataPTKSDS(form) {
 }
 
 function deleteDataPTKSDS(id, alasan, userLogin) {
-  var ss = SpreadsheetApp.openById(ID_DB_PTK); var sheetSource = ss.getSheetByName("Master Data GTK SDS"); var sheetTarget = ss.getSheetByName("gtk_non_aktif_sds"); 
-  if (!sheetTarget) { sheetTarget = ss.insertSheet("gtk_non_aktif_sds"); var headers = sheetSource.getRange(1, 1, 1, sheetSource.getLastColumn()).getValues(); headers[0].push("Alasan Hapus", "Tanggal Hapus", "User Hapus"); sheetTarget.getRange(1, 1, 1, headers[0].length).setValues(headers); }
+  var sheetSource = getSheet(KONFIG_PTK.DB_KEY, "Master Data GTK SDS"); 
+  var sheetTarget = getSheet(KONFIG_PTK.DB_KEY, "gtk_non_aktif_sds"); 
+  if (!sheetTarget) { 
+    var ss = getDB(KONFIG_PTK.DB_KEY);
+    sheetTarget = ss.insertSheet("gtk_non_aktif_sds"); 
+    var headers = sheetSource.getRange(1, 1, 1, sheetSource.getLastColumn()).getValues(); 
+    headers[0].push("Alasan Hapus", "Tanggal Hapus", "User Hapus"); 
+    sheetTarget.getRange(1, 1, 1, headers[0].length).setValues(headers); 
+  }
   var data = sheetSource.getDataRange().getValues(); var rowIdx = -1; var rowData = [];
   for (var i = 1; i < data.length; i++) { if (String(data[i][0]) === String(id)) { rowIdx = i + 1; rowData = data[i]; break; } }
   if (rowIdx == -1) return "Error: Data tidak ditemukan.";
@@ -490,18 +501,21 @@ function deleteDataPTKSDS(id, alasan, userLogin) {
   sheetTarget.appendRow(rowData); sheetSource.deleteRow(rowIdx); return "Sukses";
 }
 
-function getDataKeadaanGTKSDS() { var ss = SpreadsheetApp.openById(ID_DB_PTK); var sheet = ss.getSheetByName("Keadaan GTK SDS"); if (!sheet) return []; var lastRow = sheet.getLastRow(); if (lastRow < 3) return []; return sheet.getRange(3, 1, lastRow - 2, 27).getDisplayValues(); }
-function getDataKebutuhanGuruSDS() { var ss = SpreadsheetApp.openById(ID_DB_PTK); var sheet = ss.getSheetByName("Kebutuhan Guru SDS"); if (!sheet) return []; var lastRow = sheet.getLastRow(); if (lastRow < 3) return []; return sheet.getRange(3, 1, lastRow - 2, 27).getDisplayValues(); }
+function getDataKeadaanGTKSDS() { var sheet = getSheet(KONFIG_PTK.DB_KEY, "Keadaan GTK SDS"); if (!sheet) return []; var lastRow = sheet.getLastRow(); if (lastRow < 3) return []; return sheet.getRange(3, 1, lastRow - 2, 27).getDisplayValues(); }
+function getDataKebutuhanGuruSDS() { var sheet = getSheet(KONFIG_PTK.DB_KEY, "Kebutuhan Guru SDS"); if (!sheet) return []; var lastRow = sheet.getLastRow(); if (lastRow < 3) return []; return sheet.getRange(3, 1, lastRow - 2, 27).getDisplayValues(); }
 
 // =============================================================
 // BACKEND: KELOLA DATA PTK PAUD
 // ID Spreadsheet: 1XetGkBymmN2NZQlXpzZ2MQyG0nhhZ0sXEPcNsLffhEU
 // =============================================================
-var ID_SPREADSHEET_PAUD = "1XetGkBymmN2NZQlXpzZ2MQyG0nhhZ0sXEPcNsLffhEU";
+const KONFIG_PTK_PAUD = {
+  DB_KEY: "PTK_PAUD_DB",
+  SHEET_PTK: "Master Data GTK PAUD"
+};
 
 function getDataPTKPAUD() {
   try {
-    var ss = SpreadsheetApp.openById(ID_SPREADSHEET_PAUD); var sheet = ss.getSheetByName("Master Data GTK PAUD"); if (!sheet) return JSON.stringify([]);
+    var sheet = getSheet(KONFIG_PTK_PAUD.DB_KEY, KONFIG_PTK_PAUD.SHEET_PTK); if (!sheet) return JSON.stringify([]);
     var lastRow = sheet.getLastRow(); if (lastRow < 2) return JSON.stringify([]); 
     var data = sheet.getRange(2, 1, lastRow - 1, 34).getDisplayValues(); 
     var result = [];
@@ -519,8 +533,7 @@ function getDataPTKPAUD() {
 
 function insertDataPTKPAUD(form, base64Data, fileName, jenisDokumen, userPengusul) {
   try {
-    var ss = SpreadsheetApp.openById(ID_SPREADSHEET_PAUD);
-    var sheet = ss.getSheetByName("Master Data GTK PAUD");
+    var sheet = getSheet(KONFIG_PTK_PAUD.DB_KEY, KONFIG_PTK_PAUD.SHEET_PTK);
     var data = sheet.getDataRange().getValues();
     var inputNik = String(form.nik).trim();
     for (var i = 1; i < data.length; i++) {
@@ -573,7 +586,8 @@ function insertDataPTKPAUD(form, base64Data, fileName, jenisDokumen, userPengusu
 }
 
 function updateDataPTKPAUD(form) {
-  var ss = SpreadsheetApp.openById(ID_SPREADSHEET_PAUD); var sheet = ss.getSheetByName("Master Data GTK PAUD"); var data = sheet.getDataRange().getValues();
+  var sheet = getSheet(KONFIG_PTK_PAUD.DB_KEY, KONFIG_PTK_PAUD.SHEET_PTK);
+  var data = sheet.getDataRange().getValues();
   var rowIdx = -1; for (var i = 0; i < data.length; i++) { if (data[i][0] == form.id) { rowIdx = i + 1; break; } }
   if (rowIdx == -1) return "Error: ID tidak ditemukan.";
   var inputNik = String(form.nik || "").trim();
@@ -586,8 +600,15 @@ function updateDataPTKPAUD(form) {
 }
 
 function deleteDataPTKPAUD(id, alasan, userLogin) {
-  var ss = SpreadsheetApp.openById(ID_SPREADSHEET_PAUD); var sheetSource = ss.getSheetByName("Master Data GTK PAUD"); var sheetTarget = ss.getSheetByName("gtk_non_aktif_paud"); 
-  if (!sheetTarget) { sheetTarget = ss.insertSheet("gtk_non_aktif_paud"); var headers = sheetSource.getRange(1, 1, 1, sheetSource.getLastColumn()).getValues(); headers[0].push("Alasan Hapus", "Tanggal Hapus", "User Hapus"); sheetTarget.getRange(1, 1, 1, headers[0].length).setValues(headers); }
+  var sheetSource = getSheet(KONFIG_PTK_PAUD.DB_KEY, KONFIG_PTK_PAUD.SHEET_PTK); 
+  var sheetTarget = getSheet(KONFIG_PTK_PAUD.DB_KEY, "gtk_non_aktif_paud"); 
+  if (!sheetTarget) { 
+    var ss = getDB(KONFIG_PTK_PAUD.DB_KEY);
+    sheetTarget = ss.insertSheet("gtk_non_aktif_paud"); 
+    var headers = sheetSource.getRange(1, 1, 1, sheetSource.getLastColumn()).getValues(); 
+    headers[0].push("Alasan Hapus", "Tanggal Hapus", "User Hapus"); 
+    sheetTarget.getRange(1, 1, 1, headers[0].length).setValues(headers); 
+  }
   var data = sheetSource.getDataRange().getValues(); var rowIdx = -1; var rowData = [];
   for (var i = 1; i < data.length; i++) { if (data[i][0] == id) { rowIdx = i + 1; rowData = data[i]; break; } }
   if (rowIdx == -1) return "Error: Data tidak ditemukan.";
@@ -595,19 +616,19 @@ function deleteDataPTKPAUD(id, alasan, userLogin) {
 }
 
 function getJenjangByNPSN(npsn) {
-  try { var ss = SpreadsheetApp.openById(ID_DB_PTK); var sheet = ss.getSheetByName("Database Sekolah"); if (!sheet) return "Sheet Tidak Ditemukan"; var lastRow = sheet.getLastRow(); var data = sheet.getRange(2, 1, lastRow - 1, 3).getDisplayValues(); var searchNpsn = String(npsn).trim(); for (var i = 0; i < data.length; i++) { if (String(data[i][0]).trim() === searchNpsn) return String(data[i][1]).trim(); } return ""; } catch (e) { return ""; }
+  try { var sheet = getSheet(KONFIG_PTK.DB_KEY, "Database Sekolah"); if (!sheet) return "Sheet Tidak Ditemukan"; var lastRow = sheet.getLastRow(); var data = sheet.getRange(2, 1, lastRow - 1, 3).getDisplayValues(); var searchNpsn = String(npsn).trim(); for (var i = 0; i < data.length; i++) { if (String(data[i][0]).trim() === searchNpsn) return String(data[i][1]).trim(); } return ""; } catch (e) { return ""; }
 }
 
-function getDataKeadaanGTKPAUD() { var ss = SpreadsheetApp.openById(ID_SPREADSHEET_PAUD); var sheet = ss.getSheetByName("Keadaan GTK PAUD"); if (!sheet) return []; var lastRow = sheet.getLastRow(); if (lastRow < 3) return []; return sheet.getRange(3, 1, lastRow - 2, 28).getDisplayValues(); }
+function getDataKeadaanGTKPAUD() { var sheet = getSheet(KONFIG_PTK_PAUD.DB_KEY, "Keadaan GTK PAUD"); if (!sheet) return []; var lastRow = sheet.getLastRow(); if (lastRow < 3) return []; return sheet.getRange(3, 1, lastRow - 2, 28).getDisplayValues(); }
 
 function ajukanMutasiPTKPAUD(idPtk, jenis, tujuan, tanggal, base64Data, fileName, userPengusul) {
   try {
-    var ss = SpreadsheetApp.openById(ID_SPREADSHEET_PAUD);
-    var sheetSource = ss.getSheetByName("Master Data GTK PAUD");
-    var sheetUsulan = ss.getSheetByName("usulan_mutasi_paud");
+    var sheetSource = getSheet(KONFIG_PTK_PAUD.DB_KEY, KONFIG_PTK_PAUD.SHEET_PTK);
+    var sheetUsulan = getSheet(KONFIG_PTK_PAUD.DB_KEY, "usulan_mutasi_paud");
     
     // Buat sheet usulan jika belum ada
     if (!sheetUsulan) {
+      var ss = getDB(KONFIG_PTK_PAUD.DB_KEY);
       sheetUsulan = ss.insertSheet("usulan_mutasi_paud");
       var headers = ["ID Usulan", "ID PTK", "Nama PTK", "Jenis Mutasi", "Lembaga Asal", "Lembaga Tujuan", "File SK", "Status", "Tanggal Usulan", "User Pengusul", "Tanggal Eksekusi", "User Eksekutor", "Catatan", "TMT/Tanggal"];
       sheetUsulan.getRange(1, 1, 1, headers.length).setValues([headers]);
@@ -669,8 +690,7 @@ function ajukanMutasiPTKPAUD(idPtk, jenis, tujuan, tanggal, base64Data, fileName
 
 function getUsulanMutasiPTKPAUD() {
   try {
-    var ss = SpreadsheetApp.openById(ID_SPREADSHEET_PAUD);
-    var sheet = ss.getSheetByName("usulan_mutasi_paud");
+    var sheet = getSheet(KONFIG_PTK_PAUD.DB_KEY, "usulan_mutasi_paud");
     if (!sheet) return JSON.stringify([]);
     
     var lastRow = sheet.getLastRow();
@@ -704,9 +724,8 @@ function getUsulanMutasiPTKPAUD() {
 
 function eksekusiMutasiPTKPAUD(idUsulan, keputusan, userEksekutor) {
   try {
-    var ss = SpreadsheetApp.openById(ID_SPREADSHEET_PAUD);
-    var sheetUsulan = ss.getSheetByName("usulan_mutasi_paud");
-    var sheetSource = ss.getSheetByName("Master Data GTK PAUD");
+    var sheetUsulan = getSheet(KONFIG_PTK_PAUD.DB_KEY, "usulan_mutasi_paud");
+    var sheetSource = getSheet(KONFIG_PTK_PAUD.DB_KEY, KONFIG_PTK_PAUD.SHEET_PTK);
     
     if (!sheetUsulan) return "Error: Sheet usulan tidak ditemukan.";
     
@@ -754,8 +773,9 @@ function eksekusiMutasiPTKPAUD(idUsulan, keputusan, userEksekutor) {
         sheetSource.getRange(ptkRowIdx, 3).setValue(tujuan);
       } else {
         // Mutasi Luar Kecamatan atau Tidak Aktif: Pindahkan ke sheet "gtk_non_aktif_paud"
-        var sheetTarget = ss.getSheetByName("gtk_non_aktif_paud");
+        var sheetTarget = getSheet(KONFIG_PTK_PAUD.DB_KEY, "gtk_non_aktif_paud");
         if (!sheetTarget) {
+          var ss = getDB(KONFIG_PTK_PAUD.DB_KEY);
           sheetTarget = ss.insertSheet("gtk_non_aktif_paud");
           var headers = sheetSource.getRange(1, 1, 1, sheetSource.getLastColumn()).getValues();
           headers[0].push("Alasan Hapus", "Tanggal Hapus", "User Hapus");
@@ -785,8 +805,7 @@ function hapusUsulanPTKPAUD(dataKirim) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
-    var ss = SpreadsheetApp.openById(ID_SPREADSHEET_PAUD);
-    var sheetUsulan = ss.getSheetByName("usulan_mutasi_paud");
+    var sheetUsulan = getSheet(KONFIG_PTK_PAUD.DB_KEY, "usulan_mutasi_paud");
 
     if (!sheetUsulan) throw new Error("Sheet usulan tidak ditemukan.");
 
@@ -833,8 +852,7 @@ function hapusUsulanPTKPAUD(dataKirim) {
 // =============================================================
 function getNotifikasiMutasiPAUD(role, unit) {
   try {
-    var ss = SpreadsheetApp.openById(ID_SPREADSHEET_PAUD);
-    var sheet = ss.getSheetByName("usulan_mutasi_paud");
+    var sheet = getSheet("PTK_PAUD_DB", "usulan_mutasi_paud");
     if (!sheet) return { count: 0, recent: [] };
     
     var data = sheet.getDataRange().getValues();
@@ -901,8 +919,7 @@ function getNotifikasiMutasiPAUD(role, unit) {
 
 function tandaiNotifMutasiPAUDDibaca(rowId, role) {
   try {
-    var ss = SpreadsheetApp.openById(ID_SPREADSHEET_PAUD);
-    var sheet = ss.getSheetByName("usulan_mutasi_paud");
+    var sheet = getSheet("PTK_PAUD_DB", "usulan_mutasi_paud");
     if (!sheet) return;
     
     var currentRead = String(sheet.getRange(rowId, 15).getValue() || "").trim(); // Kolom O
@@ -923,12 +940,12 @@ function tandaiNotifMutasiPAUDDibaca(rowId, role) {
 
 function ajukanMutasiPTKSDN(idPtk, jenis, tujuan, tanggal, base64Data, fileName, userPengusul) {
   try {
-    var ss = SpreadsheetApp.openById(ID_DB_PTK);
-    var sheetSource = ss.getSheetByName(SHEET_PTK);
-    var sheetUsulan = ss.getSheetByName("usulan_mutasi_sdn");
+    var sheetSource = getSheet("PTK_DB", SHEET_PTK);
+    var sheetUsulan = getSheet("PTK_DB", "usulan_mutasi_sdn");
     
     // Buat sheet usulan jika belum ada
     if (!sheetUsulan) {
+      var ss = getDB("PTK_DB");
       sheetUsulan = ss.insertSheet("usulan_mutasi_sdn");
       var headers = ["ID Usulan", "ID PTK", "Nama PTK", "Jenis Mutasi", "Lembaga Asal", "Lembaga Tujuan", "TMT/Tanggal", "File SK", "Status", "Tanggal Usulan", "User Pengusul", "Tanggal Eksekusi", "User Eksekutor", "Catatan"];
       sheetUsulan.getRange(1, 1, 1, headers.length).setValues([headers]);
@@ -990,8 +1007,7 @@ function ajukanMutasiPTKSDN(idPtk, jenis, tujuan, tanggal, base64Data, fileName,
 
 function getUsulanMutasiPTKSDN() {
   try {
-    var ss = SpreadsheetApp.openById(ID_DB_PTK);
-    var sheet = ss.getSheetByName("usulan_mutasi_sdn");
+    var sheet = getSheet("PTK_DB", "usulan_mutasi_sdn");
     if (!sheet) return JSON.stringify([]);
     
     var lastRow = sheet.getLastRow();
@@ -1025,9 +1041,8 @@ function getUsulanMutasiPTKSDN() {
 
 function eksekusiMutasiPTKSDN(idUsulan, keputusan, userEksekutor) {
   try {
-    var ss = SpreadsheetApp.openById(ID_DB_PTK);
-    var sheetUsulan = ss.getSheetByName("usulan_mutasi_sdn");
-    var sheetSource = ss.getSheetByName(SHEET_PTK);
+    var sheetUsulan = getSheet("PTK_DB", "usulan_mutasi_sdn");
+    var sheetSource = getSheet("PTK_DB", SHEET_PTK);
     
     if (!sheetUsulan) return "Error: Sheet usulan tidak ditemukan.";
     
@@ -1106,8 +1121,7 @@ function hapusUsulanPTKSDN(dataKirim) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
-    var ss = SpreadsheetApp.openById(ID_DB_PTK);
-    var sheetUsulan = ss.getSheetByName("usulan_mutasi_sdn");
+    var sheetUsulan = getSheet("PTK_DB", "usulan_mutasi_sdn");
 
     if (!sheetUsulan) throw new Error("Sheet usulan tidak ditemukan.");
 
@@ -1154,8 +1168,7 @@ function hapusUsulanPTKSDN(dataKirim) {
 // =============================================================
 function getNotifikasiMutasiSDN(role, unit) {
   try {
-    var ss = SpreadsheetApp.openById(ID_DB_PTK);
-    var sheet = ss.getSheetByName("usulan_mutasi_sdn");
+    var sheet = getSheet("PTK_DB", "usulan_mutasi_sdn");
     if (!sheet) return { count: 0, recent: [] };
     
     var data = sheet.getDataRange().getValues();
@@ -1222,8 +1235,7 @@ function getNotifikasiMutasiSDN(role, unit) {
 
 function tandaiNotifMutasiSDNDibaca(rowId, role) {
   try {
-    var ss = SpreadsheetApp.openById(ID_DB_PTK);
-    var sheet = ss.getSheetByName("usulan_mutasi_sdn");
+    var sheet = getSheet("PTK_DB", "usulan_mutasi_sdn");
     if (!sheet) return;
     
     var currentRead = String(sheet.getRange(rowId, 15).getValue() || "").trim(); // Kolom O
@@ -1244,12 +1256,12 @@ function tandaiNotifMutasiSDNDibaca(rowId, role) {
 
 function ajukanMutasiPTKSDS(idPtk, jenis, tujuan, tanggal, base64Data, fileName, userPengusul) {
   try {
-    var ss = SpreadsheetApp.openById(ID_DB_PTK);
-    var sheetSource = ss.getSheetByName("Master Data GTK SDS");
-    var sheetUsulan = ss.getSheetByName("usul_mutasi_sds");
+    var sheetSource = getSheet("PTK_DB", "Master Data GTK SDS");
+    var sheetUsulan = getSheet("PTK_DB", "usul_mutasi_sds");
     
     // Buat sheet usulan jika belum ada
     if (!sheetUsulan) {
+      var ss = getDB("PTK_DB");
       sheetUsulan = ss.insertSheet("usul_mutasi_sds");
       var headers = ["ID Usulan", "ID PTK", "Nama PTK", "Jenis Mutasi", "Lembaga Asal", "Lembaga Tujuan", "TMT/Tanggal", "File SK", "Status", "Tanggal Usulan", "User Pengusul", "Tanggal Eksekusi", "User Eksekutor", "Catatan"];
       sheetUsulan.getRange(1, 1, 1, headers.length).setValues([headers]);
@@ -1311,8 +1323,7 @@ function ajukanMutasiPTKSDS(idPtk, jenis, tujuan, tanggal, base64Data, fileName,
 
 function getUsulanMutasiPTKSDS() {
   try {
-    var ss = SpreadsheetApp.openById(ID_DB_PTK);
-    var sheet = ss.getSheetByName("usul_mutasi_sds");
+    var sheet = getSheet("PTK_DB", "usul_mutasi_sds");
     if (!sheet) return JSON.stringify([]);
     
     var lastRow = sheet.getLastRow();
@@ -1346,8 +1357,7 @@ function getUsulanMutasiPTKSDS() {
 
 function updateUsulanMutasiPTKSDS(idUsulan, idPtk, jenis, tujuan, tanggal, base64Data, fileName, userPengusul) {
   try {
-    var ss = SpreadsheetApp.openById(ID_DB_PTK);
-    var sheetUsulan = ss.getSheetByName("usul_mutasi_sds");
+    var sheetUsulan = getSheet("PTK_DB", "usul_mutasi_sds");
     if (!sheetUsulan) return "Error: Sheet usulan tidak ditemukan.";
     
     var lastRow = sheetUsulan.getLastRow();
@@ -1397,9 +1407,8 @@ function updateUsulanMutasiPTKSDS(idUsulan, idPtk, jenis, tujuan, tanggal, base6
 
 function eksekusiMutasiPTKSDS(idUsulan, keputusan, userEksekutor) {
   try {
-    var ss = SpreadsheetApp.openById(ID_DB_PTK);
-    var sheetUsulan = ss.getSheetByName("usul_mutasi_sds");
-    var sheetSource = ss.getSheetByName("Master Data GTK SDS");
+    var sheetUsulan = getSheet("PTK_DB", "usul_mutasi_sds");
+    var sheetSource = getSheet("PTK_DB", "Master Data GTK SDS");
     
     if (!sheetUsulan) return "Error: Sheet usulan tidak ditemukan.";
     
@@ -1478,8 +1487,7 @@ function hapusUsulanPTKSDS(dataKirim) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
-    var ss = SpreadsheetApp.openById(ID_DB_PTK);
-    var sheetUsulan = ss.getSheetByName("usul_mutasi_sds");
+    var sheetUsulan = getSheet("PTK_DB", "usul_mutasi_sds");
 
     if (!sheetUsulan) throw new Error("Sheet usulan tidak ditemukan.");
 
@@ -1526,8 +1534,7 @@ function hapusUsulanPTKSDS(dataKirim) {
 // =============================================================
 function getNotifikasiMutasiSDS(role, unit) {
   try {
-    var ss = SpreadsheetApp.openById(ID_DB_PTK);
-    var sheet = ss.getSheetByName("usul_mutasi_sds");
+    var sheet = getSheet("PTK_DB", "usul_mutasi_sds");
     if (!sheet) return { count: 0, recent: [] };
     
     var data = sheet.getDataRange().getValues();
@@ -1594,8 +1601,7 @@ function getNotifikasiMutasiSDS(role, unit) {
 
 function tandaiNotifMutasiSDSDibaca(rowId, role) {
   try {
-    var ss = SpreadsheetApp.openById(ID_DB_PTK);
-    var sheet = ss.getSheetByName("usul_mutasi_sds");
+    var sheet = getSheet("PTK_DB", "usul_mutasi_sds");
     if (!sheet) return;
     
     var currentRead = String(sheet.getRange(rowId, 15).getValue() || "").trim(); // Kolom O

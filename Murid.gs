@@ -1,12 +1,10 @@
-// ==========================================
-// DATA MURID PAUD MENURUT ROMBEL
-// ID: 1an0oQQPdMh6wrUJIAzTGYk3DKFvYprK5SU7RmRXjIgs
-// ==========================================
+const KONFIG_MURID = {
+  PAUD_DB: "LAPBUL_PAUD_DB",
+  SD_DB: "LAPBUL_SD_DB"
+};
 
 function getDataMuridPAUDRombel() {
-  var id = "1an0oQQPdMh6wrUJIAzTGYk3DKFvYprK5SU7RmRXjIgs"; 
-  var ss = SpreadsheetApp.openById(id);
-  var sheet = ss.getSheetByName("Murid Rombel PAUD");
+  var sheet = getSheet(KONFIG_MURID.PAUD_DB, "Murid Rombel PAUD");
   if (!sheet) return [];
   
   var lastRow = sheet.getLastRow();
@@ -24,9 +22,7 @@ function getDataMuridPAUDRombel() {
 // ==========================================
 
 function getDataMuridPAUDJK() {
-  var id = "1an0oQQPdMh6wrUJIAzTGYk3DKFvYprK5SU7RmRXjIgs"; 
-  var ss = SpreadsheetApp.openById(id);
-  var sheet = ss.getSheetByName("Murid JK PAUD");
+  var sheet = getSheet(KONFIG_MURID.PAUD_DB, "Murid JK PAUD");
   if (!sheet) return [];
   
   var lastRow = sheet.getLastRow();
@@ -45,9 +41,7 @@ function getDataMuridPAUDJK() {
 // ==========================================
 
 function getDataMuridSDKelas() {
-  var id = "1u4tNL3uqt5xHITXYwHnytK6Kul9Siam-vNYuzmdZB4s"; 
-  var ss = SpreadsheetApp.openById(id);
-  var sheet = ss.getSheetByName("Murid SD per Kelas");
+  var sheet = getSheet(KONFIG_MURID.SD_DB, "Murid SD per Kelas");
   if (!sheet) return [];
   
   var lastRow = sheet.getLastRow();
@@ -65,9 +59,7 @@ function getDataMuridSDKelas() {
 // ==========================================
 
 function getDataMuridSDRombel() {
-  var id = "1u4tNL3uqt5xHITXYwHnytK6Kul9Siam-vNYuzmdZB4s"; 
-  var ss = SpreadsheetApp.openById(id);
-  var sheet = ss.getSheetByName("Murid SD per Rombel");
+  var sheet = getSheet(KONFIG_MURID.SD_DB, "Murid SD per Rombel");
   if (!sheet) return [];
   
   var lastRow = sheet.getLastRow();
@@ -86,9 +78,7 @@ function getDataMuridSDRombel() {
 // ==========================================
 
 function getDataMuridSDAgama() {
-  var id = "1u4tNL3uqt5xHITXYwHnytK6Kul9Siam-vNYuzmdZB4s"; 
-  var ss = SpreadsheetApp.openById(id);
-  var sheet = ss.getSheetByName("Murid SD per Agama");
+  var sheet = getSheet(KONFIG_MURID.SD_DB, "Murid SD per Agama");
   if (!sheet) return [];
   
   var lastRow = sheet.getLastRow();
@@ -172,8 +162,7 @@ function getDashboardMuridData(tahunFilter, bulanFilter) {
   // 1. DATA SD
   // =========================================================
   try {
-    var ssSD = SpreadsheetApp.openById("1u4tNL3uqt5xHITXYwHnytK6Kul9Siam-vNYuzmdZB4s");
-    var sheetInputSD = ssSD.getSheetByName("Input SD");
+    var sheetInputSD = getSheet(KONFIG_MURID.SD_DB, "Input SD");
     
     if (sheetInputSD) {
         var lastRow = sheetInputSD.getLastRow();
@@ -250,8 +239,7 @@ function getDashboardMuridData(tahunFilter, bulanFilter) {
   // 2. DATA PAUD
   // =========================================================
   try {
-    var ssPAUD = SpreadsheetApp.openById("1an0oQQPdMh6wrUJIAzTGYk3DKFvYprK5SU7RmRXjIgs");
-    var sheetInputPAUD = ssPAUD.getSheetByName("Input PAUD");
+    var sheetInputPAUD = getSheet(KONFIG_MURID.PAUD_DB, "Input PAUD");
     if (sheetInputPAUD) {
         var lastRow = sheetInputPAUD.getLastRow();
         if (lastRow > 1) {

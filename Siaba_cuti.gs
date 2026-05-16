@@ -3,8 +3,8 @@
    ====================================================================== */
 
 const KONFIG_CUTI = {
-  DB_ID: "1UYG80gGxuC19ieaVBzJaUV8bhlS2q5gExr0-Yl7upKo", 
-  FOLDER_ID: "1uPeOU7F_mgjZVyOLSsj-3LXGdq9rmmWl",
+  DB_KEY: "SIABA_CUTI_DB", 
+  FOLDER_ID: FOLDER_CONFIG.SIABA_CUTI_DOCS,
   SHEET_MAIN: "Form Cuti",
   SHEET_DB: "Database Cuti"
 };
@@ -14,10 +14,7 @@ const KONFIG_CUTI = {
    ====================================================================== */
 function getUnitKerjaByNPSN(npsn) {
   try {
-    const ss = SpreadsheetApp.openById(KONFIG_CUTI.DB_ID);
-    const sheet = ss.getSheetByName("Database_Sekolah");
-    if (!sheet) return JSON.stringify({ error: "Sheet Database_Sekolah tidak ditemukan." });
-
+    const sheet = getSheet(KONFIG_CUTI.DB_KEY, "Database_Sekolah");
     const data = sheet.getDataRange().getDisplayValues();
     for (let i = 1; i < data.length; i++) {
       if (String(data[i][0]).trim() === String(npsn).trim()) {
@@ -28,26 +25,11 @@ function getUnitKerjaByNPSN(npsn) {
   } catch (e) { return JSON.stringify({ error: "Error Server: " + e.message }); }
 }
 
-function getDatabasePegawai() {
-  try {
-    const ss = SpreadsheetApp.openById(KONFIG_CUTI.DB_ID);
-    const sheet = ss.getSheetByName("Database_ASN");
-    if (!sheet) return [];
-
-    const data = sheet.getDataRange().getDisplayValues();
-    let result = [];
-    for (let i = 1; i < data.length; i++) {
-      result.push({ unit: data[i][0], nip: data[i][1], nama: data[i][2], npsn: data[i][3] });
-    }
-    return result;
-  } catch (e) { return []; }
-}
+// (getDatabasePegawai dipindahkan ke Siaba_helper.gs)
 
 function getDatabaseCutiOptions() {
   try {
-    var ss = SpreadsheetApp.openById(KONFIG_CUTI.DB_ID);
-    var sheet = ss.getSheetByName(KONFIG_CUTI.SHEET_DB);
-    if (!sheet) return JSON.stringify([]);
+    var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_DB);
     
     var data = sheet.getDataRange().getDisplayValues();
     var res = [];
@@ -72,9 +54,7 @@ function getDatabaseCutiOptions() {
    ====================================================================== */
 function getDataCuti(tahun, bulan, unitFilter) { 
   try {
-    var ss = SpreadsheetApp.openById(KONFIG_CUTI.DB_ID);
-    var sheet = ss.getSheetByName(KONFIG_CUTI.SHEET_MAIN);
-    if (!sheet) return JSON.stringify({ error: "Sheet Form Cuti tidak ditemukan." });
+    var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
     
     var lastRow = sheet.getLastRow();
     if (lastRow < 2) return JSON.stringify([]);
@@ -138,8 +118,7 @@ function simpanPengajuanCuti(payload) {
     var errorBentrok = cekBentrokCuti(payload.nip, payload.tglMulai, payload.tglSelesai, null);
     if (errorBentrok) return errorBentrok;
 
-    var ss = SpreadsheetApp.openById(KONFIG_CUTI.DB_ID);
-    var sheet = ss.getSheetByName(KONFIG_CUTI.SHEET_MAIN);
+    var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
     
     var sysDateStr = "'" + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MM-yyyy HH:mm:ss");
     var tglMulaiIndo = formatIndoText(payload.tglMulai);
@@ -177,8 +156,7 @@ function updatePengajuanCuti(payload) {
     var errorBentrok = cekBentrokCuti(payload.nip, payload.tglMulai, payload.tglSelesai, rowIndex);
     if (errorBentrok) return errorBentrok;
 
-    var ss = SpreadsheetApp.openById(KONFIG_CUTI.DB_ID);
-    var sheet = ss.getSheetByName(KONFIG_CUTI.SHEET_MAIN);
+    var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
     
     var statusLama = String(sheet.getRange(rowIndex, 11).getValue()).toLowerCase();
     if (statusLama.includes("ok") || statusLama.includes("setuju")) return "Gagal: Data sudah Disetujui.";
@@ -223,8 +201,7 @@ function hapusPengajuanCuti(rowBaris, kodeInput, userDelete) {
     var d = new Date(); var kd = d.getFullYear()+""+String(d.getMonth()+1).padStart(2,'0')+""+String(d.getDate()).padStart(2,'0');
     if (String(kodeInput).trim() !== kd) return "KODE_SALAH";
 
-    var ss = SpreadsheetApp.openById(KONFIG_CUTI.DB_ID);
-    var sheet = ss.getSheetByName(KONFIG_CUTI.SHEET_MAIN);
+    var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
     sheet.deleteRow(parseInt(rowBaris));
     SpreadsheetApp.flush();
     return "Sukses";
@@ -235,8 +212,7 @@ function verifikasiPengajuan(rowBaris, status, catatan, adminName) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(20000);
-    var ss = SpreadsheetApp.openById(KONFIG_CUTI.DB_ID);
-    var sheet = ss.getSheetByName(KONFIG_CUTI.SHEET_MAIN);
+    var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
     var row = parseInt(rowBaris);
 
     var rowData = sheet.getRange(row, 1, 1, 51).getDisplayValues()[0];
@@ -283,8 +259,8 @@ function verifikasiPengajuan(rowBaris, status, catatan, adminName) {
    ====================================================================== */
 
 function cekBentrokCuti(nipBaru, tglMulaiBaruStr, tglSelesaiBaruStr, rowIdPengecualian) {
-  var ss = SpreadsheetApp.openById(KONFIG_CUTI.DB_ID);
-  var data = ss.getSheetByName(KONFIG_CUTI.SHEET_MAIN).getDataRange().getDisplayValues();
+  var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
+  var data = sheet.getDataRange().getDisplayValues();
   var d1 = new Date(tglMulaiBaruStr); d1.setHours(0,0,0,0);
   var d2 = new Date(tglSelesaiBaruStr); d2.setHours(0,0,0,0);
 
@@ -304,14 +280,16 @@ function cekBentrokCuti(nipBaru, tglMulaiBaruStr, tglSelesaiBaruStr, rowIdPengec
 }
 
 function getDetailPegawaiByNip(targetNip) {
-  var data = SpreadsheetApp.openById(KONFIG_CUTI.DB_ID).getSheetByName(KONFIG_CUTI.SHEET_DB).getDataRange().getDisplayValues();
+  var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_DB);
+  var data = sheet.getDataRange().getDisplayValues();
   for (var i = 1; i < data.length; i++) { if (String(data[i][0]).trim() === String(targetNip).trim()) return { golongan: data[i][4], jabatan: data[i][5], unitLengkap: data[i][6], masaKerja: data[i][7], fullRow: data[i] }; }
   return null;
 }
 
 function lookupPejabatStruktural(jenisCuti, unitUser, golUser, tugasUser) {
   try {
-      var data = SpreadsheetApp.openById(KONFIG_CUTI.DB_ID).getSheetByName("Data Atasan").getDataRange().getDisplayValues();
+      var sheet = getSheet(KONFIG_CUTI.DB_KEY, "Data Atasan");
+      var data = sheet.getDataRange().getDisplayValues();
       var j = String(jenisCuti).toLowerCase().trim();
       var t = String(tugasUser).toLowerCase().trim();
       var g = String(golUser).toLowerCase().trim();
@@ -450,9 +428,7 @@ function parseDateIndo(str) { if(!str) return null; str = String(str).toLowerCas
    ====================================================================== */
 function getSisaCutiData() {
   try {
-    var ss = SpreadsheetApp.openById(KONFIG_CUTI.DB_ID);
-    var sheet = ss.getSheetByName("Sisa CT");
-    if (!sheet) return JSON.stringify({ error: "Sheet 'Sisa CT' tidak ditemukan di database." });
+    var sheet = getSheet(KONFIG_CUTI.DB_KEY, "Sisa CT");
     
     var lastRow = sheet.getLastRow();
     if (lastRow < 1) return JSON.stringify({ headers: [], data: [] });
@@ -474,11 +450,8 @@ function getSisaCutiData() {
 }
 
 function getRekapYears() {
-  var ID_MASTER = KONFIG_CUTI.DB_ID;
   try {
-    var ss = SpreadsheetApp.openById(ID_MASTER);
-    var sheet = ss.getSheetByName("Jumlah Cuti");
-    if (!sheet) return [];
+    var sheet = getSheet(KONFIG_CUTI.DB_KEY, "Jumlah Cuti");
     var lastRow = sheet.getLastRow();
     if (lastRow < 2) return [];
     
@@ -489,11 +462,10 @@ function getRekapYears() {
 }
 
 function getRekapData(targetInput) {
-  var ID_MASTER = KONFIG_CUTI.DB_ID;
-  var ss, sheet;
-  try { ss = SpreadsheetApp.openById(ID_MASTER); sheet = ss.getSheetByName(targetInput); } catch(e) {}
+  var sheet;
+  try { sheet = getSheet(KONFIG_CUTI.DB_KEY, targetInput); } catch(e) {}
   if (!sheet) {
-      try { ss = SpreadsheetApp.openById(targetInput); sheet = ss.getSheets()[0]; } 
+      try { var ss = getDBById(targetInput); sheet = ss.getSheets()[0]; } 
       catch(e) { return JSON.stringify({ error: "Gagal membuka data. Pastikan Nama Tab atau ID File benar." }); }
   }
   try {
@@ -513,9 +485,7 @@ function getRekapData(targetInput) {
 
 function getUnitOptionsUnggah() {
   try {
-    var ss = SpreadsheetApp.openById(KONFIG_CUTI.DB_ID);
-    var sheet = ss.getSheetByName(KONFIG_CUTI.SHEET_MAIN);
-    if (!sheet) return [];
+    var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
     
     var lastRow = sheet.getLastRow();
     if (lastRow < 2) return [];
@@ -538,9 +508,7 @@ function getUnitOptionsUnggah() {
 
 function getDaftarUnggahCuti(tahun, bulan, unit, status) {
   try {
-    var ss = SpreadsheetApp.openById(KONFIG_CUTI.DB_ID);
-    var sheet = ss.getSheetByName(KONFIG_CUTI.SHEET_MAIN);
-    if (!sheet) return JSON.stringify([]);
+    var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
 
     var lastRow = sheet.getLastRow();
     if (lastRow < 2) return JSON.stringify([]);
@@ -629,8 +597,7 @@ function getDaftarUnggahCuti(tahun, bulan, unit, status) {
 
 function simpanUnggahSurat(form, fileData) {
   try {
-    var ss = SpreadsheetApp.openById(KONFIG_CUTI.DB_ID);
-    var sheet = ss.getSheetByName(KONFIG_CUTI.SHEET_MAIN);
+    var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
     var row = parseInt(form.recId);
     
     if (isNaN(row) || row < 2) throw new Error("Data tidak valid.");
@@ -677,8 +644,7 @@ function simpanUnggahSurat(form, fileData) {
 
 function verifikasiUnggahSurat(form) {
   try {
-    var ss = SpreadsheetApp.openById(KONFIG_CUTI.DB_ID);
-    var sheet = ss.getSheetByName(KONFIG_CUTI.SHEET_MAIN);
+    var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
     var row = parseInt(form.recId);
 
     var now = new Date();
@@ -699,9 +665,7 @@ function verifikasiUnggahSurat(form) {
    ---------------------------------------------------------------------- */
 function getNotifikasiCuti(role, unit) {
   try {
-    var ss = SpreadsheetApp.openById(KONFIG_CUTI.DB_ID);
-    var sheet = ss.getSheetByName(KONFIG_CUTI.SHEET_MAIN);
-    if (!sheet) return { count: 0, recent: [] };
+    var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
     var data = sheet.getDataRange().getDisplayValues();
     var rLower = String(role || "").toLowerCase();
     var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
@@ -727,9 +691,7 @@ function getNotifikasiCuti(role, unit) {
 
 function getNotifikasiSuratCuti(role, unit) {
   try {
-    var ss = SpreadsheetApp.openById(KONFIG_CUTI.DB_ID);
-    var sheet = ss.getSheetByName(KONFIG_CUTI.SHEET_MAIN);
-    if (!sheet) return { count: 0, recent: [] };
+    var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
     var data = sheet.getDataRange().getDisplayValues();
     var rLower = String(role || "").toLowerCase();
     var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
@@ -798,22 +760,43 @@ function getNotifikasiSuratCuti(role, unit) {
 
 function tandaiNotifCutiDibaca(rowId, role) {
     try {
-        var ss = SpreadsheetApp.openById(KONFIG_CUTI.DB_ID); var sheet = ss.getSheetByName(KONFIG_CUTI.SHEET_MAIN);
-        var r = parseInt(rowId); var mark = (role === "Admin") ? "Admin" : "User";
-        var cur = String(sheet.getRange(r, 20).getDisplayValue() || "").trim();
-        if (cur === "") sheet.getRange(r, 20).setValue(mark);
-        else { var l = cur.split(","); if (l.indexOf(mark) === -1) { l.push(mark); sheet.getRange(r, 20).setValue(l.join(",")); } }
+        var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
+        var rIdx = parseInt(rowId);
+        var mark = (role === "Admin") ? "Admin" : "User";
+        var cur = String(sheet.getRange(rIdx, 20).getDisplayValue() || "").trim();
+        if (cur === "") sheet.getRange(rIdx, 20).setValue(mark);
+        else { var l = cur.split(","); if (l.indexOf(mark) === -1) { l.push(mark); sheet.getRange(rIdx, 20).setValue(l.join(",")); } }
         return true;
     } catch (e) { return false; }
 }
 
 function tandaiNotifSuratCutiDibaca(rowId, role) {
     try {
-        var ss = SpreadsheetApp.openById(KONFIG_CUTI.DB_ID); var sheet = ss.getSheetByName(KONFIG_CUTI.SHEET_MAIN);
+        var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
         var r = parseInt(rowId); var mark = (role === "Admin") ? "Admin" : "User";
         var cur = String(sheet.getRange(r, 51).getDisplayValue() || "").trim();
         if (cur === "") sheet.getRange(r, 51).setValue(mark);
         else { var l = cur.split(","); if (l.indexOf(mark) === -1) { l.push(mark); sheet.getRange(r, 51).setValue(l.join(",")); } }
+        return true;
+    } catch (e) { return false; }
+}
+
+function tandaiSemuaNotifCutiDibaca(role, unit) {
+    try {
+        var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
+        var data = sheet.getDataRange().getDisplayValues();
+        var mark = (role === "Admin") ? "Admin" : "User";
+        for (var i = 1; i < data.length; i++) {
+            var row = data[i];
+            var status = String(row[10] || "").trim();
+            var isDiproses = (status === "Diproses" || status === "");
+            var isTarget = (role === "Admin") ? isDiproses : (String(row[1]).trim().toUpperCase() === String(unit).trim().toUpperCase() && !isDiproses);
+            var cur = String(row[19] || "").trim();
+            if (isTarget && cur.indexOf(mark) === -1) {
+                var newVal = cur === "" ? mark : cur + "," + mark;
+                sheet.getRange(i + 1, 20).setValue(newVal);
+            }
+        }
         return true;
     } catch (e) { return false; }
 }

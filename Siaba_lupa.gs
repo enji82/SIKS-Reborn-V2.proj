@@ -4,9 +4,9 @@
 
 // 1. PUSAT KONTROL DATABASE
 const KONFIG_LUPA = {
-  DB_ID: "160IjN8aiDAgDYXjgDLStS4nCZLKn3Ny-dq3BOFAfDrU", 
+  DB_KEY: "SIABA_LUPA_DB", 
   SHEET_NAMA: "Lupa_Presensi",
-  FOLDER_ID: (typeof FOLDER_CONFIG !== 'undefined' && FOLDER_CONFIG.SIABA_LUPA) ? FOLDER_CONFIG.SIABA_LUPA : "10kwGuGfwO5uFreEt7zBJZUaDx1fUSXo9" 
+  FOLDER_ID: FOLDER_CONFIG.SIABA_LUPA
 };
 
 /* ======================================================================
@@ -14,9 +14,7 @@ const KONFIG_LUPA = {
    ====================================================================== */
 function getUnitKerjaByNPSN(npsn) {
   try {
-    const ss = SpreadsheetApp.openById(KONFIG_LUPA.DB_ID);
-    const sheet = ss.getSheetByName("Database_Sekolah");
-    if (!sheet) return JSON.stringify({ error: "Sheet Database_Sekolah tidak ditemukan." });
+    const sheet = getSheet(KONFIG_LUPA.DB_KEY, "Database_Sekolah");
 
     const data = sheet.getDataRange().getDisplayValues();
     for (let i = 1; i < data.length; i++) {
@@ -38,10 +36,7 @@ function getUnitKerjaByNPSN(npsn) {
    ====================================================================== */
 function getDaftarLupaPresensi(tahun, bulan) {
   try {
-    var ss = SpreadsheetApp.openById(KONFIG_LUPA.DB_ID);
-    var sheet = ss.getSheetByName(KONFIG_LUPA.SHEET_NAMA);
-    
-    if (!sheet) return JSON.stringify({ error: "Sheet 'Lupa_Presensi' tidak ditemukan di database." });
+    var sheet = getSheet(KONFIG_LUPA.DB_KEY, KONFIG_LUPA.SHEET_NAMA);
 
     var data = sheet.getDataRange().getDisplayValues(); 
     var result = [];
@@ -78,8 +73,7 @@ function getDaftarLupaPresensi(tahun, bulan) {
    FUNGSI TULIS DATA (CREATE & UPDATE DENGAN ANTI-BENTROK)
    ====================================================================== */
 function cekBentrokLupa(nipBaru, tglBaruStr, jenisBaru, rowIdPengecualian) {
-  var ss = SpreadsheetApp.openById(KONFIG_LUPA.DB_ID);
-  var sheet = ss.getSheetByName(KONFIG_LUPA.SHEET_NAMA);
+  var sheet = getSheet(KONFIG_LUPA.DB_KEY, KONFIG_LUPA.SHEET_NAMA);
   var data = sheet.getDataRange().getValues();
   
   var tglBaruYMD = normalizeToYMD(tglBaruStr);
@@ -111,9 +105,8 @@ function simpanLupaPresensi(dataKirim) {
     var tglSimpan = dataKirim.tanggal; 
     var err = cekBentrokLupa(dataKirim.nip_asn, tglSimpan, dataKirim.jenis, null);
     if (err) return err; 
-
-    var ss = SpreadsheetApp.openById(KONFIG_LUPA.DB_ID);
-    var sheet = ss.getSheetByName(KONFIG_LUPA.SHEET_NAMA);
+ 
+    var sheet = getSheet(KONFIG_LUPA.DB_KEY, KONFIG_LUPA.SHEET_NAMA);
 
     var jamSimpan = dataKirim.waktu;
     if (jamSimpan && jamSimpan.includes(":")) {
@@ -159,9 +152,8 @@ function updateLupaPresensi(form, fileData) {
 
     var err = cekBentrokLupa(targetNip, tglSimpan, form.jenis, baris);
     if (err) return err;
-
-    var ss = SpreadsheetApp.openById(KONFIG_LUPA.DB_ID);
-    var sheet = ss.getSheetByName(KONFIG_LUPA.SHEET_NAMA);
+ 
+    var sheet = getSheet(KONFIG_LUPA.DB_KEY, KONFIG_LUPA.SHEET_NAMA);
     
     var rangeLama = sheet.getRange(baris, 1, 1, 17); 
     var valLama = rangeLama.getValues()[0];
@@ -220,8 +212,7 @@ function hapusLupaPresensi(dataKirim) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
-    var ss = SpreadsheetApp.openById(KONFIG_LUPA.DB_ID);
-    var sheetMain = ss.getSheetByName(KONFIG_LUPA.SHEET_NAMA);
+    var sheetMain = getSheet(KONFIG_LUPA.DB_KEY, KONFIG_LUPA.SHEET_NAMA);
 
     var rowIdx = parseInt(dataKirim.recId);
     if (isNaN(rowIdx)) throw new Error("ID Baris tidak valid.");
@@ -255,8 +246,7 @@ function verifikasiLupaPresensi(form) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
-    var ss = SpreadsheetApp.openById(KONFIG_LUPA.DB_ID);
-    var sheet = ss.getSheetByName(KONFIG_LUPA.SHEET_NAMA);
+    var sheet = getSheet(KONFIG_LUPA.DB_KEY, KONFIG_LUPA.SHEET_NAMA);
     
     var baris = parseInt(form.recId);
     if (isNaN(baris) || baris < 2) throw new Error("ID Baris tidak valid.");
@@ -345,8 +335,7 @@ function getNotifikasiLupa(role, unit) {
 
 function tandaiNotifLupaDibaca(rowId, role) {
   try {
-    var ss = SpreadsheetApp.openById(KONFIG_LUPA.DB_ID);
-    var sheet = ss.getSheetByName(KONFIG_LUPA.SHEET_NAMA);
+    var sheet = getSheet(KONFIG_LUPA.DB_KEY, KONFIG_LUPA.SHEET_NAMA);
     var rIdx = parseInt(rowId);
     if (isNaN(rIdx)) return false;
     
@@ -368,8 +357,7 @@ function tandaiNotifLupaDibaca(rowId, role) {
 
 function tandaiSemuaNotifLupaDibaca(role, unit) {
   try {
-    var ss = SpreadsheetApp.openById(KONFIG_LUPA.DB_ID);
-    var sheet = ss.getSheetByName(KONFIG_LUPA.SHEET_NAMA);
+    var sheet = getSheet(KONFIG_LUPA.DB_KEY, KONFIG_LUPA.SHEET_NAMA);
     var data = sheet.getDataRange().getDisplayValues();
     
     var rLower = String(role || "").toLowerCase();
