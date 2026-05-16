@@ -5,7 +5,7 @@
 
 // 1. DATABASE CONFIG (Digunakan oleh semua file .gs lainnya)
 const SPREADSHEET_IDS = {
-  DATABASE_USER: "1wiDKez4rL5UYnpP2-OZjYowvmt1nRx-fIMy9trJlhBA",
+  USER_DB: "1wiDKez4rL5UYnpP2-OZjYowvmt1nRx-fIMy9trJlhBA",
   SHEET_USER_NAME: "Data User",
   SK_DATA: "1AmvOJAhOfdx09eT54x62flWzBZ1xNQ8Sy5lzvT9zJA4", // ID Database SK
   
