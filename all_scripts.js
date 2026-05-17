@@ -1034,6 +1034,12 @@ var SultanUI = {
         initComplete: function () {
           var api = this.api();
           $('[data-toggle="tooltip"]').tooltip();
+          
+          // Make scroll container focusable for keypad (arrow key) scrolling
+          var $scroll = $(this).closest('.sultan-scroll-container, .table-responsive, .sultan-scroll');
+          $scroll.attr('tabindex', '0');
+          $scroll.css('outline', 'none');
+
           if (typeof onComplete === 'function') {
             setTimeout(function () {
               api.columns.adjust();
@@ -1079,6 +1085,12 @@ var SultanUI = {
         "initComplete": function (settings, json) {
           var api = this.api();
           setTimeout(function () { api.columns.adjust(); }, 100);
+          
+          // Make scroll container focusable for keypad (arrow key) scrolling
+          var $scroll = $(this).closest('.sultan-scroll-container, .table-responsive, .sultan-scroll');
+          $scroll.attr('tabindex', '0');
+          $scroll.css('outline', 'none');
+
           if (options.initComplete) {
             options.initComplete.call(this, settings, json);
           }
