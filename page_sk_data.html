@@ -635,7 +635,13 @@
                                 { "targets": 8, "className": "text-left align-middle text-nowrap", "width": "160px" }  // Verif
                             ],
                             "order": [[6, "desc"]],
-                            "language": { "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json", "emptyTable": "Tidak ditemukan data SK untuk filter tersebut." }
+                            "language": { "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json", "emptyTable": "Tidak ditemukan data SK untuk filter tersebut." },
+                            "drawCallback": function(settings) {
+                                // Auto-initialize premium tooltips on every draw (pagination, filter, sort)
+                                if ($.fn.tooltip) {
+                                    $('[data-toggle="tooltip"]').tooltip({ boundary: 'window' });
+                                }
+                            }
                         });
                     }
 
@@ -770,16 +776,16 @@
             var isLocked = (stButton.includes('setuju') || stButton.includes('acc') || stButton.includes('ok') || stButton.includes('valid'));
             var attrDis = isLocked ? 'disabled' : '';
 
-            // BAB III: UI TOMBOL DINAMIS (SULTAN STANDARD COMPONENT)
-            var btnAdmin = TUGAS_IS_ADMIN ? `<button class="sultan-btn-aksi sultan-btn-aksi-primary" onclick="tugas_bukaModalVerif('${id}')" title="Verifikasi SK"><i class="fas fa-clipboard-check"></i></button>` : '';
-            var btnDetail = `<button class="sultan-btn-aksi sultan-btn-aksi-warning" onclick="tugas_bukaModalEdit('${id}')" title="Edit SK" ${attrDis}><i class="fas fa-pencil-alt"></i></button>`;
-            var btnHapus = `<button class="sultan-btn-aksi sultan-btn-aksi-maroon" onclick="tugas_bukaModalHapus('${id}')" title="Hapus SK" ${attrDis}><i class="fas fa-trash-alt"></i></button>`;
+            // BAB III: UI TOMBOL DINAMIS (SULTAN STANDARD COMPONENT WITH PREMIUM TOOLTIPS)
+            var btnAdmin = TUGAS_IS_ADMIN ? `<button class="sultan-btn-aksi sultan-btn-aksi-primary" onclick="tugas_bukaModalVerif('${id}')" data-toggle="tooltip" title="Verifikasi SK"><i class="fas fa-clipboard-check"></i></button>` : '';
+            var btnDetail = `<button class="sultan-btn-aksi sultan-btn-aksi-warning" onclick="tugas_bukaModalEdit('${id}')" data-toggle="tooltip" title="Edit SK" ${attrDis}><i class="fas fa-pencil-alt"></i></button>`;
+            var btnHapus = `<button class="sultan-btn-aksi sultan-btn-aksi-maroon" onclick="tugas_bukaModalHapus('${id}')" data-toggle="tooltip" title="Hapus SK" ${attrDis}><i class="fas fa-trash-alt"></i></button>`;
 
             var groupAksi = `<div class="d-flex flex-nowrap justify-content-center">${btnAdmin}${btnDetail}${btnHapus}</div>`;
 
             var btnFile = '-';
             if (safeUrl.length > 5) {
-                btnFile = `<button class="sultan-btn-pdf" onclick="tugas_bukaPreview('${safeUrlJs}')" title="Lihat Dokumen"><i class="fas fa-file-pdf"></i> LIHAT</button>`;
+                btnFile = `<button class="sultan-btn-pdf" onclick="tugas_bukaPreview('${safeUrlJs}')" data-toggle="tooltip" title="Lihat Dokumen"><i class="fas fa-file-pdf"></i> LIHAT</button>`;
             }
 
 
@@ -1165,10 +1171,12 @@
 
         var badgeHtml = `<span class="sultan-badge ${style}"><i class="fas fa-${icon}"></i>${label}</span>`;
 
-        if (ket && ket.trim().length > 2) {
+        // Aturan Universal Catatan: Tampilkan jika ada catatan, abaikan jika kosong atau hanya tanda hubung "-"
+        if (ket && ket.trim() !== "" && ket.trim() !== "-") {
             var safeKet = tugas_escapeJs(ket);
+            var cleanKet = tugas_cleanText(ket);
             var btnCatatan = `<div class="mt-2 text-center">
-                                <button class="sultan-btn-note" onclick="tugas_lihatCatatanSultan('${safeKet}')" title="Cuplikan: ${tugas_cleanText(ket)}">
+                                <button class="sultan-btn-note" onclick="tugas_lihatCatatanSultan('${safeKet}')" data-toggle="tooltip" title="Catatan: ${cleanKet}">
                                     <i class="fas fa-comment-dots"></i> Baca Catatan
                                 </button>
                               </div>`;
