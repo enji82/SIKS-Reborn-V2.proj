@@ -1051,20 +1051,64 @@
     function lupa_filterDropdownNama() {
         var $selNama = $('#lupa_inputNama').empty().append('<option value="">- Pilih Nama -</option>').prop('disabled', true);
         $('#lupa_inputNip').empty().append('<option value="">- Otomatis -</option>').prop('disabled', true);
+        
         var unitTerpilih = $('#lupa_inputUnit').val();
-        if (!unitTerpilih) return;
-        var filtered = LUPA_DB_PEGAWAI.filter(x => String(x.unit).trim().toUpperCase() === String(unitTerpilih).trim().toUpperCase());
+        if (LUPA_IS_ADMIN && !unitTerpilih) return;
+        
+        // VAKSIN GATEKEEPER NAMA: Gunakan NPSN jika non-admin agar kebal dari perbedaan format nama sekolah
+        var filtered = LUPA_IS_ADMIN 
+            ? LUPA_DB_PEGAWAI.filter(x => String(x.unit).trim().toUpperCase() === String(unitTerpilih).trim().toUpperCase())
+            : LUPA_DB_PEGAWAI.filter(x => String(x.npsn).trim() === String(LUPA_USER_NPSN).trim());
+            
+        // Fallback jika filtered kosong (misal data NPSN kosong di DB pegawai, atau Admin salah pilih)
+        if (filtered.length === 0 && !LUPA_IS_ADMIN && LUPA_UNIT_TERKUNCI) {
+            filtered = LUPA_DB_PEGAWAI.filter(x => {
+                var dbUnit = String(x.unit).toLowerCase().replace(/[^a-z0-9]/g, '').replace(/negeri/g, 'n').replace(/sdn/g, 'sdn');
+                var userUnit = String(LUPA_UNIT_TERKUNCI).toLowerCase().replace(/[^a-z0-9]/g, '').replace(/negeri/g, 'n').replace(/sdn/g, 'sdn');
+                return dbUnit.indexOf(userUnit) > -1 || userUnit.indexOf(dbUnit) > -1;
+            });
+        }
+        
         var unikNama = [...new Set(filtered.map(item => item.nama))].sort();
-        unikNama.forEach(function (nama) { $selNama.append('<option value="' + lupa_escapeHtml(nama) + '">' + lupa_escapeHtml(nama) + '</option>'); });
-        $selNama.prop('disabled', false);
+        unikNama.forEach(function (nama) { 
+            if (nama) $selNama.append('<option value="' + lupa_escapeHtml(nama) + '">' + lupa_escapeHtml(nama) + '</option>'); 
+        });
+        
+        if (unikNama.length > 0) {
+            $selNama.prop('disabled', false);
+        }
     }
 
     function lupa_filterDropdownNip() {
-        var nama = $('#lupa_inputNama').val(); var unitTerpilih = $('#lupa_inputUnit').val(); var $selNip = $('#lupa_inputNip').empty();
+        var nama = $('#lupa_inputNama').val(); 
+        var unitTerpilih = $('#lupa_inputUnit').val(); 
+        var $selNip = $('#lupa_inputNip').empty();
         if (!nama) { $selNip.append('<option value="">- Otomatis -</option>').prop('disabled', true); return; }
-        var kandidat = LUPA_DB_PEGAWAI.filter(x => String(x.unit).trim().toUpperCase() === String(unitTerpilih).trim().toUpperCase() && x.nama === nama);
-        if (kandidat.length === 1) { $selNip.append('<option value="' + lupa_escapeHtml(kandidat[0].nip) + '" selected>' + lupa_escapeHtml(kandidat[0].nip) + '</option>').prop('disabled', true); }
-        else { $selNip.append('<option value="">- Pilih NIP -</option>'); kandidat.forEach(function (x) { $selNip.append('<option value="' + lupa_escapeHtml(x.nip) + '">' + lupa_escapeHtml(x.nip) + '</option>'); }); $selNip.prop('disabled', false); }
+        
+        // VAKSIN GATEKEEPER NIP: Gunakan NPSN jika non-admin
+        var kandidat = LUPA_IS_ADMIN
+            ? LUPA_DB_PEGAWAI.filter(x => String(x.unit).trim().toUpperCase() === String(unitTerpilih).trim().toUpperCase() && x.nama === nama)
+            : LUPA_DB_PEGAWAI.filter(x => String(x.npsn).trim() === String(LUPA_USER_NPSN).trim() && x.nama === nama);
+            
+        // Fallback jika tidak ditemukan
+        if (kandidat.length === 0 && !LUPA_IS_ADMIN && LUPA_UNIT_TERKUNCI) {
+            kandidat = LUPA_DB_PEGAWAI.filter(x => {
+                if (x.nama !== nama) return false;
+                var dbUnit = String(x.unit).toLowerCase().replace(/[^a-z0-9]/g, '').replace(/negeri/g, 'n').replace(/sdn/g, 'sdn');
+                var userUnit = String(LUPA_UNIT_TERKUNCI).toLowerCase().replace(/[^a-z0-9]/g, '').replace(/negeri/g, 'n').replace(/sdn/g, 'sdn');
+                return dbUnit.indexOf(userUnit) > -1 || userUnit.indexOf(dbUnit) > -1;
+            });
+        }
+        
+        if (kandidat.length === 1) { 
+            $selNip.append('<option value="' + lupa_escapeHtml(kandidat[0].nip) + '" selected>' + lupa_escapeHtml(kandidat[0].nip) + '</option>').prop('disabled', true); 
+        } else if (kandidat.length > 1) { 
+            $selNip.append('<option value="">- Pilih NIP -</option>'); 
+            kandidat.forEach(function (x) { $selNip.append('<option value="' + lupa_escapeHtml(x.nip) + '">' + lupa_escapeHtml(x.nip) + '</option>'); }); 
+            $selNip.prop('disabled', false); 
+        } else {
+            $selNip.append('<option value="">- NIP Tdk Ditemukan -</option>').prop('disabled', true);
+        }
     }
 
     function lupa_cleanText(text) { if (text == null) return ""; return String(text).replace(/(\r\n|\n|\r)/gm, " ").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); }

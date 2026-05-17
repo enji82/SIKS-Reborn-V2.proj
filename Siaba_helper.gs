@@ -115,23 +115,50 @@ function getLookupFilters() {
  * Digunakan untuk autocomplete atau pencarian data pegawai.
  */
 function getDatabasePegawai() {
-  try {
-    const sheet = getSheet("SIABA_CUTI_DB", "Database_ASN");
-    const data = sheet.getDataRange().getDisplayValues();
-    let result = [];
-    for (let i = 1; i < data.length; i++) {
-      result.push({ 
-        unit: data[i][0], 
-        nip: data[i][1], 
-        nama: data[i][2], 
-        npsn: data[i][3] 
-      });
+  const targets = [
+    { db: "SIABA_CUTI_DB", sheet: "Database_ASN" },
+    { db: "SIABA_PNS_DB", sheet: "Database" },
+    { db: "SIABA_LUPA_DB", sheet: "Database_ASN" },
+    { db: "SIABA_SALAH_DB", sheet: "Database" }
+  ];
+  
+  for (let i = 0; i < targets.length; i++) {
+    const t = targets[i];
+    try {
+      const sheet = getSheet(t.db, t.sheet);
+      if (!sheet) continue;
+      const data = sheet.getDataRange().getDisplayValues();
+      if (!data || data.length < 2) continue;
+      
+      let result = [];
+      for (let j = 1; j < data.length; j++) {
+        const row = data[j];
+        if (!row[1] || !row[2]) continue; // Skip jika NIP atau Nama kosong
+        result.push({ 
+          unit: String(row[0]).trim(), 
+          nip: String(row[1]).trim(), 
+          nama: String(row[2]).trim(), 
+          npsn: String(row[3] || "").trim() 
+        });
+      }
+      
+      if (result.length > 0) {
+        // Sortir nama secara alfabetis (A-Z) agar rapi di dropdown
+        result.sort(function(a, b) {
+          var nA = a.nama.toUpperCase();
+          var nB = b.nama.toUpperCase();
+          return (nA < nB) ? -1 : (nA > nB) ? 1 : 0;
+        });
+        Logger.log("getDatabasePegawai: Berhasil memuat " + result.length + " data dari " + t.db + " (" + t.sheet + ").");
+        return result;
+      }
+    } catch (e) {
+      Logger.log("getDatabasePegawai warning (" + t.db + " - " + t.sheet + "): " + e.message);
     }
-    return result;
-  } catch (e) { 
-    Logger.log("getDatabasePegawai Error: " + e.message);
-    return []; 
   }
+  
+  Logger.log("getDatabasePegawai ERROR: Semua target database pegawai gagal dimuat.");
+  return [];
 }
 
 /**

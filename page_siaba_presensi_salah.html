@@ -875,10 +875,21 @@
         var $selNip = $('#salah_inputNip').empty().append('<option value="">- Otomatis -</option>').prop('disabled', true);
 
         var unitTerpilih = String($('#salah_inputUnit').val() || "").trim();
-        if (!unitTerpilih) return;
+        if (SALAH_IS_ADMIN && !unitTerpilih) return;
 
-        // VAKSIN GATEKEEPER NAMA
-        var filtered = SALAH_DB_PEGAWAI.filter(x => String(x.unit).trim().toUpperCase() === unitTerpilih.toUpperCase());
+        // VAKSIN GATEKEEPER NAMA: Gunakan NPSN jika non-admin agar kebal dari perbedaan format nama sekolah
+        var filtered = SALAH_IS_ADMIN 
+            ? SALAH_DB_PEGAWAI.filter(x => String(x.unit).trim().toUpperCase() === unitTerpilih.toUpperCase())
+            : SALAH_DB_PEGAWAI.filter(x => String(x.npsn).trim() === String(SALAH_USER_NPSN).trim());
+
+        // Fallback jika filtered kosong (misal data NPSN kosong di DB pegawai, atau Admin salah pilih)
+        if (filtered.length === 0 && !SALAH_IS_ADMIN && typeof SALAH_UNIT_TERKUNCI !== 'undefined' && SALAH_UNIT_TERKUNCI) {
+            filtered = SALAH_DB_PEGAWAI.filter(x => {
+                var dbUnit = String(x.unit).toLowerCase().replace(/[^a-z0-9]/g, '').replace(/negeri/g, 'n').replace(/sdn/g, 'sdn');
+                var userUnit = String(SALAH_UNIT_TERKUNCI).toLowerCase().replace(/[^a-z0-9]/g, '').replace(/negeri/g, 'n').replace(/sdn/g, 'sdn');
+                return dbUnit.indexOf(userUnit) > -1 || userUnit.indexOf(dbUnit) > -1;
+            });
+        }
 
         var unikNama = [...new Set(filtered.map(item => String(item.nama).trim()))].sort();
 
@@ -900,8 +911,20 @@
             return;
         }
 
-        // VAKSIN GATEKEEPER NIP
-        var kandidat = SALAH_DB_PEGAWAI.filter(x => String(x.unit).trim().toUpperCase() === unitTerpilih.toUpperCase() && String(x.nama).trim() === nama);
+        // VAKSIN GATEKEEPER NIP: Gunakan NPSN jika non-admin
+        var kandidat = SALAH_IS_ADMIN
+            ? SALAH_DB_PEGAWAI.filter(x => String(x.unit).trim().toUpperCase() === unitTerpilih.toUpperCase() && String(x.nama).trim() === nama)
+            : SALAH_DB_PEGAWAI.filter(x => String(x.npsn).trim() === String(SALAH_USER_NPSN).trim() && String(x.nama).trim() === nama);
+
+        // Fallback jika tidak ditemukan
+        if (kandidat.length === 0 && !SALAH_IS_ADMIN && typeof SALAH_UNIT_TERKUNCI !== 'undefined' && SALAH_UNIT_TERKUNCI) {
+            kandidat = SALAH_DB_PEGAWAI.filter(x => {
+                if (String(x.nama).trim() !== nama) return false;
+                var dbUnit = String(x.unit).toLowerCase().replace(/[^a-z0-9]/g, '').replace(/negeri/g, 'n').replace(/sdn/g, 'sdn');
+                var userUnit = String(SALAH_UNIT_TERKUNCI).toLowerCase().replace(/[^a-z0-9]/g, '').replace(/negeri/g, 'n').replace(/sdn/g, 'sdn');
+                return dbUnit.indexOf(userUnit) > -1 || userUnit.indexOf(dbUnit) > -1;
+            });
+        }
 
         if (kandidat.length === 1) {
             var cNip = String(kandidat[0].nip).trim();
