@@ -472,7 +472,7 @@ function insertDataPTKSDS(form) {
 function updateDataPTKSDS(form) {
   var sheet = getSheet(KONFIG_PTK.DB_KEY, "Master Data GTK SDS");
   var data = sheet.getDataRange().getValues();
-  var rowIdx = -1; for (var i = 0; i < data.length; i++) { if (data[i][0] == form.id) { rowIdx = i + 1; break; } }
+  var rowIdx = -1; for (var i = 0; i < data.length; i++) { if (String(data[i][0]).trim() === String(form.id).trim()) { rowIdx = i + 1; break; } }
   if (rowIdx == -1) return "Error: ID tidak ditemukan.";
   var inputNik = String(form.nik || "").trim();
   if (inputNik !== "") { for (var i = 1; i < data.length; i++) { var rowNik = String(data[i][10]).replace(/'/g, '').trim(); if (rowNik === inputNik && String(data[i][0]) !== String(form.id)) return "Gagal: NIK " + inputNik + " sudah dipakai oleh " + data[i][6]; } }
@@ -588,7 +588,7 @@ function insertDataPTKPAUD(form, base64Data, fileName, jenisDokumen, userPengusu
 function updateDataPTKPAUD(form) {
   var sheet = getSheet(KONFIG_PTK_PAUD.DB_KEY, KONFIG_PTK_PAUD.SHEET_PTK);
   var data = sheet.getDataRange().getValues();
-  var rowIdx = -1; for (var i = 0; i < data.length; i++) { if (data[i][0] == form.id) { rowIdx = i + 1; break; } }
+  var rowIdx = -1; for (var i = 0; i < data.length; i++) { if (String(data[i][0]).trim() === String(form.id).trim()) { rowIdx = i + 1; break; } }
   if (rowIdx == -1) return "Error: ID tidak ditemukan.";
   var inputNik = String(form.nik || "").trim();
   if (inputNik !== "") { for (var i = 1; i < data.length; i++) { var rowNik = String(data[i][11]).replace(/'/g, '').trim(); if (rowNik === inputNik && String(data[i][0]) != form.id) return "Gagal: NIK " + inputNik + " sudah dipakai oleh " + data[i][7]; } }
@@ -610,7 +610,7 @@ function deleteDataPTKPAUD(id, alasan, userLogin) {
     sheetTarget.getRange(1, 1, 1, headers[0].length).setValues(headers); 
   }
   var data = sheetSource.getDataRange().getValues(); var rowIdx = -1; var rowData = [];
-  for (var i = 1; i < data.length; i++) { if (data[i][0] == id) { rowIdx = i + 1; rowData = data[i]; break; } }
+  for (var i = 1; i < data.length; i++) { if (String(data[i][0]).trim() === String(id).trim()) { rowIdx = i + 1; rowData = data[i]; break; } }
   if (rowIdx == -1) return "Error: Data tidak ditemukan.";
   rowData.push(alasan, Utilities.formatDate(new Date(), "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss"), userLogin); sheetTarget.appendRow(rowData); sheetSource.deleteRow(rowIdx); return "Sukses";
 }
