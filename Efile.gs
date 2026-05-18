@@ -4,7 +4,7 @@
 
 const KONFIG_EFILE = {
   DB_KEY: "EFILE_DB",
-  FOLDER_ID: FOLDER_CONFIG.EFILE_DOCS
+  get FOLDER_ID() { return FOLDER_CONFIG.EFILE_DOCS; }
 };
 
 function getEfileMasterData(npsnFilter) {

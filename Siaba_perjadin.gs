@@ -4,7 +4,7 @@
 
 const KONFIG_DINAS = {
   DB_KEY: "SIABA_DINAS_DB", 
-  FOLDER_ID: FOLDER_CONFIG.SIABA_CUTI_DOCS,
+  get FOLDER_ID() { return FOLDER_CONFIG.SIABA_CUTI_DOCS; },
   SHEET_MAIN: "Perjalanan_Dinas",
   SHEET_PESERTA: "Perjalanan_Dinas_Peserta"
 };

@@ -5,7 +5,7 @@
 const KONFIG_ARSIP_SIABA = {
   DB_UNIT: "USER_DB",
   DB_ARSIP: "ARSIP_SIABA_DB",
-  FOLDER_ROOT_ID: FOLDER_CONFIG.ARSIP_SIABA || "1D0rwRT_tIj9QZTPPG3cRk4NRcbhMzDHm"
+  get FOLDER_ROOT_ID() { return FOLDER_CONFIG.ARSIP_SIABA || "1D0rwRT_tIj9QZTPPG3cRk4NRcbhMzDHm"; }
 };
 
 // 0. Dapatkan Daftar Master Sekolah + Status per Periode

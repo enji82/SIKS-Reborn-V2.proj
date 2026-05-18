@@ -4,7 +4,7 @@
 
 const KONFIG_CUTI = {
   DB_KEY: "SIABA_CUTI_DB", 
-  FOLDER_ID: FOLDER_CONFIG.SIABA_CUTI_DOCS,
+  get FOLDER_ID() { return FOLDER_CONFIG.SIABA_CUTI_DOCS; },
   SHEET_MAIN: "Form Cuti",
   SHEET_DB: "Database Cuti"
 };

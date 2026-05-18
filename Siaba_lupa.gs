@@ -6,7 +6,7 @@
 const KONFIG_LUPA = {
   DB_KEY: "SIABA_LUPA_DB", 
   SHEET_NAMA: "Lupa_Presensi",
-  FOLDER_ID: FOLDER_CONFIG.SIABA_LUPA
+  get FOLDER_ID() { return FOLDER_CONFIG.SIABA_LUPA; }
 };
 
 /* ======================================================================
