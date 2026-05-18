@@ -22,7 +22,7 @@ function getEfileMasterData(npsnFilter) {
         }
     }
     
-    var shPtk = ss.getSheetByName("Database_PTK");
+    var shPtk = getSheet(KONFIG_EFILE.DB_KEY, "Database_PTK");
     var dataPtk = shPtk ? shPtk.getDataRange().getDisplayValues() : [];
     var resPtk = [];
     var targetNpsn = String(npsnFilter || "").trim().toUpperCase();
