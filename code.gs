@@ -18,8 +18,8 @@ const SPREADSHEET_IDS = {
   LAPBUL_SD_DB: "1u4tNL3uqt5xHITXYwHnytK6Kul9Siam-vNYuzmdZB4s", // Alias
   LAPBUL_GABUNGAN: "1aKEIkhKApmONrCg-QQbMhXyeGDJBjCZrhR-fvXZFtJU",
   PTK_PAUD_DB: "1XetGkBymmN2NZQlXpzZ2MQyG0nhhZ0sXEPcNsLffhEU",
-  PTK_SD_DB: "1HlyLv3Ai3_vKFJu3EKznqI9v8g0tfqiNg0UbIojNMQ0",
-  PTK_DB: "1HlyLv3Ai3_vKFJu3EKznqI9v8g0tfqiNg0UbIojNMQ0", // Alias
+  PTK_SD_DB: "1t0-Lmy0YD_GxHzimFWJGh5R5x6RhGL13uqKeVwWoCYE",
+  PTK_DB: "1t0-Lmy0YD_GxHzimFWJGh5R5x6RhGL13uqKeVwWoCYE", // Alias
   DATA_SEKOLAH: "1qeOYVfqFQdoTpysy55UIdKwAJv3VHo4df3g6u6m72Bs",   
   EFILE_DB: "1wiDKez4rL5UYnpP2-OZjYowvmt1nRx-fIMy9trJlhBA", // Database E-File
   FORM_OPTIONS_DB: "1prqqKQBYzkCNFmuzblNAZE41ag9rZTCiY2a0WvZCTvU",
