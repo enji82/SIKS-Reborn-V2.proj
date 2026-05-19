@@ -645,13 +645,21 @@ function getNotifikasiSK(role, unit) {
    NEW: NOTIFIKASI GLOBAL (SK + LAPBUL)
    ====================================================================== */
 function getNotifikasiGlobal(role, unit) {
+  // Cache strategy: simpan hasil selama 90 detik agar tidak berat saat berulang kali dipanggil
+  var cacheKey = "NOTIF_GLOBAL_" + String(role || "").toLowerCase() + "_" + String(unit || "").toUpperCase();
+  var cache = CacheService.getScriptCache();
+  
+  try {
+    var cached = cache.get(cacheKey);
+    if (cached) return cached; // Sudah berupa JSON string
+  } catch (e) { /* ignore cache errors */ }
+
   var modules = {};
   var totalCount = 0;
   
   // Helper internal untuk memanggil fungsi secara aman
   function callSafe(key, fnName, r, u) {
     try {
-      // Panggil fungsi global berdasarkan namanya (lebih aman di GAS)
       var res = this[fnName](r, u);
       if (res && typeof res.count !== 'undefined') {
         modules[key] = res;
@@ -681,10 +689,19 @@ function getNotifikasiGlobal(role, unit) {
     Logger.log("SULTAN Critical Error: " + err.message);
   }
 
-  return JSON.stringify({
+  var result = JSON.stringify({
     count: totalCount,
     modules: modules
   });
+  
+  // Simpan ke cache selama 90 detik (agar responsif tapi tidak memuat sheet terus-menerus)
+  try {
+    if (result.length < 100000) {
+      cache.put(cacheKey, result, 90);
+    }
+  } catch (e) { /* ignore cache put errors */ }
+  
+  return result;
 }
 
 function tandaiSemuaNotifGlobalDibaca(role, unit) {
@@ -697,8 +714,22 @@ function tandaiSemuaNotifGlobalDibaca(role, unit) {
     tandaiSemuaNotifCutiDibaca_Global(role, unit); 
     tandaiSemuaNotifEfileDibaca_Global(role, unit);
     tandaiSemuaNotifMutasiDibaca_Global(role, unit);
+    // Hapus cache agar fetch berikutnya mengambil data segar
+    invalidateNotifCache(role, unit);
     return true;
   } catch (e) { return false; }
+}
+
+/**
+ * Menghapus cache notifikasi global agar fetch berikutnya mengambil data segar dari spreadsheet.
+ * Dipanggil setelah perubahan status (Setujui, Tolak, dll) agar sidebar badge terupdate cepat.
+ */
+function invalidateNotifCache(role, unit) {
+  try {
+    var cache = CacheService.getScriptCache();
+    var cacheKey = "NOTIF_GLOBAL_" + String(role || "").toLowerCase() + "_" + String(unit || "").toUpperCase();
+    cache.remove(cacheKey);
+  } catch (e) { /* ignore */ }
 }
 
 // Helper untuk Tandai Semua yang belum ada mass-update-nya

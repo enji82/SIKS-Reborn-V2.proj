@@ -847,6 +847,7 @@
      ============================================================= */
   
   // VAKSIN: Interceptor Global untuk merefresh notifikasi otomatis setelah aksi "Sukses"
+  var _sultanFetchTimer = null; // Debounce timer
   if (typeof Swal !== "undefined" && !Swal.__sultan_patched) {
     const originalSwalFire = Swal.fire;
     Swal.fire = function(...args) {
@@ -859,7 +860,17 @@
       if (args.length >= 2 && typeof args[1] === 'string' && args[1].toLowerCase().includes('sukses')) isSuccess = true;
 
       if (isSuccess && typeof sultan_fetchNotifikasi === 'function') {
-        setTimeout(sultan_fetchNotifikasi, 500); // Delay sedikit agar tidak berebut resource
+        // Invalidasi cache server terlebih dahulu
+        var _u = getSesiUser();
+        if (_u) {
+          google.script.run.invalidateNotifCache(_u.role || "User", _u.unit || _u.nama_lengkap);
+        }
+        // Debounce: jika ada timer sebelumnya, batalkan dan mulai timer baru
+        if (_sultanFetchTimer) clearTimeout(_sultanFetchTimer);
+        _sultanFetchTimer = setTimeout(function() {
+          _sultanFetchTimer = null;
+          sultan_fetchNotifikasi();
+        }, 1500); // Delay 1.5 detik agar backend selesai menulis ke sheet
       }
       return originalSwalFire.apply(this, args);
     };
@@ -938,12 +949,12 @@
           // Header Kelompok (Clickable)
           html += `<div class="dropdown-header notif-sultan-group d-flex justify-content-between align-items-center py-2 px-3 border-bottom" onclick="sultan_toggleNotifGroup(this)">
                             <div>
-                                <i class="fas fa-chevron-down notif-chevron mr-2" style="font-size: 10px; opacity: 0.5;"></i>
+                                <i class="fas fa-chevron-right notif-chevron mr-2" style="font-size: 10px; opacity: 0.5; transition: transform 0.25s ease;"></i>
                                 <span class="notif-sultan-header font-weight-bold" style="font-size: 13px !important; letter-spacing: 0.5px;">${displayLabel}</span>
                             </div>
                             <span class="notif-sultan-badge">${mData.count}</span>
                          </div>
-                         <div class="notif-group-content">`; // Mulai pembungkus isi
+                         <div class="notif-group-content" style="display: none;">`; // Mulai pembungkus isi
 
           if (mData.recent && Array.isArray(mData.recent)) {
             mData.recent.forEach(function (notif) {
@@ -1044,13 +1055,18 @@
     var $content = $(header).next('.notif-group-content');
     var $chevron = $(header).find('.notif-chevron');
 
-    // Tutup kelompok lain (Optional, agar lebih rapi)
+    // Tutup kelompok lain (accordion mode)
     $('.notif-group-content').not($content).slideUp(200);
-    $('.notif-chevron').not($chevron).removeClass('rotate');
+    $('.notif-chevron').not($chevron).css('transform', 'rotate(0deg)');
 
     // Toggle kelompok ini
-    $content.slideToggle(250);
-    $chevron.toggleClass('rotate');
+    if ($content.is(':visible')) {
+      $content.slideUp(250);
+      $chevron.css('transform', 'rotate(0deg)');
+    } else {
+      $content.slideDown(250);
+      $chevron.css('transform', 'rotate(90deg)');
+    }
 
     // Stop propagation agar dropdown tidak tertutup
     event.stopPropagation();
