@@ -139,6 +139,10 @@
                                             TUGAS TAMBAHAN</th>
                                         <th class="text-left align-middle" style="min-width: 150px;">
                                             EMAIL</th>
+                                        <th class="text-left align-middle" style="min-width: 150px;">
+                                            JENIS DOKUMEN</th>
+                                        <th class="text-center align-middle" style="min-width: 120px;">
+                                            FILE DOKUMEN</th>
                                         <th class="text-left align-middle">
                                             DIINPUT</th>
                                         <th class="text-left align-middle">
@@ -746,8 +750,8 @@
             "columnDefs": [
                 // VAKSIN LEBAR: Kolom aksi dipaksa sekecil mungkin agar pas dengan konten
                 { "targets": 0, "className": "col-sticky-left bg-white align-middle border-right text-center px-2", "width": "1%", "orderable": false },
-                { "targets": 9, "className": "text-center align-middle" },
-                { "targets": [1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16, 17], "className": "text-left align-middle" }
+                { "targets": [9, 17], "className": "text-center align-middle" },
+                { "targets": [1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16, 18, 19], "className": "text-left align-middle" }
             ],
             "language": { "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json", "emptyTable": msg }
         });
@@ -937,12 +941,22 @@
             var metaEdit = '<div style="line-height:1.2; font-size:11px;" class="text-left"><span class="d-block font-weight-bold">' + (row.diedit || '-') + '</span><span class="text-muted">' + (row.user_edit || '-') + '</span></div>';
             var uiEmail = '<div class="text-wrap small text-left text-primary font-weight-bold">' + (ptksdn_escapeHtml(row.email) || '-') + '</div>';
 
+            var uiJenisDok = '<div class="text-wrap small text-left font-weight-bold text-dark">' + (row.jenis_dok || '-') + '</div>';
+            var uiFileDok = '';
+            if (row.file_url && row.file_url !== '-') {
+                uiFileDok = '<button type="button" class="btn btn-xs btn-outline-danger font-weight-bold py-0 px-2 text-nowrap" onclick="ptksdn_previewPdf(\'' + row.file_url + '\')" title="Lihat Berkas"><i class="fas fa-file-pdf mr-1"></i> PDF</button>';
+            } else {
+                uiFileDok = '<span class="text-muted small font-italic">-</span>';
+            }
+
             dtArray.push([
                 btnAksi, uiNama, ttl, '<span title="NIK Disensor" class="text-muted text-left">' + nikMask + '</span>',
                 pend, (row.status_peg || '-'),
                 jab, pang,
                 (row.mkg || '-'), (row.kelas_jab || '-'), (row.tugas || '-'), (row.nuptk || '-'),
-                (row.serdik || '-'), (row.dapodik || '-'), (row.tugtam || '-'), uiEmail, metaInput, metaEdit
+                (row.serdik || '-'), (row.dapodik || '-'), (row.tugtam || '-'), uiEmail, 
+                uiJenisDok, uiFileDok,
+                metaInput, metaEdit
             ]);
         });
 
@@ -1184,9 +1198,10 @@
         ptksdn_toggleNipLogic();
         
         // Reset dokumen state saat tambah baru
-        $('#ptksdn_inputFileDokumen').val('').next('.custom-file-label').removeClass("selected").html('Pilih file PDF...');
-        $('#ptksdn_inputJenisDokumen').val('');
+        $('#ptksdn_inputFileDokumen').prop('disabled', false).val('').next('.custom-file-label').removeClass("selected").html('Pilih file PDF...');
+        $('#ptksdn_inputJenisDokumen').prop('disabled', false).val('');
         $('#ptksdn_currentFileSection').addClass('d-none');
+        $('#ptksdn_lockHint').remove();
         
         $('#ptksdn_sectionDokumen').show();
         $('#ptksdn_modalForm').modal('show');
@@ -1262,11 +1277,10 @@
         // Tampilkan Section IV Dokumen saat edit
         $('#ptksdn_sectionDokumen').show();
         
-        // Reset file input label
-        $('#ptksdn_inputFileDokumen').val('').next('.custom-file-label').removeClass("selected").html('Pilih file PDF...');
-        
-        // Populate document type dropdown
-        $('#ptksdn_inputJenisDokumen').val(row.jenis_dok || '');
+        // Reset file input label dan disabled state
+        $('#ptksdn_inputFileDokumen').prop('disabled', false).val('').next('.custom-file-label').removeClass("selected").html('Pilih file PDF...');
+        $('#ptksdn_inputJenisDokumen').prop('disabled', false).val(row.jenis_dok || '');
+        $('#ptksdn_lockHint').remove();
         
         // Handle current file display
         if (row.file_url && row.file_url !== '-') {
@@ -1275,6 +1289,14 @@
                 e.preventDefault();
                 ptksdn_previewPdf(row.file_url);
             });
+
+            // LOGIKA PENGUNCIAN: Jika sudah ada file dan user bukan admin, kunci pengeditan
+            if (!PTKSDN_IS_ADMIN) {
+                $('#ptksdn_inputJenisDokumen').prop('disabled', true);
+                $('#ptksdn_inputFileDokumen').prop('disabled', true);
+                $('<div id="ptksdn_lockHint" class="alert alert-warning py-1 px-2 mt-2 small mb-0"><i class="fas fa-lock mr-1"></i> Dokumen telah dikunci dan hanya dapat diubah oleh Admin.</div>')
+                    .insertAfter('#ptksdn_inputFileDokumen');
+            }
         } else {
             $('#ptksdn_currentFileSection').addClass('d-none');
         }
