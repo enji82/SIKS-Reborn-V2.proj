@@ -1114,6 +1114,17 @@
         ptksdn_toggleJurusanField();
         $('#ptksdn_sectionDokumen').show();
 
+        if (data.jenis_dok) $('#ptksdn_inputJenisDokumen').val(data.jenis_dok);
+        if (data.file_url && data.file_url !== '-') {
+            $('#ptksdn_currentFileSection').removeClass('d-none');
+            $('#ptksdn_btnLihatFileCurrent').off('click').on('click', function (e) {
+                e.preventDefault();
+                ptksdn_previewPdf(data.file_url);
+            });
+        } else {
+            $('#ptksdn_currentFileSection').addClass('d-none');
+        }
+
         if (data.id_ptk) {
             $('#ptksdn_inputMode').val('update');
             $('#ptksdn_inputIdData').val(data.id_ptk);
@@ -1171,6 +1182,12 @@
         $('#ptksdn_wrapperPangkat').hide();
         ptksdn_toggleJurusanField();
         ptksdn_toggleNipLogic();
+        
+        // Reset dokumen state saat tambah baru
+        $('#ptksdn_inputFileDokumen').val('').next('.custom-file-label').removeClass("selected").html('Pilih file PDF...');
+        $('#ptksdn_inputJenisDokumen').val('');
+        $('#ptksdn_currentFileSection').addClass('d-none');
+        
         $('#ptksdn_sectionDokumen').show();
         $('#ptksdn_modalForm').modal('show');
     }
@@ -1241,7 +1258,27 @@
         $('[name="tugtam"]').val(row.tugtam);
 
         ptksdn_toggleJurusanField();
-        $('#ptksdn_sectionDokumen').hide(); // Sembunyikan Section IV saat edit
+        
+        // Tampilkan Section IV Dokumen saat edit
+        $('#ptksdn_sectionDokumen').show();
+        
+        // Reset file input label
+        $('#ptksdn_inputFileDokumen').val('').next('.custom-file-label').removeClass("selected").html('Pilih file PDF...');
+        
+        // Populate document type dropdown
+        $('#ptksdn_inputJenisDokumen').val(row.jenis_dok || '');
+        
+        // Handle current file display
+        if (row.file_url && row.file_url !== '-') {
+            $('#ptksdn_currentFileSection').removeClass('d-none');
+            $('#ptksdn_btnLihatFileCurrent').off('click').on('click', function (e) {
+                e.preventDefault();
+                ptksdn_previewPdf(row.file_url);
+            });
+        } else {
+            $('#ptksdn_currentFileSection').addClass('d-none');
+        }
+
         $('#ptksdn_modalForm').modal('show');
     }
 
@@ -1278,7 +1315,7 @@
         };
         var cbFail = function (err) { btn.prop('disabled', false).html(txt); Sultan.notif.crud.gagal(err.message); };
 
-        if (mode === 'insert' || mode === 'revisi_baru') {
+        if (mode === 'insert' || mode === 'revisi_baru' || mode === 'update') {
             var fileInput = document.getElementById('ptksdn_inputFileDokumen');
             var file = fileInput.files[0];
 
@@ -1293,9 +1330,12 @@
                 if (mode === 'insert') {
                     google.script.run.withSuccessHandler(cbSuccess).withFailureHandler(cbFail)
                         .insertDataPTK(formData, base64Data, fileName, jenisDok, PTKSDN_USER_AKTIF);
-                } else {
+                } else if (mode === 'revisi_baru') {
                     google.script.run.withSuccessHandler(cbSuccess).withFailureHandler(cbFail)
                         .revisiUsulanPTKBaru(formData, base64Data, fileName, jenisDok, PTKSDN_USER_AKTIF);
+                } else if (mode === 'update') {
+                    google.script.run.withSuccessHandler(cbSuccess).withFailureHandler(cbFail)
+                        .updateDataPTK(formData, base64Data, fileName, jenisDok);
                 }
             };
 
@@ -1307,10 +1347,8 @@
                 };
                 reader.readAsDataURL(file);
             } else {
-                processSubmission(null, null); // Revisi tanpa upload file baru
+                processSubmission(null, null); // Update / Revisi tanpa upload file baru
             }
-        } else {
-            google.script.run.withSuccessHandler(cbSuccess).withFailureHandler(cbFail).updateDataPTK(formData);
         }
     }
 

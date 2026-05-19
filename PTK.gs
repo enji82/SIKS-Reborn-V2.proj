@@ -98,6 +98,8 @@ function getDataPTKSD(filterUnit, filterStatus) {
       user_input: row[33],     // AH
       diedit: row[34] ? Utilities.formatDate(new Date(row[34]), Session.getScriptTimeZone(), "dd/MM/yy HH:mm") : "",  // AI
       user_edit: row[35],      // AJ
+      jenis_dok: row[36] || "", // AK
+      file_url: row[37] || "",  // AL
       is_pending_baru: pendingPtkIds.has(String(row[0]))
     });
   }
@@ -105,7 +107,7 @@ function getDataPTKSD(filterUnit, filterStatus) {
 }
 
 // 3. UPDATE DATA PTK
-function updateDataPTK(form) {
+function updateDataPTK(form, base64Data, fileName, jenisDokumen) {
   try {
     var sheet = getSheet(KONFIG_PTK.DB_KEY, KONFIG_PTK.SHEET_PTK);
     var data = sheet.getDataRange().getValues();
@@ -163,6 +165,26 @@ function updateDataPTK(form) {
     
     sheet.getRange(rowIndex, 35).setValue(now);                           // AI (Diedit)
     sheet.getRange(rowIndex, 36).setValue(user);                          // AJ (User Edit)
+
+    // Upload dokumen baru jika ada
+    if (base64Data && fileName) {
+      try {
+        var folderId = "1WScDrF-y4PyjFjneXuIqX3yRNxIcqKzB";
+        var folder = DriveApp.getFolderById(folderId);
+        var fileBytes = Utilities.base64Decode(base64Data);
+        var blob = Utilities.newBlob(fileBytes, "application/pdf", fileName || "dokumen_ptk_edit.pdf");
+        var file = folder.createFile(blob);
+        var fileUrl = file.getUrl();
+        
+        sheet.getRange(rowIndex, 38).setValue(fileUrl); // AL (Column 38)
+      } catch(uploadErr) {
+        Logger.log("Upload edit gagal: " + uploadErr.message);
+      }
+    }
+    
+    if (jenisDokumen) {
+      sheet.getRange(rowIndex, 37).setValue(jenisDokumen); // AK (Column 37)
+    }
 
     return "Sukses";
   } catch(e) { return "Error: " + e.message; }
