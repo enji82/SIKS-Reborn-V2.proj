@@ -370,15 +370,19 @@ function getNotifikasiPerdin(role, unit) {
                 }
             }
             
-            notifList.push({
-                rowId: i + 1,
-                source: "Perjadin",
-                nomor: row[1],
-                tujuan: row[5],
-                status: status || "Diproses",
-                waktu: row[15] && !isDiproses ? row[15] : (row[13] && isDiproses ? row[13] : row[11]),
-                isRead: isRead
-            });
+            if (!isAdmin && isDisetujui && isRead) {
+                // Jangan dimasukkan ke daftar untuk user jika sudah disetujui dan dibaca
+            } else {
+                notifList.push({
+                    rowId: i + 1,
+                    source: "Perjadin",
+                    nomor: row[1],
+                    tujuan: row[5],
+                    status: status || "Diproses",
+                    waktu: row[15] && !isDiproses ? row[15] : (row[13] && isDiproses ? row[13] : row[11]),
+                    isRead: isRead
+                });
+            }
         }
     }
 

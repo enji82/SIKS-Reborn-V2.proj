@@ -691,16 +691,19 @@ function getNotifikasiLapbul(role, unit) {
                     unreadCount++;
                 }
             }
-
-            notifList.push({
-              rowId: rowNum,
-              source: sourceLabel, // SD atau PAUD
-              namaSd: rNama,
-              kriteria: "Laporan Bulan " + row[idx.bulan] + " " + row[idx.tahun],
-              status: status,
-              waktu: (idx.tglVerif > -1 && row[idx.tglVerif] && !isDiproses) ? row[idx.tglVerif] : row[idx.tglKirim],
-              isRead: isRead
-            });
+            if (!isAdmin && isDisetujui && isRead) {
+                // Jangan dimasukkan ke daftar untuk user jika sudah disetujui dan dibaca
+            } else {
+                notifList.push({
+                  rowId: rowNum,
+                  source: sourceLabel, // SD atau PAUD
+                  namaSd: rNama,
+                  kriteria: "Laporan Bulan " + row[idx.bulan] + " " + row[idx.tahun],
+                  status: status,
+                  waktu: (idx.tglVerif > -1 && row[idx.tglVerif] && !isDiproses) ? row[idx.tglVerif] : row[idx.tglKirim],
+                  isRead: isRead
+                });
+            }
           }
         });
       } catch (e) {}
@@ -805,8 +808,8 @@ function tandaiSemuaNotifLapbulDibaca(role, unit) {
       range.setValues(values);
     };
 
-    processSheet(IDS.SD_DATA, "Input SD");
-    processSheet(IDS.PAUD_DATA, "Input PAUD");
+    processSheet(KONFIG_LAPBUL.SD_DB, "Input SD");
+    processSheet(KONFIG_LAPBUL.PAUD_DB, "Input PAUD");
     return true;
   } catch (e) { return false; }
 }

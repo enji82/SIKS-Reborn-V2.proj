@@ -597,15 +597,19 @@ function getNotifikasiSK(role, unit) {
                 }
             }
             
-            notifList.push({
-                rowId: row.rowBaris,
-                source: "SK",
-                namaSd: row.namaSd,
-                kriteria: row.kriteria,
-                status: status || "Diproses",
-                waktu: row.tglVerval && !isDiproses ? row.tglVerval : (row.tglUpdate && isDiproses ? row.tglUpdate : row.tglUnggah),
-                isRead: isRead
-            });
+            if (!isAdmin && isDisetujui && isRead) {
+                // Jangan dimasukkan ke daftar untuk user jika sudah disetujui dan dibaca
+            } else {
+                notifList.push({
+                    rowId: row.rowBaris,
+                    source: "SK",
+                    namaSd: row.namaSd,
+                    kriteria: row.kriteria,
+                    status: status || "Diproses",
+                    waktu: row.tglVerval && !isDiproses ? row.tglVerval : (row.tglUpdate && isDiproses ? row.tglUpdate : row.tglUnggah),
+                    isRead: isRead
+                });
+            }
         }
     });
     

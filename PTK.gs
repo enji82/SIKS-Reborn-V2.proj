@@ -989,15 +989,19 @@ function getNotifikasiMutasiPAUD(role, unit) {
                 }
             }
             
-            notifList.push({
-                rowId: i + 1,
-                source: "Mutasi PAUD",
-                nama: row[2], // Nama PTK
-                jenis: row[3], // Jenis Mutasi
-                status: status || "Pending",
-                waktu: (isPending ? row[8] : row[10]) || "-", // Tgl Usulan vs Tgl Eksekusi
-                isRead: isRead
-            });
+            if (!isAdmin && isDisetujui && isRead) {
+                // Jangan dimasukkan ke daftar untuk user jika sudah disetujui dan dibaca
+            } else {
+                notifList.push({
+                    rowId: i + 1,
+                    source: "Mutasi PAUD",
+                    nama: row[2], // Nama PTK
+                    jenis: row[3], // Jenis Mutasi
+                    status: status || "Pending",
+                    waktu: (isPending ? row[8] : row[10]) || "-", // Tgl Usulan vs Tgl Eksekusi
+                    isRead: isRead
+                });
+            }
         }
     }
     
@@ -1315,15 +1319,19 @@ function getNotifikasiMutasiSDN(role, unit) {
                 }
             }
             
-            notifList.push({
-                rowId: i + 1,
-                source: "Mutasi SDN",
-                nama: row[2], // Nama PTK
-                jenis: row[3], // Jenis Mutasi
-                status: status || "Pending",
-                waktu: (isPending ? row[9] : row[11]) || "-", // Tgl Usulan (index 9) vs Tgl Eksekusi (index 11)
-                isRead: isRead
-            });
+            if (!isAdmin && isDisetujui && isRead) {
+                // Jangan dimasukkan ke daftar untuk user jika sudah disetujui dan dibaca
+            } else {
+                notifList.push({
+                    rowId: i + 1,
+                    source: "Mutasi SDN",
+                    nama: row[2], // Nama PTK
+                    jenis: row[3], // Jenis Mutasi
+                    status: status || "Pending",
+                    waktu: (isPending ? row[9] : row[11]) || "-", // Tgl Usulan (index 9) vs Tgl Eksekusi (index 11)
+                    isRead: isRead
+                });
+            }
         }
     }
     
@@ -1691,15 +1699,19 @@ function getNotifikasiMutasiSDS(role, unit) {
                 }
             }
             
-            notifList.push({
-                rowId: i + 1,
-                source: "Mutasi SDS",
-                nama: row[2], // Nama PTK
-                jenis: row[3], // Jenis Mutasi
-                status: status || "Pending",
-                waktu: (isPending ? row[9] : row[11]) || "-", // Tgl Usulan (index 9) vs Tgl Eksekusi (index 11)
-                isRead: isRead
-            });
+            if (!isAdmin && isDisetujui && isRead) {
+                // Jangan dimasukkan ke daftar untuk user jika sudah disetujui dan dibaca
+            } else {
+                notifList.push({
+                    rowId: i + 1,
+                    source: "Mutasi SDS",
+                    nama: row[2], // Nama PTK
+                    jenis: row[3], // Jenis Mutasi
+                    status: status || "Pending",
+                    waktu: (isPending ? row[9] : row[11]) || "-", // Tgl Usulan (index 9) vs Tgl Eksekusi (index 11)
+                    isRead: isRead
+                });
+            }
         }
     }
     

@@ -248,9 +248,10 @@ function getNotifikasiSalah(role, unit) {
         }
         
         if (isTarget) {
-            var readBy = String(row.readBy || "").trim().toLowerCase();
-            var isRead = (readBy.indexOf("admin") > -1); // Jika ada tulisan admin, berarti sudah dibaca
-            
+            var isRead = false;
+            var readByList = String(row.readBy || "").split(",");
+            if (isAdmin && readByList.indexOf("Admin") > -1) isRead = true;
+            if (!isAdmin && readByList.indexOf("User") > -1) isRead = true;
             
             var stLower = String(status || "").toLowerCase();
             var isDisetujui = stLower.includes("ok") || stLower.includes("setuju") || stLower.includes("valid") || stLower.includes("selesai");
@@ -265,15 +266,19 @@ function getNotifikasiSalah(role, unit) {
                 }
             }
             
-            notifList.push({
-                rowId: row.rowBaris,
-                source: "SALAH",
-                nama: row.nama,
-                unit: row.unit,
-                status: status || "Diproses",
-                waktu: row.tglVerif && !isDiproses ? row.tglVerif : (row.tglEdit && isDiproses ? row.tglEdit : row.tglKirim),
-                isRead: isRead
-            });
+            if (!isAdmin && isDisetujui && isRead) {
+                // Jangan dimasukkan ke daftar untuk user jika sudah disetujui dan dibaca
+            } else {
+                notifList.push({
+                    rowId: row.rowBaris,
+                    source: "SALAH",
+                    nama: row.nama,
+                    unit: row.unit,
+                    status: status || "Diproses",
+                    waktu: row.tglVerif && !isDiproses ? row.tglVerif : (row.tglEdit && isDiproses ? row.tglEdit : row.tglKirim),
+                    isRead: isRead
+                });
+            }
         }
     });
     

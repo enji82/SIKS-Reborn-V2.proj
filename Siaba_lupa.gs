@@ -308,15 +308,19 @@ function getNotifikasiLupa(role, unit) {
                 }
             }
             
-            notifList.push({
-                rowId: row.rowBaris,
-                source: "LUPA",
-                nama: row.nama,
-                unit: row.unit,
-                status: status || "Diproses",
-                waktu: row.tglVerif && !isDiproses ? row.tglVerif : (row.tglEdit && isDiproses ? row.tglEdit : row.tglKirim),
-                isRead: isRead
-            });
+            if (!isAdmin && isDisetujui && isRead) {
+                // Jangan dimasukkan ke daftar untuk user jika sudah disetujui dan dibaca
+            } else {
+                notifList.push({
+                    rowId: row.rowBaris,
+                    source: "LUPA",
+                    nama: row.nama,
+                    unit: row.unit,
+                    status: status || "Diproses",
+                    waktu: row.tglVerif && !isDiproses ? row.tglVerif : (row.tglEdit && isDiproses ? row.tglEdit : row.tglKirim),
+                    isRead: isRead
+                });
+            }
         }
     });
     

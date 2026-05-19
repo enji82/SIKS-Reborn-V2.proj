@@ -194,7 +194,11 @@ function getNotifikasiEfile(role, unit) {
                     unreadCount++;
                 }
             }
-            notifList.push({ rowId: i + 1, source: "Efile", nama: row[1], berkas: row[3], status: status, waktu: row[12] && !isDiproses ? row[12] : row[9], isRead: isRead });
+            if (!isAdmin && isDisetujui && isRead) {
+                // Jangan dimasukkan ke daftar untuk user jika sudah disetujui dan dibaca
+            } else {
+                notifList.push({ rowId: i + 1, source: "Efile", nama: row[1], berkas: row[3], status: status, waktu: row[12] && !isDiproses ? row[12] : row[9], isRead: isRead });
+            }
         }
     }
     

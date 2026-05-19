@@ -693,8 +693,11 @@ function getNotifikasiCuti(role, unit) {
                     unreadCount++;
                 }
             }
-            notifList.push({ rowId: i + 1, source: "Cuti", nama: row[1], jenis: row[3], status: status || "Diproses", waktu: row[17] && !isDiproses ? row[17] : (row[15] && isDiproses ? row[15] : row[13]), isRead: isRead });
-        }
+            if (!isAdmin && isDisetujui && isRead) {
+                // Jangan dimasukkan ke daftar untuk user jika sudah disetujui dan dibaca
+            } else {
+                notifList.push({ rowId: i + 1, source: "Cuti", nama: row[1], jenis: row[3], status: status || "Diproses", waktu: row[17] && !isDiproses ? row[17] : (row[15] && isDiproses ? row[15] : row[13]), isRead: isRead });
+            }
     }
     notifList.sort(function(a, b) { if (a.isRead !== b.isRead) return a.isRead ? 1 : -1; return parseTime(b.waktu) - parseTime(a.waktu); });
     return { count: unreadCount, recent: notifList.slice(0, 5) };
@@ -766,15 +769,19 @@ function getNotifikasiSuratCuti(role, unit) {
             if (isDiproses) waktuNotif = row[45]; // Tgl Unggah
             if (labelStatus === "Belum Unggah") waktuNotif = row[13] || row[15]; // Tgl Pengajuan Cuti
 
-            notifList.push({ 
-                rowId: i + 1, 
-                source: "SuratCuti", 
-                nama: row[1], 
-                jenis: row[3], 
-                status: labelStatus, 
-                waktu: waktuNotif || "-", 
-                isRead: isRead 
-            });
+            if (!isAdmin && isDisetujui && isRead) {
+                // Jangan dimasukkan ke daftar untuk user jika sudah disetujui dan dibaca
+            } else {
+                notifList.push({ 
+                    rowId: i + 1, 
+                    source: "SuratCuti", 
+                    nama: row[1], 
+                    jenis: row[3], 
+                    status: labelStatus, 
+                    waktu: waktuNotif || "-", 
+                    isRead: isRead 
+                });
+            }
         }
     }
     notifList.sort(function(a, b) { if (a.isRead !== b.isRead) return a.isRead ? 1 : -1; return parseTime(b.waktu) - parseTime(a.waktu); });
