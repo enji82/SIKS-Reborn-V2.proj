@@ -796,7 +796,8 @@ var SultanUI = {
             { id: "ptk_kelola_sds", label: "Daftar Nama", icon: "far fa-circle" },
             { id: "ptk_mutasi_sds", label: "Riwayat Mutasi", icon: "far fa-circle" },
             { id: "ptk_keadaan_sds", label: "Keadaan", icon: "far fa-circle" },
-            { id: "ptk_kebutuhan_sds", label: "Kebutuhan Guru", icon: "far fa-circle" }
+            { id: "ptk_kebutuhan_sds", label: "Kebutuhan Guru", icon: "far fa-circle" },
+            { id: "ptk_validasi_sds", label: "Validasi", icon: "far fa-circle" }
           ]
         }
       ]
@@ -949,7 +950,7 @@ var SultanUI = {
     'ptk_dashboard': 'Dashboard',
     'ptk_kelola_paud': 'Daftar Nama', 'ptk_mutasi_paud': 'Riwayat Mutasi', 'ptk_keadaan_paud': 'Keadaan',
     'ptk_kelola_sdn': 'Daftar Nama', 'ptk_keadaan_sdn': 'Keadaan', 'ptk_kebutuhan_sdn': 'Kebutuhan Guru', 'ptk_validasi_sdn': 'Validasi', 'ptk_mutasi_sdn': 'Riwayat Mutasi',
-    'ptk_kelola_sds': 'Daftar Nama', 'ptk_mutasi_sds': 'Riwayat Mutasi', 'ptk_keadaan_sds': 'Keadaan', 'ptk_kebutuhan_sds': 'Kebutuhan Guru',
+    'ptk_kelola_sds': 'Daftar Nama', 'ptk_mutasi_sds': 'Riwayat Mutasi', 'ptk_keadaan_sds': 'Keadaan', 'ptk_kebutuhan_sds': 'Kebutuhan Guru', 'ptk_validasi_sds': 'Validasi',
     'murid_dashboard': 'Dashboard',
     'murid_paud_rombel': 'Menurut Rombel', 'murid_paud_jenis_kelamin': 'Menurut Gender',
     'murid_sd_kelas': 'Menurut Kelas', 'murid_sd_rombel': 'Menurut Rombel', 'murid_sd_agama': 'Menurut Agama',
