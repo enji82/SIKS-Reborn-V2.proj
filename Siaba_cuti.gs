@@ -680,7 +680,19 @@ function getNotifikasiCuti(role, unit) {
         if (isTarget) {
             var readByList = String(row[19] || "").split(","); 
             var isRead = (isAdmin && readByList.indexOf("Admin") > -1) || (!isAdmin && readByList.indexOf("User") > -1);
-            if (!isRead) unreadCount++;
+            
+            var stLower = String(status || "").toLowerCase();
+            var isDisetujui = stLower.includes("ok") || stLower.includes("setuju") || stLower.includes("valid") || stLower.includes("selesai");
+            
+            if (isAdmin) {
+                unreadCount++;
+            } else {
+                if (isDisetujui && isRead) {
+                    // Hilang hitungannya
+                } else {
+                    unreadCount++;
+                }
+            }
             notifList.push({ rowId: i + 1, source: "Cuti", nama: row[1], jenis: row[3], status: status || "Diproses", waktu: row[17] && !isDiproses ? row[17] : (row[15] && isDiproses ? row[15] : row[13]), isRead: isRead });
         }
     }
@@ -735,7 +747,19 @@ function getNotifikasiSuratCuti(role, unit) {
             var labelStatus = (statusUnggah === "") ? "Belum Unggah" : statusUnggah;
             var readByList = String(row[50] || "").split(","); 
             var isRead = (isAdmin && readByList.indexOf("Admin") > -1) || (!isAdmin && readByList.indexOf("User") > -1);
-            if (!isRead) unreadCount++;
+            
+            var stLower = String(statusUnggah || "").toLowerCase();
+            var isDisetujui = stLower.includes("ok") || stLower.includes("setuju") || stLower.includes("valid") || stLower.includes("selesai");
+            
+            if (isAdmin) {
+                unreadCount++;
+            } else {
+                if (isDisetujui && isRead) {
+                    // Hilang hitungannya
+                } else {
+                    unreadCount++;
+                }
+            }
 
             // Penentuan Waktu Notifikasi
             var waktuNotif = row[47]; // Tgl Verif

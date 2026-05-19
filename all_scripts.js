@@ -1151,6 +1151,26 @@ var SultanUI = {
   /* =============================================================
      8. SULTAN NOTIFIKASI ENGINE
      ============================================================= */
+  
+  // VAKSIN: Interceptor Global untuk merefresh notifikasi otomatis setelah aksi "Sukses"
+  if (typeof Swal !== "undefined" && !Swal.__sultan_patched) {
+    const originalSwalFire = Swal.fire;
+    Swal.fire = function(...args) {
+      let isSuccess = false;
+      if (args.length >= 3 && args[2] === 'success') isSuccess = true;
+      if (args.length === 1 && typeof args[0] === 'object' && args[0].icon === 'success') isSuccess = true;
+      
+      // Deteksi dari judul/teks jika status "Sukses"
+      if (args.length >= 1 && typeof args[0] === 'string' && args[0].toLowerCase().includes('sukses')) isSuccess = true;
+      if (args.length >= 2 && typeof args[1] === 'string' && args[1].toLowerCase().includes('sukses')) isSuccess = true;
+
+      if (isSuccess && typeof sultan_fetchNotifikasi === 'function') {
+        setTimeout(sultan_fetchNotifikasi, 500); // Delay sedikit agar tidak berebut resource
+      }
+      return originalSwalFire.apply(this, args);
+    };
+    Swal.__sultan_patched = true;
+  }
   function sultan_fetchNotifikasi() {
     var user = getSesiUser();
     if (!user) return;

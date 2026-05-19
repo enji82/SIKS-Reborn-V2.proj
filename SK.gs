@@ -583,8 +583,18 @@ function getNotifikasiSK(role, unit) {
             if (isAdmin && readByList.indexOf("Admin") > -1) isRead = true;
             if (!isAdmin && readByList.indexOf("User") > -1) isRead = true;
             
-            if (!isRead) {
+            
+            var stLower = String(status || "").toLowerCase();
+            var isDisetujui = stLower.includes("ok") || stLower.includes("setuju") || stLower.includes("valid") || stLower.includes("selesai");
+            
+            if (isAdmin) {
                 unreadCount++;
+            } else {
+                if (isDisetujui && isRead) {
+                    // Hilang hitungannya
+                } else {
+                    unreadCount++;
+                }
             }
             
             notifList.push({

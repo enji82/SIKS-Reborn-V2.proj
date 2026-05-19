@@ -678,7 +678,19 @@ function getNotifikasiLapbul(role, unit) {
                 if (!isAdmin && readByList.indexOf("User") > -1) isRead = true;
             }
 
-            if (!isRead) unreadCount++;
+            
+            var stLower = String(status || "").toLowerCase();
+            var isDisetujui = stLower.includes("ok") || stLower.includes("setuju") || stLower.includes("valid") || stLower.includes("selesai");
+            
+            if (isAdmin) {
+                unreadCount++;
+            } else {
+                if (isDisetujui && isRead) {
+                    // Hilang hitungannya
+                } else {
+                    unreadCount++;
+                }
+            }
 
             notifList.push({
               rowId: rowNum,

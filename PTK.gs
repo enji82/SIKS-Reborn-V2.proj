@@ -883,8 +883,18 @@ function getNotifikasiMutasiPAUD(role, unit) {
             if (isAdmin && readStatus.indexOf("Admin") > -1) isRead = true;
             if (!isAdmin && readStatus.indexOf("User") > -1) isRead = true;
             
-            if (!isRead) {
+            
+            var stLower = String(status || "").toLowerCase();
+            var isDisetujui = stLower.includes("ok") || stLower.includes("setuju") || stLower.includes("valid") || stLower.includes("selesai");
+            
+            if (isAdmin) {
                 unreadCount++;
+            } else {
+                if (isDisetujui && isRead) {
+                    // Hilang hitungannya
+                } else {
+                    unreadCount++;
+                }
             }
             
             notifList.push({
@@ -1199,8 +1209,18 @@ function getNotifikasiMutasiSDN(role, unit) {
             if (isAdmin && readStatus.indexOf("Admin") > -1) isRead = true;
             if (!isAdmin && readStatus.indexOf("User") > -1) isRead = true;
             
-            if (!isRead) {
+            
+            var stLower = String(status || "").toLowerCase();
+            var isDisetujui = stLower.includes("ok") || stLower.includes("setuju") || stLower.includes("valid") || stLower.includes("selesai");
+            
+            if (isAdmin) {
                 unreadCount++;
+            } else {
+                if (isDisetujui && isRead) {
+                    // Hilang hitungannya
+                } else {
+                    unreadCount++;
+                }
             }
             
             notifList.push({
@@ -1565,8 +1585,18 @@ function getNotifikasiMutasiSDS(role, unit) {
             if (isAdmin && readStatus.indexOf("Admin") > -1) isRead = true;
             if (!isAdmin && readStatus.indexOf("User") > -1) isRead = true;
             
-            if (!isRead) {
+            
+            var stLower = String(status || "").toLowerCase();
+            var isDisetujui = stLower.includes("ok") || stLower.includes("setuju") || stLower.includes("valid") || stLower.includes("selesai");
+            
+            if (isAdmin) {
                 unreadCount++;
+            } else {
+                if (isDisetujui && isRead) {
+                    // Hilang hitungannya
+                } else {
+                    unreadCount++;
+                }
             }
             
             notifList.push({

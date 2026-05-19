@@ -251,8 +251,18 @@ function getNotifikasiSalah(role, unit) {
             var readBy = String(row.readBy || "").trim().toLowerCase();
             var isRead = (readBy.indexOf("admin") > -1); // Jika ada tulisan admin, berarti sudah dibaca
             
-            if (!isRead) {
+            
+            var stLower = String(status || "").toLowerCase();
+            var isDisetujui = stLower.includes("ok") || stLower.includes("setuju") || stLower.includes("valid") || stLower.includes("selesai");
+            
+            if (isAdmin) {
                 unreadCount++;
+            } else {
+                if (isDisetujui && isRead) {
+                    // Hilang hitungannya
+                } else {
+                    unreadCount++;
+                }
             }
             
             notifList.push({
