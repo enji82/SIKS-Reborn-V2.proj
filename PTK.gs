@@ -709,6 +709,8 @@ function getJenjangByNPSN(npsn) {
 
 function getDataKeadaanGTKPAUD() { var sheet = getSheet(KONFIG_PTK_PAUD.DB_KEY, "Keadaan GTK PAUD"); if (!sheet) return []; var lastRow = sheet.getLastRow(); if (lastRow < 3) return []; return sheet.getRange(3, 1, lastRow - 2, 28).getDisplayValues(); }
 
+function getDataValidasiPTKSDN() { var sheet = getSheet(KONFIG_PTK.DB_KEY, "sinkron_gtk_sdn"); if (!sheet) return []; var lastRow = sheet.getLastRow(); if (lastRow < 3) return []; return sheet.getRange(3, 1, lastRow - 2, 46).getDisplayValues(); }
+
 function ajukanMutasiPTKPAUD(idPtk, jenis, tujuan, tanggal, base64Data, fileName, userPengusul) {
   try {
     var sheetSource = getSheet(KONFIG_PTK_PAUD.DB_KEY, KONFIG_PTK_PAUD.SHEET_PTK);
