@@ -391,18 +391,84 @@ function revisiUsulanPTKBaru(form, base64Data, fileName, jenisDokumen, userPengu
 // MODUL: REFERENSI (TIDAK BERUBAH)
 // ======================================================================
 function getReferensiPTK() {
-  function getColData(sheetName, colIndex) {
-    var s = getSheet(KONFIG_PTK.DB_KEY, sheetName); if (!s) return []; var last = s.getLastRow(); if (last < 2) return [];
-    var data = s.getRange(2, colIndex, last - 1, 1).getValues(); var res = [];
-    for (var i = 0; i < data.length; i++) { var val = String(data[i][0]).trim(); if (val !== "") res.push(val); } return res;
+  try {
+    function getColData(sheetName, colIndex) {
+      try {
+        var s = getSheet(KONFIG_PTK.DB_KEY, sheetName); 
+        if (!s) return []; 
+        var last = s.getLastRow(); 
+        if (last < 2) return [];
+        var data = s.getRange(2, colIndex, last - 1, 1).getValues(); 
+        var res = [];
+        for (var i = 0; i < data.length; i++) { 
+          var val = String(data[i][0]).trim(); 
+          if (val !== "") res.push(val); 
+        } 
+        return res;
+      } catch (innerErr) {
+        Logger.log("getColData Error for " + sheetName + ": " + innerErr.message);
+        return [];
+      }
+    }
+    
+    function getPangkat() {
+      try {
+        var s = getSheet(KONFIG_PTK.DB_KEY, "data_pangkat"); 
+        if (!s) return []; 
+        var last = s.getLastRow(); 
+        if (last < 2) return [];
+        var data = s.getRange(2, 1, last - 1, 1).getValues(); 
+        var res = [];
+        for (var i = 0; i < data.length; i++) { 
+          var val = String(data[i][0]).trim(); 
+          if (val !== "") res.push(val); 
+        } 
+        return res;
+      } catch (innerErr) {
+        Logger.log("getPangkat Error: " + innerErr.message);
+        return [];
+      }
+    }
+
+    var resObj = { 
+      jabatan_non_asn: getColData("isian_jabatan", 1), 
+      jabatan_asn: getColData("isian_jabatan", 2), 
+      tugas_non_asn: getColData("isian_tugas_di_sekolah", 1), 
+      tugas_asn: getColData("isian_tugas_di_sekolah", 2), 
+      pangkat: getPangkat() 
+    };
+
+    // Fallback jika database referensi kosong atau gagal dimuat agar tidak bug di frontend
+    if (resObj.jabatan_asn.length === 0) {
+      resObj.jabatan_asn = ["Kepala Sekolah", "Guru Kelas", "Guru PJOK", "Guru Agama Islam", "Guru Agama Kristen", "Guru Agama Katolik", "Guru Agama Hindu", "Guru Agama Buddha", "Guru Agama Konghucu", "Tenaga Administrasi Sekolah", "Penjaga Sekolah"];
+    }
+    if (resObj.jabatan_non_asn.length === 0) {
+      resObj.jabatan_non_asn = ["Guru Kelas", "Guru Mapel", "Tenaga Administrasi Sekolah", "Penjaga Sekolah", "Pramubakti", "Petugas Keamanan"];
+    }
+    if (resObj.tugas_asn.length === 0) {
+      resObj.tugas_asn = ["Kepala Sekolah", "Guru Kelas", "Guru Pend. Agama Islam", "Guru Pend. Agama Kristen", "Guru Pend. Agama Katolik", "Guru Pend. Agama Hindu", "Guru Pend. Agama Buddha", "Guru Pend. Agama Khonghucu", "Guru PJOK", "Tenaga Administrasi Sekolah", "Penjaga Sekolah"];
+    }
+    if (resObj.tugas_non_asn.length === 0) {
+      resObj.tugas_non_asn = ["Guru Kelas", "Guru Pend. Agama Islam", "Guru Pend. Agama Kristen", "Guru Pend. Agama Katolik", "Guru Pend. Agama Hindu", "Guru Pend. Agama Buddha", "Guru Pend. Agama Khonghucu", "Guru PJOK", "Tenaga Administrasi Sekolah", "Penjaga Sekolah", "Pramubakti", "Petugas Keamanan"];
+    }
+    if (resObj.pangkat.length === 0) {
+      resObj.pangkat = ["-", "Juru Muda, I/a", "Juru Muda Tingkat I, I/b", "Juru, I/c", "Juru Tingkat I, I/d", "Pengatur Muda, II/a", "Pengatur Muda Tingkat I, II/b", "Pengatur, II/c", "Pengatur Tingkat I, II/d", "Penata Muda, III/a", "Penata Muda Tingkat I, III/b", "Penata, III/c", "Penata Tingkat I, III/d", "Pembina, IV/a", "Pembina Tingkat I, IV/b", "Pembina Utama Muda, IV/c", "Pembina Utama Madya, IV/d", "Pembina Utama, IV/e", "IX", "X"];
+    }
+
+    return JSON.stringify(resObj);
+  } catch (e) {
+    Logger.log("getReferensiPTK Global Error: " + e.message);
+    // Return fallback mutlak agar frontend tidak mati total
+    return JSON.stringify({
+      jabatan_asn: ["Kepala Sekolah", "Guru Kelas", "Guru PJOK", "Guru Agama Islam", "Guru Agama Kristen", "Guru Agama Katolik", "Guru Agama Hindu", "Guru Agama Buddha", "Guru Agama Konghucu", "Tenaga Administrasi Sekolah", "Penjaga Sekolah"],
+      jabatan_non_asn: ["Guru Kelas", "Guru Mapel", "Tenaga Administrasi Sekolah", "Penjaga Sekolah", "Pramubakti", "Petugas Keamanan"],
+      tugas_asn: ["Kepala Sekolah", "Guru Kelas", "Guru PJOK", "Guru Mapel", "Tenaga Kependidikan"],
+      tugas_non_asn: ["Guru Kelas", "Guru PJOK", "Guru Mapel", "Tenaga Kependidikan"],
+      pangkat: ["-", "Juru Muda, I/a", "Juru Muda Tingkat I, I/b", "Juru, I/c", "Juru Tingkat I, I/d", "Pengatur Muda, II/a", "Pengatur Muda Tingkat I, II/b", "Pengatur, II/c", "Pengatur Tingkat I, II/d", "Penata Muda, III/a", "Penata Muda Tingkat I, III/b", "Penata, III/c", "Penata Tingkat I, III/d", "Pembina, IV/a", "Pembina Tingkat I, IV/b", "Pembina Utama Muda, IV/c", "Pembina Utama Madya, IV/d", "Pembina Utama, IV/e", "IX", "X"]
+    });
   }
-  function getPangkat() {
-     var s = getSheet(KONFIG_PTK.DB_KEY, "data_pangkat"); if(!s) return []; var last = s.getLastRow(); if (last < 2) return [];
-     var data = s.getRange(2, 1, last-1, 1).getValues(); var res = [];
-     for(var i=0; i<data.length; i++) { var val = String(data[i][0]).trim(); if(val !== "") res.push(val); } return res;
-  }
-  return JSON.stringify({ jabatan_non_asn: getColData("isian_jabatan", 1), jabatan_asn: getColData("isian_jabatan", 2), tugas_non_asn: getColData("isian_tugas_di_sekolah", 1), tugas_asn: getColData("isian_tugas_di_sekolah", 2), pangkat: getPangkat() });
 }
+
 
 function getUnitKerjaByNpsnPTK(npsn) {
   try {
