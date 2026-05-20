@@ -130,7 +130,9 @@ function updateDataPTK(form, base64Data, fileName, jenisDokumen) {
     var user = form.user_login || "Admin";
 
     if (form.npsn_baru && form.unit_kerja) {
-        sheet.getRange(rowIndex, 2).setValue("'" + form.npsn_baru); 
+        // VAKSIN: Simpan NPSN sebagai angka (bukan teks) agar QUERY di sheet lain tetap berfungsi
+        var npsnVal = parseInt(String(form.npsn_baru).replace(/[^0-9]/g, ''), 10);
+        sheet.getRange(rowIndex, 2).setValue(isNaN(npsnVal) ? form.npsn_baru : npsnVal); 
         sheet.getRange(rowIndex, 3).setValue(form.unit_kerja);      
     }
 
@@ -238,9 +240,13 @@ function insertDataPTK(form, base64Data, fileName, jenisDokumen, userPengusul) {
     }
   }
 
+  var rawNpsn = form.npsn_baru || form.npsn_login || "";
+  var npsnNum = parseInt(String(rawNpsn).replace(/[^0-9]/g, ''), 10);
+  var finalNpsn = isNaN(npsnNum) ? rawNpsn : npsnNum;
+
   var rowData = [
       newId,                  // A (0)
-      form.npsn_baru || form.npsn_login || "",  // B (1)
+      finalNpsn,              // B (1)
       form.unit_kerja || form.unit_login || "", // C (2)
       form.gelar_depan || "", // D (3)
       form.nama_lengkap || "",// E (4)
@@ -545,9 +551,15 @@ function insertDataPTKSDS(form) {
   var sheet = getSheet(KONFIG_PTK.DB_KEY, "Master Data GTK SDS");
   var data = sheet.getDataRange().getValues(); var inputNik = String(form.nik).trim(); 
   for (var i = 1; i < data.length; i++) { var rowNik = String(data[i][10]).replace(/'/g, "").trim(); if (rowNik === inputNik) return "NIK " + inputNik + " sudah terdaftar atas nama " + data[i][6] + ", hubungi admin."; }
-  var newId = "SDS-" + new Date().getTime(); var namaFull = (form.gelar_depan ? form.gelar_depan + " " : "") + form.nama_lengkap + (form.gelar_belakang ? ", " + form.gelar_belakang : ""); var timestamp = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss");
+  var newId = "SDS-" + new Date().getTime(); 
+  var namaFull = (form.gelar_depan ? form.gelar_depan + " " : "") + form.nama_lengkap + (form.gelar_belakang ? ", " + form.gelar_belakang : ""); 
+  var timestamp = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss");
+  var rawNpsn = form.npsn_baru || form.npsn_login || "";
+  var npsnNum = parseInt(String(rawNpsn).replace(/[^0-9]/g, ''), 10);
+  var finalNpsn = isNaN(npsnNum) ? rawNpsn : npsnNum;
+
   var rowData = [
-    newId, form.npsn_baru || form.npsn_login || "", form.unit_kerja || form.unit_login || "", form.gelar_depan || "", form.nama_lengkap || "", form.gelar_belakang || "",    
+    newId, finalNpsn, form.unit_kerja || form.unit_login || "", form.gelar_depan || "", form.nama_lengkap || "", form.gelar_belakang || "",    
     namaFull || "", form.niy || "", form.tmp_lahir || "", form.tgl_lahir || "", "'" + (form.nik || ""), form.lp || "", form.agama || "",             
     form.pendidikan || "", form.jurusan || "", form.thn_lulus || "", 
     form.alamat_ktp || "", form.alamat_domisili || "", "'" + (form.hp || ""), form.status_peg || "", form.jabatan || "", form.tmt_jabatan || "",       
@@ -566,7 +578,11 @@ function updateDataPTKSDS(form) {
   if (inputNik !== "") { for (var i = 1; i < data.length; i++) { var rowNik = String(data[i][10]).replace(/'/g, '').trim(); if (rowNik === inputNik && String(data[i][0]) !== String(form.id)) return "Gagal: NIK " + inputNik + " sudah dipakai oleh " + data[i][6]; } }
   var namaFull = (form.gelar_depan ? form.gelar_depan + " " : "") + form.nama_lengkap + (form.gelar_belakang ? ", " + form.gelar_belakang : "");
   var timestamp = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss");
-  if (form.npsn_baru && form.unit_kerja) { sheet.getRange(rowIdx, 2).setValue("'" + form.npsn_baru); sheet.getRange(rowIdx, 3).setValue(form.unit_kerja); }
+  if (form.npsn_baru && form.unit_kerja) { 
+    var npsnVal = parseInt(String(form.npsn_baru).replace(/[^0-9]/g, ''), 10);
+    sheet.getRange(rowIdx, 2).setValue(isNaN(npsnVal) ? form.npsn_baru : npsnVal); 
+    sheet.getRange(rowIdx, 3).setValue(form.unit_kerja); 
+  }
   var updateValues = [[ form.gelar_depan || "", form.nama_lengkap || "", form.gelar_belakang || "", namaFull || "", form.niy || "", form.tmp_lahir || "", form.tgl_lahir || "", "'" + (form.nik || ""), form.lp || "", form.agama || "", form.pendidikan || "", form.jurusan || "", form.thn_lulus || "", form.alamat_ktp || "", form.alamat_domisili || "", "'" + (form.hp || ""), form.status_peg || "", form.jabatan || "", form.tmt_jabatan || "", form.inpassing || "", form.tmt_inpassing || "", "'" + (form.nuptk || ""), form.serdik || "", form.dapodik || "", form.tugtam || "" ]];
   sheet.getRange(rowIdx, 4, 1, 25).setValues(updateValues); // Digeser 25 Kolom
   sheet.getRange(rowIdx, 31).setValue(timestamp); sheet.getRange(rowIdx, 32).setValue(form.user_login); sheet.getRange(rowIdx, 33).setValue(form.email || ""); return "Sukses";
@@ -633,8 +649,12 @@ function insertDataPTKPAUD(form, base64Data, fileName, jenisDokumen, userPengusu
     var namaFull = (form.gelar_depan ? form.gelar_depan + " " : "") + form.nama_lengkap + (form.gelar_belakang ? ", " + form.gelar_belakang : "");
     var timestamp = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss");
 
+    var rawNpsn = form.npsn_baru || form.npsn_login || "";
+    var npsnNum = parseInt(String(rawNpsn).replace(/[^0-9]/g, ''), 10);
+    var finalNpsn = isNaN(npsnNum) ? rawNpsn : npsnNum;
+
     var rowData = [
-      newId, form.npsn_baru || form.npsn_login || "", form.unit_kerja || form.unit_login || "", form.jenjang || "",
+      newId, finalNpsn, form.unit_kerja || form.unit_login || "", form.jenjang || "",
       form.gelar_depan || "", form.nama_lengkap || "", form.gelar_belakang || "", namaFull || "", form.niy || "",
       form.tmp_lahir || "", form.tgl_lahir || "", "'" + (form.nik || ""), form.lp || "", form.agama || "",
       form.pendidikan || "", form.jurusan || "", form.thn_lulus || "",
@@ -681,7 +701,11 @@ function updateDataPTKPAUD(form) {
   var inputNik = String(form.nik || "").trim();
   if (inputNik !== "") { for (var i = 1; i < data.length; i++) { var rowNik = String(data[i][11]).replace(/'/g, '').trim(); if (rowNik === inputNik && String(data[i][0]) != form.id) return "Gagal: NIK " + inputNik + " sudah dipakai oleh " + data[i][7]; } }
   var namaFull = (form.gelar_depan ? form.gelar_depan + " " : "") + form.nama_lengkap + (form.gelar_belakang ? ", " + form.gelar_belakang : ""); var timestamp = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss");
-  if (form.npsn_baru && form.unit_kerja) { sheet.getRange(rowIdx, 2).setValue("'" + form.npsn_baru); sheet.getRange(rowIdx, 3).setValue(form.unit_kerja); }
+  if (form.npsn_baru && form.unit_kerja) { 
+    var npsnVal = parseInt(String(form.npsn_baru).replace(/[^0-9]/g, ''), 10);
+    sheet.getRange(rowIdx, 2).setValue(isNaN(npsnVal) ? form.npsn_baru : npsnVal); 
+    sheet.getRange(rowIdx, 3).setValue(form.unit_kerja); 
+  }
   var updateValues = [[ form.jenjang || "", form.gelar_depan || "", form.nama_lengkap || "", form.gelar_belakang || "", namaFull || "", form.niy || "", form.tmp_lahir || "", form.tgl_lahir || "", "'" + (form.nik || ""), form.lp || "", form.agama || "", form.pendidikan || "", form.jurusan || "", form.thn_lulus || "", form.alamat_ktp || "", form.alamat_domisili || "", "'" + (form.hp || ""), form.status_peg || "", form.jabatan || "", form.tmt_jabatan || "", form.inpassing || "", form.tmt_inpassing || "", "'" + (form.nuptk || ""), form.serdik || "", form.dapodik || "", form.tugtam || "" ]];
   sheet.getRange(rowIdx, 4, 1, 26).setValues(updateValues); // Digeser ke 26 Kolom
   sheet.getRange(rowIdx, 32).setValue(timestamp); sheet.getRange(rowIdx, 33).setValue(form.user_login); sheet.getRange(rowIdx, 34).setValue(form.email || ""); return "Sukses";
