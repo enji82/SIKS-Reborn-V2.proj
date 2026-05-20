@@ -262,6 +262,10 @@ function prosesSimpanLengkap(dbKey, namaSheet, source, form, fileData) {
         updateDataSekolahMaster(form);
     }
 
+    if (typeof invalidateNotifCache === 'function') {
+        invalidateNotifCache("User", form.nama_sekolah);
+    }
+
     return { success: true, message: "Laporan berhasil disimpan! (" + userLogin + ")" };
 
   } catch (e) {
@@ -365,6 +369,10 @@ function prosesUpdateLengkap(dbKey, namaSheet, form, fileData) {
     sheet.getRange(rowId, 1, 1, newRowData.length).setValues([newRowData]);
     SpreadsheetApp.flush(); 
     
+    if (typeof invalidateNotifCache === 'function') {
+        invalidateNotifCache("User", form.nama_sekolah);
+    }
+
     return { 
         success: true, message: "Data berhasil diperbarui!",
         newData: { tglEdit: strTglEdit, userEdit: strUserEdit, statusData: "Diproses", fileUrl: fileUrl }
@@ -412,6 +420,14 @@ function processDeleteData(source, rowId, inputCode, userLogin) {
     sheetTrash.appendRow(trashData);
     sheetMain.deleteRow(r);
 
+    if (typeof invalidateNotifCache === 'function') {
+        var schoolName = "";
+        var idxNama = headers.map(function(h) { return String(h).toLowerCase().trim(); }).indexOf("nama sekolah");
+        if (idxNama === -1) idxNama = headers.map(function(h) { return String(h).toLowerCase().trim(); }).indexOf("nama");
+        if (idxNama > -1) schoolName = rowValues[idxNama];
+        invalidateNotifCache("User", schoolName);
+    }
+
     return { success: true, message: "Data terhapus permanen." };
   } catch (e) { return { success: false, message: "Error System: " + e.toString() }; }
 }
@@ -438,6 +454,12 @@ function processVerifikasiLapbul(source, rowId, status, keterangan, userLogin) {
     var idxRead = headers.indexOf("dibaca oleh") > -1 ? headers.indexOf("dibaca oleh") : headers.indexOf("read by");
     if (idxRead > -1) {
         sheet.getRange(r, idxRead + 1).setValue("");
+    }
+
+    if (typeof invalidateNotifCache === 'function') {
+        var idxNama = headers.indexOf("nama sekolah") > -1 ? headers.indexOf("nama sekolah") : headers.indexOf("nama");
+        var schoolName = (idxNama > -1) ? sheet.getRange(r, idxNama + 1).getDisplayValue() : "";
+        invalidateNotifCache("User", schoolName);
     }
 
     return { 

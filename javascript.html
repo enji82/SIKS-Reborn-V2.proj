@@ -93,6 +93,116 @@
         var d = new Date(dateStr);
         return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
       }
+    },
+    modal: {
+      showForm: function(opsi) {
+        var sizeClass = opsi.size || '';
+        var theme = opsi.theme || 'primary';
+        
+        $('#global_modalFormSize').removeClass('modal-lg modal-xl').addClass(sizeClass);
+        
+        $('#global_modalFormHeader')
+          .removeClass('modal-header-sultan-primary modal-header-sultan-warning modal-header-sultan-danger modal-header-sultan-success modal-header-sultan-info modal-header-sultan-dark')
+          .addClass('modal-header-sultan-' + theme);
+          
+        var iconHtml = opsi.icon ? '<i class="' + opsi.icon + ' mr-2"></i>' : '';
+        $('#global_modalFormTitle').html(iconHtml + (opsi.title || 'Form'));
+        
+        $('#global_modalFormBody').html(opsi.bodyHtml || '');
+        $('#global_modalFormFooter').html(opsi.footerHtml || '');
+        
+        $('#global_modalForm').off('shown.bs.modal');
+        if (opsi.onShown) {
+          $('#global_modalForm').on('shown.bs.modal', function() {
+            opsi.onShown($('#global_modalForm'));
+          });
+        }
+        
+        $('#global_modalForm').modal('show');
+      },
+      tutupForm: function() {
+        $('#global_modalForm').modal('hide');
+      },
+      preview: function(url, isImage) {
+        $('#global_modalPreviewIframe').hide().attr('src', '');
+        $('#global_modalPreviewImg').hide().attr('src', '');
+        $('#global_modalPreviewLoading').show();
+        $('#global_modalPreview').modal('show');
+        
+        if (isImage) {
+          $('#global_modalPreviewImg').attr('src', url).off('load').on('load', function() {
+            $('#global_modalPreviewLoading').hide();
+            $(this).fadeIn();
+          }).off('error').on('error', function() {
+            $('#global_modalPreviewLoading').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mr-2"></i>Gagal memuat gambar</span>');
+          });
+        } else {
+          var finalUrl = url;
+          if (url.indexOf('drive.google.com') > -1 && url.indexOf('view') > -1 && url.indexOf('preview') === -1) {
+            finalUrl = url.replace(/\/view\b/g, '/preview');
+          }
+          $('#global_modalPreviewIframe').attr('src', finalUrl).off('load').on('load', function() {
+            $('#global_modalPreviewLoading').hide();
+            $(this).fadeIn();
+          });
+        }
+      },
+      konfirmasiHapus: function(kodePengamanValid, callbackYa) {
+        $('#global_hapusKodePengaman').val('');
+        $('#global_modalHapus').modal('show');
+        
+        $('#global_formHapus').off('submit').on('submit', function(e) {
+          e.preventDefault();
+          var inputVal = $('#global_hapusKodePengaman').val().trim();
+          if (inputVal === String(kodePengamanValid).trim()) {
+            $('#global_modalHapus').modal('hide');
+            if (callbackYa) callbackYa();
+          } else {
+            NotifSultan.alert('error', 'Kode Salah', 'Kode pengaman yang Anda masukkan tidak valid.');
+          }
+        });
+      },
+      verifikasi: function(opsi) {
+        $('#global_verifikasiIframe').hide().attr('src', '');
+        $('#global_verifikasiImg').hide().attr('src', '');
+        $('#global_verifikasiLoading').show();
+        
+        $('#global_modalVerifikasiTitle').html('<i class="fas fa-clipboard-check mr-2"></i>' + (opsi.title || 'Verifikasi Berkas'));
+        $('#global_verifikasiFormArea').html(opsi.formHtml || '');
+        
+        $('#global_modalVerifikasi').off('shown.bs.modal');
+        if (opsi.onShown) {
+          $('#global_modalVerifikasi').on('shown.bs.modal', function() {
+            opsi.onShown($('#global_modalVerifikasi'));
+          });
+        }
+        
+        $('#global_modalVerifikasi').modal('show');
+        
+        if (opsi.isImage) {
+          $('#global_verifikasiImg').attr('src', opsi.url).off('load').on('load', function() {
+            $('#global_verifikasiLoading').hide();
+            $(this).fadeIn();
+          });
+        } else {
+          var finalUrl = opsi.url;
+          if (opsi.url.indexOf('drive.google.com') > -1 && opsi.url.indexOf('view') > -1 && opsi.url.indexOf('preview') === -1) {
+            finalUrl = opsi.url.replace(/\/view\b/g, '/preview');
+          }
+          $('#global_verifikasiIframe').attr('src', finalUrl).off('load').on('load', function() {
+            $('#global_verifikasiLoading').hide();
+            $(this).fadeIn();
+          });
+        }
+      },
+      tutupVerifikasi: function() {
+        $('#global_modalVerifikasi').modal('hide');
+      }
+    },
+    utils: {
+      escapeHtml: function(text) {
+        return text ? String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;") : "";
+      }
     }
   };
 
@@ -279,19 +389,6 @@
 
     btn.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-2"></i> Memproses...';
     btn.disabled = true;
-
-    // LOGIKA KHUSUS SURAT CUTI: JANGAN TANDAI DIBACA JIKA MASIH BUTUH AKSI
-    if (source === "SuratCuti") {
-      var s = String(status || "").toLowerCase();
-      var butuhAksi = (s.includes("proses") || s.includes("revisi") || s.includes("tolak") || s.includes("belum"));
-      if (butuhAksi) {
-        console.log("Notifikasi Surat Cuti tetap Unread sampai aksi dilakukan.");
-        return; // STOP: Jangan tandai dibaca
-      }
-    }
-
-    google.script.run
-      .withSuccessHandler(function () { sultan_refreshNotifBadge(); })
 
     google.script.run
       .withSuccessHandler(function (response) {

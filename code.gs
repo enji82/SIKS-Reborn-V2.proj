@@ -165,7 +165,7 @@ function processLogin(formObj) {
       var row = data[i];
       // Kolom A=Username, B=Password Biasa, C=Nama Lengkap, D=Role, E=Foto/Unit
       if (String(row[0]).trim().toLowerCase() === inputUser.toLowerCase() && 
-          inputPass === String(row[1]).trim()) { // <--- BYPASS ENKRIPSI DI SINI
+          verifyPassword(inputPass, String(row[1]).trim())) {
         
         var realName = row[2]; // Nama dari Excel
         

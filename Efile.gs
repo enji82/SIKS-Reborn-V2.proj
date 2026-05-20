@@ -92,6 +92,17 @@ function simpanEfileBatch(batchData) {
     }
     if(rowsToAppend.length > 0) sheet.getRange(sheet.getLastRow() + 1, 1, rowsToAppend.length, rowsToAppend[0].length).setValues(rowsToAppend);
     SpreadsheetApp.flush();
+
+    try {
+        var uniqueNpsns = {};
+        batchData.forEach(function(item) {
+            if (item.npsn) uniqueNpsns[item.npsn] = true;
+        });
+        Object.keys(uniqueNpsns).forEach(function(npsn) {
+            onEfileDataChange(npsn);
+        });
+    } catch(err) {}
+
     return JSON.stringify({ success: true, message: batchData.length + " Berkas berhasil diunggah." });
   } catch(e) { return JSON.stringify({ success: false, message: e.message }); } finally { lock.releaseLock(); }
 }
@@ -104,7 +115,14 @@ function verifikasiEfileData(rowId, status, catatan, adminName) {
     var now = "'" + Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
     sheet.getRange(r, 8).setValue(status); sheet.getRange(r, 9).setValue(catatan);
     sheet.getRange(r, 13).setValue(now); sheet.getRange(r, 14).setValue(adminName); 
-    SpreadsheetApp.flush(); return JSON.stringify({ success: true, message: "Berkas berhasil di-" + status });
+    SpreadsheetApp.flush();
+    
+    try {
+        var npsn = sheet.getRange(r, 12).getDisplayValue();
+        onEfileDataChange(npsn);
+    } catch(err) {}
+
+    return JSON.stringify({ success: true, message: "Berkas berhasil di-" + status });
   } catch(e) { return JSON.stringify({ success: false, message: e.message }); } finally { lock.releaseLock(); }
 }
 
@@ -115,11 +133,21 @@ function hapusEfileData(rowId, securityCode) {
     var d = new Date(); var kd = d.getFullYear()+""+String(d.getMonth()+1).padStart(2,'0')+""+String(d.getDate()).padStart(2,'0');
     if (String(securityCode).trim() !== kd) return JSON.stringify({ success: false, message: "Kode Keamanan Salah!" });
     var sheet = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile"); var r = parseInt(rowId);
+    var npsn = "";
+    try {
+        npsn = sheet.getRange(r, 12).getDisplayValue();
+    } catch(err) {}
     var urlDrive = sheet.getRange(r, 7).getValue();
     if(urlDrive && urlDrive.includes('drive.google.com')) {
         try { var match = urlDrive.match(/\/d\/([a-zA-Z0-9_-]+)/) || urlDrive.match(/id=([a-zA-Z0-9_-]+)/); if(match && match[1]) DriveApp.getFileById(match[1]).setTrashed(true); } catch(ex){}
     }
-    sheet.deleteRow(r); SpreadsheetApp.flush(); return JSON.stringify({ success: true, message: "Berkas berhasil dihapus permanen." });
+    sheet.deleteRow(r); SpreadsheetApp.flush();
+    
+    if (npsn) {
+        try { onEfileDataChange(npsn); } catch(err) {}
+    }
+
+    return JSON.stringify({ success: true, message: "Berkas berhasil dihapus permanen." });
   } catch(e) { return JSON.stringify({ success: false, message: e.message }); } finally { lock.releaseLock(); }
 }
 
@@ -156,7 +184,14 @@ function perbaikiEfileData(payload, fileData) {
     sheet.getRange(r, 14).setValue("");                  // N: Kosongkan Verif
     sheet.getRange(r, 15).setValue(payload.periode);     // O: Edit Periode             
 
-    SpreadsheetApp.flush(); return JSON.stringify({ success: true, message: "Perbaikan data berhasil disimpan." });
+    SpreadsheetApp.flush();
+    
+    try {
+        var npsn = sheet.getRange(r, 12).getDisplayValue();
+        onEfileDataChange(npsn);
+    } catch(err) {}
+
+    return JSON.stringify({ success: true, message: "Perbaikan data berhasil disimpan." });
   } catch(e) { return JSON.stringify({ success: false, message: e.message }); } finally { lock.releaseLock(); }
 }
 
@@ -332,6 +367,13 @@ function getEfileDashboardInit(npsnFilter) {
 // 10. GET DATA DASHBOARD SPESIFIK (BERDASARKAN PILIHAN KATEGORI)
 // ======================================================================
 function getEfileDashboardData(sheetRekapName, sheetLaporName) {
+  var cacheKey = "EFILE_DASHBOARD_" + String(sheetRekapName).replace(/\s/g, "_") + "_" + String(sheetLaporName).replace(/\s/g, "_");
+  var cache = CacheService.getScriptCache();
+  try {
+    var cached = cache.get(cacheKey);
+    if (cached) return cached;
+  } catch(e) {}
+
   try {
     // 1. Tarik Data Rekapitulasi Tabel (A:NPSN, B:Unit, C:Tahun, D:Jml, E:Sudah, F:Belum)
     var shRekap = getSheet(KONFIG_EFILE.DB_KEY, sheetRekapName);
@@ -380,6 +422,36 @@ function getEfileDashboardData(sheetRekapName, sheetLaporName) {
         }
     }
 
-    return JSON.stringify({ success: true, rekap: arrRekap, belum: arrBelum });
+    var jsonResult = JSON.stringify({ success: true, rekap: arrRekap, belum: arrBelum });
+    try {
+      cache.put(cacheKey, jsonResult, 300);
+    } catch(e) {}
+    return jsonResult;
   } catch(e) { return JSON.stringify({ success: false, message: e.message }); }
+}
+
+function invalidateEfileDashboardCache() {
+  try {
+    var cache = CacheService.getScriptCache();
+    var shDash = getSheet(KONFIG_EFILE.DB_KEY, "Dashboard");
+    if (shDash) {
+      var dataDash = shDash.getDataRange().getDisplayValues();
+      for(var i=1; i<dataDash.length; i++) {
+        if(String(dataDash[i][0]).trim() !== "") {
+          var rekapName = String(dataDash[i][0]).replace(/\s/g, "_");
+          var laporName = String(dataDash[i][1]).replace(/\s/g, "_");
+          cache.remove("EFILE_DASHBOARD_" + rekapName + "_" + laporName);
+        }
+      }
+    }
+  } catch(e) {}
+}
+
+function onEfileDataChange(npsn) {
+  try {
+    invalidateEfileDashboardCache();
+    if (typeof invalidateNotifCache === 'function') {
+      invalidateNotifCache("User", npsn);
+    }
+  } catch(e) {}
 }

@@ -76,7 +76,8 @@ function processManualForm(formData) {
       "", "",                 // P, Q
       "'" + formData.npsn     // R (Kolom ke-18)
     ]);
-
+    
+    invalidateNotifCache("User", formData.namaSd);
     return { success: true, message: "Data SK berhasil disimpan." };
   } catch (e) { return handleError('processManualForm', e); }
 }
@@ -142,6 +143,7 @@ function simpanPerubahanSK(form) {
     sheet.getRange(rowIdx, 16).setValue(""); // Reset Telah Dibaca jika User Edit
 
     rekamCCTV("SUKSES", "Data baris " + rowIdx + " berhasil diupdate.");
+    invalidateNotifCache("User", form.namaSd);
     return { success: true, message: "Data berhasil diperbarui." };
 
   } catch (e) {
@@ -294,6 +296,7 @@ function hapusDataSK(form) {
     sheetSource.deleteRow(rowIdx);
 
     rekamCCTV("HAPUS DATA", "Menghapus Baris " + rowIdx + " oleh " + form.userDelete);
+    invalidateNotifCache("User", values[1]);
     return { success: true, message: "Data berhasil dihapus." };
 
   } catch (e) {
@@ -314,6 +317,9 @@ function verifikasiDataSK(form) {
     sheet.getRange(rowIdx, 14).setValue(form.verifikator); 
     sheet.getRange(rowIdx, 15).setValue("'" + form.verifKeterangan);
     sheet.getRange(rowIdx, 16).setValue(""); // Reset Telah Dibaca jika Admin Verifikasi
+
+    var schoolName = sheet.getRange(rowIdx, 2).getDisplayValue();
+    invalidateNotifCache("User", schoolName);
 
     SpreadsheetApp.flush();
     return { success: true, message: "Data diverifikasi: " + form.verifStatus };
@@ -437,6 +443,13 @@ function getSiabaStatusData() {
    MODULE: DASHBOARD SK (LOGIKA KEPATUHAN AWAL SEMESTER)
    ====================================================================== */
 function getDashboardSK(filterTahun, filterSemester) {
+  var cacheKey = "DASHBOARD_SK_" + String(filterTahun || "") + "_" + String(filterSemester || "");
+  var cache = CacheService.getScriptCache();
+  try {
+    var cached = cache.get(cacheKey);
+    if (cached) return JSON.parse(cached);
+  } catch (e) {}
+
   try {
     const sheetData = getSheet("SK_DATA_DB", "Unggah_SK");
     if (!sheetData) return { error: "Sheet 'Unggah_SK' tidak ditemukan!" };
@@ -550,6 +563,9 @@ function getDashboardSK(filterTahun, filterSemester) {
         return { sekolah: r[1], status: r[9], waktu: displayTime.replace(/['"]/g, "").trim().substring(0, 16) };
     });
 
+    try {
+      cache.put(cacheKey, JSON.stringify(stats), 300);
+    } catch(e) {}
     return stats;
 
   } catch (e) { return { error: "Terjadi kesalahan statistik." }; }
@@ -727,8 +743,28 @@ function tandaiSemuaNotifGlobalDibaca(role, unit) {
 function invalidateNotifCache(role, unit) {
   try {
     var cache = CacheService.getScriptCache();
+    // Bersihkan cache spesifik yang diminta
     var cacheKey = "NOTIF_GLOBAL_" + String(role || "").toLowerCase() + "_" + String(unit || "").toUpperCase();
     cache.remove(cacheKey);
+    
+    // Bersihkan cache role-role admin agar notifikasi langsung ter-update di pihak admin
+    cache.remove("NOTIF_GLOBAL_admin_");
+    cache.remove("NOTIF_GLOBAL_verifikator_");
+    cache.remove("NOTIF_GLOBAL_korwil_");
+    
+    // Bersihkan cache user jika unit terdefinisi
+    if (unit) {
+      cache.remove("NOTIF_GLOBAL_user_" + String(unit).toUpperCase());
+    }
+
+    // Bersihkan cache dashboard SK untuk filter yang umum digunakan
+    var years = ["", "2023/2024", "2024/2025", "2025/2026", "2026/2027"];
+    var semesters = ["", "Gganjil", "Genap", "Ganjil"]; // Beberapa format semester
+    years.forEach(function(y) {
+      semesters.forEach(function(s) {
+        cache.remove("DASHBOARD_SK_" + y + "_" + s);
+      });
+    });
   } catch (e) { /* ignore */ }
 }
 
