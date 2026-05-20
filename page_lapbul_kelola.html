@@ -1062,13 +1062,47 @@
         return badgeHtml;
     }
 
+    function lapbulkelola_getPreviewUrl(url) {
+        if (!url || String(url).trim().length < 5) return "";
+        var cleanUrl = String(url).trim();
+
+        if (cleanUrl.includes('drive.google.com') || cleanUrl.includes('docs.google.com')) {
+            var match = cleanUrl.match(/\/d\/([a-zA-Z0-9_-]{25,})/) || cleanUrl.match(/id=([a-zA-Z0-9_-]{25,})/);
+            if (match && match[1]) {
+                return 'https://drive.google.com/file/d/' + match[1] + '/preview';
+            }
+        }
+
+        if (cleanUrl.includes('/view')) {
+            return cleanUrl.replace(/\/view.*/, '/preview');
+        }
+
+        return cleanUrl;
+    }
+
+    function lapbulkelola_getDownloadUrl(url) {
+        if (!url || String(url).trim().length < 5) return "";
+        var cleanUrl = String(url).trim();
+
+        if (cleanUrl.includes('drive.google.com')) {
+            var match = cleanUrl.match(/\/d\/([a-zA-Z0-9_-]{25,})/) || cleanUrl.match(/id=([a-zA-Z0-9_-]{25,})/);
+            if (match && match[1]) {
+                return 'https://drive.google.com/uc?export=download&id=' + match[1];
+            }
+        }
+
+        return cleanUrl;
+    }
+
     function lapbulkelola_previewPDF(url) {
-        if (!url || url.length < 5) { Sultan.notif.gagal("Link file kosong."); return; }
-        var previewUrl = url.includes('/view') ? url.replace(/\/view.*/, '/preview') : url;
+        if (!url || String(url).trim().length < 5) { Sultan.notif.gagal("Link file kosong."); return; }
+        var previewUrl = lapbulkelola_getPreviewUrl(url);
+        var downloadUrl = lapbulkelola_getDownloadUrl(url);
 
         $('#lapbulkelola_loadingPreviewPDF').removeClass('d-none');
         $('#lapbulkelola_framePreview').addClass('d-none').attr('src', previewUrl);
-        $('#lapbulkelola_btnTabBaru, #lapbulkelola_btnUnduh').attr('href', url);
+        $('#lapbulkelola_btnTabBaru').attr('href', previewUrl);
+        $('#lapbulkelola_btnUnduh').attr('href', downloadUrl);
         $('#lapbulkelola_modalPreview').modal('show');
 
         $('#lapbulkelola_framePreview').off('load').on('load', function () {
@@ -1076,7 +1110,7 @@
             $(this).removeClass('d-none');
         });
 
-        // Fallback 2.5 Detik sesuai BAB V
+        // Fallback 2.5 Detik
         setTimeout(function () {
             $('#lapbulkelola_loadingPreviewPDF').addClass('d-none');
             $('#lapbulkelola_framePreview').removeClass('d-none');
