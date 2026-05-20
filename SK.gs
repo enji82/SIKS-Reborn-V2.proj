@@ -694,10 +694,10 @@ function getNotifikasiGlobal(role, unit) {
     modules: modules
   });
   
-  // Simpan ke cache selama 90 detik (agar responsif tapi tidak memuat sheet terus-menerus)
+  // Simpan ke cache selama 30 detik agar polling dan refresh lebih cepat menangkap notifikasi baru
   try {
     if (result.length < 100000) {
-      cache.put(cacheKey, result, 90);
+      cache.put(cacheKey, result, 30);
     }
   } catch (e) { /* ignore cache put errors */ }
   

@@ -146,6 +146,16 @@
 
     sultan_initDarkMode();
     $(document).on('change', '#sultan_darkModeToggle', sultan_toggleDarkMode);
+
+    // Refresh notifikasi saat kembali ke tab aktif
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible') {
+        sultan_fetchNotifikasi();
+      }
+    });
+    window.addEventListener('focus', function () {
+      sultan_fetchNotifikasi();
+    });
   });
 
   function inisialisasiAplikasi() {
@@ -194,6 +204,24 @@
      ============================================================= */
   var SPA_IS_NAVIGATING = false;  // GUARD: Mencegah loadContent dipanggil ganda
   var SPA_CURRENT_PAGE = '';      // Tracking halaman aktif
+  var _sultanNotifPollInterval = null;
+  var _sultanNotifPollDelay = 30000; // 30 detik
+
+  function sultan_startNotifPolling() {
+    if (_sultanNotifPollInterval) return;
+    _sultanNotifPollInterval = setInterval(function () {
+      if (document.visibilityState === 'visible') {
+        sultan_fetchNotifikasi();
+      }
+    }, _sultanNotifPollDelay);
+  }
+
+  function sultan_stopNotifPolling() {
+    if (_sultanNotifPollInterval) {
+      clearInterval(_sultanNotifPollInterval);
+      _sultanNotifPollInterval = null;
+    }
+  }
 
   function loadContent(pageName) {
     if (!pageName) return;
@@ -305,6 +333,7 @@
 
         // 1. Hapus memori user dari Local Storage
         localStorage.removeItem("siksUser");
+        sultan_stopNotifPolling();
 
         // 2. Sembunyikan Dashboard dan bersihkan sisa konten
         $('#konten-aplikasi').hide();
@@ -356,6 +385,7 @@
     // Panggil Notifikasi Global
     if (typeof sultan_fetchNotifikasi === "function") {
       sultan_fetchNotifikasi();
+      sultan_startNotifPolling();
     }
 
     // Paksa update warna setiap kali dropdown notif dibuka
