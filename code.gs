@@ -98,10 +98,76 @@ function hashPassword(password) {
     .join('');
 }
 
-// Fungsi untuk verifikasi password (mendukung hash SHA-256 dan plain-text)
-function verifyPassword(inputPassword, storedHash) {
-  if (!storedHash) return false;
-  return inputPassword === storedHash || hashPassword(inputPassword) === storedHash;
+/** Normalisasi nilai password dari sel Sheet (trim, buang apostrof pembuka). */
+function normalizeStoredPassword(stored) {
+  return String(stored || "").trim().replace(/^'/, "");
+}
+
+/** Deteksi password yang sudah di-hash SHA-256 (64 karakter hex). */
+function isPasswordHashed(stored) {
+  return /^[a-f0-9]{64}$/i.test(normalizeStoredPassword(stored));
+}
+
+/**
+ * Verifikasi login: cocokkan dengan format di sheet (plain ATAU hash).
+ * Jangan hapus cabang plain-text sebelum semua baris di sheet sudah hash.
+ */
+function verifyPassword(inputPassword, storedRaw) {
+  var stored = normalizeStoredPassword(storedRaw);
+  if (!stored) return false;
+  var input = String(inputPassword).trim();
+  if (isPasswordHashed(stored)) {
+    return hashPassword(input) === stored.toLowerCase();
+  }
+  return input === stored;
+}
+
+/** Simpan password baru ke sheet: selalu hash (kecuali sudah berupa hash valid). */
+function preparePasswordForStorage(plainPassword) {
+  var p = normalizeStoredPassword(plainPassword);
+  if (!p) return "";
+  if (isPasswordHashed(p)) return p.toLowerCase();
+  return hashPassword(p);
+}
+
+/**
+ * Setelah login sukses dengan password plain di sheet, tulis hash ke kolom B
+ * (migrasi malas — user tidak perlu reset password).
+ */
+function upgradePasswordHashIfPlain(sheetUser, rowIndex, inputPassword, storedRaw) {
+  try {
+    var stored = normalizeStoredPassword(storedRaw);
+    if (isPasswordHashed(stored)) return;
+    if (String(inputPassword).trim() !== stored) return;
+    sheetUser.getRange(rowIndex, 2).setValue(hashPassword(inputPassword));
+  } catch (e) {
+    Logger.log("upgradePasswordHashIfPlain: " + e.message);
+  }
+}
+
+/**
+ * Migrasi batch plain-text → hash (jalankan sekali dari editor script sebagai Admin).
+ * @param {boolean} dryRun true = hanya log, tidak menulis sheet
+ * @return {Object} ringkasan { updated, skipped, dryRun }
+ */
+function migrateAllPasswordsToHash(dryRun) {
+  dryRun = dryRun !== false;
+  var sheet = getSheet("USER_DB", SPREADSHEET_IDS.SHEET_USER_NAME);
+  var data = sheet.getDataRange().getValues();
+  var updated = 0;
+  var skipped = 0;
+  for (var i = 1; i < data.length; i++) {
+    var user = String(data[i][0] || "").trim();
+    if (!user) { skipped++; continue; }
+    var stored = normalizeStoredPassword(data[i][1]);
+    if (!stored || isPasswordHashed(stored)) { skipped++; continue; }
+    if (!dryRun) {
+      sheet.getRange(i + 1, 2).setValue(hashPassword(stored));
+    }
+    updated++;
+  }
+  if (!dryRun) SpreadsheetApp.flush();
+  return { dryRun: dryRun, updated: updated, skipped: skipped };
 }
 
 // Fungsi untuk validasi input
@@ -165,9 +231,12 @@ function processLogin(formObj) {
     for (var i = 1; i < data.length; i++) {
       var row = data[i];
       // Kolom A=Username, B=Password Biasa, C=Nama Lengkap, D=Role, E=Foto/Unit
-      if (String(row[0]).trim().toLowerCase() === inputUser.toLowerCase() && 
-          verifyPassword(inputPass, String(row[1]).trim())) {
-        
+      var storedPass = String(row[1]).trim();
+      if (String(row[0]).trim().toLowerCase() === inputUser.toLowerCase() &&
+          verifyPassword(inputPass, storedPass)) {
+
+        upgradePasswordHashIfPlain(sheet, i + 1, inputPass, storedPass);
+
         var realName = row[2]; // Nama dari Excel
         
         // JIKA NAMA KOSONG DI EXCEL, PAKAI USERNAME AGAR TIDAK ERROR
@@ -263,7 +332,8 @@ function getDetailUser(username) {
       if (String(data[i][0]).trim() === String(username).trim()) {
         return JSON.stringify({
           username: String(data[i][0]).trim(),
-          password: String(data[i][1] || "").trim(),
+          password: "",
+          passwordIsHashed: isPasswordHashed(data[i][1]),
           nama: String(data[i][2] || "").trim(),
           role: String(data[i][3] || "user").trim(),
           photo: String(data[i][4] || "").trim(),
@@ -290,9 +360,26 @@ function simpanUser(payload) {
       if (String(data[i][0]).trim() === username) { existingRow = i + 1; break; }
     }
 
+    var passRaw = String(payload.password || "").trim();
+    var keepExisting = payload.keepPassword === true ||
+      passRaw === "__KEEP_EXISTING__" ||
+      (existingRow > 0 && !passRaw);
+
+    var passwordCol;
+    if (keepExisting && existingRow > 0) {
+      passwordCol = normalizeStoredPassword(data[existingRow - 1][1]);
+      if (isPasswordHashed(passwordCol)) {
+        passwordCol = passwordCol.toLowerCase();
+      }
+    } else if (!passRaw && existingRow < 0) {
+      return JSON.stringify({ error: "Password wajib diisi untuk user baru." });
+    } else {
+      passwordCol = preparePasswordForStorage(passRaw);
+    }
+
     var rowData = [
       username,
-      String(payload.password || "").trim(),
+      passwordCol,
       String(payload.nama || username).trim(),
       String(payload.role || "user").trim(),
       String(payload.photo || "").trim(),

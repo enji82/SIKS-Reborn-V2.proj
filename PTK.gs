@@ -106,6 +106,66 @@ function getDataPTKSD(filterUnit, filterStatus) {
   return JSON.stringify(result);
 }
 
+/**
+ * Tulis ulang kolom D–AL (4–38) satu baris Master PTK dalam satu setValues.
+ */
+function applyPtkMasterRowUpdate_(sheet, rowIndex, form, extras) {
+  extras = extras || {};
+  var namaFull = (form.gelar_depan ? form.gelar_depan + " " : "") + form.nama_lengkap + (form.gelar_belakang ? ", " + form.gelar_belakang : "");
+  var mkg = "";
+  if (form.mkg_thn || form.mkg_bln) {
+    mkg = (form.mkg_thn || "0") + " Tahun " + (form.mkg_bln || "0") + " Bulan";
+  }
+  var now = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MM-yyyy HH:mm:ss");
+  var user = form.user_login || "Admin";
+
+  if (form.npsn_baru && form.unit_kerja) {
+    var npsnVal = parseInt(String(form.npsn_baru).replace(/[^0-9]/g, ''), 10);
+    sheet.getRange(rowIndex, 2, 1, 2).setValues([[
+      isNaN(npsnVal) ? form.npsn_baru : npsnVal,
+      form.unit_kerja
+    ]]);
+  }
+
+  var rowSlice = sheet.getRange(rowIndex, 4, 1, 35).getValues()[0];
+  rowSlice[0] = form.gelar_depan || "";
+  rowSlice[1] = form.nama_lengkap || "";
+  rowSlice[2] = form.gelar_belakang || "";
+  rowSlice[3] = namaFull;
+  rowSlice[4] = "'" + (form.nip || "");
+  rowSlice[5] = form.tmp_lahir || "";
+  rowSlice[6] = form.tgl_lahir || "";
+  rowSlice[7] = "'" + (form.nik || "");
+  rowSlice[8] = form.lp || "";
+  rowSlice[9] = form.agama || "";
+  rowSlice[10] = form.pendidikan || "";
+  rowSlice[11] = form.jurusan || "";
+  rowSlice[12] = form.thn_lulus || "";
+  rowSlice[13] = form.alamat_ktp || "";
+  rowSlice[14] = form.alamat_domisili || "";
+  rowSlice[15] = "'" + (form.hp || "");
+  rowSlice[16] = form.status_peg || "";
+  rowSlice[17] = form.jabatan || "";
+  rowSlice[18] = form.tmt_jabatan || "";
+  rowSlice[19] = form.pangkat || "";
+  rowSlice[20] = form.tmt_gol || "";
+  rowSlice[21] = mkg;
+  // rowSlice[22] = kolom Z — pertahankan nilai lama
+  rowSlice[23] = form.tugas || "";
+  rowSlice[24] = "'" + (form.nuptk || "");
+  rowSlice[25] = form.serdik || "";
+  rowSlice[26] = form.dapodik || "";
+  rowSlice[27] = form.tugtam || "";
+  rowSlice[28] = form.email || "";
+  // rowSlice[29–30] = AG/AH diinput — pertahankan
+  rowSlice[31] = now;
+  rowSlice[32] = user;
+  if (extras.jenisDokumen) rowSlice[33] = extras.jenisDokumen;
+  if (extras.fileUrl) rowSlice[34] = extras.fileUrl;
+
+  sheet.getRange(rowIndex, 4, 1, 35).setValues([rowSlice]);
+}
+
 // 3. UPDATE DATA PTK
 function updateDataPTK(form, base64Data, fileName, jenisDokumen) {
   try {
@@ -124,69 +184,23 @@ function updateDataPTK(form, base64Data, fileName, jenisDokumen) {
         }
     }
 
-    var namaFull = (form.gelar_depan ? form.gelar_depan + " " : "") + form.nama_lengkap + (form.gelar_belakang ? ", " + form.gelar_belakang : "");
-    var mkg = ""; if (form.mkg_thn || form.mkg_bln) { mkg = (form.mkg_thn || "0") + " Tahun " + (form.mkg_bln || "0") + " Bulan"; }
-    var now = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MM-yyyy HH:mm:ss");
-    var user = form.user_login || "Admin";
+    var extras = {};
+    if (jenisDokumen) extras.jenisDokumen = jenisDokumen;
 
-    if (form.npsn_baru && form.unit_kerja) {
-        // VAKSIN: Simpan NPSN sebagai angka (bukan teks) agar QUERY di sheet lain tetap berfungsi
-        var npsnVal = parseInt(String(form.npsn_baru).replace(/[^0-9]/g, ''), 10);
-        sheet.getRange(rowIndex, 2).setValue(isNaN(npsnVal) ? form.npsn_baru : npsnVal); 
-        sheet.getRange(rowIndex, 3).setValue(form.unit_kerja);      
-    }
-
-    sheet.getRange(rowIndex, 4).setValue(form.gelar_depan || "");         // D
-    sheet.getRange(rowIndex, 5).setValue(form.nama_lengkap || "");        // E
-    sheet.getRange(rowIndex, 6).setValue(form.gelar_belakang || "");      // F
-    sheet.getRange(rowIndex, 7).setValue(namaFull);                       // G
-    sheet.getRange(rowIndex, 8).setValue("'"+(form.nip || ""));           // H
-    sheet.getRange(rowIndex, 9).setValue(form.tmp_lahir || "");           // I
-    sheet.getRange(rowIndex, 10).setValue(form.tgl_lahir || "");    // J
-    sheet.getRange(rowIndex, 11).setValue("'"+(form.nik || ""));          // K
-    sheet.getRange(rowIndex, 12).setValue(form.lp || "");                 // L
-    sheet.getRange(rowIndex, 13).setValue(form.agama || "");              // M
-    sheet.getRange(rowIndex, 14).setValue(form.pendidikan || "");         // N
-    sheet.getRange(rowIndex, 15).setValue(form.jurusan || "");            // O
-    sheet.getRange(rowIndex, 16).setValue(form.thn_lulus || "");          // P
-    sheet.getRange(rowIndex, 17).setValue(form.alamat_ktp || "");         // Q (Alamat KTP)
-    sheet.getRange(rowIndex, 18).setValue(form.alamat_domisili || "");    // R (Alamat Domisili)
-    sheet.getRange(rowIndex, 19).setValue("'"+(form.hp || ""));           // S (HP)
-    sheet.getRange(rowIndex, 20).setValue(form.status_peg || "");         // T
-    sheet.getRange(rowIndex, 21).setValue(form.jabatan || "");            // U
-    sheet.getRange(rowIndex, 22).setValue(form.tmt_jabatan || "");  // V
-    sheet.getRange(rowIndex, 23).setValue(form.pangkat || "");            // W
-    sheet.getRange(rowIndex, 24).setValue(form.tmt_gol || "");      // X
-    sheet.getRange(rowIndex, 25).setValue(mkg);                           // Y
-    sheet.getRange(rowIndex, 27).setValue(form.tugas || "");              // AA
-    sheet.getRange(rowIndex, 28).setValue("'"+(form.nuptk || ""));        // AB
-    sheet.getRange(rowIndex, 29).setValue(form.serdik || "");             // AC
-    sheet.getRange(rowIndex, 30).setValue(form.dapodik || "");            // AD
-    sheet.getRange(rowIndex, 31).setValue(form.tugtam || "");             // AE
-    sheet.getRange(rowIndex, 32).setValue(form.email || "");              // AF 
-    
-    sheet.getRange(rowIndex, 35).setValue(now);                           // AI (Diedit)
-    sheet.getRange(rowIndex, 36).setValue(user);                          // AJ (User Edit)
-
-    // Upload dokumen baru jika ada
     if (base64Data && fileName) {
       try {
         var folderId = "1WScDrF-y4PyjFjneXuIqX3yRNxIcqKzB";
         var folder = DriveApp.getFolderById(folderId);
         var fileBytes = Utilities.base64Decode(base64Data);
         var blob = Utilities.newBlob(fileBytes, "application/pdf", fileName || "dokumen_ptk_edit.pdf");
-        var file = folder.createFile(blob);
-        var fileUrl = file.getUrl();
-        
-        sheet.getRange(rowIndex, 38).setValue(fileUrl); // AL (Column 38)
+        extras.fileUrl = folder.createFile(blob).getUrl();
       } catch(uploadErr) {
         Logger.log("Upload edit gagal: " + uploadErr.message);
       }
     }
-    
-    if (jenisDokumen) {
-      sheet.getRange(rowIndex, 37).setValue(jenisDokumen); // AK (Column 37)
-    }
+
+    applyPtkMasterRowUpdate_(sheet, rowIndex, form, extras);
+    try { CacheService.getScriptCache().remove("ptk_filter_options"); } catch (e) {}
 
     return "Sukses";
   } catch(e) { return "Error: " + e.message; }
