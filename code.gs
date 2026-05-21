@@ -694,11 +694,12 @@ function getUserProfileByName(username) {
  * MENGAMBIL TIMELINE AKTIVITAS USER LOGIN
  * Menggabungkan Log Access dan Log Aktivitas Modul
  */
-function getUserActivityTimeline(username) {
+function getUserActivityTimeline(username, displayName) {
   try {
     var activities = [];
     var uName = String(username || "").trim().toLowerCase();
-    if (!uName) return [];
+    var dName = String(displayName || "").trim().toLowerCase();
+    if (!uName && !dName) return [];
 
     // 1. Ambil dari LOG_ACCESS (Login/Access)
     var sheetLog = getSheet("USER_DB", "LOG_ACCESS");
@@ -707,7 +708,12 @@ function getUserActivityTimeline(username) {
       for (var i = dataLog.length - 1; i >= 1; i--) {
         var row = dataLog[i];
         var logUser = String(row[3] || "").trim().toLowerCase();
-        if (logUser === uName || logUser.includes(uName)) {
+        
+        var isMatch = false;
+        if (uName && (logUser === uName || logUser.includes(uName))) isMatch = true;
+        if (dName && (logUser === dName || logUser.includes(dName) || dName.includes(logUser))) isMatch = true;
+        
+        if (isMatch) {
           activities.push({
             type: 'login',
             title: 'Sesi Login',
@@ -732,7 +738,15 @@ function getUserActivityTimeline(username) {
           var userInput = String(rowSK[8] || "").trim().toLowerCase();
           var userUpdate = String(rowSK[11] || "").trim().toLowerCase();
           
-          if (userInput === uName || userUpdate === uName) {
+          var matchInput = false;
+          if (uName && (userInput === uName || userInput.includes(uName))) matchInput = true;
+          if (dName && (userInput === dName || userInput.includes(dName) || dName.includes(userInput))) matchInput = true;
+
+          var matchUpdate = false;
+          if (uName && (userUpdate === uName || userUpdate.includes(uName))) matchUpdate = true;
+          if (dName && (userUpdate === dName || userUpdate.includes(dName) || dName.includes(userUpdate))) matchUpdate = true;
+          
+          if (matchInput || matchUpdate) {
             activities.push({
               type: 'sk',
               title: 'Kelola SK',
