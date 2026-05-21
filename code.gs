@@ -441,6 +441,10 @@ function loadPageSetting() {
 // JALUR 1: STATISTIK & GRAFIK (Cepat)
 function getMonitoring_Charts() {
   try {
+    var cache = CacheService.getScriptCache();
+    var cached = cache.get("monitoring_charts");
+    if (cached != null) return cached;
+
     var sheetLog = getSheet("USER_DB", "LOG_ACCESS");
     if (!sheetLog) return { error: "Sheet LOG_ACCESS tidak ditemukan" };
 
@@ -489,7 +493,9 @@ function getMonitoring_Charts() {
       stats.weekly[weekKey] = (stats.weekly[weekKey] || 0) + 1;
     }
 
-    return JSON.stringify(stats);
+    var result = JSON.stringify(stats);
+    cache.put("monitoring_charts", result, 300);
+    return result;
 
   } catch (e) { return JSON.stringify({ error: e.toString() }); }
 }
@@ -497,6 +503,10 @@ function getMonitoring_Charts() {
 // JALUR 2: ANALISA USER (Ranking & Pasif)
 function getMonitoring_Users() {
   try {
+    var cache = CacheService.getScriptCache();
+    var cached = cache.get("monitoring_users");
+    if (cached != null) return cached;
+
     var ss = getDB("USER_DB");
     
     // 1. Ambil Log User (Kolom D = Nama User)
@@ -547,10 +557,12 @@ function getMonitoring_Users() {
       }
     }
 
-    return JSON.stringify({
+    var result = JSON.stringify({
       topUsers: top10,
       passiveUsers: userPasif
     });
+    cache.put("monitoring_users", result, 300);
+    return result;
 
   } catch (e) { return JSON.stringify({ error: e.toString() }); }
 }
@@ -656,6 +668,11 @@ function logUserVisit(userData) {
         userData.role, 
         jenisHari + " (" + ketHari + ")"
     ]);
+
+    // Invalidate Cache
+    var cache = CacheService.getScriptCache();
+    cache.remove("monitoring_charts");
+    cache.remove("monitoring_users");
     
   } catch (e) {
     console.log("Log Error: " + e.message);

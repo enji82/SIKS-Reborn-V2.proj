@@ -314,6 +314,7 @@
      ============================================================= */
   var SPA_IS_NAVIGATING = false;  // GUARD: Mencegah loadContent dipanggil ganda
   var SPA_CURRENT_PAGE = '';      // Tracking halaman aktif
+  var SPA_VIEW_CACHE = {};        // SPA routing memory cache
   var _sultanNotifPollInterval = null;
   var _sultanNotifPollDelay = 30000; // 30 detik
 
@@ -342,7 +343,6 @@
     // GUARD 2: Tolak jika sedang dalam proses navigasi halaman lain
     if (SPA_IS_NAVIGATING) return;
 
-    SPA_IS_NAVIGATING = true;
     SPA_CURRENT_PAGE = pageName;
 
     const $content = $('#app-content');
@@ -351,6 +351,31 @@
     $('body > .modal').remove(); $('.modal-backdrop').remove(); $('body').removeClass('modal-open').css('padding-right', '');
     highlightSidebar(pageName); updateBreadcrumb(pageName);
 
+    // Cek cache
+    if (SPA_VIEW_CACHE[pageName]) {
+      var cachedHtml = SPA_VIEW_CACHE[pageName];
+      $content.html(cachedHtml).addClass('sultan-page-transition');
+      $content.css('opacity', '1');
+      $content.css('min-height', '');
+      
+      // Ambil update secara asinkron di background tanpa memblokir navigasi
+      google.script.run
+        .withSuccessHandler(function (html) {
+          SPA_VIEW_CACHE[pageName] = html;
+          if (SPA_CURRENT_PAGE === pageName) {
+            $content.html(html);
+          }
+        })
+        .withFailureHandler(function (err) {
+          console.error("Gagal menyegarkan halaman di background:", err);
+        })
+        .loadPage(pageName);
+      
+      return;
+    }
+
+    // Jika tidak ada di cache, lakukan load normal dengan loading state
+    SPA_IS_NAVIGATING = true;
     if (typeof NProgress !== 'undefined') { NProgress.configure({ showSpinner: false, speed: 400 }); NProgress.start(); }
 
     $content.css('min-height', $content.height() + 'px');
@@ -358,6 +383,7 @@
 
     google.script.run
       .withSuccessHandler(function (html) {
+        SPA_VIEW_CACHE[pageName] = html;
         if (typeof NProgress !== 'undefined') NProgress.done();
         setTimeout(function () {
           $content.html(html).addClass('sultan-page-transition');
@@ -431,6 +457,7 @@
         // 1. Hapus memori user dari Local Storage
         localStorage.removeItem("siksUser");
         sultan_stopNotifPolling();
+        SPA_VIEW_CACHE = {};
 
         // 2. Sembunyikan Dashboard dan bersihkan sisa konten
         $('#konten-aplikasi').hide();

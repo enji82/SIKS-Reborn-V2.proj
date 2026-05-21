@@ -32,41 +32,7 @@
                     </div>
                 </div>
 
-                <div class="sultan-filter-pill-container mb-3">
-                    <div class="sultan-filter-item">
-                        <select id="ptksds_filterUnit" disabled>
-                            <option value="">- Memvalidasi Akses... -</option>
-                        </select>
-                        <i class="fas fa-chevron-down"></i>
-                    </div>
-
-                    <div class="sultan-filter-item">
-                        <select id="ptksds_filterStatus">
-                            <option value="SEMUA">- Semua Status -</option>
-                        </select>
-                        <i class="fas fa-chevron-down"></i>
-                    </div>
-
-                    <div class="sultan-filter-item">
-                        <select id="ptksds_filterJabatan">
-                            <option value="SEMUA">- Semua Jabatan -</option>
-                        </select>
-                        <i class="fas fa-chevron-down"></i>
-                    </div>
-
-                    <div class="divider-vertical d-none d-md-block mx-2"></div>
-
-                    <button type="button" id="ptksds_btnSync" class="sultan-btn-refresh" title="Segarkan Data Server"
-                        disabled>
-                        <i class="fas fa-sync-alt"></i>
-                    </button>
-
-                    <div class="ml-auto d-none d-md-block"></div>
-
-                    <button type="button" id="ptksds_btnTambah" class="sultan-btn-tambah" disabled>
-                        <i class="fas fa-plus"></i> TAMBAH DATA
-                    </button>
-                </div>
+                <div id="ptksds_filterBarArea"></div>
 
                 <div class="card-sultan">
                     <div class="card-body p-3">
@@ -108,14 +74,7 @@
     </div>
 </section>
 
-<div class="modal fade" id="ptksds_modalForm" tabindex="-1" role="dialog" data-backdrop="static">
-    <div class="modal-dialog modal-xl modal-dialog-centered" role="document">
-        <div class="modal-content border-0 shadow-lg modal-content-sultan">
-            <div class="modal-header modal-header-sultan-primary" id="ptksds_headerModalForm">
-                <h5 class="modal-title" id="ptksds_judulModalForm"><i class="fas fa-user-plus mr-2"></i> Tambah Data PTK
-                    SDS</h5>
-                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
-            </div>
+<div id="ptksds_templates" style="display:none;">
             <form id="ptksds_formUtama" novalidate>
                 <div class="modal-body modal-body-sultan">
                     <input type="hidden" id="ptksds_inputIdData" name="id">
@@ -422,17 +381,6 @@
                             class="fas fa-save mr-1"></i> SIMPAN DATA</button>
                 </div>
             </form>
-        </div>
-    </div>
-</div>
-
-<div class="modal fade" id="ptksds_modalHapus" tabindex="-1" role="dialog" data-backdrop="static">
-    <div class="modal-dialog modal-dialog-centered" role="document" style="max-width: 400px;">
-        <div class="modal-content border-0 shadow-lg modal-content-sultan">
-            <div class="modal-header modal-header-sultan-danger">
-                <h5 class="modal-title"><i class="fas fa-trash-alt mr-2"></i> Konfirmasi Hapus Data</h5>
-                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
-            </div>
 
             <form id="ptksds_formHapus" novalidate>
                 <div class="modal-body modal-body-sultan p-4">
@@ -483,8 +431,6 @@
                             class="fas fa-trash-alt mr-2"></i> HAPUS PERMANEN</button>
                 </div>
             </form>
-        </div>
-    </div>
 </div>
 
 <script>
@@ -502,6 +448,24 @@
     var PTKSDS_MAP_UNIT_NPSN = {};
 
     $(document).ready(function () {
+        // Render filter bar secara dinamis
+        var filtersConfig = [
+            { id: 'ptksds_filterUnit', placeholder: '- Memvalidasi Akses... -', disabled: true },
+            { id: 'ptksds_filterStatus', value: 'SEMUA', text: '- Semua Status -' },
+            { id: 'ptksds_filterJabatan', value: 'SEMUA', text: '- Semua Jabatan -' }
+        ];
+        var extraButtons = `
+            <div class="divider-vertical d-none d-md-block mx-2"></div>
+            <button type="button" id="ptksds_btnSync" class="sultan-btn-refresh" title="Segarkan Data Server" disabled>
+                <i class="fas fa-sync-alt"></i>
+            </button>
+            <div class="ml-auto d-none d-md-block"></div>
+            <button type="button" id="ptksds_btnTambah" class="sultan-btn-tambah" disabled>
+                <i class="fas fa-plus"></i> TAMBAH DATA
+            </button>
+        `;
+        $('#ptksds_filterBarArea').html(SultanUI.renderFilterBar(filtersConfig, extraButtons));
+
         try {
             var user = getSesiUser() || {};
             PTKSDS_USER_AKTIF = user.nama_lengkap || user.fullname || user.nama || user.username || "User Web";
@@ -797,8 +761,6 @@
         $('#ptksds_formUtama').removeClass('was-validated');
         $('#ptksds_inputMode').val('insert'); $('#ptksds_inputIdData').val('');
 
-        $('#ptksds_headerModalForm').removeClass('modal-header-sultan-warning').addClass('modal-header-sultan-primary');
-        $('#ptksds_judulModalForm').html('<i class="fas fa-user-plus mr-2"></i> Tambah Data PTK SDS');
         $('#ptksds_btnSimpanForm').removeClass('btn-warning text-dark').addClass('btn-maroon text-white').html('<i class="fas fa-save mr-1"></i> SIMPAN DATA');
 
         if (PTKSDS_IS_ADMIN) {
@@ -812,7 +774,20 @@
         }
 
         ptksds_cekJurusan();
-        $('#ptksds_modalForm').modal('show');
+
+        // DOM Shift and Show global form
+        $('#global_modalFormSize').removeClass('modal-lg modal-md').addClass('modal-xl');
+        $('#global_modalFormHeader').removeClass('modal-header-sultan-warning modal-header-sultan-danger modal-header-sultan-success modal-header-sultan-info modal-header-sultan-dark').addClass('modal-header-sultan-primary');
+        $('#global_modalFormTitle').html('<i class="fas fa-user-plus mr-2"></i> Tambah Data PTK SDS');
+        $('#global_modalFormBody, #global_modalFormFooter').hide();
+        $('#ptksds_formUtama').appendTo('#global_modalFormSize .modal-content');
+        
+        $('#global_modalForm').off('hidden.bs.modal.ptksds').on('hidden.bs.modal.ptksds', function() {
+            $('#ptksds_formUtama').appendTo('#ptksds_templates');
+            $('#global_modalFormBody, #global_modalFormFooter').show();
+        });
+
+        $('#global_modalForm').modal('show');
     }
 
     function ptksds_bukaModalEdit(id) {
@@ -821,9 +796,7 @@
         $('#ptksds_formUtama').removeClass('was-validated');
         $('#ptksds_inputMode').val('update'); $('#ptksds_inputIdData').val(row.id);
 
-        $('#ptksds_headerModalForm').removeClass('modal-header-sultan-primary').addClass('modal-header-sultan-warning');
         var labelJudul = PTKSDS_IS_ADMIN ? '<i class="fas fa-exchange-alt mr-2"></i> Edit / Mutasi PTK SDS' : '<i class="fas fa-user-edit mr-2"></i> Edit Data PTK SDS';
-        $('#ptksds_judulModalForm').html(labelJudul);
         $('#ptksds_btnSimpanForm').removeClass('btn-maroon text-white').addClass('btn-warning text-dark').html('<i class="fas fa-save mr-1"></i> UPDATE DATA');
 
         if (PTKSDS_IS_ADMIN) {
@@ -866,7 +839,20 @@
         $('[name="tugtam"]').val(row.tugtam);
 
         ptksds_cekJurusan();
-        $('#ptksds_modalForm').modal('show');
+
+        // DOM Shift and Show global form
+        $('#global_modalFormSize').removeClass('modal-lg modal-md').addClass('modal-xl');
+        $('#global_modalFormHeader').removeClass('modal-header-sultan-primary modal-header-sultan-danger modal-header-sultan-success modal-header-sultan-info modal-header-sultan-dark').addClass('modal-header-sultan-warning');
+        $('#global_modalFormTitle').html(labelJudul);
+        $('#global_modalFormBody, #global_modalFormFooter').hide();
+        $('#ptksds_formUtama').appendTo('#global_modalFormSize .modal-content');
+        
+        $('#global_modalForm').off('hidden.bs.modal.ptksds').on('hidden.bs.modal.ptksds', function() {
+            $('#ptksds_formUtama').appendTo('#ptksds_templates');
+            $('#global_modalFormBody, #global_modalFormFooter').show();
+        });
+
+        $('#global_modalForm').modal('show');
     }
 
     function ptksds_submitFormUtama(e) {
@@ -897,7 +883,7 @@
             if (res === "Sukses") {
                 Sultan.notif.crud.simpan($('#ptksds_inputIdData').val() !== "");
                 ptksds_tarikDataServer();
-                $('#ptksds_modalForm').modal('hide');
+                $('#global_modalForm').modal('hide');
             } else { Sultan.notif.crud.gagal(res); }
         };
         var cbFail = function (err) { btn.prop('disabled', false).html(txt); Sultan.notif.crud.gagal(err.message); };
@@ -910,7 +896,21 @@
         $('#ptksds_hapusIdData').val(id); $('#ptksds_hapusNamaView').text(nama);
         $('#ptksds_hapusAlasan').val(''); $('#ptksds_hapusInputKode').val('');
         $('#ptksds_formHapus').removeClass('was-validated');
-        $('#ptksds_modalHapus').modal('show');
+
+        // DOM Shift and Show global form (Danger Theme)
+        $('#global_modalFormSize').removeClass('modal-lg modal-xl').css('max-width', '400px');
+        $('#global_modalFormHeader').removeClass('modal-header-sultan-primary modal-header-sultan-warning modal-header-sultan-success modal-header-sultan-info modal-header-sultan-dark').addClass('modal-header-sultan-danger');
+        $('#global_modalFormTitle').html('<i class="fas fa-trash-alt mr-2"></i> Pindah ke Arsip Non-Aktif');
+        $('#global_modalFormBody, #global_modalFormFooter').hide();
+        $('#ptksds_formHapus').appendTo('#global_modalFormSize .modal-content');
+        
+        $('#global_modalForm').off('hidden.bs.modal.ptksds').on('hidden.bs.modal.ptksds', function() {
+            $('#ptksds_formHapus').appendTo('#ptksds_templates');
+            $('#global_modalFormSize').css('max-width', '');
+            $('#global_modalFormBody, #global_modalFormFooter').show();
+        });
+
+        $('#global_modalForm').modal('show');
     }
 
     function ptksds_submitHapusPermanen(e) {
@@ -935,7 +935,7 @@
             .withSuccessHandler(function (res) {
                 btn.prop('disabled', false).html(oldText);
                 if (res === 'Sukses') {
-                    $('#ptksds_modalHapus').modal('hide');
+                    $('#global_modalForm').modal('hide');
                     Sultan.notif.crud.hapus();
                     ptksds_tarikDataServer();
                 } else { Sultan.notif.crud.gagal(res); }
