@@ -208,9 +208,9 @@ function processLogout() {
 
 function initSheetHakAkses() {
   try {
-    var sheet = getSheet("USER_DB", "Hak_Akses");
+    var ss = getDB("USER_DB");
+    var sheet = ss.getSheetByName("Hak_Akses");
     if (!sheet) {
-      var ss = getDB("USER_DB");
       sheet = ss.insertSheet("Hak_Akses");
       sheet.getRange(1, 1, 1, 3).setValues([["Username", "Menu_Diizinkan", "Diperbarui"]]);
       sheet.getRange(1, 1, 1, 3).setFontWeight("bold");
@@ -415,7 +415,8 @@ function getVisitorStats() {
 
 function saveRunningText(textBaru) {
   try {
-    var sheet = getSheet("USER_DB", "SETTING");
+    var ss = getDB("USER_DB");
+    var sheet = ss.getSheetByName("SETTING");
     if (!sheet) {
       sheet = ss.insertSheet("SETTING");
       sheet.getRange("A1").setValue("RUNNING_TEXT");
@@ -495,8 +496,10 @@ function getMonitoring_Charts() {
 // JALUR 2: ANALISA USER (Ranking & Pasif)
 function getMonitoring_Users() {
   try {
+    var ss = getDB("USER_DB");
+    
     // 1. Ambil Log User (Kolom D = Nama User)
-    var sheetLog = getSheet("USER_DB", "LOG_ACCESS");
+    var sheetLog = ss.getSheetByName("LOG_ACCESS");
     var userActivityMap = {}; // Menghitung frekuensi login
     
     if (sheetLog && sheetLog.getLastRow() > 1) {
@@ -521,16 +524,24 @@ function getMonitoring_Users() {
 
     // 3. Cari User Pasif (Bandingkan dengan Database User)
     var userPasif = [];
-    var sheetUser = ss.getSheetByName(SPREADSHEET_IDS.SHEET_USER_NAME); // Pastikan variable global ini benar
+    var sheetUser = ss.getSheetByName(SPREADSHEET_IDS.SHEET_USER_NAME);
     if (sheetUser && sheetUser.getLastRow() > 1) {
-      // Asumsi Nama User ada di Kolom C (Index 3) di sheet USER_DATA
-      // Sesuaikan index kolom ini dengan database user Anda!
+      // Asumsi Nama User ada di Kolom C (Index 3) di sheet Data User
       var dataUser = sheetUser.getRange(2, 3, sheetUser.getLastRow() - 1, 1).getValues();
+      
+      // Buat set nama yang sudah log-in dengan lowercase + trim untuk case-insensitive matching
+      var loggedInLower = {};
+      for (var key in userActivityMap) {
+        loggedInLower[key.toLowerCase().trim()] = true;
+      }
       
       for (var j = 0; j < dataUser.length; j++) {
         var dbName = String(dataUser[j][0]).trim();
-        if (dbName && !userActivityMap[dbName]) {
-           userPasif.push(dbName);
+        if (dbName) {
+          var dbNameLower = dbName.toLowerCase();
+          if (!loggedInLower[dbNameLower]) {
+             userPasif.push(dbName);
+          }
         }
       }
     }
@@ -596,7 +607,8 @@ function logUserVisit(userData) {
 
   // B. Simpan Log Permanen ke Spreadsheet
   try {
-    var sheet = getSheet("USER_DB", "LOG_ACCESS");
+    var ss = getDB("USER_DB");
+    var sheet = ss.getSheetByName("LOG_ACCESS");
     
     // Jika sheet belum ada, buat baru otomatis
     if (!sheet) {
