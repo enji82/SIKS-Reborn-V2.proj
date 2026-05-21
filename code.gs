@@ -98,9 +98,10 @@ function hashPassword(password) {
     .join('');
 }
 
-// Fungsi untuk verifikasi password
+// Fungsi untuk verifikasi password (mendukung hash SHA-256 dan plain-text)
 function verifyPassword(inputPassword, storedHash) {
-  return hashPassword(inputPassword) === storedHash;
+  if (!storedHash) return false;
+  return inputPassword === storedHash || hashPassword(inputPassword) === storedHash;
 }
 
 // Fungsi untuk validasi input
