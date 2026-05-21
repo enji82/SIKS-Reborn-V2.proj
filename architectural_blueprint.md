@@ -50,11 +50,21 @@ Dokumen ini berisi cetak biru (blueprint) taktis untuk mengoptimalkan performa, 
         *   `SultanUI.renderFilterBar(filtersConfig)`: Merender filter bar dengan dropdown seleksi secara otomatis sesuai spesifikasi konfigurasi.
     *   **SPA View Cache:** Modifikasi fungsi `loadContent(pageName)` agar menyimpan output HTML halaman ke dalam variabel memori lokal klien `SPA_VIEW_CACHE` setelah tarikan pertama. Saat pengguna bernavigasi kembali ke halaman tersebut, tampilkan HTML dari cache lokal terlebih dahulu sebelum menyegarkan datanya secara asinkron.
 
-### C. Desain & Grid Responsif
-*   **File Target:** [css_sultan.html](file:///Users/macbookpro/Documents/GitHub/SIKS-Reborn-V2.proj/css_sultan.html)
-*   **Perubahan:**
-    *   Tambahkan rule `@media (max-width: 768px)` untuk menyembunyikan tabel horizontal besar dan mengubahnya menjadi susunan kartu vertikal bergaya minimalis.
-    *   Buat struktur collapsible drawer atau bottom sheet untuk meletakkan kontrol filter pencarian di perangkat mobile agar layar tidak penuh sesak oleh dropdown select.
+### C. Desain & Grid Responsif (Mobile-Friendly Standards)
+*   **File Target:** [css_sultan.html](file:///Users/macbookpro/Documents/GitHub/SIKS-Reborn-V2.proj/css_sultan.html) & semua file halaman `page_*.html`
+*   **Perubahan & Aturan Desain:**
+    *   **Standar Breakpoint & Grid:**
+        *   Gunakan grid fluid berbasis flexbox (`d-flex flex-column flex-md-row`) untuk layout dinamis yang bertumpuk secara vertikal pada layar HP (`< 768px`) dan melebar horizontal pada Desktop.
+        *   Terapkan pembagian kelas grid Bootstrap secara tepat (misal: `<div class="col-12 col-md-6 col-lg-4">`) untuk memastikan kartu informasi/formulir terdistribusi dengan proporsional di semua lebar viewport.
+    *   **Penanganan Tabel Lebar (Responsive Tables):**
+        *   Bungkus seluruh elemen table dengan kelas `.table-responsive` atau `.sultan-scroll`. Tambahkan parameter `touch-action: pan-x` dan `overscroll-behavior-x: contain` pada CSS untuk kelancaran geser horizontal (horizontal swipe) tanpa memicu navigasi back/forward browser di Safari/Chrome mobile.
+        *   Untuk tabel berukuran sangat besar, sembunyikan kolom-kolom non-prioritas di layar HP menggunakan kelas utility `.d-none .d-md-table-cell`, atau render data dalam bentuk list-card vertikal pada perangkat mobile menggunakan query `@media (max-width: 768px)`.
+    *   **Optimasi Form & Filter Bar di Mobile:**
+        *   Di layar HP, sembunyikan filter pencarian yang kompleks di dalam accordion collapsible (`.collapse`) atau sediakan tombol pemicu "Filter" yang membuka Modal / Bottom Sheet agar ruang kerja utama tidak tersumbang oleh input select.
+        *   Pastikan tinggi tap target untuk semua tombol aksi, input form, dan item navigasi memiliki ukuran minimum `44px x 44px` untuk kenyamanan sentuhan jari (touch-friendly).
+    *   **Spasi & Tipografi Adaptif:**
+        *   Sesuaikan ukuran teks menggunakan satuan relatif atau batasi tinggi baris (`line-height: 1.3`). Perkecil ukuran font judul utama halaman dari `24px` di desktop menjadi `18px-20px` di mobile agar teks tidak terpotong (wrap) berantakan.
+        *   Terapkan padding kontainer yang lebih kecil pada mobile (misal: `padding: 12px` untuk `.card-body` di HP, dibanding `20px` di monitor besar) untuk memaksimalkan efisiensi ruang baca.
 
 ### D. Keamanan Autentikasi & Cache Backend (Apps Script)
 *   **File Target:** [code.gs](file:///Users/macbookpro/Documents/GitHub/SIKS-Reborn-V2.proj/code.gs)
