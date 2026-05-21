@@ -805,6 +805,37 @@
   .dark-mode .sultan-filter-item i.fa-chevron-down {
     color: var(--dm-text-muted) !important;
   }
+/* Dark‑mode overrides for utility background colors */
+.dark-mode .bg-maroon   { background-color: var(--dm-bg-card) !important; }
+.dark-mode .bg-secondary{ background-color: var(--dm-bg-card) !important; }
+.dark-mode .text-maroon { color: var(--dm-text-muted) !important; }
+.sultan-page-header-title {
+    display: flex;
+    align-items: center;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 1.25rem;
+    margin: 0;
+    color: var(--warna-maroon);
+}
+.sultan-page-header-title i {
+    margin-right: 0.5rem;
+    color: var(--warna-maroon);
+}
+
+/* Table hover colors */
+.sultan-table-hover tbody tr:hover {
+    background-color: var(--sultan-table-hover) !important;
+}
+.dark-mode .sultan-table-hover tbody tr:hover {
+    background-color: var(--sultan-table-hover-dm) !important;
+}
+
+/* Row text visibility in dark mode */
+.dark-mode .monitoring-item-top,
+.dark-mode .monitoring-item-passive {
+    color: var(--dm-text-main) !important;
+}
 
 
 
@@ -2338,8 +2369,10 @@ button.btn-icon-sultan-maroon:hover, a.btn-icon-sultan-maroon:hover { background
     background: rgba(255, 255, 255, 0.05);
     color: var(--sultan-aksi-utama);
 }
-.dark-mode .sultan-page-header .sultan-title {
-    color: #fff;
+.dark-mode .sultan-page-header .sultan-title,
+.dark-mode .sultan-page-header h5,
+.dark-mode .sultan-page-header-title {
+    color: var(--warna-emas) !important;
 }
 .dark-mode .sultan-page-header .sultan-subtitle {
     color: rgba(255, 255, 255, 0.6) !important;
@@ -2354,8 +2387,9 @@ button.btn-icon-sultan-maroon:hover, a.btn-icon-sultan-maroon:hover { background
 .sultan-page-header h5 i {
     color: var(--warna-maroon) !important;
 }
-.dark-mode .sultan-page-header h5 i {
-    color: var(--sultan-aksi-utama) !important;
+.dark-mode .sultan-page-header h5 i,
+.dark-mode .sultan-page-header-title i {
+    color: var(--warna-emas) !important;
 }
 .sultan-page-header hr {
     border: 0;
@@ -3595,6 +3629,62 @@ var SultanUI = {
         }
         $(txtId).text(tglTerakhir);
         $(areaId).show();
+    },
+
+    /**
+     * Merender Header Halaman secara Dinamis agar Seragam Visual
+     * @param {string} title - Judul halaman
+     * @param {string} subtitle - Subjudul deskriptif
+     * @param {string} icon - Kelas ikon FontAwesome
+     */
+    renderHeader: function(title, subtitle = "", icon = "fas fa-info-circle") {
+        var subtitleHtml = subtitle ? `<p class="text-muted small mb-0 mt-1" style="font-size: 13px; text-transform: none; font-weight: normal; letter-spacing: 0;">${subtitle}</p>` : '';
+        return `
+            <div class="content-header pb-0 sultan-page-transition">
+              <div class="container-fluid">
+                <div class="row mb-2">
+                  <div class="col-sm-12">
+                    <div class="sultan-page-header">
+                      <h5 class="m-0 font-weight-bold text-uppercase" style="color: var(--warna-maroon); font-size: 1.05rem; letter-spacing: 0.5px;">
+                        <i class="${icon} mr-2" style="font-size: 1.05rem; color: var(--warna-maroon);"></i>${title}
+                      </h5>
+                      ${subtitleHtml}
+                      <hr class="style-sultan-solid" style="margin-top: 10px; margin-bottom: 15px;">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+        `;
+    },
+
+    /**
+     * Merender Filter Bar Global secara Dinamis dan Seragam
+     * @param {Array} filters - Konfigurasi dropdown filter
+     * @param {string} extraButtonsHtml - HTML tombol tambahan (misal: refresh/download)
+     */
+    renderFilterBar: function(filters = [], extraButtonsHtml = '') {
+        var itemsHtml = '';
+        filters.forEach(function(f) {
+            var displayStyle = f.visible === false ? 'style="display:none;"' : '';
+            var disabledAttr = f.disabled ? 'disabled' : '';
+            var optionsHtml = f.value ? `<option value="${f.value}" selected>${f.text || f.value}</option>` : `<option value="">${f.placeholder || '- Memilih -'}</option>`;
+            itemsHtml += `
+                <div class="sultan-filter-item" id="${f.id}_container" ${displayStyle}>
+                    <select id="${f.id}" class="form-control" ${disabledAttr}>
+                        ${optionsHtml}
+                    </select>
+                    <i class="fas ${f.icon || 'fa-chevron-down'}"></i>
+                </div>
+            `;
+        });
+        
+        return `
+            <div class="sultan-filter-pill-container shadow-sm mb-4 sultan-page-transition">
+                ${itemsHtml}
+                ${extraButtonsHtml}
+            </div>
+        `;
     }
 };
 </script>
@@ -5504,19 +5594,6 @@ var Sultan = {
 <body class="hold-transition sidebar-mini layout-fixed p-4 bg-light">
   <div class="wrapper">
     <div class="content-wrapper" style="margin-left: 0; padding: 20px; background: transparent;">
-<div class="content-header pb-0 sultan-page-header">
-    <div class="container-fluid">
-        <div class="row">
-            <div class="col-sm-12">
-                <h5 class="font-weight-bold text-uppercase">
-                    <i class="fas fa-calendar-alt text-maroon mr-2"></i>Kelola Data Laporan Bulan
-                </h5>
-                <hr class="style-sultan-solid">
-            </div>
-        </div>
-    </div>
-</div>
-
 <section class="content">
     <div class="container-fluid">
         <div class="row justify-content-center">
@@ -6568,13 +6645,47 @@ var Sultan = {
         return badgeHtml;
     }
 
+    function lapbulkelola_getPreviewUrl(url) {
+        if (!url || String(url).trim().length < 5) return "";
+        var cleanUrl = String(url).trim();
+
+        if (cleanUrl.includes('drive.google.com') || cleanUrl.includes('docs.google.com')) {
+            var match = cleanUrl.match(/\/d\/([a-zA-Z0-9_-]{25,})/) || cleanUrl.match(/id=([a-zA-Z0-9_-]{25,})/);
+            if (match && match[1]) {
+                return 'https://drive.google.com/file/d/' + match[1] + '/preview';
+            }
+        }
+
+        if (cleanUrl.includes('/view')) {
+            return cleanUrl.replace(/\/view.*/, '/preview');
+        }
+
+        return cleanUrl;
+    }
+
+    function lapbulkelola_getDownloadUrl(url) {
+        if (!url || String(url).trim().length < 5) return "";
+        var cleanUrl = String(url).trim();
+
+        if (cleanUrl.includes('drive.google.com')) {
+            var match = cleanUrl.match(/\/d\/([a-zA-Z0-9_-]{25,})/) || cleanUrl.match(/id=([a-zA-Z0-9_-]{25,})/);
+            if (match && match[1]) {
+                return 'https://drive.google.com/uc?export=download&id=' + match[1];
+            }
+        }
+
+        return cleanUrl;
+    }
+
     function lapbulkelola_previewPDF(url) {
-        if (!url || url.length < 5) { Sultan.notif.gagal("Link file kosong."); return; }
-        var previewUrl = url.includes('/view') ? url.replace(/\/view.*/, '/preview') : url;
+        if (!url || String(url).trim().length < 5) { Sultan.notif.gagal("Link file kosong."); return; }
+        var previewUrl = lapbulkelola_getPreviewUrl(url);
+        var downloadUrl = lapbulkelola_getDownloadUrl(url);
 
         $('#lapbulkelola_loadingPreviewPDF').removeClass('d-none');
         $('#lapbulkelola_framePreview').addClass('d-none').attr('src', previewUrl);
-        $('#lapbulkelola_btnTabBaru, #lapbulkelola_btnUnduh').attr('href', url);
+        $('#lapbulkelola_btnTabBaru').attr('href', previewUrl);
+        $('#lapbulkelola_btnUnduh').attr('href', downloadUrl);
         $('#lapbulkelola_modalPreview').modal('show');
 
         $('#lapbulkelola_framePreview').off('load').on('load', function () {
@@ -6582,7 +6693,7 @@ var Sultan = {
             $(this).removeClass('d-none');
         });
 
-        // Fallback 2.5 Detik sesuai BAB V
+        // Fallback 2.5 Detik
         setTimeout(function () {
             $('#lapbulkelola_loadingPreviewPDF').addClass('d-none');
             $('#lapbulkelola_framePreview').removeClass('d-none');
