@@ -320,37 +320,93 @@ function monitoring_renderChart(canvasId, type, labels, dataVal, bgColor, border
         sum = dataVal.reduce(function(a, b) { return a + (parseInt(b)||0); }, 0);
     }
     
+    var isDark = $('body').hasClass('dark-mode');
+    var ctx = document.getElementById(canvasId).getContext('2d');
+    
+    // Default fallback colors
+    var themeColor = borderColor;
+    var themeFill = bgColor;
+    var gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)';
+    var labelColor = isDark ? '#9da5ad' : '#6c757d';
+
     if (sum === 0 || !dataVal || dataVal.length === 0) {
         labels = ['Belum ada data'];
         dataVal = [0.1]; 
-        bgColor = '#e9ecef';
-        borderColor = '#ced4da';
+        themeFill = isDark ? 'rgba(255, 255, 255, 0.05)' : '#e9ecef';
+        themeColor = isDark ? '#2c2e33' : '#ced4da';
         labelName = 'Kosong';
+    } else {
+        // Apply beautiful dynamic gradients and styles
+        if (canvasId === 'monitoring_chartDaily') {
+            var strokeColor = isDark ? '#ff7675' : '#800000';
+            var gradient = ctx.createLinearGradient(0, 0, 0, 300);
+            if (isDark) {
+                gradient.addColorStop(0, 'rgba(255, 118, 117, 0.25)');
+                gradient.addColorStop(1, 'rgba(255, 118, 117, 0.0)');
+            } else {
+                gradient.addColorStop(0, 'rgba(128, 0, 0, 0.2)');
+                gradient.addColorStop(1, 'rgba(128, 0, 0, 0.0)');
+            }
+            themeColor = strokeColor;
+            themeFill = gradient;
+        } else if (canvasId === 'monitoring_chartWeekly') {
+            themeColor = isDark ? '#00d2d3' : '#17a2b8';
+            var gradient = ctx.createLinearGradient(0, 0, 0, 250);
+            if (isDark) {
+                gradient.addColorStop(0, '#00d2d3');
+                gradient.addColorStop(1, 'rgba(0, 210, 211, 0.15)');
+            } else {
+                gradient.addColorStop(0, '#17a2b8');
+                gradient.addColorStop(1, 'rgba(23, 162, 184, 0.15)');
+            }
+            themeFill = gradient;
+        } else if (canvasId === 'monitoring_chartMonthly') {
+            themeColor = isDark ? '#2ed573' : '#28a745';
+            var gradient = ctx.createLinearGradient(0, 0, 0, 250);
+            if (isDark) {
+                gradient.addColorStop(0, '#2ed573');
+                gradient.addColorStop(1, 'rgba(46, 213, 115, 0.15)');
+            } else {
+                gradient.addColorStop(0, '#28a745');
+                gradient.addColorStop(1, 'rgba(40, 167, 69, 0.15)');
+            }
+            themeFill = gradient;
+        }
     }
-
-    var ctx = document.getElementById(canvasId).getContext('2d');
     
     if(canvasId === 'monitoring_chartDaily' && MONITORING_CHART_DAILY) MONITORING_CHART_DAILY.destroy();
     if(canvasId === 'monitoring_chartWeekly' && MONITORING_CHART_WEEKLY) MONITORING_CHART_WEEKLY.destroy();
     if(canvasId === 'monitoring_chartMonthly' && MONITORING_CHART_MONTHLY) MONITORING_CHART_MONTHLY.destroy();
 
+    var datasetConfig = {
+        label: labelName,
+        data: dataVal,
+        backgroundColor: themeFill,
+        borderColor: themeColor,
+        borderWidth: 2,
+        fill: (type === 'line'), 
+        tension: 0.35, 
+        pointRadius: type === 'line' ? 4 : 0,
+        pointBackgroundColor: isDark ? '#1e1e1e' : '#ffffff',
+        pointBorderColor: themeColor,
+        pointBorderWidth: 2,
+        pointHoverRadius: 6,
+        pointHoverBackgroundColor: themeColor,
+        pointHoverBorderColor: '#ffffff',
+        pointHoverBorderWidth: 2
+    };
+
+    if (type === 'bar') {
+        datasetConfig.borderRadius = 6;
+        datasetConfig.barPercentage = 0.55;
+        datasetConfig.categoryPercentage = 0.8;
+    }
+
     var chartInstance = new Chart(ctx, {
         type: type,
         data: {
             labels: labels,
-            datasets: [{
-                label: labelName,
-                data: dataVal,
-                backgroundColor: bgColor,
-                borderColor: borderColor,
-                borderWidth: 2,
-                fill: (type === 'line'), 
-                tension: 0.3, 
-                pointRadius: 4,
-                pointBackgroundColor: '#ffffff',
-                pointBorderColor: borderColor,
-                pointBorderWidth: 2
-            }]
+            datasets: [datasetConfig]
         },
         options: {
             maintainAspectRatio: false,
@@ -358,7 +414,16 @@ function monitoring_renderChart(canvasId, type, labels, dataVal, bgColor, border
             plugins: {
                 legend: { display: false }, 
                 tooltip: { 
-                    mode: 'index', intersect: false,
+                    backgroundColor: isDark ? 'rgba(30, 30, 30, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+                    titleColor: isDark ? '#f1f3f5' : '#1a1c1e',
+                    bodyColor: isDark ? '#f1f3f5' : '#1a1c1e',
+                    borderColor: isDark ? '#2d2d2d' : '#e9ecef',
+                    borderWidth: 1,
+                    padding: 10,
+                    boxPadding: 5,
+                    usePointStyle: true,
+                    mode: 'index', 
+                    intersect: false,
                     callbacks: {
                         label: function(context) {
                             if (labelName === 'Kosong') return 'Tidak ada data';
@@ -368,15 +433,32 @@ function monitoring_renderChart(canvasId, type, labels, dataVal, bgColor, border
                 }
             },
             scales: {
-                // VAKSIN CHART.JS: Cabut stepSize: 1 mutlak, biarkan Chart.js melakukan auto-scaling cerdas
                 y: { 
                     beginAtZero: true, 
                     ticks: { 
-                        precision: 0 // Hanya menjamin angka bulat (tanpa desimal)
+                        precision: 0,
+                        color: labelColor,
+                        font: {
+                            family: "'Inter', 'Roboto', 'Helvetica Neue', sans-serif",
+                            size: 11
+                        }
                     },
-                    grid: { borderDash: [2, 4], color: '#e9ecef' }
+                    grid: { 
+                        borderDash: [3, 4], 
+                        color: gridColor,
+                        drawBorder: false
+                    }
                 },
-                x: { grid: { display: false } }
+                x: { 
+                    ticks: {
+                        color: labelColor,
+                        font: {
+                            family: "'Inter', 'Roboto', 'Helvetica Neue', sans-serif",
+                            size: 11
+                        }
+                    },
+                    grid: { display: false } 
+                }
             },
             animation: { duration: 1500, easing: 'easeOutQuart' },
             interaction: { mode: 'nearest', axis: 'x', intersect: false }
