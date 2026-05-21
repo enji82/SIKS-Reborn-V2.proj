@@ -42,9 +42,9 @@ function getDaftarDinas(tahun, bulan, status, _cb) {
       var matchStatus = (fStatus === "") || (String(row[9]) == fStatus);
 
       if (matchTahun && matchBulan && matchStatus) {
-        var t1 = parseTime(row[11]); 
-        var t2 = parseTime(row[13]); 
-        var t3 = parseTime(row[15]); 
+        var t1 = parseSiabaDateTime(row[11]); 
+        var t2 = parseSiabaDateTime(row[13]); 
+        var t3 = parseSiabaDateTime(row[15]); 
         var lastActivity = Math.max(t1, t2, t3);
 
         result.push({
@@ -305,21 +305,7 @@ function toHtmlDate(textDate) {
   return str;
 }
 
-function parseTime(val) { 
-  if (!val) return 0; 
-  var s = String(val).replace(/'/g, "").trim(); 
-  if (s === "") return 0; 
-  var parts = s.split(" "); 
-  var sep = parts[0].includes("-") ? "-" : "/"; 
-  var dP = parts[0].split(sep); 
-  if (dP.length !== 3) return 0; 
-  var tP = (parts[1]||"00:00:00").split(":"); 
-  var year = dP[2].length === 4 ? dP[2] : dP[0];
-  var month = dP[1];
-  var day = dP[0].length === 2 ? dP[0] : dP[2];
-  
-  return new Date(parseInt(year), parseInt(month)-1, parseInt(day), parseInt(tP[0]||0), parseInt(tP[1]||0), parseInt(tP[2]||0)).getTime(); 
-}
+// parseTime → parseSiabaDateTime di Siaba_helper.gs
 
 
 /* ----------------------------------------------------------------------
@@ -388,7 +374,7 @@ function getNotifikasiPerdin(role, unit) {
 
     notifList.sort(function(a, b) {
         if (a.isRead !== b.isRead) return a.isRead ? 1 : -1;
-        return parseTime(b.waktu) - parseTime(a.waktu);
+        return parseSiabaDateTime(b.waktu) - parseSiabaDateTime(a.waktu);
     });
 
     return {

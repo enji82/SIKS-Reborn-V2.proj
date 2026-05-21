@@ -673,10 +673,9 @@ function getNotifikasiGlobal(role, unit) {
   var modules = {};
   var totalCount = 0;
   
-  // Helper internal untuk memanggil fungsi secara aman
-  function callSafe(key, fnName, r, u) {
+  function callSafe(key, fn, r, u) {
     try {
-      var res = this[fnName](r, u);
+      var res = fn(r, u);
       if (res && typeof res.count !== 'undefined') {
         modules[key] = res;
         totalCount += (parseInt(res.count) || 0);
@@ -690,17 +689,17 @@ function getNotifikasiGlobal(role, unit) {
   }
 
   try {
-    callSafe('sk', 'getNotifikasiSK', role, unit);
-    callSafe('lapbul', 'getNotifikasiLapbul', role, unit);
-    callSafe('lupa', 'getNotifikasiLupa', role, unit);
-    callSafe('salah', 'getNotifikasiSalah', role, unit);
-    callSafe('perdin', 'getNotifikasiPerdin', role, unit);
-    callSafe('cuti', 'getNotifikasiCuti', role, unit);
-    callSafe('surat_cuti', 'getNotifikasiSuratCuti', role, unit);
-    callSafe('efile', 'getNotifikasiEfile', role, unit);
-    callSafe('mutasi_paud', 'getNotifikasiMutasiPAUD', role, unit);
-    callSafe('mutasi_sdn', 'getNotifikasiMutasiSDN', role, unit);
-    callSafe('mutasi_sds', 'getNotifikasiMutasiSDS', role, unit);
+    callSafe('sk', getNotifikasiSK, role, unit);
+    callSafe('lapbul', getNotifikasiLapbul, role, unit);
+    callSafe('lupa', getNotifikasiLupa, role, unit);
+    callSafe('salah', getNotifikasiSalah, role, unit);
+    callSafe('perdin', getNotifikasiPerdin, role, unit);
+    callSafe('cuti', getNotifikasiCuti, role, unit);
+    callSafe('surat_cuti', getNotifikasiSuratCuti, role, unit);
+    callSafe('efile', getNotifikasiEfile, role, unit);
+    callSafe('mutasi_paud', getNotifikasiMutasiPAUD, role, unit);
+    callSafe('mutasi_sdn', getNotifikasiMutasiSDN, role, unit);
+    callSafe('mutasi_sds', getNotifikasiMutasiSDS, role, unit);
   } catch (err) {
     Logger.log("SULTAN Critical Error: " + err.message);
   }

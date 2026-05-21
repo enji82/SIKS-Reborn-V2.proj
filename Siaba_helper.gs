@@ -162,6 +162,48 @@ function getDatabasePegawai() {
 }
 
 /**
+ * Ambil nama unit kerja dari sheet Database_Sekolah berdasarkan NPSN.
+ * @param {string} npsn
+ * @param {string} dbKey Kunci SPREADSHEET_IDS (default SIABA_CUTI_DB)
+ */
+function getUnitKerjaByNPSN(npsn, dbKey) {
+  try {
+    var key = dbKey || "SIABA_CUTI_DB";
+    var sheet = getSheet(key, "Database_Sekolah");
+    var data = sheet.getDataRange().getDisplayValues();
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === String(npsn).trim()) {
+        return JSON.stringify({ unitKerja: data[i][2] });
+      }
+    }
+    return JSON.stringify({ error: "NPSN (" + npsn + ") tidak terdaftar." });
+  } catch (e) {
+    return JSON.stringify({ error: "Error Server: " + e.message });
+  }
+}
+
+/**
+ * Parse tanggal/waktu notifikasi SIABA (dd-MM-yyyy HH:mm:ss atau ISO).
+ */
+function parseSiabaDateTime(val) {
+  if (!val) return 0;
+  if (val instanceof Date) return val.getTime();
+  var s = String(val).replace(/'/g, "").trim();
+  if (s === "") return 0;
+  var iso = s.split("-");
+  if (iso.length === 3 && iso[0].length === 4) return new Date(s).getTime();
+  var parts = s.split(" ");
+  var sep = parts[0].indexOf("-") > -1 ? "-" : "/";
+  var dP = parts[0].split(sep);
+  if (dP.length !== 3) return 0;
+  var tP = (parts[1] || "00:00:00").split(":");
+  return new Date(
+    parseInt(dP[2], 10), parseInt(dP[1], 10) - 1, parseInt(dP[0], 10),
+    parseInt(tP[0] || 0, 10), parseInt(tP[1] || 0, 10), parseInt(tP[2] || 0, 10)
+  ).getTime();
+}
+
+/**
  * Mendapatkan daftar Unit Kerja unik dari database sekolah.
  */
 function getDaftarUnit() {

@@ -12,21 +12,7 @@ const KONFIG_LUPA = {
 /* ======================================================================
    SISTEM KEAMANAN (MENGAMBIL DATA BERDASARKAN NPSN)
    ====================================================================== */
-function getUnitKerjaByNPSN(npsn) {
-  try {
-    const sheet = getSheet(KONFIG_LUPA.DB_KEY, "Database_Sekolah");
-
-    const data = sheet.getDataRange().getDisplayValues();
-    for (let i = 1; i < data.length; i++) {
-      if (String(data[i][0]).trim() === String(npsn).trim()) {
-        return JSON.stringify({ unitKerja: data[i][2] });
-      }
-    }
-    return JSON.stringify({ error: "NPSN (" + npsn + ") tidak terdaftar di Database Sekolah." });
-  } catch (e) {
-    return JSON.stringify({ error: "Error Server: " + e.message });
-  }
-}
+// getUnitKerjaByNPSN → Siaba_helper.gs; modul lupa memakai dbKey SIABA_LUPA_DB dari client
 
 // (Fungsi getDatabasePegawai dihapus karena sudah ada di Siaba_helper.gs)
 

@@ -12,18 +12,7 @@ const KONFIG_CUTI = {
 /* ======================================================================
    0. SISTEM KEAMANAN NPSN & MASTER DATABASE
    ====================================================================== */
-function getUnitKerjaByNPSN(npsn) {
-  try {
-    const sheet = getSheet(KONFIG_CUTI.DB_KEY, "Database_Sekolah");
-    const data = sheet.getDataRange().getDisplayValues();
-    for (let i = 1; i < data.length; i++) {
-      if (String(data[i][0]).trim() === String(npsn).trim()) {
-        return JSON.stringify({ unitKerja: data[i][2] });
-      }
-    }
-    return JSON.stringify({ error: "NPSN (" + npsn + ") tidak terdaftar." });
-  } catch (e) { return JSON.stringify({ error: "Error Server: " + e.message }); }
-}
+// getUnitKerjaByNPSN → Siaba_helper.gs (hindari duplikat nama global)
 
 // (getDatabasePegawai dipindahkan ke Siaba_helper.gs)
 
@@ -82,9 +71,9 @@ function getDataCuti(tahun, bulan, unitFilter) {
       
       if (fTahun !== "" && rTahun !== fTahun) continue; 
 
-      var tInput = parseTime(rowTxt[13]); 
-      var tEdit  = parseTime(rowTxt[15]); 
-      var tVerif = parseTime(rowTxt[17]); 
+      var tInput = parseSiabaDateTime(rowTxt[13]); 
+      var tEdit  = parseSiabaDateTime(rowTxt[15]); 
+      var tVerif = parseSiabaDateTime(rowTxt[17]); 
       var lastActivity = Math.max(tInput, tEdit, tVerif);
 
       result.push({
@@ -420,7 +409,7 @@ function formatIndoText(iso) {
     return parseInt(p[2], 10) + " " + m[parseInt(p[1], 10)-1] + " " + p[0]; 
 }
 
-function parseTime(val) { if (!val) return 0; if (val instanceof Date) return val.getTime(); var s = String(val).replace(/'/g, "").trim(); if (s === "") return 0; var iso = s.split("-"); if (iso.length === 3 && iso[0].length === 4) return new Date(s).getTime(); var parts = s.split(" "); var sep = parts[0].includes("-") ? "-" : "/"; var dP = parts[0].split(sep); if (dP.length !== 3) return 0; var tP = (parts[1]||"00:00:00").split(":"); return new Date(parseInt(dP[2]), parseInt(dP[1])-1, parseInt(dP[0]), parseInt(tP[0]||0), parseInt(tP[1]||0), parseInt(tP[2]||0)).getTime(); }
+// parseTime → parseSiabaDateTime di Siaba_helper.gs
 function parseDateIndo(str) { if(!str) return null; str = String(str).toLowerCase().replace(/,/g, ""); var p = str.split(" "); if (p.length >= 3) { var mIdx = ["januari","februari","maret","april","mei","juni","juli","agustus","september","oktober","november","desember"].indexOf(p[1]); if(mIdx > -1) return new Date(parseInt(p[2]), mIdx, parseInt(p[0])); } var p2 = str.split("/"); if (p2.length === 3) return new Date(p2[2], p2[1]-1, p2[0]); return null; }
 
 /* ======================================================================
@@ -700,7 +689,7 @@ function getNotifikasiCuti(role, unit) {
             }
         }
     }
-    notifList.sort(function(a, b) { if (a.isRead !== b.isRead) return a.isRead ? 1 : -1; return parseTime(b.waktu) - parseTime(a.waktu); });
+    notifList.sort(function(a, b) { if (a.isRead !== b.isRead) return a.isRead ? 1 : -1; return parseSiabaDateTime(b.waktu) - parseSiabaDateTime(a.waktu); });
     return { count: unreadCount, recent: notifList.slice(0, 5) };
   } catch (e) { return { count: 0, recent: [] }; }
 }
@@ -785,7 +774,7 @@ function getNotifikasiSuratCuti(role, unit) {
             }
         }
     }
-    notifList.sort(function(a, b) { if (a.isRead !== b.isRead) return a.isRead ? 1 : -1; return parseTime(b.waktu) - parseTime(a.waktu); });
+    notifList.sort(function(a, b) { if (a.isRead !== b.isRead) return a.isRead ? 1 : -1; return parseSiabaDateTime(b.waktu) - parseSiabaDateTime(a.waktu); });
     return { count: unreadCount, recent: notifList.slice(0, 5) };
   } catch (e) { return { count: 0, recent: [] }; }
 }
