@@ -107,7 +107,7 @@ function getDataPTKSD(filterUnit, filterStatus) {
 }
 
 /**
- * Tulis ulang kolom D–AL (4–38) satu baris Master PTK dalam satu setValues.
+ * Tulis ulang kolom D-AL (4-38) satu baris Master PTK dalam satu setValues.
  */
 function applyPtkMasterRowUpdate_(sheet, rowIndex, form, extras) {
   extras = extras || {};
@@ -150,14 +150,14 @@ function applyPtkMasterRowUpdate_(sheet, rowIndex, form, extras) {
   rowSlice[19] = form.pangkat || "";
   rowSlice[20] = form.tmt_gol || "";
   rowSlice[21] = mkg;
-  // rowSlice[22] = kolom Z — pertahankan nilai lama
+  // rowSlice[22] = kolom Z - pertahankan nilai lama
   rowSlice[23] = form.tugas || "";
   rowSlice[24] = "'" + (form.nuptk || "");
   rowSlice[25] = form.serdik || "";
   rowSlice[26] = form.dapodik || "";
   rowSlice[27] = form.tugtam || "";
   rowSlice[28] = form.email || "";
-  // rowSlice[29–30] = AG/AH diinput — pertahankan
+  // rowSlice[29-30] = AG/AH diinput - pertahankan
   rowSlice[31] = now;
   rowSlice[32] = user;
   if (extras.jenisDokumen) rowSlice[33] = extras.jenisDokumen;
