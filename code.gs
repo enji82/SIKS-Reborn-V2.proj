@@ -869,21 +869,7 @@ function getUserActivityTimeline(username, displayName) {
 
     // 3. Sorting Berdasarkan Waktu (Terbaru di Atas)
     activities.sort(function(a, b) {
-      var parseDate = function(val) {
-        if (!val) return 0;
-        if (val instanceof Date) return val.getTime();
-        try {
-          var s = String(val).replace(/'/g, "").trim();
-          var parts = s.split(" ");
-          var dateParts = parts[0].split(/[-/]/);
-          var timeParts = (parts[1] || "00:00:00").split(":");
-          var d, m, y;
-          if (dateParts[0].length === 4) { y = parseInt(dateParts[0]); m = parseInt(dateParts[1]); d = parseInt(dateParts[2]); }
-          else { d = parseInt(dateParts[0]); m = parseInt(dateParts[1]); y = parseInt(dateParts[2]); }
-          return new Date(y, m - 1, d, parseInt(timeParts[0]||0), parseInt(timeParts[1]||0), parseInt(timeParts[2]||0)).getTime();
-        } catch(e) { return 0; }
-      };
-      return parseDate(b.time) - parseDate(a.time);
+      return parseSiabaDateTime(b.time) - parseSiabaDateTime(a.time);
     });
 
     // Ambil 10 Terakhir

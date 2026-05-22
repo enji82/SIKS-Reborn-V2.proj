@@ -1067,14 +1067,7 @@ function getNotifikasiMutasiPAUD(role, unit) {
     
     notifList.sort(function(a, b) {
         if (a.isRead !== b.isRead) return a.isRead ? 1 : -1;
-        var parseTime = function(str) {
-            if (!str || str === "-") return 0;
-            var parts = str.split(" "); if (parts.length < 2) return 0;
-            var d = parts[0].split("/"); var t = parts[1].split(":");
-            if (d.length < 3 || t.length < 3) return 0;
-            return new Date(d[2], d[1] - 1, d[0], t[0], t[1], t[2]).getTime();
-        };
-        return parseTime(b.waktu) - parseTime(a.waktu);
+        return parseSiabaDateTime(b.waktu) - parseSiabaDateTime(a.waktu);
     });
     
     return { count: unreadCount, recent: notifList.slice(0, 5) };
@@ -1397,14 +1390,7 @@ function getNotifikasiMutasiSDN(role, unit) {
     
     notifList.sort(function(a, b) {
         if (a.isRead !== b.isRead) return a.isRead ? 1 : -1;
-        var parseTime = function(str) {
-            if (!str || str === "-") return 0;
-            var parts = str.split(" "); if (parts.length < 2) return 0;
-            var d = parts[0].split("/"); var t = parts[1].split(":");
-            if (d.length < 3 || t.length < 3) return 0;
-            return new Date(d[2], d[1] - 1, d[0], t[0], t[1], t[2]).getTime();
-        };
-        return parseTime(b.waktu) - parseTime(a.waktu);
+        return parseSiabaDateTime(b.waktu) - parseSiabaDateTime(a.waktu);
     });
     
     return { count: unreadCount, recent: notifList.slice(0, 5) };
@@ -1777,14 +1763,7 @@ function getNotifikasiMutasiSDS(role, unit) {
     
     notifList.sort(function(a, b) {
         if (a.isRead !== b.isRead) return a.isRead ? 1 : -1;
-        var parseTime = function(str) {
-            if (!str || str === "-") return 0;
-            var parts = str.split(" "); if (parts.length < 2) return 0;
-            var d = parts[0].split("/"); var t = parts[1].split(":");
-            if (d.length < 3 || t.length < 3) return 0;
-            return new Date(d[2], d[1] - 1, d[0], t[0], t[1], t[2]).getTime();
-        };
-        return parseTime(b.waktu) - parseTime(a.waktu);
+        return parseSiabaDateTime(b.waktu) - parseSiabaDateTime(a.waktu);
     });
     
     return { count: unreadCount, recent: notifList.slice(0, 5) };
