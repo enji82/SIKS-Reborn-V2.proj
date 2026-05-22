@@ -106,10 +106,11 @@
 
                         <div id="perdin_tableState" style="display: none;">
                             <table id="perdin_tabelUtama"
-                                class="table table-bordered table-hover table-premium table-sultan-compact mb-0 w-100">
+                                class="table table-premium table-sultan-compact mb-0 w-100 text-nowrap">
                                 <thead class="thead-sultan-premium text-uppercase font-weight-bold">
                                     <tr>
                                         <th class="text-center align-middle sultan-sticky-col">AKSI</th>
+                                        <th class="text-left align-middle">STATUS</th>
                                         <th class="text-center align-middle">NOMOR SURAT TUGAS</th>
                                         <th class="text-center align-middle">JENIS</th>
                                         <th class="text-center align-middle">TGL SURAT</th>
@@ -118,7 +119,6 @@
                                         <th class="text-left align-middle" style="min-width: 200px;">KEGIATAN</th>
                                         <th class="text-center align-middle">PESERTA</th>
                                         <th class="text-center align-middle">DOKUMEN</th>
-                                        <th class="text-left align-middle">STATUS</th>
                                         <th class="text-left align-middle">DIKIRIM</th>
                                         <th class="text-left align-middle">DIUBAH</th>
                                         <th class="text-left align-middle">VERIFIKASI</th>
@@ -684,13 +684,14 @@
                             "destroy": true, "ordering": false, "pageLength": 10, "autoWidth": false,
                             "deferRender": true,
                             "dom": "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
-                                "<'row'<'col-sm-12'<'table-responsive sultan-scroll'tr>>>" +
+                                "<'row'<'col-sm-12'<'sultan-scroll-container sultan-scroll'tr>>>" +
                                 "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
                             "columnDefs": [
                                 { "targets": 0, "width": "1%", "className": "text-center align-middle text-nowrap sultan-sticky-col" },
-                                { "targets": [1, 2, 3, 4, 7, 8, 9], "width": "1%", "className": "text-center align-middle text-nowrap" },
+                                { "targets": 1, "className": "text-left align-middle" },
+                                { "targets": [2, 3, 4, 5, 8, 9], "width": "1%", "className": "text-center align-middle text-nowrap" },
                                 { "targets": [10, 11, 12], "width": "10%", "className": "text-left align-middle text-nowrap" },
-                                { "targets": [5, 6], "width": "auto", "className": "text-left align-middle" }
+                                { "targets": [6, 7], "width": "auto", "className": "text-left align-middle" }
                             ],
                             "language": { "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json", "emptyTable": "Tidak ada data Perjalanan Dinas pada periode ini." }
                         });
@@ -788,11 +789,11 @@
 
             dtArray.push([
                 groupAksi,
+                perdin_buildBadgeStatus(row.status, row.keterangan),
                 `<div class="sultan-table-primary text-nowrap text-uppercase">${safeNoSpt}</div>`,
                 perdin_escapeHtml(row.jenis), dSpt, dDinas, uiTujuan, uiKegiatan,
                 `<span class="sultan-badge-info text-nowrap"><i class="fas fa-users mr-1"></i>${row.jmlAsn || '0'} ORANG</span>`,
                 btnFile,
-                perdin_buildBadgeStatus(row.status, row.keterangan),
                 metaKirim, metaUpdate, metaVerif
             ]);
         });
@@ -1370,4 +1371,41 @@
 
         return badgeHtml;
     }
+
+    $(document).ready(function() {
+        setTimeout(function() {
+            var $scrollContainer = $('.sultan-scroll-container');
+            if ($scrollContainer.length > 0) {
+                $scrollContainer.on('wheel touchmove', function(e) {
+                    var container = this;
+                    var scrollLeft = container.scrollLeft;
+                    var scrollWidth = container.scrollWidth;
+                    var clientWidth = container.clientWidth;
+                    var isAtStart = scrollLeft <= 1;
+                    var isAtEnd = scrollLeft >= scrollWidth - clientWidth - 1;
+                    
+                    if (e.type === 'wheel') {
+                        var deltaX = e.originalEvent.deltaX;
+                        if ((isAtStart && deltaX < 0) || (isAtEnd && deltaX > 0)) {
+                            e.preventDefault();
+                        }
+                    } else if (e.type === 'touchmove') {
+                        var touch = e.originalEvent.touches[0];
+                        var lastTouchX = $(this).data('lastTouchX');
+                        if (lastTouchX !== undefined) {
+                            var deltaX = touch.clientX - lastTouchX;
+                            if ((isAtStart && deltaX > 0) || (isAtEnd && deltaX < 0)) {
+                                e.preventDefault();
+                            }
+                        }
+                        $(this).data('lastTouchX', touch.clientX);
+                    }
+                });
+                
+                $scrollContainer.on('touchend', function() {
+                    $(this).removeData('lastTouchX');
+                });
+            }
+        }, 500);
+    });
 </script>
