@@ -237,14 +237,7 @@ function getNotifikasiEfile(role, unit) {
         }
     }
     
-    function parseEfileTime(val) { 
-        if (!val || val === "-") return 0; 
-        var s = String(val).replace(/'/g, "").trim(); 
-        var p = s.split(" "); var d = p[0].split("-"); var t = (p[1]||"00:00:00").split(":");
-        return new Date(d[2], d[1]-1, d[0], t[0], t[1], t[2]).getTime();
-    }
-
-    notifList.sort(function(a, b) { if (a.isRead !== b.isRead) return a.isRead ? 1 : -1; return parseEfileTime(b.waktu) - parseEfileTime(a.waktu); });
+    notifList.sort(function(a, b) { if (a.isRead !== b.isRead) return a.isRead ? 1 : -1; return parseSiabaDateTime(b.waktu) - parseSiabaDateTime(a.waktu); });
     return { count: unreadCount, recent: notifList.slice(0, 5) };
   } catch (e) { return { count: 0, recent: [] }; }
 }

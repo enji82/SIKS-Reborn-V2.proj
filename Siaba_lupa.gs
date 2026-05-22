@@ -313,15 +313,7 @@ function getNotifikasiLupa(role, unit) {
     // Urutkan (Paling baru dulu, prioritaskan belum dibaca)
     notifList.sort(function(a, b) {
         if (a.isRead !== b.isRead) return a.isRead ? 1 : -1;
-        var parseDate = function(str) {
-            if (!str || str === "-") return new Date(0);
-            var p = str.split(" ");
-            var sep = p[0].includes("/") ? "/" : "-";
-            var d = p[0].split(sep);
-            var t = p[1] ? p[1].split(":") : [0,0,0];
-            return new Date(d[2], d[1]-1, d[0], t[0], t[1], t[2]);
-        };
-        return parseDate(b.waktu) - parseDate(a.waktu);
+        return parseSiabaDateTime(b.waktu) - parseSiabaDateTime(a.waktu);
     });
     
     return {

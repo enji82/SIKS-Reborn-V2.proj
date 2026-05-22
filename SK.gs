@@ -160,29 +160,14 @@ function getDaftarSK() {
     var sheet = getSheet("SK_DATA_DB", "Unggah_SK");
     var data = sheet.getDataRange().getDisplayValues();
     var result = [];
-    
-    function parseTimeInternal(val) {
-      if (!val) return 0;
-      var s = String(val).replace(/'/g, "").trim();
-      if (s === "") return 0;
-      var parts = s.split(" ");
-      var sep = parts[0].includes("-") ? "-" : "/";
-      var dP = parts[0].split(sep);
-      if (dP.length !== 3) return 0;
-      var tP = (parts[1]||"00:00:00").split(":");
-      var y = dP[2].length === 4 ? dP[2] : dP[0];
-      var m = dP[1];
-      var d = dP[0].length <= 2 ? dP[0] : dP[2];
-      return new Date(parseInt(y), parseInt(m)-1, parseInt(d), parseInt(tP[0]||0), parseInt(tP[1]||0), parseInt(tP[2]||0)).getTime();
-    }
 
     for (var i = 1; i < data.length; i++) {
       var row = data[i];
       if (!row[1]) continue; 
 
-      var tUnggah = parseTimeInternal(row[0]);
-      var tUpdate = parseTimeInternal(row[10]);
-      var tVerval = parseTimeInternal(row[12]);
+      var tUnggah = parseSiabaDateTime(row[0]);
+      var tUpdate = parseSiabaDateTime(row[10]);
+      var tVerval = parseSiabaDateTime(row[12]);
       
       var lastActivity = Math.max(tUnggah, tUpdate, tVerval);
 
@@ -528,32 +513,16 @@ function getDashboardSK(filterTahun, filterSemester) {
     }
 
     // 4. Sortir Aktivitas Terbaru
-    function parseStringDateToTime(str) {
-        if(!str || str==="" || str==="-") return 0;
-        try {
-            var cleanStr = String(str).replace(/['"]/g, "").trim();
-            if(cleanStr === "") return 0;
-            var p = cleanStr.split(' '); var dateParts = p[0].split(/[-/]/); 
-            if(dateParts.length !== 3) return 0;
-            var timeParts = (p[1] || "00:00:00").split(':');
-            var y, m, d;
-            if(dateParts[0].length === 4) { y = parseInt(dateParts[0],10); m = parseInt(dateParts[1],10)-1; d = parseInt(dateParts[2],10); } 
-            else { y = parseInt(dateParts[2],10); m = parseInt(dateParts[1],10)-1; d = parseInt(dateParts[0],10); }
-            var hr = parseInt(timeParts[0]||0,10); var mn = parseInt(timeParts[1]||0,10); var sc = parseInt(timeParts[2]||0,10);
-            return new Date(y, m, d, hr, mn, sc).getTime(); 
-        } catch(e) { return 0; }
-    }
-
     var sorted = filteredRows.sort(function(a, b) {
-      var timeA = Math.max(parseStringDateToTime(a[0]), parseStringDateToTime(a[10]), parseStringDateToTime(a[12]));
-      var timeB = Math.max(parseStringDateToTime(b[0]), parseStringDateToTime(b[10]), parseStringDateToTime(b[12]));
+      var timeA = Math.max(parseSiabaDateTime(a[0]), parseSiabaDateTime(a[10]), parseSiabaDateTime(a[12]));
+      var timeB = Math.max(parseSiabaDateTime(b[0]), parseSiabaDateTime(b[10]), parseSiabaDateTime(b[12]));
       return timeB - timeA; 
     }).slice(0, 7); 
 
     stats.recent = sorted.map(function(r) {
-        var tKirim = parseStringDateToTime(r[0]);
-        var tEdit = parseStringDateToTime(r[10]);
-        var tVerif = parseStringDateToTime(r[12]);
+        var tKirim = parseSiabaDateTime(r[0]);
+        var tEdit = parseSiabaDateTime(r[10]);
+        var tVerif = parseSiabaDateTime(r[12]);
         var maxTime = Math.max(tKirim, tEdit, tVerif);
         
         var displayTime = String(r[0]);
@@ -632,17 +601,7 @@ function getNotifikasiSK(role, unit) {
     // Urutkan (Paling baru dulu, prioritaskan belum dibaca)
     notifList.sort(function(a, b) {
         if (a.isRead !== b.isRead) return a.isRead ? 1 : -1;
-        var parseDate = function(str) {
-            if (!str || str === "-") return new Date(0);
-            var p = str.split(" ");
-            var d = p[0].split(/[/-]/);
-            var t = p[1] ? p[1].split(":") : [0,0,0];
-            var y = (d[2].length === 4) ? d[2] : d[0];
-            var m = d[1];
-            var dy = (d[2].length === 4) ? d[0] : d[2];
-            return new Date(y, m-1, dy, t[0], t[1], t[2]);
-        };
-        return parseDate(b.waktu) - parseDate(a.waktu);
+        return parseSiabaDateTime(b.waktu) - parseSiabaDateTime(a.waktu);
     });
     
     // Ambil 5 notifikasi teratas untuk ditampilkan di dropdown
