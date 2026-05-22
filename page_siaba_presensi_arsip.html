@@ -649,6 +649,12 @@
     function arsipsiaba_renderTabel(dataRows) {
         var dtArray = [];
 
+        dataRows.sort(function(a, b) {
+            var unitA = String(a.unitKerja || "").toUpperCase().trim();
+            var unitB = String(b.unitKerja || "").toUpperCase().trim();
+            return unitA.localeCompare(unitB);
+        });
+
         dataRows.forEach(function (row) {
             var arrRow = [];
 
@@ -1152,4 +1158,41 @@
         if (!text) return "";
         return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
     }
+
+    $(document).ready(function() {
+        setTimeout(function() {
+            var $scrollContainer = $('.sultan-scroll-container');
+            if ($scrollContainer.length > 0) {
+                $scrollContainer.on('wheel touchmove', function(e) {
+                    var container = this;
+                    var scrollLeft = container.scrollLeft;
+                    var scrollWidth = container.scrollWidth;
+                    var clientWidth = container.clientWidth;
+                    var isAtStart = scrollLeft <= 1;
+                    var isAtEnd = scrollLeft >= scrollWidth - clientWidth - 1;
+                    
+                    if (e.type === 'wheel') {
+                        var deltaX = e.originalEvent.deltaX;
+                        if ((isAtStart && deltaX < 0) || (isAtEnd && deltaX > 0)) {
+                            e.preventDefault();
+                        }
+                    } else if (e.type === 'touchmove') {
+                        var touch = e.originalEvent.touches[0];
+                        var lastTouchX = $(this).data('lastTouchX');
+                        if (lastTouchX !== undefined) {
+                            var deltaX = touch.clientX - lastTouchX;
+                            if ((isAtStart && deltaX > 0) || (isAtEnd && deltaX < 0)) {
+                                e.preventDefault();
+                            }
+                        }
+                        $(this).data('lastTouchX', touch.clientX);
+                    }
+                });
+                
+                $scrollContainer.on('touchend', function() {
+                    $(this).removeData('lastTouchX');
+                });
+            }
+        }, 500);
+    });
 </script>
