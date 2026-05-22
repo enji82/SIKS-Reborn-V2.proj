@@ -75,8 +75,6 @@
                     <thead class="thead-sultan-premium text-maroon text-uppercase">
                         <tr>
                             <th class="sultan-sticky-col text-left px-3 align-middle">NAMA ASN</th>
-                            <th class="text-center align-middle px-3">NIP</th>
-                            <th class="text-center align-middle px-3">UNIT KERJA</th>
                             <th class="text-center align-middle px-2">JUMLAH</th>
                             <th class="text-center align-middle px-2">TIDAK DATANG</th>
                             <th class="text-center align-middle px-2">TIDAK PULANG</th>
@@ -326,9 +324,8 @@ function tp_renderTabel(dataRows) {
         var safeNip  = tp_escapeHtml(row[1]);
         var safeUnit = tp_escapeHtml(row[row.length - 1] || '-');
         
-        arrRow.push('<div class="font-weight-bold text-nowrap">' + safeNama + '</div>');
-        arrRow.push('<div>' + safeNip + '</div>');
-        arrRow.push('<div class="font-weight-bold">' + safeUnit + '</div>');
+        var txtUnitHtml = TP_IS_ADMIN ? '<div class="small text-danger font-weight-bold mt-1">' + safeUnit + '</div>' : '';
+        arrRow.push('<div class="font-weight-bold text-dark text-nowrap text-left">' + safeNama + '</div><div class="small text-muted text-left text-nowrap">' + safeNip + '</div>' + txtUnitHtml);
         
         arrRow.push(row[2] == 0 || row[2] === "" ? "-" : '<span class="font-weight-bold">' + tp_escapeHtml(row[2]) + '</span>');
         arrRow.push(row[3] == 0 || row[3] === "" ? "-" : '<span class="font-weight-bold">' + tp_escapeHtml(row[3]) + '</span>');
@@ -341,7 +338,7 @@ function tp_renderTabel(dataRows) {
     if (!$.fn.DataTable.isDataTable('#tp_tabelUtama')) {
         TP_TABEL_INSTANCE = SultanTable.init('#tp_tabelUtama', {
             "data": dtArray, 
-            "destroy": true, "ordering": false, "pageLength": 10, "autoWidth": false,
+            "destroy": true, "ordering": false, "pageLength": 10, "autoWidth": true,
             "deferRender": true, 
             "dom": "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
                    "<'row'<'col-sm-12'<'sultan-scroll-container sultan-scroll'tr>>>" +
@@ -352,23 +349,27 @@ function tp_renderTabel(dataRows) {
                 "emptyTable": '<div class="py-5 text-center text-muted"><div class="mb-3"><i class="fas fa-clipboard-list fa-3x text-gray-300" style="opacity: 0.6;"></i></div><h6 class="font-weight-bold text-dark mb-1">Tidak Ada Data</h6><p class="small mb-0">Tidak ditemukan rekap data alpha/lupa untuk filter ini.</p></div>' 
             },
             "columnDefs": [
-                { "targets": 0, "width": "25%", "className": "sultan-sticky-col text-left px-3 align-middle" },
-                { "targets": 1, "width": "15%", "className": "text-center align-middle px-3" },
-                { "targets": 2, "width": "20%", "className": "text-center align-middle px-3" },
-                { "targets": 3, "width": "8%",  "className": "text-center align-middle px-2" },
-                { "targets": 4, "width": "8%",  "className": "text-center align-middle px-2" },
-                { "targets": 5, "width": "8%",  "className": "text-center align-middle px-2" },
-                { "targets": 6, "width": "16%", "className": "text-center align-middle px-3" }
+                { "targets": 0, "width": "auto", "className": "col-sticky-left bg-white align-middle font-weight-bold border-right text-dark text-left" },
+                { "targets": Array.from({length: 4}, function(_, i) { return i + 1; }), "className": "text-center align-middle" }
             ],
             "createdRow": function(row, data, dataIndex) {
                  var tds = row.children;
-                 if (tds[0]) tds[0].className = 'sultan-sticky-col text-left px-3 align-middle';
+                 for (var visIdx = 0; visIdx < tds.length; visIdx++) {
+                     var cell = tds[visIdx];
+                     if (visIdx === 0) {
+                         cell.className = 'sultan-sticky-col text-left px-3 py-1 align-middle font-weight-bold';
+                         cell.style.setProperty('padding', '4px 10px', 'important');
+                     } else {
+                         cell.className = 'align-middle text-center px-2 py-1';
+                         cell.style.setProperty('padding', '4px 6px', 'important');
+                     }
+                 }
             }
         });
 
         SultanUI.hideLoading('#tp_loadingState');
         $('#tp_tableState').show();
-        TP_TABEL_INSTANCE.columns.adjust();
+        setTimeout(function(){ TP_TABEL_INSTANCE.columns.adjust(); }, 100);
     } 
     else {
         TP_TABEL_INSTANCE.clear().rows.add(dtArray).draw(false);
@@ -376,8 +377,9 @@ function tp_renderTabel(dataRows) {
         if ($('#tp_tableState').is(':hidden')) {
             SultanUI.hideLoading('#tp_loadingState');
             $('#tp_tableState').show();
-            TP_TABEL_INSTANCE.columns.adjust();
         }
+        
+        setTimeout(function(){ TP_TABEL_INSTANCE.columns.adjust(); }, 50);
     }
 }
 
