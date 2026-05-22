@@ -798,26 +798,27 @@
                     directDownloadUrl = 'https://drive.google.com/uc?export=download&id=' + fileId;
                 }
 
-                // VAKSIN SHIELD: Hapus d-none, gunakan d-flex murni
+                // Tampilkan modal terlebih dahulu
                 $('#cuti_loadingPreviewPDF').removeClass('d-none').addClass('d-flex');
-                $('#cuti_framePreview').addClass('d-none').attr('src', finalUrl);
-
+                $('#cuti_framePreview').addClass('d-none').attr('src', '');
                 $('#cuti_btnDownloadDokumen').attr('href', url);
                 $('#cuti_btnUnduhDirect').attr('href', directDownloadUrl);
-
                 $('#cuti_modalPreviewDokumen').modal('show');
 
-                $('#cuti_framePreview').off('load').on('load', function () {
-                    // Hapus mutlak d-flex sebelum menambahkan d-none
-                    $('#cuti_loadingPreviewPDF').removeClass('d-flex').addClass('d-none');
-                    $(this).removeClass('d-none');
-                });
-
-                // Fallback 3.0 Detik toleransi 503 Error Google Drive
+                // Tunggu modal ditampilkan baru isi src iframe
                 setTimeout(function () {
-                    $('#cuti_loadingPreviewPDF').removeClass('d-flex').addClass('d-none');
-                    $('#cuti_framePreview').removeClass('d-none');
-                }, 3000);
+                    $('#cuti_framePreview').attr('src', finalUrl);
+
+                    $('#cuti_framePreview').off('load').on('load', function () {
+                        $('#cuti_loadingPreviewPDF').removeClass('d-flex').addClass('d-none');
+                        $(this).removeClass('d-none');
+                    });
+
+                    setTimeout(function () {
+                        $('#cuti_loadingPreviewPDF').removeClass('d-flex').addClass('d-none');
+                        $('#cuti_framePreview').removeClass('d-none');
+                    }, 3000);
+                }, 150);
 
             } else {
                 Sultan.alert('error', 'Error', 'Tautan file tidak valid.');
@@ -979,32 +980,36 @@
             $('#cuti_noFilePreviewVerif').addClass('d-none').removeClass('d-flex');
             $('#cuti_loadingPreviewVerif').removeClass('d-flex').addClass('d-none');
 
-            if (url.length > 5) {
-                var match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
-                if (match && match[1]) {
-                    var fileId = match[1];
-                    var previewUrl = 'https://drive.google.com/file/d/' + fileId + '/preview';
+            // Tampilkan modal terlebih dahulu
+            $('#cuti_modalVerifikasi').modal('show');
 
-                    // VAKSIN SHIELD: Hapus d-none, pasang d-flex murni
-                    $('#cuti_loadingPreviewVerif').removeClass('d-none').addClass('d-flex');
-                    $('#cuti_iframePreviewVerif').attr('src', previewUrl);
+            // Tunggu modal ditampilkan baru proses iframe
+            setTimeout(function () {
+                if (url.length > 5) {
+                    var match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
+                    if (match && match[1]) {
+                        var fileId = match[1];
+                        var previewUrl = 'https://drive.google.com/file/d/' + fileId + '/preview';
 
-                    $('#cuti_iframePreviewVerif').off('load').on('load', function () {
-                        $('#cuti_loadingPreviewVerif').removeClass('d-flex').addClass('d-none');
-                        $(this).removeClass('d-none');
-                    });
+                        $('#cuti_loadingPreviewVerif').removeClass('d-none').addClass('d-flex');
+                        $('#cuti_iframePreviewVerif').attr('src', previewUrl);
 
-                    setTimeout(function () {
-                        $('#cuti_loadingPreviewVerif').removeClass('d-flex').addClass('d-none');
-                        $('#cuti_iframePreviewVerif').removeClass('d-none');
-                    }, 3000);
+                        $('#cuti_iframePreviewVerif').off('load').on('load', function () {
+                            $('#cuti_loadingPreviewVerif').removeClass('d-flex').addClass('d-none');
+                            $(this).removeClass('d-none');
+                        });
+
+                        setTimeout(function () {
+                            $('#cuti_loadingPreviewVerif').removeClass('d-flex').addClass('d-none');
+                            $('#cuti_iframePreviewVerif').removeClass('d-none');
+                        }, 3000);
+                    } else {
+                        $('#cuti_noFilePreviewVerif').removeClass('d-none').addClass('d-flex');
+                    }
                 } else {
                     $('#cuti_noFilePreviewVerif').removeClass('d-none').addClass('d-flex');
                 }
-            } else {
-                $('#cuti_noFilePreviewVerif').removeClass('d-none').addClass('d-flex');
-            }
-            $('#cuti_modalVerifikasi').modal('show');
+            }, 150);
         } catch (e) { console.error("Error modal verif:", e); }
     }
 
