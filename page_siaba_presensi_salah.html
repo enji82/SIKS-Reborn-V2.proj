@@ -91,11 +91,11 @@
                                 <thead class="thead-sultan-premium">
                                     <tr>
                                         <th class="text-center sultan-sticky-col">AKSI</th>
+                                        <th>STATUS</th>
                                         <th>NAMA ASN / NIP</th>
                                         <th class="text-center">TANGGAL</th>
                                         <th class="text-center">JAM</th>
                                         <th class="text-center">TEREKAM</th>
-                                        <th>STATUS</th>
                                         <th>DIKIRIM</th>
                                         <th>DIUBAH</th>
                                         <th>VERIFIKASI</th>
@@ -541,11 +541,14 @@
                     SALAH_TABEL_INSTANCE = SultanTable.init('#salah_tabelUtama', {
                         "destroy": true, "ordering": false, "pageLength": 10, "autoWidth": false,
                         "deferRender": true,
+                        "dom": "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
+                               "<'row'<'col-sm-12'<'sultan-scroll-container sultan-scroll'tr>>>" +
+                               "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
                         "columnDefs": [
                             { "targets": 0, "width": "1%", "className": "text-center align-middle text-nowrap sultan-sticky-col" },
                             { "targets": 1, "className": "text-left align-middle" },
-                            { "targets": [2, 3, 4], "width": "1%", "className": "text-center align-middle text-nowrap" },
-                            { "targets": 5, "width": "8%", "className": "text-center align-middle text-nowrap" },
+                            { "targets": 2, "className": "text-left align-middle" },
+                            { "targets": [3, 4, 5], "width": "1%", "className": "text-center align-middle text-nowrap" },
                             { "targets": [6, 7, 8], "width": "15%", "className": "text-left align-middle" }
                         ],
                         "language": { "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json", "emptyTable": "Tidak ada riwayat Salah Presensi." }
@@ -651,7 +654,7 @@
             var metaEdit = `<div class="sultan-table-secondary"><span class="font-weight-bold text-dark d-block">${row.tglEdit || '-'}</span><span>${salah_cleanText(row.userEdit)}</span></div>`;
             var metaVerif = `<div class="sultan-table-secondary"><span class="font-weight-bold text-dark d-block">${row.tglVerif || '-'}</span><span>${salah_cleanText(row.adminVerif)}</span></div>`;
 
-            dtArray.push([aksiHTML, uiNama, uiTgl, salah_escapeHtml((row.jam || "").substring(0, 5)), uiJenis, badgeStatus, metaKirim, metaEdit, metaVerif]);
+            dtArray.push([aksiHTML, badgeStatus, uiNama, uiTgl, salah_escapeHtml((row.jam || "").substring(0, 5)), uiJenis, metaKirim, metaEdit, metaVerif]);
         });
 
         SALAH_TABEL_INSTANCE.clear().rows.add(dtArray).draw(false);
@@ -985,4 +988,41 @@
 
         return badgeHtml;
     }
+
+    $(document).ready(function() {
+        setTimeout(function() {
+            var $scrollContainer = $('.sultan-scroll-container');
+            if ($scrollContainer.length > 0) {
+                $scrollContainer.on('wheel touchmove', function(e) {
+                    var container = this;
+                    var scrollLeft = container.scrollLeft;
+                    var scrollWidth = container.scrollWidth;
+                    var clientWidth = container.clientWidth;
+                    var isAtStart = scrollLeft <= 1;
+                    var isAtEnd = scrollLeft >= scrollWidth - clientWidth - 1;
+                    
+                    if (e.type === 'wheel') {
+                        var deltaX = e.originalEvent.deltaX;
+                        if ((isAtStart && deltaX < 0) || (isAtEnd && deltaX > 0)) {
+                            e.preventDefault();
+                        }
+                    } else if (e.type === 'touchmove') {
+                        var touch = e.originalEvent.touches[0];
+                        var lastTouchX = $(this).data('lastTouchX');
+                        if (lastTouchX !== undefined) {
+                            var deltaX = touch.clientX - lastTouchX;
+                            if ((isAtStart && deltaX > 0) || (isAtEnd && deltaX < 0)) {
+                                e.preventDefault();
+                            }
+                        }
+                        $(this).data('lastTouchX', touch.clientX);
+                    }
+                });
+                
+                $scrollContainer.on('touchend', function() {
+                    $(this).removeData('lastTouchX');
+                });
+            }
+        }, 500);
+    });
 </script>
