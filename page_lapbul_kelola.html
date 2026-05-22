@@ -118,11 +118,11 @@
                                         <tr>
                                             <th class="text-center align-middle col-sticky-left"
                                                 style="width: 90px; white-space: nowrap;">AKSI</th>
+                                            <th class="text-center align-middle" style="width: 120px;">STATUS</th>
                                             <th class="text-left align-middle" style="width: 250px; min-width: 250px;">NAMA SEKOLAH</th>
                                             <th class="text-center align-middle" style="width: 120px;">PERIODE</th>
                                             <th class="text-center align-middle" style="width: 80px;">ROMBEL</th>
                                             <th class="text-center align-middle" style="width: 100px;">DOKUMEN</th>
-                                            <th class="text-center align-middle" style="width: 120px;">STATUS</th>
                                             <th class="text-left align-middle" style="width: 160px;">DIKIRIM</th>
                                             <th class="text-left align-middle" style="width: 160px;">DIUBAH</th>
                                             <th class="text-left align-middle" style="width: 160px;">VERIFIKASI</th>
@@ -879,36 +879,22 @@
         lapbulkelola_renderTabel(hasil);
     }
 
-    function lapbulkelola_parseIndoDate(str) {
-        if (!str || str === "-" || str === "") return 0;
-        try {
-            var cleanStr = String(str).replace(/['"]/g, "").trim();
-            if (cleanStr === "") return 0;
-
-            var parts = cleanStr.split(' ');
-            var dateParts = parts[0].split(/[-/]/);
-            if (dateParts.length !== 3) return 0;
-
-            var timeParts = (parts[1] || "00:00:00").split(':');
-
-            var y, m, d;
-            if (dateParts[0].length === 4) {
-                y = parseInt(dateParts[0], 10);
-                m = parseInt(dateParts[1], 10) - 1;
-                d = parseInt(dateParts[2], 10);
-            } else {
-                d = parseInt(dateParts[0], 10);
-                m = parseInt(dateParts[1], 10) - 1;
-                y = parseInt(dateParts[2], 10);
-            }
-
-            var hr = parseInt(timeParts[0] || 0, 10);
-            var mn = parseInt(timeParts[1] || 0, 10);
-            var sc = parseInt(timeParts[2] || 0, 10);
-
-            var finalDate = new Date(y, m, d, hr, mn, sc);
-            return isNaN(finalDate.getTime()) ? 0 : finalDate.getTime();
-        } catch (e) { return 0; }
+    function parseSiabaDateTime(val) {
+        if (!val) return 0;
+        if (val instanceof Date) return val.getTime();
+        var s = String(val).replace(/'/g, "").trim();
+        if (s === "") return 0;
+        var iso = s.split("-");
+        if (iso.length === 3 && iso[0].length === 4) return new Date(s).getTime();
+        var parts = s.split(" ");
+        var sep = parts[0].indexOf("-") > -1 ? "-" : "/";
+        var dP = parts[0].split(sep);
+        if (dP.length !== 3) return 0;
+        var tP = (parts[1] || "00:00:00").split(":");
+        return new Date(
+            parseInt(dP[2], 10), parseInt(dP[1], 10) - 1, parseInt(dP[0], 10),
+            parseInt(tP[0] || 0, 10), parseInt(tP[1] || 0, 10), parseInt(tP[2] || 0, 10)
+        ).getTime();
     }
 
     function lapbulkelola_renderTabel(data) {
@@ -916,9 +902,9 @@
 
         data.forEach(function (row) {
             row.sortTime = Math.max(
-                lapbulkelola_parseIndoDate(row.tglKirim),
-                lapbulkelola_parseIndoDate(row.tglEdit),
-                lapbulkelola_parseIndoDate(row.tglVerif)
+                parseSiabaDateTime(row.tglKirim),
+                parseSiabaDateTime(row.tglEdit),
+                parseSiabaDateTime(row.tglVerif)
             );
         });
 
@@ -969,11 +955,11 @@
 
             dtArray.push([
                 aksiHTML,
+                `<div class="text-center">${badgeStatusData}</div>`,
                 uiUnit,
                 uiPeriode,
                 `<div class="sultan-table-primary text-center">${lapbulkelola_escapeHtml(row.rombel || row.totalRombel || '0')}</div>`,
                 `<div class="text-center">${btnFile}</div>`,
-                `<div class="text-center">${badgeStatusData}</div>`,
                 metaKirim,
                 metaEdit,
                 metaVerif
@@ -989,11 +975,11 @@
                 "data": dtArray,
                 "columnDefs": [
                     { "targets": 0, "className": "text-center align-middle col-sticky-left", "width": "90px" },
-                    { "targets": 1, "className": "text-left align-middle", "width": "250px" },
-                    { "targets": 2, "className": "text-center align-middle text-nowrap", "width": "120px" },
-                    { "targets": 3, "className": "text-center align-middle text-nowrap", "width": "80px" },
-                    { "targets": 4, "className": "text-center align-middle", "width": "100px" },
-                    { "targets": 5, "className": "text-center align-middle text-nowrap", "width": "120px" },
+                    { "targets": 1, "className": "text-center align-middle text-nowrap", "width": "120px" },
+                    { "targets": 2, "className": "text-left align-middle", "width": "250px" },
+                    { "targets": 3, "className": "text-center align-middle text-nowrap", "width": "120px" },
+                    { "targets": 4, "className": "text-center align-middle text-nowrap", "width": "80px" },
+                    { "targets": 5, "className": "text-center align-middle", "width": "100px" },
                     { "targets": 6, "className": "text-left align-middle text-nowrap", "width": "160px" },
                     { "targets": 7, "className": "text-left align-middle text-nowrap", "width": "160px" },
                     { "targets": 8, "className": "text-left align-middle text-nowrap", "width": "160px" }
