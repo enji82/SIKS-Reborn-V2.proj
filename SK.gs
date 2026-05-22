@@ -78,6 +78,7 @@ function processManualForm(formData) {
     ]);
     
     invalidateNotifCache("User", formData.namaSd);
+    try { CacheService.getScriptCache().remove("DAFTAR_SK_CACHE"); } catch(e) {}
     return { success: true, message: "Data SK berhasil disimpan." };
   } catch (e) { return handleError('processManualForm', e); }
 }
@@ -144,6 +145,7 @@ function simpanPerubahanSK(form) {
 
     rekamCCTV("SUKSES", "Data baris " + rowIdx + " berhasil diupdate.");
     invalidateNotifCache("User", form.namaSd);
+    try { CacheService.getScriptCache().remove("DAFTAR_SK_CACHE"); } catch(e) {}
     return { success: true, message: "Data berhasil diperbarui." };
 
   } catch (e) {
@@ -156,6 +158,14 @@ function simpanPerubahanSK(form) {
    CORE: GET DATA LIST 
    ====================================================================== */
 function getDaftarSK() {
+  var cacheKey = "DAFTAR_SK_CACHE";
+  var cache = CacheService.getScriptCache();
+  
+  try {
+    var cached = cache.get(cacheKey);
+    if (cached) return JSON.parse(cached);
+  } catch (e) {}
+  
   try {
     var sheet = getSheet("SK_DATA_DB", "Unggah_SK");
     var data = sheet.getDataRange().getDisplayValues();
@@ -186,6 +196,10 @@ function getDaftarSK() {
     }
     
     result.sort(function(a, b) { return b.timestamp - a.timestamp; });
+    
+    try {
+      cache.put(cacheKey, JSON.stringify(result), 300);
+    } catch (e) {}
     
     return result;
   } catch (e) { return []; }
@@ -282,6 +296,7 @@ function hapusDataSK(form) {
 
     rekamCCTV("HAPUS DATA", "Menghapus Baris " + rowIdx + " oleh " + form.userDelete);
     invalidateNotifCache("User", values[1]);
+    try { CacheService.getScriptCache().remove("DAFTAR_SK_CACHE"); } catch(e) {}
     return { success: true, message: "Data berhasil dihapus." };
 
   } catch (e) {
@@ -305,6 +320,7 @@ function verifikasiDataSK(form) {
 
     var schoolName = sheet.getRange(rowIdx, 2).getDisplayValue();
     invalidateNotifCache("User", schoolName);
+    try { CacheService.getScriptCache().remove("DAFTAR_SK_CACHE"); } catch(e) {}
 
     SpreadsheetApp.flush();
     return { success: true, message: "Data diverifikasi: " + form.verifStatus };
