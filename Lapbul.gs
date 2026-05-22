@@ -265,6 +265,9 @@ function prosesSimpanLengkap(dbKey, namaSheet, source, form, fileData) {
     if (typeof invalidateNotifCache === 'function') {
         invalidateNotifCache("User", form.nama_sekolah);
     }
+    if (form.tahun && form.bulan && typeof invalidateLapbulMetricCache === "function") {
+      invalidateLapbulMetricCache(form.tahun, form.bulan);
+    }
 
     return { success: true, message: "Laporan berhasil disimpan! (" + userLogin + ")" };
 
@@ -461,6 +464,12 @@ function processVerifikasiLapbul(source, rowId, status, keterangan, userLogin) {
         var schoolName = (idxNama > -1) ? sheet.getRange(r, idxNama + 1).getDisplayValue() : "";
         invalidateNotifCache("User", schoolName);
     }
+    try {
+      var tahunRow = sheet.getRange(r, 4).getDisplayValue();
+      if (tahunRow && typeof invalidateLapbulMetricCacheForYear === "function") {
+        invalidateLapbulMetricCacheForYear(tahunRow);
+      }
+    } catch (eInv) {}
 
     return { 
       success: true, message: "Berhasil verifikasi",
@@ -517,6 +526,13 @@ function getLapbulMetric_PAUD(tahun, bulan) {
 }
 
 function processSheetDashboard(dbKey, sheetName, tahun, bulan, targetJenjangArray) {
+  var cacheKey = lapbulMetricCacheKey(dbKey, sheetName, tahun, bulan, targetJenjangArray);
+  return getCachedJsonString(cacheKey, function() {
+    return processSheetDashboardCore_(dbKey, sheetName, tahun, bulan, targetJenjangArray);
+  }, 300);
+}
+
+function processSheetDashboardCore_(dbKey, sheetName, tahun, bulan, targetJenjangArray) {
   var result = { recent: [] };
 
   targetJenjangArray.forEach(function(j) {

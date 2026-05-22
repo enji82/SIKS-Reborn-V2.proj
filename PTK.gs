@@ -38,72 +38,92 @@ function getFilterOptionsPTK() {
   } catch(e) { return JSON.stringify({ error: "Terjadi kesalahan saat mengambil filter." }); }
 }
 
-// 2. AMBIL DATA UTAMA (OPTIMASI DISPLAY VALUES)
-function getDataPTKSD(filterUnit, filterStatus) {
+function invalidatePtkSdnDataCache_() {
+  if (typeof invalidatePtkSdnCache === "function") invalidatePtkSdnCache();
+}
+
+// 2. AMBIL DATA UTAMA (cache + baca kolom terbatas)
+function buildPtkListSdn_() {
   var sheet = getSheet(KONFIG_PTK.DB_KEY, KONFIG_PTK.SHEET_PTK);
-  var data = sheet.getDataRange().getValues();
-  data.shift(); 
-  
-  // Ambil data usulan untuk mencari PTK Baru yang masih pending
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return [];
+
+  var data = sheet.getRange(2, 1, lastRow - 1, 38).getValues();
   var sheetUsulan = getSheet(KONFIG_PTK.DB_KEY, "usulan_mutasi_sdn");
   var usulanData = sheetUsulan ? sheetUsulan.getDataRange().getValues() : [];
-  var pendingPtkIds = new Set();
+  var pendingPtkIds = {};
   for (var j = 1; j < usulanData.length; j++) {
-    if (usulanData[j][7] === "Pending" && String(usulanData[j][3]).startsWith("PTK Baru")) {
-      pendingPtkIds.add(String(usulanData[j][1]));
+    if (usulanData[j][7] === "Pending" && String(usulanData[j][3]).indexOf("PTK Baru") === 0) {
+      pendingPtkIds[String(usulanData[j][1])] = true;
     }
   }
-  
+
   var result = [];
+  var tz = Session.getScriptTimeZone();
   for (var i = 0; i < data.length; i++) {
     var row = data[i];
-    var tglLahirISO = parseIndoDate(row[9]);
-    var tmtJabISO   = parseIndoDate(row[21]); // Bergeser +1
-    var tmtGolISO   = parseIndoDate(row[23]); // Bergeser +1
-
+    if (!row[0]) continue;
     result.push({
-      id: row[0],              // A
-      npsn: row[1],            // B
-      unit: row[2],            // C
-      gelar_depan: row[3],     // D
-      nama_no_gelar: row[4],   // E
-      gelar_belakang: row[5],  // F
-      nama_lengkap: row[6],    // G
-      nip: row[7],             // H
-      tmp_lahir: row[8],       // I
-      tgl_lahir: tglLahirISO,  // J
-      nik: row[10],            // K
-      lp: row[11],             // L
-      agama: row[12],          // M
-      pendidikan: row[13],     // N
-      jurusan: row[14],        // O
-      thn_lulus: row[15],      // P
-      alamat_ktp: row[16],     // Q (Alamat KTP)
-      alamat_domisili: row[17],// R (Alamat Domisili) - KOLOM BARU
-      hp: row[18],             // S
-      status_peg: row[19],     // T
-      jabatan: row[20],        // U
-      tmt_jabatan: tmtJabISO,  // V
-      pangkat: row[22],        // W
-      tmt_gol: tmtGolISO,      // X
-      mkg: row[24],            // Y
-      kelas_jab: row[25],      // Z
-      tugas: row[26],          // AA
-      nuptk: row[27],          // AB
-      serdik: row[28],         // AC
-      dapodik: row[29],        // AD
-      tugtam: row[30],         // AE
-      email: row[31],          // AF
-      diinput: row[32] ? Utilities.formatDate(new Date(row[32]), Session.getScriptTimeZone(), "dd/MM/yy HH:mm") : "", // AG
-      user_input: row[33],     // AH
-      diedit: row[34] ? Utilities.formatDate(new Date(row[34]), Session.getScriptTimeZone(), "dd/MM/yy HH:mm") : "",  // AI
-      user_edit: row[35],      // AJ
-      jenis_dok: row[36] || "", // AK
-      file_url: row[37] || "",  // AL
-      is_pending_baru: pendingPtkIds.has(String(row[0]))
+      id: row[0],
+      npsn: row[1],
+      unit: row[2],
+      gelar_depan: row[3],
+      nama_no_gelar: row[4],
+      gelar_belakang: row[5],
+      nama_lengkap: row[6],
+      nip: row[7],
+      tmp_lahir: row[8],
+      tgl_lahir: parseIndoDate(row[9]),
+      nik: row[10],
+      lp: row[11],
+      agama: row[12],
+      pendidikan: row[13],
+      jurusan: row[14],
+      thn_lulus: row[15],
+      alamat_ktp: row[16],
+      alamat_domisili: row[17],
+      hp: row[18],
+      status_peg: row[19],
+      jabatan: row[20],
+      tmt_jabatan: parseIndoDate(row[21]),
+      pangkat: row[22],
+      tmt_gol: parseIndoDate(row[23]),
+      mkg: row[24],
+      kelas_jab: row[25],
+      tugas: row[26],
+      nuptk: row[27],
+      serdik: row[28],
+      dapodik: row[29],
+      tugtam: row[30],
+      email: row[31],
+      diinput: row[32] ? Utilities.formatDate(new Date(row[32]), tz, "dd/MM/yy HH:mm") : "",
+      user_input: row[33],
+      diedit: row[34] ? Utilities.formatDate(new Date(row[34]), tz, "dd/MM/yy HH:mm") : "",
+      user_edit: row[35],
+      jenis_dok: row[36] || "",
+      file_url: row[37] || "",
+      is_pending_baru: !!pendingPtkIds[String(row[0])]
     });
   }
-  return JSON.stringify(result);
+  return result;
+}
+
+function getDataPTKSD(filterUnit, filterStatus) {
+  try {
+    var all = getCachedData("PTK_LIST_SDN", buildPtkListSdn_, 300);
+    var fu = String(filterUnit || "").trim();
+    var fs = String(filterStatus || "").trim();
+    if (!fu && !fs) return JSON.stringify(all);
+
+    var filtered = all.filter(function(item) {
+      var okUnit = !fu || fu === "SEMUA" || String(item.unit).trim() === fu;
+      var okStatus = !fs || fs === "SEMUA" || String(item.status_peg).trim() === fs;
+      return okUnit && okStatus;
+    });
+    return JSON.stringify(filtered);
+  } catch (e) {
+    return JSON.stringify({ error: e.message });
+  }
 }
 
 /**
@@ -200,7 +220,7 @@ function updateDataPTK(form, base64Data, fileName, jenisDokumen) {
     }
 
     applyPtkMasterRowUpdate_(sheet, rowIndex, form, extras);
-    try { CacheService.getScriptCache().remove("ptk_filter_options"); } catch (e) {}
+    invalidatePtkSdnDataCache_();
 
     return "Sukses";
   } catch(e) { return "Error: " + e.message; }
@@ -300,6 +320,7 @@ function insertDataPTK(form, base64Data, fileName, jenisDokumen, userPengusul) {
   ];
 
   sheet.appendRow(rowData);
+  invalidatePtkSdnDataCache_();
 
   return "Sukses";
 }
@@ -403,6 +424,7 @@ function revisiUsulanPTKBaru(form, base64Data, fileName, jenisDokumen, userPengu
        return "Error: Data usulan dengan ID " + form.id_usulan + " tidak ditemukan.";
     }
 
+    invalidatePtkSdnDataCache_();
     return "Sukses";
   } catch(e) { return "Error: " + e.message; }
 }

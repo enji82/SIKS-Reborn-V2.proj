@@ -58,6 +58,102 @@ function getCachedData(cacheKey, fetchFn, ttlSeconds) {
 }
 
 /**
+ * Cache untuk respons JSON string (google.script.run yang expect string).
+ */
+function getCachedJsonString(cacheKey, fetchFn, ttlSeconds) {
+  var cache = CacheService.getScriptCache();
+  var cached = cache.get(cacheKey);
+  if (cached != null) return cached;
+  var raw = fetchFn();
+  var str = (typeof raw === "string") ? raw : JSON.stringify(raw);
+  try {
+    if (str.length < 100000) {
+      cache.put(cacheKey, str, ttlSeconds || 300);
+    }
+  } catch (e) {
+    Logger.log("Cache Put Error [" + cacheKey + "]: " + e.message);
+  }
+  return str;
+}
+
+/** Hapus beberapa kunci cache sekaligus. */
+function invalidateCacheKeys(keys) {
+  try {
+    var cache = CacheService.getScriptCache();
+    (keys || []).forEach(function(k) {
+      if (k) cache.remove(k);
+    });
+  } catch (e) {}
+}
+
+/** Kunci cache modul notifikasi (per modul + role + unit). */
+function notifModuleCacheKey(moduleKey, role, unit) {
+  return "NOTIF_" + moduleKey + "_" + String(role || "").toLowerCase() + "_" + String(unit || "").toUpperCase();
+}
+
+/** Cache hasil notifikasi satu modul (object { count, recent }). */
+function getCachedNotifModule(moduleKey, role, unit, fetchFn, ttlSeconds) {
+  var key = notifModuleCacheKey(moduleKey, role, unit);
+  return getCachedData(key, function() {
+    return fetchFn(role, unit);
+  }, ttlSeconds || 60);
+}
+
+/** Invalidasi cache notifikasi (global + per modul) untuk role/unit tertentu. */
+function invalidateNotifCachesFor(role, unit) {
+  var cache = CacheService.getScriptCache();
+  var mods = ["sk", "lapbul", "lupa", "salah", "perdin", "cuti", "surat_cuti", "efile",
+    "mutasi_paud", "mutasi_sdn", "mutasi_sds"];
+  var roles = [String(role || "").toLowerCase(), "admin", "verifikator", "korwil", "user"];
+  var units = [String(unit || "").toUpperCase(), ""];
+  try {
+    cache.remove("NOTIF_GLOBAL_" + String(role || "").toLowerCase() + "_" + String(unit || "").toUpperCase());
+    cache.remove("NOTIF_GLOBAL_admin_");
+    cache.remove("NOTIF_GLOBAL_verifikator_");
+    cache.remove("NOTIF_GLOBAL_korwil_");
+    if (unit) cache.remove("NOTIF_GLOBAL_user_" + String(unit).toUpperCase());
+    mods.forEach(function(m) {
+      roles.forEach(function(r) {
+        units.forEach(function(u) {
+          cache.remove(notifModuleCacheKey(m, r, u));
+        });
+      });
+    });
+  } catch (e) {}
+}
+
+/** Invalidasi cache daftar PTK SD. */
+function invalidatePtkSdnCache() {
+  invalidateCacheKeys(["ptk_filter_options", "PTK_LIST_SDN"]);
+}
+
+/** Kunci cache metrik dashboard Lapbul. */
+function lapbulMetricCacheKey(dbKey, sheetName, tahun, bulan, jenjangArr) {
+  return "LAPBUL_METRIC_" + dbKey + "_" + String(sheetName).replace(/\s/g, "_") + "_" +
+    String(tahun) + "_" + String(bulan) + "_" + (jenjangArr || []).join("-");
+}
+
+/** Invalidasi cache metrik untuk periode tertentu (panggil setelah simpan/verifikasi/hapus). */
+function invalidateLapbulMetricCache(tahun, bulan) {
+  if (!tahun || !bulan) return;
+  invalidateCacheKeys([
+    lapbulMetricCacheKey("LAPBUL_SD_DB", "Status SD", tahun, bulan, ["SD"]),
+    lapbulMetricCacheKey("LAPBUL_PAUD_DB", "Status PAUD", tahun, bulan, ["TK", "KB", "SPS", "TPA"])
+  ]);
+}
+
+/** Invalidasi semua bulan untuk satu tahun (saat verifikasi tanpa info bulan). */
+function invalidateLapbulMetricCacheForYear(tahun) {
+  if (!tahun) return;
+  var bulanList = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12",
+    "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus",
+    "September", "Oktober", "November", "Desember"];
+  bulanList.forEach(function(b) {
+    invalidateLapbulMetricCache(tahun, b);
+  });
+}
+
+/**
  * Helper untuk mendapatkan unit user yang sedang login (Session-based via browser logic).
  * Catatan: dashGetMyUnit biasanya didefinisikan di file lain, dipindahkan ke sini jika perlu global.
  */
@@ -84,26 +180,28 @@ function apiResponse(status, data, message) {
  */
 function getLookupFilters() {
   try {
-    const sheet = getSheet("SIABA_LOOKUP_DB", "Lookup Siaba");
-    const lastRow = sheet.getLastRow();
-    if (lastRow < 2) return { years: [], months: [] };
-    
-    const data = sheet.getRange(2, 1, lastRow - 1, 2).getDisplayValues();
-    let years = new Set();
-    let months = new Set();
-    
-    data.forEach(row => {
-      if (row[0]) years.add(row[0]); 
-      if (row[1]) months.add(row[1]); 
-    });
+    return getCachedData("SIABA_LOOKUP_FILTERS", function() {
+      const sheet = getSheet("SIABA_LOOKUP_DB", "Lookup Siaba");
+      const lastRow = sheet.getLastRow();
+      if (lastRow < 2) return { years: [], months: [] };
 
-    const URUTAN_BULAN = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-    let sortedMonths = Array.from(months).sort((a, b) => URUTAN_BULAN.indexOf(a) - URUTAN_BULAN.indexOf(b));
+      const data = sheet.getRange(2, 1, lastRow - 1, 2).getDisplayValues();
+      let years = new Set();
+      let months = new Set();
 
-    return {
-      years: Array.from(years).sort().reverse(),
-      months: sortedMonths
-    };
+      data.forEach(row => {
+        if (row[0]) years.add(row[0]);
+        if (row[1]) months.add(row[1]);
+      });
+
+      const URUTAN_BULAN = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+      let sortedMonths = Array.from(months).sort((a, b) => URUTAN_BULAN.indexOf(a) - URUTAN_BULAN.indexOf(b));
+
+      return {
+        years: Array.from(years).sort().reverse(),
+        months: sortedMonths
+      };
+    }, 3600);
   } catch (e) {
     Logger.log("getLookupFilters Error: " + e.message);
     return { error: e.message };

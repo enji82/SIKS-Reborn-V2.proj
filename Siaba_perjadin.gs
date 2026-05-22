@@ -131,28 +131,43 @@ function simpanSptUnified(payload) {
       sheetMaster.getRange(r, 15).setValue(userName);   
     }
 
-    // VAKSIN: HAPUS SEMUA PESERTA LAMA AGAR TIDAK DOUBLE SAAT UPDATE
-    var dataP = sheetDetail.getDataRange().getValues();
-    for (var i = dataP.length - 1; i >= 1; i--) {
-        if (String(dataP[i][0]).trim().toUpperCase() === targetSpt) {
-            sheetDetail.deleteRow(i + 1);
-        }
-    }
-
-    // INSERT PESERTA BARU
     var rowsPeserta = [];
     payload.listPeserta.forEach(function(p){
       rowsPeserta.push([payload.header.noSpt, p.nip, p.nama, p.unit, "Diproses", "", sysDateStr]);
     });
-    if(rowsPeserta.length > 0) {
-      sheetDetail.getRange(sheetDetail.getLastRow() + 1, 1, rowsPeserta.length, 7).setValues(rowsPeserta);
-    }
+    removeDetailPesertaBySpt_(sheetDetail, targetSpt, rowsPeserta);
 
     SpreadsheetApp.flush();
     return "Sukses";
   } catch (e) { 
     return (e.message.includes("lock")) ? "Error: Sistem sibuk." : "Error: " + e.toString(); 
   } finally { lock.releaseLock(); }
+}
+
+/**
+ * Hapus baris peserta satu SPT sekaligus (deleteRows), lalu tambah baris baru.
+ */
+function removeDetailPesertaBySpt_(sheetDetail, targetSpt, rowsToAppend) {
+  var lastRow = sheetDetail.getLastRow();
+  if (lastRow < 2 && (!rowsToAppend || rowsToAppend.length === 0)) return;
+
+  var dataP = lastRow >= 2
+    ? sheetDetail.getRange(2, 1, lastRow - 1, 7).getValues()
+    : [];
+  var firstDel = -1;
+  var delCount = 0;
+  for (var i = 0; i < dataP.length; i++) {
+    if (String(dataP[i][0]).trim().toUpperCase() === targetSpt) {
+      if (firstDel === -1) firstDel = i + 2;
+      delCount++;
+    }
+  }
+  if (delCount > 0) sheetDetail.deleteRows(firstDel, delCount);
+
+  if (rowsToAppend && rowsToAppend.length > 0) {
+    var startRow = sheetDetail.getLastRow() + 1;
+    sheetDetail.getRange(startRow, 1, rowsToAppend.length, 7).setValues(rowsToAppend);
+  }
 }
 
 /* ----------------------------------------------------------------------
@@ -264,14 +279,8 @@ function hapusDataDinas(payload) {
     var rowId = parseInt(payload.recId);
     var noSptDihapus = String(sheetMaster.getRange(rowId, 2).getValue()).trim().toUpperCase();
     
-    // VAKSIN: CASCADING DELETE UNTUK PESERTA HANTU
     if (sheetPeserta && noSptDihapus !== "") {
-        var dataP = sheetPeserta.getDataRange().getValues();
-        for (var i = dataP.length - 1; i >= 1; i--) {
-            if (String(dataP[i][0]).trim().toUpperCase() === noSptDihapus) {
-                sheetPeserta.deleteRow(i + 1);
-            }
-        }
+      removeDetailPesertaBySpt_(sheetPeserta, noSptDihapus, []);
     }
 
     sheetMaster.deleteRow(rowId);

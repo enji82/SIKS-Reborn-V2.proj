@@ -675,7 +675,7 @@ function getNotifikasiGlobal(role, unit) {
   
   function callSafe(key, fn, r, u) {
     try {
-      var res = fn(r, u);
+      var res = getCachedNotifModule(key, r, u, fn, 60);
       if (res && typeof res.count !== 'undefined') {
         modules[key] = res;
         totalCount += (parseInt(res.count) || 0);
@@ -709,10 +709,9 @@ function getNotifikasiGlobal(role, unit) {
     modules: modules
   });
   
-  // Simpan ke cache selama 30 detik agar polling dan refresh lebih cepat menangkap notifikasi baru
   try {
     if (result.length < 100000) {
-      cache.put(cacheKey, result, 30);
+      cache.put(cacheKey, result, 90);
     }
   } catch (e) { /* ignore cache put errors */ }
   
@@ -741,20 +740,10 @@ function tandaiSemuaNotifGlobalDibaca(role, unit) {
  */
 function invalidateNotifCache(role, unit) {
   try {
-    var cache = CacheService.getScriptCache();
-    // Bersihkan cache spesifik yang diminta
-    var cacheKey = "NOTIF_GLOBAL_" + String(role || "").toLowerCase() + "_" + String(unit || "").toUpperCase();
-    cache.remove(cacheKey);
-    
-    // Bersihkan cache role-role admin agar notifikasi langsung ter-update di pihak admin
-    cache.remove("NOTIF_GLOBAL_admin_");
-    cache.remove("NOTIF_GLOBAL_verifikator_");
-    cache.remove("NOTIF_GLOBAL_korwil_");
-    
-    // Bersihkan cache user jika unit terdefinisi
-    if (unit) {
-      cache.remove("NOTIF_GLOBAL_user_" + String(unit).toUpperCase());
+    if (typeof invalidateNotifCachesFor === "function") {
+      invalidateNotifCachesFor(role, unit);
     }
+    var cache = CacheService.getScriptCache();
 
     // Bersihkan cache dashboard SK untuk filter yang umum digunakan
     var years = ["", "2023/2024", "2024/2025", "2025/2026", "2026/2027"];
