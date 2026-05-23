@@ -870,29 +870,24 @@ function ptksds_tarikDataUsulan() {
     if (PTKSDS_ALREADY_FETCHING) return;
     PTKSDS_ALREADY_FETCHING = true;
 
-    console.log('[DEBUG] ptksds_tarikDataUsulan() called');
     SultanUI.showLoading('#ptksds_loadingUsulan');
     $('#ptksds_tableUsulanState').hide();
 
     // Fetch Master Data first (getDataPTKSDS)
     google.script.run
         .withSuccessHandler(function(resMaster){
-            console.log('[DEBUG] Master data received:', resMaster);
             PTKSDS_CACHE_MASTER = JSON.parse(resMaster);
             
             // Now fetch Usulan data
             google.script.run
                 .withSuccessHandler(function(resUsulan){
-                    console.log('[DEBUG] Usulan data received:', resUsulan);
                     PTKSDS_ALREADY_FETCHING = false;
                     $('#ptksds_loadingUsulan').hide();
                     PTKSDS_CACHE_USULAN = JSON.parse(resUsulan);
-                    console.log('[DEBUG] PTKSDS_CACHE_USULAN after parse:', PTKSDS_CACHE_USULAN);
                     ptksds_populateFilterLembaga();
                     ptksds_terapkanFilterLokal();
                 })
                 .withFailureHandler(function(err){
-                    console.error('[DEBUG] Error fetching usulan:', err);
                     PTKSDS_ALREADY_FETCHING = false;
                     $('#ptksds_loadingUsulan').hide();
                     Sultan.notif.crud.gagal(err.message || err || 'Gagal memuat data');
@@ -900,7 +895,6 @@ function ptksds_tarikDataUsulan() {
                 .getUsulanMutasiPTKSDS();
         })
         .withFailureHandler(function(err){
-            console.error('[DEBUG] Error fetching master:', err);
             PTKSDS_ALREADY_FETCHING = false;
             $('#ptksds_loadingUsulan').hide();
             Sultan.notif.crud.gagal(err.message || err || 'Gagal memuat data master');
@@ -923,25 +917,18 @@ function ptksds_populateFilterLembaga() {
 }
 
 function ptksds_terapkanFilterLokal() {
-    console.log('[DEBUG] ptksds_terapkanFilterLokal() called');
     var tAdminUnit = PTKSDS_IS_ADMIN ? ($('#ptksds_filterUnit').val() || "SEMUA").toUpperCase() : "";
     var tUnitUser  = String(PTKSDS_UNIT_TERKUNCI).trim().toUpperCase();
 
-    console.log('[DEBUG] Filter params:', { tAdminUnit, tUnitUser, PTKSDS_IS_ADMIN, PTKSDS_UNIT_TERKUNCI });
-
     var hasil = PTKSDS_CACHE_USULAN.filter(function(row) {
         var rUnit = ptksds_cleanString(row.lembaga_asal);
-        console.log('[DEBUG] Filtering row:', { lembaga_asal: row.lembaga_asal, rUnit, tAdminUnit, tUnitUser });
 
         var passUnit = false;
         if (PTKSDS_IS_ADMIN) { passUnit = (tAdminUnit === "SEMUA" || rUnit === tAdminUnit); } 
         else { passUnit = (rUnit === tUnitUser); }
 
-        console.log('[DEBUG] Pass unit:', passUnit);
         return passUnit;
     });
-
-    console.log('[DEBUG] Filtered hasil:', hasil);
 
     // Urutkan berdasarkan aktivitas terakhir (tanggal_eksekusi atau tanggal_usulan) terbaru di atas
     hasil.sort(function(a, b) {
@@ -979,11 +966,9 @@ function ptksds_updateTabelKosong(htmlContent) {
 }
 
 function ptksds_renderTabelUsulan(data) {
-    console.log('[DEBUG] ptksds_renderTabelUsulan() called with data:', data);
     var dtArray = [];
     
     if (!data || data.length === 0) {
-        console.log('[DEBUG] No data to render, showing empty state');
         ptksds_updateTabelKosong("<div class='py-5 text-muted'><i class='fas fa-clipboard-list fa-3x mb-3 text-light opacity-50'></i><br>Belum ada data mutasi.</div>");
         return;
     }
@@ -1070,14 +1055,10 @@ function ptksds_renderTabelUsulan(data) {
         ]);
     });
 
-    console.log('[DEBUG] dtArray built:', dtArray);
     if (PTKSDS_TABEL_USULAN_INSTANCE) {
-        console.log('[DEBUG] Adding rows to DataTable');
         PTKSDS_TABEL_USULAN_INSTANCE.clear().rows.add(dtArray).draw(false);
         $('#ptksds_tableUsulanState').show();
         PTKSDS_TABEL_USULAN_INSTANCE.columns.adjust();
-    } else {
-        console.error('[DEBUG] PTKSDS_TABEL_USULAN_INSTANCE is not initialized!');
     }
 }
 
@@ -1129,6 +1110,11 @@ function ptksds_bukaModalVerifikasi(row) {
                     $('#ptksds_verifIframe').removeClass('d-none');
                 }
             }, 2500);
+
+            setTimeout(function () {
+                $('#ptksds_loaderVerif').addClass('d-none');
+                $('#ptksds_verifIframe').removeClass('d-none');
+            }, 4000);
         } else {
             $('#ptksds_loaderVerif').addClass('d-none');
             $('#ptksds_verifNoFile').removeClass('d-none');
@@ -1320,7 +1306,7 @@ function ptksds_previewPdf(url) {
                 setTimeout(function() {
                     $('#ptksds_loadingPreviewPDF').removeClass('d-flex').addClass('d-none');
                     $('#ptksds_framePreview').removeClass('d-none');
-                }, 3000);
+                }, 4000);
             }, 150);
 
         } else { 
