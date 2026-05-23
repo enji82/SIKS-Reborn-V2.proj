@@ -321,15 +321,18 @@ function keadaanptksdn_renderTabel(dataRows) {
         dtArray.push(arrRow);
     });
 
-    if (!$.fn.DataTable.isDataTable('#keadaanptksdn_tabelUtama')) {
-        KEADAANPTKSDN_TABEL_INSTANCE = SultanTable.init('#keadaanptksdn_tabelUtama', {
+    if (KEADAANPTKSDN_TABEL_INSTANCE) {
+        KEADAANPTKSDN_TABEL_INSTANCE.destroy();
+        KEADAANPTKSDN_TABEL_INSTANCE = null;
+    }
+    
+    KEADAANPTKSDN_TABEL_INSTANCE = SultanTable.init('#keadaanptksdn_tabelUtama', {
             "data": dtArray, 
             "destroy": true, "ordering": false, "pageLength": 10, "autoWidth": false,
             "deferRender": true, 
             "dom": "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
                    "<'row'<'col-sm-12'<'table-responsive sultan-scroll'tr>>>" +
                    "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
-            // VAKSIN 2: Matriks Spesifik (Index 1 hingga 54 adalah Angka). Index 0 kebal.
             "columnDefs": [
                 { "targets": 0, "className": "col-sticky-left bg-white align-middle border-right text-left px-3 py-1" },
                 { "targets": [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54], "className": "text-center align-middle p-0" } 
@@ -338,7 +341,6 @@ function keadaanptksdn_renderTabel(dataRows) {
                 "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json", 
                 "emptyTable": '<div class="py-4 text-center text-muted"><i class="fas fa-clipboard-list fa-3x text-gray-300 mb-3" style="opacity: 0.6;"></i><br><h6 class="font-weight-bold text-dark mb-1">Belum Ada Data</h6><p class="small mb-0">Tidak ada keadaan PTK untuk filter terpilih.</p></div>' 
             },
-            // VAKSIN EXCEL: Mewarnai tag dasar <td> agar solid penuh tanpa ada rongga
             "createdRow": function(row, data, dataIndex) {
                 for (var i = 1; i <= 54; i++) {
                     var colIndexBackend = i + 1; 
@@ -356,10 +358,8 @@ function keadaanptksdn_renderTabel(dataRows) {
             },
             "footerCallback": function (row, data, start, end, display) {
                 var api = this.api();
-                // KEPATUHAN LOOPING ABSOLUT: 54 kolom angka (DT Index: 1 s/d 54)
                 var totalArr = new Array(54).fill(0); 
 
-                // Hitung total angka murni
                 api.rows({ search: 'applied' }).data().each(function(rowData) {
                     for (var i = 1; i <= 54; i++) {
                         var rawStr = String(rowData[i]);
@@ -368,11 +368,10 @@ function keadaanptksdn_renderTabel(dataRows) {
                     }
                 });
 
-                // VAKSIN HTML SEMANTIK FOOTER: Menggunakan <th> bukan <td>
                 var footHtml = '<th class="bg-light text-maroon text-left font-weight-bold px-3 align-middle col-sticky-left py-1 text-uppercase" style="z-index:40; border-right: 2px solid #dee2e6;">TOTAL JUMLAH</th>';
 
                 for (var i = 0; i < 54; i++) {
-                    var colIndex = i + 2; // Menyesuaikan ke index backend warna
+                    var colIndex = i + 2; 
                     var bgClass = keadaanptksdn_getColumnClass(colIndex); 
                     var style = '';
                     if (colIndex === 55) style += ' border-left: 2px solid #ffecb3 !important;'; 
@@ -380,7 +379,6 @@ function keadaanptksdn_renderTabel(dataRows) {
                     footHtml += '<th class="text-center px-2 py-1 font-weight-bold text-maroon ' + bgClass + '" style="' + style + '">' + totalArr[i] + '</th>';
                 }
 
-                // Injeksi mutlak ke tag pancingan <tr> di dalam <tfoot>
                 $(api.table().footer()).find('tr').html(footHtml);
             }
         });
@@ -388,17 +386,6 @@ function keadaanptksdn_renderTabel(dataRows) {
         SultanUI.hideLoading('#keadaanptksdn_loadingState');
         $('#keadaanptksdn_tableState').show();
         
-        // VAKSIN 3: Jeda mikro untuk mengatasi Micro-Blink Paint Lag
         setTimeout(function(){ KEADAANPTKSDN_TABEL_INSTANCE.columns.adjust(); }, 50);
-    } 
-    else {
-        KEADAANPTKSDN_TABEL_INSTANCE.clear().rows.add(dtArray).draw(false);
-        
-        if ($('#keadaanptksdn_tableState').is(':hidden')) {
-            SultanUI.hideLoading('#keadaanptksdn_loadingState');
-            $('#keadaanptksdn_tableState').show();
-            setTimeout(function(){ KEADAANPTKSDN_TABEL_INSTANCE.columns.adjust(); }, 50);
-        }
-    }
 }
 </script>
