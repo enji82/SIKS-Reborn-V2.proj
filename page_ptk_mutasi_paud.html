@@ -557,6 +557,7 @@ function ptkpaud_bukaModalMutasi(showModal = true) {
 }
 
 function ptkpaud_bukaModalEditMutasi(row) {
+    PTKPAUD_CURRENT_EDIT_ROW = JSON.parse(JSON.stringify(row));
     $('#ptkpaud_formMutasi')[0].reset();
     $('#ptkpaud_mutasiIdData').val(row.id_usulan);
     $('#ptkpaud_formMutasi').removeClass('was-validated');
@@ -820,9 +821,23 @@ function ptkpaud_submitFormMutasi() {
 
         var paramsDebug = '';
         if (idUsulan) {
-            paramsDebug = 'EDIT PARAMS:\nidUsulan: ' + idUsulan + '\nidPtk: ' + idPtk + '\njenis: ' + jenis + '\ntujuan: ' + tujuan + '\ntanggal: ' + tanggal + '\nfileName: ' + fileName + '\nuser: ' + PTKPAUD_USER_AKTIF;
+            var idPtkFinal = idPtk;
+            if (PTKPAUD_CURRENT_EDIT_ROW) {
+                var unitAsal = PTKPAUD_CURRENT_EDIT_ROW.lembaga_asal;
+                var namaPtk = PTKPAUD_CURRENT_EDIT_ROW.nama_ptk;
+                var masterFromGlobal = PTKPAUD_CACHE_MASTER.find(m => 
+                    (ptkpaud_cleanString(m.nama_lengkap) === ptkpaud_cleanString(namaPtk)) && 
+                    (ptkpaud_cleanString(m.unit) === ptkpaud_cleanString(unitAsal))
+                );
+                if (masterFromGlobal && masterFromGlobal.id) {
+                    idPtkFinal = masterFromGlobal.id;
+                }
+            }
+            
+            paramsDebug = 'EDIT PARAMS:\nidUsulan: ' + idUsulan + '\nidPtk: ' + idPtk + '\nidPtkFinal: ' + idPtkFinal + '\nidPtkFinal as number: ' + Number(idPtkFinal) + '\nidPtkFinal as string: ' + String(idPtkFinal) + '\njenis: ' + jenis + '\ntujuan: ' + tujuan + '\ntanggal: ' + tanggal + '\nfileName: ' + fileName + '\nuser: ' + PTKPAUD_USER_AKTIF;
             alert(paramsDebug);
-            runner.ajukanMutasiPTKPAUD(idUsulan, idPtk, jenis, tujuan, tanggal, base64Data, fileName, PTKPAUD_USER_AKTIF);
+            
+            runner.ajukanMutasiPTKPAUD(idUsulan, idPtkFinal, jenis, tujuan, tanggal, base64Data, fileName, PTKPAUD_USER_AKTIF);
         } else {
             paramsDebug = 'TAMBAH PARAMS:\nidPtk: ' + idPtk + '\njenis: ' + jenis + '\ntujuan: ' + tujuan + '\ntanggal: ' + tanggal + '\nfileName: ' + fileName + '\nuser: ' + PTKPAUD_USER_AKTIF;
             alert(paramsDebug);
@@ -1106,6 +1121,7 @@ function ptkpaud_renderTabelUsulan(data) {
 }
 
 var PTKPAUD_CURRENT_VERIFIKASI_ROW = null;
+var PTKPAUD_CURRENT_EDIT_ROW = null;
 
 function ptkpaud_bukaModalVerifikasi(row) {
     if (typeof row === 'string') { try { row = JSON.parse(row); } catch(e) { return; } }
