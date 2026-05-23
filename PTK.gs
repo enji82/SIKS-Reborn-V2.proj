@@ -786,11 +786,28 @@ function ajukanMutasiPTKPAUD(idPtk, jenis, tujuan, tanggal, base64Data, fileName
       sheetUsulan.getRange(1, 1, 1, headers.length).setValues([headers]);
     }
     
+    // Cek apakah ini EDIT (parameter pertama adalah idUsulan, diawali dengan "USUL-")
+    var isEdit = false;
+    var idUsulan = null;
+    var actualIdPtk = idPtk;
+    
+    if (arguments.length > 7 && String(idPtk).startsWith("USUL-")) {
+      isEdit = true;
+      idUsulan = idPtk;
+      actualIdPtk = jenis;
+      jenis = tujuan;
+      tujuan = tanggal;
+      tanggal = arguments[4];
+      base64Data = arguments[5];
+      fileName = arguments[6];
+      userPengusul = arguments[7];
+    }
+    
     // Ambil data PTK untuk tahu nama dan lembaga asal
     var dataPTK = sheetSource.getDataRange().getValues();
     var ptkRow = null;
     for (var i = 1; i < dataPTK.length; i++) {
-      if (String(dataPTK[i][0]) === String(idPtk)) {
+      if (String(dataPTK[i][0]) === String(actualIdPtk)) {
         ptkRow = dataPTK[i];
         break;
       }
@@ -801,7 +818,7 @@ function ajukanMutasiPTKPAUD(idPtk, jenis, tujuan, tanggal, base64Data, fileName
     var namaPtk = ptkRow[7]; // Kolom H (Nama Lengkap)
     var lembagaAsal = ptkRow[2]; // Kolom C (Unit/Lembaga)
     
-    // Upload file ke Drive
+    // Upload file ke Drive jika ada
     var fileUrl = "-";
     if (base64Data && fileName) {
       var folderId = "1myZbraP_DqdBdhFEcm35JNWG3v97UNqF";
@@ -812,29 +829,61 @@ function ajukanMutasiPTKPAUD(idPtk, jenis, tujuan, tanggal, base64Data, fileName
       fileUrl = file.getUrl();
     }
     
-    // Simpan usulan
-    var idUsulan = "USUL-" + new Date().getTime();
     var timestamp = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss");
     
-    var rowData = [
-      idUsulan,
-      idPtk,
-      namaPtk,
-      jenis,
-      lembagaAsal,
-      tujuan || "-",
-      fileUrl,
-      "Pending",
-      timestamp,
-      userPengusul,
-      "",
-      "",
-      "",
-      tanggal || "-"
-    ];
-    
-    sheetUsulan.appendRow(rowData);
-    return "Sukses";
+    if (isEdit) {
+      // Update usulan yang sudah ada
+      var dataUsulan = sheetUsulan.getDataRange().getValues();
+      var usulanRowIdx = -1;
+      for (var i = 1; i < dataUsulan.length; i++) {
+        if (String(dataUsulan[i][0]) === String(idUsulan)) {
+          usulanRowIdx = i + 1;
+          break;
+        }
+      }
+      
+      if (usulanRowIdx === -1) return "Error: Data usulan tidak ditemukan.";
+      
+      // Gunakan file SK lama jika tidak upload file baru
+      if (!base64Data || !fileName) {
+        fileUrl = dataUsulan[usulanRowIdx - 1][6];
+      }
+      
+      // Update data di sheet usulan
+      sheetUsulan.getRange(usulanRowIdx, 2).setValue(actualIdPtk);
+      sheetUsulan.getRange(usulanRowIdx, 3).setValue(namaPtk);
+      sheetUsulan.getRange(usulanRowIdx, 4).setValue(jenis);
+      sheetUsulan.getRange(usulanRowIdx, 5).setValue(lembagaAsal);
+      sheetUsulan.getRange(usulanRowIdx, 6).setValue(tujuan || "-");
+      sheetUsulan.getRange(usulanRowIdx, 7).setValue(fileUrl);
+      sheetUsulan.getRange(usulanRowIdx, 8).setValue("Pending");
+      sheetUsulan.getRange(usulanRowIdx, 13).setValue(tanggal || "-");
+      
+      return "Sukses";
+    } else {
+      // Tambah usulan baru
+      var newIdUsulan = "USUL-" + new Date().getTime();
+      
+      var rowData = [
+        newIdUsulan,
+        actualIdPtk,
+        namaPtk,
+        jenis,
+        lembagaAsal,
+        tujuan || "-",
+        fileUrl,
+        "Pending",
+        timestamp,
+        userPengusul,
+        "",
+        "",
+        "",
+        tanggal || "-"
+      ];
+      
+      sheetUsulan.appendRow(rowData);
+      return "Sukses";
+    }
   } catch (e) {
     return "Error: " + e.message;
   }
