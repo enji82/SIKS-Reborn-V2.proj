@@ -608,20 +608,43 @@ function insertDataPTKSDS(form) {
 function updateDataPTKSDS(form) {
   var sheet = getSheet(KONFIG_PTK.DB_KEY, "Master Data GTK SDS");
   var data = sheet.getDataRange().getValues();
-  var rowIdx = -1; for (var i = 0; i < data.length; i++) { if (String(data[i][0]).trim() === String(form.id).trim()) { rowIdx = i + 1; break; } }
+  var rowIdx = -1; 
+  var idStr = String(form.id).trim();
+  
+  for (var i = 0; i < data.length; i++) { 
+    if (String(data[i][0]).trim() === idStr) { 
+      rowIdx = i + 1; 
+      break; 
+    } 
+  }
+  
   if (rowIdx == -1) return "Error: ID tidak ditemukan.";
+  
   var inputNik = String(form.nik || "").trim();
-  if (inputNik !== "") { for (var i = 1; i < data.length; i++) { var rowNik = String(data[i][10]).replace(/'/g, '').trim(); if (rowNik === inputNik && String(data[i][0]) !== String(form.id)) return "Gagal: NIK " + inputNik + " sudah dipakai oleh " + data[i][6]; } }
+  if (inputNik !== "") { 
+    for (var i = 1; i < data.length; i++) { 
+      var rowNik = String(data[i][10]).replace(/'/g, '').trim(); 
+      if (rowNik === inputNik && String(data[i][0]).trim() !== idStr) { 
+        return "Gagal: NIK " + inputNik + " sudah dipakai oleh " + data[i][6]; 
+      } 
+    } 
+  }
+  
   var namaFull = (form.gelar_depan ? form.gelar_depan + " " : "") + form.nama_lengkap + (form.gelar_belakang ? ", " + form.gelar_belakang : "");
   var timestamp = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss");
+  
   if (form.npsn_baru && form.unit_kerja) { 
     var npsnVal = parseInt(String(form.npsn_baru).replace(/[^0-9]/g, ''), 10);
     sheet.getRange(rowIdx, 2).setValue(isNaN(npsnVal) ? form.npsn_baru : npsnVal); 
     sheet.getRange(rowIdx, 3).setValue(form.unit_kerja); 
   }
+  
   var updateValues = [[ form.gelar_depan || "", form.nama_lengkap || "", form.gelar_belakang || "", namaFull || "", form.niy || "", form.tmp_lahir || "", form.tgl_lahir || "", "'" + (form.nik || ""), form.lp || "", form.agama || "", form.pendidikan || "", form.jurusan || "", form.thn_lulus || "", form.alamat_ktp || "", form.alamat_domisili || "", "'" + (form.hp || ""), form.status_peg || "", form.jabatan || "", form.tmt_jabatan || "", form.inpassing || "", form.tmt_inpassing || "", "'" + (form.nuptk || ""), form.serdik || "", form.dapodik || "", form.tugtam || "" ]];
   sheet.getRange(rowIdx, 4, 1, 25).setValues(updateValues); // Digeser 25 Kolom
-  sheet.getRange(rowIdx, 31).setValue(timestamp); sheet.getRange(rowIdx, 32).setValue(form.user_login); sheet.getRange(rowIdx, 33).setValue(form.email || ""); return "Sukses";
+  sheet.getRange(rowIdx, 31).setValue(timestamp); 
+  sheet.getRange(rowIdx, 32).setValue(form.user_login); 
+  sheet.getRange(rowIdx, 33).setValue(form.email || ""); 
+  return "Sukses";
 }
 
 function deleteDataPTKSDS(id, alasan, userLogin) {
