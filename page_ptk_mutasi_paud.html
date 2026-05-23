@@ -178,15 +178,33 @@
 </div>
 
 <!-- Modal Preview PDF -->
-<div class="modal fade" id="ptkpaud_modalPreview" tabindex="-1" role="dialog" aria-hidden="true">
+<div class="modal fade" id="ptkpaud_modalPreview" tabindex="-1" role="dialog" data-backdrop="static">
     <div class="modal-dialog modal-xl modal-dialog-centered" role="document">
-        <div class="modal-content modal-content-sultan d-flex flex-column" style="height: 85vh;">
+        <div class="modal-content modal-content-sultan modal-content-full-height border-0 shadow-lg">
             <div class="modal-header modal-header-sultan-aksi-preview flex-shrink-0">
-                <h6 class="modal-title font-weight-bold"><i class="fas fa-file-pdf mr-2"></i> PREVIEW DOKUMEN SK</h6>
-                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+                <h5 class="modal-title font-weight-bold text-white" style="font-size: 1rem !important; letter-spacing: 0.5px !important; text-transform: uppercase;"><i class="fas fa-file-pdf mr-2"></i> Pratinjau Dokumen SK Mutasi</h5>
+                <div class="ml-auto d-flex align-items-center">
+                    <a href="#" id="ptkpaud_btnUnduhDirect"
+                        class="sultan-btn sultan-btn-sm sultan-btn-success mr-2 shadow-sm" target="_blank"
+                        style="display:none;">
+                        <i class="fas fa-download"></i> UNDUH
+                    </a>
+                    <a href="#" id="ptkpaud_btnUnduhPDF" target="_blank"
+                        class="sultan-btn sultan-btn-sm sultan-btn-outline-white mr-2 shadow-sm">
+                        <i class="fas fa-external-link-alt"></i> TAB BARU
+                    </a>
+                    <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+                </div>
             </div>
-            <div class="modal-body p-0 modal-body-sultan flex-grow-1 overflow-hidden">
-                <iframe id="ptkpaud_framePreview" src="" style="width: 100%; height: 100%; border: none;"></iframe>
+            <div class="modal-body modal-body-full position-relative p-0">
+                <iframe id="ptkpaud_framePreview" class="iframe-full d-none" src=""></iframe>
+                <div id="ptkpaud_loadingPreviewPDF"
+                    class="d-flex h-100 align-items-center justify-content-center text-white-50 position-absolute w-100"
+                    style="top:0; left:0; z-index:10; pointer-events:none;">
+                    <div class="text-center"><i class="fas fa-circle-notch fa-spin fa-3x mb-3"></i>
+                        <p>Memuat Dokumen...</p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -375,6 +393,11 @@ $(document).ready(function() {
     $(document).on('change', '#ptkpaud_mutasiJenis', function() {
         var jenis = $(this).val();
         ptkpaud_toggleMutasiFields(jenis);
+    });
+
+    $('#ptkpaud_modalPreview').on('hidden.bs.modal', function () { 
+        $('#ptkpaud_framePreview').addClass('d-none').attr('src', ''); 
+        $('#ptkpaud_loadingPreviewPDF').removeClass('d-none').addClass('d-flex'); 
     });
 
     // Event handler untuk input file mutasi
@@ -1155,24 +1178,47 @@ function ptkpaud_eksekusiMutasi(idUsulan, keputusan) {
 
 
 function ptkpaud_previewPdf(url) {
-    if (!url || url === '-') {
-        Sultan.notif.warning('File tidak tersedia.');
-        return;
+    try {
+        if(url && url.length > 5) { 
+            var finalUrl = url;
+            var directDownloadUrl = url;
+            
+            var match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
+            if (match && match[1]) {
+                var fileId = match[1];
+                finalUrl = 'https://drive.google.com/file/d/' + fileId + '/preview';
+                directDownloadUrl = 'https://drive.google.com/uc?export=download&id=' + fileId;
+            }
+
+            $('#ptkpaud_loadingPreviewPDF').removeClass('d-none').addClass('d-flex');
+            $('#ptkpaud_framePreview').addClass('d-none').attr('src', '');
+            
+            $('#ptkpaud_btnUnduhPDF').attr('href', url);
+            $('#ptkpaud_btnUnduhDirect').attr('href', directDownloadUrl);
+
+            $('#ptkpaud_modalPreview').modal('show');
+
+            setTimeout(function () {
+                $('#ptkpaud_framePreview').attr('src', finalUrl);
+
+                $('#ptkpaud_framePreview').off('load').on('load', function() { 
+                    $('#ptkpaud_loadingPreviewPDF').removeClass('d-flex').addClass('d-none'); 
+                    $(this).removeClass('d-none'); 
+                });
+
+                setTimeout(function() {
+                    $('#ptkpaud_loadingPreviewPDF').removeClass('d-flex').addClass('d-none');
+                    $('#ptkpaud_framePreview').removeClass('d-none');
+                }, 3000);
+            }, 150);
+
+        } else { 
+            Sultan.alert('error', 'Error', 'Tautan file tidak valid.'); 
+        }
+    } catch(e) {
+        console.error(e);
+        Sultan.alert('error', 'Gagal', 'Terjadi kesalahan saat memuat dokumen.');
     }
-    var previewUrl = url;
-    var fileId = '';
-    if (url.includes('/file/d/')) {
-        fileId = url.split('/file/d/')[1].split('/')[0];
-    } else if (url.includes('id=')) {
-        fileId = url.split('id=')[1].split('&')[0];
-    }
-    
-    if (fileId) {
-        previewUrl = 'https://drive.google.com/file/d/' + fileId + '/preview';
-    }
-    
-    $('#ptkpaud_framePreview').attr('src', previewUrl);
-    $('#ptkpaud_modalPreview').modal('show');
 }
 
 function ptkpaud_bukaModalHapus(idUsulan) {
