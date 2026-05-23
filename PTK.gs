@@ -1615,13 +1615,22 @@ function ajukanMutasiPTKSDS(idPtk, jenis, tujuan, tanggal, base64Data, fileName,
 
 function getUsulanMutasiPTKSDS() {
   try {
-    var sheet = getSheet("PTK_DB", "usul_mutasi_sds");
-    if (!sheet) return JSON.stringify([]);
+    Logger.log("[DEBUG] getUsulanMutasiPTKSDS() called");
+    var sheet = getSheet(KONFIG_PTK.DB_KEY, "usul_mutasi_sds");
+    if (!sheet) {
+      Logger.log("[DEBUG] Sheet not found, returning empty array");
+      return JSON.stringify([]);
+    }
     
     var lastRow = sheet.getLastRow();
-    if (lastRow < 2) return JSON.stringify([]);
+    Logger.log("[DEBUG] Last row: " + lastRow);
+    if (lastRow < 2) {
+      Logger.log("[DEBUG] Less than 2 rows, returning empty array");
+      return JSON.stringify([]);
+    }
     
     var data = sheet.getRange(2, 1, lastRow - 1, 14).getDisplayValues();
+    Logger.log("[DEBUG] Data length: " + data.length);
     var result = [];
     
     for (var i = 0; i < data.length; i++) {
@@ -1643,8 +1652,14 @@ function getUsulanMutasiPTKSDS() {
         catatan: row[13] || ""
       });
     }
+    Logger.log("[DEBUG] Result length: " + result.length);
+    Logger.log("[DEBUG] Result: " + JSON.stringify(result));
     return JSON.stringify(result);
-  } catch(e) { return JSON.stringify([]); }
+  } catch(e) { 
+    Logger.log("[DEBUG] Error in getUsulanMutasiPTKSDS(): " + e.message);
+    Logger.log("[DEBUG] Stack trace: " + e.stack);
+    return JSON.stringify([]); 
+  }
 }
 
 function updateUsulanMutasiPTKSDN(idUsulan, idPtk, jenis, tujuan, tanggal, base64Data, fileName, userPengusul) {
