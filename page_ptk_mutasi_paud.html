@@ -590,60 +590,24 @@ function ptkpaud_bukaModalEditMutasi(row) {
         $selTarget.append($('<option>', {value: u, text: u}));
     });
     
+    var unitAsal = row.lembaga_asal || '';
+    $('#ptkpaud_mutasiUnitKerja').val(unitAsal).prop('disabled', true);
+    
+    var $selPtk = $('#ptkpaud_mutasiNamaPtkSelect').empty();
+    var nip = '-';
     var master = PTKPAUD_CACHE_MASTER.find(function(m) { 
         return (ptkpaud_cleanString(m.nama_lengkap) === ptkpaud_cleanString(row.nama_ptk)) && 
-               (ptkpaud_cleanString(m.unit) === ptkpaud_cleanString(row.lembaga_asal));
+               (ptkpaud_cleanString(m.unit) === ptkpaud_cleanString(unitAsal));
     }) || PTKPAUD_CACHE_MASTER.find(function(m) { return String(m.id) === String(row.id_ptk); }) || {};
-    var unitAsal = row.lembaga_asal || master.unit;
     
-    if (!PTKPAUD_CACHE_MASTER.find(function(m) { 
-        return (ptkpaud_cleanString(m.nama_lengkap) === ptkpaud_cleanString(row.nama_ptk)) && 
-               (ptkpaud_cleanString(m.unit) === ptkpaud_cleanString(row.lembaga_asal));
-    }) && !PTKPAUD_CACHE_MASTER.find(function(m) { return String(m.id) === String(row.id_ptk); })) {
-        PTKPAUD_CACHE_MASTER.push({
-            id: master.id || row.id_ptk,
-            nama_lengkap: row.nama_ptk,
-            niy: master.niy || '-',
-            nip: master.nip || '-',
-            unit: unitAsal
-        });
-    }
+    if (master && master.niy) nip = master.niy;
+    else if (master && master.nip) nip = master.nip;
     
-    if (master.id) {
-        row.id_ptk = master.id;
-    }
-    
-    $('#ptkpaud_mutasiUnitKerja').val(unitAsal);
-    
-    var $selPtk = $('#ptkpaud_mutasiNamaPtkSelect').empty().append('<option value="">- Pilih PTK -</option>');
-    var count = 0;
-    PTKPAUD_CACHE_MASTER.forEach(function(m) {
-        if (ptkpaud_cleanString(m.unit) === ptkpaud_cleanString(unitAsal)) {
-            $selPtk.append($('<option>', {
-                value: m.id,
-                text: m.nama_lengkap + ' - ' + (m.niy || m.nip || '-')
-            }));
-            count++;
-        }
-    });
-    
-    var idPtkToUse = master.id || row.id_ptk;
-    if ($selPtk.find('option[value="' + idPtkToUse + '"]').length === 0) {
-        var nip = master.niy || master.nip || '-';
-        $selPtk.append($('<option>', {
-            value: idPtkToUse,
-            text: row.nama_ptk + ' - ' + nip
-        }));
-        count++;
-    }
-    
-    if (count > 0) {
-        $selPtk.prop('disabled', false);
-    } else {
-        $selPtk.prop('disabled', true);
-    }
-    
-    $selPtk.val(master.id || row.id_ptk);
+    $selPtk.append($('<option>', {
+        value: row.id_ptk,
+        text: row.nama_ptk + ' - ' + nip
+    }));
+    $selPtk.val(row.id_ptk).prop('disabled', true);
     
     var jenisMutasiBaru = row.jenis_mutasi;
     $('#ptkpaud_mutasiJenis').val(jenisMutasiBaru);
