@@ -1632,19 +1632,21 @@ function updateUsulanMutasiPTKSDN(idUsulan, idPtk, jenis, tujuan, tanggal, base6
     var lastRow = sheetUsulan.getLastRow();
     if (lastRow < 2) return "Error: Data usulan kosong.";
     
-    var data = sheetUsulan.getRange(2, 1, lastRow - 1, 1).getValues();
+    var data = sheetUsulan.getDataRange().getValues();
     var rowIdx = -1;
-    for (var i = 0; i < data.length; i++) {
+    var oldFileUrl = "";
+    for (var i = 1; i < data.length; i++) {
       if (String(data[i][0]) === String(idUsulan)) {
-        rowIdx = i + 2;
+        rowIdx = i + 1;
+        oldFileUrl = data[i][7] || "";
         break;
       }
     }
     
     if (rowIdx === -1) return "Error: Data usulan tidak ditemukan.";
     
-    // Upload file if provided
-    var fileUrl = null;
+    // Upload file if provided, otherwise use old file
+    var fileUrl = oldFileUrl;
     if (base64Data && fileName) {
       var folderId = "1WScDrF-y4PyjFjneXuIqX3yRNxIcqKzB";
       var folder = DriveApp.getFolderById(folderId);
