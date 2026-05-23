@@ -517,7 +517,7 @@ function ptkpaud_cleanString(str) {
     return String(str).trim().toUpperCase();
 }
 
-function ptkpaud_bukaModalMutasi() {
+function ptkpaud_bukaModalMutasi(showModal = true) {
     $('#ptkpaud_formMutasi')[0].reset();
     $('#ptkpaud_mutasiIdData').val('');
     $('#ptkpaud_formMutasi').removeClass('was-validated');
@@ -551,82 +551,53 @@ function ptkpaud_bukaModalMutasi() {
         $selTarget.append($('<option>', {value: u, text: u}));
     });
 
-    $('#ptkpaud_modalMutasi').modal('show');
+    if (showModal) {
+        $('#ptkpaud_modalMutasi').modal('show');
+    }
 }
 
 function ptkpaud_bukaModalEditMutasi(row) {
-    $('#ptkpaud_formMutasi')[0].reset();
-    $('#ptkpaud_mutasiIdData').val(row.id_usulan);
-    $('#ptkpaud_formMutasi').removeClass('was-validated');
+    var idUsulanBaru = row.id_usulan;
+    var idPtkBaru = row.id_ptk;
+    var jenisMutasiBaru = row.jenis_mutasi;
+    
+    ptkpaud_bukaModalMutasi(false); 
     
     $('#ptkpaud_headerModalMutasi').removeClass('modal-header-tambah-edit').addClass('modal-header-sultan-warning');
     $('#ptkpaud_judulModalMutasi').html('<i class="fas fa-edit mr-2"></i>EDIT AJUAN MUTASI PTK');
     $('#ptkpaud_btnAjukanMutasi').removeClass('modal-btn-simpan').addClass('modal-btn-perbarui').html('<i class="fas fa-edit mr-2"></i>PERBARUI');
     
-    $('#ptkpaud_grpMutasiTujuanDropdown, #ptkpaud_grpMutasiTujuanText, #ptkpaud_grpMutasiTMT, #ptkpaud_grpMutasiTglMeninggal, #ptkpaud_grpMutasiTglTidakAktif, #ptkpaud_grpMutasiFile').hide();
+    $('#ptkpaud_mutasiIdData').val(idUsulanBaru);
     
-    var uniqueUnits = new Set();
-    PTKPAUD_CACHE_MASTER.forEach(function(row) {
-        if (row.unit) uniqueUnits.add(row.unit);
-    });
-    
-    var $selUnit = $('#ptkpaud_mutasiUnitKerja').empty().append('<option value="">- Pilih Unit Kerja -</option>');
-    Array.from(uniqueUnits).sort().forEach(function(u) {
-        $selUnit.append($('<option>', {value: u, text: u}));
-    });
-    
-    if (!PTKPAUD_IS_ADMIN && PTKPAUD_UNIT_TERKUNCI) {
-        $selUnit.val(PTKPAUD_UNIT_TERKUNCI).prop('disabled', true);
-    } else {
-        $selUnit.prop('disabled', false);
-    }
-    
-    var $selTarget = $('#ptkpaud_mutasiTujuanDropdown').empty().append('<option value="">- Pilih Unit Kerja Tujuan -</option>');
-    Array.from(uniqueUnits).sort().forEach(function(u) {
-        $selTarget.append($('<option>', {value: u, text: u}));
-    });
-    
-    var master = PTKPAUD_CACHE_MASTER.find(function(m) { return String(m.id) === String(row.id_ptk); }) || {};
+    var master = PTKPAUD_CACHE_MASTER.find(function(m) { return String(m.id) === String(idPtkBaru); }) || {};
     var unitAsal = row.lembaga_asal || master.unit;
+    
+    $(document).off('change', '#ptkpaud_mutasiUnitKerja');
+    $(document).off('change', '#ptkpaud_mutasiJenis');
     
     $('#ptkpaud_mutasiUnitKerja').val(unitAsal);
     
-    var $selPtk = $('#ptkpaud_mutasiNamaPtkSelect').empty().append('<option value="">- Pilih PTK -</option>');
-    var count = 0;
-    PTKPAUD_CACHE_MASTER.forEach(function(m) {
-        if (ptkpaud_cleanString(m.unit) === ptkpaud_cleanString(unitAsal)) {
-            $selPtk.append($('<option>', {
-                value: m.id,
-                text: m.nama_lengkap + ' - ' + (m.niy || m.nip || '-')
-            }));
-            count++;
-        }
-    });
+    ptkpaud_populatePtkDropdown(unitAsal);
     
-    if ($selPtk.find('option[value="' + row.id_ptk + '"]').length === 0) {
+    var $selPtk = $('#ptkpaud_mutasiNamaPtkSelect');
+    if ($selPtk.find('option[value="' + idPtkBaru + '"]').length === 0) {
         var nip = master.niy || master.nip || '-';
         $selPtk.append($('<option>', {
-            value: row.id_ptk,
+            value: idPtkBaru,
             text: row.nama_ptk + ' - ' + nip
         }));
-        count++;
-    }
-    
-    if (count > 0) {
         $selPtk.prop('disabled', false);
-    } else {
-        $selPtk.prop('disabled', true);
     }
     
-    $selPtk.val(row.id_ptk);
+    $selPtk.val(idPtkBaru);
     
-    var jenisMutasi = row.jenis_mutasi;
+    $('#ptkpaud_mutasiJenis').val(jenisMutasiBaru);
+    
     var idUsulan = $('#ptkpaud_mutasiIdData').val();
-    
     $('#ptkpaud_grpMutasiTujuanDropdown, #ptkpaud_grpMutasiTujuanText, #ptkpaud_grpMutasiTMT, #ptkpaud_grpMutasiTglMeninggal, #ptkpaud_grpMutasiTglTidakAktif, #ptkpaud_grpMutasiFile').hide();
     $('#ptkpaud_mutasiTujuanDropdown, #ptkpaud_mutasiTujuanText, #ptkpaud_mutasiTMT, #ptkpaud_mutasiTglMeninggal, #ptkpaud_mutasiTglTidakAktif, #ptkpaud_mutasiFile').prop('required', false);
     
-    if (jenisMutasi === 'Dalam Kecamatan') {
+    if (jenisMutasiBaru === 'Dalam Kecamatan') {
         $('#ptkpaud_grpMutasiTujuanDropdown, #ptkpaud_grpMutasiTMT, #ptkpaud_grpMutasiFile').show();
         $('#ptkpaud_mutasiTujuanDropdown, #ptkpaud_mutasiTMT').prop('required', true);
         if (!idUsulan) {
@@ -635,7 +606,7 @@ function ptkpaud_bukaModalEditMutasi(row) {
         } else {
             $('#ptkpaud_lblMutasiFile').html('Unggah SK Mutasi (PDF, Max 500KB) <span class="text-muted">(Opsional)</span>');
         }
-    } else if (jenisMutasi === 'Luar Kecamatan') {
+    } else if (jenisMutasiBaru === 'Luar Kecamatan') {
         $('#ptkpaud_grpMutasiTujuanText, #ptkpaud_grpMutasiTMT, #ptkpaud_grpMutasiFile').show();
         $('#ptkpaud_mutasiTujuanText, #ptkpaud_mutasiTMT').prop('required', true);
         if (!idUsulan) {
@@ -644,7 +615,7 @@ function ptkpaud_bukaModalEditMutasi(row) {
         } else {
             $('#ptkpaud_lblMutasiFile').html('Unggah SK Mutasi (PDF, Max 500KB) <span class="text-muted">(Opsional)</span>');
         }
-    } else if (jenisMutasi === 'Pensiun') {
+    } else if (jenisMutasiBaru === 'Pensiun') {
         $('#ptkpaud_grpMutasiTMT, #ptkpaud_grpMutasiFile').show();
         $('#ptkpaud_mutasiTMT').prop('required', true);
         if (!idUsulan) {
@@ -653,7 +624,7 @@ function ptkpaud_bukaModalEditMutasi(row) {
         } else {
             $('#ptkpaud_lblMutasiFile').html('Unggah SK Pensiun (PDF, Max 500KB) <span class="text-muted">(Opsional)</span>');
         }
-    } else if (jenisMutasi === 'Resign') {
+    } else if (jenisMutasiBaru === 'Resign') {
         $('#ptkpaud_grpMutasiTMT, #ptkpaud_grpMutasiFile').show();
         $('#ptkpaud_mutasiTMT').prop('required', true);
         if (!idUsulan) {
@@ -662,15 +633,13 @@ function ptkpaud_bukaModalEditMutasi(row) {
         } else {
             $('#ptkpaud_lblMutasiFile').html('Unggah SK Pemberhentian (PDF, Max 500KB) <span class="text-muted">(Opsional)</span>');
         }
-    } else if (jenisMutasi === 'Meninggal') {
+    } else if (jenisMutasiBaru === 'Meninggal') {
         $('#ptkpaud_grpMutasiTglMeninggal').show();
         $('#ptkpaud_mutasiTglMeninggal').prop('required', true);
-    } else if (jenisMutasi === 'Tanpa Keterangan') {
+    } else if (jenisMutasiBaru === 'Tanpa Keterangan') {
         $('#ptkpaud_grpMutasiTglTidakAktif').show();
         $('#ptkpaud_mutasiTglTidakAktif').prop('required', true);
     }
-    
-    $('#ptkpaud_mutasiJenis').val(jenisMutasi);
     
     var dateVal = row.tmt_tanggal;
     if (dateVal && dateVal.includes('/')) {
@@ -678,23 +647,33 @@ function ptkpaud_bukaModalEditMutasi(row) {
         dateVal = parts[2] + '-' + parts[1] + '-' + parts[0];
     }
     
-    if (jenisMutasi === 'Dalam Kecamatan') {
+    if (jenisMutasiBaru === 'Dalam Kecamatan') {
         $('#ptkpaud_mutasiTujuanDropdown').val(row.lembaga_tujuan);
         $('#ptkpaud_mutasiTMT').val(dateVal);
-    } else if (jenisMutasi === 'Luar Kecamatan') {
+    } else if (jenisMutasiBaru === 'Luar Kecamatan') {
         $('#ptkpaud_mutasiTujuanText').val(row.lembaga_tujuan);
         $('#ptkpaud_mutasiTMT').val(dateVal);
-    } else if (jenisMutasi === 'Pensiun' || jenisMutasi === 'Resign') {
+    } else if (jenisMutasiBaru === 'Pensiun' || jenisMutasiBaru === 'Resign') {
         $('#ptkpaud_mutasiTMT').val(dateVal);
-    } else if (jenisMutasi === 'Meninggal') {
+    } else if (jenisMutasiBaru === 'Meninggal') {
         $('#ptkpaud_mutasiTglMeninggal').val(dateVal);
-    } else if (jenisMutasi === 'Tanpa Keterangan') {
+    } else if (jenisMutasiBaru === 'Tanpa Keterangan') {
         $('#ptkpaud_mutasiTglTidakAktif').val(dateVal);
     }
     
     if (row.file_sk && row.file_sk !== '-') {
         $('.custom-file-label').html('File sudah ada (abaikan jika tidak diubah)');
+        $('#ptkpaud_mutasiFile').prop('required', false);
     }
+    
+    $(document).on('change', '#ptkpaud_mutasiUnitKerja', function() {
+        var selectedUnit = $(this).val();
+        ptkpaud_populatePtkDropdown(selectedUnit);
+    });
+    $(document).on('change', '#ptkpaud_mutasiJenis', function() {
+        var jenis = $(this).val();
+        ptkpaud_toggleMutasiFields(jenis);
+    });
     
     $('#ptkpaud_modalMutasi').modal('show');
 }
