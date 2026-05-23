@@ -1201,12 +1201,12 @@ function tandaiNotifMutasiPAUDDibaca(rowId, role) {
 
 function ajukanMutasiPTKSDN(idPtk, jenis, tujuan, tanggal, base64Data, fileName, userPengusul) {
   try {
-    var sheetSource = getSheet("PTK_DB", SHEET_PTK);
-    var sheetUsulan = getSheet("PTK_DB", "usulan_mutasi_sdn");
+    var sheetSource = getSheet(KONFIG_PTK.DB_KEY, KONFIG_PTK.SHEET_PTK);
+    var sheetUsulan = getSheet(KONFIG_PTK.DB_KEY, "usulan_mutasi_sdn");
     
     // Buat sheet usulan jika belum ada
     if (!sheetUsulan) {
-      var ss = getDB("PTK_DB");
+      var ss = getDB(KONFIG_PTK.DB_KEY);
       sheetUsulan = ss.insertSheet("usulan_mutasi_sdn");
       var headers = ["ID Usulan", "ID PTK", "Nama PTK", "Jenis Mutasi", "Lembaga Asal", "Lembaga Tujuan", "TMT/Tanggal", "File SK", "Status", "Tanggal Usulan", "User Pengusul", "Tanggal Eksekusi", "User Eksekutor", "Catatan"];
       sheetUsulan.getRange(1, 1, 1, headers.length).setValues([headers]);
@@ -1268,7 +1268,7 @@ function ajukanMutasiPTKSDN(idPtk, jenis, tujuan, tanggal, base64Data, fileName,
 
 function getUsulanMutasiPTKSDN() {
   try {
-    var sheet = getSheet("PTK_DB", "usulan_mutasi_sdn");
+    var sheet = getSheet(KONFIG_PTK.DB_KEY, "usulan_mutasi_sdn");
     if (!sheet) return JSON.stringify([]);
     
     var lastRow = sheet.getLastRow();
