@@ -1302,8 +1302,9 @@ function getUsulanMutasiPTKSDN() {
 
 function eksekusiMutasiPTKSDN(idUsulan, keputusan, userEksekutor) {
   try {
-    var sheetUsulan = getSheet("PTK_DB", "usulan_mutasi_sdn");
-    var sheetSource = getSheet("PTK_DB", SHEET_PTK);
+    var sheetUsulan = getSheet(KONFIG_PTK.DB_KEY, "usulan_mutasi_sdn");
+    var sheetSource = getSheet(KONFIG_PTK.DB_KEY, KONFIG_PTK.SHEET_PTK);
+    var ss = getDB(KONFIG_PTK.DB_KEY);
     
     if (!sheetUsulan) return "Error: Sheet usulan tidak ditemukan.";
     
