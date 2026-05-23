@@ -340,28 +340,26 @@ function keadaanptksdn_renderTabel(dataRows) {
             },
             // VAKSIN EXCEL: Mewarnai tag dasar <td> agar solid penuh tanpa ada rongga
             "createdRow": function(row, data, dataIndex) {
-                var tds = row.children;
-                
-                if (tds[0]) tds[0].className = 'col-sticky-left bg-white text-left px-3 py-1 align-middle font-weight-bold border-right';
-                
                 for (var i = 1; i <= 54; i++) {
                     var colIndexBackend = i + 1; 
                     var bgClass = keadaanptksdn_getColumnClass(colIndexBackend);
+                    var td = $('td', row).eq(i);
                     
-                    if (tds[i]) {
-                        tds[i].className = '';
-                        tds[i].classList.add('py-1', 'text-center', 'align-middle');
-                        if (bgClass) tds[i].classList.add(bgClass);
-                        if (colIndexBackend === 55) {
-                            tds[i].style.borderLeft = '2px solid #ffecb3';
-                        }
+                    td.removeClass('bg-soft-primary bg-soft-success bg-soft-orange bg-soft-purple bg-soft-danger bg-soft-info bg-soft-warning bg-soft-abu bg-light bg-secondary');
+                    if (bgClass) td.addClass(bgClass);
+                    td.addClass('py-1');
+                    
+                    if (colIndexBackend === 55) {
+                        td.css('border-left', '2px solid #ffecb3');
                     }
                 }
             },
             "footerCallback": function (row, data, start, end, display) {
                 var api = this.api();
+                // KEPATUHAN LOOPING ABSOLUT: 54 kolom angka (DT Index: 1 s/d 54)
                 var totalArr = new Array(54).fill(0); 
 
+                // Hitung total angka murni
                 api.rows({ search: 'applied' }).data().each(function(rowData) {
                     for (var i = 1; i <= 54; i++) {
                         var rawStr = String(rowData[i]);
@@ -370,10 +368,11 @@ function keadaanptksdn_renderTabel(dataRows) {
                     }
                 });
 
+                // VAKSIN HTML SEMANTIK FOOTER: Menggunakan <th> bukan <td>
                 var footHtml = '<th class="bg-light text-maroon text-left font-weight-bold px-3 align-middle col-sticky-left py-1 text-uppercase" style="z-index:40; border-right: 2px solid #dee2e6;">TOTAL JUMLAH</th>';
 
                 for (var i = 0; i < 54; i++) {
-                    var colIndex = i + 2; 
+                    var colIndex = i + 2; // Menyesuaikan ke index backend warna
                     var bgClass = keadaanptksdn_getColumnClass(colIndex); 
                     var style = '';
                     if (colIndex === 55) style += ' border-left: 2px solid #ffecb3 !important;'; 
@@ -381,6 +380,7 @@ function keadaanptksdn_renderTabel(dataRows) {
                     footHtml += '<th class="text-center px-2 py-1 font-weight-bold text-maroon ' + bgClass + '" style="' + style + '">' + totalArr[i] + '</th>';
                 }
 
+                // Injeksi mutlak ke tag pancingan <tr> di dalam <tfoot>
                 $(api.table().footer()).find('tr').html(footHtml);
             }
         });
