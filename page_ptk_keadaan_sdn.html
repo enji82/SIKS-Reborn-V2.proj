@@ -321,12 +321,8 @@ function keadaanptksdn_renderTabel(dataRows) {
         dtArray.push(arrRow);
     });
 
-    if (KEADAANPTKSDN_TABEL_INSTANCE) {
-        KEADAANPTKSDN_TABEL_INSTANCE.destroy();
-        KEADAANPTKSDN_TABEL_INSTANCE = null;
-    }
-    
-    KEADAANPTKSDN_TABEL_INSTANCE = SultanTable.init('#keadaanptksdn_tabelUtama', {
+    if (!$.fn.DataTable.isDataTable('#keadaanptksdn_tabelUtama')) {
+        KEADAANPTKSDN_TABEL_INSTANCE = SultanTable.init('#keadaanptksdn_tabelUtama', {
             "data": dtArray, 
             "destroy": true, "ordering": false, "pageLength": 10, "autoWidth": false,
             "deferRender": true, 
@@ -341,51 +337,71 @@ function keadaanptksdn_renderTabel(dataRows) {
                 "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json", 
                 "emptyTable": '<div class="py-4 text-center text-muted"><i class="fas fa-clipboard-list fa-3x text-gray-300 mb-3" style="opacity: 0.6;"></i><br><h6 class="font-weight-bold text-dark mb-1">Belum Ada Data</h6><p class="small mb-0">Tidak ada keadaan PTK untuk filter terpilih.</p></div>' 
             },
-            "createdRow": function(row, data, dataIndex) {
-                for (var i = 1; i <= 54; i++) {
-                    var colIndexBackend = i + 1; 
-                    var bgClass = keadaanptksdn_getColumnClass(colIndexBackend);
-                    var td = $('td', row).eq(i);
-                    
-                    td.removeClass('bg-soft-primary bg-soft-success bg-soft-orange bg-soft-purple bg-soft-danger bg-soft-info bg-soft-warning bg-soft-abu bg-light bg-secondary');
-                    if (bgClass) td.addClass(bgClass);
-                    td.addClass('py-1');
-                    
-                    if (colIndexBackend === 55) {
-                        td.css('border-left', '2px solid #ffecb3');
-                    }
-                }
-            },
-            "footerCallback": function (row, data, start, end, display) {
-                var api = this.api();
-                var totalArr = new Array(54).fill(0); 
+             "createdRow": function(row, data, dataIndex) {
+                  var tds = row.children;
+                  
+                  // 1. Kolom Unit Kerja (Freeze + Anti Bocor)
+                  if (tds[0]) tds[0].className = 'col-sticky-left bg-white text-left px-3 py-1 align-middle font-weight-bold border-right';
+                  
+                  // 2. Loop index array dari DT (Index 1 sampai 54)
+                  for (var i = 1; i <= 54; i++) {
+                      var colIndexBackend = i + 1; // Konversi index DT ke referensi warna backend (2 s/d 55)
+                      var bgClass = keadaanptksdn_getColumnClass(colIndexBackend);
+                      
+                      if (tds[i]) {
+                          tds[i].className = 'py-1 text-center align-middle';
+                          if (bgClass) tds[i].classList.add(bgClass);
+                          if (colIndexBackend === 55) {
+                              tds[i].style.borderLeft = '2px solid #ffecb3';
+                          }
+                      }
+                  }
+             },
+             "footerCallback": function (row, data, start, end, display) {
+                 var api = this.api();
+                 // KEPATUHAN LOOPING ABSOLUT: 54 kolom angka (DT Index: 1 s/d 54)
+                 var totalArr = new Array(54).fill(0); 
 
-                api.rows({ search: 'applied' }).data().each(function(rowData) {
-                    for (var i = 1; i <= 54; i++) {
-                        var rawStr = String(rowData[i]);
-                        var val = parseInt(rawStr.replace(/<[^>]*>?/gm, '').replace(/,/g, '')) || 0;
-                        totalArr[i-1] += val;
-                    }
-                });
+                 // Hitung total angka murni
+                 api.rows({ search: 'applied' }).data().each(function(rowData) {
+                     for (var i = 1; i <= 54; i++) {
+                         var rawStr = String(rowData[i]);
+                         var val = parseInt(rawStr.replace(/<[^>]*>?/gm, '').replace(/,/g, '')) || 0;
+                         totalArr[i-1] += val;
+                     }
+                 });
 
-                var footHtml = '<th class="bg-light text-maroon text-left font-weight-bold px-3 align-middle col-sticky-left py-1 text-uppercase" style="z-index:40; border-right: 2px solid #dee2e6;">TOTAL JUMLAH</th>';
+                 // VAKSIN HTML SEMANTIK FOOTER: Menggunakan <th> bukan <td>
+                 var footHtml = '<th class="bg-light text-maroon text-left font-weight-bold px-3 align-middle col-sticky-left py-1 text-uppercase" style="z-index:40; border-right: 2px solid #dee2e6;">TOTAL JUMLAH</th>';
 
-                for (var i = 0; i < 54; i++) {
-                    var colIndex = i + 2; 
-                    var bgClass = keadaanptksdn_getColumnClass(colIndex); 
-                    var style = '';
-                    if (colIndex === 55) style += ' border-left: 2px solid #ffecb3 !important;'; 
-                    
-                    footHtml += '<th class="text-center px-2 py-1 font-weight-bold text-maroon ' + bgClass + '" style="' + style + '">' + totalArr[i] + '</th>';
-                }
+                 for (var i = 0; i < 54; i++) {
+                     var colIndex = i + 2; // Menyesuaikan ke index backend warna
+                     var bgClass = keadaanptksdn_getColumnClass(colIndex); 
+                     var style = '';
+                     if (colIndex === 55) style += ' border-left: 2px solid #ffecb3 !important;'; 
+                     
+                     footHtml += '<th class="text-center px-2 py-1 font-weight-bold text-maroon ' + bgClass + '" style="' + style + '">' + totalArr[i] + '</th>';
+                 }
 
-                $(api.table().footer()).find('tr').html(footHtml);
-            }
+                 // Injeksi mutlak ke tag pancingan <tr> di dalam <tfoot>
+                 $(api.table().footer()).find('tr').html(footHtml);
+             }
         });
 
         SultanUI.hideLoading('#keadaanptksdn_loadingState');
         $('#keadaanptksdn_tableState').show();
         
+        // VAKSIN MICRO-BLINK: Jeda render DataTables
         setTimeout(function(){ KEADAANPTKSDN_TABEL_INSTANCE.columns.adjust(); }, 50);
+    } 
+    else {
+        KEADAANPTKSDN_TABEL_INSTANCE.clear().rows.add(dtArray).draw(false);
+        
+        if ($('#keadaanptksdn_tableState').is(':hidden')) {
+            SultanUI.hideLoading('#keadaanptksdn_loadingState');
+            $('#keadaanptksdn_tableState').show();
+            setTimeout(function(){ KEADAANPTKSDN_TABEL_INSTANCE.columns.adjust(); }, 50);
+        }
+    }
 }
 </script>
