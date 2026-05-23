@@ -557,7 +557,6 @@ function ptkpaud_bukaModalMutasi(showModal = true) {
 }
 
 function ptkpaud_bukaModalEditMutasi(row) {
-    alert('PTKPAUD_CACHE_MASTER length: ' + PTKPAUD_CACHE_MASTER.length + '\nFirst 3 items: ' + JSON.stringify(PTKPAUD_CACHE_MASTER.slice(0,3)));
     $('#ptkpaud_formMutasi')[0].reset();
     $('#ptkpaud_mutasiIdData').val(row.id_usulan);
     $('#ptkpaud_formMutasi').removeClass('was-validated');
@@ -591,17 +590,27 @@ function ptkpaud_bukaModalEditMutasi(row) {
         $selTarget.append($('<option>', {value: u, text: u}));
     });
     
-    var master = PTKPAUD_CACHE_MASTER.find(function(m) { return String(m.id) === String(row.id_ptk); }) || {};
+    var master = PTKPAUD_CACHE_MASTER.find(function(m) { 
+        return (ptkpaud_cleanString(m.nama_lengkap) === ptkpaud_cleanString(row.nama_ptk)) && 
+               (ptkpaud_cleanString(m.unit) === ptkpaud_cleanString(row.lembaga_asal));
+    }) || PTKPAUD_CACHE_MASTER.find(function(m) { return String(m.id) === String(row.id_ptk); }) || {};
     var unitAsal = row.lembaga_asal || master.unit;
     
-    if (!PTKPAUD_CACHE_MASTER.find(function(m) { return String(m.id) === String(row.id_ptk); })) {
+    if (!PTKPAUD_CACHE_MASTER.find(function(m) { 
+        return (ptkpaud_cleanString(m.nama_lengkap) === ptkpaud_cleanString(row.nama_ptk)) && 
+               (ptkpaud_cleanString(m.unit) === ptkpaud_cleanString(row.lembaga_asal));
+    }) && !PTKPAUD_CACHE_MASTER.find(function(m) { return String(m.id) === String(row.id_ptk); })) {
         PTKPAUD_CACHE_MASTER.push({
-            id: row.id_ptk,
+            id: master.id || row.id_ptk,
             nama_lengkap: row.nama_ptk,
             niy: master.niy || '-',
             nip: master.nip || '-',
             unit: unitAsal
         });
+    }
+    
+    if (master.id) {
+        row.id_ptk = master.id;
     }
     
     $('#ptkpaud_mutasiUnitKerja').val(unitAsal);
@@ -618,10 +627,11 @@ function ptkpaud_bukaModalEditMutasi(row) {
         }
     });
     
-    if ($selPtk.find('option[value="' + row.id_ptk + '"]').length === 0) {
+    var idPtkToUse = master.id || row.id_ptk;
+    if ($selPtk.find('option[value="' + idPtkToUse + '"]').length === 0) {
         var nip = master.niy || master.nip || '-';
         $selPtk.append($('<option>', {
-            value: row.id_ptk,
+            value: idPtkToUse,
             text: row.nama_ptk + ' - ' + nip
         }));
         count++;
@@ -633,7 +643,7 @@ function ptkpaud_bukaModalEditMutasi(row) {
         $selPtk.prop('disabled', true);
     }
     
-    $selPtk.val(row.id_ptk);
+    $selPtk.val(master.id || row.id_ptk);
     
     var jenisMutasiBaru = row.jenis_mutasi;
     $('#ptkpaud_mutasiJenis').val(jenisMutasiBaru);
@@ -797,12 +807,6 @@ function ptkpaud_submitFormMutasi() {
 
     var idUsulan = $('#ptkpaud_mutasiIdData').val();
     var idPtk = $('#ptkpaud_mutasiNamaPtkSelect').val();
-    
-    console.log('=== ptkpaud_submitFormMutasi ===');
-    console.log('idUsulan:', idUsulan);
-    console.log('idPtk:', idPtk);
-    console.log('PTKPAUD_CACHE_MASTER:', PTKPAUD_CACHE_MASTER);
-    console.log('PTKPAUD_CACHE_USULAN:', PTKPAUD_CACHE_USULAN);
     
     var tujuan = '';
     var tanggal = '';
