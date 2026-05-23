@@ -731,20 +731,45 @@ function insertDataPTKPAUD(form, base64Data, fileName, jenisDokumen, userPengusu
 
 function updateDataPTKPAUD(form) {
   var sheet = getSheet(KONFIG_PTK_PAUD.DB_KEY, KONFIG_PTK_PAUD.SHEET_PTK);
-  var data = sheet.getDataRange().getValues();
-  var rowIdx = -1; for (var i = 0; i < data.length; i++) { if (String(data[i][0]).trim() === String(form.id).trim()) { rowIdx = i + 1; break; } }
+  var dataDisplay = sheet.getDataRange().getDisplayValues(); 
+  var dataValues = sheet.getDataRange().getValues();
+  var rowIdx = -1; 
+  var idStr = String(form.id).trim();
+  
+  for (var i = 0; i < dataDisplay.length; i++) { 
+    if (String(dataDisplay[i][0]).trim() === idStr) { 
+      rowIdx = i + 1; 
+      break; 
+    } 
+  }
+  
   if (rowIdx == -1) return "Error: ID tidak ditemukan.";
+  
   var inputNik = String(form.nik || "").trim();
-  if (inputNik !== "") { for (var i = 1; i < data.length; i++) { var rowNik = String(data[i][11]).replace(/'/g, '').trim(); if (rowNik === inputNik && String(data[i][0]) != form.id) return "Gagal: NIK " + inputNik + " sudah dipakai oleh " + data[i][7]; } }
-  var namaFull = (form.gelar_depan ? form.gelar_depan + " " : "") + form.nama_lengkap + (form.gelar_belakang ? ", " + form.gelar_belakang : ""); var timestamp = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss");
+  if (inputNik !== "") { 
+    for (var i = 1; i < dataDisplay.length; i++) { 
+      var rowNik = String(dataDisplay[i][11]).replace(/'/g, '').trim(); 
+      if (rowNik === inputNik && String(dataDisplay[i][0]).trim() !== idStr) { 
+        return "Gagal: NIK " + inputNik + " sudah dipakai oleh " + dataDisplay[i][7]; 
+      } 
+    } 
+  }
+  
+  var namaFull = (form.gelar_depan ? form.gelar_depan + " " : "") + form.nama_lengkap + (form.gelar_belakang ? ", " + form.gelar_belakang : ""); 
+  var timestamp = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss");
+  
   if (form.npsn_baru && form.unit_kerja) { 
     var npsnVal = parseInt(String(form.npsn_baru).replace(/[^0-9]/g, ''), 10);
     sheet.getRange(rowIdx, 2).setValue(isNaN(npsnVal) ? form.npsn_baru : npsnVal); 
     sheet.getRange(rowIdx, 3).setValue(form.unit_kerja); 
   }
+  
   var updateValues = [[ form.jenjang || "", form.gelar_depan || "", form.nama_lengkap || "", form.gelar_belakang || "", namaFull || "", form.niy || "", form.tmp_lahir || "", form.tgl_lahir || "", "'" + (form.nik || ""), form.lp || "", form.agama || "", form.pendidikan || "", form.jurusan || "", form.thn_lulus || "", form.alamat_ktp || "", form.alamat_domisili || "", "'" + (form.hp || ""), form.status_peg || "", form.jabatan || "", form.tmt_jabatan || "", form.inpassing || "", form.tmt_inpassing || "", "'" + (form.nuptk || ""), form.serdik || "", form.dapodik || "", form.tugtam || "" ]];
-  sheet.getRange(rowIdx, 4, 1, 26).setValues(updateValues); // Digeser ke 26 Kolom
-  sheet.getRange(rowIdx, 32).setValue(timestamp); sheet.getRange(rowIdx, 33).setValue(form.user_login); sheet.getRange(rowIdx, 34).setValue(form.email || ""); return "Sukses";
+  sheet.getRange(rowIdx, 4, 1, 26).setValues(updateValues); 
+  sheet.getRange(rowIdx, 32).setValue(timestamp); 
+  sheet.getRange(rowIdx, 33).setValue(form.user_login); 
+  sheet.getRange(rowIdx, 34).setValue(form.email || ""); 
+  return "Sukses";
 }
 
 function deleteDataPTKPAUD(id, alasan, userLogin) {
@@ -757,10 +782,38 @@ function deleteDataPTKPAUD(id, alasan, userLogin) {
     headers[0].push("Alasan Hapus", "Tanggal Hapus", "User Hapus"); 
     sheetTarget.getRange(1, 1, 1, headers[0].length).setValues(headers); 
   }
-  var data = sheetSource.getDataRange().getValues(); var rowIdx = -1; var rowData = [];
-  for (var i = 1; i < data.length; i++) { if (String(data[i][0]).trim() === String(id).trim()) { rowIdx = i + 1; rowData = data[i]; break; } }
-  if (rowIdx == -1) return "Error: Data tidak ditemukan.";
-  rowData.push(alasan, Utilities.formatDate(new Date(), "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss"), userLogin); sheetTarget.appendRow(rowData); sheetSource.deleteRow(rowIdx); return "Sukses";
+  
+  // Gunakan getDisplayValues() untuk konsistensi dengan getDataPTKPAUD
+  var dataDisplay = sheetSource.getDataRange().getDisplayValues(); 
+  var dataValues = sheetSource.getDataRange().getValues(); 
+  var rowIdx = -1; 
+  var rowData = [];
+  var idStr = String(id).trim();
+  
+  Logger.log("DELETE PTK PAUD: Searching for id = " + idStr);
+  
+  for (var i = 1; i < dataDisplay.length; i++) { 
+    var currentId = String(dataDisplay[i][0]).trim();
+    if (currentId === idStr) { 
+      rowIdx = i + 1; 
+      rowData = dataValues[i]; 
+      Logger.log("DELETE PTK PAUD: Found at row " + rowIdx);
+      break; 
+    } 
+  }
+  
+  if (rowIdx == -1) {
+    var allIds = [];
+    for (var j = 1; j < Math.min(dataDisplay.length, 6); j++) { 
+      allIds.push(String(dataDisplay[j][0]).trim());
+    }
+    return "Error: Data tidak ditemukan.\n\nID yang dicari: " + idStr + "\n\nID pertama di sheet: " + JSON.stringify(allIds);
+  }
+  
+  rowData.push(alasan, Utilities.formatDate(new Date(), "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss"), userLogin); 
+  sheetTarget.appendRow(rowData); 
+  sheetSource.deleteRow(rowIdx); 
+  return "Sukses";
 }
 
 function getJenjangByNPSN(npsn) {
