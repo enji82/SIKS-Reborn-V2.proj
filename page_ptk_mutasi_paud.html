@@ -555,18 +555,42 @@ function ptkpaud_bukaModalMutasi() {
 }
 
 function ptkpaud_bukaModalEditMutasi(row) {
-    ptkpaud_bukaModalMutasi(); 
+    $('#ptkpaud_formMutasi')[0].reset();
+    $('#ptkpaud_mutasiIdData').val(row.id_usulan);
+    $('#ptkpaud_formMutasi').removeClass('was-validated');
     
     $('#ptkpaud_headerModalMutasi').removeClass('modal-header-tambah-edit').addClass('modal-header-sultan-warning');
     $('#ptkpaud_judulModalMutasi').html('<i class="fas fa-edit mr-2"></i>EDIT AJUAN MUTASI PTK');
     $('#ptkpaud_btnAjukanMutasi').removeClass('modal-btn-simpan').addClass('modal-btn-perbarui').html('<i class="fas fa-edit mr-2"></i>PERBARUI');
     
-    $('#ptkpaud_mutasiIdData').val(row.id_usulan);
+    $('#ptkpaud_grpMutasiTujuanDropdown, #ptkpaud_grpMutasiTujuanText, #ptkpaud_grpMutasiTMT, #ptkpaud_grpMutasiTglMeninggal, #ptkpaud_grpMutasiTglTidakAktif, #ptkpaud_grpMutasiFile').hide();
+    
+    var uniqueUnits = new Set();
+    PTKPAUD_CACHE_MASTER.forEach(function(row) {
+        if (row.unit) uniqueUnits.add(row.unit);
+    });
+    
+    var $selUnit = $('#ptkpaud_mutasiUnitKerja').empty().append('<option value="">- Pilih Unit Kerja -</option>');
+    Array.from(uniqueUnits).sort().forEach(function(u) {
+        $selUnit.append($('<option>', {value: u, text: u}));
+    });
+    
+    if (!PTKPAUD_IS_ADMIN && PTKPAUD_UNIT_TERKUNCI) {
+        $selUnit.val(PTKPAUD_UNIT_TERKUNCI).prop('disabled', true);
+        ptkpaud_populatePtkDropdown(PTKPAUD_UNIT_TERKUNCI);
+    } else {
+        $selUnit.prop('disabled', false);
+    }
+    
+    var $selTarget = $('#ptkpaud_mutasiTujuanDropdown').empty().append('<option value="">- Pilih Unit Kerja Tujuan -</option>');
+    Array.from(uniqueUnits).sort().forEach(function(u) {
+        $selTarget.append($('<option>', {value: u, text: u}));
+    });
     
     var master = PTKPAUD_CACHE_MASTER.find(function(m) { return String(m.id) === String(row.id_ptk); }) || {};
     var unitAsal = row.lembaga_asal || master.unit;
     
-    $('#ptkpaud_mutasiUnitKerja').val(unitAsal).trigger('change');
+    $('#ptkpaud_mutasiUnitKerja').val(unitAsal);
     ptkpaud_populatePtkDropdown(unitAsal);
     
     var $selPtk = $('#ptkpaud_mutasiNamaPtkSelect');
@@ -576,10 +600,9 @@ function ptkpaud_bukaModalEditMutasi(row) {
             value: row.id_ptk,
             text: row.nama_ptk + ' - ' + nip
         }));
-        $selPtk.prop('disabled', false);
     }
     
-    $selPtk.val(row.id_ptk);
+    $selPtk.val(row.id_ptk).prop('disabled', false);
     $('#ptkpaud_mutasiJenis').val(row.jenis_mutasi).trigger('change');
     
     var dateVal = row.tmt_tanggal;
@@ -604,8 +627,9 @@ function ptkpaud_bukaModalEditMutasi(row) {
     
     if (row.file_sk && row.file_sk !== '-') {
         $('.custom-file-label').html('File sudah ada (abaikan jika tidak diubah)');
-        $('#ptkpaud_mutasiFile').prop('required', false);
     }
+    
+    $('#ptkpaud_modalMutasi').modal('show');
 }
 
 function ptkpaud_populatePtkDropdown(unit) {
