@@ -21,6 +21,70 @@
     border: 1px solid rgba(255, 193, 7, 0.3) !important;
     border-left: 4px solid #ffc107 !important;
   }
+
+  /* Hide all validation icons (green checkmarks, red exclamation marks) */
+  #ptksdn_formUtama .is-valid,
+  #ptksdn_formUtama .form-control.is-valid,
+  #ptksdn_formUtama .custom-select.is-valid,
+  #ptksdn_formUtama select.is-valid,
+  #ptksdn_formUtama input.is-valid,
+  #ptksdn_formUtama textarea.is-valid {
+    border-color: #ced4da !important;
+    background-image: none !important;
+    box-shadow: none !important;
+  }
+
+  #ptksdn_formUtama .form-control.is-valid:focus,
+  #ptksdn_formUtama .custom-select.is-valid:focus,
+  #ptksdn_formUtama select.is-valid:focus,
+  #ptksdn_formUtama input.is-valid:focus,
+  #ptksdn_formUtama textarea.is-valid:focus {
+    border-color: #80bdff !important;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25) !important;
+  }
+
+  /* Show only red border for invalid fields, no icons */
+  #ptksdn_formUtama .is-invalid,
+  #ptksdn_formUtama .form-control.is-invalid,
+  #ptksdn_formUtama .custom-select.is-invalid,
+  #ptksdn_formUtama select.is-invalid,
+  #ptksdn_formUtama input.is-invalid,
+  #ptksdn_formUtama textarea.is-invalid {
+    border-color: #dc3545 !important;
+    background-image: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Ensure focus state for invalid fields has blue outline */
+  #ptksdn_formUtama .form-control.is-invalid:focus,
+  #ptksdn_formUtama .custom-select.is-invalid:focus,
+  #ptksdn_formUtama select.is-invalid:focus,
+  #ptksdn_formUtama input.is-invalid:focus,
+  #ptksdn_formUtama textarea.is-invalid:focus {
+    border-color: #80bdff !important;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25) !important;
+  }
+
+  /* Hide validation icons on delete form too */
+  #ptksdn_formHapus .is-valid,
+  #ptksdn_formHapus .form-control.is-valid,
+  #ptksdn_formHapus select.is-valid,
+  #ptksdn_formHapus input.is-valid,
+  #ptksdn_formHapus textarea.is-valid {
+    border-color: #ced4da !important;
+    background-image: none !important;
+    box-shadow: none !important;
+  }
+
+  #ptksdn_formHapus .is-invalid,
+  #ptksdn_formHapus .form-control.is-invalid,
+  #ptksdn_formHapus select.is-invalid,
+  #ptksdn_formHapus input.is-invalid,
+  #ptksdn_formHapus textarea.is-invalid {
+    border-color: #dc3545 !important;
+    background-image: none !important;
+    box-shadow: none !important;
+  }
 </style>
 
 
@@ -1121,7 +1185,7 @@
         if (PTKSDN_REF_DATA.jabatan_asn.length === 0) { Sultan.alert('info', 'Mohon Tunggu', 'Sistem sedang memuat referensi jabatan.'); return; }
 
         $('#ptksdn_formUtama')[0].reset();
-        $('#ptksdn_formUtama').removeClass('was-validated');
+        $('#ptksdn_formUtama').removeClass('was-validated').find('.is-valid, .is-invalid').removeClass('is-valid is-invalid');
         $('#ptksdn_inputMode').val('insert'); $('#ptksdn_inputIdData').val('');
 
         $('#ptksdn_btnSimpanForm').removeClass('btn-warning text-dark').addClass('btn-maroon text-white').html('<i class="fas fa-save mr-1"></i> SIMPAN DATA');
@@ -1164,6 +1228,17 @@
         });
 
         $('#global_modalForm').modal('show');
+
+        // Add manual validation after modal opens
+        setTimeout(function() {
+            // Remove all is-valid classes
+            $('#ptksdn_formUtama').find('.is-valid').removeClass('is-valid');
+            
+            // Add event listener to remove is-valid whenever a field changes
+            $('#ptksdn_formUtama').off('input change', '*').on('input change', '*', function() {
+                $(this).removeClass('is-valid');
+            });
+        }, 100);
     }
 
     function ptksdn_bukaModalEdit(id) {
@@ -1171,7 +1246,7 @@
 
         var row = PTKSDN_DATA_MASTER[id]; if (!row) return;
         $('#ptksdn_formUtama')[0].reset();
-        $('#ptksdn_formUtama').removeClass('was-validated');
+        $('#ptksdn_formUtama').removeClass('was-validated').find('.is-valid, .is-invalid').removeClass('is-valid is-invalid');
         $('#ptksdn_inputMode').val('update'); $('#ptksdn_inputIdData').val(row.id);
 
         var labelJudul = PTKSDN_IS_ADMIN ? '<i class="fas fa-exchange-alt mr-2"></i> Edit / Mutasi PTK' : '<i class="fas fa-user-edit mr-2"></i> Edit Data PTK';
@@ -1270,13 +1345,48 @@
         });
 
         $('#global_modalForm').modal('show');
+
+        // Add manual validation after modal opens
+        setTimeout(function() {
+            // Check all elements with required attribute and add is-invalid if empty
+            $('#ptksdn_formUtama').find('[required]').each(function() {
+                var $field = $(this);
+                var val = $field.val();
+                if (!val || val === '' || val === '-') {
+                    $field.addClass('is-invalid');
+                }
+            });
+
+            // Remove all is-valid classes
+            $('#ptksdn_formUtama').find('.is-valid').removeClass('is-valid');
+            
+            // Add event listener to remove is-valid whenever a field changes
+            $('#ptksdn_formUtama').off('input change', '*').on('input change', '*', function() {
+                $(this).removeClass('is-valid');
+            });
+        }, 100);
     }
 
     function ptksdn_submitFormUtama(e) {
         e.preventDefault();
         var formAktif = $('#ptksdn_formUtama');
-        if (!formAktif[0].checkValidity()) {
-            formAktif.addClass('was-validated');
+        
+        // Check validity manually and add is-invalid without was-validated
+        var isValid = true;
+        formAktif.find('[required]').each(function() {
+            var $field = $(this);
+            var val = $field.val();
+            if (!val || val === '' || val === '-') {
+                $field.addClass('is-invalid').removeClass('is-valid');
+                isValid = false;
+            } else {
+                $field.removeClass('is-invalid').removeClass('is-valid');
+            }
+        });
+
+        if (!isValid) {
+            // Remove any is-valid to prevent green checkmarks
+            formAktif.find('.is-valid').removeClass('is-valid');
             Sultan.alert('warning', 'Perhatian', 'Harap lengkapi semua isian wajib!');
             return;
         }
@@ -1366,8 +1476,23 @@
     function ptksdn_submitHapusPermanen(e) {
         e.preventDefault();
         var formHapus = $('#ptksdn_formHapus');
-        if (!formHapus[0].checkValidity()) {
-            formHapus.addClass('was-validated');
+        
+        // Check validity manually and add is-invalid without was-validated
+        var isValid = true;
+        formHapus.find('[required]').each(function() {
+            var $field = $(this);
+            var val = $field.val();
+            if (!val || val === '') {
+                $field.addClass('is-invalid').removeClass('is-valid');
+                isValid = false;
+            } else {
+                $field.removeClass('is-invalid').removeClass('is-valid');
+            }
+        });
+
+        if (!isValid) {
+            // Remove any is-valid to prevent green checkmarks
+            formHapus.find('.is-valid').removeClass('is-valid');
             return;
         }
 
