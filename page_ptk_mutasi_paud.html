@@ -557,82 +557,92 @@ function ptkpaud_bukaModalMutasi(showModal = true) {
 }
 
 function ptkpaud_bukaModalEditMutasi(row) {
-    var idUsulanBaru = row.id_usulan;
-    var idPtkBaru = row.id_ptk;
-    var jenisMutasiBaru = row.jenis_mutasi;
-    
-    ptkpaud_bukaModalMutasi(false); 
+    $('#ptkpaud_formMutasi')[0].reset();
+    $('#ptkpaud_mutasiIdData').val(row.id_usulan);
+    $('#ptkpaud_formMutasi').removeClass('was-validated');
+    $('.custom-file-label').html('Pilih file...');
     
     $('#ptkpaud_headerModalMutasi').removeClass('modal-header-tambah-edit').addClass('modal-header-sultan-warning');
     $('#ptkpaud_judulModalMutasi').html('<i class="fas fa-edit mr-2"></i>EDIT AJUAN MUTASI PTK');
     $('#ptkpaud_btnAjukanMutasi').removeClass('modal-btn-simpan').addClass('modal-btn-perbarui').html('<i class="fas fa-edit mr-2"></i>PERBARUI');
     
-    $('#ptkpaud_mutasiIdData').val(idUsulanBaru);
+    $('#ptkpaud_grpMutasiTujuanDropdown, #ptkpaud_grpMutasiTujuanText, #ptkpaud_grpMutasiTMT, #ptkpaud_grpMutasiTglMeninggal, #ptkpaud_grpMutasiTglTidakAktif, #ptkpaud_grpMutasiFile').hide();
+    $('#ptkpaud_mutasiTujuanDropdown, #ptkpaud_mutasiTujuanText, #ptkpaud_mutasiTMT, #ptkpaud_mutasiTglMeninggal, #ptkpaud_mutasiTglTidakAktif, #ptkpaud_mutasiFile').prop('required', false);
     
-    var master = PTKPAUD_CACHE_MASTER.find(function(m) { return String(m.id) === String(idPtkBaru); }) || {};
+    var uniqueUnits = new Set();
+    PTKPAUD_CACHE_MASTER.forEach(function(r) {
+        if (r.unit) uniqueUnits.add(r.unit);
+    });
+    
+    var $selUnit = $('#ptkpaud_mutasiUnitKerja').empty().append('<option value="">- Pilih Unit Kerja -</option>');
+    Array.from(uniqueUnits).sort().forEach(function(u) {
+        $selUnit.append($('<option>', {value: u, text: u}));
+    });
+    
+    if (!PTKPAUD_IS_ADMIN && PTKPAUD_UNIT_TERKUNCI) {
+        $selUnit.val(PTKPAUD_UNIT_TERKUNCI).prop('disabled', true);
+    } else {
+        $selUnit.prop('disabled', false);
+    }
+    
+    var $selTarget = $('#ptkpaud_mutasiTujuanDropdown').empty().append('<option value="">- Pilih Unit Kerja Tujuan -</option>');
+    Array.from(uniqueUnits).sort().forEach(function(u) {
+        $selTarget.append($('<option>', {value: u, text: u}));
+    });
+    
+    var master = PTKPAUD_CACHE_MASTER.find(function(m) { return String(m.id) === String(row.id_ptk); }) || {};
     var unitAsal = row.lembaga_asal || master.unit;
-    
-    $(document).off('change', '#ptkpaud_mutasiUnitKerja');
-    $(document).off('change', '#ptkpaud_mutasiJenis');
     
     $('#ptkpaud_mutasiUnitKerja').val(unitAsal);
     
-    ptkpaud_populatePtkDropdown(unitAsal);
+    var $selPtk = $('#ptkpaud_mutasiNamaPtkSelect').empty().append('<option value="">- Pilih PTK -</option>');
+    var count = 0;
+    PTKPAUD_CACHE_MASTER.forEach(function(m) {
+        if (ptkpaud_cleanString(m.unit) === ptkpaud_cleanString(unitAsal)) {
+            $selPtk.append($('<option>', {
+                value: m.id,
+                text: m.nama_lengkap + ' - ' + (m.niy || m.nip || '-')
+            }));
+            count++;
+        }
+    });
     
-    var $selPtk = $('#ptkpaud_mutasiNamaPtkSelect');
-    if ($selPtk.find('option[value="' + idPtkBaru + '"]').length === 0) {
+    if ($selPtk.find('option[value="' + row.id_ptk + '"]').length === 0) {
         var nip = master.niy || master.nip || '-';
         $selPtk.append($('<option>', {
-            value: idPtkBaru,
+            value: row.id_ptk,
             text: row.nama_ptk + ' - ' + nip
         }));
-        $selPtk.prop('disabled', false);
+        count++;
     }
     
-    $selPtk.val(idPtkBaru);
+    if (count > 0) {
+        $selPtk.prop('disabled', false);
+    } else {
+        $selPtk.prop('disabled', true);
+    }
     
+    $selPtk.val(row.id_ptk);
+    
+    var jenisMutasiBaru = row.jenis_mutasi;
     $('#ptkpaud_mutasiJenis').val(jenisMutasiBaru);
-    
-    var idUsulan = $('#ptkpaud_mutasiIdData').val();
-    $('#ptkpaud_grpMutasiTujuanDropdown, #ptkpaud_grpMutasiTujuanText, #ptkpaud_grpMutasiTMT, #ptkpaud_grpMutasiTglMeninggal, #ptkpaud_grpMutasiTglTidakAktif, #ptkpaud_grpMutasiFile').hide();
-    $('#ptkpaud_mutasiTujuanDropdown, #ptkpaud_mutasiTujuanText, #ptkpaud_mutasiTMT, #ptkpaud_mutasiTglMeninggal, #ptkpaud_mutasiTglTidakAktif, #ptkpaud_mutasiFile').prop('required', false);
     
     if (jenisMutasiBaru === 'Dalam Kecamatan') {
         $('#ptkpaud_grpMutasiTujuanDropdown, #ptkpaud_grpMutasiTMT, #ptkpaud_grpMutasiFile').show();
         $('#ptkpaud_mutasiTujuanDropdown, #ptkpaud_mutasiTMT').prop('required', true);
-        if (!idUsulan) {
-            $('#ptkpaud_mutasiFile').prop('required', true);
-            $('#ptkpaud_lblMutasiFile').html('Unggah SK Mutasi (PDF, Max 500KB) <span class="text-danger">*</span>');
-        } else {
-            $('#ptkpaud_lblMutasiFile').html('Unggah SK Mutasi (PDF, Max 500KB) <span class="text-muted">(Opsional)</span>');
-        }
+        $('#ptkpaud_lblMutasiFile').html('Unggah SK Mutasi (PDF, Max 500KB) <span class="text-muted">(Opsional)</span>');
     } else if (jenisMutasiBaru === 'Luar Kecamatan') {
         $('#ptkpaud_grpMutasiTujuanText, #ptkpaud_grpMutasiTMT, #ptkpaud_grpMutasiFile').show();
         $('#ptkpaud_mutasiTujuanText, #ptkpaud_mutasiTMT').prop('required', true);
-        if (!idUsulan) {
-            $('#ptkpaud_mutasiFile').prop('required', true);
-            $('#ptkpaud_lblMutasiFile').html('Unggah SK Mutasi (PDF, Max 500KB) <span class="text-danger">*</span>');
-        } else {
-            $('#ptkpaud_lblMutasiFile').html('Unggah SK Mutasi (PDF, Max 500KB) <span class="text-muted">(Opsional)</span>');
-        }
+        $('#ptkpaud_lblMutasiFile').html('Unggah SK Mutasi (PDF, Max 500KB) <span class="text-muted">(Opsional)</span>');
     } else if (jenisMutasiBaru === 'Pensiun') {
         $('#ptkpaud_grpMutasiTMT, #ptkpaud_grpMutasiFile').show();
         $('#ptkpaud_mutasiTMT').prop('required', true);
-        if (!idUsulan) {
-            $('#ptkpaud_mutasiFile').prop('required', true);
-            $('#ptkpaud_lblMutasiFile').html('Unggah SK Pensiun (PDF, Max 500KB) <span class="text-danger">*</span>');
-        } else {
-            $('#ptkpaud_lblMutasiFile').html('Unggah SK Pensiun (PDF, Max 500KB) <span class="text-muted">(Opsional)</span>');
-        }
+        $('#ptkpaud_lblMutasiFile').html('Unggah SK Pensiun (PDF, Max 500KB) <span class="text-muted">(Opsional)</span>');
     } else if (jenisMutasiBaru === 'Resign') {
         $('#ptkpaud_grpMutasiTMT, #ptkpaud_grpMutasiFile').show();
         $('#ptkpaud_mutasiTMT').prop('required', true);
-        if (!idUsulan) {
-            $('#ptkpaud_mutasiFile').prop('required', true);
-            $('#ptkpaud_lblMutasiFile').html('Unggah SK Pemberhentian (PDF, Max 500KB) <span class="text-danger">*</span>');
-        } else {
-            $('#ptkpaud_lblMutasiFile').html('Unggah SK Pemberhentian (PDF, Max 500KB) <span class="text-muted">(Opsional)</span>');
-        }
+        $('#ptkpaud_lblMutasiFile').html('Unggah SK Pemberhentian (PDF, Max 500KB) <span class="text-muted">(Opsional)</span>');
     } else if (jenisMutasiBaru === 'Meninggal') {
         $('#ptkpaud_grpMutasiTglMeninggal').show();
         $('#ptkpaud_mutasiTglMeninggal').prop('required', true);
@@ -663,17 +673,7 @@ function ptkpaud_bukaModalEditMutasi(row) {
     
     if (row.file_sk && row.file_sk !== '-') {
         $('.custom-file-label').html('File sudah ada (abaikan jika tidak diubah)');
-        $('#ptkpaud_mutasiFile').prop('required', false);
     }
-    
-    $(document).on('change', '#ptkpaud_mutasiUnitKerja', function() {
-        var selectedUnit = $(this).val();
-        ptkpaud_populatePtkDropdown(selectedUnit);
-    });
-    $(document).on('change', '#ptkpaud_mutasiJenis', function() {
-        var jenis = $(this).val();
-        ptkpaud_toggleMutasiFields(jenis);
-    });
     
     $('#ptkpaud_modalMutasi').modal('show');
 }
@@ -784,7 +784,10 @@ function ptkpaud_submitFormMutasi() {
     var oldText = btn.html();
     btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Memproses...');
 
+    var idUsulan = $('#ptkpaud_mutasiIdData').val();
     var idPtk = $('#ptkpaud_mutasiNamaPtkSelect').val();
+    alert('Debug:\nidUsulan: ' + idUsulan + '\nidPtk: ' + idPtk);
+    
     var tujuan = '';
     var tanggal = '';
 
