@@ -260,6 +260,7 @@
             <form id="ptksdn_formMutasi" novalidate>
                 <div class="modal-body modal-body-sultan p-4">
                     <input type="hidden" id="ptksdn_mutasiIdData">
+                    <input type="hidden" id="ptksdn_mutasiIdUsulan">
 
                     <div class="form-group mb-3">
                         <label class="form-label-sultan small font-weight-bold text-uppercase text-muted">Unit Kerja <span class="text-danger">*</span></label>
@@ -467,6 +468,75 @@ function ptksdn_bukaModalMutasi() {
         $selTarget.append($('<option>', {value: u, text: u}));
     });
 
+    $('#ptksdn_mutasiIdUsulan').val('');
+    $('#ptksdn_headerModalMutasi').removeClass('modal-header-sultan-warning').addClass('modal-header-tambah-edit');
+    $('#ptksdn_judulModalMutasi').html('<i class="fas fa-exchange-alt mr-2"></i>Ajukan Mutasi PTK');
+    $('#ptksdn_btnAjukanMutasi').removeClass('modal-btn-perbarui').addClass('modal-btn-simpan').html('<i class="fas fa-paper-plane mr-2"></i>AJUKAN MUTASI');
+
+    $('#ptksdn_modalMutasi').modal('show');
+}
+
+function ptksdn_bukaModalEditUsulan(idUsulan) {
+    var row = PTKSDN_CACHE_USULAN.find(function(r) { return String(r.id_usulan) === String(idUsulan); });
+    if (!row) {
+        Sultan.notif.error('Data usulan tidak ditemukan.');
+        return;
+    }
+
+    $('#ptksdn_formMutasi')[0].reset();
+    $('#ptksdn_formMutasi').removeClass('was-validated');
+
+    var uniqueUnits = new Set();
+    PTKSDN_CACHE_MASTER.forEach(function(r) {
+        if (r.unit) uniqueUnits.add(r.unit);
+    });
+
+    var $selUnit = $('#ptksdn_mutasiUnitKerja').empty().append('<option value="">- Pilih Unit Kerja -</option>');
+    Array.from(uniqueUnits).sort().forEach(function(u) {
+        $selUnit.append($('<option>', {value: u, text: u}));
+    });
+
+    if (!PTKSDN_IS_ADMIN && PTKSDN_UNIT_TERKUNCI) {
+        $selUnit.val(PTKSDN_UNIT_TERKUNCI).prop('disabled', true);
+    } else {
+        $selUnit.prop('disabled', false);
+    }
+
+    var $selTarget = $('#ptksdn_mutasiTujuanDropdown').empty().append('<option value="">- Pilih Unit Kerja Tujuan -</option>');
+    Array.from(uniqueUnits).sort().forEach(function(u) {
+        $selTarget.append($('<option>', {value: u, text: u}));
+    });
+
+    var unitAsal = row.lembaga_asal || '';
+    if (unitAsal) {
+        $selUnit.val(unitAsal);
+        ptksdn_populatePtkDropdown(unitAsal);
+        $('#ptksdn_mutasiNamaPtkSelect').val(row.id_ptk);
+    }
+
+    $('#ptksdn_mutasiJenis').val(row.jenis_mutasi || '');
+    ptksdn_toggleMutasiFields(row.jenis_mutasi || '');
+
+    if (['Dalam Kecamatan', 'Luar Kecamatan'].includes(row.jenis_mutasi)) {
+        if (row.jenis_mutasi === 'Dalam Kecamatan') {
+            $('#ptksdn_mutasiTujuanDropdown').val(row.lembaga_tujuan || '');
+        } else {
+            $('#ptksdn_mutasiTujuanText').val(row.lembaga_tujuan || '');
+        }
+        $('#ptksdn_mutasiTMT').val(row.tmt_tanggal || '');
+    } else if (['Pensiun', 'Resign'].includes(row.jenis_mutasi)) {
+        $('#ptksdn_mutasiTMT').val(row.tmt_tanggal || '');
+    } else if (row.jenis_mutasi === 'Meninggal') {
+        $('#ptksdn_mutasiTglMeninggal').val(row.tmt_tanggal || '');
+    } else if (row.jenis_mutasi === 'Tanpa Keterangan') {
+        $('#ptksdn_mutasiTglTidakAktif').val(row.tmt_tanggal || '');
+    }
+
+    $('#ptksdn_mutasiIdUsulan').val(row.id_usulan);
+    $('#ptksdn_headerModalMutasi').removeClass('modal-header-tambah-edit').addClass('modal-header-sultan-warning');
+    $('#ptksdn_judulModalMutasi').html('<i class="fas fa-edit mr-2"></i>Edit Usulan Mutasi PTK');
+    $('#ptksdn_btnAjukanMutasi').removeClass('modal-btn-simpan').addClass('modal-btn-perbarui').html('<i class="fas fa-edit mr-2"></i>PERBARUI');
+
     $('#ptksdn_modalMutasi').modal('show');
 }
 
@@ -533,14 +603,15 @@ function ptksdn_submitFormMutasi() {
         return;
     }
 
+    var idUsulan = $('#ptksdn_mutasiIdUsulan').val();
     var jenis = $('#ptksdn_mutasiJenis').val();
     var fileInput = $('#ptksdn_mutasiFile')[0];
     var file = fileInput ? fileInput.files[0] : null;
 
     if (['Dalam Kecamatan', 'Luar Kecamatan', 'Pensiun', 'Resign'].includes(jenis)) {
-        if (!file) { Sultan.notif.gagal('Harap unggah file dokumen!'); return; }
-        if (file.type !== 'application/pdf') { Sultan.notif.gagal('File harus berformat PDF!'); return; }
-        if (file.size > 500 * 1024) { Sultan.notif.gagal('Ukuran file tidak boleh melebihi 500KB!'); return; }
+        if (!idUsulan && !file) { Sultan.notif.gagal('Harap unggah file dokumen!'); return; }
+        if (file && file.type !== 'application/pdf') { Sultan.notif.gagal('File harus berformat PDF!'); return; }
+        if (file && file.size > 500 * 1024) { Sultan.notif.gagal('Ukuran file tidak boleh melebihi 500KB!'); return; }
     }
 
     var btn = $('#ptksdn_btnAjukanMutasi');
@@ -566,20 +637,26 @@ function ptksdn_submitFormMutasi() {
     }
 
     var processSubmit = function(base64Data, fileName) {
+        var successMessage = idUsulan ? 'Usulan mutasi berhasil diperbarui!' : 'Usulan mutasi berhasil diajukan!';
+        var scriptFunction = idUsulan ? 'updateUsulanMutasiPTKSDN' : 'ajukanMutasiPTKSDN';
+        
+        var params = idUsulan 
+            ? [idUsulan, idPtk, jenis, tujuan, tanggal, base64Data, fileName, PTKSDN_USER_AKTIF] 
+            : [idPtk, jenis, tujuan, tanggal, base64Data, fileName, PTKSDN_USER_AKTIF];
+
         google.script.run
             .withSuccessHandler(function(res) {
                 btn.prop('disabled', false).html(oldText);
                 if (res === 'Sukses') {
                     $('#ptksdn_modalMutasi').modal('hide');
-                    Sultan.notif.crud.sukses('Usulan mutasi berhasil diajukan!');
+                    Sultan.notif.crud.sukses(successMessage);
                     ptksdn_tarikDataUsulan();
                 } else { Sultan.notif.gagal(res); }
             })
             .withFailureHandler(function(err) {
                 btn.prop('disabled', false).html(oldText);
                 Sultan.notif.crud.gagal(err.message);
-            })
-            .ajukanMutasiPTKSDN(idPtk, jenis, tujuan, tanggal, base64Data, fileName, PTKSDN_USER_AKTIF);
+            })[scriptFunction](...params);
     };
 
     if (file) {
@@ -878,22 +955,25 @@ function ptksdn_bukaModalVerifikasi(row) {
 
     if (mainStatus === 'Tolak') {
         $('#ptksdn_verifStatus').val('Tolak');
-        $('#ptksdn_catatanBox').removeClass('d-none');
+        $('#ptksdn_reqCatatanVerif').show();
+        $('#ptksdn_verifCatatan').prop('required', true);
         $('#ptksdn_verifCatatan').val(catatanTampil);
     } else {
         $('#ptksdn_verifStatus').val(mainStatus === 'Pending' ? '' : mainStatus);
-        $('#ptksdn_catatanBox').addClass('d-none');
+        $('#ptksdn_reqCatatanVerif').hide();
+        $('#ptksdn_verifCatatan').prop('required', false);
         $('#ptksdn_verifCatatan').val('');
     }
 
     var fileUrl = row.file_sk || '';
     $('#ptksdn_verifIframe').addClass('d-none').attr('src', '');
-    $('#ptksdn_loaderVerif').removeClass('d-none');
-    $('#ptksdn_verifNoFile').addClass('d-none');
+    $('#ptksdn_loaderVerif').removeClass('d-none').addClass('d-flex');
+    $('#ptksdn_verifNoFile').removeClass('d-none');
 
     if (fileUrl && fileUrl.length > 5) {
         var match = fileUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) || fileUrl.match(/id=([a-zA-Z0-9_-]+)/);
         if (match && match[1]) {
+            $('#ptksdn_verifNoFile').addClass('d-none');
             $('#ptksdn_verifIframe').attr('src', 'https://drive.google.com/file/d/' + match[1] + '/preview');
             $('#ptksdn_verifIframe').off('load').on('load', function () {
                 $('#ptksdn_loaderVerif').addClass('d-none');
@@ -916,12 +996,10 @@ function ptksdn_bukaModalVerifikasi(row) {
     }
 
     if (row.status === 'Pending') {
-        $('#ptksdn_verifAksiBox').show();
-        $('#ptksdn_verifSelesaiBox').hide();
+        $('#ptksdn_verifStatus, #ptksdn_verifCatatan').prop('disabled', false);
         $('#ptksdn_btnVerifEksekusi').show();
     } else {
-        $('#ptksdn_verifAksiBox').hide();
-        $('#ptksdn_verifSelesaiBox').show();
+        $('#ptksdn_verifStatus, #ptksdn_verifCatatan').prop('disabled', true);
         $('#ptksdn_btnVerifEksekusi').hide();
     }
 
@@ -952,40 +1030,7 @@ function ptksdn_eksekusiMutasi(idUsulan, keputusan) {
 }
 
 function ptksdn_editUsulan(idUsulan) {
-    var row = PTKSDN_CACHE_USULAN.find(function(r) { return String(r.id_usulan) === String(idUsulan); });
-    if (!row) {
-        Sultan.notif.error('Data usulan tidak ditemukan.');
-        return;
-    }
-    
-    var isPtkBaru = (row.jenis_mutasi || '').toLowerCase().includes('baru') || (row.jenis_mutasi || '').toLowerCase().includes('tambah');
-    
-    var fullData = row;
-    if (isPtkBaru) {
-        var master = PTKSDN_CACHE_MASTER.find(function(m) { return String(m.id) === String(row.id_ptk); });
-        if (master) {
-            fullData = master;
-            fullData.id_usulan = row.id_usulan;
-            fullData.status_usulan = row.status;
-            fullData.jenis_mutasi = row.jenis_mutasi;
-            fullData.file_sk = row.file_sk;
-        }
-    }
-    
-    localStorage.setItem('ptksdn_prefill_data', JSON.stringify(fullData));
-    
-    if (isPtkBaru) {
-        localStorage.setItem('ptksdn_action', 'revisi_baru');
-    } else {
-        localStorage.setItem('ptksdn_action', 'mutasi');
-        localStorage.setItem('ptksdn_id', row.id_ptk);
-        localStorage.setItem('ptksdn_nama', row.nama_ptk);
-    }
-    
-    Sultan.notif.info('Mengarahkan ke halaman Kelola PTK...');
-    setTimeout(function() {
-        loadContent('ptk_kelola_sdn');
-    }, 1000);
+    ptksdn_bukaModalEditUsulan(idUsulan);
 }
 
 function ptksdn_previewPdf(url) {

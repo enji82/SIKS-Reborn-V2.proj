@@ -1624,6 +1624,56 @@ function getUsulanMutasiPTKSDS() {
   } catch(e) { return JSON.stringify([]); }
 }
 
+function updateUsulanMutasiPTKSDN(idUsulan, idPtk, jenis, tujuan, tanggal, base64Data, fileName, userPengusul) {
+  try {
+    var sheetUsulan = getSheet(KONFIG_PTK.DB_KEY, "usulan_mutasi_sdn");
+    if (!sheetUsulan) return "Error: Sheet usulan tidak ditemukan.";
+    
+    var lastRow = sheetUsulan.getLastRow();
+    if (lastRow < 2) return "Error: Data usulan kosong.";
+    
+    var data = sheetUsulan.getRange(2, 1, lastRow - 1, 1).getValues();
+    var rowIdx = -1;
+    for (var i = 0; i < data.length; i++) {
+      if (String(data[i][0]) === String(idUsulan)) {
+        rowIdx = i + 2;
+        break;
+      }
+    }
+    
+    if (rowIdx === -1) return "Error: Data usulan tidak ditemukan.";
+    
+    // Upload file if provided
+    var fileUrl = null;
+    if (base64Data && fileName) {
+      var folderId = "1WScDrF-y4PyjFjneXuIqX3yRNxIcqKzB";
+      var folder = DriveApp.getFolderById(folderId);
+      var fileBytes = Utilities.base64Decode(base64Data);
+      var blob = Utilities.newBlob(fileBytes, "application/pdf", fileName);
+      var file = folder.createFile(blob);
+      fileUrl = file.getUrl();
+    }
+    
+    var timestamp = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss");
+    
+    // Update columns
+    sheetUsulan.getRange(rowIdx, 4).setValue(jenis); // Jenis Mutasi
+    sheetUsulan.getRange(rowIdx, 6).setValue(tujuan || "-"); // Lembaga Tujuan
+    sheetUsulan.getRange(rowIdx, 7).setValue(tanggal || "-"); // TMT/Tanggal
+    if (fileUrl) sheetUsulan.getRange(rowIdx, 8).setValue(fileUrl); // File SK
+    sheetUsulan.getRange(rowIdx, 9).setValue("Pending"); // Status
+    sheetUsulan.getRange(rowIdx, 10).setValue(timestamp); // Tanggal Usulan
+    sheetUsulan.getRange(rowIdx, 11).setValue(userPengusul); // User Pengusul
+    sheetUsulan.getRange(rowIdx, 12).setValue(""); // Tanggal Eksekusi
+    sheetUsulan.getRange(rowIdx, 13).setValue(""); // User Eksekutor
+    sheetUsulan.getRange(rowIdx, 14).setValue(""); // Catatan
+    
+    return "Sukses";
+  } catch (e) {
+    return "Error: " + e.message;
+  }
+}
+
 function updateUsulanMutasiPTKSDS(idUsulan, idPtk, jenis, tujuan, tanggal, base64Data, fileName, userPengusul) {
   try {
     var sheetUsulan = getSheet("PTK_DB", "usul_mutasi_sds");
