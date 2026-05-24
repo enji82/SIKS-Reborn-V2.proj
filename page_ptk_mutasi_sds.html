@@ -457,9 +457,9 @@ $(document).ready(function() {
 
     // Reset modal saat ditutup
     $('#ptksds_modalVerifikasi').on('hidden.bs.modal', function () {
-        $('#ptksds_verifIframe').addClass('d-none').attr('style', 'display: none !important;').attr('src', '');
-        $('#ptksds_loaderVerif').addClass('d-none').attr('style', 'display: none !important;');
-        $('#ptksds_verifNoFile').addClass('d-none').attr('style', 'display: none !important;');
+        $('#ptksds_verifIframe').addClass('d-none').attr('src', '');
+        $('#ptksds_verifNoFile').addClass('d-none').removeClass('d-flex');
+        $('#ptksds_loaderVerif').removeClass('d-flex').addClass('d-none');
         $('#ptksds_verifCatatan').val('');
     });
 
@@ -1088,97 +1088,58 @@ function ptksds_renderTabelUsulan(data) {
 function ptksds_bukaModalVerifikasi(row) {
     if (typeof row === 'string') { try { row = JSON.parse(row); } catch(e) { return; } }
 
-    $('#ptksds_verifIdUsulan').val(row.id_usulan);
-    $('#ptksds_verifNama').text(row.nama_ptk || '-');
-    $('#ptksds_verifJenis').text(row.jenis_mutasi || '-');
-    $('#ptksds_verifAsal').text(row.lembaga_asal || '-');
-    $('#ptksds_verifTujuan').text(row.lembaga_tujuan || '-');
-    $('#ptksds_verifTanggal').text(row.tanggal_usulan || '-');
-    $('#ptksds_verifPengusul').text(row.user_pengusul || '-');
-
-    var rawStatus = row.status || '';
-    var statusParts = rawStatus.split('|');
-    var mainStatus = statusParts[0];
-    var catatanTampil = row.catatan || statusParts[1] || '';
-
-    if (mainStatus === 'Tolak') {
-        $('#ptksds_verifStatus').val('Tolak');
-        $('#ptksds_reqCatatanVerif').show();
-        $('#ptksds_verifCatatan').prop('required', true);
-        $('#ptksds_verifCatatan').val(catatanTampil);
-    } else {
-        $('#ptksds_verifStatus').val(mainStatus === 'Pending' ? '' : mainStatus);
-        $('#ptksds_reqCatatanVerif').hide();
-        $('#ptksds_verifCatatan').prop('required', false).val('');
-    }
-
-    var fileUrl = row.file_sk || '';
-    
-    // Sembunyikan semua elemen terlebih dahulu dengan display !important
-    $('#ptksds_verifIframe').addClass('d-none').attr('style', 'display: none !important;').attr('src', '');
-    $('#ptksds_loaderVerif').addClass('d-none').attr('style', 'display: none !important;');
-    $('#ptksds_verifNoFile').addClass('d-none').attr('style', 'display: none !important;');
-
-    if (fileUrl && fileUrl.length > 5) {
-        var match = fileUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) || fileUrl.match(/id=([a-zA-Z0-9_-]+)/);
-        if (match && match[1]) {
-            // Tampilkan spinner
-            $('#ptksds_loaderVerif').removeClass('d-none').attr('style', 'display: flex !important;');
-            
-            $('#ptksds_verifIframe').attr('src', 'https://drive.google.com/file/d/' + match[1] + '/preview');
-            $('#ptksds_verifIframe').off('load').on('load', function () {
-                $('#ptksds_loaderVerif').addClass('d-none').attr('style', 'display: none !important;');
-                $('#ptksds_verifNoFile').addClass('d-none').attr('style', 'display: none !important;');
-                $(this).removeClass('d-none').attr('style', 'display: block !important;');
-            });
-
-            setTimeout(function () {
-                if ($('#ptksds_verifIframe').hasClass('d-none')) {
-                    $('#ptksds_loaderVerif').addClass('d-none').attr('style', 'display: none !important;');
-                    $('#ptksds_verifNoFile').addClass('d-none').attr('style', 'display: none !important;');
-                    $('#ptksds_verifIframe').removeClass('d-none').attr('style', 'display: block !important;');
-                }
-            }, 2500);
-        } else {
-            // Tampilkan no-file
-            $('#ptksds_verifNoFile').removeClass('d-none').attr('style', 'display: flex !important;');
-        }
-    } else {
-        // Tampilkan no-file
-        $('#ptksds_verifNoFile').removeClass('d-none').attr('style', 'display: flex !important;');
-    }
-
     $('#ptksds_modalVerifikasi').modal('show');
-    
-    // Memaksa modal untuk merender ulang dan menyesuaikan ukuran iframe
-    setTimeout(function() {
-        // Memaksa ukuran iframe sesuai container
-        var $iframe = $('#ptksds_verifIframe');
-        var $container = $iframe.parent();
-        if ($container.length > 0) {
-            $iframe.width($container.width());
-            $iframe.height($container.height());
+
+    setTimeout(function () {
+        $('#ptksds_verifIdUsulan').val(row.id_usulan);
+        $('#ptksds_verifNama').text(row.nama_ptk || '-');
+        $('#ptksds_verifJenis').text(row.jenis_mutasi || '-');
+        $('#ptksds_verifAsal').text(row.lembaga_asal || '-');
+        $('#ptksds_verifTujuan').text(row.lembaga_tujuan || '-');
+        $('#ptksds_verifTanggal').text(row.tanggal_usulan || '-');
+        $('#ptksds_verifPengusul').text(row.user_pengusul || '-');
+
+        var rawStatus = row.status || '';
+        var statusParts = rawStatus.split('|');
+        var mainStatus = statusParts[0];
+        var catatanTampil = row.catatan || statusParts[1] || '';
+
+        if (mainStatus === 'Tolak') {
+            $('#ptksds_verifStatus').val('Tolak');
+            $('#ptksds_reqCatatanVerif').show();
+            $('#ptksds_verifCatatan').prop('required', true);
+            $('#ptksds_verifCatatan').val(catatanTampil);
+        } else {
+            $('#ptksds_verifStatus').val(mainStatus === 'Pending' ? '' : mainStatus);
+            $('#ptksds_reqCatatanVerif').hide();
+            $('#ptksds_verifCatatan').prop('required', false).val('');
         }
-        
-        // Memaksa reload iframe jika sudah terlihat
-        if ($iframe.is(':visible')) {
-            try {
-                $iframe[0].contentWindow.location.reload();
-            } catch(e) {
-                console.warn('Error reloading iframe', e);
+
+        $('#ptksds_verifIframe').addClass('d-none').attr('src', ''); 
+        $('#ptksds_verifNoFile').addClass('d-none').removeClass('d-flex');
+        $('#ptksds_loaderVerif').removeClass('d-flex').addClass('d-none');
+
+        var fileUrl = row.file_sk || '';
+        if (fileUrl && fileUrl.length > 5) {
+            var match = fileUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) || fileUrl.match(/id=([a-zA-Z0-9_-]+)/);
+            if (match && match[1]) {
+                var fileId = match[1];
+                var previewUrl = 'https://drive.google.com/file/d/' + fileId + '/preview';
+                
+                $('#ptksds_loaderVerif').removeClass('d-none').addClass('d-flex');
+                $('#ptksds_verifIframe').attr('src', previewUrl);
+                
+                $('#ptksds_verifIframe').off('load').on('load', function() {
+                    $('#ptksds_loaderVerif').removeClass('d-flex').addClass('d-none');
+                    $(this).removeClass('d-none');
+                });
+            } else {
+                $('#ptksds_verifNoFile').removeClass('d-none').addClass('d-flex');
             }
+        } else {
+            $('#ptksds_verifNoFile').removeClass('d-none').addClass('d-flex');
         }
-    }, 600);
-    
-    // Penyesuaian lagi setelah 1 detik untuk memastikan
-    setTimeout(function() {
-        var $iframe = $('#ptksds_verifIframe');
-        var $container = $iframe.parent();
-        if ($container.length > 0) {
-            $iframe.width($container.width());
-            $iframe.height($container.height());
-        }
-    }, 1200);
+    }, 150);
 }
 
 function ptksds_eksekusiMutasi(idUsulan, keputusan) {

@@ -451,9 +451,9 @@ $(document).ready(function() {
 
     // Reset modal saat ditutup
     $('#ptksdn_modalVerifikasi').on('hidden.bs.modal', function () {
-        $('#ptksdn_verifIframe').addClass('d-none').attr('style', 'display: none !important;').attr('src', '');
-        $('#ptksdn_loaderVerif').addClass('d-none').attr('style', 'display: none !important;');
-        $('#ptksdn_verifNoFile').addClass('d-none').attr('style', 'display: none !important;');
+        $('#ptksdn_verifIframe').addClass('d-none').attr('src', '');
+        $('#ptksdn_verifNoFile').addClass('d-none').removeClass('d-flex');
+        $('#ptksdn_loaderVerif').removeClass('d-flex').addClass('d-none');
         $('#ptksdn_verifCatatan').val('');
     });
 
@@ -1056,106 +1056,67 @@ function ptksdn_renderTabelUsulan(data) {
 function ptksdn_bukaModalVerifikasi(row) {
     if (typeof row === 'string') { try { row = JSON.parse(row); } catch(e) { return; } }
 
-    $('#ptksdn_verifIdUsulan').val(row.id_usulan);
-    $('#ptksdn_verifNama').text(row.nama_ptk || '-');
-    $('#ptksdn_verifJenis').text(row.jenis_mutasi || '-');
-    $('#ptksdn_verifAsal').text(row.lembaga_asal || '-');
-    $('#ptksdn_verifTujuan').text(row.lembaga_tujuan || '-');
-    $('#ptksdn_verifTanggal').text(row.tanggal_usulan || '-');
-    $('#ptksdn_verifPengusul').text(row.user_pengusul || '-');
-
-    var rawStatus = row.status || '';
-    var statusParts = rawStatus.split('|');
-    var mainStatus = statusParts[0];
-    var catatanTampil = row.catatan || statusParts[1] || '';
-
-    if (mainStatus === 'Tolak') {
-        $('#ptksdn_verifStatus').val('Tolak');
-        $('#ptksdn_reqCatatanVerif').show();
-        $('#ptksdn_verifCatatan').prop('required', true);
-        $('#ptksdn_verifCatatan').val(catatanTampil);
-    } else {
-        $('#ptksdn_verifStatus').val(mainStatus === 'Pending' ? '' : mainStatus);
-        $('#ptksdn_reqCatatanVerif').hide();
-        $('#ptksdn_verifCatatan').prop('required', false);
-        $('#ptksdn_verifCatatan').val('');
-    }
-
-    var fileUrl = row.file_sk || '';
-    
-    // Sembunyikan semua elemen terlebih dahulu dengan display !important
-    $('#ptksdn_verifIframe').addClass('d-none').attr('style', 'display: none !important;').attr('src', '');
-    $('#ptksdn_loaderVerif').addClass('d-none').attr('style', 'display: none !important;');
-    $('#ptksdn_verifNoFile').addClass('d-none').attr('style', 'display: none !important;');
-
-    if (fileUrl && fileUrl.length > 5) {
-        var match = fileUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) || fileUrl.match(/id=([a-zA-Z0-9_-]+)/);
-        if (match && match[1]) {
-            // Tampilkan spinner
-            $('#ptksdn_loaderVerif').removeClass('d-none').attr('style', 'display: flex !important;');
-            
-            $('#ptksdn_verifIframe').attr('src', 'https://drive.google.com/file/d/' + match[1] + '/preview');
-            $('#ptksdn_verifIframe').off('load').on('load', function () {
-                $('#ptksdn_loaderVerif').addClass('d-none').attr('style', 'display: none !important;');
-                $('#ptksdn_verifNoFile').addClass('d-none').attr('style', 'display: none !important;');
-                $(this).removeClass('d-none').attr('style', 'display: block !important;');
-            });
-
-            setTimeout(function () {
-                if ($('#ptksdn_verifIframe').hasClass('d-none')) {
-                    $('#ptksdn_loaderVerif').addClass('d-none').attr('style', 'display: none !important;');
-                    $('#ptksdn_verifNoFile').addClass('d-none').attr('style', 'display: none !important;');
-                    $('#ptksdn_verifIframe').removeClass('d-none').attr('style', 'display: block !important;');
-                }
-            }, 2500);
-        } else {
-            // Tampilkan no-file
-            $('#ptksdn_verifNoFile').removeClass('d-none').attr('style', 'display: flex !important;');
-        }
-    } else {
-        // Tampilkan no-file
-        $('#ptksdn_verifNoFile').removeClass('d-none').attr('style', 'display: flex !important;');
-    }
-
-    if (row.status === 'Pending') {
-        $('#ptksdn_verifStatus, #ptksdn_verifCatatan').prop('disabled', false);
-        $('#ptksdn_btnVerifEksekusi').show();
-    } else {
-        $('#ptksdn_verifStatus, #ptksdn_verifCatatan').prop('disabled', true);
-        $('#ptksdn_btnVerifEksekusi').hide();
-    }
-
     $('#ptksdn_modalVerifikasi').modal('show');
-    
-    // Memaksa modal untuk merender ulang dan menyesuaikan ukuran iframe
-    setTimeout(function() {
-        // Memaksa ukuran iframe sesuai container
-        var $iframe = $('#ptksdn_verifIframe');
-        var $container = $iframe.parent();
-        if ($container.length > 0) {
-            $iframe.width($container.width());
-            $iframe.height($container.height());
+
+    setTimeout(function () {
+        $('#ptksdn_verifIdUsulan').val(row.id_usulan);
+        $('#ptksdn_verifNama').text(row.nama_ptk || '-');
+        $('#ptksdn_verifJenis').text(row.jenis_mutasi || '-');
+        $('#ptksdn_verifAsal').text(row.lembaga_asal || '-');
+        $('#ptksdn_verifTujuan').text(row.lembaga_tujuan || '-');
+        $('#ptksdn_verifTanggal').text(row.tanggal_usulan || '-');
+        $('#ptksdn_verifPengusul').text(row.user_pengusul || '-');
+
+        var rawStatus = row.status || '';
+        var statusParts = rawStatus.split('|');
+        var mainStatus = statusParts[0];
+        var catatanTampil = row.catatan || statusParts[1] || '';
+
+        if (mainStatus === 'Tolak') {
+            $('#ptksdn_verifStatus').val('Tolak');
+            $('#ptksdn_reqCatatanVerif').show();
+            $('#ptksdn_verifCatatan').prop('required', true);
+            $('#ptksdn_verifCatatan').val(catatanTampil);
+        } else {
+            $('#ptksdn_verifStatus').val(mainStatus === 'Pending' ? '' : mainStatus);
+            $('#ptksdn_reqCatatanVerif').hide();
+            $('#ptksdn_verifCatatan').prop('required', false);
+            $('#ptksdn_verifCatatan').val('');
         }
-        
-        // Memaksa reload iframe jika sudah terlihat
-        if ($iframe.is(':visible')) {
-            try {
-                $iframe[0].contentWindow.location.reload();
-            } catch(e) {
-                console.warn('Error reloading iframe', e);
+
+        $('#ptksdn_verifIframe').addClass('d-none').attr('src', ''); 
+        $('#ptksdn_verifNoFile').addClass('d-none').removeClass('d-flex');
+        $('#ptksdn_loaderVerif').removeClass('d-flex').addClass('d-none');
+
+        if (row.status === 'Pending') {
+            $('#ptksdn_verifStatus, #ptksdn_verifCatatan').prop('disabled', false);
+            $('#ptksdn_btnVerifEksekusi').show();
+        } else {
+            $('#ptksdn_verifStatus, #ptksdn_verifCatatan').prop('disabled', true);
+            $('#ptksdn_btnVerifEksekusi').hide();
+        }
+
+        var fileUrl = row.file_sk || '';
+        if (fileUrl && fileUrl.length > 5) {
+            var match = fileUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) || fileUrl.match(/id=([a-zA-Z0-9_-]+)/);
+            if (match && match[1]) {
+                var fileId = match[1];
+                var previewUrl = 'https://drive.google.com/file/d/' + fileId + '/preview';
+                
+                $('#ptksdn_loaderVerif').removeClass('d-none').addClass('d-flex');
+                $('#ptksdn_verifIframe').attr('src', previewUrl);
+                
+                $('#ptksdn_verifIframe').off('load').on('load', function() {
+                    $('#ptksdn_loaderVerif').removeClass('d-flex').addClass('d-none');
+                    $(this).removeClass('d-none');
+                });
+            } else {
+                $('#ptksdn_verifNoFile').removeClass('d-none').addClass('d-flex');
             }
+        } else {
+            $('#ptksdn_verifNoFile').removeClass('d-none').addClass('d-flex');
         }
-    }, 600);
-    
-    // Penyesuaian lagi setelah 1 detik untuk memastikan
-    setTimeout(function() {
-        var $iframe = $('#ptksdn_verifIframe');
-        var $container = $iframe.parent();
-        if ($container.length > 0) {
-            $iframe.width($container.width());
-            $iframe.height($container.height());
-        }
-    }, 1200);
+    }, 150);
 }
 
 function ptksdn_eksekusiMutasi(idUsulan, keputusan) {
