@@ -54,6 +54,7 @@ const FOLDER_CONFIG = {
   SIABA_SKP_DOCS: "1DGYC8AtJFCpCZ0ou2ae9-5fc2-bWl20G",
   SIABA_PAK_DOCS: "1cvn-pOufs-OIbFQfqhmxc3fcmFuox4Sc",
   SIABA_ARSIP_ROOT: "1D0rwRT_tIj9QZTPPG3cRk4NRcbhMzDHm",
+  EFILE_DOCS: "1BUHkoCanHu24ApTnfwhbBCgOEFxBAmAo", // Folder E-File Documents
 };
 
 // ==========================================
