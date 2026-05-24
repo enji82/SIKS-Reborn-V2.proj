@@ -451,9 +451,9 @@ $(document).ready(function() {
 
     // Reset modal saat ditutup
     $('#ptksdn_modalVerifikasi').on('hidden.bs.modal', function () {
-        $('#ptksdn_verifIframe').addClass('d-none').attr('src', '');
-        $('#ptksdn_loaderVerif').removeClass('d-none').addClass('d-flex');
-        $('#ptksdn_verifNoFile').removeClass('d-none');
+        $('#ptksdn_verifIframe').addClass('d-none').attr('style', 'display: none !important;').attr('src', '');
+        $('#ptksdn_loaderVerif').addClass('d-none').attr('style', 'display: none !important;');
+        $('#ptksdn_verifNoFile').addClass('d-none').attr('style', 'display: none !important;');
         $('#ptksdn_verifCatatan').val('');
     });
 
@@ -1082,33 +1082,39 @@ function ptksdn_bukaModalVerifikasi(row) {
     }
 
     var fileUrl = row.file_sk || '';
-    $('#ptksdn_verifIframe').addClass('d-none').attr('src', '');
-    $('#ptksdn_loaderVerif').removeClass('d-none').addClass('d-flex');
-    $('#ptksdn_verifNoFile').removeClass('d-none');
+    
+    // Sembunyikan semua elemen terlebih dahulu dengan display !important
+    $('#ptksdn_verifIframe').addClass('d-none').attr('style', 'display: none !important;').attr('src', '');
+    $('#ptksdn_loaderVerif').addClass('d-none').attr('style', 'display: none !important;');
+    $('#ptksdn_verifNoFile').addClass('d-none').attr('style', 'display: none !important;');
 
     if (fileUrl && fileUrl.length > 5) {
         var match = fileUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) || fileUrl.match(/id=([a-zA-Z0-9_-]+)/);
         if (match && match[1]) {
-            $('#ptksdn_verifNoFile').addClass('d-none');
+            // Tampilkan spinner
+            $('#ptksdn_loaderVerif').removeClass('d-none').attr('style', 'display: flex !important;');
+            
             $('#ptksdn_verifIframe').attr('src', 'https://drive.google.com/file/d/' + match[1] + '/preview');
             $('#ptksdn_verifIframe').off('load').on('load', function () {
-                $('#ptksdn_loaderVerif').addClass('d-none');
-                $(this).removeClass('d-none');
+                $('#ptksdn_loaderVerif').addClass('d-none').attr('style', 'display: none !important;');
+                $('#ptksdn_verifNoFile').addClass('d-none').attr('style', 'display: none !important;');
+                $(this).removeClass('d-none').attr('style', 'display: block !important;');
             });
 
             setTimeout(function () {
                 if ($('#ptksdn_verifIframe').hasClass('d-none')) {
-                    $('#ptksdn_loaderVerif').addClass('d-none');
-                    $('#ptksdn_verifIframe').removeClass('d-none');
+                    $('#ptksdn_loaderVerif').addClass('d-none').attr('style', 'display: none !important;');
+                    $('#ptksdn_verifNoFile').addClass('d-none').attr('style', 'display: none !important;');
+                    $('#ptksdn_verifIframe').removeClass('d-none').attr('style', 'display: block !important;');
                 }
             }, 2500);
         } else {
-            $('#ptksdn_loaderVerif').addClass('d-none');
-            $('#ptksdn_verifNoFile').removeClass('d-none');
+            // Tampilkan no-file
+            $('#ptksdn_verifNoFile').removeClass('d-none').attr('style', 'display: flex !important;');
         }
     } else {
-        $('#ptksdn_loaderVerif').addClass('d-none');
-        $('#ptksdn_verifNoFile').removeClass('d-none');
+        // Tampilkan no-file
+        $('#ptksdn_verifNoFile').removeClass('d-none').attr('style', 'display: flex !important;');
     }
 
     if (row.status === 'Pending') {
@@ -1120,6 +1126,36 @@ function ptksdn_bukaModalVerifikasi(row) {
     }
 
     $('#ptksdn_modalVerifikasi').modal('show');
+    
+    // Memaksa modal untuk merender ulang dan menyesuaikan ukuran iframe
+    setTimeout(function() {
+        // Memaksa ukuran iframe sesuai container
+        var $iframe = $('#ptksdn_verifIframe');
+        var $container = $iframe.parent();
+        if ($container.length > 0) {
+            $iframe.width($container.width());
+            $iframe.height($container.height());
+        }
+        
+        // Memaksa reload iframe jika sudah terlihat
+        if ($iframe.is(':visible')) {
+            try {
+                $iframe[0].contentWindow.location.reload();
+            } catch(e) {
+                console.warn('Error reloading iframe', e);
+            }
+        }
+    }, 600);
+    
+    // Penyesuaian lagi setelah 1 detik untuk memastikan
+    setTimeout(function() {
+        var $iframe = $('#ptksdn_verifIframe');
+        var $container = $iframe.parent();
+        if ($container.length > 0) {
+            $iframe.width($container.width());
+            $iframe.height($container.height());
+        }
+    }, 1200);
 }
 
 function ptksdn_eksekusiMutasi(idUsulan, keputusan) {

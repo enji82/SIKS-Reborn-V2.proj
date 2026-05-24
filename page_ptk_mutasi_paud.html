@@ -396,8 +396,8 @@ $(document).ready(function() {
     });
 
     $('#ptkpaud_modalPreview').on('hidden.bs.modal', function () { 
-        $('#ptkpaud_framePreview').addClass('d-none').attr('src', ''); 
-        $('#ptkpaud_loadingPreviewPDF').removeClass('d-none').addClass('d-flex'); 
+        $('#ptkpaud_framePreview').addClass('d-none').attr('style', 'display: none !important;').attr('src', ''); 
+        $('#ptkpaud_loadingPreviewPDF').addClass('d-none').attr('style', 'display: none !important;'); 
     });
 
     // Event handler untuk input file mutasi
@@ -460,9 +460,9 @@ $(document).ready(function() {
 
     // Reset modal saat ditutup
     $('#ptkpaud_modalVerifikasi').on('hidden.bs.modal', function () {
-        $('#ptkpaud_verifIframe').addClass('d-none').attr('src', '');
-        $('#ptkpaud_loaderVerif').removeClass('d-flex').addClass('d-none');
-        $('#ptkpaud_verifNoFile').removeClass('d-flex').addClass('d-none');
+        $('#ptkpaud_verifIframe').addClass('d-none').attr('style', 'display: none !important;').attr('src', '');
+        $('#ptkpaud_loaderVerif').addClass('d-none').attr('style', 'display: none !important;');
+        $('#ptkpaud_verifNoFile').addClass('d-none').attr('style', 'display: none !important;');
         $('#ptkpaud_verifStatus').val('');
         $('#ptkpaud_reqCatatanVerif').hide();
         $('#ptkpaud_verifCatatan').val('').prop('required', false);
@@ -501,26 +501,74 @@ $(document).ready(function() {
         }
 
         var fileUrl = row.file_sk || '';
+        
+        // Sembunyikan semua elemen terlebih dahulu dengan display !important
+        $('#ptkpaud_verifIframe').addClass('d-none').attr('style', 'display: none !important;');
+        $('#ptkpaud_loaderVerif').addClass('d-none').attr('style', 'display: none !important;');
+        $('#ptkpaud_verifNoFile').addClass('d-none').attr('style', 'display: none !important;');
 
         if (fileUrl && fileUrl.length > 5) {
             var match = fileUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) || fileUrl.match(/id=([a-zA-Z0-9_-]+)/);
             if (match && match[1]) {
-                $('#ptkpaud_loaderVerif').removeClass('d-none').addClass('d-flex');
+                // Tampilkan spinner
+                $('#ptkpaud_loaderVerif').removeClass('d-none').attr('style', 'display: flex !important;');
+                
                 $('#ptkpaud_verifIframe').attr('src', 'https://drive.google.com/file/d/' + match[1] + '/preview');
                 $('#ptkpaud_verifIframe').off('load').on('load', function () {
-                    $('#ptkpaud_loaderVerif').removeClass('d-flex').addClass('d-none');
-                    $(this).removeClass('d-none');
+                    $('#ptkpaud_loaderVerif').addClass('d-none').attr('style', 'display: none !important;');
+                    $('#ptkpaud_verifNoFile').addClass('d-none').attr('style', 'display: none !important;');
+                    $(this).removeClass('d-none').attr('style', 'display: block !important;');
                 });
+
+                setTimeout(function () {
+                    if ($('#ptkpaud_verifIframe').hasClass('d-none')) {
+                        $('#ptkpaud_loaderVerif').addClass('d-none').attr('style', 'display: none !important;');
+                        $('#ptkpaud_verifNoFile').addClass('d-none').attr('style', 'display: none !important;');
+                        $('#ptkpaud_verifIframe').removeClass('d-none').attr('style', 'display: block !important;');
+                    }
+                }, 2500);
             } else {
-                $('#ptkpaud_verifNoFile').removeClass('d-none').addClass('d-flex');
+                // Tampilkan no-file
+                $('#ptkpaud_verifNoFile').removeClass('d-none').attr('style', 'display: flex !important;');
             }
         } else {
-            $('#ptkpaud_verifNoFile').removeClass('d-none').addClass('d-flex');
+            // Tampilkan no-file
+            $('#ptkpaud_verifNoFile').removeClass('d-none').attr('style', 'display: flex !important;');
         }
 
         if (row.status !== 'Pending') {
             $('#ptkpaud_btnVerifEksekusi').hide();
         }
+        
+        // Memaksa modal untuk merender ulang dan menyesuaikan ukuran iframe
+        setTimeout(function() {
+            // Memaksa ukuran iframe sesuai container
+            var $iframe = $('#ptkpaud_verifIframe');
+            var $container = $iframe.parent();
+            if ($container.length > 0) {
+                $iframe.width($container.width());
+                $iframe.height($container.height());
+            }
+            
+            // Memaksa reload iframe jika sudah terlihat
+            if ($iframe.is(':visible')) {
+                try {
+                    $iframe[0].contentWindow.location.reload();
+                } catch(e) {
+                    console.warn('Error reloading iframe', e);
+                }
+            }
+        }, 600);
+        
+        // Penyesuaian lagi setelah 1 detik untuk memastikan
+        setTimeout(function() {
+            var $iframe = $('#ptkpaud_verifIframe');
+            var $container = $iframe.parent();
+            if ($container.length > 0) {
+                $iframe.width($container.width());
+                $iframe.height($container.height());
+            }
+        }, 1200);
     });
 
     // Event handler untuk tombol baca catatan
@@ -1190,8 +1238,12 @@ function ptkpaud_previewPdf(url) {
                 directDownloadUrl = 'https://drive.google.com/uc?export=download&id=' + fileId;
             }
 
-            $('#ptkpaud_loadingPreviewPDF').removeClass('d-none').addClass('d-flex');
-            $('#ptkpaud_framePreview').addClass('d-none').attr('src', '');
+            // Sembunyikan semua elemen terlebih dahulu dengan display !important
+            $('#ptkpaud_loadingPreviewPDF').addClass('d-none').attr('style', 'display: none !important;');
+            $('#ptkpaud_framePreview').addClass('d-none').attr('style', 'display: none !important;').attr('src', '');
+            
+            // Tampilkan spinner
+            $('#ptkpaud_loadingPreviewPDF').removeClass('d-none').attr('style', 'display: flex !important;');
             
             $('#ptkpaud_btnUnduhPDF').attr('href', url);
             $('#ptkpaud_btnUnduhDirect').attr('href', directDownloadUrl);
@@ -1202,13 +1254,13 @@ function ptkpaud_previewPdf(url) {
                 $('#ptkpaud_framePreview').attr('src', finalUrl);
 
                 $('#ptkpaud_framePreview').off('load').on('load', function() { 
-                    $('#ptkpaud_loadingPreviewPDF').removeClass('d-flex').addClass('d-none'); 
-                    $(this).removeClass('d-none'); 
+                    $('#ptkpaud_loadingPreviewPDF').addClass('d-none').attr('style', 'display: none !important;'); 
+                    $(this).removeClass('d-none').attr('style', 'display: block !important;'); 
                 });
 
                 setTimeout(function() {
-                    $('#ptkpaud_loadingPreviewPDF').removeClass('d-flex').addClass('d-none');
-                    $('#ptkpaud_framePreview').removeClass('d-none');
+                    $('#ptkpaud_loadingPreviewPDF').addClass('d-none').attr('style', 'display: none !important;');
+                    $('#ptkpaud_framePreview').removeClass('d-none').attr('style', 'display: block !important;');
                 }, 3000);
             }, 150);
 
