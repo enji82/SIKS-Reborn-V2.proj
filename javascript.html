@@ -131,60 +131,29 @@
       tutupForm: function() {
         $('#global_modalForm').modal('hide');
       },
-      preview: function(options, isImageOld) {
-        var url, isImage, title, directDownloadUrl;
-        
-        if (typeof options === 'string') {
-          url = options;
-          isImage = isImageOld || false;
-          title = 'Pratinjau Dokumen';
-        } else {
-          url = options.url;
-          isImage = options.isImage || false;
-          title = options.title || 'Pratinjau Dokumen';
-          directDownloadUrl = options.directDownloadUrl || null;
-        }
-
-        $('#global_modalPreviewTitle').text(title);
-        $('#global_modalPreviewIframe').addClass('d-none').attr('src', '');
-        $('#global_modalPreviewImg').addClass('d-none').attr('src', '');
-        $('#global_modalPreviewBtnUnduhDirect').attr('href', '#').hide();
-        $('#global_modalPreviewBtnUnduhPDF').attr('href', '#');
-        $('#global_modalPreviewLoading').removeClass('d-flex').addClass('d-none');
+      preview: function(url, isImage) {
+        $('#global_modalPreviewIframe').hide().attr('src', '');
+        $('#global_modalPreviewImg').hide().attr('src', '');
+        $('#global_modalPreviewLoading').show();
         $('#global_modalPreview').modal('show');
-
-        setTimeout(function() {
-          $('#global_modalPreviewLoading').removeClass('d-none').addClass('d-flex');
-
+        
+        if (isImage) {
+          $('#global_modalPreviewImg').attr('src', url).off('load').on('load', function() {
+            $('#global_modalPreviewLoading').hide();
+            $(this).fadeIn();
+          }).off('error').on('error', function() {
+            $('#global_modalPreviewLoading').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mr-2"></i>Gagal memuat gambar</span>');
+          });
+        } else {
           var finalUrl = url;
-          var isGoogleDrive = url.indexOf('drive.google.com') > -1;
-          
-          if (isGoogleDrive) {
-            var match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-            if (match && match[1]) {
-              finalUrl = 'https://drive.google.com/file/d/' + match[1] + '/preview';
-              var directDownloadUrlGD = 'https://drive.google.com/uc?export=download&id=' + match[1];
-              $('#global_modalPreviewBtnUnduhDirect').attr('href', directDownloadUrlGD).show();
-              $('#global_modalPreviewBtnUnduhPDF').attr('href', url);
-            }
-          } else {
-            $('#global_modalPreviewBtnUnduhPDF').attr('href', url);
+          if (url.indexOf('drive.google.com') > -1 && url.indexOf('view') > -1 && url.indexOf('preview') === -1) {
+            finalUrl = url.replace(/\/view\b/g, '/preview');
           }
-
-          if (isImage) {
-            $('#global_modalPreviewImg').attr('src', url).off('load').on('load', function() {
-              $('#global_modalPreviewLoading').removeClass('d-flex').addClass('d-none');
-              $(this).removeClass('d-none');
-            }).off('error').on('error', function() {
-              $('#global_modalPreviewLoading').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mr-2"></i>Gagal memuat gambar</span>');
-            });
-          } else {
-            $('#global_modalPreviewIframe').attr('src', finalUrl).off('load').on('load', function() {
-              $('#global_modalPreviewLoading').removeClass('d-flex').addClass('d-none');
-              $(this).removeClass('d-none');
-            });
-          }
-        }, 150);
+          $('#global_modalPreviewIframe').attr('src', finalUrl).off('load').on('load', function() {
+            $('#global_modalPreviewLoading').hide();
+            $(this).fadeIn();
+          });
+        }
       },
       konfirmasiHapus: function(kodePengamanValid, callbackYa) {
         $('#global_hapusKodePengaman').val('');
