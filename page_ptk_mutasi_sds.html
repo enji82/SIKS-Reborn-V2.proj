@@ -457,9 +457,9 @@ $(document).ready(function() {
 
     // Reset modal saat ditutup
     $('#ptksds_modalVerifikasi').on('hidden.bs.modal', function () {
-        $('#ptksds_verifIframe').addClass('d-none').attr('src', '');
-        $('#ptksds_loaderVerif').removeClass('d-none').addClass('d-flex');
-        $('#ptksds_verifNoFile').removeClass('d-none');
+        $('#ptksds_verifIframe').addClass('d-none').attr('style', 'display: none !important;').attr('src', '');
+        $('#ptksds_loaderVerif').addClass('d-none').attr('style', 'display: none !important;');
+        $('#ptksds_verifNoFile').addClass('d-none').attr('style', 'display: none !important;');
         $('#ptksds_verifCatatan').val('');
     });
 
@@ -802,43 +802,66 @@ function ptksds_cleanString(str) {
 
 function ptksds_initDataTablesUsulan() {
     try {
-        if ($.fn.DataTable.isDataTable('#ptksds_tabelUsulan')) { $('#ptksds_tabelUsulan').DataTable().destroy(); }
-    } catch(e) { console.warn("DataTable destroy failed", e); }
-
-    PTKSDS_TABEL_USULAN_INSTANCE = SultanTable.init('#ptksds_tabelUsulan', {
-        "destroy": true, "ordering": false, "pageLength": 10, "autoWidth": false,
-        "deferRender": true, 
-        "dom": "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
-               "<'row'<'col-sm-12'<'ptksds-scroll-container sultan-scroll'tr>>>" +
-               "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
-        "columnDefs": [ 
-            { "targets": 0, "className": "col-sticky-left text-center align-middle" }, 
-            { "targets": [1, 3, 4, 6], "className": "text-center align-middle" }, 
-            { "targets": [2, 5, 7, 8, 9], "className": "text-left align-middle" } 
-        ],
-        "language": { 
-            "url": "https://cdn.datatables.net/plug-ins/1.10.21/i18n/Indonesian.json", 
-            "emptyTable": "<div class='p-4 text-center text-muted'><i class='fas fa-inbox fa-3x mb-3 opacity-50'></i><br>Belum ada data mutasi.</div>" 
-        },
-        "initComplete": function(settings, json) {
-            var $container = $('.ptksds-scroll-container');
-            $container.attr('tabindex', '0').css('outline', 'none');
-            $('#ptksds_tabelUsulan').attr('tabindex', '0').css('outline', 'none');
-            
-            $container.off('keydown').on('keydown', function(e) {
-                if ($(e.target).is('input, textarea')) return;
-                
-                var scrollAmount = 200;
-                if (e.key === 'ArrowLeft') {
-                    this.scrollLeft -= scrollAmount;
-                    e.preventDefault();
-                } else if (e.key === 'ArrowRight') {
-                    this.scrollLeft += scrollAmount;
-                    e.preventDefault();
-                }
-            });
+        if ($('#ptksds_tabelUsulan').length === 0) {
+            console.warn('Table #ptksds_tabelUsulan not found');
+            return;
         }
-    });
+        
+        if ($.fn.DataTable.isDataTable('#ptksds_tabelUsulan')) { 
+            try {
+                $('#ptksds_tabelUsulan').DataTable().destroy();
+            } catch(e) { 
+                console.warn("DataTable destroy failed", e); 
+            }
+        }
+    } catch(e) { 
+        console.warn("DataTable init check failed", e); 
+    }
+
+    try {
+        PTKSDS_TABEL_USULAN_INSTANCE = SultanTable.init('#ptksds_tabelUsulan', {
+            "destroy": true, "ordering": false, "pageLength": 10, "autoWidth": false,
+            "deferRender": true, 
+            "dom": "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
+                   "<'row'<'col-sm-12'<'ptksds-scroll-container sultan-scroll'tr>>>" +
+                   "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+            "columnDefs": [ 
+                { "targets": 0, "className": "col-sticky-left text-center align-middle" }, 
+                { "targets": [1, 3, 4, 6], "className": "text-center align-middle" }, 
+                { "targets": [2, 5, 7, 8, 9], "className": "text-left align-middle" } 
+            ],
+            "language": { 
+                "url": "https://cdn.datatables.net/plug-ins/1.10.21/i18n/Indonesian.json", 
+                "emptyTable": "<div class='p-4 text-center text-muted'><i class='fas fa-inbox fa-3x mb-3 opacity-50'></i><br>Belum ada data mutasi.</div>" 
+            },
+            "initComplete": function(settings, json) {
+                try {
+                    var $container = $('.ptksds-scroll-container');
+                    if ($container.length > 0) {
+                        $container.attr('tabindex', '0').css('outline', 'none');
+                        $('#ptksds_tabelUsulan').attr('tabindex', '0').css('outline', 'none');
+                        
+                        $container.off('keydown').on('keydown', function(e) {
+                            if ($(e.target).is('input, textarea')) return;
+                            
+                            var scrollAmount = 200;
+                            if (e.key === 'ArrowLeft') {
+                                this.scrollLeft -= scrollAmount;
+                                e.preventDefault();
+                            } else if (e.key === 'ArrowRight') {
+                                this.scrollLeft += scrollAmount;
+                                e.preventDefault();
+                            }
+                        });
+                    }
+                } catch(e) {
+                    console.warn('Error in initComplete', e);
+                }
+            }
+        });
+    } catch(e) {
+        console.error('Error initializing DataTables', e);
+    }
 }
 
 function ptksds_inisialisasiHalaman() {
@@ -1090,36 +1113,72 @@ function ptksds_bukaModalVerifikasi(row) {
     }
 
     var fileUrl = row.file_sk || '';
-    $('#ptksds_verifIframe').addClass('d-none').attr('src', '');
-    $('#ptksds_loaderVerif').removeClass('d-none').addClass('d-flex');
-    $('#ptksds_verifNoFile').removeClass('d-none');
+    
+    // Sembunyikan semua elemen terlebih dahulu dengan display !important
+    $('#ptksds_verifIframe').addClass('d-none').attr('style', 'display: none !important;').attr('src', '');
+    $('#ptksds_loaderVerif').addClass('d-none').attr('style', 'display: none !important;');
+    $('#ptksds_verifNoFile').addClass('d-none').attr('style', 'display: none !important;');
 
     if (fileUrl && fileUrl.length > 5) {
         var match = fileUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) || fileUrl.match(/id=([a-zA-Z0-9_-]+)/);
         if (match && match[1]) {
-            $('#ptksds_verifNoFile').addClass('d-none').css('display', 'none');
+            // Tampilkan spinner
+            $('#ptksds_loaderVerif').removeClass('d-none').attr('style', 'display: flex !important;');
+            
             $('#ptksds_verifIframe').attr('src', 'https://drive.google.com/file/d/' + match[1] + '/preview');
             $('#ptksds_verifIframe').off('load').on('load', function () {
-                $('#ptksds_loaderVerif').addClass('d-none').css('display', 'none');
-                $(this).removeClass('d-none').css('display', 'block');
+                $('#ptksds_loaderVerif').addClass('d-none').attr('style', 'display: none !important;');
+                $('#ptksds_verifNoFile').addClass('d-none').attr('style', 'display: none !important;');
+                $(this).removeClass('d-none').attr('style', 'display: block !important;');
             });
 
             setTimeout(function () {
                 if ($('#ptksds_verifIframe').hasClass('d-none')) {
-                    $('#ptksds_loaderVerif').addClass('d-none').css('display', 'none');
-                    $('#ptksds_verifIframe').removeClass('d-none').css('display', 'block');
+                    $('#ptksds_loaderVerif').addClass('d-none').attr('style', 'display: none !important;');
+                    $('#ptksds_verifNoFile').addClass('d-none').attr('style', 'display: none !important;');
+                    $('#ptksds_verifIframe').removeClass('d-none').attr('style', 'display: block !important;');
                 }
             }, 2500);
         } else {
-            $('#ptksds_loaderVerif').addClass('d-none').css('display', 'none');
-            $('#ptksds_verifNoFile').removeClass('d-none').css('display', 'flex');
+            // Tampilkan no-file
+            $('#ptksds_verifNoFile').removeClass('d-none').attr('style', 'display: flex !important;');
         }
     } else {
-        $('#ptksds_loaderVerif').addClass('d-none').css('display', 'none');
-        $('#ptksds_verifNoFile').removeClass('d-none').css('display', 'flex');
+        // Tampilkan no-file
+        $('#ptksds_verifNoFile').removeClass('d-none').attr('style', 'display: flex !important;');
     }
 
     $('#ptksds_modalVerifikasi').modal('show');
+    
+    // Memaksa modal untuk merender ulang dan menyesuaikan ukuran iframe
+    setTimeout(function() {
+        // Memaksa ukuran iframe sesuai container
+        var $iframe = $('#ptksds_verifIframe');
+        var $container = $iframe.parent();
+        if ($container.length > 0) {
+            $iframe.width($container.width());
+            $iframe.height($container.height());
+        }
+        
+        // Memaksa reload iframe jika sudah terlihat
+        if ($iframe.is(':visible')) {
+            try {
+                $iframe[0].contentWindow.location.reload();
+            } catch(e) {
+                console.warn('Error reloading iframe', e);
+            }
+        }
+    }, 600);
+    
+    // Penyesuaian lagi setelah 1 detik untuk memastikan
+    setTimeout(function() {
+        var $iframe = $('#ptksds_verifIframe');
+        var $container = $iframe.parent();
+        if ($container.length > 0) {
+            $iframe.width($container.width());
+            $iframe.height($container.height());
+        }
+    }, 1200);
 }
 
 function ptksds_eksekusiMutasi(idUsulan, keputusan) {
