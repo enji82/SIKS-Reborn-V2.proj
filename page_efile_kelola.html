@@ -299,6 +299,39 @@
     </div>
 </div>
 
+<!-- MODAL 5: PREVIEW DOKUMEN -->
+<div class="modal fade" id="efilekelola_modalPreview" tabindex="-1" role="dialog" data-backdrop="static">
+    <div class="modal-dialog modal-xl modal-dialog-centered" role="document">
+        <div class="modal-content modal-content-sultan modal-content-full-height border-0 shadow-lg">
+            <div class="modal-header modal-header-sultan-aksi-preview flex-shrink-0">
+                <h5 class="modal-title font-weight-bold text-white" style="font-size: 1rem !important; letter-spacing: 0.5px !important; text-transform: uppercase;">
+                    <i class="fas fa-file-pdf mr-2"></i> Pratinjau Dokumen E-File
+                </h5>
+                <div class="ml-auto d-flex align-items-center">
+                    <a href="#" id="efilekelola_btnUnduhDirect" class="sultan-btn sultan-btn-sm sultan-btn-success mr-2 shadow-sm" target="_blank" style="display:none;">
+                        <i class="fas fa-download"></i> UNDUH
+                    </a>
+                    <a href="#" id="efilekelola_btnUnduhPDF" target="_blank" class="sultan-btn sultan-btn-sm sultan-btn-outline-white mr-2 shadow-sm">
+                        <i class="fas fa-external-link-alt"></i> TAB BARU
+                    </a>
+                    <button type="button" class="close text-white" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+            </div>
+            <div class="modal-body modal-body-full position-relative p-0">
+                <iframe id="efilekelola_framePreview" class="iframe-full d-none" src=""></iframe>
+                <div id="efilekelola_loadingPreview" class="d-flex h-100 align-items-center justify-content-center text-white-50 position-absolute w-100" style="top:0; left:0; z-index:10; pointer-events:none;">
+                    <div class="text-center">
+                        <i class="fas fa-circle-notch fa-spin fa-3x mb-3"></i>
+                        <p>Memuat Dokumen...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 var EFILEKELOLA_CACHE_DATA = [], EFILEKELOLA_MASTER_PTK = [], EFILEKELOLA_MASTER_KAT = [], EFILEKELOLA_TABEL_INSTANCE = null, EFILEKELOLA_ROW_COUNT = 0; 
 var EFILEKELOLA_USER_AKTIF = "", EFILEKELOLA_IS_ADMIN = false, EFILEKELOLA_UNIT_TERKUNCI = "", EFILEKELOLA_NPSN_TERKUNCI = "", EFILEKELOLA_SELECTED_PTK_FILES = [];
@@ -859,12 +892,36 @@ function efilekelola_submitHapus(e) {
 
 function efilekelola_bukaPreview(url) {
     if (!url) return;
-    var isImage = false;
-    var lUrl = String(url).toLowerCase();
-    if (lUrl.endsWith('.jpg') || lUrl.endsWith('.png') || lUrl.endsWith('.jpeg')) {
-        isImage = true;
-    }
-    Sultan.modal.preview(url, isImage);
+    
+    $('#efilekelola_framePreview').addClass('d-none').attr('src', '');
+    $('#efilekelola_btnUnduhDirect').attr('href', '#').hide();
+    $('#efilekelola_btnUnduhPDF').attr('href', '#');
+    $('#efilekelola_loadingPreview').removeClass('d-flex').addClass('d-none');
+    $('#efilekelola_modalPreview').modal('show');
+
+    setTimeout(function() {
+        $('#efilekelola_loadingPreview').removeClass('d-none').addClass('d-flex');
+
+        var finalUrl = url;
+        var isGoogleDrive = url.indexOf('drive.google.com') > -1;
+        
+        if (isGoogleDrive) {
+            var match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+            if (match && match[1]) {
+                finalUrl = 'https://drive.google.com/file/d/' + match[1] + '/preview';
+                var directDownloadUrlGD = 'https://drive.google.com/uc?export=download&id=' + match[1];
+                $('#efilekelola_btnUnduhDirect').attr('href', directDownloadUrlGD).show();
+                $('#efilekelola_btnUnduhPDF').attr('href', url);
+            }
+        } else {
+            $('#efilekelola_btnUnduhPDF').attr('href', url);
+        }
+
+        $('#efilekelola_framePreview').attr('src', finalUrl).off('load').on('load', function() {
+            $('#efilekelola_loadingPreview').removeClass('d-flex').addClass('d-none');
+            $(this).removeClass('d-none');
+        });
+    }, 150);
 }
 
 function efilekelola_lihatCatatan(p) { Sultan.alert('info', 'Catatan Verifikasi', p); }
