@@ -129,6 +129,23 @@ function simpanSptUnified(payload) {
       sheetMaster.getRange(r, 8).setValue(payload.listPeserta.length); // Update sesuai jumlah list baru
       sheetMaster.getRange(r, 14).setValue(sysDateStr); 
       sheetMaster.getRange(r, 15).setValue(userName);   
+
+      // Reset status ke Diproses dan bersihkan verifikasi lama
+      sheetMaster.getRange(r, 10).setValue("Diproses");
+      sheetMaster.getRange(r, 16).setValue("");
+      sheetMaster.getRange(r, 17).setValue("");
+      sheetMaster.getRange(r, 18).setValue("");
+
+      // Bersihkan tanda dibaca oleh Admin agar Admin mendapat notifikasi baru
+      var curReadBy = String(sheetMaster.getRange(r, 19).getValue() || "").trim();
+      if (curReadBy !== "") {
+        var list = curReadBy.split(",");
+        var idxAdmin = list.indexOf("Admin");
+        if (idxAdmin > -1) {
+          list.splice(idxAdmin, 1);
+          sheetMaster.getRange(r, 19).setValue(list.join(","));
+        }
+      }
     }
 
     var rowsPeserta = [];
