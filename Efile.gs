@@ -402,16 +402,28 @@ function getEfileDashboardInit(npsnFilter) {
   } catch(e) { return JSON.stringify({ success: false, message: e.message }); }
 }
 
+/** Hapus cache satu pasangan sheet (untuk refresh kategori aktif). */
+function invalidateEfileDashboardCacheOne(sheetRekapName, sheetLaporName) {
+  try {
+    var cacheKey = "EFILE_DASHBOARD_" + String(sheetRekapName).replace(/\s/g, "_") + "_" + String(sheetLaporName).replace(/\s/g, "_");
+    CacheService.getScriptCache().remove(cacheKey);
+  } catch(e) {}
+}
+
 // ======================================================================
 // 10. GET DATA DASHBOARD SPESIFIK (BERDASARKAN PILIHAN KATEGORI)
 // ======================================================================
-function getEfileDashboardData(sheetRekapName, sheetLaporName) {
+function getEfileDashboardData(sheetRekapName, sheetLaporName, forceRefresh) {
   var cacheKey = "EFILE_DASHBOARD_" + String(sheetRekapName).replace(/\s/g, "_") + "_" + String(sheetLaporName).replace(/\s/g, "_");
   var cache = CacheService.getScriptCache();
-  try {
-    var cached = cache.get(cacheKey);
-    if (cached) return cached;
-  } catch(e) {}
+  if (forceRefresh) {
+    invalidateEfileDashboardCacheOne(sheetRekapName, sheetLaporName);
+  } else {
+    try {
+      var cached = cache.get(cacheKey);
+      if (cached) return cached;
+    } catch(e) {}
+  }
 
   try {
     // 1. Tarik Data Rekapitulasi Tabel (A:NPSN, B:Unit, C:Tahun, D:Jml, E:Sudah, F:Belum)

@@ -196,6 +196,8 @@ var EFILEDASH_USER_AKTIF = "";
 var EFILEDASH_IS_ADMIN = false;
 var EFILEDASH_UNIT_TERKUNCI = ""; 
 var EFILEDASH_USER_NPSN = "";
+var EFILEDASH_USE_NPSN_FILTER = false;
+var EFILEDASH_TAHUN_DEFAULTED = false;
 
 // =================================================================
 // 1. INITIALIZATION & DELEGATION
@@ -215,7 +217,8 @@ $(document).ready(function() {
     } catch(e) { EFILEDASH_USER_NPSN = ""; EFILEDASH_IS_ADMIN = false; }
     
     $(document).off('click', '#efiledash_btnRefresh').on('click', '#efiledash_btnRefresh', function() {
-        var k = $('#efiledash_filterKategori').val(); if(k) efiledash_loadDataKategori(k);
+        var k = $('#efiledash_filterKategori').val();
+        if (k !== "" && k != null) efiledash_loadDataKategori(k, true);
     }); 
     
     $(document).off('change', '#efiledash_filterKategori').on('change', '#efiledash_filterKategori', function() {
@@ -251,10 +254,22 @@ function efiledash_initMasterAccess() {
         if(!res.success) { $('#efiledash_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>' + efiledash_escapeHtml(res.message) + '</span>'); return; }
         
         EFILEDASH_KATEGORI_MAP = res.kategori || [];
-        if (!EFILEDASH_IS_ADMIN && res.myUnit) {
-            EFILEDASH_UNIT_TERKUNCI = res.myUnit;
-            $('#efiledash_filterContainer').show();
-            $('#efiledash_filterUnit').empty().append($('<option>', {value: EFILEDASH_USER_NPSN, text: EFILEDASH_UNIT_TERKUNCI})).prop('disabled', true);
+        if (!EFILEDASH_IS_ADMIN) {
+            if (res.myUnit) {
+                EFILEDASH_UNIT_TERKUNCI = res.myUnit;
+                EFILEDASH_USE_NPSN_FILTER = false;
+                $('#efiledash_filterContainer').show();
+                $('#efiledash_filterUnit').empty().append($('<option>', { value: EFILEDASH_USER_NPSN, text: EFILEDASH_UNIT_TERKUNCI })).prop('disabled', true);
+            } else {
+                // Fallback: filter via NPSN di sheet rekap (hindari tampil semua unit)
+                EFILEDASH_USE_NPSN_FILTER = true;
+                EFILEDASH_UNIT_TERKUNCI = "";
+                $('#efiledash_filterContainer').show();
+                $('#efiledash_filterUnit').empty().append($('<option>', {
+                    value: EFILEDASH_USER_NPSN,
+                    text: 'Unit Anda (NPSN: ' + EFILEDASH_USER_NPSN + ')'
+                })).prop('disabled', true);
+            }
         }
 
         if(EFILEDASH_KATEGORI_MAP.length === 0) {
@@ -278,9 +293,10 @@ function efiledash_initMasterAccess() {
 // =================================================================
 // 3. FETCH DATA SPESIFIK KATEGORI
 // =================================================================
-function efiledash_loadDataKategori(indexMap) {
+function efiledash_loadDataKategori(indexMap, forceRefresh) {
     if (EFILEDASH_PENDING_REQ > 0) return; 
     EFILEDASH_PENDING_REQ = 1;
+    forceRefresh = !!forceRefresh;
 
     var mapData = EFILEDASH_KATEGORI_MAP[indexMap];
     if(!mapData) return;
@@ -337,7 +353,7 @@ function efiledash_loadDataKategori(indexMap) {
         EFILEDASH_PENDING_REQ = 0; btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
         $('#efiledash_filterKategori').prop('disabled', false);
         $('#efiledash_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Terputus: ' + efiledash_escapeHtml(err.message) + '</span>');
-    }).getEfileDashboardData(mapData.sheetRekap, mapData.sheetLapor); 
+    }).getEfileDashboardData(mapData.sheetRekap, mapData.sheetLapor, forceRefresh); 
 }
 
 function efiledash_initDropdownUnit() {
@@ -353,33 +369,90 @@ function efiledash_initDropdownUnit() {
 function efiledash_initDropdownTahun() {
     var unique = new Set();
     EFILEDASH_CACHE_REKAP.forEach(function(r) { var thn = String(r.tahun || "").trim(); if(thn) unique.add(thn); });
-    var sorted = Array.from(unique).sort().reverse(); // Terbaru di atas
+    var sorted = Array.from(unique).sort(function(a, b) {
+        var na = parseInt(a, 10), nb = parseInt(b, 10);
+        if (!isNaN(na) && !isNaN(nb)) return nb - na;
+        return String(b).localeCompare(String(a));
+    });
     var select = $('#efiledash_filterTahun'); var curVal = select.val();
     select.empty().append('<option value="SEMUA">- Semua Tahun -</option>');
     sorted.forEach(function(t) { select.append(`<option value="${efiledash_escapeHtml(t)}">${efiledash_escapeHtml(t)}</option>`); });
-    if(curVal && unique.has(curVal)) { select.val(curVal); }
+    if (!EFILEDASH_TAHUN_DEFAULTED && sorted.length > 0) {
+        select.val(sorted[0]);
+        EFILEDASH_TAHUN_DEFAULTED = true;
+    } else if (curVal && (curVal === "SEMUA" || unique.has(curVal))) {
+        select.val(curVal);
+    }
+}
+
+/** Unit yang boleh dilihat operator (filter NPSN dari sheet rekap). */
+function efiledash_getUnitSetByNpsn() {
+    var units = new Set();
+    var npsnUser = String(EFILEDASH_USER_NPSN || "").trim().toUpperCase();
+    EFILEDASH_CACHE_REKAP.forEach(function(r) {
+        if (String(r.npsn || "").trim().toUpperCase() === npsnUser) {
+            var u = String(r.unit || "").trim().toUpperCase();
+            if (u) units.add(u);
+        }
+    });
+    return units;
+}
+
+function efiledash_rowMatchesUnit(r, fUnitAdmin) {
+    if (fUnitAdmin === "SEMUA" || fUnitAdmin === "") return true;
+    if (EFILEDASH_USE_NPSN_FILTER && !EFILEDASH_IS_ADMIN) {
+        var npsnUser = String(EFILEDASH_USER_NPSN || "").trim().toUpperCase();
+        if (String(r.npsn || "").trim().toUpperCase() === npsnUser) return true;
+        var allowed = efiledash_getUnitSetByNpsn();
+        return allowed.has(String(r.unit || "").trim().toUpperCase());
+    }
+    return String(r.unit || "").trim().toUpperCase() === fUnitAdmin;
+}
+
+/** Saat filter Semua Tahun: kartu metrik pakai tahun terbaru agar tidak double-count. */
+function efiledash_getRekapForMetrics(dataRekap, fTahun) {
+    if (fTahun !== "SEMUA" && fTahun !== "") return dataRekap;
+    var maxTahun = "";
+    var maxNum = -Infinity;
+    dataRekap.forEach(function(r) {
+        var t = String(r.tahun || "").trim();
+        var n = parseInt(t, 10);
+        if (!isNaN(n)) {
+            if (n > maxNum) { maxNum = n; maxTahun = t; }
+        } else if (t && (!maxTahun || t.localeCompare(maxTahun) > 0)) {
+            maxTahun = t;
+        }
+    });
+    if (!maxTahun) return dataRekap;
+    return dataRekap.filter(function(r) { return String(r.tahun || "").trim() === maxTahun; });
 }
 
 // =================================================================
 // 4. ZERO-BLINK FILTERING
 // =================================================================
 function efiledash_terapkanFilterLokal() {
-    var fUnit = EFILEDASH_IS_ADMIN ? String($('#efiledash_filterUnit').val() || "").trim().toUpperCase() : String(EFILEDASH_UNIT_TERKUNCI).trim().toUpperCase();
+    var fUnit = EFILEDASH_IS_ADMIN
+        ? String($('#efiledash_filterUnit').val() || "").trim().toUpperCase()
+        : (EFILEDASH_USE_NPSN_FILTER ? "" : String(EFILEDASH_UNIT_TERKUNCI).trim().toUpperCase());
+    if (!EFILEDASH_IS_ADMIN && EFILEDASH_USE_NPSN_FILTER) {
+        fUnit = String($('#efiledash_filterUnit').val() || EFILEDASH_USER_NPSN).trim().toUpperCase();
+        if (fUnit !== "SEMUA" && fUnit !== EFILEDASH_USER_NPSN.toUpperCase()) fUnit = EFILEDASH_USER_NPSN.toUpperCase();
+    }
     var fTahun = String($('#efiledash_filterTahun').val() || "").trim().toUpperCase();
     
     var filterRekap = EFILEDASH_CACHE_REKAP.filter(function(r) {
-        if (fUnit !== "SEMUA" && fUnit !== "" && String(r.unit || "").trim().toUpperCase() !== fUnit) return false;
+        if (!efiledash_rowMatchesUnit(r, fUnit)) return false;
         if (fTahun !== "SEMUA" && fTahun !== "" && String(r.tahun || "").trim().toUpperCase() !== fTahun) return false;
         return true;
     });
 
     var filterBelum = EFILEDASH_CACHE_BELUM.filter(function(r) {
-        if (fUnit !== "SEMUA" && fUnit !== "" && String(r.unit || "").trim().toUpperCase() !== fUnit) return false;
+        if (!efiledash_rowMatchesUnit(r, fUnit)) return false;
         if (fTahun !== "SEMUA" && fTahun !== "" && String(r.tahun || "").trim().toUpperCase() !== fTahun) return false;
         return true;
     });
 
-    efiledash_renderDashboard(filterRekap, filterBelum);
+    efiledash_renderDashboard(filterRekap, filterBelum, fTahun);
 }
 
 function efiledash_animateValue(id, end) {
@@ -398,8 +471,15 @@ function efiledash_animateValue(id, end) {
     window.requestAnimationFrame(step);
 }
 
-function efiledash_renderInsight(totAsn, totSudah, totBelum) {
+function efiledash_renderInsight(totAsn, totSudah, totBelum, metricsTahunLabel) {
     var insightHtml = '';
+    if (metricsTahunLabel) {
+        insightHtml += `
+            <div class="sultan-alert alert-soft-info mb-2">
+                <i class="fas fa-info-circle mr-3 mt-1" style="font-size: 18px;"></i>
+                <div class="small">Kartu ringkasan dihitung untuk <strong>tahun ${efiledash_escapeHtml(metricsTahunLabel)}</strong>. Tabel dan daftar mengikuti filter tahun yang dipilih.</div>
+            </div>`;
+    }
     var persenTotal = totAsn === 0 ? 0 : Math.round((totSudah / totAsn) * 100);
     
     if (persenTotal >= 90) {
@@ -445,7 +525,7 @@ function efiledash_renderInsight(totAsn, totSudah, totBelum) {
             <div class="sultan-alert alert-soft-warning mt-2">
                 <i class="fas fa-users mr-3 mt-1" style="font-size: 20px;"></i>
                 <div>
-                    <div class="font-weight-bold mb-1">Terdapat <strong>${totBelum}</strong> pegawai yang belum unggah</div>
+                    <div class="font-weight-bold mb-1">Masih ada pegawai yang belum unggah (rekap: <strong>${totBelum}</strong>)</div>
                     <div class="small">Silakan cek daftar di bawah dan hubungi mereka untuk segera mengunggah berkas.</div>
                 </div>
             </div>`;
@@ -460,16 +540,27 @@ function efiledash_updateLastUpdate() {
     $('#efiledash_lastUpdate').html('<i class="far fa-clock mr-1"></i>Terakhir diperbarui: ' + now.toLocaleDateString('id-ID', options));
 }
 
-function efiledash_renderDashboard(dataRekap, dataBelum) {
+function efiledash_renderDashboard(dataRekap, dataBelum, fTahun) {
+    fTahun = String(fTahun || $('#efiledash_filterTahun').val() || "").trim().toUpperCase();
+    var rekapMetrics = efiledash_getRekapForMetrics(dataRekap, fTahun);
+    var metricsTahunLabel = "";
+    if (fTahun === "SEMUA" && rekapMetrics.length && dataRekap.length > rekapMetrics.length) {
+        metricsTahunLabel = String(rekapMetrics[0].tahun || "").trim();
+    }
+
     var totAsn = 0, totSudah = 0, totBelum = 0;
     var dtArray = [];
+
+    rekapMetrics.forEach(function(r) {
+        totAsn += parseInt(r.jml) || 0;
+        totSudah += parseInt(r.sudah) || 0;
+        totBelum += parseInt(r.belum) || 0;
+    });
 
     dataRekap.forEach(function(r) {
         var cAsn = parseInt(r.jml) || 0;
         var cSudah = parseInt(r.sudah) || 0;
         var cBelum = parseInt(r.belum) || 0;
-        
-        totAsn += cAsn; totSudah += cSudah; totBelum += cBelum;
 
         var persen = cAsn === 0 ? 0 : Math.round((cSudah / cAsn) * 100);
         var bgProgress = persen >= 80 ? 'bg-success' : (persen >= 50 ? 'bg-warning' : 'bg-danger');
@@ -482,7 +573,10 @@ function efiledash_renderDashboard(dataRekap, dataBelum) {
                 </div>
             </div>`;
         
-        var txtUnit = EFILEDASH_IS_ADMIN ? `<div class="font-weight-bold text-dark text-wrap" style="font-size:13px;">${efiledash_escapeHtml(r.unit)}</div><div class="text-muted" style="font-size:13px;">Tahun ${r.tahun}</div>` : `<div class="font-weight-bold text-dark text-wrap" style="font-size:13px;">${efiledash_escapeHtml(r.unit)}</div>`;
+        var showTahunSub = EFILEDASH_IS_ADMIN || fTahun === "SEMUA";
+        var txtUnit = showTahunSub
+            ? `<div class="font-weight-bold text-dark text-wrap" style="font-size:13px;">${efiledash_escapeHtml(r.unit)}</div><div class="text-muted" style="font-size:13px;">Tahun ${efiledash_escapeHtml(r.tahun)}</div>`
+            : `<div class="font-weight-bold text-dark text-wrap" style="font-size:13px;">${efiledash_escapeHtml(r.unit)}</div>`;
 
         dtArray.push([
             txtUnit,
@@ -497,7 +591,7 @@ function efiledash_renderDashboard(dataRekap, dataBelum) {
     efiledash_animateValue('efiledash_cardSudah', totSudah);
     efiledash_animateValue('efiledash_cardBelum', totBelum);
     
-    efiledash_renderInsight(totAsn, totSudah, totBelum);
+    efiledash_renderInsight(totAsn, totSudah, totBelum, metricsTahunLabel);
     efiledash_updateLastUpdate();
 
     if (EFILEDASH_TABEL_INSTANCE) { EFILEDASH_TABEL_INSTANCE.clear().rows.add(dtArray).draw(false); }
