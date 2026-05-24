@@ -49,23 +49,23 @@
     <div class="row justify-content-center">
       <div class="col-12">
 
-        <div class="sultan-filter-pill-container shadow-sm mb-4">
+        <div class="sultan-filter-pill-container shadow-sm mb-4 sultan-page-transition">
             <div class="sultan-filter-item">
-                <select id="efiledash_filterKategori" class="form-control">
+                <select id="efiledash_filterKategori" class="form-control" aria-label="Pilih Kategori E-File">
                     <option value="">- Memuat Kategori... -</option>
                 </select>
                 <i class="fas fa-chevron-down"></i>
             </div>
 
             <div class="sultan-filter-item">
-                <select id="efiledash_filterTahun" class="form-control">
+                <select id="efiledash_filterTahun" class="form-control" aria-label="Pilih Tahun">
                     <option value="SEMUA">- Semua Tahun -</option>
                 </select>
                 <i class="fas fa-chevron-down"></i>
             </div>
 
             <div class="sultan-filter-item" id="efiledash_filterContainer" style="display: none;">
-                <select id="efiledash_filterUnit" class="form-control" disabled>
+                <select id="efiledash_filterUnit" class="form-control" disabled aria-label="Pilih Unit Kerja">
                     <option value="">- Memvalidasi Akses... -</option>
                 </select>
                 <i class="fas fa-chevron-down"></i>
@@ -266,9 +266,9 @@ function efiledash_initMasterAccess() {
                 EFILEDASH_UNIT_TERKUNCI = "";
                 $('#efiledash_filterContainer').show();
                 $('#efiledash_filterUnit').empty().append($('<option>', {
-                    value: EFILEDASH_USER_NPSN,
-                    text: 'Unit Anda (NPSN: ' + EFILEDASH_USER_NPSN + ')'
-                })).prop('disabled', true);
+                    value: "SEMUA",
+                    text: '- Semua Unit Kerja Anda -'
+                })).prop('disabled', false);
             }
         }
 
@@ -316,7 +316,7 @@ function efiledash_loadDataKategori(indexMap, forceRefresh) {
         EFILEDASH_PENDING_REQ = 0;
         btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
         $('#efiledash_filterKategori, #efiledash_filterTahun').prop('disabled', false);
-        if(EFILEDASH_IS_ADMIN) $('#efiledash_filterUnit').prop('disabled', false);
+        if(EFILEDASH_IS_ADMIN || EFILEDASH_USE_NPSN_FILTER) $('#efiledash_filterUnit').prop('disabled', false);
         
         var data = JSON.parse(jsonStr);
         if (!data.success) { 
@@ -326,7 +326,7 @@ function efiledash_loadDataKategori(indexMap, forceRefresh) {
         EFILEDASH_CACHE_REKAP = data.rekap || [];
         EFILEDASH_CACHE_BELUM = data.belum || [];
         
-        if (EFILEDASH_IS_ADMIN) efiledash_initDropdownUnit();
+        if (EFILEDASH_IS_ADMIN || EFILEDASH_USE_NPSN_FILTER) efiledash_initDropdownUnit();
         efiledash_initDropdownTahun();
 
         if (!$.fn.DataTable.isDataTable('#efiledash_tabelRekap')) {
@@ -358,12 +358,27 @@ function efiledash_loadDataKategori(indexMap, forceRefresh) {
 
 function efiledash_initDropdownUnit() {
     var unique = new Set();
-    EFILEDASH_CACHE_REKAP.forEach(function(r) { var unit = String(r.unit || "").trim(); if(unit) unique.add(unit); });
+    var npsnUser = String(EFILEDASH_USER_NPSN || "").trim().toUpperCase();
+    EFILEDASH_CACHE_REKAP.forEach(function(r) {
+        var unit = String(r.unit || "").trim();
+        if (unit) {
+            if (EFILEDASH_IS_ADMIN) {
+                unique.add(unit);
+            } else if (EFILEDASH_USE_NPSN_FILTER && String(r.npsn || "").trim().toUpperCase() === npsnUser) {
+                unique.add(unit);
+            }
+        }
+    });
     var sorted = Array.from(unique).sort();
     var select = $('#efiledash_filterUnit'); var curVal = select.val();
-    select.empty().append('<option value="SEMUA">- Semua Unit Kerja -</option>');
+    var labelSemua = EFILEDASH_IS_ADMIN ? "- Semua Unit Kerja -" : "- Semua Unit Kerja Anda -";
+    select.empty().append(`<option value="SEMUA">${labelSemua}</option>`);
     sorted.forEach(function(u) { select.append(`<option value="${efiledash_escapeHtml(u)}">${efiledash_escapeHtml(u)}</option>`); });
-    if(curVal && unique.has(curVal)) { select.val(curVal); }
+    if (sorted.length === 1) {
+        select.val(sorted[0]);
+    } else if (curVal && unique.has(curVal)) {
+        select.val(curVal);
+    }
 }
 
 function efiledash_initDropdownTahun() {
@@ -399,13 +414,21 @@ function efiledash_getUnitSetByNpsn() {
 }
 
 function efiledash_rowMatchesUnit(r, fUnitAdmin) {
-    if (fUnitAdmin === "SEMUA" || fUnitAdmin === "") return true;
-    if (EFILEDASH_USE_NPSN_FILTER && !EFILEDASH_IS_ADMIN) {
-        var npsnUser = String(EFILEDASH_USER_NPSN || "").trim().toUpperCase();
-        if (String(r.npsn || "").trim().toUpperCase() === npsnUser) return true;
-        var allowed = efiledash_getUnitSetByNpsn();
-        return allowed.has(String(r.unit || "").trim().toUpperCase());
+    if (fUnitAdmin === "SEMUA" || fUnitAdmin === "") {
+        if (EFILEDASH_USE_NPSN_FILTER && !EFILEDASH_IS_ADMIN) {
+            var npsnUser = String(EFILEDASH_USER_NPSN || "").trim().toUpperCase();
+            if (String(r.npsn || "").trim().toUpperCase() === npsnUser) return true;
+            var allowed = efiledash_getUnitSetByNpsn();
+            return allowed.has(String(r.unit || "").trim().toUpperCase());
+        }
+        return true;
     }
+    
+    if (EFILEDASH_USE_NPSN_FILTER && !EFILEDASH_IS_ADMIN) {
+        var allowed = efiledash_getUnitSetByNpsn();
+        if (!allowed.has(fUnitAdmin)) return false;
+    }
+    
     return String(r.unit || "").trim().toUpperCase() === fUnitAdmin;
 }
 
@@ -431,12 +454,13 @@ function efiledash_getRekapForMetrics(dataRekap, fTahun) {
 // 4. ZERO-BLINK FILTERING
 // =================================================================
 function efiledash_terapkanFilterLokal() {
-    var fUnit = EFILEDASH_IS_ADMIN
-        ? String($('#efiledash_filterUnit').val() || "").trim().toUpperCase()
-        : (EFILEDASH_USE_NPSN_FILTER ? "" : String(EFILEDASH_UNIT_TERKUNCI).trim().toUpperCase());
-    if (!EFILEDASH_IS_ADMIN && EFILEDASH_USE_NPSN_FILTER) {
-        fUnit = String($('#efiledash_filterUnit').val() || EFILEDASH_USER_NPSN).trim().toUpperCase();
-        if (fUnit !== "SEMUA" && fUnit !== EFILEDASH_USER_NPSN.toUpperCase()) fUnit = EFILEDASH_USER_NPSN.toUpperCase();
+    var fUnit = "";
+    if (EFILEDASH_IS_ADMIN) {
+        fUnit = String($('#efiledash_filterUnit').val() || "").trim().toUpperCase();
+    } else if (EFILEDASH_USE_NPSN_FILTER) {
+        fUnit = String($('#efiledash_filterUnit').val() || "SEMUA").trim().toUpperCase();
+    } else {
+        fUnit = String(EFILEDASH_UNIT_TERKUNCI || "").trim().toUpperCase();
     }
     var fTahun = String($('#efiledash_filterTahun').val() || "").trim().toUpperCase();
     
@@ -460,15 +484,27 @@ function efiledash_animateValue(id, end) {
     if(!obj) return;
     var start = 0; 
     var duration = 1000; 
+    
+    // Cancel any ongoing animation for this element to prevent overlapping flicker
+    if (obj.dataset.efiledashAnimId) {
+        cancelAnimationFrame(parseInt(obj.dataset.efiledashAnimId, 10));
+    }
+    
     var startTime = null;
     
     function step(timestamp) {
         if (!startTime) startTime = timestamp;
         var progress = Math.min((timestamp - startTime) / duration, 1);
         obj.innerHTML = Math.floor(progress * (end - start) + start).toLocaleString('id-ID');
-        if (progress < 1) window.requestAnimationFrame(step);
+        if (progress < 1) {
+            var animId = window.requestAnimationFrame(step);
+            obj.dataset.efiledashAnimId = animId;
+        } else {
+            obj.dataset.efiledashAnimId = "";
+        }
     }
-    window.requestAnimationFrame(step);
+    var firstAnimId = window.requestAnimationFrame(step);
+    obj.dataset.efiledashAnimId = firstAnimId;
 }
 
 function efiledash_renderInsight(totAsn, totSudah, totBelum, metricsTahunLabel) {
@@ -630,7 +666,7 @@ function efiledash_salinKeWA() {
     
     var selNamaKat = $('#efiledash_filterKategori option:selected').text();
     var selTahun = $('#efiledash_filterTahun').val() === "SEMUA" ? "Semua Tahun" : $('#efiledash_filterTahun').val();
-    var selUnitFilter = EFILEDASH_IS_ADMIN ? $('#efiledash_filterUnit').val() : EFILEDASH_UNIT_TERKUNCI;
+    var selUnitFilter = (EFILEDASH_IS_ADMIN || EFILEDASH_USE_NPSN_FILTER) ? $('#efiledash_filterUnit').val() : EFILEDASH_UNIT_TERKUNCI;
     var namaUnitDisplay = (selUnitFilter === "SEMUA" || selUnitFilter === "") ? "Seluruh Unit" : selUnitFilter;
     
     var teks = `🚨 *DAFTAR BELUM UNGGAH E-FILE* 🚨\n`;
