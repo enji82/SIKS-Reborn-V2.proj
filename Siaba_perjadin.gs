@@ -349,6 +349,7 @@ function getNotifikasiPerdin(role, unit) {
 
     for (var i = 1; i < data.length; i++) {
         var row = data[i];
+        if (String(row[1] || "").trim() === "") continue; // Skip empty rows
         var status = String(row[9] || "").trim();
         var isDiproses = (status === "Diproses" || status === "");
         var isTarget = false;
@@ -444,6 +445,7 @@ function tandaiSemuaNotifPerdinDibaca(role, unit) {
     
     for (var i = 1; i < data.length; i++) {
         var row = data[i];
+        if (String(row[1] || "").trim() === "") continue; // Skip empty rows
         var status = String(row[9] || "").trim();
         var isDiproses = (status === "Diproses" || status === "");
         var isTarget = isAdmin ? isDiproses : (String(row[12]).trim().toUpperCase() === String(unit).trim().toUpperCase() && !isDiproses);
