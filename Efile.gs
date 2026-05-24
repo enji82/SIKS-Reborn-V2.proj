@@ -17,7 +17,8 @@ function getEfileMasterData(npsnFilter) {
             resKat.push({ 
                 idKat: dataKat[i][0], namaKat: dataKat[i][1], parent: dataKat[i][2],
                 format: dataKat[i][3] ? String(dataKat[i][3]).trim().toUpperCase() : "PDF",
-                jenisPeriode: dataKat[i][4] ? String(dataKat[i][4]).trim().toUpperCase() : "" 
+                jenisPeriode: dataKat[i][4] ? String(dataKat[i][4]).trim().toUpperCase() : "",
+                statusPegawaiWajib: dataKat[i][5] ? String(dataKat[i][5]).trim() : ""
             });
         }
     }
@@ -42,6 +43,24 @@ function getEfileMasterData(npsnFilter) {
 
 function getEfileData(npsnFilter) {
   try {
+    // 1. Load Database_PTK dan buat map untuk lookup cepat
+    var shPtk = getSheet(KONFIG_EFILE.DB_KEY, "Database_PTK");
+    var dataPtk = shPtk ? shPtk.getDataRange().getDisplayValues() : [];
+    var ptkMap = {}; // key: id_ptk, value: {npsn, unit, status, nama, nip}
+    for(var j=1; j<dataPtk.length; j++) {
+        var idPtk = String(dataPtk[j][0]).trim();
+        if(idPtk) {
+            ptkMap[idPtk] = {
+                npsn: dataPtk[j][4],
+                unit: dataPtk[j][5],
+                status: dataPtk[j][2],
+                nama: dataPtk[j][1],
+                nip: dataPtk[j][3]
+            };
+        }
+    }
+    
+    // 2. Load Database_Efile
     var sheet = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile");
     if(!sheet) return JSON.stringify({ success: false, message: "Sheet Database_Efile tidak ditemukan." });
     
@@ -50,12 +69,33 @@ function getEfileData(npsnFilter) {
     var targetNpsn = String(npsnFilter || "").trim().toUpperCase();
     
     for(var i=1; i<data.length; i++) {
-        var rNpsn = String(data[i][11]).trim().toUpperCase(); 
+        var idPtkEfile = String(data[i][0]).trim();
+        var ptkInfo = ptkMap[idPtkEfile];
+        
+        // Skip jika PTK tidak ditemukan di Database_PTK
+        if(!ptkInfo) continue;
+        
+        // Filter berdasarkan NPSN dari Database_PTK (bukan dari Database_Efile)
+        var rNpsn = String(ptkInfo.npsn || "").trim().toUpperCase();
         if (targetNpsn === "" || targetNpsn === "SEMUA" || rNpsn === targetNpsn) {
             result.push({
-                rowId: i + 1, id_ptk: data[i][0], nama: data[i][1], id_kategori: data[i][2], nama_kategori: data[i][3],
-                tahun: data[i][4], file_name: data[i][5], url: data[i][6], status: data[i][7], catatan: data[i][8],
-                tgl_upload: data[i][9], uploader: data[i][10], npsn: data[i][11], tgl_verif: data[i][12] || "-", verifikator: data[i][13] || "-",
+                rowId: i + 1, 
+                id_ptk: idPtkEfile, 
+                nama: ptkInfo.nama, // Gunakan nama dari Database_PTK
+                id_kategori: data[i][2], 
+                nama_kategori: data[i][3],
+                tahun: data[i][4], 
+                file_name: data[i][5], 
+                url: data[i][6], 
+                status: data[i][7], 
+                catatan: data[i][8],
+                tgl_upload: data[i][9], 
+                uploader: data[i][10], 
+                npsn: ptkInfo.npsn, // Gunakan NPSN dari Database_PTK
+                unit: ptkInfo.unit, // Tambahkan unit dari Database_PTK
+                statusPegawai: ptkInfo.status, // Tambahkan status pegawai dari Database_PTK
+                tgl_verif: data[i][12] || "-", 
+                verifikator: data[i][13] || "-",
                 periode: data[i][14] || "-" 
             });
         }
@@ -264,7 +304,7 @@ function getEfileViewerData(keyword, npsnFilter) {
     var dataPtk = shPtk.getDataRange().getDisplayValues(); 
     var ptkFound = null;
 
-    for(var i = 1; i < dataPtk.length; i++) {
+    for(var i=1; i<dataPtk.length; i++) {
         var rNpsn = String(dataPtk[i][4]).trim().toUpperCase(); 
         var rUnit = String(dataPtk[i][5]).trim().toUpperCase(); 
         var rId   = String(dataPtk[i][0]).toLowerCase(); 
@@ -280,7 +320,8 @@ function getEfileViewerData(keyword, npsnFilter) {
                 nama: dataPtk[i][1], 
                 nip: dataPtk[i][3], 
                 npsn: dataPtk[i][4], 
-                unit: dataPtk[i][5] 
+                unit: dataPtk[i][5],
+                status: dataPtk[i][2] // Tambahkan status pegawai
             }; 
             break; 
         }
@@ -293,7 +334,12 @@ function getEfileViewerData(keyword, npsnFilter) {
     var categories = [];
     for(var k = 1; k < dataKat.length; k++) { 
         if(String(dataKat[k][0]).trim() !== "") {
-            categories.push({ idKat: dataKat[k][0], namaKat: dataKat[k][1], parent: dataKat[k][2] }); 
+            categories.push({ 
+                idKat: dataKat[k][0], 
+                namaKat: dataKat[k][1], 
+                parent: dataKat[k][2],
+                statusPegawaiWajib: dataKat[k][5] ? String(dataKat[k][5]).trim() : ""
+            }); 
         }
     }
  

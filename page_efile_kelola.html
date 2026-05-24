@@ -166,6 +166,7 @@
 <script>
 var EFILEKELOLA_CACHE_DATA = [], EFILEKELOLA_MASTER_PTK = [], EFILEKELOLA_MASTER_KAT = [], EFILEKELOLA_TABEL_INSTANCE = null, EFILEKELOLA_ROW_COUNT = 0; 
 var EFILEKELOLA_USER_AKTIF = "", EFILEKELOLA_IS_ADMIN = false, EFILEKELOLA_UNIT_TERKUNCI = "", EFILEKELOLA_NPSN_TERKUNCI = "", EFILEKELOLA_SELECTED_PTK_FILES = [];
+var EFILEKELOLA_SELECTED_PTK_STATUS = ""; // Tambahkan variabel untuk status pegawai yang dipilih
 
 $(document).ready(function() {
     $('#efilekelola_tableState').hide(); SultanUI.showLoading('#efilekelola_loadingState');
@@ -371,6 +372,10 @@ function efilekelola_searchPtkLocal() {
 
 function efilekelola_pilihPtk(e) {
     e.preventDefault(); var $i = $(this); var id = $i.attr('data-id'); var nm = $i.attr('data-nama'); var np = $i.attr('data-nip') || '-';
+    // Dapatkan data pegawai yang dipilih termasuk statusnya
+    var ptkData = EFILEKELOLA_MASTER_PTK.find(p => String(p.id_ptk).trim() === id);
+    EFILEKELOLA_SELECTED_PTK_STATUS = ptkData ? ptkData.status : "";
+    
     $('#efilekelola_in_ptk').val(id); 
     $('#efilekelola_in_ptk_search').val(`${nm} [NIP: ${np}]`).attr('readonly', 'readonly').removeClass('border-maroon text-dark').addClass('border-success text-success bg-white');
     $('#efilekelola_btnResetPtk').show();
@@ -387,14 +392,26 @@ function efilekelola_resetPtkContext() {
     $('#efilekelola_btnResetPtk').hide(); 
     $('#efilekelola_ptk_results').empty().hide(); 
     EFILEKELOLA_SELECTED_PTK_FILES = []; 
+    EFILEKELOLA_SELECTED_PTK_STATUS = ""; // Reset status pegawai yang dipilih
     $('#efilekelola_uploadContainer').empty();
     $('#efilekelola_msgPilihPtk').show(); 
     $('#efilekelola_btnAddRow, #efilekelola_btnSimpan').prop('disabled', true);
 }
 
-function efilekelola_getKategoriOptionsHTML() {
+function efilekelola_getKategoriOptionsHTML(statusPegawai) {
     var html = '<option value="">- Pilih Kategori -</option>';
-    EFILEKELOLA_MASTER_KAT.forEach(function(k) { html += `<option value="${k.idKat}">${k.namaKat} (${k.parent})</option>`; });
+    EFILEKELOLA_MASTER_KAT.forEach(function(k) {
+        // Filter kategori: jika statusPegawaiWajib kosong, tampilkan semua
+        // Jika tidak, cek apakah status pegawai termasuk dalam daftar
+        var isRelevant = true;
+        if(k.statusPegawaiWajib && k.statusPegawaiWajib.trim() !== "") {
+            var statusList = k.statusPegawaiWajib.split(',').map(function(s) { return s.trim().toLowerCase(); });
+            isRelevant = statusList.includes(statusPegawai.toLowerCase());
+        }
+        if(isRelevant) {
+            html += `<option value="${k.idKat}">${k.namaKat} (${k.parent})</option>`;
+        }
+    });
     return html;
 }
 
@@ -402,7 +419,7 @@ function efilekelola_createUploadRow() { efilekelola_createUploadRowContext($('#
 function efilekelola_createUploadRowContext($c) {
     if ($c.find('.efilekelola-upload-row').length >= 10) { Sultan.notif.info('Maksimal 10 berkas.'); return; }
     EFILEKELOLA_ROW_COUNT++; var rId = "uprow_" + EFILEKELOLA_ROW_COUNT;
-    var htmlKat = efilekelola_getKategoriOptionsHTML();
+    var htmlKat = efilekelola_getKategoriOptionsHTML(EFILEKELOLA_SELECTED_PTK_STATUS);
     var delBtn = EFILEKELOLA_ROW_COUNT > 1 ? `<button type="button" class="btn btn-sm btn-danger px-3 efilekelola-btn-del-row"><i class="fas fa-trash"></i></button>` : `<div style="width: 42px;"></div>`; 
 
     var htmlRow = `

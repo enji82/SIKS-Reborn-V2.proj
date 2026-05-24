@@ -290,7 +290,7 @@ function efileviewer_loadPtkData(id_ptk) {
         $('#efileviewer_lblUnit').text(res.ptk.unit);
         $('#efileviewer_identityBar').removeClass('d-none');
 
-        efileviewer_buildTree(res.categories, res.files);
+        efileviewer_buildTree(res.categories, res.files, res.ptk.status);
 
     }).withFailureHandler(function(err){
         $('#efileviewer_treeLoading').removeClass('d-flex').addClass('d-none');
@@ -302,10 +302,19 @@ function efileviewer_loadPtkData(id_ptk) {
 // =================================================================
 // 4. TREE BUILDER ALGORITHM (PERBAIKAN NAMA FILE DITAMPILKAN)
 // =================================================================
-function efileviewer_buildTree(categories, files) {
+function efileviewer_buildTree(categories, files, statusPegawai) {
     var treeHtml = '';
 
     categories.forEach(function(kat) {
+        // Filter kategori berdasarkan status pegawai
+        var isRelevant = true;
+        if(kat.statusPegawaiWajib && kat.statusPegawaiWajib.trim() !== "") {
+            var statusList = kat.statusPegawaiWajib.split(',').map(function(s) { return s.trim().toLowerCase(); });
+            isRelevant = statusList.includes(statusPegawai.toLowerCase());
+        }
+        
+        if(!isRelevant) return; // Skip kategori yang tidak relevan
+        
         var catFiles = files.filter(f => String(f.id_kategori).trim() === String(kat.idKat).trim());
         var countAda = catFiles.length;
         var countKosong = countAda > 0 ? 0 : 1; 
