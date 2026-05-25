@@ -271,62 +271,6 @@
         </div>
     </form>
 
-    <form id="tugas_formHapus">
-        <div class="modal-body modal-body-sultan" style="padding-top: 15px !important;">
-            <input type="hidden" id="tugas_hapusRowId">
-            <div class="sultan-alert sultan-alert-danger w-100 mb-3 p-3 border-radius-sultan d-flex align-items-center">
-                <i class="fas fa-exclamation-triangle mr-3 fa-lg"></i>
-                <div>
-                    <span class="font-weight-bold">PERINGATAN!</span> Anda akan menghapus data SK dan File PDF secara permanen. Tindakan ini tidak dapat dibatalkan.
-                </div>
-            </div>
-
-            <div class="row px-1 mb-3">
-                <div class="col-12 mb-3">
-                    <label class="form-label-sultan mb-0">Unit Kerja</label>
-                    <div class="font-weight-bold h6 mb-0" id="tugas_hNamaSd">-</div>
-                </div>
-                <div class="col-6 mb-3">
-                    <label class="form-label-sultan mb-0">Tahun / Smt</label>
-                    <div class="font-weight-bold" id="tugas_hPeriode">-</div>
-                </div>
-                <div class="col-6 mb-3">
-                    <label class="form-label-sultan mb-0">Jenis SK</label>
-                    <div class="font-weight-bold" id="tugas_hKriteria">-</div>
-                </div>
-                <div class="col-12 mb-3">
-                    <label class="form-label-sultan mb-0">Nomor SK</label>
-                    <div class="font-weight-bold h6 mb-0 text-sultan-danger" id="tugas_hNoSk"
-                        style="word-break: break-all;">-</div>
-                </div>
-            </div>
-
-            <div class="col-12">
-                <hr class="my-3 style-sultan-dashed">
-            </div>
-            <div class="form-group mb-0">
-                <label class="form-label-sultan">Kode Keamanan <span
-                        style="color: var(--sultan-aksi-danger);">*</span></label>
-                <div class="input-group mb-2">
-                    <div class="input-group-prepend"><span class="input-group-text bg-light border-right-0"><i
-                                class="fas fa-key" style="color: var(--sultan-aksi-danger);"></i></span></div>
-                    <input type="password" id="tugas_inputKodeHapus"
-                        class="form-control form-control-sultan border-left-0 text-center font-weight-bold"
-                        placeholder="Ketik kode validasi..." required autocomplete="off">
-                </div>
-                <small class="opacity-75"><i class="fas fa-info-circle mr-1"></i> Hubungi admin Korwil
-                    untuk
-                    mendapatkan kode.</small>
-            </div>
-        </div>
-        <div class="modal-footer modal-footer-hapus">
-            <button type="button" class="modal-btn-batal" data-dismiss="modal">
-                <i class="fas fa-times mr-2"></i>BATAL</button>
-            <button type="submit" id="tugas_btnEksekusiHapus" class="modal-btn-hapus">
-                <i class="fas fa-trash-alt mr-2"></i>HAPUS DATA</button>
-        </div>
-    </form>
-</div>
 
 <script>
     // ======================================================================
@@ -392,7 +336,6 @@
         $(document).off('change', '#tugas_inputNamaSd, #tugas_inputTahun, #tugas_inputSemester, #tugas_inputKriteria').on('change', '#tugas_inputNamaSd, #tugas_inputTahun, #tugas_inputSemester, #tugas_inputKriteria', tugas_cekKetersediaanData);
         $(document).off('submit', '#tugas_formUtama').on('submit', '#tugas_formUtama', tugas_handleSimpan);
         $(document).off('submit', '#tugas_formVerif').on('submit', '#tugas_formVerif', tugas_handleSimpanVerifikasi);
-        $(document).off('submit', '#tugas_formHapus').on('submit', '#tugas_formHapus', tugas_handleSimpanHapus);
         $(document).off('change', '#tugas_verifStatus').on('change', '#tugas_verifStatus', function () { tugas_cekStatusVerif($(this).val()); });
 
         $(document).off('click', '#tugas_btnLihatDokumenLama').on('click', '#tugas_btnLihatDokumenLama', function (e) {
@@ -1031,51 +974,35 @@
         var d = TUGAS_DATA_MASTER[rowId];
         if (!d) return;
 
-        $('#tugas_hapusRowId').val(rowId);
-        $('#tugas_hNamaSd').text(d.namaSd || '-');
-        $('#tugas_hPeriode').text((d.tahun || '-') + ' / ' + (d.semester || '-'));
-        $('#tugas_hKriteria').text(d.kriteria || '-');
-        $('#tugas_hNoSk').text(d.noSk || '-');
-        $('#tugas_inputKodeHapus').val('');
+        var dDate = new Date();
+        var kd = dDate.getFullYear() + "" + String(dDate.getMonth() + 1).padStart(2, '0') + "" + String(dDate.getDate()).padStart(2, '0');
 
-        // DOM Shift and Show global form
-        $('#global_modalFormSize').removeClass('modal-lg modal-xl').css('max-width', '400px');
-        $('#global_modalFormHeader').removeClass('modal-header-sultan-primary modal-header-sultan-warning modal-header-sultan-danger modal-header-sultan-success modal-header-sultan-info modal-header-sultan-dark modal-header-edit modal-header-tambah-edit modal-header-hapus').addClass('modal-header-hapus');
-        $('#global_modalFormTitle').html('<i class="fas fa-trash-alt mr-2"></i> Hapus Data SK Pembagian Tugas');
-        $('#global_modalFormBody, #global_modalFormFooter').hide();
-        $('#tugas_formHapus').appendTo('#global_modalFormSize .modal-content');
-        
-        $('#global_modalForm').off('hidden.bs.modal.tugas').on('hidden.bs.modal.tugas', function() {
-            $('#tugas_formHapus').appendTo('#tugas_templates');
-            $('#global_modalFormSize').css('max-width', '');
-            $('#global_modalFormBody, #global_modalFormFooter').show();
+        Sultan.modal.konfirmasiHapus({
+            title: 'Hapus Data SK Pembagian Tugas',
+            kode: kd,
+            detail: {
+                'UNIT KERJA': d.namaSd || '-',
+                'PERIODE': (d.tahun || '-') + ' / ' + (d.semester || '-'),
+                'JENIS SK': d.kriteria || '-',
+                'NOMOR SK': d.noSk || '-'
+            },
+            onConfirm: function () {
+                Sultan.notif.loading("Menghapus data...");
+                var payload = { hapusRowId: rowId, hapusKode: kd, userDelete: TUGAS_USER_AKTIF };
+                google.script.run.withSuccessHandler(function (res) {
+                    Sultan.notif.tutup();
+                    if (res.success) {
+                        Sultan.notif.crud.hapus();
+                        tugas_tarikDataServer();
+                    } else {
+                        Sultan.notif.crud.gagal(res.message);
+                    }
+                }).withFailureHandler(function (err) {
+                    Sultan.notif.tutup();
+                    Sultan.notif.crud.gagal(err.message);
+                }).hapusDataSK(payload);
+            }
         });
-
-        $('#global_modalForm').modal('show');
-    }
-
-    function tugas_handleSimpanHapus(e) {
-        e.preventDefault();
-        var rowBaris = $('#tugas_hapusRowId').val();
-        var kodeInput = $('#tugas_inputKodeHapus').val().trim();
-
-        var d = new Date(); var kd = d.getFullYear() + "" + String(d.getMonth() + 1).padStart(2, '0') + "" + String(d.getDate()).padStart(2, '0');
-        if (kodeInput !== kd) { Sultan.notif.gagal('Kode Keamanan salah!'); return; }
-
-        var btn = $('#tugas_btnEksekusiHapus'); var txt = btn.html();
-        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Menghapus...');
-
-        var payload = { hapusRowId: rowBaris, hapusKode: kodeInput, userDelete: TUGAS_USER_AKTIF };
-        google.script.run.withSuccessHandler(function (res) {
-            btn.prop('disabled', false).html(txt);
-            if (res.success) {
-                $('#global_modalForm').modal('hide'); 
-                Sultan.notif.crud.hapus(); 
-                tugas_tarikDataServer();
-            } else if (res.message === "KODE_SALAH") {
-                Sultan.notif.gagal('Kode Keamanan salah!');
-            } else { Sultan.notif.crud.gagal(res.message); }
-        }).hapusDataSK(payload);
     }
 
     // =================================================================
