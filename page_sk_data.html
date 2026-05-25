@@ -48,7 +48,7 @@
                                 <div class="sultan-spinner-premium">
                                     <i class="fas fa-circle-notch fa-spin"></i>
                                 </div>
-                                <h6 class="mt-3 text-dark opacity-75 font-weight-bold" id="tugas_loadingText">
+                                <h6 class="mt-3 text-muted opacity-75 font-weight-bold" id="tugas_loadingText">
                                     Menghubungkan ke Server...</h6>
                             </div>
                         </div>
@@ -348,7 +348,7 @@
     $(document).ready(function () {
         TUGAS_TABEL_INSTANCE = null;
         $('#tugas_tableState').hide();
-        SultanUI.showLoading('#tugas_loadingState');
+        SultanUI.showLoading('#tugas_loadingState', 'Menghubungkan ke Server...');
 
         // Render filter bar secara dinamis (VAKSINASI COMPLIANCE)
         var filtersConfig = [
@@ -442,7 +442,7 @@
     // =================================================================
     function tugas_validasiAksesUser() {
         if (TUGAS_IS_ADMIN) {
-            $('#tugas_loadingText').html('Mempersiapkan Database Admin...');
+            SultanUI.showLoading('#tugas_loadingState', 'Mempersiapkan Database Admin...');
             $('#tugas_filterUnit').empty().append('<option value="SEMUA">- Semua Unit Kerja -</option>').prop('disabled', false).removeClass('bg-light font-weight-bold').css('color', '');
 
             // AUTO-SET DEFAULT FILTER UNTUK ADMIN
@@ -459,14 +459,14 @@
         } else {
             if (!TUGAS_USER_NPSN) {
                 $('#tugas_filterUnit').empty().append('<option value="">AKSES DITOLAK (NPSN KOSONG)</option>');
-                $('#tugas_loadingText').html('<span style="color: var(--sultan-aksi-danger);"><i class="fas fa-ban mb-2"></i><br>Akses ditolak: Sesi login tidak valid.</span>');
+                $('#tugas_loadingState').html('<div class="text-center py-5 text-danger sultan-page-transition"><i class="fas fa-ban fa-2x mb-3"></i><br>Akses ditolak: Sesi login tidak valid.</div>');
                 return;
             }
             google.script.run.withSuccessHandler(function (resUnit) {
                 var dataUnit = JSON.parse(resUnit);
                 if (dataUnit.error) {
                     $('#tugas_filterUnit').empty().append('<option value="">AKSES DITOLAK</option>');
-                    $('#tugas_loadingText').html('<span style="color: var(--sultan-aksi-danger);"><i class="fas fa-exclamation-triangle mb-2"></i><br>' + tugas_escapeHtml(dataUnit.error) + '</span>');
+                    $('#tugas_loadingState').html('<div class="text-center py-5 text-danger sultan-page-transition"><i class="fas fa-exclamation-triangle fa-2x mb-3"></i><br>' + tugas_escapeHtml(dataUnit.error) + '</div>');
                     return;
                 }
                 TUGAS_UNIT_TERKUNCI = dataUnit.unitKerja;
@@ -477,7 +477,7 @@
                 tugas_tarikDataServer('INIT_START');
             }).withFailureHandler(function (err) {
                 $('#tugas_filterUnit').empty().append('<option value="">ERROR SERVER</option>');
-                $('#tugas_loadingText').html('<span style="color: var(--sultan-aksi-danger);"><i class="fas fa-wifi mb-2"></i><br>Koneksi Terputus: ' + tugas_escapeHtml(err.message) + '</span>');
+                $('#tugas_loadingState').html('<div class="text-center py-5 text-danger sultan-page-transition"><i class="fas fa-wifi fa-2x mb-3"></i><br>Koneksi Terputus: ' + tugas_escapeHtml(err.message) + '</div>');
             }).getUnitKerjaByNpsnPTK(TUGAS_USER_NPSN);
         }
     }
@@ -496,8 +496,7 @@
 
         if (!$.fn.DataTable.isDataTable('#tugas_tabelUtama')) {
             $('#tugas_tableState').hide();
-            $('#tugas_loadingText').html('Menyinkronkan data dari server...');
-            SultanUI.showLoading('#tugas_loadingState');
+            SultanUI.showLoading('#tugas_loadingState', 'Menyinkronkan data dari server...');
         }
 
         // 1. Tarik Mapping NPSN dari Master Data User (Spreadsheet Eksternal)
@@ -556,8 +555,7 @@
 
                 } catch (e) {
                     $('#tugas_tableState').hide();
-                    SultanUI.showLoading('#tugas_loadingState');
-                    $('#tugas_loadingText').html('<span style="color: var(--sultan-aksi-danger);"><i class="fas fa-exclamation-triangle mb-2"></i><br>Gagal merakit tabel: ' + tugas_escapeHtml(e.message) + '</span>');
+                    $('#tugas_loadingState').html('<div class="text-center py-5 text-danger sultan-page-transition"><i class="fas fa-exclamation-triangle fa-2x mb-3"></i><br>Gagal merakit tabel: ' + tugas_escapeHtml(e.message) + '</div>');
                 }
             }).withFailureHandler(function (e) {
                 btn.prop('disabled', false).html('<i class="fas fa-sync-alt" style="color: var(--sultan-aksi-utama);"></i>');
