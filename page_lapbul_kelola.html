@@ -505,7 +505,7 @@
         $(document).off('click', '.btn-aksi-preview').on('click', '.btn-aksi-preview', function () { lapbulkelola_previewPDF(lapbulkelola_URL_FILE_LAMA); });
         $(document).off('click', '.btn-preview-dokumen').on('click', '.btn-preview-dokumen', function () { lapbulkelola_previewPDF($(this).data('url')); });
         $(document).off('click', '.btn-aksi-edit').on('click', '.btn-aksi-edit', function () { lapbulkelola_editLapbul($(this).data('source'), String($(this).data('id'))); });
-        $(document).off('click', '.btn-aksi-hapus').on('click', '.btn-aksi-hapus', function () { lapbulkelola_hapusLapbul($(this).data('source'), String($(this).data('id')), $(this).data('nama')); });
+        $(document).off('click', '.btn-aksi-hapus').on('click', '.btn-aksi-hapus', function () { lapbulkelola_hapusLapbul($(this).data('source'), String($(this).data('id')), $(this).data('nama'), $(this).data('bulan'), $(this).data('tahun')); });
         $(document).off('click', '.btn-aksi-verif').on('click', '.btn-aksi-verif', function () { lapbulkelola_verifikasiLapbul($(this).data('source'), String($(this).data('id')), $(this).data('nama'), $(this).data('bulan'), $(this).data('tahun'), $(this).data('file')); });
         $(document).off('click', '.btn-baca-catatan').on('click', '.btn-baca-catatan', function () { lapbulkelola_lihatCatatanSultan($(this).data('pesan')); });
 
@@ -764,7 +764,7 @@
 
             var btnHapus = isLocked
                 ? `<button class="sultan-btn-aksi" disabled title="Terkunci"><i class="fas fa-trash-alt"></i></button>`
-                : `<button class="sultan-btn-aksi sultan-btn-aksi-maroon btn-aksi-hapus" data-source="${row.source}" data-id="${row.rowId}" data-nama="${safeNama}" title="Hapus Permanen"><i class="fas fa-trash-alt"></i></button>`;
+                : `<button class="sultan-btn-aksi sultan-btn-aksi-maroon btn-aksi-hapus" data-source="${row.source}" data-id="${row.rowId}" data-nama="${safeNama}" data-bulan="${row.bulan}" data-tahun="${row.tahun}" title="Hapus Permanen"><i class="fas fa-trash-alt"></i></button>`;
 
             var btnVerif = "";
             if (LAPBULKELOLA_IS_ADMIN) {
@@ -1778,26 +1778,34 @@
     // =================================================================
     // 8. HAPUS & VERIFIKASI
     // =================================================================
-    function lapbulkelola_hapusLapbul(source, rowId, namaSekolah) {
+    function lapbulkelola_hapusLapbul(source, rowId, namaSekolah, bulan, tahun) {
         var d = new Date();
         var kd = d.getFullYear() + "" + String(d.getMonth() + 1).padStart(2, '0') + "" + String(d.getDate()).padStart(2, '0');
 
-        Sultan.modal.konfirmasiHapus(kd, function () {
-            Sultan.notif.loading("Menghapus data...");
-            google.script.run.withSuccessHandler(function (res) {
-                Sultan.notif.tutup();
-                if (res.success) {
-                    Sultan.notif.crud.hapus();
-                    LAPBULKELOLA_CACHE_DATA = LAPBULKELOLA_CACHE_DATA.filter(r => !(r.rowId == rowId && r.source == source));
-                    lapbulkelola_prosesCariData(false);
-                    sultan_fetchNotifikasi();
-                } else {
-                    Sultan.notif.crud.gagal(res.message);
-                }
-            }).withFailureHandler(function (err) {
-                Sultan.notif.tutup();
-                Sultan.notif.crud.gagal(err.message);
-            }).processDeleteData(source, rowId, kd, LAPBULKELOLA_USER_AKTIF);
+        Sultan.modal.konfirmasiHapus({
+            title: 'Hapus Laporan Bulan',
+            kode: kd,
+            detail: {
+                'SEKOLAH': namaSekolah || '-',
+                'PERIODE': (bulan || '-') + ' ' + (tahun || '-')
+            },
+            onConfirm: function () {
+                Sultan.notif.loading("Menghapus data...");
+                google.script.run.withSuccessHandler(function (res) {
+                    Sultan.notif.tutup();
+                    if (res.success) {
+                        Sultan.notif.crud.hapus();
+                        LAPBULKELOLA_CACHE_DATA = LAPBULKELOLA_CACHE_DATA.filter(r => !(r.rowId == rowId && r.source == source));
+                        lapbulkelola_prosesCariData(false);
+                        sultan_fetchNotifikasi();
+                    } else {
+                        Sultan.notif.crud.gagal(res.message);
+                    }
+                }).withFailureHandler(function (err) {
+                    Sultan.notif.tutup();
+                    Sultan.notif.crud.gagal(err.message);
+                }).processDeleteData(source, rowId, kd, LAPBULKELOLA_USER_AKTIF);
+            }
         });
     }
 

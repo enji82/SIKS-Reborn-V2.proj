@@ -185,16 +185,59 @@
           });
         }
       },
-      konfirmasiHapus: function(kodePengamanValid, callbackYa) {
+      konfirmasiHapus: function(opsiOrKode, callbackYa) {
+        var opsi = {};
+        if (typeof opsiOrKode === 'string' || typeof opsiOrKode === 'number') {
+          opsi.kode = opsiOrKode;
+          opsi.onConfirm = callbackYa;
+        } else {
+          opsi = opsiOrKode || {};
+        }
+
+        var title = opsi.title || 'Konfirmasi Hapus Permanen';
+        var teksUtama = opsi.teksUtama || 'Apakah Anda yakin ingin menghapus data ini?';
+        var teksSub = opsi.teksSub || 'Tindakan ini permanen dan data tidak dapat dikembalikan.';
+        var kode = String(opsi.kode || '').trim();
+        var callback = opsi.onConfirm;
+
+        // Reset
         $('#global_hapusKodePengaman').val('');
-        $('#global_modalHapus').modal('show');
+        $('#global_modalHapusTitle').html('<i class="fas fa-trash-alt mr-2"></i>' + title);
+        $('#global_hapusTeksUtama').text(teksUtama);
+        $('#global_hapusTeksSub').text(teksSub);
         
+        // Render Detail Area
+        var detailArea = $('#global_hapusDetailArea');
+        detailArea.empty().hide();
+        if (opsi.detail && typeof opsi.detail === 'object') {
+          var html = '';
+          var keys = Object.keys(opsi.detail);
+          keys.forEach(function(key, index) {
+            var isLast = (index === keys.length - 1);
+            var borderClass = isLast ? 'border-0 mb-0' : '';
+            html += '<div class="sultan-detail-item ' + borderClass + '">';
+            html += '  <label class="sultan-detail-label">' + key + '</label>';
+            html += '  <div class="sultan-detail-value text-uppercase font-weight-bold text-maroon">' + opsi.detail[key] + '</div>';
+            html += '</div>';
+          });
+          if (html) {
+            detailArea.html(html).show();
+          }
+        }
+
+        $('#global_modalHapus').modal('show');
+
+        // Autofocus
+        $('#global_modalHapus').off('shown.bs.modal').on('shown.bs.modal', function() {
+          $('#global_hapusKodePengaman').focus();
+        });
+
         $('#global_formHapus').off('submit').on('submit', function(e) {
           e.preventDefault();
           var inputVal = $('#global_hapusKodePengaman').val().trim();
-          if (inputVal === String(kodePengamanValid).trim()) {
+          if (inputVal === kode) {
             $('#global_modalHapus').modal('hide');
-            if (callbackYa) callbackYa();
+            if (callback) callback();
           } else {
             NotifSultan.alert('error', 'Kode Salah', 'Kode pengaman yang Anda masukkan tidak valid.');
           }
