@@ -227,10 +227,10 @@
             </div>
         </div>
         <div class="modal-footer modal-footer-sultan justify-content-between">
-            <button type="button" class="sultan-btn sultan-btn-aksi-batal" data-dismiss="modal"><i
-                    class="fas fa-times mr-1"></i> BATAL</button>
-            <button type="submit" id="lupa_btnSimpanForm" class="sultan-btn sultan-btn-aksi-utama"><i
-                    class="fas fa-save mr-1"></i> SIMPAN </button>
+            <button type="button" class="modal-btn-batal" data-dismiss="modal"><i
+                    class="fas fa-times mr-2"></i>BATAL</button>
+            <button type="submit" id="lupa_btnSimpanForm" class="modal-btn-simpan"><i
+                    class="fas fa-save mr-2"></i>SIMPAN</button>
         </div>
     </form>
 
@@ -291,7 +291,7 @@
             <button type="button" class="modal-btn-batal" data-dismiss="modal">
                 <i class="fas fa-times mr-2"></i>BATAL</button>
             <button type="submit" id="lupa_btnVerifEksekusi" class="modal-verifikasi-btn-verifikasi" form="lupa_formVerif">
-                <i class="fas fa-check-double mr-2"></i>VERIFIKASI</button>
+                <i class="fas fa-check mr-2"></i>VERIFIKASI</button>
         </div>
     </form>
 </div>
@@ -663,6 +663,10 @@
         }
 
         $('#lupa_inputNip').empty().append('<option value="">- Otomatis -</option>').prop('disabled', true);
+        
+        // Atur kelas tombol simpan global
+        $('#lupa_btnSimpanForm').removeClass('modal-btn-perbarui').addClass('modal-btn-simpan').html('<i class="fas fa-save mr-2"></i>SIMPAN');
+
         $('#global_modalForm').modal('show');
     }
 
@@ -721,6 +725,9 @@
         $('.custom-file-label').html('Pilih file baru jika ingin mengganti.');
 
         $('#lupa_inputNipLama').val(row.nip); $('#lupa_inputTglLama').val(row.tanggal); $('#lupa_inputJamLama').val(row.jam);
+
+        // Atur kelas tombol perbarui global
+        $('#lupa_btnSimpanForm').removeClass('modal-btn-simpan').addClass('modal-btn-perbarui').html('<i class="fas fa-edit mr-2"></i>PERBARUI');
 
         $('#global_modalForm').modal('show');
     }
@@ -860,73 +867,45 @@
     function lupa_bukaModalHapus(id) {
         var row = LUPA_DATA_MASTER[id]; if (!row) return;
 
-        const theme = NotifSultan.getTheme();
-        let titleColor = theme.bg === '#fff' ? '#800000' : '#e9ecef';
+        var d = new Date(); 
+        var kd = d.getFullYear() + "" + String(d.getMonth() + 1).padStart(2, '0') + "" + String(d.getDate()).padStart(2, '0');
 
-        Swal.fire({
-            title: `<h5 class="font-weight-bold" style="margin-top:10px; color:${titleColor}">ALASAN PENGHAPUSAN</h5>`,
-            html: `<div class="text-muted mb-2">Masukkan alasan penghapusan data ini:</div>`,
-            input: 'text',
-            inputPlaceholder: 'Contoh: Salah input data, Data Ganda...',
-            showCancelButton: true,
-            confirmButtonText: 'Lanjut',
-            cancelButtonText: 'Batal',
-            background: theme.bg,
-            color: theme.color,
-            customClass: {
-                popup: 'card-sultan',
-                confirmButton: 'swal2-confirm-sultan',
-                cancelButton: 'swal2-cancel-sultan'
+        Sultan.modal.konfirmasiHapus({
+            title: 'HAPUS DATA LUPA PRESENSI',
+            teksUtama: 'Apakah Anda yakin ingin menghapus data Lupa Presensi ini?',
+            teksSub: 'Tindakan ini permanen dan data tidak dapat dikembalikan.',
+            kode: kd,
+            showReason: true,
+            detail: {
+                'Nama ASN': row.nama,
+                'NIP': row.nip,
+                'Tanggal': lupa_formatTanggalIndo((row.tanggal || "").replace(/'/g, "")),
+                'Jenis': row.jenis
             },
-            buttonsStyling: false,
-            inputValidator: (value) => {
-                if (!value || !value.trim()) {
-                    return 'Alasan harus diisi!';
-                }
-            }
-        }).then((result) => {
-            if (result.isConfirmed) {
-                var alasan = result.value.trim();
-                var d = new Date(); 
-                var kd = d.getFullYear() + "" + String(d.getMonth() + 1).padStart(2, '0') + "" + String(d.getDate()).padStart(2, '0');
+            onConfirm: function(alasan) {
+                Sultan.notif.loading('Menghapus data...');
+                var payload = { 
+                    recId: id, 
+                    kode: kd, 
+                    alasan: alasan, 
+                    user_login: LUPA_USER_AKTIF 
+                };
 
-                Sultan.modal.konfirmasiHapus({
-                    title: 'HAPUS DATA LUPA PRESENSI',
-                    teksUtama: 'Apakah Anda yakin ingin menghapus data Lupa Presensi ini?',
-                    teksSub: 'Tindakan ini permanen dan data tidak dapat dikembalikan.',
-                    kode: kd,
-                    detail: {
-                        'Nama ASN': row.nama,
-                        'NIP': row.nip,
-                        'Tanggal': lupa_formatTanggalIndo((row.tanggal || "").replace(/'/g, "")),
-                        'Jenis': row.jenis
-                    },
-                    onConfirm: function() {
-                        Sultan.notif.loading('Menghapus data...');
-                        var payload = { 
-                            recId: id, 
-                            kode: kd, 
-                            alasan: alasan, 
-                            user_login: LUPA_USER_AKTIF 
-                        };
-
-                        google.script.run
-                            .withSuccessHandler(function (r) {
-                                Sultan.notif.tutup();
-                                if (r === "Sukses" || String(r).includes("Sukses")) {
-                                    lupa_tarikDataServer();
-                                    Sultan.notif.sukses('Data telah dihapus permanen.');
-                                } else { 
-                                    Sultan.alert('error', 'Gagal Menghapus', r); 
-                                }
-                            })
-                            .withFailureHandler(function (err) { 
-                                Sultan.notif.tutup();
-                                Sultan.alert('error', 'Koneksi Server Gagal', err.message); 
-                            })
-                            .hapusLupaPresensi(payload);
-                    }
-                });
+                google.script.run
+                    .withSuccessHandler(function (r) {
+                        Sultan.notif.tutup();
+                        if (r === "Sukses" || String(r).includes("Sukses")) {
+                            lupa_tarikDataServer();
+                            Sultan.notif.sukses('Data telah dihapus permanen.');
+                        } else { 
+                            Sultan.alert('error', 'Gagal Menghapus', r); 
+                        }
+                    })
+                    .withFailureHandler(function (err) { 
+                        Sultan.notif.tutup();
+                        Sultan.alert('error', 'Koneksi Server Gagal', err.message); 
+                    })
+                    .hapusLupaPresensi(payload);
             }
         });
     }
