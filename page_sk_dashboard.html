@@ -4,28 +4,7 @@
 <section class="content">
     <div class="container-fluid">
 
-        <div class="sultan-filter-pill-container shadow-sm mb-4">
-            <div class="sultan-filter-item">
-                <select id="dashsk_filterTahun" class="form-control"></select>
-                <i class="fas fa-chevron-down"></i>
-            </div>
-            <div class="sultan-filter-item">
-                <select id="dashsk_filterSemester" class="form-control">
-                    <option value="">Semua Semester</option>
-                    <option value="Semester 1">Semester 1</option>
-                    <option value="Semester 2">Semester 2</option>
-                </select>
-                <i class="fas fa-chevron-down"></i>
-            </div>
-
-            <div class="divider-vertical d-none d-md-block mx-3" style="width: 2px; height: 26px; background-color: currentColor; opacity: 0.2; border-radius: 10px;"></div>
-
-            <button type="button" id="dashsk_btnRefresh" class="sultan-btn-refresh" title="Refresh Data">
-                <i class="fas fa-sync-alt"></i>
-            </button>
-
-            <div class="ml-auto d-none d-md-block"></div>
-        </div>
+        <div id="dashsk_filterBarArea"></div>
 
         <div class="row mb-4">
             <!-- KARTU 1: TOTAL MASUK -->
@@ -91,7 +70,7 @@
         </div>
 
         <div class="row mb-4">
-            <div class="col-md-4">
+            <div class="col-12 col-md-4">
                 <div class="card-sultan shadow-sm border-0 p-3 mb-3">
                     <div class="d-flex align-items-center">
                         <div class="bg-warning text-white rounded-circle d-flex align-items-center justify-content-center mr-3 shadow-sm"
@@ -106,7 +85,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-12 col-md-4">
                 <div class="card-sultan shadow-sm border-0 p-3 mb-3">
                     <div class="d-flex align-items-center">
                         <div class="bg-info text-white rounded-circle d-flex align-items-center justify-content-center mr-3 shadow-sm"
@@ -121,7 +100,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-12 col-md-4">
                 <div class="card-sultan shadow-sm border-0 p-3 mb-3">
                     <div class="d-flex align-items-center">
                         <div class="bg-danger text-white rounded-circle d-flex align-items-center justify-content-center mr-3 shadow-sm"
@@ -141,7 +120,7 @@
         <div class="row mb-4">
             <!-- PROPORSI STATUS -->
             <div class="col-lg-4 d-flex">
-                <div class="card-sultan shadow-sm w-100 h-100" style="border: 1px solid var(--dm-border);">
+                <div class="card-sultan shadow-sm w-100 h-100">
                     <div class="p-3 border-bottom bg-adaptive-sultan d-flex align-items-center" style="height: 55px;">
                         <h6 class="font-weight-bold text-adaptive-sultan mb-0 uppercase"
                             style="letter-spacing: 1.5px; font-size: 0.85rem;">
@@ -198,8 +177,7 @@
 
             <!-- PRIORITAS TINDAK LANJUT -->
             <div class="col-lg-4 d-flex">
-                <div class="card-sultan shadow-sm w-100 h-100 overflow-hidden"
-                    style="border: 1px solid var(--dm-border);">
+                <div class="card-sultan shadow-sm w-100 h-100 overflow-hidden">
                     <div class="p-3 border-bottom bg-adaptive-sultan d-flex align-items-center" style="height: 55px;">
                         <h6 class="font-weight-bold text-adaptive-sultan mb-0 uppercase"
                             style="letter-spacing: 1.5px; font-size: 0.85rem;">
@@ -220,7 +198,7 @@
 
             <!-- AKTIVITAS TERBARU -->
             <div class="col-lg-4 d-flex">
-                <div class="card-sultan shadow-sm w-100 h-100" style="border: 1px solid var(--dm-border);">
+                <div class="card-sultan shadow-sm w-100 h-100">
                     <div class="p-3 border-bottom bg-adaptive-sultan d-flex align-items-center" style="height: 55px;">
                         <h6 class="font-weight-bold text-adaptive-sultan mb-0 uppercase"
                             style="letter-spacing: 1.5px; font-size: 0.85rem;">
@@ -319,6 +297,21 @@
         window.DASHSK_LAST_INIT = now;
 
         console.log("SIKS-LOG: Inisialisasi UI Dashboard SK...");
+
+        // Render filter bar secara dinamis (VAKSINASI COMPLIANCE)
+        var filtersConfig = [
+            { id: 'dashsk_filterTahun', placeholder: '- Memuat TA... -', disabled: true },
+            { id: 'dashsk_filterSemester', placeholder: '- Memuat Semester... -', disabled: true }
+        ];
+        var extraButtons = `
+            <div class="divider-vertical d-none d-md-block mx-3" style="width: 2px; height: 26px; background-color: currentColor; opacity: 0.2; border-radius: 10px;"></div>
+            <button type="button" id="dashsk_btnRefresh" class="sultan-btn-refresh" title="Refresh Data" disabled>
+                <i class="fas fa-sync-alt"></i>
+            </button>
+            <div class="ml-auto d-none d-md-block"></div>
+        `;
+        $('#dashsk_filterBarArea').html(SultanUI.renderFilterBar(filtersConfig, extraButtons));
+
         try {
             var user = typeof getSesiUser === 'function' ? getSesiUser() : {};
             DASHSK_USER_IS_ADMIN = (user.role || "").toLowerCase().indexOf("admin") !== -1;
@@ -350,6 +343,15 @@
         $(document).off('click', '#dashsk_btnModalBelum').on('click', '#dashsk_btnModalBelum', function() {
             dashsk_showModalBelum();
         });
+
+        // Bind listener ke global Dark Mode Toggle agar chart menyesuaikan secara dinamis
+        $(document).off('change.dashskTheme', '#sultan_darkModeToggle').on('change.dashskTheme', '#sultan_darkModeToggle', function () {
+            setTimeout(function () {
+                if (window.DASHSK_CACHE_DATA) {
+                    dashsk_renderChart(window.DASHSK_CACHE_DATA);
+                }
+            }, 100);
+        });
     });
 
     // Fungsi Global untuk memasang listener filter (dipanggil setelah load pertama sukses)
@@ -373,7 +375,14 @@
             var ta = y + "/" + (y + 1);
             htmlTahun += '<option value="' + ta + '">' + ta + '</option>';
         }
-        $('#dashsk_filterTahun').html(htmlTahun);
+        $('#dashsk_filterTahun').html(htmlTahun).prop('disabled', false);
+
+        var htmlSmt = `
+            <option value="">Semua Semester</option>
+            <option value="Semester 1">Semester 1</option>
+            <option value="Semester 2">Semester 2</option>
+        `;
+        $('#dashsk_filterSemester').html(htmlSmt).prop('disabled', false);
 
         var defSemester = (curMonth >= 6) ? "Semester 1" : "Semester 2";
         var defTahun = (curMonth >= 6) ? curYear + "/" + (curYear + 1) : (curYear - 1) + "/" + curYear;
@@ -672,7 +681,7 @@
         if (typeof Chart === 'undefined') return;
 
         var ctx = document.getElementById('dashsk_chartStatus').getContext('2d');
-        if (DASHSK_CHART_INSTANCE) DASHSK_CHART_INSTANCE.destroy();
+        if (window.DASHSK_CHART_INSTANCE) window.DASHSK_CHART_INSTANCE.destroy();
 
         var isDM = $('body').hasClass('dark-mode');
         var totalData = data.disetujui + data.diproses + data.revisi + data.ditolak;
@@ -680,7 +689,7 @@
         var finalData = totalData === 0 ? [0.1, 0, 0, 0] : [data.disetujui, data.diproses, data.revisi, data.ditolak];
         var finalColors = totalData === 0 ? [emptyColor, '#ffc107', '#17a2b8', '#dc3545'] : ['#28a745', '#ffc107', '#17a2b8', '#dc3545'];
 
-        DASHSK_CHART_INSTANCE = new Chart(ctx, {
+        window.DASHSK_CHART_INSTANCE = new Chart(ctx, {
             type: 'doughnut',
             data: {
                 labels: ['Disetujui', 'Diproses', 'Revisi', 'Ditolak'],
