@@ -223,9 +223,10 @@
             </div>
         </div>
 
-        <div class="modal-verifikasi-footer border-top d-flex justify-content-between p-3" id="unggahcuti_verifFooter">
-            <button type="button" class="modal-btn-batal" data-dismiss="modal"><i class="fas fa-times mr-2"></i>BATAL</button>
-            <button type="submit" id="unggahcuti_btnSimpanVerif" class="modal-verifikasi-btn-verifikasi">
+        <div class="modal-verifikasi-footer" id="unggahcuti_verifFooter">
+            <button type="button" class="modal-btn-batal" data-dismiss="modal">
+                <i class="fas fa-times mr-2"></i>BATAL</button>
+            <button type="submit" id="unggahcuti_btnSimpanVerif" class="modal-verifikasi-btn-verifikasi" form="unggahcuti_formVerif">
                 <i class="fas fa-check mr-2"></i>VERIFIKASI
             </button>
         </div>
@@ -756,39 +757,31 @@ function unggahcuti_bukaModalVerif(id) {
 
 function unggahcuti_submitVerif(e) {
     e.preventDefault();
-    var st = $('#unggahcuti_verStatus').val(); var ket = $('#unggahcuti_verKet').val().trim();
+    var formAktif = $(e.target);
+    var st = formAktif.find('#unggahcuti_verStatus').val();
+    var ket = formAktif.find('#unggahcuti_verKet').val().trim();
     if(!st) { Sultan.alert('warning', 'Pilih Keputusan', 'Tentukan status verifikasi.'); return; }
     if((st === 'Ditolak' || st === 'Revisi') && !ket){ Sultan.alert('warning', 'Catatan Wajib', 'Berikan alasan penolakan/revisi.'); return; }
 
-    var btn = $('#unggahcuti_btnSimpanVerif'); var txt = btn.html();
+    var btn = formAktif.find('button[type="submit"]');
+    var txt = btn.html();
     btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i> Eksekusi...');
 
-    var rowId = $('#unggahcuti_verRecId').val();
+    var rowId = formAktif.find('#unggahcuti_verRecId').val();
     var form = { recId: rowId, status: st, ket: ket, user_verif: UNGGAHCUTI_USER_AKTIF };
 
     google.script.run
         .withSuccessHandler(function(res) {
             btn.prop('disabled', false).html(txt);
             if (res === "Sukses") {
-                $('#global_modalVerifikasi').modal('hide');
-                
-                // VAKSIN ZERO BLINK: Update Cache Lokal Langsung
-                for (var i=0; i<UNGGAHCUTI_CACHE_DATA.length; i++) {
-                    if (String(UNGGAHCUTI_CACHE_DATA[i].rowBaris) === String(rowId)) {
-                        UNGGAHCUTI_CACHE_DATA[i].statusUnggah = st;
-                        UNGGAHCUTI_CACHE_DATA[i].ket = ket;
-                        UNGGAHCUTI_CACHE_DATA[i].tglVerif = "Baru saja";
-                        UNGGAHCUTI_CACHE_DATA[i].verifikator = UNGGAHCUTI_USER_AKTIF;
-                        break;
-                    }
-                }
-
-                setTimeout(function() { 
+                var $modal = formAktif.closest('.modal');
+                $modal.one('hidden.bs.modal', function () {
                     $('.modal-backdrop').remove(); 
                     $('body').removeClass('modal-open').css('padding-right', ''); 
                     unggahcuti_terapkanFilterLokal(); 
                     Sultan.notif.sukses('Verifikasi dokumen ' + st + '.'); 
-                }, 400);
+                });
+                $modal.modal('hide');
 
             } else { Sultan.alert('error', 'Gagal', res); }
         })
