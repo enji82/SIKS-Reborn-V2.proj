@@ -48,7 +48,7 @@ function buildPtkListSdn_() {
   var lastRow = sheet.getLastRow();
   if (lastRow < 2) return [];
 
-  var data = sheet.getRange(2, 1, lastRow - 1, 38).getValues();
+  var data = sheet.getRange(2, 1, lastRow - 1, 37).getValues();
   var sheetUsulan = getSheet(KONFIG_PTK.DB_KEY, "usulan_mutasi_sdn");
   var usulanData = sheetUsulan ? sheetUsulan.getDataRange().getValues() : [];
   var pendingPtkIds = {};
@@ -89,19 +89,18 @@ function buildPtkListSdn_() {
       pangkat: row[22],
       tmt_gol: parseIndoDate(row[23]),
       mkg: row[24],
-      kelas_jab: row[25],
-      tugas: row[26],
-      nuptk: row[27],
-      serdik: row[28],
-      dapodik: row[29],
-      tugtam: row[30],
-      email: row[31],
-      diinput: row[32] ? Utilities.formatDate(new Date(row[32]), tz, "dd/MM/yy HH:mm") : "",
-      user_input: row[33],
-      diedit: row[34] ? Utilities.formatDate(new Date(row[34]), tz, "dd/MM/yy HH:mm") : "",
-      user_edit: row[35],
-      jenis_dok: row[36] || "",
-      file_url: row[37] || "",
+      tugas: row[25],
+      nuptk: row[26],
+      serdik: row[27],
+      dapodik: row[28],
+      tugtam: row[29],
+      email: row[30],
+      diinput: row[31] ? Utilities.formatDate(new Date(row[31]), tz, "dd/MM/yy HH:mm") : "",
+      user_input: row[32],
+      diedit: row[33] ? Utilities.formatDate(new Date(row[33]), tz, "dd/MM/yy HH:mm") : "",
+      user_edit: row[34],
+      jenis_dok: row[35] || "",
+      file_url: row[36] || "",
       is_pending_baru: !!pendingPtkIds[String(row[0])]
     });
   }
@@ -147,7 +146,7 @@ function applyPtkMasterRowUpdate_(sheet, rowIndex, form, extras) {
     ]]);
   }
 
-  var rowSlice = sheet.getRange(rowIndex, 4, 1, 35).getValues()[0];
+  var rowSlice = sheet.getRange(rowIndex, 4, 1, 34).getValues()[0];
   rowSlice[0] = form.gelar_depan || "";
   rowSlice[1] = form.nama_lengkap || "";
   rowSlice[2] = form.gelar_belakang || "";
@@ -170,20 +169,19 @@ function applyPtkMasterRowUpdate_(sheet, rowIndex, form, extras) {
   rowSlice[19] = form.pangkat || "";
   rowSlice[20] = form.tmt_gol || "";
   rowSlice[21] = mkg;
-  // rowSlice[22] = kolom Z - pertahankan nilai lama
-  rowSlice[23] = form.tugas || "";
-  rowSlice[24] = "'" + (form.nuptk || "");
-  rowSlice[25] = form.serdik || "";
-  rowSlice[26] = form.dapodik || "";
-  rowSlice[27] = form.tugtam || "";
-  rowSlice[28] = form.email || "";
-  // rowSlice[29-30] = AG/AH diinput - pertahankan
-  rowSlice[31] = now;
-  rowSlice[32] = user;
-  if (extras.jenisDokumen) rowSlice[33] = extras.jenisDokumen;
-  if (extras.fileUrl) rowSlice[34] = extras.fileUrl;
+  rowSlice[22] = form.tugas || "";
+  rowSlice[23] = "'" + (form.nuptk || "");
+  rowSlice[24] = form.serdik || "";
+  rowSlice[25] = form.dapodik || "";
+  rowSlice[26] = form.tugtam || "";
+  rowSlice[27] = form.email || "";
+  // rowSlice[28-29] = AG/AH diinput (timestamp, user_input) - pertahankan
+  rowSlice[30] = now;
+  rowSlice[31] = user;
+  if (extras.jenisDokumen) rowSlice[32] = extras.jenisDokumen;
+  if (extras.fileUrl) rowSlice[33] = extras.fileUrl;
 
-  sheet.getRange(rowIndex, 4, 1, 35).setValues([rowSlice]);
+  sheet.getRange(rowIndex, 4, 1, 34).setValues([rowSlice]);
 }
 
 // 3. UPDATE DATA PTK
@@ -304,19 +302,18 @@ function insertDataPTK(form, base64Data, fileName, jenisDokumen, userPengusul) {
       form.pangkat || "",     // W (22)
       form.tmt_gol || "",     // X (23)
       mkg,                    // Y (24) 
-      "",                     // Z (25)
-      form.tugas || "",       // AA (26)
-      "'" + (form.nuptk || ""),// AB (27)
-      form.serdik || "",      // AC (28)
-      form.dapodik || "",     // AD (29)
-      form.tugtam || "",      // AE (30)
-      form.email || "",       // AF (31) 
-      timestamp,              // AG (32)
-      form.user_login || "",  // AH (33)
+      form.tugas || "",       // Z (25)
+      "'" + (form.nuptk || ""),// AA (26)
+      form.serdik || "",      // AB (27)
+      form.dapodik || "",     // AC (28)
+      form.tugtam || "",      // AD (29)
+      form.email || "",       // AE (30) 
+      timestamp,              // AF (31)
+      form.user_login || "",  // AG (32)
+      "",                     // AH (33)
       "",                     // AI (34)
-      "",                     // AJ (35)
-      jenisDok,               // AK (36)
-      fileUrl                 // AL (37)
+      jenisDok,               // AJ (35)
+      fileUrl                 // AK (36)
   ];
 
   sheet.appendRow(rowData);
@@ -375,14 +372,14 @@ function revisiUsulanPTKBaru(form, base64Data, fileName, jenisDokumen, userPengu
     sheet.getRange(rowIndex, 23).setValue(form.pangkat || "");            
     sheet.getRange(rowIndex, 24).setValue(form.tmt_gol || "");      
     sheet.getRange(rowIndex, 25).setValue(mkg);                           
-    sheet.getRange(rowIndex, 27).setValue(form.tugas || "");              
-    sheet.getRange(rowIndex, 28).setValue("'"+(form.nuptk || ""));        
-    sheet.getRange(rowIndex, 29).setValue(form.serdik || "");             
-    sheet.getRange(rowIndex, 30).setValue(form.dapodik || "");            
-    sheet.getRange(rowIndex, 31).setValue(form.tugtam || "");             
-    sheet.getRange(rowIndex, 32).setValue(form.email || "");              
-    sheet.getRange(rowIndex, 35).setValue(now);                           
-    sheet.getRange(rowIndex, 36).setValue(user);                          
+    sheet.getRange(rowIndex, 26).setValue(form.tugas || "");              
+    sheet.getRange(rowIndex, 27).setValue("'"+(form.nuptk || ""));        
+    sheet.getRange(rowIndex, 28).setValue(form.serdik || "");             
+    sheet.getRange(rowIndex, 29).setValue(form.dapodik || "");            
+    sheet.getRange(rowIndex, 30).setValue(form.tugtam || "");             
+    sheet.getRange(rowIndex, 31).setValue(form.email || "");              
+    sheet.getRange(rowIndex, 34).setValue(now);                           
+    sheet.getRange(rowIndex, 35).setValue(user);                          
 
     // Upload dokumen baru jika ada
     var fileUrl = null;
