@@ -679,6 +679,16 @@ function getNotifikasiLapbul(role, unit) {
         var lastCol = sheet.getLastColumn();
         var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(function(h) { return String(h).toLowerCase().trim(); });
         
+        var idxRead = headers.indexOf("dibaca oleh") > -1 ? headers.indexOf("dibaca oleh") : headers.indexOf("read by");
+        if (idxRead === -1) {
+          var newCol = lastCol + 1;
+          sheet.getRange(1, newCol).setValue("dibaca oleh");
+          SpreadsheetApp.flush();
+          headers.push("dibaca oleh");
+          idxRead = headers.length - 1;
+          lastCol = newCol;
+        }
+
         var idx = {
           nama: headers.indexOf("nama sekolah") > -1 ? headers.indexOf("nama sekolah") : headers.indexOf("nama"),
           bulan: headers.indexOf("bulan"),
@@ -686,11 +696,10 @@ function getNotifikasiLapbul(role, unit) {
           status: headers.indexOf("status data") > -1 ? headers.indexOf("status data") : headers.indexOf("status"),
           tglKirim: headers.indexOf("tgl kirim") > -1 ? headers.indexOf("tgl kirim") : headers.indexOf("waktu kirim"),
           tglVerif: headers.indexOf("tgl verif") > -1 ? headers.indexOf("tgl verif") : headers.indexOf("waktu verif"),
-          readBy: headers.indexOf("dibaca oleh") > -1 ? headers.indexOf("dibaca oleh") : headers.indexOf("read by")
+          readBy: idxRead
         };
 
-        // Kolom readBy bersifat opsional (jika belum dibuat, asumsikan belum dibaca)
-        var readByMissing = (idx.readBy === -1);
+        var readByMissing = false;
 
         var data = sheet.getRange(2, 1, lastRow - 1, lastCol).getDisplayValues();
         
@@ -772,10 +781,17 @@ function tandaiNotifLapbulDibaca(rowId, source, role) {
     var sheet = getSheet(dbKey, sheetName);
     var rIdx = parseInt(rowId);
     
-    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(function(h) { return String(h).toLowerCase().trim(); });
+    var lastCol = sheet.getLastColumn();
+    var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(function(h) { return String(h).toLowerCase().trim(); });
     var idxRead = headers.indexOf("dibaca oleh") > -1 ? headers.indexOf("dibaca oleh") : headers.indexOf("read by");
     
-    if (idxRead === -1) return false;
+    if (idxRead === -1) {
+      var newCol = lastCol + 1;
+      sheet.getRange(1, newCol).setValue("dibaca oleh");
+      SpreadsheetApp.flush();
+      headers.push("dibaca oleh");
+      idxRead = headers.length - 1;
+    }
 
     var currentReadBy = String(sheet.getRange(rIdx, idxRead + 1).getDisplayValue() || "").trim();
     var readMark = (role === "Admin") ? "Admin" : "User";
@@ -804,14 +820,22 @@ function tandaiSemuaNotifLapbulDibaca(role, unit) {
       var lastRow = sheet.getLastRow();
       if (lastRow < 2) return;
 
-      var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(function(h) { return String(h).toLowerCase().trim(); });
+      var lastCol = sheet.getLastColumn();
+      var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(function(h) { return String(h).toLowerCase().trim(); });
       var idxRead = headers.indexOf("dibaca oleh") > -1 ? headers.indexOf("dibaca oleh") : headers.indexOf("read by");
       var idxStatus = headers.indexOf("status data") > -1 ? headers.indexOf("status data") : headers.indexOf("status");
       var idxNama = headers.indexOf("nama sekolah") > -1 ? headers.indexOf("nama sekolah") : headers.indexOf("nama");
       
-      if (idxRead === -1) return;
+      if (idxRead === -1) {
+        var newCol = lastCol + 1;
+        sheet.getRange(1, newCol).setValue("dibaca oleh");
+        SpreadsheetApp.flush();
+        headers.push("dibaca oleh");
+        idxRead = headers.length - 1;
+        lastCol = newCol;
+      }
 
-      var data = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getDisplayValues();
+      var data = sheet.getRange(2, 1, lastRow - 1, lastCol).getDisplayValues();
       var range = sheet.getRange(2, idxRead + 1, lastRow - 1, 1);
       var values = range.getValues();
 
