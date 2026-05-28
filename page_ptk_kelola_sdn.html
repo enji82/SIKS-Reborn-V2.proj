@@ -1158,8 +1158,32 @@
             return;
         }
 
-        // Urutkan berdasarkan nama
+        // Urutkan data sesuai prioritas khusus
         dataFiltered.sort(function (a, b) {
+            // Prioritas 1: Kepala Sekolah
+            var isA_KS = String(a.tugas || '').trim().toLowerCase() === 'kepala sekolah';
+            var isB_KS = String(b.tugas || '').trim().toLowerCase() === 'kepala sekolah';
+            
+            if (isA_KS && !isB_KS) return -1;
+            if (!isA_KS && isB_KS) return 1;
+
+            // Prioritas 2: Status Pegawai
+            var orderStatus = ["PNS", "CPNS", "PPPK", "PPPK PARUH WAKTU", "TENAGA NON ASN"];
+            var statusA = String(a.status_peg || '').trim().toUpperCase();
+            var statusB = String(b.status_peg || '').trim().toUpperCase();
+            
+            var idxA = orderStatus.indexOf(statusA);
+            var idxB = orderStatus.indexOf(statusB);
+            
+            // Jika status tidak ada di daftar, beri prioritas terendah
+            if (idxA === -1) idxA = 99;
+            if (idxB === -1) idxB = 99;
+            
+            if (idxA !== idxB) {
+                return idxA - idxB;
+            }
+
+            // Prioritas 3: Nama Lengkap alfabetis
             var nameA = (a.nama_lengkap || "").toUpperCase();
             var nameB = (b.nama_lengkap || "").toUpperCase();
             return (nameA < nameB) ? -1 : (nameA > nameB) ? 1 : 0;
@@ -1377,7 +1401,7 @@
                     continue;
                 }
 
-                // Untuk data (baris indeks 4 s/d data terakhir), buat ukuran font 10
+                // Untuk data (baris indeks 4 s/d data terakhir), buat ukuran font 11
                 var lastDataRow = 4 + countData - 1;
                 if (R >= 4 && R <= lastDataRow) {
                     if (!ws[cellAddr]) {
@@ -1388,8 +1412,8 @@
                     // Inisialisasi style jika belum ada
                     if (!ws[cellAddr].s) ws[cellAddr].s = {};
                     
-                    // Tentukan ukuran font data 10
-                    ws[cellAddr].s.font = { sz: 10 };
+                    // Tentukan ukuran font data 11
+                    ws[cellAddr].s.font = { sz: 11 };
                     
                     // 1. Terapkan Border
                     ws[cellAddr].s.border = thinBorder;
