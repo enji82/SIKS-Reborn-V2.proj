@@ -1326,28 +1326,73 @@
             { wch: 28 }   // EMAIL
         ];
 
-        // 8. Format data cell dan Aktifkan Word Wrap (s untuk text + wrapText agar baris baru \n berfungsi)
+        // 8. Format data cell: Border, Bold Header, Alignment (Wrap + Rata Atas)
         var range = XLSX.utils.decode_range(ws['!ref']);
+        
+        // Definisi border tipis standar
+        var thinBorder = {
+            top: { style: 'thin', color: { rgb: '000000' } },
+            bottom: { style: 'thin', color: { rgb: '000000' } },
+            left: { style: 'thin', color: { rgb: '000000' } },
+            right: { style: 'thin', color: { rgb: '000000' } }
+        };
+
         for (var R = 0; R <= range.e.r; R++) {
             for (var C = 0; C <= range.e.c; C++) {
                 var cellAddr = XLSX.utils.encode_cell({ r: R, c: C });
-                if (!ws[cellAddr]) continue;
                 
-                // Pastikan format cell
-                if (R >= 4) { // Baris data ke bawah
-                    // Set NUPTK (kolom index 8 = I) sebagai teks murni
+                // Judul baris 0 & 1, buat bold & center
+                if (R === 0 || R === 1) {
+                    if (ws[cellAddr]) {
+                        ws[cellAddr].s = {
+                            font: { bold: true, size: 12 },
+                            alignment: { horizontal: 'center', vertical: 'center' }
+                        };
+                    }
+                    continue;
+                }
+
+                // Abaikan baris kosong di indeks 2
+                if (R === 2) continue;
+
+                // Header tabel (Baris indeks 3)
+                if (R === 3) {
+                    if (ws[cellAddr]) {
+                        ws[cellAddr].s = {
+                            font: { bold: true, size: 10 },
+                            alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+                            fill: { fgColor: { rgb: 'EAEAEA' } }, // Background abu-abu tipis
+                            border: thinBorder
+                        };
+                    }
+                    continue;
+                }
+
+                // Untuk data (baris indeks 4 s/d data terakhir)
+                var lastDataRow = 4 + countData - 1;
+                if (R >= 4 && R <= lastDataRow) {
+                    if (!ws[cellAddr]) {
+                        // Jika sel kosong, inisialisasi sebagai sel kosong agar dapat diberi border
+                        ws[cellAddr] = { t: 's', v: '' };
+                    }
+                    
+                    // Inisialisasi style jika belum ada
+                    if (!ws[cellAddr].s) ws[cellAddr].s = {};
+                    
+                    // 1. Terapkan Border
+                    ws[cellAddr].s.border = thinBorder;
+
+                    // 2. Set NUPTK (kolom index 8 = I) sebagai teks murni
                     if (C === 8) {
                         ws[cellAddr].t = 's';
                         ws[cellAddr].v = String(ws[cellAddr].v).replace(/^'/, '');
                     }
-                }
 
-                // Tambahkan s (style) wrapText untuk semua cell yang memiliki karakter baris baru (\n)
-                if (ws[cellAddr].v && String(ws[cellAddr].v).indexOf('\n') !== -1) {
-                    if (!ws[cellAddr].s) ws[cellAddr].s = {};
+                    // 3. Set Alignment
                     ws[cellAddr].s.alignment = {
                         wrapText: true,
-                        vertical: 'top' // Rata atas agar rapi
+                        vertical: 'top', // SELALU Rata Atas
+                        horizontal: (C === 0 || C === 4 || C === 8 || C === 9 || C === 10) ? 'center' : 'left' // NO, STATUS, NUPTK, SERDIK, DAPODIK rata tengah
                     };
                 }
             }
