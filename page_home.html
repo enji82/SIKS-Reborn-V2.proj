@@ -365,54 +365,11 @@
     </div>
 
     <div class="row">
-        <div class="col-md-8">
+        <div class="col-12">
             <div class="card-sultan glass-sultan p-4">
-                <h5 class="font-weight-bold text-maroon mb-4"><i class="fas fa-chart-bar mr-2"></i>Statistik Aktivitas Sistem</h5>
-                <div style="height: 250px;"><canvas id="sultan_chartAktivitas"></canvas></div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card-sultan glass-sultan p-4 h-100">
-                <h5 class="font-weight-bold text-maroon mb-4"><i class="fas fa-history mr-2"></i>Aktivitas Terakhir</h5>
-                <div class="sultan-timeline-container" style="height: 250px; overflow-y: auto; padding-right: 10px;">
-                    
-                    <div class="sultan-timeline-item">
-                        <div class="timeline-icon bg-success text-white"><i class="fas fa-check"></i></div>
-                        <div class="timeline-content">
-                            <h6 class="font-weight-bold text-dark mb-0" style="font-size: 0.9rem;">Dokumen Terverifikasi</h6>
-                            <small class="text-muted">SK Kenaikan Pangkat Anda telah disetujui</small>
-                            <div class="text-muted" style="font-size: 0.75rem; margin-top: 2px;"><i class="fas fa-clock mr-1"></i> 2 Jam yang lalu</div>
-                        </div>
-                    </div>
-                    
-                    <div class="sultan-timeline-item">
-                        <div class="timeline-icon bg-info text-white"><i class="fas fa-file-upload"></i></div>
-                        <div class="timeline-content">
-                            <h6 class="font-weight-bold text-dark mb-0" style="font-size: 0.9rem;">Upload E-File</h6>
-                            <small class="text-muted">Anda mengunggah 'Laporan_Bulan_Mei.pdf'</small>
-                            <div class="text-muted" style="font-size: 0.75rem; margin-top: 2px;"><i class="fas fa-clock mr-1"></i> Kemarin, 14:30</div>
-                        </div>
-                    </div>
-                    
-                    <div class="sultan-timeline-item">
-                        <div class="timeline-icon bg-warning text-white"><i class="fas fa-envelope"></i></div>
-                        <div class="timeline-content">
-                            <h6 class="font-weight-bold text-dark mb-0" style="font-size: 0.9rem;">Surat Edaran Baru</h6>
-                            <small class="text-muted">Pemberitahuan libur cuti bersama</small>
-                            <div class="text-muted" style="font-size: 0.75rem; margin-top: 2px;"><i class="fas fa-clock mr-1"></i> 12 Mei 2026</div>
-                        </div>
-                    </div>
-                    
-                    <div class="sultan-timeline-item pb-0 border-0">
-                        <div class="timeline-icon bg-primary text-white"><i class="fas fa-sign-in-alt"></i></div>
-                        <div class="timeline-content">
-                            <h6 class="font-weight-bold text-dark mb-0" style="font-size: 0.9rem;">Sistem Login</h6>
-                            <small class="text-muted">Akses dari IP 192.168.1.1</small>
-                            <div class="text-muted" style="font-size: 0.75rem; margin-top: 2px;"><i class="fas fa-clock mr-1"></i> 10 Mei 2026</div>
-                        </div>
-                    </div>
-
-                </div>
+                <h5 class="font-weight-bold text-maroon mb-1"><i class="fas fa-chart-line mr-2"></i>Statistik Kunjungan & Akses Sistem</h5>
+                <p class="text-muted small mb-4">Grafik di bawah menggambarkan total hit/jumlah login pengguna ke sistem REBORN setiap bulannya.</p>
+                <div style="height: 280px;"><canvas id="sultan_chartAktivitas"></canvas></div>
             </div>
         </div>
     </div>
@@ -655,82 +612,7 @@
           setSidebarActive("Beranda"); 
       }
       sultan_initHomeCharts();
-      sultan_loadUserActivityTimeline();
   });
-
-  function sultan_loadUserActivityTimeline() {
-      var user = getSesiUser();
-      if (!user) return;
-      
-      var $container = $('.sultan-timeline-container');
-      $container.html('<div class="text-center p-4"><div class="spinner-border spinner-border-sm text-maroon"></div><br><small class="text-muted mt-2 d-block">Memuat aktivitas...</small></div>');
-
-      google.script.run.withSuccessHandler(function(activities) {
-          if (!activities || activities.length === 0) {
-              $container.html(SultanUI.emptyState("Belum Ada Aktivitas", "Aktivitas Anda akan muncul di sini setelah Anda mulai menggunakan sistem.", "fa-history"));
-              return;
-          }
-
-          var html = '';
-          activities.forEach(function(item, index) {
-              var isLast = (index === activities.length - 1);
-              var timeStr = sultan_formatRelativeTime(item.time);
-              
-              html += `
-                  <div class="sultan-timeline-item ${isLast ? 'pb-0 border-0' : ''}">
-                      <div class="timeline-icon bg-${item.color || 'primary'} text-white">
-                          <i class="fas ${item.icon || 'fa-dot-circle'}"></i>
-                      </div>
-                      <div class="timeline-content">
-                          <h6 class="font-weight-bold text-dark mb-0" style="font-size: 0.9rem;">${item.title}</h6>
-                          <small class="text-muted">${item.desc}</small>
-                          <div class="text-muted" style="font-size: 0.75rem; margin-top: 2px;">
-                              <i class="fas fa-clock mr-1"></i> ${timeStr}
-                          </div>
-                      </div>
-                  </div>
-              `;
-          });
-          $container.html(html);
-      }).getUserActivityTimeline(user.username, user.nama_lengkap || user.nama);
-  }
-
-  function sultan_formatRelativeTime(dateVal) {
-      if (!dateVal) return "-";
-      
-      var now = new Date();
-      var date;
-      
-      if (dateVal instanceof Date) {
-          date = dateVal;
-      } else {
-          try {
-              // Handle 'dd-mm-yyyy HH:mm:ss' or 'yyyy-mm-dd HH:mm:ss'
-              var s = String(dateVal).replace(/'/g, "").trim();
-              var parts = s.split(" ");
-              var dateParts = parts[0].split(/[-/]/);
-              var timeParts = (parts[1] || "00:00:00").split(":");
-              
-              var d, m, y;
-              if (dateParts[0].length === 4) { // yyyy-mm-dd
-                  y = parseInt(dateParts[0]); m = parseInt(dateParts[1]) - 1; d = parseInt(dateParts[2]);
-              } else { // dd-mm-yyyy
-                  d = parseInt(dateParts[0]); m = parseInt(dateParts[1]) - 1; y = parseInt(dateParts[2]);
-              }
-              date = new Date(y, m, d, parseInt(timeParts[0]||0), parseInt(timeParts[1]||0), parseInt(timeParts[2]||0));
-          } catch(e) { return dateVal; }
-      }
-
-      if (isNaN(date.getTime())) return String(dateVal);
-
-      var diffInSeconds = Math.floor((now - date) / 1000);
-      if (diffInSeconds < 60) return "Baru saja";
-      if (diffInSeconds < 3600) return Math.floor(diffInSeconds / 60) + " menit yang lalu";
-      if (diffInSeconds < 86400) return Math.floor(diffInSeconds / 3600) + " jam yang lalu";
-      if (diffInSeconds < 172800) return "Kemarin";
-      
-      return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
-  }
 
   function sultan_initHomeCharts() {
       // 1. Chart Aktivitas (Bar)
@@ -741,7 +623,7 @@
               data: {
                   labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'],
                   datasets: [{
-                      label: 'Akses Sistem',
+                      label: 'Total Kunjungan (Hit)',
                       data: [65, 59, 80, 81, 56, 55],
                       backgroundColor: 'rgba(128, 0, 0, 0.7)',
                       borderColor: '#800000',
@@ -756,8 +638,6 @@
               }
           });
       }
-
-      // Timeline Init
-      // Jika data timeline dinamis ingin diload, kita bisa update elemen HTML .sultan-timeline-container di sini
   }
+</script>
 </script>
