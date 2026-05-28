@@ -692,6 +692,9 @@
                 <i class="fas fa-sync-alt"></i>
             </button>
             <div class="ml-auto d-none d-md-block"></div>
+            <button type="button" id="ptksdn_btnExcel" class="sultan-btn-excel shadow-sm" title="Unduh Excel" disabled>
+                <i class="fas fa-file-excel"></i> EXCEL
+            </button>
             <button type="button" id="ptksdn_btnTambah" class="sultan-btn-tambah" disabled>
                 <i class="fas fa-plus"></i> TAMBAH PTK
             </button>
@@ -714,6 +717,7 @@
         // Penggunaan .off() wajib dilakukan agar listener tidak bertumpuk
         $(document).off('click', '#ptksdn_btnSync').on('click', '#ptksdn_btnSync', ptksdn_tarikDataServer);
         $(document).off('click', '#ptksdn_btnTambah').on('click', '#ptksdn_btnTambah', ptksdn_bukaModalTambah);
+        $(document).off('click', '#ptksdn_btnExcel').on('click', '#ptksdn_btnExcel', ptksdn_exportExcel);
 
 
         // EVENT LISTENER MUTASI [NEW]
@@ -819,7 +823,7 @@
     function ptksdn_validasiAksesUser() {
         if (PTKSDN_IS_ADMIN) {
             $('#ptksdn_filterUnit').empty().append('<option value="SEMUA">- Semua Unit Kerja -</option>').prop('disabled', false).removeClass('bg-light text-maroon font-weight-bold');
-            $('#ptksdn_btnSync, #ptksdn_btnTambah').prop('disabled', false);
+            $('#ptksdn_btnSync, #ptksdn_btnTambah, #ptksdn_btnExcel').prop('disabled', false);
             ptksdn_tarikDataServer();
         } else {
             if (!PTKSDN_USER_NPSN) {
@@ -836,7 +840,7 @@
                 }
                 PTKSDN_UNIT_TERKUNCI = dataUnit.unitKerja;
                 $('#ptksdn_filterUnit').empty().append('<option value="' + ptksdn_escapeHtml(PTKSDN_UNIT_TERKUNCI) + '">' + ptksdn_escapeHtml(PTKSDN_UNIT_TERKUNCI) + '</option>').prop('disabled', true);
-                $('#ptksdn_btnSync, #ptksdn_btnTambah').prop('disabled', false);
+                $('#ptksdn_btnSync, #ptksdn_btnTambah, #ptksdn_btnExcel').prop('disabled', false);
                 ptksdn_tarikDataServer();
             }).withFailureHandler(function (err) {
                 $('#ptksdn_filterUnit').empty().append('<option value="">ERROR SERVER</option>');
@@ -1110,6 +1114,230 @@
         var months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
         return dateObj.getDate() + ' ' + months[dateObj.getMonth()] + ' ' + dateObj.getFullYear();
     }
+
+    // =================================================================
+    // 5B. EXPORT EXCEL (SheetJS)
+    // =================================================================
+    function ptksdn_exportExcel() {
+        if (typeof XLSX === 'undefined') {
+            Sultan.alert('error', 'Error', 'Library Excel (SheetJS) belum dimuat. Silakan refresh halaman.');
+            return;
+        }
+
+        // 1. Ambil data terfilter (logika sama persis dengan ptksdn_terapkanFilterLokal)
+        var fStatus = $('#ptksdn_filterStatus').val() || "SEMUA";
+        var fJabatan = $('#ptksdn_filterJabatan').val() || "SEMUA";
+        var fTugas = $('#ptksdn_filterTugas').val() || "SEMUA";
+        var tAdminUnit = PTKSDN_IS_ADMIN ? ($('#ptksdn_filterUnit').val() || "SEMUA").toUpperCase() : "";
+        var tUnitUser = String(PTKSDN_UNIT_TERKUNCI).trim().toUpperCase();
+
+        var clStatus = ptksdn_cleanString(fStatus);
+        var clJabatan = ptksdn_cleanString(fJabatan);
+        var clTugas = ptksdn_cleanString(fTugas);
+
+        var dataFiltered = PTKSDN_CACHE_DATA.filter(function (row) {
+            var rUnit = ptksdn_cleanString(row.unit);
+            var rStatus = ptksdn_cleanString(row.status_peg);
+            var rJabatan = ptksdn_cleanString(row.jabatan);
+            var rTugas = ptksdn_cleanString(row.tugas);
+
+            var passUnit = false;
+            if (PTKSDN_IS_ADMIN) { passUnit = (tAdminUnit === "SEMUA" || rUnit === tAdminUnit); }
+            else { passUnit = (rUnit === tUnitUser); }
+
+            var passStatus = (clStatus === "SEMUA") || (rStatus === clStatus);
+            var passJabatan = (clJabatan === "SEMUA") || (rJabatan === clJabatan);
+            var passTugas = (clTugas === "SEMUA") || (rTugas === clTugas);
+            var passPending = !row.is_pending_baru;
+
+            return passUnit && passStatus && passJabatan && passTugas && passPending;
+        });
+
+        if (dataFiltered.length === 0) {
+            Sultan.alert('warning', 'Data Kosong', 'Tidak ada data PTK untuk diekspor berdasarkan filter yang aktif.');
+            return;
+        }
+
+        // Urutkan berdasarkan nama
+        dataFiltered.sort(function (a, b) {
+            var nameA = (a.nama_lengkap || "").toUpperCase();
+            var nameB = (b.nama_lengkap || "").toUpperCase();
+            return (nameA < nameB) ? -1 : (nameA > nameB) ? 1 : 0;
+        });
+
+        // 2. Tentukan nama unit kerja
+        var namaUnit = '';
+        if (PTKSDN_IS_ADMIN) {
+            var filterVal = $('#ptksdn_filterUnit').val() || 'SEMUA';
+            namaUnit = (filterVal === 'SEMUA') ? 'SEMUA UNIT KERJA' : filterVal;
+        } else {
+            namaUnit = PTKSDN_UNIT_TERKUNCI || 'UNIT KERJA';
+        }
+
+        // 3. Definisi kolom ekspor
+        var headers = [
+            'NO', 'NAMA ASN', 'NIP', 'TEMPAT, TGL LAHIR', 'NIK',
+            'PENDIDIKAN TERAKHIR', 'STATUS PEGAWAI', 'JABATAN', 'PANGKAT/GOL',
+            'MASA KERJA', 'TUGAS', 'NUPTK', 'SERDIK', 'DAPODIK',
+            'TUGAS TAMBAHAN', 'EMAIL'
+        ];
+        var totalCol = headers.length; // 16 kolom (A-P)
+
+        // 4. Susun array of arrays untuk SheetJS
+        var wsData = [];
+
+        // Baris 1: Judul (akan di-merge)
+        var row1 = ['DAFTAR NAMA PTK SD NEGERI'];
+        for (var i = 1; i < totalCol; i++) row1.push('');
+        wsData.push(row1);
+
+        // Baris 2: Nama unit kerja (akan di-merge)
+        var row2 = [namaUnit];
+        for (var i = 1; i < totalCol; i++) row2.push('');
+        wsData.push(row2);
+
+        // Baris 3: Kosong
+        wsData.push([]);
+
+        // Baris 4: Header kolom
+        wsData.push(headers);
+
+        // Baris 5+: Data
+        dataFiltered.forEach(function (row, idx) {
+            var ttl = (row.tmp_lahir || '-') + ', ' + ptksdn_formatTanggalIndo(row.tgl_lahir);
+            var pendidikan = row.pendidikan || '-';
+            if (row.jurusan && row.jurusan !== '-') pendidikan += ' - ' + row.jurusan;
+            if (row.thn_lulus) pendidikan += ' (Lulus: ' + row.thn_lulus + ')';
+
+            var jabatan = row.jabatan || '-';
+            if (row.tmt_jabatan) jabatan += '\nTMT: ' + ptksdn_formatTanggalIndo(row.tmt_jabatan);
+
+            var pangkat = row.pangkat || '-';
+            if (row.tmt_gol) pangkat += '\nTMT: ' + ptksdn_formatTanggalIndo(row.tmt_gol);
+
+            wsData.push([
+                idx + 1,
+                row.nama_lengkap || '-',
+                row.nip || '-',
+                ttl,
+                row.nik || '-',
+                pendidikan,
+                row.status_peg || '-',
+                jabatan,
+                pangkat,
+                row.mkg || '-',
+                row.tugas || '-',
+                row.nuptk || '-',
+                row.serdik || '-',
+                row.dapodik || '-',
+                row.tugtam || '-',
+                row.email || '-'
+            ]);
+        });
+
+        // Baris kosong setelah data (2 baris)
+        wsData.push([]);
+        wsData.push([]);
+
+        // Footer: posisi kolom kanan (mulai dari kolom ke-13, index 12 = kolom M)
+        var footerColIdx = totalCol - 4; // kolom M (index 12)
+        var months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+        var now = new Date();
+        var tanggalUnduh = now.getDate() + ' ' + months[now.getMonth()] + ' ' + now.getFullYear();
+
+        // Baris: "Secang, dd MMMM yyyy"
+        var rowTanggal = [];
+        for (var i = 0; i < totalCol; i++) rowTanggal.push('');
+        rowTanggal[footerColIdx] = 'Secang, ' + tanggalUnduh;
+        wsData.push(rowTanggal);
+
+        // Baris: "Kepala SDN ........"
+        var namaKepala = namaUnit;
+        var rowKepala = [];
+        for (var i = 0; i < totalCol; i++) rowKepala.push('');
+        rowKepala[footerColIdx] = 'Kepala ' + namaKepala;
+        wsData.push(rowKepala);
+
+        // 3 baris kosong untuk ruang tanda tangan
+        wsData.push([]);
+        wsData.push([]);
+        wsData.push([]);
+
+        // Baris: "........................."
+        var rowTtd = [];
+        for (var i = 0; i < totalCol; i++) rowTtd.push('');
+        rowTtd[footerColIdx] = '.........................';
+        wsData.push(rowTtd);
+
+        // Baris: "NIP."
+        var rowNip = [];
+        for (var i = 0; i < totalCol; i++) rowNip.push('');
+        rowNip[footerColIdx] = 'NIP.';
+        wsData.push(rowNip);
+
+        // 5. Buat worksheet
+        var ws = XLSX.utils.aoa_to_sheet(wsData);
+
+        // 6. Merge cells untuk judul (baris 1 & 2)
+        ws['!merges'] = [
+            { s: { r: 0, c: 0 }, e: { r: 0, c: totalCol - 1 } }, // Baris 1: merge A1:P1
+            { s: { r: 1, c: 0 }, e: { r: 1, c: totalCol - 1 } }  // Baris 2: merge A2:P2
+        ];
+
+        // 7. Set lebar kolom
+        ws['!cols'] = [
+            { wch: 5 },   // NO
+            { wch: 30 },  // NAMA ASN
+            { wch: 22 },  // NIP
+            { wch: 28 },  // TEMPAT, TGL LAHIR
+            { wch: 20 },  // NIK
+            { wch: 30 },  // PENDIDIKAN TERAKHIR
+            { wch: 18 },  // STATUS PEGAWAI
+            { wch: 22 },  // JABATAN
+            { wch: 22 },  // PANGKAT/GOL
+            { wch: 18 },  // MASA KERJA
+            { wch: 15 },  // TUGAS
+            { wch: 20 },  // NUPTK
+            { wch: 15 },  // SERDIK
+            { wch: 15 },  // DAPODIK
+            { wch: 18 },  // TUGAS TAMBAHAN
+            { wch: 28 }   // EMAIL
+        ];
+
+        // 8. Format NIK & NIP sebagai text (agar tidak scientific notation)
+        var range = XLSX.utils.decode_range(ws['!ref']);
+        for (var R = 4; R <= range.e.r; R++) { // Mulai dari baris data (index 4 = baris ke-5)
+            // Kolom NIP (index 2 = C)
+            var nipAddr = XLSX.utils.encode_cell({ r: R, c: 2 });
+            if (ws[nipAddr] && ws[nipAddr].v) {
+                ws[nipAddr].t = 's'; // force text
+                ws[nipAddr].v = String(ws[nipAddr].v).replace(/^'/, '');
+            }
+            // Kolom NIK (index 4 = E)
+            var nikAddr = XLSX.utils.encode_cell({ r: R, c: 4 });
+            if (ws[nikAddr] && ws[nikAddr].v) {
+                ws[nikAddr].t = 's'; // force text
+                ws[nikAddr].v = String(ws[nikAddr].v).replace(/^'/, '');
+            }
+            // Kolom NUPTK (index 11 = L)
+            var nuptkAddr = XLSX.utils.encode_cell({ r: R, c: 11 });
+            if (ws[nuptkAddr] && ws[nuptkAddr].v) {
+                ws[nuptkAddr].t = 's';
+                ws[nuptkAddr].v = String(ws[nuptkAddr].v).replace(/^'/, '');
+            }
+        }
+
+        // 9. Buat workbook dan unduh
+        var wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Data PTK');
+
+        var safeUnitName = namaUnit.replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, '_');
+        var fileName = 'Data_PTK_SDN_' + safeUnitName + '.xlsx';
+
+        XLSX.writeFile(wb, fileName);
+        Sultan.notif.crud.sukses('File Excel berhasil diunduh!');
+    }
+
 
     function ptksdn_checkExternalAction() {
         var action = localStorage.getItem('ptksdn_action');
