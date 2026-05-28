@@ -459,47 +459,80 @@ function hapusUser(username) {
 // ==========================================
 function getVisitorStats() {
   var props = PropertiesService.getScriptProperties();
-  var today = new Date().toLocaleDateString("id-ID"); 
-  
-  // Statistik Hits
-  var totalHits = Number(props.getProperty('TOTAL_HITS')) || 0;
-  var lastDate = props.getProperty('LAST_DATE_HIT');
-  var todayHits = Number(props.getProperty('TODAY_HITS')) || 0;
-  
-  // Ambil Data Online Terupdate
-  var onlineCount = Number(props.getProperty('ONLINE_COUNT')) || 0;
+  var onlineSD = Number(props.getProperty('ONLINE_COUNT_SD')) || 0;
+  var onlinePAUD = Number(props.getProperty('ONLINE_COUNT_PAUD')) || 0;
 
-  if (lastDate !== today) {
-    todayHits = 0;
-    props.setProperty('LAST_DATE_HIT', today);
-  }
-
-  totalHits++;
-  todayHits++;
-  props.setProperty('TOTAL_HITS', totalHits.toString());
-  props.setProperty('TODAY_HITS', todayHits.toString());
-
-  // Running Text & User Count
-  var totalUsers = 0;
-  var infoText = "Selamat Datang di SIKS-REBORN";
+  var stats = {
+    sd_month: 0,
+    paud_month: 0,
+    sd_week: 0,
+    paud_week: 0,
+    sd_today: 0,
+    paud_today: 0,
+    online_sd: onlineSD,
+    online_paud: onlinePAUD,
+    users: 0,
+    info: "Selamat Datang di SIKS-REBORN"
+  };
 
   try {
+    // Hitung User Terdaftar
     var sheetUser = getSheet("USER_DB", SPREADSHEET_IDS.SHEET_USER_NAME);
-    if(sheetUser) totalUsers = sheetUser.getLastRow() - 1;
+    if(sheetUser) stats.users = sheetUser.getLastRow() - 1;
+    
     // Ambil Running Text
     var sheetSetting = getSheet("USER_DB", "SETTING");
-    if (sheetSetting) infoText = sheetSetting.getRange("B1").getValue();
+    if (sheetSetting) stats.info = sheetSetting.getRange("B1").getValue();
+
+    // Hitung Kunjungan dari LOG_ACCESS
+    var sheetLog = getSheet("USER_DB", "LOG_ACCESS");
+    if (sheetLog && sheetLog.getLastRow() > 1) {
+      var logs = sheetLog.getRange(2, 1, sheetLog.getLastRow() - 1, 7).getValues();
+      var now = new Date();
+      var todayStr = Utilities.formatDate(now, "Asia/Jakarta", "yyyy-MM-dd");
+      var currentMonth = Utilities.formatDate(now, "Asia/Jakarta", "yyyy-MM");
+      var currentWeek = Utilities.formatDate(now, "Asia/Jakarta", "w");
+
+      for (var i = 0; i < logs.length; i++) {
+        var row = logs[i];
+        var rowTimeStr = row[1]; // yyyy-MM-dd
+        var rowMonth = row[2];   // yyyy-MM
+        var rowUnit = String(row[6] || "").toUpperCase(); // Unit di kolom G
+        
+        // Skip jika bukan unit yang dicari
+        var isSD = (rowUnit === "SD");
+        var isPAUD = (rowUnit === "PAUD");
+        if (!isSD && !isPAUD) continue;
+
+        // 1. Hitung Bulanan (Bulan ini)
+        if (rowMonth === currentMonth) {
+          if (isSD) stats.sd_month++;
+          if (isPAUD) stats.paud_month++;
+        }
+
+        // 2. Hitung Mingguan (Minggu ini)
+        var rowDate = new Date(row[0]);
+        if (!isNaN(rowDate.getTime())) {
+          var rowWeek = Utilities.formatDate(rowDate, "Asia/Jakarta", "w");
+          if (rowWeek === currentWeek && rowMonth === currentMonth) {
+            if (isSD) stats.sd_week++;
+            if (isPAUD) stats.paud_week++;
+          }
+        }
+
+        // 3. Hitung Harian (Hari ini)
+        if (rowTimeStr === todayStr) {
+          if (isSD) stats.sd_today++;
+          if (isPAUD) stats.paud_today++;
+        }
+      }
+    }
   } catch (e) {
-    infoText = "Maintenance Mode";
+    stats.info = "Maintenance Mode";
+    console.log("Error getVisitorStats: " + e.message);
   }
 
-  return { 
-    total: totalHits, 
-    today: todayHits, 
-    users: totalUsers, 
-    online: onlineCount, // <--- Data Baru dikirim ke sini
-    info: infoText 
-  };
+  return stats;
 }
 
 function saveRunningText(textBaru) {
@@ -665,33 +698,59 @@ function getMonitoring_Users() {
    MODUL: LOGGER PENGUNJUNG & ONLINE TRACKER (WAJIB ADA)
    ====================================================================== */
 
-// 1. UPDATE STATUS ONLINE (Untuk menghitung User Online Realtime)
-function updateOnlineStatus(username) {
+// 1. UPDATE STATUS ONLINE (Untuk menghitung User Online Realtime per Unit Kerja)
+function updateOnlineStatus(username, unitStr) {
   try {
     var props = PropertiesService.getScriptProperties();
     var now = new Date().getTime();
     var cutoff = now - (10 * 60 * 1000); // Batas aktif: 10 Menit terakhir
     
     // Ambil database user online dari memori script
-    var json = props.getProperty('ONLINE_USERS_DB');
+    var json = props.getProperty('ONLINE_USERS_DB_V2');
     var activeUsers = json ? JSON.parse(json) : {};
     
-    // Masukkan user ini (Update waktu terakhir akses)
-    if (username) activeUsers[username] = now;
+    // Tentukan kategori unit
+    var unit = String(unitStr || "").trim().toUpperCase();
+    var unitCat = "LAINNYA";
+    if (unit.includes("SD")) {
+      unitCat = "SD";
+    } else if (unit.includes("PAUD") || unit.includes("TK") || unit.includes("KB")) {
+      unitCat = "PAUD";
+    }
+    
+    // Masukkan user ini (Update waktu terakhir akses dan unit kerjanya)
+    if (username) {
+      activeUsers[username] = {
+        time: now,
+        unit: unitCat
+      };
+    }
     
     // Bersihkan user yang sudah offline (lebih dari 10 menit tidak aktif)
     var cleanList = {};
-    var count = 0;
+    var countSD = 0;
+    var countPAUD = 0;
+    
     for (var u in activeUsers) {
-      if (activeUsers[u] > cutoff) {
-        cleanList[u] = activeUsers[u];
-        count++;
+      var item = activeUsers[u];
+      // Backward compatibility jika data masih bertipe angka timestamp
+      var userTime = typeof item === 'object' ? item.time : item;
+      var userUnit = typeof item === 'object' ? item.unit : "LAINNYA";
+      
+      if (userTime > cutoff) {
+        cleanList[u] = { time: userTime, unit: userUnit };
+        if (userUnit === "SD") {
+          countSD++;
+        } else if (userUnit === "PAUD") {
+          countPAUD++;
+        }
       }
     }
     
     // Simpan Kembali ke Properti Script
-    props.setProperty('ONLINE_USERS_DB', JSON.stringify(cleanList));
-    props.setProperty('ONLINE_COUNT', count.toString());
+    props.setProperty('ONLINE_USERS_DB_V2', JSON.stringify(cleanList));
+    props.setProperty('ONLINE_COUNT_SD', countSD.toString());
+    props.setProperty('ONLINE_COUNT_PAUD', countPAUD.toString());
     
   } catch (e) {
     console.log("Online Tracker Error: " + e.message);
@@ -704,7 +763,7 @@ function logUserVisit(userData) {
   if (!userData) return;
   
   // A. Update Status Online (Realtime)
-  updateOnlineStatus(userData.username || userData.nama);
+  updateOnlineStatus(userData.username || userData.nama, userData.unit);
 
   // B. Simpan Log Permanen ke Spreadsheet
   try {
@@ -747,14 +806,40 @@ function logUserVisit(userData) {
       }
     }
 
-    // Simpan Baris Log
+    // Auto-clear LOG_ACCESS saat berganti bulan
+    var lastLoggedMonth = props.getProperty('LAST_LOG_MONTH'); // Format: yyyy-MM
+    if (lastLoggedMonth && lastLoggedMonth !== blnOnly && sheet.getLastRow() > 1) {
+        // Hapus semua baris data log lama, sisakan header
+        sheet.deleteRows(2, sheet.getLastRow() - 1);
+        // Hapus cache monitoring
+        var cache = CacheService.getScriptCache();
+        cache.remove("monitoring_charts");
+        cache.remove("monitoring_users");
+    }
+    props.setProperty('LAST_LOG_MONTH', blnOnly);
+
+    // Deteksi Unit Kerja User (SD, PAUD, TK, dll.)
+    var userUnit = String(userData.unit || "").trim().toUpperCase();
+    var kategoriUnit = "LAINNYA";
+    if (userUnit.includes("SD")) {
+      kategoriUnit = "SD";
+    } else if (userUnit.includes("PAUD") || userUnit.includes("TK") || userUnit.includes("KB")) {
+      kategoriUnit = "PAUD";
+    } else {
+      // Jika kosong atau admin, coba tebak dari username/role atau kosongkan
+      var userRole = String(userData.role || "").trim().toUpperCase();
+      if (userRole.includes("ADMIN")) kategoriUnit = "ADMIN";
+    }
+
+    // Simpan Baris Log (Kolom G/Index 6 untuk kategori unit)
     sheet.appendRow([
         timestamp, 
         tgalOnly, 
         blnOnly, 
         userData.nama || userData.username, 
         userData.role, 
-        jenisHari + " (" + ketHari + ")"
+        jenisHari + " (" + ketHari + ")",
+        kategoriUnit
     ]);
 
     // Invalidate Cache
