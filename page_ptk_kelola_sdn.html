@@ -1174,14 +1174,15 @@
             namaUnit = PTKSDN_UNIT_TERKUNCI || 'UNIT KERJA';
         }
 
-        // 3. Definisi kolom ekspor
+        // 3. Definisi kolom ekspor setelah diringkas agar muat A4
         var headers = [
-            'NO', 'NAMA ASN', 'NIP', 'TEMPAT, TGL LAHIR', 'NIK',
-            'PENDIDIKAN TERAKHIR', 'STATUS PEGAWAI', 'JABATAN', 'PANGKAT/GOL',
-            'MASA KERJA', 'TUGAS', 'NUPTK', 'SERDIK', 'DAPODIK',
+            'NO', 'NAMA ASN\nNIP', 'TEMPAT, TGL LAHIR',
+            'PENDIDIKAN TERAKHIR\n(Jenjang, Jurusan, Lulus)', 'STATUS PEGAWAI', 
+            'JABATAN\nTMT', 'PANGKAT/GOL\nTMT & MASA KERJA',
+            'TUGAS', 'NUPTK', 'SERDIK', 'DAPODIK',
             'TUGAS TAMBAHAN', 'EMAIL'
         ];
-        var totalCol = headers.length; // 16 kolom (A-P)
+        var totalCol = headers.length; // 13 kolom (A-M)
 
         // 4. Susun array of arrays untuk SheetJS
         var wsData = [];
@@ -1204,28 +1205,39 @@
 
         // Baris 5+: Data
         dataFiltered.forEach(function (row, idx) {
+            // Gabung Nama ASN dan NIP (baris baru)
+            var namaNip = (row.nama_lengkap || '-') + '\nNIP. ' + (row.nip || '-');
+
             var ttl = (row.tmp_lahir || '-') + ', ' + ptksdn_formatTanggalIndo(row.tgl_lahir);
-            var pendidikan = row.pendidikan || '-';
-            if (row.jurusan && row.jurusan !== '-') pendidikan += ' - ' + row.jurusan;
-            if (row.thn_lulus) pendidikan += ' (Lulus: ' + row.thn_lulus + ')';
+            
+            // Pendidikan 3 Baris: Jenjang \n Jurusan \n Tahun Lulus
+            var jenjang = row.pendidikan || '-';
+            var jurusan = (row.jurusan && row.jurusan !== '-') ? row.jurusan : '-';
+            var thnLulus = row.thn_lulus ? 'Lulus: ' + row.thn_lulus : '-';
+            var pendidikan = jenjang + '\n' + jurusan + '\n' + thnLulus;
 
+            // Jabatan 2 Baris: Jabatan \n TMT
             var jabatan = row.jabatan || '-';
-            if (row.tmt_jabatan) jabatan += '\nTMT: ' + ptksdn_formatTanggalIndo(row.tmt_jabatan);
+            if (row.tmt_jabatan) {
+                jabatan += '\nTMT: ' + ptksdn_formatTanggalIndo(row.tmt_jabatan);
+            } else {
+                jabatan += '\nTMT: -';
+            }
 
-            var pangkat = row.pangkat || '-';
-            if (row.tmt_gol) pangkat += '\nTMT: ' + ptksdn_formatTanggalIndo(row.tmt_gol);
+            // Pangkat/Golongan + Masa Kerja 3 Baris: Pangkat/Gol \n TMT \n Masa Kerja
+            var pangkatVal = row.pangkat || '-';
+            var tmtGolVal = row.tmt_gol ? 'TMT: ' + ptksdn_formatTanggalIndo(row.tmt_gol) : 'TMT: -';
+            var mkgVal = 'MK: ' + (row.mkg || '-');
+            var pangkatGolMkg = pangkatVal + '\n' + tmtGolVal + '\n' + mkgVal;
 
             wsData.push([
                 idx + 1,
-                row.nama_lengkap || '-',
-                row.nip || '-',
+                namaNip,
                 ttl,
-                row.nik || '-',
                 pendidikan,
                 row.status_peg || '-',
                 jabatan,
-                pangkat,
-                row.mkg || '-',
+                pangkatGolMkg,
                 row.tugas || '-',
                 row.nuptk || '-',
                 row.serdik || '-',
@@ -1239,8 +1251,8 @@
         wsData.push([]);
         wsData.push([]);
 
-        // Footer: posisi kolom kanan (mulai dari kolom ke-13, index 12 = kolom M)
-        var footerColIdx = totalCol - 4; // kolom M (index 12)
+        // Footer: posisi kolom kanan
+        var footerColIdx = totalCol - 4; // Kolom ke-10 (Index 9 = J)
         var months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
         var now = new Date();
         var tanggalUnduh = now.getDate() + ' ' + months[now.getMonth()] + ' ' + now.getFullYear();
@@ -1280,22 +1292,19 @@
 
         // 6. Merge cells untuk judul (baris 1 & 2)
         ws['!merges'] = [
-            { s: { r: 0, c: 0 }, e: { r: 0, c: totalCol - 1 } }, // Baris 1: merge A1:P1
-            { s: { r: 1, c: 0 }, e: { r: 1, c: totalCol - 1 } }  // Baris 2: merge A2:P2
+            { s: { r: 0, c: 0 }, e: { r: 0, c: totalCol - 1 } }, 
+            { s: { r: 1, c: 0 }, e: { r: 1, c: totalCol - 1 } }  
         ];
 
-        // 7. Set lebar kolom
+        // 7. Set lebar kolom (disesuaikan dengan penggabungan)
         ws['!cols'] = [
             { wch: 5 },   // NO
-            { wch: 30 },  // NAMA ASN
-            { wch: 22 },  // NIP
+            { wch: 30 },  // NAMA ASN & NIP
             { wch: 28 },  // TEMPAT, TGL LAHIR
-            { wch: 20 },  // NIK
-            { wch: 30 },  // PENDIDIKAN TERAKHIR
+            { wch: 30 },  // PENDIDIKAN TERAKHIR (3 baris)
             { wch: 18 },  // STATUS PEGAWAI
-            { wch: 22 },  // JABATAN
-            { wch: 22 },  // PANGKAT/GOL
-            { wch: 18 },  // MASA KERJA
+            { wch: 22 },  // JABATAN & TMT (2 baris)
+            { wch: 25 },  // PANGKAT/GOL & MASA KERJA (3 baris)
             { wch: 15 },  // TUGAS
             { wch: 20 },  // NUPTK
             { wch: 15 },  // SERDIK
@@ -1304,26 +1313,30 @@
             { wch: 28 }   // EMAIL
         ];
 
-        // 8. Format NIK & NIP sebagai text (agar tidak scientific notation)
+        // 8. Format data cell dan Aktifkan Word Wrap (s untuk text + wrapText agar baris baru \n berfungsi)
         var range = XLSX.utils.decode_range(ws['!ref']);
-        for (var R = 4; R <= range.e.r; R++) { // Mulai dari baris data (index 4 = baris ke-5)
-            // Kolom NIP (index 2 = C)
-            var nipAddr = XLSX.utils.encode_cell({ r: R, c: 2 });
-            if (ws[nipAddr] && ws[nipAddr].v) {
-                ws[nipAddr].t = 's'; // force text
-                ws[nipAddr].v = String(ws[nipAddr].v).replace(/^'/, '');
-            }
-            // Kolom NIK (index 4 = E)
-            var nikAddr = XLSX.utils.encode_cell({ r: R, c: 4 });
-            if (ws[nikAddr] && ws[nikAddr].v) {
-                ws[nikAddr].t = 's'; // force text
-                ws[nikAddr].v = String(ws[nikAddr].v).replace(/^'/, '');
-            }
-            // Kolom NUPTK (index 11 = L)
-            var nuptkAddr = XLSX.utils.encode_cell({ r: R, c: 11 });
-            if (ws[nuptkAddr] && ws[nuptkAddr].v) {
-                ws[nuptkAddr].t = 's';
-                ws[nuptkAddr].v = String(ws[nuptkAddr].v).replace(/^'/, '');
+        for (var R = 0; R <= range.e.r; R++) {
+            for (var C = 0; C <= range.e.c; C++) {
+                var cellAddr = XLSX.utils.encode_cell({ r: R, c: C });
+                if (!ws[cellAddr]) continue;
+                
+                // Pastikan format cell
+                if (R >= 4) { // Baris data ke bawah
+                    // Set NUPTK (kolom index 8 = I) sebagai teks murni
+                    if (C === 8) {
+                        ws[cellAddr].t = 's';
+                        ws[cellAddr].v = String(ws[cellAddr].v).replace(/^'/, '');
+                    }
+                }
+
+                // Tambahkan s (style) wrapText untuk semua cell yang memiliki karakter baris baru (\n)
+                if (ws[cellAddr].v && String(ws[cellAddr].v).indexOf('\n') !== -1) {
+                    if (!ws[cellAddr].s) ws[cellAddr].s = {};
+                    ws[cellAddr].s.alignment = {
+                        wrapText: true,
+                        vertical: 'top' // Rata atas agar rapi
+                    };
+                }
             }
         }
 
