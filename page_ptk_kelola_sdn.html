@@ -1187,14 +1187,12 @@
         // 4. Susun array of arrays untuk SheetJS
         var wsData = [];
 
-        // Baris 1: Judul (akan di-merge)
+        // Baris 1: Judul (selain indeks 0 biarkan kosong/undefined agar mergenya bersih)
         var row1 = ['DAFTAR NAMA PTK SD NEGERI'];
-        for (var i = 1; i < totalCol; i++) row1.push('');
         wsData.push(row1);
 
-        // Baris 2: Nama unit kerja (akan di-merge)
+        // Baris 2: Nama unit kerja (selain indeks 0 biarkan kosong/undefined)
         var row2 = [namaUnit];
-        for (var i = 1; i < totalCol; i++) row2.push('');
         wsData.push(row2);
 
         // Baris 3: Kosong
@@ -1338,30 +1336,30 @@
             right: { style: 'thin', color: { rgb: '000000' } }
         };
 
+        // Set data & style judul secara manual pada sel A1 & A2 (karena ini sel utama merge)
+        ws['A1'] = {
+            t: 's',
+            v: 'DAFTAR NAMA PTK SD NEGERI',
+            s: {
+                font: { bold: true, size: 14 },
+                alignment: { horizontal: 'center', vertical: 'center' }
+            }
+        };
+        ws['A2'] = {
+            t: 's',
+            v: namaUnit,
+            s: {
+                font: { bold: true, size: 14 },
+                alignment: { horizontal: 'center', vertical: 'center' }
+            }
+        };
+
         for (var R = 0; R <= range.e.r; R++) {
+            // Lewati baris 0 dan 1 karena sudah dikonfigurasi secara spesifik di atas
+            if (R === 0 || R === 1) continue;
+
             for (var C = 0; C <= range.e.c; C++) {
                 var cellAddr = XLSX.utils.encode_cell({ r: R, c: C });
-                
-                // Judul baris 0 & 1, buat bold & center dengan ukuran font 14 (lebih besar 2pt dari header tabel)
-                if (R === 0 || R === 1) {
-                    var isLeftCell = (C === 0);
-                    if (isLeftCell) {
-                        if (!ws[cellAddr]) ws[cellAddr] = { t: 's', v: '' };
-                        ws[cellAddr].s = {
-                            font: { bold: true, size: 14 },
-                            alignment: { horizontal: 'center', vertical: 'center' }
-                        };
-                    } else {
-                        // Untuk sel merge lainnya di baris judul, inisialisasi kosong dengan style yang sama agar Excel merender dengan baik
-                        if (ws[cellAddr]) {
-                            ws[cellAddr].s = {
-                                font: { bold: true, size: 14 },
-                                alignment: { horizontal: 'center', vertical: 'center' }
-                            };
-                        }
-                    }
-                    continue;
-                }
 
                 // Abaikan baris kosong di indeks 2
                 if (R === 2) continue;
