@@ -36,6 +36,7 @@ const SPREADSHEET_IDS = {
   SIABA_PNS_DB: "1wiDKez4rL5UYnpP2-OZjYowvmt1nRx-fIMy9trJlhBA",
   SIABA_PAK_DB: "1mAXwf7cHaOqIj2uf51Fup5tyyBzijTeIxVS8uO1E4dM",
   SIABA_LOOKUP_DB: "1wiDKez4rL5UYnpP2-OZjYowvmt1nRx-fIMy9trJlhBA",
+  TATA_NASKAH_DINAS_DB: "1yvRXr-tyWv42nJfJLedELp-_R_WEo5gDxwCRIQTUVtk",
 };
 
 // 2. FOLDER CONFIG (Digunakan oleh semua file .gs lainnya)
