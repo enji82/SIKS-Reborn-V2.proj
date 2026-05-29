@@ -146,7 +146,7 @@ function applyPtkMasterRowUpdate_(sheet, rowIndex, form, extras) {
     ]]);
   }
 
-  var rowSlice = sheet.getRange(rowIndex, 4, 1, 34).getValues()[0];
+  var rowSlice = sheet.getRange(rowIndex, 4, 1, 35).getValues()[0];
   rowSlice[0] = form.gelar_depan || "";
   rowSlice[1] = form.nama_lengkap || "";
   rowSlice[2] = form.gelar_belakang || "";
@@ -180,8 +180,14 @@ function applyPtkMasterRowUpdate_(sheet, rowIndex, form, extras) {
   rowSlice[31] = user;
   if (extras.jenisDokumen) rowSlice[32] = extras.jenisDokumen;
   if (extras.fileUrl) rowSlice[33] = extras.fileUrl;
+  
+  if (extras.newArchive) {
+    rowSlice[34] = extras.newArchive;
+  } else {
+    rowSlice[34] = rowSlice[34] || "";
+  }
 
-  sheet.getRange(rowIndex, 4, 1, 34).setValues([rowSlice]);
+  sheet.getRange(rowIndex, 4, 1, 35).setValues([rowSlice]);
 }
 
 // 3. UPDATE DATA PTK
@@ -207,6 +213,14 @@ function updateDataPTK(form, base64Data, fileName, jenisDokumen) {
 
     if (base64Data && fileName) {
       try {
+        var oldFileUrl = data[rowIndex - 1][36];
+        var oldJenisDok = data[rowIndex - 1][35];
+        if (oldFileUrl && oldFileUrl !== "-" && oldFileUrl !== "") {
+          var oldArchive = data[rowIndex - 1].length > 37 ? String(data[rowIndex - 1][37] || "").trim() : "";
+          var newDocInfo = (oldJenisDok || "Dokumen") + ": " + oldFileUrl + " (Diubah oleh " + (form.user_login || "Admin") + " pada " + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MM-yyyy HH:mm") + ")";
+          extras.newArchive = oldArchive ? oldArchive + "\n" + newDocInfo : newDocInfo;
+        }
+
         var folderId = "1WScDrF-y4PyjFjneXuIqX3yRNxIcqKzB";
         var folder = DriveApp.getFolderById(folderId);
         var fileBytes = Utilities.base64Decode(base64Data);
@@ -313,7 +327,8 @@ function insertDataPTK(form, base64Data, fileName, jenisDokumen, userPengusul) {
       "",                     // AH (33)
       "",                     // AI (34)
       jenisDok,               // AJ (35)
-      fileUrl                 // AK (36)
+      fileUrl,                // AK (36)
+      ""                      // AL (37)
   ];
 
   sheet.appendRow(rowData);
