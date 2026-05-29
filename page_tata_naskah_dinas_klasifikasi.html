@@ -52,6 +52,50 @@
   .dark-mode #klasifikasi_tabelUtama tbody tr:hover .col-sticky-left {
     background-color: var(--sultan-table-hover-dm) !important;
   }
+
+  /* Bagan Klasifikasi CSS */
+  .bagan-tree-container {
+    background-color: #fff;
+    border-radius: 12px;
+    padding: 15px;
+    border: 1px solid #e9ecef;
+    max-height: 600px;
+    overflow-y: auto;
+  }
+  .dark-mode .bagan-tree-container {
+    background-color: var(--dm-bg-card);
+    border-color: var(--dm-border);
+  }
+  .bagan-tree-row {
+    border-radius: 6px;
+    transition: background-color 0.2s ease;
+  }
+  .bagan-tree-row:hover {
+    background-color: #f8f9fa;
+  }
+  .dark-mode .bagan-tree-row:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+  .bagan-tree-row span {
+    font-size: 13px;
+  }
+  .dark-mode .bagan-tree-row span {
+    color: var(--dm-text-main) !important;
+  }
+  .bagan-tree-root span {
+    color: var(--warna-maroon) !important;
+    font-size: 14px;
+  }
+  .dark-mode .bagan-tree-root span {
+    color: #ff9f9f !important;
+  }
+  .bagan-tree-children {
+    border-left: 1px dashed rgba(0, 0, 0, 0.1);
+    margin-left: 8px;
+  }
+  .dark-mode .bagan-tree-children {
+    border-left-color: rgba(255, 255, 255, 0.1);
+  }
 </style>
 
 <section class="content">
@@ -112,6 +156,22 @@
           </div>
         </div>
 
+        <!-- Bagan Klasifikasi Card -->
+        <div class="card-sultan mt-4">
+          <div class="card-header sultan-header-aksi-utama py-3">
+            <h6 class="m-0 font-weight-bold text-uppercase" style="font-size:13px;"><i class="fas fa-sitemap mr-2"></i>Bagan Klasifikasi Arsip</h6>
+          </div>
+          <div class="card-body p-3">
+            <div id="klasifikasi_baganState">
+              <div id="klasifikasi_baganContent" class="bagan-tree-container">
+                <div class="text-center text-muted py-3">
+                  <i class="fas fa-spinner fa-spin mr-2"></i>Membuat Bagan...
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -127,6 +187,26 @@
   $(document).ready(function () {
     KLASIFIKASI_TABEL_INSTANCE = null;
     $('#klasifikasi_tableState').hide();
+
+    // Bagan tree folder slide toggle delegate
+    $(document).off('click', '.bagan-tree-folder').on('click', '.bagan-tree-folder', function (e) {
+      e.stopPropagation();
+      var childrenContainer = $(this).next('.bagan-tree-children');
+      var isOpening = childrenContainer.is(':hidden');
+
+      childrenContainer.slideToggle(200);
+      $(this).toggleClass('expanded', isOpening);
+
+      var chevron = $(this).find('.tree-chevron');
+      var icon = $(this).find('i.fa-folder, i.fa-folder-open');
+      if (isOpening) {
+        chevron.removeClass('fa-chevron-down').addClass('fa-chevron-up');
+        icon.removeClass('fa-folder').addClass('fa-folder-open');
+      } else {
+        chevron.removeClass('fa-chevron-up').addClass('fa-chevron-down');
+        icon.removeClass('fa-folder-open').addClass('fa-folder');
+      }
+    });
 
     klasifikasi_tarikDataServer();
   });
@@ -160,6 +240,7 @@
 
         KLASIFIKASI_CACHE_DATA = res || [];
         klasifikasi_renderTabel(KLASIFIKASI_CACHE_DATA);
+        klasifikasi_renderBagan(KLASIFIKASI_CACHE_DATA);
       })
       .withFailureHandler(function (err) {
         $('#klasifikasi_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Terputus: ' + klasifikasi_escapeHtml(err.message) + '</span>');
@@ -249,5 +330,91 @@
         setTimeout(function () { KLASIFIKASI_TABEL_INSTANCE.columns.adjust(); }, 50);
       }
     }
+  }
+
+  function klasifikasi_renderBagan(data) {
+    var contentDiv = $('#klasifikasi_baganContent');
+    if (!data || data.length === 0) {
+      contentDiv.html('<div class="text-center text-muted py-3">Tidak ada data untuk bagan.</div>');
+      return;
+    }
+
+    var childrenMap = {};
+    var allItems = {};
+
+    data.forEach(function (item) {
+      allItems[item.kode_klasifikasi] = item;
+      var parent = item.parent_kode || "ROOT";
+      if (!childrenMap[parent]) {
+        childrenMap[parent] = [];
+      }
+      childrenMap[parent].push(item);
+    });
+
+    var rootItems = [];
+    data.forEach(function (item) {
+      var parent = item.parent_kode;
+      if (!parent || !allItems[parent]) {
+        rootItems.push(item);
+      }
+    });
+
+    function buildTreeNodeHtml(item, depth) {
+      var code = item.kode_klasifikasi;
+      var children = childrenMap[code] || [];
+      var hasChildren = children.length > 0;
+      var indent = depth * 20;
+
+      var iconFolder = hasChildren ? 'fa-folder text-warning' : 'fa-file text-muted';
+      var chevron = hasChildren ? '<i class="fas fa-chevron-down ml-2 tree-chevron text-muted" style="font-size: 0.8rem;"></i>' : '';
+
+      var nodeHtml = '';
+      nodeHtml += '<div class="bagan-tree-node">';
+      nodeHtml += '  <div class="bagan-tree-row d-flex align-items-center py-2 px-3 ' + (hasChildren ? 'bagan-tree-folder' : 'bagan-tree-leaf') + '" data-code="' + code + '" style="padding-left: ' + indent + 'px;">';
+      nodeHtml += '    <i class="fas ' + iconFolder + ' mr-2" style="width: 16px; text-align: center;"></i>';
+      nodeHtml += '    <span class="font-weight-bold text-dark">' + code + ' - ' + item.uraian + '</span>';
+      nodeHtml += '    ' + chevron;
+      nodeHtml += '  </div>';
+
+      if (hasChildren) {
+        nodeHtml += '  <div class="bagan-tree-children" style="display: none;">';
+        children.sort(function (a, b) {
+          return String(a.kode_klasifikasi).localeCompare(String(b.kode_klasifikasi), undefined, { numeric: true });
+        });
+        children.forEach(function (child) {
+          nodeHtml += buildTreeNodeHtml(child, depth + 1);
+        });
+        nodeHtml += '  </div>';
+      }
+      nodeHtml += '</div>';
+
+      return nodeHtml;
+    }
+
+    var html = '';
+    html += '<div class="bagan-tree-node">';
+    html += '  <div class="bagan-tree-row bagan-tree-folder d-flex align-items-center py-2 px-3 bagan-tree-root" style="padding-left: 0px;">';
+    html += '    <i class="fas fa-folder text-warning mr-2" style="width: 16px; text-align: center;"></i>';
+    html += '    <span class="font-weight-bold text-maroon">SK - Semua Klasifikasi</span>';
+    html += '    <i class="fas fa-chevron-down ml-2 tree-chevron text-muted" style="font-size: 0.8rem;"></i>';
+    html += '  </div>';
+    html += '  <div class="bagan-tree-children" style="display: none;">';
+
+    rootItems.sort(function (a, b) {
+      return String(a.kode_klasifikasi).localeCompare(String(b.kode_klasifikasi), undefined, { numeric: true });
+    });
+    rootItems.forEach(function (item) {
+      html += buildTreeNodeHtml(item, 1);
+    });
+
+    html += '  </div>';
+    html += '</div>';
+
+    contentDiv.html(html);
+
+    // Auto expand the virtual root folder on load
+    setTimeout(function () {
+      contentDiv.find('.bagan-tree-root').click();
+    }, 150);
   }
 </script>
