@@ -261,7 +261,8 @@
     // Build lookup dictionary
     var lookup = {};
     dataRows.forEach(function (row) {
-      lookup[row.kode_klasifikasi] = row;
+      var code = String(row.kode_klasifikasi || "").trim();
+      lookup[code] = row;
     });
 
     dataRows.forEach(function (row) {
@@ -274,8 +275,9 @@
       
       while (curr) {
         path.unshift(curr);
-        if (curr.parent_kode && lookup[curr.parent_kode]) {
-          curr = lookup[curr.parent_kode];
+        var pCode = String(curr.parent_kode || "").trim();
+        if (pCode && lookup[pCode]) {
+          curr = lookup[pCode];
         } else {
           break;
         }
@@ -342,25 +344,30 @@
     var childrenMap = {};
     var allItems = {};
 
+    // Sanitize and register by trimmed code
     data.forEach(function (item) {
-      allItems[item.kode_klasifikasi] = item;
-      var parent = item.parent_kode || "ROOT";
-      if (!childrenMap[parent]) {
-        childrenMap[parent] = [];
-      }
-      childrenMap[parent].push(item);
+      var code = String(item.kode_klasifikasi || "").trim();
+      allItems[code] = item;
     });
 
-    var rootItems = [];
+    // Group items under their parents (or ROOT)
     data.forEach(function (item) {
-      var parent = item.parent_kode;
-      if (!parent || !allItems[parent]) {
-        rootItems.push(item);
+      var code = String(item.kode_klasifikasi || "").trim();
+      var parent = String(item.parent_kode || "").trim();
+      
+      var isRoot = !parent || parent === "ROOT" || parent === "" || !allItems[parent];
+      var parentKey = isRoot ? "ROOT" : parent;
+
+      if (!childrenMap[parentKey]) {
+        childrenMap[parentKey] = [];
       }
+      childrenMap[parentKey].push(item);
     });
+
+    var rootItems = childrenMap["ROOT"] || [];
 
     function buildTreeNodeHtml(item, depth) {
-      var code = item.kode_klasifikasi;
+      var code = String(item.kode_klasifikasi || "").trim();
       var children = childrenMap[code] || [];
       var hasChildren = children.length > 0;
       var indent = depth * 20;
@@ -379,7 +386,7 @@
       if (hasChildren) {
         nodeHtml += '  <div class="bagan-tree-children" style="display: none;">';
         children.sort(function (a, b) {
-          return String(a.kode_klasifikasi).localeCompare(String(b.kode_klasifikasi), undefined, { numeric: true });
+          return String(a.kode_klasifikasi || "").trim().localeCompare(String(b.kode_klasifikasi || "").trim(), undefined, { numeric: true });
         });
         children.forEach(function (child) {
           nodeHtml += buildTreeNodeHtml(child, depth + 1);
