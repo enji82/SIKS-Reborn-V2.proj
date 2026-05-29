@@ -1,4 +1,13 @@
 <!-- CSS tersentralisasi di css_sultan.html -->
+<style>
+  #kodesdn_tabelUtama thead th {
+    white-space: normal !important;
+    vertical-align: middle !important;
+  }
+  #kodesdn_tabelUtama tbody td {
+    white-space: nowrap !important;
+  }
+</style>
 
 <section class="content">
   <div class="container-fluid">
@@ -54,6 +63,15 @@
 
         <!-- FILTER BAR (STANDAR GLOBAL SULTAN) -->
         <div id="kodesdn_wadahFilter" class="sultan-filter-pill-container shadow-sm mb-4">
+            <div class="sultan-filter-item" style="min-width: 250px;">
+                <select id="kodesdn_filterSekolah" class="form-control" disabled>
+                    <option value="SEMUA">- Semua Sekolah -</option>
+                </select>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+            
+            <div class="divider-vertical d-none d-md-block mx-2"></div>
+
             <button type="button" id="kodesdn_btnSync" class="sultan-btn-refresh" title="Segarkan Data dari Server">
                 <i class="fas fa-sync-alt"></i>
             </button>
@@ -104,6 +122,7 @@ $(document).ready(function() {
     
     // Anti memory leak
     $(document).off('click', '#kodesdn_btnSync').on('click', '#kodesdn_btnSync', kodesdn_tarikDataServer);
+    $(document).off('change', '#kodesdn_filterSekolah').on('change', '#kodesdn_filterSekolah', kodesdn_terapkanFilterLokal);
 
     kodesdn_tarikDataServer(); 
 });
@@ -123,6 +142,7 @@ function kodesdn_tarikDataServer() {
     
     var btn = $('#kodesdn_btnSync');
     btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin text-maroon"></i>');
+    $('#kodesdn_filterSekolah').prop('disabled', true);
     
     if (!$.fn.DataTable.isDataTable('#kodesdn_tabelUtama')) {
         $('#kodesdn_tableState').hide();
@@ -141,7 +161,8 @@ function kodesdn_tarikDataServer() {
             }
             
             KODESDN_CACHE_DATA = res || [];
-            kodesdn_renderTabel(KODESDN_CACHE_DATA);
+            kodesdn_populateDropdownSekolah();
+            kodesdn_terapkanFilterLokal();
         })
         .withFailureHandler(function(err) {
             btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
@@ -149,6 +170,39 @@ function kodesdn_tarikDataServer() {
             Sultan.alert('error', 'Koneksi Terputus', err.message);
         })
         .getKodeUrutSekolah(); 
+}
+
+function kodesdn_populateDropdownSekolah() {
+    var uniqueSchools = new Set();
+    KODESDN_CACHE_DATA.forEach(function(row) {
+        var sName = String(row.nama_sekolah || "").trim();
+        if (sName) uniqueSchools.add(sName);
+    });
+
+    var sortedSchools = Array.from(uniqueSchools).sort();
+    var select = $('#kodesdn_filterSekolah');
+    var currentVal = select.val();
+
+    select.empty().append('<option value="SEMUA">- Semua Sekolah -</option>');
+    sortedSchools.forEach(function(s) {
+        select.append('<option value="' + kodesdn_escapeHtml(s) + '">' + kodesdn_escapeHtml(s) + '</option>');
+    });
+
+    select.prop('disabled', false);
+    if (currentVal && uniqueSchools.has(currentVal)) {
+        select.val(currentVal);
+    }
+}
+
+function kodesdn_terapkanFilterLokal() {
+    var filterVal = $('#kodesdn_filterSekolah').val() || "SEMUA";
+    
+    var filteredData = KODESDN_CACHE_DATA.filter(function(row) {
+        if (filterVal === "SEMUA") return true;
+        return String(row.nama_sekolah || "").trim() === filterVal;
+    });
+
+    kodesdn_renderTabel(filteredData);
 }
 
 function kodesdn_escapeHtml(text) {
