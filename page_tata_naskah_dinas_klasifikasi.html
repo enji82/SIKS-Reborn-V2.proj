@@ -27,16 +27,15 @@
           </div>
         </div>
 
+        <!-- FILTER BAR (STANDAR GLOBAL SULTAN) -->
+        <div id="klasifikasi_wadahFilter" class="sultan-filter-pill-container shadow-sm mb-4">
+            <button type="button" id="klasifikasi_btnSync" class="sultan-btn-refresh" title="Segarkan Data dari Server">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+        </div>
+
         <!-- Main Card Table -->
         <div class="card-sultan">
-          <div class="card-header bg-white border-bottom-maroon py-3 px-4 d-flex align-items-center justify-content-between">
-            <h5 class="card-title font-weight-bold text-maroon mb-0">
-              <i class="fas fa-archive mr-2"></i> Klasifikasi Arsip
-            </h5>
-            <button type="button" id="klasifikasi_btnSync" class="btn btn-sm btn-outline-maroon btn-pill px-3" title="Segarkan Data dari Server">
-              <i class="fas fa-sync-alt mr-1"></i> Segarkan
-            </button>
-          </div>
           <div class="card-body p-3">
             
             <div id="klasifikasi_loadingState">
@@ -97,14 +96,16 @@ function klasifikasi_tarikDataServer() {
     KLASIFIKASI_CACHE_DATA = [];
     
     var btn = $('#klasifikasi_btnSync');
-    btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Memuat...');
+    btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin text-maroon"></i>');
     
-    $('#klasifikasi_tableState').hide();
-    SultanUI.showLoading('#klasifikasi_loadingState', 'Mengambil data klasifikasi...');
+    if (!$.fn.DataTable.isDataTable('#klasifikasi_tabelUtama')) {
+        $('#klasifikasi_tableState').hide();
+        SultanUI.showLoading('#klasifikasi_loadingState', 'Mengambil data klasifikasi...');
+    }
 
     google.script.run
         .withSuccessHandler(function(jsonStr) {
-            btn.prop('disabled', false).html('<i class="fas fa-sync-alt mr-1"></i> Segarkan');
+            btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
             
             var res = JSON.parse(jsonStr);
             if (res.error) {
@@ -117,7 +118,7 @@ function klasifikasi_tarikDataServer() {
             klasifikasi_renderTabel(KLASIFIKASI_CACHE_DATA);
         })
         .withFailureHandler(function(err) {
-            btn.prop('disabled', false).html('<i class="fas fa-sync-alt mr-1"></i> Segarkan');
+            btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
             $('#klasifikasi_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Terputus: ' + klasifikasi_escapeHtml(err.message) + '</span>');
             Sultan.alert('error', 'Koneksi Terputus', err.message);
         })
@@ -176,6 +177,7 @@ function klasifikasi_renderTabel(dataRows) {
             ],
             "language": { 
                 "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json", 
+                "search": "", "searchPlaceholder": "Cari...",
                 "emptyTable": '<div class="py-4 text-center text-muted"><i class="fas fa-archive fa-3x text-gray-300 mb-3" style="opacity: 0.6;"></i><br><h6 class="font-weight-bold text-dark mb-1">Belum Ada Data</h6><p class="small mb-0">Tidak ada data klasifikasi arsip yang tersedia.</p></div>' 
             }
         });
