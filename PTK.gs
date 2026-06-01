@@ -126,6 +126,48 @@ function getDataPTKSD(filterUnit, filterStatus) {
 }
 
 /**
+ * API Ringan: Ambil data proyeksi pensiun SDN
+ * Hanya mengambil kolom yang diperlukan untuk perhitungan pensiun.
+ * Filter: PNS, PPPK, PPPK Paruh Waktu
+ */
+function getDataProyeksiPensiunSDN() {
+  try {
+    var sheet = getSheet(KONFIG_PTK.DB_KEY, KONFIG_PTK.SHEET_PTK);
+    if (!sheet) return JSON.stringify([]);
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) return JSON.stringify([]);
+
+    // Ambil kolom: A(id), B(npsn), C(unit), G(nama_lengkap), H(nip), J(tgl_lahir), T(status_peg), U(jabatan)
+    var data = sheet.getRange(2, 1, lastRow - 1, 21).getValues();
+    var statusValid = ["PNS", "CPNS", "PPPK", "PPPK PARUH WAKTU"];
+    var result = [];
+
+    for (var i = 0; i < data.length; i++) {
+      var row = data[i];
+      if (!row[0]) continue;
+
+      var statusRaw = String(row[19] || "").trim().toUpperCase();
+      if (statusValid.indexOf(statusRaw) === -1) continue;
+
+      var tglLahir = parseIndoDate(row[9]);
+      if (!tglLahir) continue; // Lewati jika tanggal lahir kosong
+
+      result.push({
+        nama: row[6] || "",
+        nip: row[7] || "",
+        unit: row[2] || "",
+        tgl_lahir: tglLahir,
+        status_peg: row[19] || "",
+        jabatan: row[20] || ""
+      });
+    }
+    return JSON.stringify(result);
+  } catch (e) {
+    return JSON.stringify([]);
+  }
+}
+
+/**
  * Tulis ulang kolom D-AL (4-38) satu baris Master PTK dalam satu setValues.
  */
 function applyPtkMasterRowUpdate_(sheet, rowIndex, form, extras) {
