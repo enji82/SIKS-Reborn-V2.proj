@@ -901,17 +901,37 @@ function ptkpaud_terapkanFilterLokal() {
     // Urutkan berdasarkan aktivitas terakhir (tanggal_eksekusi atau tanggal_usulan) terbaru di atas
     hasil.sort(function(a, b) {
         var getVal = function(dateStr) {
-            if (!dateStr || dateStr === '-') return "00000000";
-            if (dateStr.includes('/')) {
-                var p = dateStr.split('/');
-                return p[2] + p[1] + p[0]; // YYYYMMDD
+            if (!dateStr || dateStr === '-') return "00000000000000";
+            dateStr = dateStr.trim();
+            var parts = dateStr.split(' ');
+            var dPart = parts[0];
+            var tPart = parts[1] || "00:00:00";
+            
+            var year = "0000", month = "00", day = "00";
+            if (dPart.includes('/')) {
+                var p = dPart.split('/');
+                day = p[0].padStart(2, '0');
+                month = p[1].padStart(2, '0');
+                year = p[2];
+            } else if (dPart.includes('-')) {
+                var p = dPart.split('-');
+                if (p[0].length === 4) {
+                    year = p[0];
+                    month = p[1].padStart(2, '0');
+                    day = p[2].padStart(2, '0');
+                } else {
+                    day = p[0].padStart(2, '0');
+                    month = p[1].padStart(2, '0');
+                    year = p[2];
+                }
             }
-            if (dateStr.includes('-')) {
-                var p = dateStr.split('-');
-                if (p[0].length === 4) return p[0] + p[1] + p[2].substring(0, 2); // YYYYMMDD
-                return p[2].substring(0, 4) + p[1] + p[0]; // DD-MM-YYYY to YYYYMMDD
-            }
-            return dateStr;
+            
+            var tParts = tPart.split(':');
+            var hour = (tParts[0] || "00").padStart(2, '0');
+            var min = (tParts[1] || "00").padStart(2, '0');
+            var sec = (tParts[2] || "00").substring(0, 2).padStart(2, '0');
+            
+            return year + month + day + hour + min + sec;
         };
         
         var valA = getVal(a.tanggal_eksekusi || a.tanggal_usulan || '');
