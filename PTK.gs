@@ -195,7 +195,7 @@ function applyPtkMasterRowUpdate_(sheet, rowIndex, form, extras) {
   rowSlice[3] = namaFull;
   rowSlice[4] = "'" + (form.nip || "");
   rowSlice[5] = form.tmp_lahir || "";
-  rowSlice[6] = form.tgl_lahir || "";
+  rowSlice[6] = convertStringToDate_(form.tgl_lahir);
   rowSlice[7] = "'" + (form.nik || "");
   rowSlice[8] = form.lp || "";
   rowSlice[9] = form.agama || "";
@@ -207,9 +207,9 @@ function applyPtkMasterRowUpdate_(sheet, rowIndex, form, extras) {
   rowSlice[15] = "'" + (form.hp || "");
   rowSlice[16] = form.status_peg || "";
   rowSlice[17] = form.jabatan || "";
-  rowSlice[18] = form.tmt_jabatan || "";
+  rowSlice[18] = convertStringToDate_(form.tmt_jabatan);
   rowSlice[19] = form.pangkat || "";
-  rowSlice[20] = form.tmt_gol || "";
+  rowSlice[20] = convertStringToDate_(form.tmt_gol);
   rowSlice[21] = mkg;
   rowSlice[22] = form.tugas || "";
   rowSlice[23] = "'" + (form.nuptk || "");
@@ -342,7 +342,7 @@ function insertDataPTK(form, base64Data, fileName, jenisDokumen, userPengusul) {
       namaFull || "",         // G (6)
       "'" + (form.nip || ""), // H (7)
       form.tmp_lahir || "",   // I (8)
-      form.tgl_lahir || "",   // J (9)
+      convertStringToDate_(form.tgl_lahir),   // J (9)
       "'" + (form.nik || ""), // K (10)
       form.lp || "",          // L (11)
       form.agama || "",       // M (12)
@@ -354,9 +354,9 @@ function insertDataPTK(form, base64Data, fileName, jenisDokumen, userPengusul) {
       "'" + (form.hp || ""),  // S (18)
       form.status_peg || "",  // T (19)
       form.jabatan || "",     // U (20)
-      form.tmt_jabatan || "", // V (21)
+      convertStringToDate_(form.tmt_jabatan), // V (21)
       form.pangkat || "",     // W (22)
-      form.tmt_gol || "",     // X (23)
+      convertStringToDate_(form.tmt_gol),     // X (23)
       mkg,                    // Y (24) 
       form.tugas || "",       // Z (25)
       "'" + (form.nuptk || ""),// AA (26)
@@ -413,7 +413,7 @@ function revisiUsulanPTKBaru(form, base64Data, fileName, jenisDokumen, userPengu
     sheet.getRange(rowIndex, 7).setValue(namaFull);                       
     sheet.getRange(rowIndex, 8).setValue("'"+(form.nip || ""));           
     sheet.getRange(rowIndex, 9).setValue(form.tmp_lahir || "");           
-    sheet.getRange(rowIndex, 10).setValue(form.tgl_lahir || "");    
+    sheet.getRange(rowIndex, 10).setValue(convertStringToDate_(form.tgl_lahir));    
     sheet.getRange(rowIndex, 11).setValue("'"+(form.nik || ""));          
     sheet.getRange(rowIndex, 12).setValue(form.lp || "");                 
     sheet.getRange(rowIndex, 13).setValue(form.agama || "");              
@@ -425,9 +425,9 @@ function revisiUsulanPTKBaru(form, base64Data, fileName, jenisDokumen, userPengu
     sheet.getRange(rowIndex, 19).setValue("'"+(form.hp || ""));           
     sheet.getRange(rowIndex, 20).setValue(form.status_peg || "");         
     sheet.getRange(rowIndex, 21).setValue(form.jabatan || "");            
-    sheet.getRange(rowIndex, 22).setValue(form.tmt_jabatan || "");  
+    sheet.getRange(rowIndex, 22).setValue(convertStringToDate_(form.tmt_jabatan));  
     sheet.getRange(rowIndex, 23).setValue(form.pangkat || "");            
-    sheet.getRange(rowIndex, 24).setValue(form.tmt_gol || "");      
+    sheet.getRange(rowIndex, 24).setValue(convertStringToDate_(form.tmt_gol));      
     sheet.getRange(rowIndex, 25).setValue(mkg);                           
     sheet.getRange(rowIndex, 26).setValue(form.tugas || "");              
     sheet.getRange(rowIndex, 27).setValue("'"+(form.nuptk || ""));        
@@ -650,10 +650,10 @@ function insertDataPTKSDS(form) {
 
   var rowData = [
     newId, finalNpsn, form.unit_kerja || form.unit_login || "", form.gelar_depan || "", form.nama_lengkap || "", form.gelar_belakang || "",    
-    namaFull || "", form.niy || "", form.tmp_lahir || "", form.tgl_lahir || "", "'" + (form.nik || ""), form.lp || "", form.agama || "",             
+    namaFull || "", form.niy || "", form.tmp_lahir || "", convertStringToDate_(form.tgl_lahir), "'" + (form.nik || ""), form.lp || "", form.agama || "",             
     form.pendidikan || "", form.jurusan || "", form.thn_lulus || "", 
-    form.alamat_ktp || "", form.alamat_domisili || "", "'" + (form.hp || ""), form.status_peg || "", form.jabatan || "", form.tmt_jabatan || "",       
-    form.inpassing || "", form.tmt_inpassing || "", "'" + (form.nuptk || ""), form.serdik || "", form.dapodik || "", form.tugtam || "",            
+    form.alamat_ktp || "", form.alamat_domisili || "", "'" + (form.hp || ""), form.status_peg || "", form.jabatan || "", convertStringToDate_(form.tmt_jabatan),       
+    form.inpassing || "", convertStringToDate_(form.tmt_inpassing), "'" + (form.nuptk || ""), form.serdik || "", form.dapodik || "", form.tugtam || "",            
     timestamp, form.user_login || "", "", "", form.email || ""  
   ];
   sheet.appendRow(rowData); return "Sukses";
@@ -693,7 +693,7 @@ function updateDataPTKSDS(form) {
     sheet.getRange(rowIdx, 3).setValue(form.unit_kerja); 
   }
   
-  var updateValues = [[ form.gelar_depan || "", form.nama_lengkap || "", form.gelar_belakang || "", namaFull || "", form.niy || "", form.tmp_lahir || "", form.tgl_lahir || "", "'" + (form.nik || ""), form.lp || "", form.agama || "", form.pendidikan || "", form.jurusan || "", form.thn_lulus || "", form.alamat_ktp || "", form.alamat_domisili || "", "'" + (form.hp || ""), form.status_peg || "", form.jabatan || "", form.tmt_jabatan || "", form.inpassing || "", form.tmt_inpassing || "", "'" + (form.nuptk || ""), form.serdik || "", form.dapodik || "", form.tugtam || "" ]];
+  var updateValues = [[ form.gelar_depan || "", form.nama_lengkap || "", form.gelar_belakang || "", namaFull || "", form.niy || "", form.tmp_lahir || "", convertStringToDate_(form.tgl_lahir), "'" + (form.nik || ""), form.lp || "", form.agama || "", form.pendidikan || "", form.jurusan || "", form.thn_lulus || "", form.alamat_ktp || "", form.alamat_domisili || "", "'" + (form.hp || ""), form.status_peg || "", form.jabatan || "", convertStringToDate_(form.tmt_jabatan), form.inpassing || "", convertStringToDate_(form.tmt_inpassing), "'" + (form.nuptk || ""), form.serdik || "", form.dapodik || "", form.tugtam || "" ]];
   sheet.getRange(rowIdx, 4, 1, 25).setValues(updateValues); // Digeser 25 Kolom
   sheet.getRange(rowIdx, 31).setValue(timestamp); 
   sheet.getRange(rowIdx, 32).setValue(form.user_login); 
@@ -769,10 +769,10 @@ function insertDataPTKPAUD(form, base64Data, fileName, jenisDokumen, userPengusu
     var rowData = [
       newId, finalNpsn, form.unit_kerja || form.unit_login || "", form.jenjang || "",
       form.gelar_depan || "", form.nama_lengkap || "", form.gelar_belakang || "", namaFull || "", form.niy || "",
-      form.tmp_lahir || "", form.tgl_lahir || "", "'" + (form.nik || ""), form.lp || "", form.agama || "",
+      form.tmp_lahir || "", convertStringToDate_(form.tgl_lahir), "'" + (form.nik || ""), form.lp || "", form.agama || "",
       form.pendidikan || "", form.jurusan || "", form.thn_lulus || "",
       form.alamat_ktp || "", form.alamat_domisili || "", "'" + (form.hp || ""),
-      form.status_peg || "", form.jabatan || "", form.tmt_jabatan || "", form.inpassing || "", form.tmt_inpassing || "",
+      form.status_peg || "", form.jabatan || "", convertStringToDate_(form.tmt_jabatan), form.inpassing || "", convertStringToDate_(form.tmt_inpassing),
       "'" + (form.nuptk || ""), form.serdik || "", form.dapodik || "", form.tugtam || "",
       timestamp, form.user_login || "", "", "", form.email || ""
     ];
@@ -841,7 +841,7 @@ function updateDataPTKPAUD(form) {
     sheet.getRange(rowIdx, 3).setValue(form.unit_kerja); 
   }
   
-  var updateValues = [[ form.jenjang || "", form.gelar_depan || "", form.nama_lengkap || "", form.gelar_belakang || "", namaFull || "", form.niy || "", form.tmp_lahir || "", form.tgl_lahir || "", "'" + (form.nik || ""), form.lp || "", form.agama || "", form.pendidikan || "", form.jurusan || "", form.thn_lulus || "", form.alamat_ktp || "", form.alamat_domisili || "", "'" + (form.hp || ""), form.status_peg || "", form.jabatan || "", form.tmt_jabatan || "", form.inpassing || "", form.tmt_inpassing || "", "'" + (form.nuptk || ""), form.serdik || "", form.dapodik || "", form.tugtam || "" ]];
+  var updateValues = [[ form.jenjang || "", form.gelar_depan || "", form.nama_lengkap || "", form.gelar_belakang || "", namaFull || "", form.niy || "", form.tmp_lahir || "", convertStringToDate_(form.tgl_lahir), "'" + (form.nik || ""), form.lp || "", form.agama || "", form.pendidikan || "", form.jurusan || "", form.thn_lulus || "", form.alamat_ktp || "", form.alamat_domisili || "", "'" + (form.hp || ""), form.status_peg || "", form.jabatan || "", convertStringToDate_(form.tmt_jabatan), form.inpassing || "", convertStringToDate_(form.tmt_inpassing), "'" + (form.nuptk || ""), form.serdik || "", form.dapodik || "", form.tugtam || "" ]];
   sheet.getRange(rowIdx, 4, 1, 26).setValues(updateValues); 
   sheet.getRange(rowIdx, 32).setValue(timestamp); 
   sheet.getRange(rowIdx, 33).setValue(form.user_login); 
@@ -2019,4 +2019,19 @@ function tandaiNotifMutasiSDSDibaca(rowId, role) {
         sheet.getRange(rowId, 15).setValue(newVal);
     }
   } catch (e) {}
+}
+
+// Helper: Konversi String Date YYYY-MM-DD ke JS Date Object untuk Google Sheets
+function convertStringToDate_(str) {
+  if (!str || str === "-" || str === "") return "";
+  var parts = String(str).trim().split('-');
+  if (parts.length === 3) {
+    var year = parseInt(parts[0], 10);
+    var month = parseInt(parts[1], 10) - 1;
+    var day = parseInt(parts[2], 10);
+    if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+      return new Date(year, month, day);
+    }
+  }
+  return str;
 }
