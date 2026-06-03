@@ -7,6 +7,77 @@ const KONFIG_EFILE = {
   get FOLDER_ID() { return FOLDER_CONFIG.EFILE_DOCS; }
 };
 
+function migrasiStrukturFolderEfile() {
+  var sheet = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile");
+  if (!sheet) return "Sheet Database_Efile tidak ditemukan.";
+  
+  var data = sheet.getDataRange().getValues();
+  var pFolder = DriveApp.getFolderById(KONFIG_EFILE.FOLDER_ID);
+  var count = 0;
+  
+  for (var i = 1; i < data.length; i++) {
+    var idPtk = String(data[i][0]).trim();
+    var namaKategori = String(data[i][3]).trim() || "Berkas";
+    var tahun = String(data[i][4]).trim() || "Umum";
+    var urlDrive = String(data[i][6]).trim();
+    
+    if (!urlDrive || !urlDrive.includes("drive.google.com")) continue;
+    
+    try {
+      var match = urlDrive.match(/\/d\/([a-zA-Z0-9_-]+)/) || urlDrive.match(/id=([a-zA-Z0-9_-]+)/);
+      if (!match || !match[1]) continue;
+      var fileId = match[1];
+      var file = DriveApp.getFileById(fileId);
+      
+      // Folder: Kategori berkas - Tahun
+      var folderKatName = namaKategori + " - " + tahun;
+      var idFolderKat = pFolder.getFoldersByName(folderKatName);
+      var fKat = idFolderKat.hasNext() ? idFolderKat.next() : pFolder.createFolder(folderKatName);
+      
+      // Subfolder: Nama Sekolah
+      var unitName = getUnitNameByPtkId(idPtk);
+      var idFolderUnit = fKat.getFoldersByName(unitName);
+      var fUnit = idFolderUnit.hasNext() ? idFolderUnit.next() : fKat.createFolder(unitName);
+      
+      // Check if file is already in the target subfolder
+      var parents = file.getParents();
+      var alreadyMoved = false;
+      while (parents.hasNext()) {
+        var p = parents.next();
+        if (p.getId() === fUnit.getId()) {
+          alreadyMoved = true;
+          break;
+        }
+      }
+      
+      if (!alreadyMoved) {
+        file.moveTo(fUnit);
+        count++;
+      }
+    } catch(e) {
+      Logger.log("Gagal memindahkan file baris ke-" + (i+1) + ": " + e.message);
+    }
+  }
+  
+  // Cleanup empty PTK folders
+  try {
+    var folders = pFolder.getFolders();
+    while (folders.hasNext()) {
+      var folder = folders.next();
+      var folderName = folder.getName();
+      if (!folderName.includes(" - ")) {
+        if (!folder.getFiles().hasNext() && !folder.getFolders().hasNext()) {
+          folder.setTrashed(true);
+        }
+      }
+    }
+  } catch(e) {
+    Logger.log("Gagal merapikan folder lama: " + e.message);
+  }
+  
+  return "Migrasi selesai. Berhasil memindahkan " + count + " file ke struktur folder baru.";
+}
+
 function getEfileMasterData(npsnFilter) {
   try {
     var shKat = getSheet(KONFIG_EFILE.DB_KEY, "Master_Kategori_Efile");
