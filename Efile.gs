@@ -472,23 +472,21 @@ function getEfileViewerData(keyword, npsnFilter) {
 // ======================================================================
 function getEfileDashboardInit(npsnFilter) {
   try {
-    // 1. Tarik Menu dari Sheet "Dashboard" (A:Rekap, B:Lapor, C:Nama_Kategori)
-    var shDash = getSheet(KONFIG_EFILE.DB_KEY, "Dashboard");
-    if(!shDash) return JSON.stringify({ success: false, message: "Sheet 'Dashboard' tidak ditemukan." });
+    var shKat = getSheet(KONFIG_EFILE.DB_KEY, "Master_Kategori_Efile");
+    if(!shKat) return JSON.stringify({ success: false, message: "Sheet Master_Kategori_Efile tidak ditemukan." });
     
-    var dataDash = shDash.getDataRange().getDisplayValues();
+    var dataKat = shKat.getDataRange().getDisplayValues();
     var listKategori = [];
-    for(var i=1; i<dataDash.length; i++) {
-        if(String(dataDash[i][0]).trim() !== "") {
+    for(var i=1; i<dataKat.length; i++) {
+        if(String(dataKat[i][0]).trim() !== "") {
             listKategori.push({
-                sheetRekap: dataDash[i][0],
-                sheetLapor: dataDash[i][1],
-                namaKategori: dataDash[i][2] || "Kategori " + i // Fallback jika Kolom C kosong
+                sheetRekap: dataKat[i][0],
+                sheetLapor: dataKat[i][1],
+                namaKategori: dataKat[i][1]
             });
         }
     }
     
-    // 2. Evaluasi Akses Unit (Jika Admin, beri opsi semua unit)
     var shPtk = getSheet(KONFIG_EFILE.DB_KEY, "Database_PTK");
     var dataPtk = shPtk ? shPtk.getDataRange().getDisplayValues() : [];
     var myUnit = "";
@@ -506,82 +504,128 @@ function getEfileDashboardInit(npsnFilter) {
   } catch(e) { return JSON.stringify({ success: false, message: e.message }); }
 }
 
-/** Hapus cache satu pasangan sheet (untuk refresh kategori aktif). */
-function invalidateEfileDashboardCacheOne(sheetRekapName, sheetLaporName) {
+function getEfileDashboardData(idKategori, namaKategori, forceRefresh) {
   try {
-    var cacheKey = "EFILE_DASHBOARD_" + String(sheetRekapName).replace(/\s/g, "_") + "_" + String(sheetLaporName).replace(/\s/g, "_");
-    CacheService.getScriptCache().remove(cacheKey);
-  } catch(e) {}
-}
-
-// ======================================================================
-// 10. GET DATA DASHBOARD SPESIFIK (BERDASARKAN PILIHAN KATEGORI)
-// ======================================================================
-function getEfileDashboardData(sheetRekapName, sheetLaporName, forceRefresh) {
-  var cacheKey = "EFILE_DASHBOARD_" + String(sheetRekapName).replace(/\s/g, "_") + "_" + String(sheetLaporName).replace(/\s/g, "_");
-  var cache = CacheService.getScriptCache();
-  if (forceRefresh) {
-    invalidateEfileDashboardCacheOne(sheetRekapName, sheetLaporName);
-  } else {
-    try {
-      var cached = cache.get(cacheKey);
-      if (cached) return cached;
-    } catch(e) {}
-  }
-
-  try {
-    // 1. Tarik Data Rekapitulasi Tabel (A:NPSN, B:Unit, C:Tahun, D:Jml, E:Sudah, F:Belum)
-    var shRekap = getSheet(KONFIG_EFILE.DB_KEY, sheetRekapName);
-    if(!shRekap) throw new Error("Sheet Rekap (" + sheetRekapName + ") tidak ditemukan.");
-    var dataRekapRaw = shRekap.getDataRange().getDisplayValues();
+    var shKat = getSheet(KONFIG_EFILE.DB_KEY, "Master_Kategori_Efile");
+    var dataKat = shKat ? shKat.getDataRange().getDisplayValues() : [];
+    var statusFilterList = [];
+    for (var i = 1; i < dataKat.length; i++) {
+      if (String(dataKat[i][0]).trim() === String(idKategori).trim()) {
+        var w = String(dataKat[i][5] || "").trim();
+        if (w) {
+          statusFilterList = w.split(",").map(function(s) { return s.trim().toLowerCase(); });
+        }
+        break;
+      }
+    }
+    
+    var shPtk = getSheet(KONFIG_EFILE.DB_KEY, "Database_PTK");
+    var dataPtk = shPtk ? shPtk.getDataRange().getDisplayValues() : [];
+    var ptkList = [];
+    var unitsMap = {}; 
+    
+    for (var j = 1; j < dataPtk.length; j++) {
+      var idPtk = String(dataPtk[j][0]).trim();
+      var nama = String(dataPtk[j][1]).trim();
+      var statusPegawai = String(dataPtk[j][2]).trim();
+      var nip = String(dataPtk[j][3]).trim() || "-";
+      var npsn = String(dataPtk[j][4]).trim();
+      var unit = String(dataPtk[j][5]).trim();
+      
+      if (!idPtk || !nama) continue;
+      
+      if (statusFilterList.length > 0) {
+        if (statusFilterList.indexOf(statusPegawai.toLowerCase()) === -1) {
+          continue;
+        }
+      }
+      
+      ptkList.push({ id: idPtk, nama: nama, nip: nip, npsn: npsn, unit: unit, status: statusPegawai });
+      if (unit) {
+        unitsMap[unit] = npsn;
+      }
+    }
+    
+    var shEfile = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile");
+    var dataEfile = shEfile ? shEfile.getDataRange().getDisplayValues() : [];
+    
+    var efileMap = {};
+    var yearsSet = new Set();
+    
+    var curYear = new Date().getFullYear();
+    yearsSet.add(String(curYear));
+    yearsSet.add(String(curYear - 1));
+    yearsSet.add(String(curYear - 2));
+    
+    for (var k = 1; k < dataEfile.length; k++) {
+      var ePtk = String(dataEfile[k][0]).trim();
+      var eKat = String(dataEfile[k][2]).trim();
+      var eThn = String(dataEfile[k][4]).trim();
+      var eStatus = String(dataEfile[k][7]).trim();
+      
+      if (eKat === String(idKategori).trim() && ePtk && eThn) {
+        yearsSet.add(eThn);
+        if (!efileMap[ePtk]) efileMap[ePtk] = {};
+        efileMap[ePtk][eThn] = eStatus;
+      }
+    }
+    
+    var sortedYears = Array.from(yearsSet).sort(function(a, b) { return parseInt(b) - parseInt(a); });
+    
     var arrRekap = [];
-    for(var i=1; i<dataRekapRaw.length; i++) {
-        if(String(dataRekapRaw[i][1]).trim() !== "") {
-            arrRekap.push({
-                npsn: dataRekapRaw[i][0], unit: dataRekapRaw[i][1], tahun: dataRekapRaw[i][2],
-                jml: dataRekapRaw[i][3], sudah: dataRekapRaw[i][4], belum: dataRekapRaw[i][5]
-            });
-        }
-    }
-
-    // 2. Tarik Data Lapor (A:ID, B:Nama, C:NIP, E:Unit, F dst: Tahun dinamis)
-    var shLapor = getSheet(KONFIG_EFILE.DB_KEY, sheetLaporName);
-    if(!shLapor) throw new Error("Sheet Lapor (" + sheetLaporName + ") tidak ditemukan.");
-    var dataLaporRaw = shLapor.getDataRange().getDisplayValues();
-    
     var arrBelum = [];
-    var headerTahun = dataLaporRaw[0]; // Baris 1 berisi judul Tahun
     
-    for(var r=1; r<dataLaporRaw.length; r++) {
-        // VAKSIN 1: Gunakan Nama sebagai patokan validasi baris, bukan Unit. 
-        // Jika nama ada, tarik datanya meskipun unitnya kosong.
-        var namaPtk = String(dataLaporRaw[r][1]).trim(); 
-        if(namaPtk === "") continue; 
+    sortedYears.forEach(function(tahun) {
+      var unitGroups = {};
+      ptkList.forEach(function(ptk) {
+        var u = ptk.unit || "Lainnya";
+        if (!unitGroups[u]) unitGroups[u] = [];
+        unitGroups[u].push(ptk);
+      });
+      
+      Object.keys(unitGroups).forEach(function(unitName) {
+        var group = unitGroups[unitName];
+        var npsn = unitsMap[unitName] || "-";
+        var totalUnit = group.length;
+        var sudahUnit = 0;
+        var belumUnit = 0;
         
-        var nipPtk = String(dataLaporRaw[r][2]).trim() || "-"; // Kolom C
-        var unitLapor = String(dataLaporRaw[r][4]).trim() || "Unit Belum Ditentukan"; // Kolom E
-        
-        // Loop dinamis ke samping membaca setiap kolom tahun
-        for(var c=5; c<headerTahun.length; c++) {
-            var tahunStr = String(headerTahun[c]).trim();
-            var statusStr = String(dataLaporRaw[r][c]).trim().toLowerCase();
-            
-            // VAKSIN 2: Parser Agresif. Anggap sel Kosong ("") atau Strip ("-") sebagai Belum!
-            if(tahunStr !== "") {
-                if(statusStr === "" || statusStr === "-" || statusStr.includes("belum")) {
-                    arrBelum.push({
-                        nama: namaPtk, nip: nipPtk, unit: unitLapor, tahun: tahunStr
-                    });
-                }
+        group.forEach(function(ptk) {
+          var status = efileMap[ptk.id] ? efileMap[ptk.id][tahun] : null;
+          var isUploaded = false;
+          if (status) {
+            var stLower = status.toLowerCase();
+            if (stLower.includes("setuju") || stLower.includes("ok") || stLower.includes("proses") || stLower.includes("valid")) {
+              isUploaded = true;
             }
-        }
-    }
-
-    var jsonResult = JSON.stringify({ success: true, rekap: arrRekap, belum: arrBelum });
-    try {
-      cache.put(cacheKey, jsonResult, 300);
-    } catch(e) {}
-    return jsonResult;
+          }
+          
+          if (isUploaded) {
+            sudahUnit++;
+          } else {
+            belumUnit++;
+            arrBelum.push({
+              nama: ptk.nama,
+              nip: ptk.nip,
+              unit: unitName,
+              tahun: tahun,
+              npsn: npsn
+            });
+          }
+        });
+        
+        arrRekap.push({
+          npsn: npsn,
+          unit: unitName,
+          tahun: tahun,
+          jml: totalUnit,
+          sudah: sudahUnit,
+          belum: belumUnit
+        });
+      });
+    });
+    
+    return JSON.stringify({ success: true, rekap: arrRekap, belum: arrBelum });
   } catch(e) { return JSON.stringify({ success: false, message: e.message }); }
 }
 
