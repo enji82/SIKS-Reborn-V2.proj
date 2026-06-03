@@ -78,6 +78,45 @@ function migrasiStrukturFolderEfile() {
   return "Migrasi selesai. Berhasil memindahkan " + count + " file ke struktur folder baru.";
 }
 
+function perbaikiKategoriBpe() {
+  try {
+    var dbKey = KONFIG_EFILE.DB_KEY;
+    
+    // 1. Perbaiki di Master_Kategori_Efile
+    var shKat = getSheet(dbKey, "Master_Kategori_Efile");
+    if (shKat) {
+      var dataKat = shKat.getDataRange().getValues();
+      for (var i = 1; i < dataKat.length; i++) {
+        if (String(dataKat[i][0]).trim().toUpperCase() === "K17") {
+          shKat.getRange(i + 1, 2).setValue("Bukti Penerimaan Elektronik");
+          Logger.log("Berhasil mengubah K17 di Master_Kategori_Efile menjadi Bukti Penerimaan Elektronik");
+        }
+      }
+    }
+    
+    // 2. Perbaiki di Database_Efile
+    var shEfile = getSheet(dbKey, "Database_Efile");
+    var count = 0;
+    if (shEfile) {
+      var dataEfile = shEfile.getDataRange().getValues();
+      for (var j = 1; j < dataEfile.length; j++) {
+        if (String(dataEfile[j][2]).trim().toUpperCase() === "K17") {
+          shEfile.getRange(j + 1, 4).setValue("Bukti Penerimaan Elektronik"); // Kolom 4 (D) adalah nama_kategori
+          count++;
+        }
+      }
+      Logger.log("Berhasil memperbarui " + count + " baris transaksi di Database_Efile");
+    }
+    
+    // Invalidate Cache
+    invalidateEfileDashboardCache();
+    
+    return "Perubahan selesai. Kategori K17 berhasil diubah menjadi 'Bukti Penerimaan Elektronik' di master dan " + count + " data transaksi.";
+  } catch(e) {
+    return "Gagal melakukan pembaruan: " + e.message;
+  }
+}
+
 function getEfileMasterData(npsnFilter) {
   try {
     var shKat = getSheet(KONFIG_EFILE.DB_KEY, "Master_Kategori_Efile");
