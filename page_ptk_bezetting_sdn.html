@@ -66,10 +66,7 @@
                                     <tr>
                                         <th rowspan="3"
                                             class="th-main align-middle text-maroon text-left px-3 col-sticky-left border-bottom-maroon"
-                                            style="z-index:50; border-right: 2px solid #dee2e6; min-width:220px;">UNIT
-                                            KERJA</th>
-                                        <th rowspan="3"
-                                            class="th-main align-middle text-center border-bottom-maroon">NPSN</th>
+                                            style="z-index:50; border-right: 2px solid #dee2e6; min-width:250px;">UNIT KERJA</th>
 
                                         <th rowspan="3" class="th-main align-middle text-center border-bottom-maroon">
                                             JML<br>ROMBEL</th>
@@ -367,16 +364,17 @@
         dataRows.forEach(function (row) {
             var arrRow = [];
 
-            // Col 0: Unit Kerja (sticky left)
-            arrRow.push('<div style="min-width: 220px;" class="sultan-table-primary text-uppercase text-left">' + (bezettingptksdn_escapeHtml(row[0]) || '-') + '</div>');
-            // Col 1: NPSN
-            arrRow.push(bezettingptksdn_escapeHtml(row[1]) || '-');
-            // Col 2: Jml Rombel
+            // Col 0: Unit Kerja & NPSN Combined (sticky left)
+            var uiUnit = '<div style="min-width: 250px;"><div class="sultan-table-primary text-uppercase text-left">' + (bezettingptksdn_escapeHtml(row[0]) || '-') + '</div>';
+            uiUnit += '<div class="sultan-table-secondary text-left">' + (bezettingptksdn_escapeHtml(row[1]) || '-') + '</div></div>';
+            arrRow.push(uiUnit);
+
+            // Col 1: Jml Rombel
             arrRow.push(row[2] || '0');
-            // Col 3: Jml Murid
+            // Col 2: Jml Murid
             arrRow.push(row[3] || '0');
 
-            // Col 4 s/d 53 (Backend Col index 4 s/d 53)
+            // Col 3 s/d 52 (Backend Col index 4 s/d 53)
             for (var c = 4; c <= 53; c++) {
                 var val = parseInt(row[c]) || 0;
                 if (val === 0) {
@@ -405,20 +403,19 @@
                     "emptyTable": '<div class="py-4 text-center text-muted"><i class="fas fa-clipboard-list fa-3x text-gray-300 mb-3" style="opacity: 0.6;"></i><br><h6 class="font-weight-bold text-dark mb-1">Belum Ada Data</h6><p class="small mb-0">Tidak ada analisis bezetting untuk filter terpilih.</p></div>'
                 },
                 "createdRow": function (row, data, dataIndex) {
-                    $('td', row).eq(1).addClass('text-dark py-1 font-weight-bold');
+                    $('td', row).eq(1).addClass('text-dark py-1');
                     $('td', row).eq(2).addClass('text-dark py-1');
-                    $('td', row).eq(3).addClass('text-dark py-1');
 
-                    // Loop index array dari DT (Index 4 sampai 53)
-                    for (var i = 4; i <= 53; i++) {
+                    // Loop index array dari DT (Index 3 sampai 52)
+                    for (var i = 3; i <= 52; i++) {
                         var td = $('td', row).eq(i);
                         var valStr = String(data[i]).replace(/<[^>]*>?/gm, '').trim();
                         var val = parseInt(valStr) || 0;
 
-                        var bgClass = bezettingptksdn_getColumnClass(i);
+                        var bgClass = bezettingptksdn_getColumnClass(i + 1);
 
                         // LOGIKA +/- (Peringatan warna: Kepala Sekolah index 7, Guru Kelas 15, Guru PJOK 24, Guru PAI 33, Guru PA Kristen 42)
-                        if ([7, 15, 24, 33, 42].includes(i)) {
+                        if ([7, 15, 24, 33, 42].includes(i + 1)) {
                             if (val < 0) {
                                 bgClass = "bg-danger text-white"; // Merah
                             } else if (val > 0) {
@@ -428,7 +425,7 @@
                             }
                         } else {
                             // Pens 1 & 2 Thn (Kepala Sekolah 8,9; Guru Kelas 17,18; Guru PJOK 26,27; Guru PAI 35,36; Guru PA Kristen 44,45)
-                            if ([8, 9, 17, 18, 26, 27, 35, 36, 44, 45].includes(i) && val > 0) {
+                            if ([8, 9, 17, 18, 26, 27, 35, 36, 44, 45].includes(i + 1) && val > 0) {
                                 td.addClass('text-danger');
                             } else {
                                 td.addClass('text-dark');
@@ -441,33 +438,30 @@
                 },
                 "footerCallback": function (row, data, start, end, display) {
                     var api = this.api();
-                    var totalArr = new Array(53).fill(0); // Menampung DT index 2 s/d 53 (total Rombel sampai akhir)
+                    var totalArr = new Array(52).fill(0); // Menampung DT index 1 s/d 52 (total Rombel sampai akhir)
 
                     api.rows({ search: 'applied' }).data().each(function (rowData) {
-                        for (var i = 2; i <= 53; i++) {
+                        for (var i = 1; i <= 52; i++) {
                             var rawStr = String(rowData[i]);
                             var val = parseInt(rawStr.replace(/<[^>]*>?/gm, '').replace(/,/g, '')) || 0;
-                            totalArr[i - 2] += val;
+                            totalArr[i - 1] += val;
                         }
                     });
 
                     var footHtml = '<th class="text-maroon text-left font-weight-bold px-3 py-1 align-middle col-sticky-left text-uppercase" style="z-index:40; border-right: 2px solid #dee2e6;">TOTAL JUMLAH</th>';
-                    
-                    // NPSN (Tinggalkan kosong di footer)
-                    footHtml += '<th class="text-center px-2 py-1 font-weight-bold text-maroon bg-white align-middle">-</th>';
 
                     // Rombel & Murid
                     footHtml += '<th class="text-center px-2 py-1 font-weight-bold text-maroon bg-white align-middle sultan-total-row">' + totalArr[0] + '</th>';
                     footHtml += '<th class="text-center px-2 py-1 font-weight-bold text-maroon bg-white align-middle sultan-total-row">' + totalArr[1] + '</th>';
 
-                    // Rekap Metrik (DT col 4-53 -> totalArr index 2-51)
+                    // Rekap Metrik (DT col 3-52 -> totalArr index 2-51)
                     for (var i = 2; i <= 51; i++) {
-                        var colIndexDT = i + 2;
+                        var colIndexDT = i + 1;
                         var val = totalArr[i];
-                        var bgClass = bezettingptksdn_getColumnClass(colIndexDT);
+                        var bgClass = bezettingptksdn_getColumnClass(colIndexDT + 1);
                         var txtColor = "text-maroon";
 
-                        if ([7, 15, 24, 33, 42].includes(colIndexDT)) {
+                        if ([7, 15, 24, 33, 42].includes(colIndexDT + 1)) {
                             if (val < 0) {
                                 bgClass = "bg-danger";
                                 txtColor = "text-white";
@@ -477,7 +471,7 @@
                             } else {
                                 txtColor = "text-dark";
                             }
-                        } else if ([8, 9, 17, 18, 26, 27, 35, 36, 44, 45].includes(colIndexDT) && val > 0) {
+                        } else if ([8, 9, 17, 18, 26, 27, 35, 36, 44, 45].includes(colIndexDT + 1) && val > 0) {
                             txtColor = "text-danger";
                         }
 
