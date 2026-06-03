@@ -117,10 +117,18 @@ function simpanEfileBatch(batchData) {
     for(var i = 0; i < batchData.length; i++) {
         var item = batchData[i]; var fileUrl = "";
         if (item.fileBase64) {
-            var idFolder = pFolder.getFoldersByName(item.id_ptk);
-            var fPtk = idFolder.hasNext() ? idFolder.next() : pFolder.createFolder(item.id_ptk);
+            // Folder: Kategori berkas - Tahun
+            var folderKatName = (item.nama_kategori || "Berkas") + " - " + (item.tahun || "Umum");
+            var idFolderKat = pFolder.getFoldersByName(folderKatName);
+            var fKat = idFolderKat.hasNext() ? idFolderKat.next() : pFolder.createFolder(folderKatName);
+            
+            // Subfolder: Nama Sekolah (Unit Kerja)
+            var unitName = getUnitNameByPtkId(item.id_ptk);
+            var idFolderUnit = fKat.getFoldersByName(unitName);
+            var fUnit = idFolderUnit.hasNext() ? idFolderUnit.next() : fKat.createFolder(unitName);
+
             var blob = Utilities.newBlob(Utilities.base64Decode(item.fileBase64), item.mimeType, item.nama_file);
-            var file = fPtk.createFile(blob); file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+            var file = fUnit.createFile(blob); file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
             fileUrl = file.getUrl();
         } else { throw new Error("File tidak valid."); }
         
@@ -204,10 +212,21 @@ function perbaikiEfileData(payload, fileData) {
         if(oldUrl && oldUrl.includes('drive.google.com')) {
             try { var match = oldUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) || oldUrl.match(/id=([a-zA-Z0-9_-]+)/); if(match && match[1]) DriveApp.getFileById(match[1]).setTrashed(true); } catch(ex){} 
         }
-        var pFolder = DriveApp.getFolderById(KONFIG_EFILE.FOLDER_ID); var idFolder = pFolder.getFoldersByName(payload.id_ptk);
-        var fPtk = idFolder.hasNext() ? idFolder.next() : pFolder.createFolder(payload.id_ptk);
+        var pFolder = DriveApp.getFolderById(KONFIG_EFILE.FOLDER_ID);
+        var namaKategori = sheet.getRange(r, 4).getValue() || "Berkas";
+        
+        // Folder: Kategori berkas - Tahun
+        var folderKatName = namaKategori + " - " + (payload.tahun || "Umum");
+        var idFolderKat = pFolder.getFoldersByName(folderKatName);
+        var fKat = idFolderKat.hasNext() ? idFolderKat.next() : pFolder.createFolder(folderKatName);
+        
+        // Subfolder: Nama Sekolah (Unit Kerja)
+        var unitName = getUnitNameByPtkId(payload.id_ptk);
+        var idFolderUnit = fKat.getFoldersByName(unitName);
+        var fUnit = idFolderUnit.hasNext() ? idFolderUnit.next() : fKat.createFolder(unitName);
+
         var blob = Utilities.newBlob(Utilities.base64Decode(fileData.data), fileData.mimeType, payload.nama_file);
-        var file = fPtk.createFile(blob); file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        var file = fUnit.createFile(blob); file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
         newFileUrl = file.getUrl();
     }
     
@@ -291,6 +310,20 @@ function tandaiNotifEfileDibaca(rowId, role) {
         else { var l = cur.split(","); if (l.indexOf(mark) === -1) { l.push(mark); sheet.getRange(r, 16).setValue(l.join(",")); } }
         return true;
     } catch (e) { return false; }
+}
+
+function getUnitNameByPtkId(idPtk) {
+  try {
+    var shPtk = getSheet(KONFIG_EFILE.DB_KEY, "Database_PTK");
+    if (!shPtk) return "Lainnya";
+    var dataPtk = shPtk.getDataRange().getValues();
+    for (var j = 1; j < dataPtk.length; j++) {
+      if (String(dataPtk[j][0]).trim() === String(idPtk).trim()) {
+        return String(dataPtk[j][5]).trim() || "Lainnya";
+      }
+    }
+  } catch(e) {}
+  return "Lainnya";
 }
 
 function getEfileViewerData(keyword, npsnFilter) {
