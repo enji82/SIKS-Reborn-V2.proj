@@ -684,7 +684,9 @@ function renderSDNVisualAnalytics(pns, pppk, pw, nonasn, stats, totalAll) {
                 <i class="fas fa-exclamation-triangle fa-lg mr-3 mt-1"></i>
                 <div>
                     <span class="font-weight-bold d-block" style="font-size: 13px;">Kekosongan Kepala Sekolah</span>
-                    Terdapat <strong>${stats.jml_sekolah - stats.ks} sekolah</strong> yang saat ini tidak memiliki Kepala Sekolah definitif.
+                    ${DASH_IS_ADMIN 
+                        ? `Terdapat <strong>${stats.jml_sekolah - stats.ks} sekolah</strong> yang saat ini tidak memiliki Kepala Sekolah definitif.`
+                        : 'Sekolah Anda saat ini tidak memiliki Kepala Sekolah definitif.'}
                 </div>
             </div>
         `;
@@ -694,7 +696,9 @@ function renderSDNVisualAnalytics(pns, pppk, pw, nonasn, stats, totalAll) {
                 <i class="fas fa-check-circle fa-lg mr-3 mt-1"></i>
                 <div>
                     <span class="font-weight-bold d-block" style="font-size: 13px;">Posisi Kepala Sekolah Terisi</span>
-                    Semua sekolah dasar negeri saat ini memiliki Kepala Sekolah definitif yang aktif.
+                    ${DASH_IS_ADMIN 
+                        ? 'Semua sekolah dasar negeri saat ini memiliki Kepala Sekolah definitif yang aktif.'
+                        : 'Sekolah Anda saat ini memiliki Kepala Sekolah definitif yang aktif.'}
                 </div>
             </div>
         `;
@@ -708,7 +712,7 @@ function renderSDNVisualAnalytics(pns, pppk, pw, nonasn, stats, totalAll) {
                 <i class="fas fa-user-shield fa-lg mr-3 mt-1"></i>
                 <div>
                     <span class="font-weight-bold d-block" style="font-size: 13px;">Rasio Non-ASN Tinggi</span>
-                    Pegawai Non-ASN (GTT/PTT) menyusun <strong>${nonAsnRatio.toFixed(1)}%</strong> dari total kekuatan kepegawaian SDN.
+                    Pegawai Non-ASN (GTT/PTT) menyusun <strong>${nonAsnRatio.toFixed(1)}%</strong> dari total kekuatan kepegawaian ${DASH_IS_ADMIN ? 'SDN' : 'sekolah Anda'}.
                 </div>
             </div>
         `;
@@ -718,21 +722,23 @@ function renderSDNVisualAnalytics(pns, pppk, pw, nonasn, stats, totalAll) {
                 <i class="fas fa-users-cog fa-lg mr-3 mt-1"></i>
                 <div>
                     <span class="font-weight-bold d-block" style="font-size: 13px;">Kekuatan ASN Optimal</span>
-                    Persentase ASN (PNS & PPPK) kokoh di angka <strong>${(100 - nonAsnRatio).toFixed(1)}%</strong> dari total pegawai.
+                    Persentase ASN (PNS & PPPK) kokoh di angka <strong>${(100 - nonAsnRatio).toFixed(1)}%</strong> dari total pegawai ${DASH_IS_ADMIN ? '' : 'sekolah Anda'}.
                 </div>
             </div>
         `;
     }
 
     // Insight 3: Rerata Pegawai Kependidikan (Tendik) per Sekolah
-    var totalTendik = stats.t_pns + stats.t_pppk + stats.t_ptt;
+    var totalTendik = stats.t_pns + stats.t_pppk + stats.t_ptt + (stats.t_pppk_pw || 0);
     var avgTendik = stats.jml_sekolah > 0 ? (totalTendik / stats.jml_sekolah) : 0;
     alertsHtml += `
         <div class="sultan-alert alert-soft-info">
             <i class="fas fa-info-circle fa-lg mr-3 mt-1"></i>
             <div>
-                <span class="font-weight-bold d-block" style="font-size: 13px;">Rata-rata Tendik Pendukung</span>
-                Setiap sekolah rata-rata didukung oleh <strong>${avgTendik.toFixed(1)}</strong> staff kependidikan (Tendik).
+                <span class="font-weight-bold d-block" style="font-size: 13px;">${DASH_IS_ADMIN ? 'Rata-rata Tendik Pendukung' : 'Staff Kependidikan'}</span>
+                ${DASH_IS_ADMIN 
+                    ? `Setiap sekolah rata-rata didukung oleh <strong>${avgTendik.toFixed(1)}</strong> staff kependidikan (Tendik).`
+                    : `Sekolah Anda didukung oleh <strong>${totalTendik}</strong> staff kependidikan (Tendik).`}
             </div>
         </div>
     `;
@@ -850,7 +856,7 @@ function renderSDSVisualAnalytics(s) {
                 <i class="fas fa-check-circle fa-lg mr-3 mt-1"></i>
                 <div>
                     <span class="font-weight-bold d-block" style="font-size: 13px;">Stabilitas PTK Yayasan</span>
-                    Sebesar <strong>${gtyRatio.toFixed(1)}%</strong> pendidik merupakan Guru Tetap Yayasan (GTY) yang stabil.
+                    Sebesar <strong>${gtyRatio.toFixed(1)}%</strong> pendidik merupakan Guru Tetap Yayasan (GTY) yang stabil ${DASH_IS_ADMIN ? '' : 'di sekolah Anda'}.
                 </div>
             </div>
         `;
@@ -860,7 +866,7 @@ function renderSDSVisualAnalytics(s) {
                 <i class="fas fa-exclamation-circle fa-lg mr-3 mt-1"></i>
                 <div>
                     <span class="font-weight-bold d-block" style="font-size: 13px;">Rasio Guru Tetap Rendah</span>
-                    Mayoritas kekuatan guru disokong oleh guru tidak tetap (honorer). GTY hanya sebesar <strong>${gtyRatio.toFixed(1)}%</strong>.
+                    Mayoritas kekuatan guru disokong oleh guru tidak tetap (honorer). GTY hanya sebesar <strong>${gtyRatio.toFixed(1)}%</strong> ${DASH_IS_ADMIN ? '' : 'di sekolah Anda'}.
                 </div>
             </div>
         `;
@@ -873,8 +879,10 @@ function renderSDSVisualAnalytics(s) {
         <div class="sultan-alert alert-soft-info">
             <i class="fas fa-info-circle fa-lg mr-3 mt-1"></i>
             <div>
-                <span class="font-weight-bold d-block" style="font-size: 13px;">Administrasi Pendukung</span>
-                Rata-rata terdapat <strong>${avgTendik.toFixed(1)}</strong> staff kependidikan (PTY/PTT) per sekolah Swasta.
+                <span class="font-weight-bold d-block" style="font-size: 13px;">${DASH_IS_ADMIN ? 'Administrasi Pendukung' : 'Staff Kependidikan'}</span>
+                ${DASH_IS_ADMIN 
+                    ? `Rata-rata terdapat <strong>${avgTendik.toFixed(1)}</strong> staff kependidikan (PTY/PTT) per sekolah Swasta.`
+                    : `Sekolah Anda didukung oleh <strong>${totalTendik}</strong> staff kependidikan (PTY/PTT).`}
             </div>
         </div>
     `;
