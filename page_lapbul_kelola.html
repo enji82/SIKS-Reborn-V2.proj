@@ -426,7 +426,7 @@
         <div class="modal-verifikasi-footer" id="lapbulkelola_verifFooter">
             <button type="button" class="modal-btn-batal" data-dismiss="modal">
                 <i class="fas fa-times mr-2"></i>BATAL</button>
-            <button type="submit" id="lapbulkelola_btnSimpanVerif" class="modal-verifikasi-btn-verifikasi" form="lapbulkelola_formVerifLapbul">
+            <button type="button" id="lapbulkelola_btnSimpanVerif" class="modal-verifikasi-btn-verifikasi">
                 <i class="fas fa-check mr-2"></i>VERIFIKASI</button>
         </div>
     </form>
@@ -515,10 +515,14 @@
 
         $(document).off('submit', '#lapbulkelola_formSD').on('submit', '#lapbulkelola_formSD', lapbulkelola_submitFormSD);
         $(document).off('submit', '#lapbulkelola_formPAUD').on('submit', '#lapbulkelola_formPAUD', lapbulkelola_submitFormPAUD);
-        $(document).off('submit', '#lapbulkelola_formVerifLapbul').on('submit', '#lapbulkelola_formVerifLapbul', lapbulkelola_submitVerifikasi);
+        $(document).off('submit', '#lapbulkelola_formVerifLapbul').on('submit', '#lapbulkelola_formVerifLapbul', function(e) {
+            e.preventDefault();
+            lapbulkelola_submitVerifikasi(e);
+        });
         $(document).off('click', '#lapbulkelola_btnSimpanVerif').on('click', '#lapbulkelola_btnSimpanVerif', function (e) {
             e.preventDefault();
-            $('#lapbulkelola_formVerifLapbul').submit();
+            e.stopPropagation();
+            lapbulkelola_submitVerifikasi(e);
         });
         // RESET MODAL
         $('#lapbulkelola_modalTambahData').on('hidden.bs.modal', function () {
@@ -1842,16 +1846,21 @@
         });
     }
 
+    var LAPBULKELOLA_VERIF_PROCESSING = false;
     function lapbulkelola_submitVerifikasi(e) {
-        e.preventDefault();
+        if (e) e.preventDefault();
+        if (LAPBULKELOLA_VERIF_PROCESSING) return; // Guard terhadap double-execution
+        
         var status = $('#lapbulkelola_selStatusVerif').val(); var ket = $('#lapbulkelola_txtKetVerif').val();
         if (!status) { Sultan.notif.gagal("Harap pilih Status Keputusan!"); return; }
         if ((status === 'Revisi' || status === 'Ditolak') && ket.length < 5) { Sultan.notif.warning("Keterangan wajib diisi minimal 5 karakter."); return; }
 
+        LAPBULKELOLA_VERIF_PROCESSING = true;
         var btn = $('#lapbulkelola_btnSimpanVerif'); var txt = btn.html();
         btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Menyimpan...');
 
         google.script.run.withSuccessHandler(function (res) {
+            LAPBULKELOLA_VERIF_PROCESSING = false;
             btn.prop('disabled', false).html(txt);
             if (res.success) {
                 Sultan.modal.tutupVerifikasi();
@@ -1864,6 +1873,7 @@
                 sultan_fetchNotifikasi();
             } else { Sultan.notif.crud.gagal(res.message); }
         }).withFailureHandler(function (err) {
+            LAPBULKELOLA_VERIF_PROCESSING = false;
             btn.prop('disabled', false).html(txt); Sultan.notif.crud.gagal(err.message);
         }).processVerifikasiLapbul(LAPBULKELOLA_V_TARGET_SOURCE, LAPBULKELOLA_V_TARGET_ID, status, ket, LAPBULKELOLA_USER_AKTIF);
     }
