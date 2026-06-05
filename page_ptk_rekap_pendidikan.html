@@ -60,7 +60,7 @@
 
                     <div class="sultan-filter-item">
                         <select id="rekappendidikan_filterStatus" disabled>
-                            <option value="SEMUA">- Semua Kepegawaian -</option>
+                            <option value="Semua Kepegawaian">- Memvalidasi Status... -</option>
                         </select>
                         <i class="fas fa-chevron-down"></i>
                     </div>
@@ -315,26 +315,38 @@
         });
 
         var currentStatus = $('#rekappendidikan_filterStatus').val();
-        var $selStatus = $('#rekappendidikan_filterStatus').empty().append('<option value="SEMUA">- Semua Kepegawaian -</option>');
+        var $selStatus = $('#rekappendidikan_filterStatus').empty();
 
-        Array.from(uniqueStatus).sort().forEach(function (s) {
+        var statusList = Array.from(uniqueStatus).sort();
+        // Pastikan "Semua Kepegawaian" berada di paling atas
+        var idx = statusList.findIndex(function (x) { return x.toLowerCase() === "semua kepegawaian"; });
+        if (idx > -1) {
+            var sk = statusList.splice(idx, 1)[0];
+            statusList.unshift(sk);
+        }
+
+        statusList.forEach(function (s) {
             $selStatus.append($('<option>', { value: s, text: s }));
         });
 
-        if (currentStatus && uniqueStatus.has(currentStatus)) $selStatus.val(currentStatus);
+        if (currentStatus && uniqueStatus.has(currentStatus)) {
+            $selStatus.val(currentStatus);
+        } else if (uniqueStatus.has("Semua Kepegawaian")) {
+            $selStatus.val("Semua Kepegawaian");
+        }
     }
 
     function rekappendidikan_terapkanFilterLokal() {
         var tAdminUnit = REKAPPENDIDIKAN_IS_ADMIN ? ($('#rekappendidikan_filterUnit').val() || "SEMUA").toUpperCase() : "";
         var tUnitUser = String(REKAPPENDIDIKAN_UNIT_TERKUNCI).trim().toUpperCase();
-        var tStatus = ($('#rekappendidikan_filterStatus').val() || "SEMUA").toUpperCase();
+        var tStatus = ($('#rekappendidikan_filterStatus').val() || "Semua Kepegawaian").toUpperCase();
 
         var filteredData = REKAPPENDIDIKAN_CACHE_DATA.filter(function (row) {
             var rUnit = String(row[0] || "").trim().toUpperCase();
             var rStatus = String(row[2] || "").trim().toUpperCase();
 
             var matchUnit = REKAPPENDIDIKAN_IS_ADMIN ? (tAdminUnit === "SEMUA" || rUnit === tAdminUnit) : (rUnit === tUnitUser);
-            var matchStatus = (tStatus === "SEMUA" || rStatus === tStatus);
+            var matchStatus = (rStatus === tStatus);
 
             return matchUnit && matchStatus;
         });
