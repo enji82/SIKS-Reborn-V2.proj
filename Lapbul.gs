@@ -438,8 +438,8 @@ function processDeleteData(source, rowId, inputCode, userLogin) {
 function processVerifikasiLapbul(source, rowId, status, keterangan, userLogin) {
   try {
     var config = source === 'SD' 
-      ? { dbKey: KONFIG_LAPBUL.SD_DB, sheetName: "Input SD", colStatus: 219, colKet: 225, colTglVerif: 223, colUserVerif: 224 }
-      : { dbKey: KONFIG_LAPBUL.PAUD_DB, sheetName: "Input PAUD", colStatus: 49, colKet: 50, colTglVerif: 47, colUserVerif: 48 };
+      ? { dbKey: KONFIG_LAPBUL.SD_DB, sheetName: "Input SD", colStatus: 49, colKet: 50, colTglVerif: 47, colUserVerif: 48 }
+      : { dbKey: KONFIG_LAPBUL.PAUD_DB, sheetName: "Input PAUD", colStatus: 219, colKet: 225, colTglVerif: 223, colUserVerif: 224 };
  
     var sheet = getSheet(config.dbKey, config.sheetName);
     var r = parseInt(rowId);
