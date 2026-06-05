@@ -208,7 +208,7 @@ function prosesSimpanLengkap(dbKey, namaSheet, source, form, fileData) {
       return String(h).toLowerCase().trim(); 
     });
     
-    var rowData = new Array(headers.length).fill(""); 
+    var rowData = new Array(headers.length).fill(null); 
 
     var isi = function(daftarNama, nilai) {
       if (!Array.isArray(daftarNama)) daftarNama = [daftarNama];
