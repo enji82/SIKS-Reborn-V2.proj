@@ -610,7 +610,7 @@ function moveDataPTKToNonAktif(id, reason, userLogin) {
   } catch (e) { return "Error: " + e.message; }
 }
 
-function getDataKeadaanGTK() { var sheet = getSheet(KONFIG_PTK.DB_KEY, "Keadaan GTK"); if (!sheet) return []; var lastRow = sheet.getLastRow(); if (lastRow < 3) return []; return sheet.getRange(3, 1, lastRow - 2, 64).getDisplayValues(); }
+function getDataKeadaanGTK() { var sheet = getSheet(KONFIG_PTK.DB_KEY, "Keadaan GTK"); if (!sheet) return []; var lastRow = sheet.getLastRow(); if (lastRow < 3) return []; return sheet.getRange(3, 1, lastRow - 2, 67).getDisplayValues(); }
 function getDataKebutuhanGuru() { var sheet = getSheet(KONFIG_PTK.DB_KEY, "Kebutuhan Guru"); if (!sheet) return []; var lastRow = sheet.getLastRow(); if (lastRow < 3) return []; return sheet.getRange(3, 1, lastRow - 2, 41).getDisplayValues(); }
 function getDataBezettingSDN() { var sheet = getSheet(KONFIG_PTK.DB_KEY, "Bezetting"); if (!sheet) return []; var lastRow = sheet.getLastRow(); if (lastRow < 4) return []; return sheet.getRange(4, 1, lastRow - 3, 54).getDisplayValues(); }
 
