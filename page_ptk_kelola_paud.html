@@ -837,7 +837,12 @@
             var uiNik = '<div class="sultan-table-secondary">' + nikMask + '</div>';
 
             var pend = '<div class="sultan-table-primary">' + (row.pendidikan || '-') + '</div>';
-            if (row.jurusan) pend += '<div class="sultan-table-secondary">' + ptkpaud_escapeHtml(row.jurusan) + '</div>';
+            var subPend = [];
+            if (row.jurusan && row.jurusan !== '-') subPend.push(ptkpaud_escapeHtml(row.jurusan));
+            if (row.thn_lulus && row.thn_lulus !== '-') subPend.push('Lulus: ' + ptkpaud_escapeHtml(row.thn_lulus));
+            if (subPend.length > 0) {
+                pend += '<div class="sultan-table-secondary">' + subPend.join(' • ') + '</div>';
+            }
 
             var jab = '<div class="sultan-table-primary">' + (row.jabatan || '-') + '</div>';
             if (row.tmt_jabatan) jab += '<div class="sultan-table-secondary">TMT: ' + ptkpaud_formatTanggalIndo(row.tmt_jabatan) + '</div>';
@@ -917,6 +922,27 @@
         return dateObj.getDate() + ' ' + months[dateObj.getMonth()] + ' ' + dateObj.getFullYear();
     }
 
+    function ptkpaud_convertToInputDate(strDate) {
+        if (!strDate || strDate === '-' || strDate === '') return '';
+        var dateObj;
+        if (strDate instanceof Date) { dateObj = strDate; }
+        else {
+            var cleanStr = String(strDate).trim().replace(/'/g, '');
+            var parts = cleanStr.match(/^(\d{4})[\-\/](\d{1,2})[\-\/](\d{1,2})$/);
+            if (parts) { dateObj = new Date(parts[1], parts[2] - 1, parts[3]); }
+            else {
+                parts = cleanStr.match(/^(\d{1,2})[\-\/](\d{1,2})[\-\/](\d{4})$/);
+                if (parts) { dateObj = new Date(parts[3], parts[2] - 1, parts[1]); }
+                else { dateObj = new Date(cleanStr); }
+            }
+        }
+        if (isNaN(dateObj.getTime())) return '';
+        var y = dateObj.getFullYear();
+        var m = String(dateObj.getMonth() + 1).padStart(2, '0');
+        var d = String(dateObj.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + d;
+    }
+
     // =================================================================
     // 6. CRUD: TAMBAH, EDIT & HAPUS (MODAL BAB V)
     // =================================================================
@@ -980,7 +1006,7 @@
         $('[name="niy"]').val(row.niy);
         $('[name="nik"]').val(row.nik);
         $('[name="tmp_lahir"]').val(row.tmp_lahir);
-        $('[name="tgl_lahir"]').val(row.tgl_lahir);
+        $('[name="tgl_lahir"]').val(ptkpaud_convertToInputDate(row.tgl_lahir));
         $('[name="lp"]').val(row.lp);
         $('[name="agama"]').val(row.agama);
         $('[name="alamat_ktp"]').val(row.alamat_ktp);
@@ -996,9 +1022,9 @@
 
         $('[name="status_peg"]').val(row.status_peg);
         $('[name="jabatan"]').val(row.jabatan);
-        $('[name="tmt_jabatan"]').val(row.tmt_jabatan);
+        $('[name="tmt_jabatan"]').val(ptkpaud_convertToInputDate(row.tmt_jabatan));
         $('[name="inpassing"]').val(row.inpassing);
-        $('[name="tmt_inpassing"]').val(row.tmt_inpassing);
+        $('[name="tmt_inpassing"]').val(ptkpaud_convertToInputDate(row.tmt_inpassing));
         $('[name="serdik"]').val(row.serdik);
         $('[name="dapodik"]').val(row.dapodik);
         $('[name="tugtam"]').val(row.tugtam);
