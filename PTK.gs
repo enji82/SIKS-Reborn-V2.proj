@@ -126,6 +126,96 @@ function getDataPTKSD(filterUnit, filterStatus) {
 }
 
 /**
+ * RIWAYAT PEMBARUAN: Ambil data lengkap untuk monitoring pembaruan data PTK SDN.
+ * Membaca kolom A, B, C, G, H, T, U, AF, AG, AH, AI dari sheet Master Data GTK.
+ * Kalkulasi Sudah/Belum dilakukan di frontend berdasarkan cutoff date yang disimpan admin.
+ */
+function getDataRiwayatPembaruan() {
+  try {
+    var sheet = getSheet(KONFIG_PTK.DB_KEY, KONFIG_PTK.SHEET_PTK);
+    if (!sheet) return JSON.stringify([]);
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) return JSON.stringify([]);
+
+    // Baca A (1) s.d. AI (35) → 35 kolom, indeks 0–34
+    var data = sheet.getRange(2, 1, lastRow - 1, 35).getValues();
+    var tz = Session.getScriptTimeZone();
+    var result = [];
+
+    for (var i = 0; i < data.length; i++) {
+      var row = data[i];
+      if (!row[0]) continue; // Lewati baris kosong
+
+      // Helper: format date object → string DD/MM/YYYY HH:mm, atau "" jika kosong
+      var fmtDate = function(val) {
+        if (!val || val === "") return "";
+        try {
+          var d = (val instanceof Date) ? val : new Date(val);
+          if (isNaN(d.getTime())) return "";
+          return Utilities.formatDate(d, tz, "dd/MM/yyyy HH:mm");
+        } catch(e) { return ""; }
+      };
+
+      // Tanggal input baru (kolom AF = index 31) dan tanggal diperbarui (kolom AH = index 33)
+      var tglInputBaru  = fmtDate(row[31]); // AF
+      var tglDiperbarui = fmtDate(row[33]); // AH
+
+      // Timestamp mentah (ms) untuk kalkulasi MAX di frontend
+      var tsInputBaru  = (row[31] && row[31] instanceof Date) ? row[31].getTime() : 0;
+      var tsDiperbarui = (row[33] && row[33] instanceof Date) ? row[33].getTime() : 0;
+      var tsEfektif    = Math.max(tsInputBaru, tsDiperbarui);
+
+      result.push({
+        id          : row[0],
+        npsn        : row[1],
+        unit        : row[2],
+        nama_lengkap: row[6],
+        nip         : row[7],
+        status_peg  : row[19],
+        jabatan     : row[20],
+        tgl_input_baru  : tglInputBaru,
+        user_input_baru : row[32] || "",      // AG
+        tgl_diperbarui  : tglDiperbarui,
+        user_diperbarui : row[34] || "",      // AI
+        ts_efektif      : tsEfektif           // ms, untuk perbandingan di frontend
+      });
+    }
+    return JSON.stringify(result);
+  } catch (e) {
+    return JSON.stringify({ error: e.message });
+  }
+}
+
+/**
+ * RIWAYAT PEMBARUAN: Simpan tanggal cutoff (batas pembaruan) yang ditetapkan Admin.
+ * Disimpan di Script Properties sehingga persisten lintas sesi.
+ * @param {string} dateStr  Format "YYYY-MM-DD" (dari input type="date" HTML)
+ * @returns {string} JSON { success: true } atau { error: "..." }
+ */
+function saveTanggalCutoffPembaruan(dateStr) {
+  try {
+    if (!dateStr) return JSON.stringify({ error: "Tanggal tidak boleh kosong." });
+    PropertiesService.getScriptProperties().setProperty("PEMBARUAN_CUTOFF_DATE", String(dateStr).trim());
+    return JSON.stringify({ success: true });
+  } catch (e) {
+    return JSON.stringify({ error: e.message });
+  }
+}
+
+/**
+ * RIWAYAT PEMBARUAN: Ambil tanggal cutoff yang telah disimpan.
+ * @returns {string} JSON { date: "YYYY-MM-DD" } atau { date: "" } jika belum pernah diset
+ */
+function getTanggalCutoffPembaruan() {
+  try {
+    var d = PropertiesService.getScriptProperties().getProperty("PEMBARUAN_CUTOFF_DATE") || "";
+    return JSON.stringify({ date: d });
+  } catch (e) {
+    return JSON.stringify({ date: "" });
+  }
+}
+
+/**
  * API Ringan: Ambil data proyeksi pensiun SDN
  * Hanya mengambil kolom yang diperlukan untuk perhitungan pensiun.
  * Filter: PNS, PPPK, PPPK Paruh Waktu
