@@ -290,6 +290,81 @@ function getTanggalCutoffPembaruanSds() {
 }
 
 /**
+ * PAUD RIWAYAT PEMBARUAN: Ambil data lengkap untuk monitoring pembaruan data PTK PAUD.
+ */
+function getDataRiwayatPembaruanPaud() {
+  try {
+    var sheet = getSheet(KONFIG_PTK_PAUD.DB_KEY, KONFIG_PTK_PAUD.SHEET_PTK);
+    if (!sheet) return JSON.stringify([]);
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) return JSON.stringify([]);
+
+    var data = sheet.getRange(2, 1, lastRow - 1, 33).getValues();
+    var tz = Session.getScriptTimeZone();
+    var result = [];
+
+    for (var i = 0; i < data.length; i++) {
+      var row = data[i];
+      if (!row[0]) continue; 
+
+      var fmtDate = function(val) {
+        if (!val || val === "") return "";
+        try {
+          var d = (val instanceof Date) ? val : new Date(val);
+          if (isNaN(d.getTime())) return "";
+          return Utilities.formatDate(d, tz, "dd/MM/yyyy HH:mm");
+        } catch(e) { return ""; }
+      };
+
+      var tglInputBaru  = fmtDate(row[29]); // AD
+      var tglDiperbarui = fmtDate(row[31]); // AF
+
+      var tsInputBaru  = (row[29] && row[29] instanceof Date) ? row[29].getTime() : 0;
+      var tsDiperbarui = (row[31] && row[31] instanceof Date) ? row[31].getTime() : 0;
+      var tsEfektif    = Math.max(tsInputBaru, tsDiperbarui);
+
+      result.push({
+        id          : row[0],
+        npsn        : row[1],
+        unit        : row[2], // C
+        jenjang     : row[3], // D
+        nama_lengkap: row[7], // H
+        niy         : row[8], // I
+        status_peg  : row[20], // U
+        jabatan     : row[21], // V
+        tgl_input_baru  : tglInputBaru,
+        user_input_baru : row[30] || "",      // AE
+        tgl_diperbarui  : tglDiperbarui,
+        user_diperbarui : row[32] || "",      // AG
+        ts_efektif      : tsEfektif
+      });
+    }
+    return JSON.stringify(result);
+  } catch (e) {
+    return JSON.stringify({ error: e.message });
+  }
+}
+
+function saveTanggalCutoffPembaruanPaud(dateStr) {
+  try {
+    if (!dateStr) return JSON.stringify({ error: "Tanggal tidak boleh kosong." });
+    PropertiesService.getScriptProperties().setProperty("PEMBARUAN_CUTOFF_DATE_PAUD", String(dateStr).trim());
+    return JSON.stringify({ success: true });
+  } catch (e) {
+    return JSON.stringify({ error: e.message });
+  }
+}
+
+function getTanggalCutoffPembaruanPaud() {
+  try {
+    var d = PropertiesService.getScriptProperties().getProperty("PEMBARUAN_CUTOFF_DATE_PAUD") || "";
+    return JSON.stringify({ date: d });
+  } catch (e) {
+    return JSON.stringify({ date: "" });
+  }
+}
+
+/**
  * API Ringan: Ambil data proyeksi pensiun SDN
  * Hanya mengambil kolom yang diperlukan untuk perhitungan pensiun.
  * Filter: PNS, PPPK, PPPK Paruh Waktu
