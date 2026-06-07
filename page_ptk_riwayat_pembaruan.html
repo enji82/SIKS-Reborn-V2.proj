@@ -381,10 +381,12 @@ var RP_IS_ADMIN         = false;
 var RP_USER_NPSN        = "";
 var RP_USER_UNIT        = "";
 var RP_CACHE_DATA       = [];        // Data mentah dari server
+var RP_CURRENT_FILTERED = [];        // Data terfilter aktif
 var RP_CUTOFF_MS        = 0;         // timestamp cutoff dalam ms
 var RP_CUTOFF_DATE_STR  = "";        // "YYYY-MM-DD"
 var RP_DT_INSTANCE      = null;
 var RP_FETCHING         = false;
+
 
 $(document).ready(function () {
 
@@ -414,7 +416,11 @@ $(document).ready(function () {
     $('#rp_btnSync').on('click', function () { rp_tarikData(); });
 
     $('#rp_btnHitung').on('click', function () { rp_simpanCutoffDanHitung(); });
+
+    $(document).off('click', '#rp_btnExportRekap').on('click', '#rp_btnExportRekap', rp_exportRekapExcel);
+    $(document).off('click', '#rp_btnExportRincian').on('click', '#rp_btnExportRincian', rp_exportRincianExcel);
 });
+
 
 /* ─────────────────────────────────────────────────
    INIT DataTables
@@ -616,6 +622,8 @@ function rp_hitungDanRender() {
         return true;
     });
 
+    RP_CURRENT_FILTERED = filtered;
+
     /* Cek apakah cutoff sudah ditetapkan */
     var hasCutoff = RP_CUTOFF_MS > 0;
 
@@ -631,6 +639,7 @@ function rp_hitungDanRender() {
     rp_renderRekap(filtered);
     rp_renderRincian(filtered, true);
 }
+
 
 /* ─────────────────────────────────────────────────
    RENDER TABEL 1 – Rekapitulasi per Unit Kerja
@@ -825,4 +834,332 @@ function rp_escHtml(str) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
 }
+
+/* ─────────────────────────────────────────────────
+   EXCEL EXPORT LOGIC
+   ───────────────────────────────────────────────── */
+var RP_PAGE_TYPE_LABEL = 'SD NEGERI';
+var RP_PAGE_TYPE_FILE = 'SDN';
+
+function rp_exportRekapExcel() {
+    if (typeof XLSX === 'undefined') {
+        Sultan.alert('error', 'Error', 'Library Excel (SheetJS) belum dimuat. Silakan refresh halaman.');
+        return;
+    }
+    if (RP_CUTOFF_MS <= 0) {
+        Sultan.alert('warning', 'Peringatan', 'Tetapkan tanggal batas pembaruan terlebih dahulu.');
+        return;
+    }
+    if (!RP_CURRENT_FILTERED || RP_CURRENT_FILTERED.length === 0) {
+        Sultan.alert('warning', 'Data Kosong', 'Tidak ada data untuk diekspor.');
+        return;
+    }
+
+    var byUnit = {};
+    RP_CURRENT_FILTERED.forEach(function (r) {
+        var u = r.unit || '-';
+        if (!byUnit[u]) byUnit[u] = { npsn: r.npsn || '', sudah: 0, belum: 0, total: 0 };
+        byUnit[u].total++;
+        if (r.ts_efektif && r.ts_efektif >= RP_CUTOFF_MS) {
+            byUnit[u].sudah++;
+        } else {
+            byUnit[u].belum++;
+        }
+    });
+
+    var units = Object.keys(byUnit).sort();
+    var headers = ['NO', 'UNIT KERJA', 'NPSN', 'JUMLAH PEGAWAI', 'SUDAH PERBARUI', 'BELUM PERBARUI', 'CAPAIAN (%)'];
+    var wsData = [];
+
+    var pageTitle = "REKAPITULASI PEMBARUAN DATA PTK " + RP_PAGE_TYPE_LABEL;
+    wsData.push([pageTitle]);
+    var tglFormatted = rp_formatTanggalIndo(RP_CUTOFF_DATE_STR);
+    wsData.push(["TANGGAL BATAS PEMBARUAN (CUTOFF): " + tglFormatted]);
+    wsData.push([]);
+    wsData.push(headers);
+
+    var totalAll = 0, sudahAll = 0, belumAll = 0;
+    units.forEach(function (u, idx) {
+        var d = byUnit[u];
+        var pct = d.total > 0 ? Math.round((d.sudah / d.total) * 100) : 0;
+        totalAll += d.total;
+        sudahAll += d.sudah;
+        belumAll += d.belum;
+
+        wsData.push([
+            idx + 1,
+            u,
+            d.npsn || '-',
+            d.total,
+            d.sudah,
+            d.belum,
+            pct + '%'
+        ]);
+    });
+
+    // Total Row
+    var pctAll = totalAll > 0 ? Math.round((sudahAll / totalAll) * 100) : 0;
+    wsData.push([
+        'TOTAL KESELURUHAN',
+        '',
+        '',
+        totalAll,
+        sudahAll,
+        belumAll,
+        pctAll + '%'
+    ]);
+
+    var ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    var totalCol = headers.length;
+    ws['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: totalCol - 1 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: totalCol - 1 } },
+        { s: { r: wsData.length - 1, c: 0 }, e: { r: wsData.length - 1, c: 2 } }
+    ];
+
+    ws['!cols'] = [
+        { wch: 5 },   // NO
+        { wch: 35 },  // UNIT KERJA
+        { wch: 15 },  // NPSN
+        { wch: 18 },  // JUMLAH PEGAWAI
+        { wch: 18 },  // SUDAH PERBARUI
+        { wch: 18 },  // BELUM PERBARUI
+        { wch: 15 }   // CAPAIAN (%)
+    ];
+
+    var range = XLSX.utils.decode_range(ws['!ref']);
+    var thinBorder = {
+        top: { style: 'thin', color: { rgb: '000000' } },
+        bottom: { style: 'thin', color: { rgb: '000000' } },
+        left: { style: 'thin', color: { rgb: '000000' } },
+        right: { style: 'thin', color: { rgb: '000000' } }
+    };
+
+    ws['A1'].s = {
+        font: { bold: true, sz: 14 },
+        alignment: { horizontal: 'center', vertical: 'center' }
+    };
+    ws['A2'].s = {
+        font: { bold: true, sz: 11 },
+        alignment: { horizontal: 'center', vertical: 'center' }
+    };
+
+    for (var R = 0; R <= range.e.r; R++) {
+        if (R === 0 || R === 1 || R === 2) continue;
+
+        for (var C = 0; C <= range.e.c; C++) {
+            var cellAddr = XLSX.utils.encode_cell({ r: R, c: C });
+
+            if (R === 3) {
+                if (ws[cellAddr]) {
+                    ws[cellAddr].s = {
+                        font: { bold: true, sz: 11 },
+                        alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+                        fill: { fgColor: { rgb: 'EAEAEA' } },
+                        border: thinBorder
+                    };
+                }
+                continue;
+            }
+
+            var lastRow = range.e.r;
+            if (R === lastRow) {
+                if (!ws[cellAddr]) ws[cellAddr] = { t: 's', v: '' };
+                ws[cellAddr].s = {
+                    font: { bold: true, sz: 11 },
+                    alignment: { horizontal: (C === 0) ? 'left' : 'center', vertical: 'center' },
+                    fill: { fgColor: { rgb: 'F4F4F4' } },
+                    border: thinBorder
+                };
+                continue;
+            }
+
+            if (R >= 4 && R < lastRow) {
+                if (!ws[cellAddr]) ws[cellAddr] = { t: 's', v: '' };
+                if (!ws[cellAddr].s) ws[cellAddr].s = {};
+
+                ws[cellAddr].s.font = { sz: 11 };
+                ws[cellAddr].s.border = thinBorder;
+
+                if (C === 2) {
+                    ws[cellAddr].t = 's';
+                    ws[cellAddr].v = String(ws[cellAddr].v).replace(/^'/, '');
+                }
+
+                ws[cellAddr].s.alignment = {
+                    wrapText: true,
+                    vertical: 'center',
+                    horizontal: (C === 1) ? 'left' : 'center'
+                };
+            }
+        }
+    }
+
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Rekapitulasi Pembaruan');
+
+    var unitName = (RP_IS_ADMIN ? ($('#rp_filterUnit').val() || 'SEMUA') : RP_USER_UNIT);
+    var safeUnitName = unitName.replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, '_');
+    var fileName = 'Data_Rekap_Pembaruan_' + RP_PAGE_TYPE_FILE + '_' + safeUnitName + '.xlsx';
+
+    XLSX.writeFile(wb, fileName);
+    Sultan.notif.crud.sukses('File Excel berhasil diunduh!');
+}
+
+function rp_exportRincianExcel() {
+    if (typeof XLSX === 'undefined') {
+        Sultan.alert('error', 'Error', 'Library Excel (SheetJS) belum dimuat. Silakan refresh halaman.');
+        return;
+    }
+    if (!RP_CURRENT_FILTERED || RP_CURRENT_FILTERED.length === 0) {
+        Sultan.alert('warning', 'Data Kosong', 'Tidak ada data untuk diekspor.');
+        return;
+    }
+
+    var withCutoff = RP_CUTOFF_MS > 0;
+    var sorted = RP_CURRENT_FILTERED.slice().sort(function (a, b) {
+        var aStatus = withCutoff ? (a.ts_efektif >= RP_CUTOFF_MS ? 1 : 0) : 0;
+        var bStatus = withCutoff ? (b.ts_efektif >= RP_CUTOFF_MS ? 1 : 0) : 0;
+        if (aStatus !== bStatus) return aStatus - bStatus;
+        return String(a.nama_lengkap || '').localeCompare(String(b.nama_lengkap || ''));
+    });
+
+    var headers = ['NO', 'STATUS PEMBARUAN', 'UNIT KERJA', 'NAMA PTK', 'NIP / NIY', 'JABATAN', 'STATUS KEPEG.', 'TANGGAL PEMBARUAN', 'DIPERBARUI OLEH'];
+    var wsData = [];
+
+    var pageTitle = "RINCIAN PEMBARUAN DATA PTK " + RP_PAGE_TYPE_LABEL;
+    wsData.push([pageTitle]);
+    if (withCutoff) {
+        var tglFormatted = rp_formatTanggalIndo(RP_CUTOFF_DATE_STR);
+        wsData.push(["TANGGAL BATAS PEMBARUAN (CUTOFF): " + tglFormatted]);
+    } else {
+        wsData.push(["TANGGAL BATAS PEMBARUAN (CUTOFF): -"]);
+    }
+    wsData.push([]);
+    wsData.push(headers);
+
+    sorted.forEach(function (r, idx) {
+        var isSudah = withCutoff && r.ts_efektif > 0 && r.ts_efektif >= RP_CUTOFF_MS;
+        var statusStr = withCutoff ? (isSudah ? 'Sudah' : 'Belum') : '-';
+
+        var tglEfektif = '-';
+        var userEfektif = '-';
+        if (r.ts_efektif > 0) {
+            var tsAF = rp_parseFmtToMs(r.tgl_input_baru);
+            var tsAH = rp_parseFmtToMs(r.tgl_diperbarui);
+            if (tsAF >= tsAH) {
+                tglEfektif  = r.tgl_input_baru || '-';
+                userEfektif = r.user_input_baru || '-';
+            } else {
+                tglEfektif  = r.tgl_diperbarui || '-';
+                userEfektif = r.user_diperbarui || '-';
+            }
+        }
+
+        wsData.push([
+            idx + 1,
+            statusStr,
+            r.unit || '-',
+            r.nama_lengkap || '-',
+            '\'' + (r.nip || r.niy || '-'),
+            r.jabatan || '-',
+            r.status_peg || '-',
+            isSudah ? tglEfektif : '-',
+            isSudah ? userEfektif : '-'
+        ]);
+    });
+
+    var ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    var totalCol = headers.length;
+    ws['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: totalCol - 1 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: totalCol - 1 } }
+    ];
+
+    ws['!cols'] = [
+        { wch: 5 },   // NO
+        { wch: 18 },  // STATUS PEMBARUAN
+        { wch: 30 },  // UNIT KERJA
+        { wch: 30 },  // NAMA PTK
+        { wch: 22 },  // NIP / NIY
+        { wch: 20 },  // JABATAN
+        { wch: 18 },  // STATUS KEPEG.
+        { wch: 22 },  // TANGGAL PEMBARUAN
+        { wch: 22 }   // DIPERBARUI OLEH
+    ];
+
+    var range = XLSX.utils.decode_range(ws['!ref']);
+    var thinBorder = {
+        top: { style: 'thin', color: { rgb: '000000' } },
+        bottom: { style: 'thin', color: { rgb: '000000' } },
+        left: { style: 'thin', color: { rgb: '000000' } },
+        right: { style: 'thin', color: { rgb: '000000' } }
+    };
+
+    ws['A1'].s = {
+        font: { bold: true, sz: 14 },
+        alignment: { horizontal: 'center', vertical: 'center' }
+    };
+    ws['A2'].s = {
+        font: { bold: true, sz: 11 },
+        alignment: { horizontal: 'center', vertical: 'center' }
+    };
+
+    for (var R = 0; R <= range.e.r; R++) {
+        if (R === 0 || R === 1 || R === 2) continue;
+
+        for (var C = 0; C <= range.e.c; C++) {
+            var cellAddr = XLSX.utils.encode_cell({ r: R, c: C });
+
+            if (R === 3) {
+                if (ws[cellAddr]) {
+                    ws[cellAddr].s = {
+                        font: { bold: true, sz: 11 },
+                        alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+                        fill: { fgColor: { rgb: 'EAEAEA' } },
+                        border: thinBorder
+                    };
+                }
+                continue;
+            }
+
+            if (R >= 4) {
+                if (!ws[cellAddr]) ws[cellAddr] = { t: 's', v: '' };
+                if (!ws[cellAddr].s) ws[cellAddr].s = {};
+
+                ws[cellAddr].s.font = { sz: 11 };
+                ws[cellAddr].s.border = thinBorder;
+
+                if (C === 4) {
+                    ws[cellAddr].t = 's';
+                    ws[cellAddr].v = String(ws[cellAddr].v).replace(/^'/, '');
+                    ws[cellAddr].s.alignment = {
+                        msoNumberFormat: '@',
+                        horizontal: 'center',
+                        vertical: 'center'
+                    };
+                } else {
+                    ws[cellAddr].s.alignment = {
+                        wrapText: true,
+                        vertical: 'center',
+                        horizontal: (C === 0 || C === 1 || C === 6 || C === 7) ? 'center' : 'left'
+                    };
+                }
+            }
+        }
+    }
+
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Rincian Pembaruan');
+
+    var unitName = (RP_IS_ADMIN ? ($('#rp_filterUnit').val() || 'SEMUA') : RP_USER_UNIT);
+    var safeUnitName = unitName.replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, '_');
+    var fileName = 'Data_Rincian_Pembaruan_' + RP_PAGE_TYPE_FILE + '_' + safeUnitName + '.xlsx';
+
+    XLSX.writeFile(wb, fileName);
+    Sultan.notif.crud.sukses('File Excel berhasil diunduh!');
+}
 </script>
+
