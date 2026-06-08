@@ -197,16 +197,41 @@ function prosesSimpanLengkap(dbKey, namaSheet, source, form, fileData) {
     var sheet = getSheet(dbKey, namaSheet);
     var userLogin = form.user_login || "System";
     
+    var headers = sheet.getRange(1, 1, 1, 300).getValues()[0].map(function(h) { 
+      return String(h).toLowerCase().trim(); 
+    });
+    
+    // Cek duplikasi periode (NPSN + Bulan + Tahun)
+    var idxNpsn = headers.indexOf("npsn");
+    var idxBulan = headers.indexOf("bulan");
+    var idxTahun = headers.indexOf("tahun");
+    if (idxNpsn > -1 && idxBulan > -1 && idxTahun > -1) {
+      var lastRow = sheet.getLastRow();
+      if (lastRow >= 2) {
+        var rangeValues = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
+        var formNpsn = String(form.npsn || "").trim();
+        var formBulan = String(form.bulan || "").trim().toUpperCase();
+        var formTahun = String(form.tahun || "").trim();
+        
+        for (var r = 0; r < rangeValues.length; r++) {
+          var rowVal = rangeValues[r];
+          var rowNpsn = String(rowVal[idxNpsn]).trim();
+          var rowBulan = String(rowVal[idxBulan]).trim().toUpperCase();
+          var rowTahun = String(rowVal[idxTahun]).trim();
+          
+          if (rowNpsn === formNpsn && rowBulan === formBulan && rowTahun === formTahun) {
+            return { success: false, message: "Laporan untuk periode " + form.bulan + " " + form.tahun + " sudah ada. Silakan gunakan menu Edit jika ingin mengubah data." };
+          }
+        }
+      }
+    }
+
     var fileUrl = "";
     if (fileData && fileData.data) {
       var folderId = "1I8DRQYpBbTt1mJwtD1WXVD6UK51TC8El"; 
       var fileName = "Laporan " + source + " - " + form.nama_sekolah + " - " + form.bulan + " " + form.tahun + ".pdf";
       fileUrl = uploadFileToDrive(fileData, folderId, fileName);
     }
-
-    var headers = sheet.getRange(1, 1, 1, 300).getValues()[0].map(function(h) { 
-      return String(h).toLowerCase().trim(); 
-    });
     
     var rowData = new Array(headers.length).fill(null); 
 
