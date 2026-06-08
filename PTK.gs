@@ -1133,7 +1133,7 @@ function getDataKeadaanGTKPAUD() { var sheet = getSheet(KONFIG_PTK_PAUD.DB_KEY, 
 
 function getDataValidasiPTKSDN() { var sheet = getSheet(KONFIG_PTK.DB_KEY, "sinkron_gtk_sdn"); if (!sheet) return []; var lastRow = sheet.getLastRow(); if (lastRow < 3) return []; return sheet.getRange(3, 1, lastRow - 2, 46).getDisplayValues(); }
 
-function getDataValidasiPTKSDS() { var sheet = getSheet(KONFIG_PTK.DB_KEY, "sinkron_gtk_sds"); if (!sheet) return []; var lastRow = sheet.getLastRow(); if (lastRow < 3) return []; return sheet.getRange(3, 1, lastRow - 2, 46).getDisplayValues(); }
+function getDataValidasiPTKSDS() { var sheet = getSheet(KONFIG_PTK.DB_KEY, "sinkron_gtk_sds"); if (!sheet) return []; var lastRow = sheet.getLastRow(); if (lastRow < 3) return []; return sheet.getRange(3, 1, lastRow - 2, 49).getDisplayValues(); }
 
 function getDataValidasiPTKPAUD() { var sheet = getSheet(KONFIG_PTK_PAUD.DB_KEY, "sinkron_gtk_paud"); if (!sheet) return []; var lastRow = sheet.getLastRow(); if (lastRow < 3) return []; return sheet.getRange(3, 1, lastRow - 2, 16).getDisplayValues(); }
 
