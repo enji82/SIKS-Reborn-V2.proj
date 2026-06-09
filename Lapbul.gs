@@ -269,6 +269,18 @@ function prosesSimpanLengkap(dbKey, namaSheet, source, form, fileData) {
         isi(["TAS", "Tenaga Administrasi", "Adm"], form.td_adm);
         isi(["Pustakawan", "Tenaga Perpustakaan"], form.td_perpus);
         isi(["Tendik Lain", "Tendik Lainnya"], form.td_lain);
+        
+        // Guru Mapel (kolom BB / index 53) & Guru Lainnya (kolom BC / index 54)
+        if (headers[53]) {
+            isi(headers[53], form.g_mapel);
+        } else {
+            rowData[53] = (form.g_mapel === null || form.g_mapel === undefined) ? "" : String(form.g_mapel);
+        }
+        if (headers[54]) {
+            isi(headers[54], form.g_lain);
+        } else {
+            rowData[54] = (form.g_lain === null || form.g_lain === undefined) ? "" : String(form.g_lain);
+        }
     } else {
         for (var key in form) { isi([key, key.replace(/_/g, " ")], form[key]); }
     }
@@ -281,8 +293,8 @@ function prosesSimpanLengkap(dbKey, namaSheet, source, form, fileData) {
     isi(["dibaca oleh", "read by"], ""); // Reset status baca
 
 
-    if (source === "PAUD" && rowData.length > 50) {
-        rowData = rowData.slice(0, 50);
+    if (source === "PAUD" && rowData.length > 60) {
+        rowData = rowData.slice(0, 60);
     }
 
     sheet.appendRow(rowData);
@@ -390,6 +402,12 @@ function prosesUpdateLengkap(dbKey, namaSheet, form, fileData) {
         else if (rawHeader.includes("status data") || rawHeader === "status") newRowData.push("Diproses"); 
         else if (rawHeader.includes("dokumen") || rawHeader.includes("file")) newRowData.push(fileUrl);
         else if (rawHeader.includes("dibaca oleh") || rawHeader.includes("read by")) newRowData.push(""); // Reset status baca
+        else if (i === 53 && namaSheet === "Input PAUD") {
+            newRowData.push(form.g_mapel !== undefined ? form.g_mapel : (currentRowData[i] !== undefined ? currentRowData[i] : ""));
+        }
+        else if (i === 54 && namaSheet === "Input PAUD") {
+            newRowData.push(form.g_lain !== undefined ? form.g_lain : (currentRowData[i] !== undefined ? currentRowData[i] : ""));
+        }
         else if (form[keyForm] !== undefined) {
              var val = form[keyForm];
              if (rawHeader.includes("tgl") || rawHeader.includes("tanggal")) newRowData.push("'" + val); 
@@ -398,8 +416,8 @@ function prosesUpdateLengkap(dbKey, namaSheet, form, fileData) {
         else newRowData.push(currentRowData[i]);
     }
 
-    if (namaSheet === "Input PAUD" && newRowData.length > 50) {
-        newRowData = newRowData.slice(0, 50);
+    if (namaSheet === "Input PAUD" && newRowData.length > 60) {
+        newRowData = newRowData.slice(0, 60);
     }
 
     sheet.getRange(rowId, 1, 1, newRowData.length).setValues([newRowData]);
