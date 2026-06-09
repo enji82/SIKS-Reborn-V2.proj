@@ -570,6 +570,21 @@
       var user = null;
       try { user = userLocal ? JSON.parse(userLocal) : null; } catch (e) { }
 
+      // 24 jam dalam milidetik = 24 * 60 * 60 * 1000 = 86400000
+      var MAX_SESSION_AGE = 24 * 60 * 60 * 1000;
+      if (user) {
+        if (!user.loginTimestamp) {
+          user.loginTimestamp = Date.now();
+          localStorage.setItem("siksUser", JSON.stringify(user));
+        } else {
+          var age = Date.now() - user.loginTimestamp;
+          if (age > MAX_SESSION_AGE) {
+            localStorage.removeItem("siksUser");
+            user = null;
+          }
+        }
+      }
+
       if (user) {
         // VAKSIN KEAMANAN: Jangan langsung percaya localStorage!
         // Tampilkan dulu layarnya, tapi diam-diam verifikasi ke server
