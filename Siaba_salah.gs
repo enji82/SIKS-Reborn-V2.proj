@@ -140,7 +140,20 @@ function updateSalahAbsen(form) {
     var barisKetemu = parseInt(form.recId);
 
     var targetNip = String(form.nip_lama).trim();
-    var statusLama = String(sheet.getRange(barisKetemu, 9).getValue()).trim();
+    var rangeLama = sheet.getRange(barisKetemu, 1, 1, 16);
+    var valLama = rangeLama.getValues()[0];
+    
+    // VALIDASI KEAMANAN: Cegah sekolah mengedit data sekolah lain
+    var isAdmin = form.isAdmin === true || form.role === 'admin';
+    if (!isAdmin) {
+      var npsnLama = String(valLama[14] || "").trim();
+      var userNpsn = String(form.npsn || "").trim();
+      if (userNpsn !== "" && npsnLama !== "" && npsnLama !== userNpsn) {
+        return "Gagal: Anda tidak memiliki akses untuk mengubah data dari sekolah lain.";
+      }
+    }
+
+    var statusLama = String(valLama[8]).trim(); // Index 8 is Column 9 (status)
 
     if (statusLama.toLowerCase().includes("ok") || statusLama.toLowerCase().includes("setuju")) {
         return "Gagal: Data sudah Disetujui dan tidak bisa diedit.";
@@ -187,6 +200,17 @@ function hapusSalahAbsen(dataKirim) {
     var now = new Date();
     var validCode = Utilities.formatDate(now, Session.getScriptTimeZone(), "yyyyMMdd");
     if(String(dataKirim.kode).trim() !== validCode) throw new Error("KODE_SALAH"); 
+
+    // VALIDASI KEAMANAN: Cegah sekolah menghapus data sekolah lain
+    var isAdmin = dataKirim.isAdmin === true || dataKirim.role === 'admin';
+    if (!isAdmin) {
+      var valLama = sheetMain.getRange(rowIdx, 1, 1, 16).getValues()[0];
+      var npsnLama = String(valLama[14] || "").trim();
+      var userNpsn = String(dataKirim.npsn || "").trim();
+      if (userNpsn !== "" && npsnLama !== "" && npsnLama !== userNpsn) {
+        throw new Error("Anda tidak memiliki akses untuk menghapus data dari sekolah lain.");
+      }
+    }
 
     sheetMain.deleteRow(rowIdx);
     return "Sukses";

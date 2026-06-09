@@ -143,6 +143,17 @@ function updateLupaPresensi(form, fileData) {
     
     var rangeLama = sheet.getRange(baris, 1, 1, 17); 
     var valLama = rangeLama.getValues()[0];
+    
+    // VALIDASI KEAMANAN: Cegah sekolah mengedit data sekolah lain
+    var isAdmin = form.isAdmin === true || form.role === 'admin';
+    if (!isAdmin) {
+      var npsnLama = String(valLama[16] || "").trim();
+      var userNpsn = String(form.npsn || "").trim();
+      if (userNpsn !== "" && npsnLama !== "" && npsnLama !== userNpsn) {
+        return "Gagal: Anda tidak memiliki akses untuk mengubah data dari sekolah lain.";
+      }
+    }
+    
     var finalUrl = valLama[9]; 
     
     var targetFolder = getFolderTahunBulan(KONFIG_LUPA.FOLDER_ID, tglSimpan);
@@ -206,6 +217,17 @@ function hapusLupaPresensi(dataKirim) {
     var now = new Date();
     var validCode = Utilities.formatDate(now, Session.getScriptTimeZone(), "yyyyMMdd");
     if(String(dataKirim.kode).trim() !== validCode) throw new Error("KODE_SALAH"); 
+
+    // VALIDASI KEAMANAN: Cegah sekolah menghapus data sekolah lain
+    var isAdmin = dataKirim.isAdmin === true || dataKirim.role === 'admin';
+    if (!isAdmin) {
+      var valLama = sheetMain.getRange(rowIdx, 1, 1, 17).getValues()[0];
+      var npsnLama = String(valLama[16] || "").trim();
+      var userNpsn = String(dataKirim.npsn || "").trim();
+      if (userNpsn !== "" && npsnLama !== "" && npsnLama !== userNpsn) {
+        throw new Error("Anda tidak memiliki akses untuk menghapus data dari sekolah lain.");
+      }
+    }
 
     var fileUrl = sheetMain.getRange(rowIdx, 10).getValue(); 
     
