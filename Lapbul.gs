@@ -281,6 +281,10 @@ function prosesSimpanLengkap(dbKey, namaSheet, source, form, fileData) {
     isi(["dibaca oleh", "read by"], ""); // Reset status baca
 
 
+    if (source === "PAUD" && rowData.length > 50) {
+        rowData = rowData.slice(0, 50);
+    }
+
     sheet.appendRow(rowData);
     
     if (typeof updateDataSekolahMaster === 'function') {
@@ -392,6 +396,10 @@ function prosesUpdateLengkap(dbKey, namaSheet, form, fileData) {
              else newRowData.push(val);
         }
         else newRowData.push(currentRowData[i]);
+    }
+
+    if (namaSheet === "Input PAUD" && newRowData.length > 50) {
+        newRowData = newRowData.slice(0, 50);
     }
 
     sheet.getRange(rowId, 1, 1, newRowData.length).setValues([newRowData]);
