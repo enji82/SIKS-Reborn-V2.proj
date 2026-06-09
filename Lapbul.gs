@@ -270,17 +270,22 @@ function prosesSimpanLengkap(dbKey, namaSheet, source, form, fileData) {
         isi(["Pustakawan", "Tenaga Perpustakaan"], form.td_perpus);
         isi(["Tendik Lain", "Tendik Lainnya"], form.td_lain);
         
-        // Guru Mapel (kolom BB / index 53) & Guru Lainnya (kolom BC / index 54)
-        if (headers[53]) {
-            isi(headers[53], form.g_mapel);
-        } else {
-            rowData[53] = (form.g_mapel === null || form.g_mapel === undefined) ? "" : String(form.g_mapel);
-        }
-        if (headers[54]) {
-            isi(headers[54], form.g_lain);
-        } else {
-            rowData[54] = (form.g_lain === null || form.g_lain === undefined) ? "" : String(form.g_lain);
-        }
+        // Guru Mapel (kolom BB-BE / index 53-56) & Guru Lainnya (kolom BF-BI / index 57-60)
+        var mapPAUDCol = function(idx, headerSearch, formVal) {
+            if (headers[idx]) {
+                isi([headers[idx], headerSearch], formVal);
+            } else {
+                rowData[idx] = (formVal === null || formVal === undefined) ? "" : String(formVal);
+            }
+        };
+        mapPAUDCol(53, "GM GTY", form.gm_gty);
+        mapPAUDCol(54, "GM GTT", form.gm_gtt);
+        mapPAUDCol(55, "GM PNS", form.gm_pns);
+        mapPAUDCol(56, "GM PPPK", form.gm_pppk);
+        mapPAUDCol(57, "GL GTY", form.gl_gty);
+        mapPAUDCol(58, "GL GTT", form.gl_gtt);
+        mapPAUDCol(59, "GL PNS", form.gl_pns);
+        mapPAUDCol(60, "GL PPPK", form.gl_pppk);
     } else {
         for (var key in form) { isi([key, key.replace(/_/g, " ")], form[key]); }
     }
@@ -293,8 +298,8 @@ function prosesSimpanLengkap(dbKey, namaSheet, source, form, fileData) {
     isi(["dibaca oleh", "read by"], ""); // Reset status baca
 
 
-    if (source === "PAUD" && rowData.length > 60) {
-        rowData = rowData.slice(0, 60);
+    if (source === "PAUD" && rowData.length > 61) {
+        rowData = rowData.slice(0, 61);
     }
 
     sheet.appendRow(rowData);
@@ -403,10 +408,28 @@ function prosesUpdateLengkap(dbKey, namaSheet, form, fileData) {
         else if (rawHeader.includes("dokumen") || rawHeader.includes("file")) newRowData.push(fileUrl);
         else if (rawHeader.includes("dibaca oleh") || rawHeader.includes("read by")) newRowData.push(""); // Reset status baca
         else if (i === 53 && namaSheet === "Input PAUD") {
-            newRowData.push(form.g_mapel !== undefined ? form.g_mapel : (currentRowData[i] !== undefined ? currentRowData[i] : ""));
+            newRowData.push(form.gm_gty !== undefined ? form.gm_gty : (currentRowData[i] !== undefined ? currentRowData[i] : ""));
         }
         else if (i === 54 && namaSheet === "Input PAUD") {
-            newRowData.push(form.g_lain !== undefined ? form.g_lain : (currentRowData[i] !== undefined ? currentRowData[i] : ""));
+            newRowData.push(form.gm_gtt !== undefined ? form.gm_gtt : (currentRowData[i] !== undefined ? currentRowData[i] : ""));
+        }
+        else if (i === 55 && namaSheet === "Input PAUD") {
+            newRowData.push(form.gm_pns !== undefined ? form.gm_pns : (currentRowData[i] !== undefined ? currentRowData[i] : ""));
+        }
+        else if (i === 56 && namaSheet === "Input PAUD") {
+            newRowData.push(form.gm_pppk !== undefined ? form.gm_pppk : (currentRowData[i] !== undefined ? currentRowData[i] : ""));
+        }
+        else if (i === 57 && namaSheet === "Input PAUD") {
+            newRowData.push(form.gl_gty !== undefined ? form.gl_gty : (currentRowData[i] !== undefined ? currentRowData[i] : ""));
+        }
+        else if (i === 58 && namaSheet === "Input PAUD") {
+            newRowData.push(form.gl_gtt !== undefined ? form.gl_gtt : (currentRowData[i] !== undefined ? currentRowData[i] : ""));
+        }
+        else if (i === 59 && namaSheet === "Input PAUD") {
+            newRowData.push(form.gl_pns !== undefined ? form.gl_pns : (currentRowData[i] !== undefined ? currentRowData[i] : ""));
+        }
+        else if (i === 60 && namaSheet === "Input PAUD") {
+            newRowData.push(form.gl_pppk !== undefined ? form.gl_pppk : (currentRowData[i] !== undefined ? currentRowData[i] : ""));
         }
         else if (form[keyForm] !== undefined) {
              var val = form[keyForm];
@@ -416,8 +439,8 @@ function prosesUpdateLengkap(dbKey, namaSheet, form, fileData) {
         else newRowData.push(currentRowData[i]);
     }
 
-    if (namaSheet === "Input PAUD" && newRowData.length > 60) {
-        newRowData = newRowData.slice(0, 60);
+    if (namaSheet === "Input PAUD" && newRowData.length > 61) {
+        newRowData = newRowData.slice(0, 61);
     }
 
     sheet.getRange(rowId, 1, 1, newRowData.length).setValues([newRowData]);
