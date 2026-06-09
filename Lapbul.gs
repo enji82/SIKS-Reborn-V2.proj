@@ -296,13 +296,27 @@ function prosesSimpanLengkap(dbKey, namaSheet, source, form, fileData) {
     isi(["waktu kirim", "tgl kirim", "tanggal kirim", "timestamp"], "'" + now);
     isi(["user kirim", "user input", "pengirim"], userLogin);
     isi(["dibaca oleh", "read by"], ""); // Reset status baca
-
-
     if (source === "PAUD" && rowData.length > 61) {
         rowData = rowData.slice(0, 61);
     }
 
-    sheet.appendRow(rowData);
+    if (source === "PAUD") {
+        var lastRow = sheet.getLastRow();
+        sheet.insertRowAfter(lastRow);
+        var newRowId = lastRow + 1;
+
+        // Tulis part 1 (kolom 1 s/d 50, index 0 s/d 49)
+        var part1 = rowData.slice(0, 50);
+        sheet.getRange(newRowId, 1, 1, part1.length).setValues([part1]);
+
+        // Tulis part 2 (kolom 53 s/d 61, index 52 s/d 60)
+        if (rowData.length > 52) {
+            var part2 = rowData.slice(52);
+            sheet.getRange(newRowId, 53, 1, part2.length).setValues([part2]);
+        }
+    } else {
+        sheet.appendRow(rowData);
+    }
     
     if (typeof updateDataSekolahMaster === 'function') {
         updateDataSekolahMaster(form);
@@ -402,7 +416,13 @@ function prosesUpdateLengkap(dbKey, namaSheet, form, fileData) {
         var rawHeader = String(headers[i]).toLowerCase().trim();
         var keyForm = rawHeader.replace(/\s+/g, '_'); 
         
-        if (rawHeader.includes("tgl edit") || rawHeader.includes("tanggal edit") || rawHeader.includes("update")) newRowData.push("'" + strTglEdit); 
+        if (i === 50 && namaSheet === "Input PAUD") {
+            newRowData.push("");
+        }
+        else if (i === 51 && namaSheet === "Input PAUD") {
+            newRowData.push("");
+        }
+        else if (rawHeader.includes("tgl edit") || rawHeader.includes("tanggal edit") || rawHeader.includes("update")) newRowData.push("'" + strTglEdit); 
         else if (rawHeader.includes("user edit") || rawHeader.includes("penyunting")) newRowData.push("'" + strUserEdit); 
         else if (rawHeader.includes("status data") || rawHeader === "status") newRowData.push("Diproses"); 
         else if (rawHeader.includes("dokumen") || rawHeader.includes("file")) newRowData.push(fileUrl);
@@ -443,7 +463,19 @@ function prosesUpdateLengkap(dbKey, namaSheet, form, fileData) {
         newRowData = newRowData.slice(0, 61);
     }
 
-    sheet.getRange(rowId, 1, 1, newRowData.length).setValues([newRowData]);
+    if (namaSheet === "Input PAUD") {
+        // Tulis part 1 (kolom 1 s/d 50, index 0 s/d 49)
+        var part1 = newRowData.slice(0, 50);
+        sheet.getRange(rowId, 1, 1, part1.length).setValues([part1]);
+
+        // Tulis part 2 (kolom 53 s/d 61, index 52 s/d 60)
+        if (newRowData.length > 52) {
+            var part2 = newRowData.slice(52);
+            sheet.getRange(rowId, 53, 1, part2.length).setValues([part2]);
+        }
+    } else {
+        sheet.getRange(rowId, 1, 1, newRowData.length).setValues([newRowData]);
+    }
     SpreadsheetApp.flush(); 
     
     if (typeof invalidateNotifCache === 'function') {
