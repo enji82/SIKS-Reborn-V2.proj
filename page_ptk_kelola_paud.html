@@ -1032,7 +1032,7 @@
             // Check all elements with required attribute and add is-invalid if empty
             $('#ptkpaud_formUtama').find('[required]').each(function () {
                 var $field = $(this);
-                if ($field.prop('disabled') || $field.prop('readonly')) {
+                if ($field.prop('disabled') || $field.prop('readonly') || $field.is(':hidden')) {
                     return;
                 }
                 var val = $field.val();
@@ -1056,19 +1056,28 @@
         var formAktif = $('#ptkpaud_formUtama');
         var mode = $('#ptkpaud_inputMode').val();
 
-
-
         // Check validity manually and add is-invalid without was-validated
         var isValid = true;
+        var emptyFields = [];
         formAktif.find('[required]').each(function () {
             var $field = $(this);
-            if ($field.prop('disabled') || $field.prop('readonly')) {
+            if ($field.prop('disabled') || $field.prop('readonly') || $field.is(':hidden')) {
                 return;
             }
             var val = $field.val();
             if (!val || val === '' || val === '-') {
                 $field.addClass('is-invalid').removeClass('is-valid');
                 isValid = false;
+
+                var fieldId = $field.attr('id') || $field.attr('name');
+                var $label = formAktif.find('label[for="' + fieldId + '"]');
+                if (!$label.length) {
+                    $label = $field.closest('.form-group, .col-md-2, .col-md-3, .col-md-4, .col-md-5, .col-md-6, .col-md-7, .col-md-12').find('label');
+                }
+                var labelText = $label.length ? $label.text().replace('*', '').trim() : ($field.attr('placeholder') || $field.attr('name'));
+                if (labelText && emptyFields.indexOf(labelText) === -1) {
+                    emptyFields.push(labelText);
+                }
             } else {
                 $field.removeClass('is-invalid').removeClass('is-valid');
             }
@@ -1077,7 +1086,8 @@
         if (!isValid) {
             // Remove any is-valid to prevent green checkmarks
             formAktif.find('.is-valid').removeClass('is-valid');
-            Sultan.alert('warning', 'Perhatian', 'Harap lengkapi semua isian wajib!');
+            var msg = 'Harap lengkapi semua isian wajib! Kolom yang belum diisi: ' + emptyFields.join(', ');
+            Sultan.alert('warning', 'Perhatian', msg);
             return;
         }
 
