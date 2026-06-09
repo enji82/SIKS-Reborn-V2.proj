@@ -2287,7 +2287,7 @@ function convertStringToDate_(str) {
 function getJumlahLapbulPaudMap_() {
   try {
     var ss = SpreadsheetApp.openById("1XetGkBymmN2NZQlXpzZ2MQyG0nhhZ0sXEPcNsLffhEU");
-    var sheet = ss.getSheetByName("sinkron_ptk_paud");
+    var sheet = ss.getSheetByName("sinkron_gtk_paud");
     if (!sheet) return {};
     var lastRow = sheet.getLastRow();
     if (lastRow < 2) return {};
