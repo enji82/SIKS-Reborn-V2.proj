@@ -112,7 +112,7 @@ function simpanSptUnified(payload) {
       sheetMaster.appendRow([
         payload.header.jenis, payload.header.noSpt, tglSptTxt, tglMulaiTxt, tglSelesaiTxt,
         payload.header.tujuan, payload.header.kegiatan, payload.listPeserta.length, fileUrl, "Diproses", 
-        payload.header.jenisDok, sysDateStr, userName, sysDateStr, userName, "", "", ""
+        payload.header.jenisDok, sysDateStr, userName, "", "", "", "", ""
       ]);
     } else {
       // UPDATE SPT YANG SUDAH ADA
@@ -130,11 +130,14 @@ function simpanSptUnified(payload) {
       sheetMaster.getRange(r, 14).setValue(sysDateStr); 
       sheetMaster.getRange(r, 15).setValue(userName);   
 
-      // Reset status ke Diproses dan bersihkan verifikasi lama
-      sheetMaster.getRange(r, 10).setValue("Diproses");
-      sheetMaster.getRange(r, 16).setValue("");
-      sheetMaster.getRange(r, 17).setValue("");
-      sheetMaster.getRange(r, 18).setValue("");
+      // Reset status ke Diproses dan bersihkan verifikasi lama HANYA jika status belum Disetujui
+      var currentStatus = String(dataM[r - 1][9]).trim();
+      if (currentStatus !== "Disetujui") {
+        sheetMaster.getRange(r, 10).setValue("Diproses");
+        sheetMaster.getRange(r, 16).setValue("");
+        sheetMaster.getRange(r, 17).setValue("");
+        sheetMaster.getRange(r, 18).setValue("");
+      }
 
       // Bersihkan tanda dibaca oleh Admin agar Admin mendapat notifikasi baru
       var curReadBy = String(sheetMaster.getRange(r, 19).getValue() || "").trim();
