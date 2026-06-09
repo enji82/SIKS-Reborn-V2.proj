@@ -30,6 +30,25 @@ function getLapbulKelolaData(filterJenjang, filterBulan, filterTahun, filterStat
       return s;
   };
 
+  var letterToColIndex = function(letter) {
+      var col = 0;
+      for (var i = 0; i < letter.length; i++) {
+          col = col * 26 + (letter.charCodeAt(i) - 64);
+      }
+      return col - 1;
+  };
+
+  var sumCols = function(rowDisplayValues, startLetter, endLetter) {
+      var startIdx = letterToColIndex(startLetter);
+      var endIdx = letterToColIndex(endLetter);
+      var total = 0;
+      for (var i = startIdx; i <= endIdx; i++) {
+          var val = parseFloat(String(rowDisplayValues[i] || "").replace(/,/g, "")) || 0;
+          total += val;
+      }
+      return total;
+  };
+
   var fetchDataSmart = function(dbKey, sheetName, sourceLabel) {
       var sourceResult = [];
       try {
@@ -78,6 +97,21 @@ function getLapbulKelolaData(filterJenjang, filterBulan, filterTahun, filterStat
               var rNpsn = (idx.npsn > -1) ? String(row[idx.npsn]) : "";
               if (reqKey && !rNama.toLowerCase().includes(reqKey) && !rNpsn.includes(reqKey)) continue;
 
+              var rMurid = 0, rKS = 0, rGuru = 0, rTendik = 0, rPTK = 0;
+              if (sourceLabel === 'PAUD') {
+                  rMurid = parseFloat(String(row[letterToColIndex("AZ")] || "").replace(/,/g, "")) || 0;
+                  rKS = sumCols(row, "AA", "AD");
+                  rGuru = sumCols(row, "AE", "AL") + sumCols(row, "BB", "BI");
+                  rTendik = sumCols(row, "AM", "AP");
+                  rPTK = rKS + rGuru + rTendik;
+              } else {
+                  rMurid = parseFloat(String(row[letterToColIndex("HS")] || "").replace(/,/g, "")) || 0;
+                  rKS = sumCols(row, "EE", "EG");
+                  rGuru = sumCols(row, "EH", "FP");
+                  rTendik = sumCols(row, "FQ", "HI");
+                  rPTK = rKS + rGuru + rTendik;
+              }
+
               sourceResult.push({
                   rowId: realRowNumber,
                   source: sourceLabel,
@@ -88,6 +122,11 @@ function getLapbulKelolaData(filterJenjang, filterBulan, filterTahun, filterStat
                   jenjang: String(row[idx.jenjang]||""),
                   statusSekolah: (idx.statusSekolah > -1) ? row[idx.statusSekolah] : "",
                   rombel: (idx.rombel > -1) ? (parseInt(row[idx.rombel]) || 0) : 0,
+                  murid: rMurid,
+                  ks: rKS,
+                  guru: rGuru,
+                  tendik: rTendik,
+                  ptk: rPTK,
                   fileUrl: (idx.file > -1) ? row[idx.file] : "",
                   tglKirim: cleanStringDate(row[col.tglKirim]),
                   userKirim: row[col.userKirim] || "-",
