@@ -437,7 +437,8 @@
                                             <th class="col-sticky-left text-center align-middle" style="width:1%;">NO
                                             </th>
                                             <th class="col-sticky-left-2 text-left align-middle" style="min-width:230px;">UNIT KERJA</th>
-                                            <th class="text-center align-middle">JUMLAH PEGAWAI</th>
+                                            <th class="text-center align-middle bg-soft-info text-info font-weight-bold">JUMLAH PEGAWAI DI LAPORAN BULAN</th>
+                                            <th class="text-center align-middle">JUMLAH PEGAWAI DI DATA PTK</th>
                                             <th class="text-center align-middle bg-soft-success">SUDAH PERBARUI</th>
                                             <th class="text-center align-middle bg-soft-danger">BELUM PERBARUI</th>
                                             <th class="text-center align-middle" style="min-width:160px;">CAPAIAN (%)
@@ -505,6 +506,7 @@
     var RP_USER_NPSN = "";
     var RP_USER_UNIT = "";
     var RP_CACHE_DATA = [];        // Data mentah dari server
+    var RP_CACHE_LAPBUL = {};      // Map jumlah pegawai dari laporan bulanan
     var RP_CURRENT_FILTERED = [];        // Data terfilter aktif
     var RP_CUTOFF_MS = 0;         // timestamp cutoff dalam ms
     var RP_CUTOFF_DATE_STR = "";        // "YYYY-MM-DD"
@@ -832,7 +834,7 @@
         });
 
         var units = Object.keys(byUnit).sort();
-        var totalAll = 0, sudahAll = 0, belumAll = 0;
+        var totalAll = 0, sudahAll = 0, belumAll = 0, lapbulTotalAll = 0;
         var html = '';
         var no = 1;
 
@@ -844,12 +846,20 @@
             sudahAll += d.sudah;
             belumAll += d.belum;
 
+            var lapbulCount = (RP_CACHE_LAPBUL && d.npsn) ? (RP_CACHE_LAPBUL[d.npsn] ?? '-') : '-';
+            if (typeof lapbulCount === 'number') {
+                lapbulTotalAll += lapbulCount;
+            } else if (!isNaN(parseInt(lapbulCount))) {
+                lapbulTotalAll += parseInt(lapbulCount);
+            }
+
             html += '<tr>' +
                 '<td class="col-sticky-left text-center">' + no++ + '</td>' +
                 '<td class="unit-col col-sticky-left-2">' +
                 '<div class="unit-name">' + rp_escHtml(u) + '</div>' +
                 (d.npsn ? '<div class="unit-npsn">' + rp_escHtml(d.npsn) + '</div>' : '') +
                 '</td>' +
+                '<td class="text-center font-weight-bold text-info">' + lapbulCount + '</td>' +
                 '<td class="text-center font-weight-bold">' + d.total + '</td>' +
                 '<td class="text-center text-success font-weight-bold">' + d.sudah + '</td>' +
                 '<td class="text-center text-danger font-weight-bold">' + d.belum + '</td>' +
@@ -862,6 +872,7 @@
         var barClrAll = pctAll >= 80 ? '#28a745' : pctAll >= 50 ? '#fd7e14' : '#dc3545';
         html += '<tr class="rp-total-row">' +
             '<td colspan="2" class="col-sticky-left text-left pl-3"><i class="fas fa-sigma mr-1"></i> TOTAL KESELURUHAN</td>' +
+            '<td class="text-center text-info">' + lapbulTotalAll + '</td>' +
             '<td class="text-center">' + totalAll + '</td>' +
             '<td class="text-center">' + sudahAll + '</td>' +
             '<td class="text-center">' + belumAll + '</td>' +

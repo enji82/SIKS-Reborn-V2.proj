@@ -133,9 +133,9 @@ function getDataPTKSD(filterUnit, filterStatus) {
 function getDataRiwayatPembaruan() {
   try {
     var sheet = getSheet(KONFIG_PTK.DB_KEY, KONFIG_PTK.SHEET_PTK);
-    if (!sheet) return JSON.stringify([]);
+    if (!sheet) return JSON.stringify({ data: [], lapbulMap: {} });
     var lastRow = sheet.getLastRow();
-    if (lastRow < 2) return JSON.stringify([]);
+    if (lastRow < 2) return JSON.stringify({ data: [], lapbulMap: {} });
 
     // Baca A (1) s.d. AI (35) → 35 kolom, indeks 0–34
     var data = sheet.getRange(2, 1, lastRow - 1, 35).getValues();
@@ -180,7 +180,11 @@ function getDataRiwayatPembaruan() {
         ts_efektif      : tsEfektif           // ms, untuk perbandingan di frontend
       });
     }
-    return JSON.stringify(result);
+    var lapbulMap = getJumlahLapbulSdnMap_();
+    return JSON.stringify({
+      data: result,
+      lapbulMap: lapbulMap
+    });
   } catch (e) {
     return JSON.stringify({ error: e.message });
   }
@@ -221,9 +225,9 @@ function getTanggalCutoffPembaruan() {
 function getDataRiwayatPembaruanSds() {
   try {
     var sheet = getSheet(KONFIG_PTK.DB_KEY, "Master Data GTK SDS");
-    if (!sheet) return JSON.stringify([]);
+    if (!sheet) return JSON.stringify({ data: [], lapbulMap: {} });
     var lastRow = sheet.getLastRow();
-    if (lastRow < 2) return JSON.stringify([]);
+    if (lastRow < 2) return JSON.stringify({ data: [], lapbulMap: {} });
 
     var data = sheet.getRange(2, 1, lastRow - 1, 32).getValues();
     var tz = Session.getScriptTimeZone();
@@ -264,7 +268,11 @@ function getDataRiwayatPembaruanSds() {
         ts_efektif      : tsEfektif
       });
     }
-    return JSON.stringify(result);
+    var lapbulMap = getJumlahLapbulSdsMap_();
+    return JSON.stringify({
+      data: result,
+      lapbulMap: lapbulMap
+    });
   } catch (e) {
     return JSON.stringify({ error: e.message });
   }
@@ -295,9 +303,9 @@ function getTanggalCutoffPembaruanSds() {
 function getDataRiwayatPembaruanPaud() {
   try {
     var sheet = getSheet(KONFIG_PTK_PAUD.DB_KEY, KONFIG_PTK_PAUD.SHEET_PTK);
-    if (!sheet) return JSON.stringify([]);
+    if (!sheet) return JSON.stringify({ data: [], lapbulMap: {} });
     var lastRow = sheet.getLastRow();
-    if (lastRow < 2) return JSON.stringify([]);
+    if (lastRow < 2) return JSON.stringify({ data: [], lapbulMap: {} });
 
     var data = sheet.getRange(2, 1, lastRow - 1, 33).getValues();
     var tz = Session.getScriptTimeZone();
@@ -339,7 +347,11 @@ function getDataRiwayatPembaruanPaud() {
         ts_efektif      : tsEfektif
       });
     }
-    return JSON.stringify(result);
+    var lapbulMap = getJumlahLapbulPaudMap_();
+    return JSON.stringify({
+      data: result,
+      lapbulMap: lapbulMap
+    });
   } catch (e) {
     return JSON.stringify({ error: e.message });
   }
@@ -2269,4 +2281,76 @@ function convertStringToDate_(str) {
     }
   }
   return str;
+}
+
+// Helper: Ambil Map Jumlah Pegawai di Laporan Bulanan PAUD
+function getJumlahLapbulPaudMap_() {
+  try {
+    var ss = SpreadsheetApp.openById("1XetGkBymmN2NZQlXpzZ2MQyG0nhhZ0sXEPcNsLffhEU");
+    var sheet = ss.getSheetByName("sinkron_ptk_paud");
+    if (!sheet) return {};
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) return {};
+    var values = sheet.getRange(2, 1, lastRow - 1, 15).getValues();
+    var map = {};
+    for (var i = 0; i < values.length; i++) {
+      var npsn = String(values[i][0]).trim();
+      var count = values[i][14]; // Kolom O (index 14)
+      if (npsn) {
+        var num = parseInt(count);
+        map[npsn] = isNaN(num) ? 0 : num;
+      }
+    }
+    return map;
+  } catch (e) {
+    return {};
+  }
+}
+
+// Helper: Ambil Map Jumlah Pegawai di Laporan Bulanan SD Negeri
+function getJumlahLapbulSdnMap_() {
+  try {
+    var ss = SpreadsheetApp.openById("1t0-Lmy0YD_GxHzimFWJGh5R5x6RhGL13uqKeVwWoCYE");
+    var sheet = ss.getSheetByName("sinkron_gtk_sdn");
+    if (!sheet) return {};
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) return {};
+    var values = sheet.getRange(2, 1, lastRow - 1, 57).getValues();
+    var map = {};
+    for (var i = 0; i < values.length; i++) {
+      var npsn = String(values[i][0]).trim();
+      var count = values[i][56]; // Kolom BE (index 56)
+      if (npsn) {
+        var num = parseInt(count);
+        map[npsn] = isNaN(num) ? 0 : num;
+      }
+    }
+    return map;
+  } catch (e) {
+    return {};
+  }
+}
+
+// Helper: Ambil Map Jumlah Pegawai di Laporan Bulanan SD Swasta
+function getJumlahLapbulSdsMap_() {
+  try {
+    var ss = SpreadsheetApp.openById("1t0-Lmy0YD_GxHzimFWJGh5R5x6RhGL13uqKeVwWoCYE");
+    var sheet = ss.getSheetByName("sinkron_gtk_sds");
+    if (!sheet) return {};
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) return {};
+    var values = sheet.getRange(2, 1, lastRow - 1, 48).getValues();
+    var map = {};
+    for (var i = 0; i < values.length; i++) {
+      var npsn = String(values[i][0]).trim();
+      var count = values[i][47]; // Kolom AV (index 47)
+      if (npsn) {
+        var num = parseInt(count);
+        map[npsn] = isNaN(num) ? 0 : num;
+      }
+    }
+    return map;
+  } catch (e) {
+    return {};
+  }
 }
