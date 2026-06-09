@@ -2039,6 +2039,7 @@ function updateUsulanMutasiPTKSDS(idUsulan, idPtk, jenis, tujuan, tanggal, base6
 
 function eksekusiMutasiPTKSDS(idUsulan, keputusan, userEksekutor) {
   try {
+    var ss = getDB("PTK_DB");
     var sheetUsulan = getSheet("PTK_DB", "usul_mutasi_sds");
     var sheetSource = getSheet("PTK_DB", "Master Data GTK SDS");
     
