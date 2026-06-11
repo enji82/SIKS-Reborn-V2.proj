@@ -14,8 +14,7 @@ const KONFIG_LAPBUL = {
    ====================================================================== */
 function getLapbulKelolaData(filterJenjang, filterBulan, filterTahun, filterStatus, keyword) {
   var result = [];
-  var isSearching = (keyword && keyword.length > 2);
-  var LIMIT_PER_SHEET = isSearching ? 2000 : 300; 
+  var LIMIT_PER_SHEET = 5000; // Menggunakan batas 5000 baris agar filter periode laporan tidak memotong data lama (cukup untuk ~6 tahun data)
 
   var reqJenjang = String(filterJenjang || "").toUpperCase().trim();
   var reqBulan = String(filterBulan || "").toLowerCase().trim();
