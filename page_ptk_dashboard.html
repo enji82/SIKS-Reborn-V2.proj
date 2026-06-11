@@ -390,9 +390,15 @@
 
         <!-- Row 4: Proyeksi Pensiun -->
         <div class="mt-2">
-            <div class="d-flex align-items-center mb-3">
-                <div class="bg-danger mr-3 shadow-sm" style="width: 6px; height: 24px; border-radius: 3px;"></div>
-                <h6 class="font-weight-bold mb-0 uppercase" style="letter-spacing: 1px;">PROYEKSI PENSIUN SD NEGERI</h6>
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <div class="d-flex align-items-center">
+                    <div class="bg-danger mr-3 shadow-sm" style="width: 6px; height: 24px; border-radius: 3px;"></div>
+                    <h6 class="font-weight-bold mb-0 uppercase" style="letter-spacing: 1px;">PROYEKSI PENSIUN SD NEGERI</h6>
+                </div>
+                <div class="btn-group btn-group-sm">
+                    <button type="button" class="btn btn-outline-maroon active" id="btnSdnPensiunTahunIni" onclick="sdnTogglePensiunTahun(0)">Tahun Ini</button>
+                    <button type="button" class="btn btn-outline-maroon" id="btnSdnPensiunTahunDepan" onclick="sdnTogglePensiunTahun(1)">Tahun Depan</button>
+                </div>
             </div>
 
             <!-- Loading State -->
@@ -1120,13 +1126,33 @@ function setZero(prefix) {
 // ======================================================================
 var NAMA_BULAN = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 var NAMA_BULAN_FULL = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+var SDN_PENSIUN_RAW_DATA = null;
+var SDN_PENSIUN_FILTER_NPSN = null;
+var SDN_PENSIUN_TAHUN_OFFSET = 0;
 
-function calculatePensiunSDN(jsonStr, filterNpsn) {
+function sdnTogglePensiunTahun(offset) {
+    if (offset === 0) {
+        $('#btnSdnPensiunTahunIni').addClass('active');
+        $('#btnSdnPensiunTahunDepan').removeClass('active');
+    } else {
+        $('#btnSdnPensiunTahunIni').removeClass('active');
+        $('#btnSdnPensiunTahunDepan').addClass('active');
+    }
+    calculatePensiunSDN(undefined, undefined, offset);
+}
+
+function calculatePensiunSDN(jsonStr, filterNpsn, tahunOffset) {
+    if (jsonStr !== undefined) SDN_PENSIUN_RAW_DATA = jsonStr;
+    if (filterNpsn !== undefined) SDN_PENSIUN_FILTER_NPSN = filterNpsn;
+    if (tahunOffset !== undefined) SDN_PENSIUN_TAHUN_OFFSET = tahunOffset;
+
+    var targetOffset = SDN_PENSIUN_TAHUN_OFFSET || 0;
+
     $('#sdnPensiunLoading').hide();
 
     var data = [];
     try {
-        data = typeof jsonStr === 'string' ? JSON.parse(jsonStr) : jsonStr;
+        data = typeof SDN_PENSIUN_RAW_DATA === 'string' ? JSON.parse(SDN_PENSIUN_RAW_DATA) : SDN_PENSIUN_RAW_DATA;
     } catch(e) { data = []; }
 
     if (!data || !Array.isArray(data) || data.length === 0) {
@@ -1135,9 +1161,10 @@ function calculatePensiunSDN(jsonStr, filterNpsn) {
         return;
     }
 
+    var activeNpsn = SDN_PENSIUN_FILTER_NPSN;
     // Filter by NPSN jika bukan admin
-    if (filterNpsn) {
-        var npsnUpper = String(filterNpsn).trim().toUpperCase();
+    if (activeNpsn) {
+        var npsnUpper = String(activeNpsn).trim().toUpperCase();
         data = data.filter(function(d) {
             return String(d.unit || '').trim().toUpperCase().indexOf(npsnUpper) !== -1;
         });
@@ -1145,14 +1172,15 @@ function calculatePensiunSDN(jsonStr, filterNpsn) {
 
     var now = new Date();
     var tahunIni = now.getFullYear();
+    var targetTahun = tahunIni + targetOffset;
     var bulanIni = now.getMonth(); // 0-indexed
     var bulanDepan = bulanIni + 1;
-    var tahunBulanDepan = tahunIni;
+    var tahunBulanDepan = targetTahun;
     if (bulanDepan > 11) { bulanDepan = 0; tahunBulanDepan++; }
 
     // Set labels
-    $('#sdnPensiunTahunLabel').text(tahunIni);
-    $('#sdnPensiunChartTahunLabel').text(tahunIni);
+    $('#sdnPensiunTahunLabel').text(targetTahun);
+    $('#sdnPensiunChartTahunLabel').text(targetTahun);
     $('#sdnPensiunBulanLabel').text(NAMA_BULAN_FULL[bulanDepan] + ' ' + tahunBulanDepan);
 
     // Helper: cek apakah jabatan termasuk Guru/KS (BUP 60)
@@ -1185,8 +1213,8 @@ function calculatePensiunSDN(jsonStr, filterNpsn) {
             tahunPensiun++;
         }
 
-        // Cek apakah pensiun di tahun ini
-        if (tahunPensiun === tahunIni) {
+        // Cek apakah pensiun di tahun target
+        if (tahunPensiun === targetTahun) {
             perBulan[bulanPensiun]++;
             listPensiunTahunIni.push({
                 nama: ptk.nama,
@@ -1227,16 +1255,16 @@ function calculatePensiunSDN(jsonStr, filterNpsn) {
     $('#sdnPensiunBulanTendik').text(tendikBulanDepan);
 
     // Render Timeline Chart
-    renderPensiunSDNChart(perBulan, bulanIni);
+    renderPensiunSDNChart(perBulan, targetOffset > 0 ? -1 : bulanIni);
 
     // Render Detail Table
     var tabelHtml = '';
     if (listPensiunTahunIni.length === 0) {
-        tabelHtml = '<tr><td colspan="9" class="text-center text-muted py-3">Tidak ada pegawai yang pensiun tahun ini.</td></tr>';
+        tabelHtml = '<tr><td colspan="9" class="text-center text-muted py-3">Tidak ada pegawai yang pensiun pada tahun ' + targetTahun + '.</td></tr>';
     } else {
         listPensiunTahunIni.forEach(function(p, idx) {
-            var isPast = p.bulan_pensiun < bulanIni;
-            var isThisMonth = p.bulan_pensiun === bulanIni;
+            var isPast = targetOffset > 0 ? false : (p.bulan_pensiun < bulanIni);
+            var isThisMonth = targetOffset > 0 ? false : (p.bulan_pensiun === bulanIni);
             var rowClass = isPast ? 'class="text-muted"' : (isThisMonth ? 'style="background-color: rgba(220, 53, 69, 0.08);"' : '');
             tabelHtml += '<tr ' + rowClass + '>';
             tabelHtml += '<td class="text-center">' + (idx + 1) + '</td>';
