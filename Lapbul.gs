@@ -335,6 +335,7 @@ function prosesSimpanLengkap(dbKey, namaSheet, source, form, fileData) {
     isi(["waktu kirim", "tgl kirim", "tanggal kirim", "timestamp"], "'" + now);
     isi(["user kirim", "user input", "pengirim"], userLogin);
     isi(["dibaca oleh", "read by"], ""); // Reset status baca
+    isi(["status data"], "Diproses"); // Set status data ke "Diproses" agar terhitung di rekap/dashboard
     if (source === "PAUD" && rowData.length > 61) {
         rowData = rowData.slice(0, 61);
     }
