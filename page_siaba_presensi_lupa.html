@@ -213,6 +213,16 @@
                     <i class="fas fa-info-circle mr-1"></i> Maksimal ukuran file 200 KB.
                 </small>
             </div>
+
+            <!-- INFO SELISIH HARI -->
+            <div id="lupa_infoHariAjuan" class="alert alert-info border-info shadow-sm mt-3 d-none">
+                <div class="d-flex align-items-start">
+                    <i class="fas fa-info-circle mt-1 mr-3 fa-lg"></i>
+                    <div>
+                        Anda mengajukan surat pernyataan setelah <span id="lupa_hitungHari" class="font-weight-bold text-danger">0</span> hari dari tanggal lupa presensi. Idealnya adalah 3 hari setelah lupa presensi.
+                    </div>
+                </div>
+            </div>
         </div>
         <div class="modal-footer modal-footer-sultan justify-content-between">
             <button type="button" class="modal-btn-batal" data-dismiss="modal"><i
@@ -327,6 +337,7 @@
         $(document).off('change', '#lupa_inputUnit').on('change', '#lupa_inputUnit', lupa_filterDropdownNama);
         $(document).off('change', '#lupa_inputNama').on('change', '#lupa_inputNama', lupa_filterDropdownNip);
         $(document).off('change', '#lupa_inputFile').on('change', '#lupa_inputFile', function () { lupa_prosesPilihFile(this); });
+        $(document).off('change input', '#lupa_inputTanggal').on('change input', '#lupa_inputTanggal', lupa_updateHitungHari);
 
         $(document).off('click', '.lupa-btn-verif').on('click', '.lupa-btn-verif', function () { lupa_bukaModalVerif($(this).data('id')); });
         $(document).off('click', '.lupa-btn-edit').on('click', '.lupa-btn-edit', function () { lupa_bukaModalEdit($(this).data('id')); });
@@ -626,6 +637,7 @@
     // =================================================================
     function lupa_bukaModalTambah() {
         $('#lupa_formUtama')[0].reset(); $('#lupa_inputIdData').val(''); LUPA_FILE_UPLOAD = null;
+        $('#lupa_infoHariAjuan').addClass('d-none');
         
         $('#global_modalFormSize').removeClass('modal-xl modal-md').addClass('modal-lg');
         $('#global_modalFormHeader').removeClass('modal-header-sultan-primary modal-header-sultan-warning modal-header-sultan-danger modal-header-sultan-success modal-header-sultan-info modal-header-sultan-dark modal-header-edit modal-header-tambah-edit modal-header-hapus').addClass('modal-header-tambah-edit');
@@ -717,6 +729,7 @@
         // Atur kelas tombol perbarui global
         $('#lupa_btnSimpanForm').removeClass('modal-btn-simpan').addClass('modal-btn-perbarui').html('<i class="fas fa-edit mr-2"></i>PERBARUI');
 
+        lupa_updateHitungHari();
         $('#global_modalForm').modal('show');
     }
 
@@ -1040,5 +1053,29 @@
         }
 
         return badgeHtml;
+    }
+
+    function lupa_updateHitungHari() {
+        var inputVal = $('#lupa_inputTanggal').val();
+        if (!inputVal) {
+            $('#lupa_infoHariAjuan').addClass('d-none');
+            return;
+        }
+
+        var tglLupa = new Date(inputVal);
+        tglLupa.setHours(0, 0, 0, 0);
+
+        var tglHariIni = new Date();
+        tglHariIni.setHours(0, 0, 0, 0);
+
+        var diffTime = tglHariIni.getTime() - tglLupa.getTime();
+        var diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays >= 0) {
+            $('#lupa_hitungHari').text(diffDays);
+            $('#lupa_infoHariAjuan').removeClass('d-none');
+        } else {
+            $('#lupa_infoHariAjuan').addClass('d-none');
+        }
     }
 </script>
