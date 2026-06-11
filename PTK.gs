@@ -2354,3 +2354,75 @@ function getJumlahLapbulSdsMap_() {
     return {};
   }
 }
+
+/**
+ * Menyimpan ajuan koreksi data KTP (Nama, TTL, NIK) PTK SDN.
+ * Menyimpan data ke sheet "usulan_koreksi_ktp_sdn" dan mengunggah berkas KTP ke Drive.
+ */
+function kirimAjuanKoreksiKtp(form, base64Data, fileName, userPengusul) {
+  try {
+    var ss = getDB(KONFIG_PTK.DB_KEY);
+    var sheet = ss.getSheetByName("usulan_koreksi_ktp_sdn");
+    
+    // Inisialisasi sheet jika belum ada
+    if (!sheet) {
+      sheet = ss.insertSheet("usulan_koreksi_ktp_sdn");
+      var headers = [
+        "ID Ajuan", "ID PTK", "Nama PTK (Lama)", "Nama PTK (Baru)", 
+        "NIK (Lama)", "NIK (Baru)", "TTL (Lama)", "TTL (Baru)", 
+        "File KTP", "Status", "Tanggal Usulan", "User Pengusul", 
+        "Tanggal Eksekusi", "User Eksekutor", "Catatan"
+      ];
+      sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+      sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold").setBackground("#f3f3f3");
+    }
+    
+    var fileUrl = "-";
+    // Upload berkas KTP ke Google Drive jika ada
+    if (base64Data && fileName) {
+      try {
+        var folderId = "1WScDrF-y4PyjFjneXuIqX3yRNxIcqKzB"; // Folder ID yang sama dengan dokumen PTK SDN
+        var folder = DriveApp.getFolderById(folderId);
+        var fileBytes = Utilities.base64Decode(base64Data);
+        var mimeType = "application/pdf";
+        if (fileName.toLowerCase().endsWith(".png")) mimeType = "image/png";
+        else if (fileName.toLowerCase().endsWith(".jpg") || fileName.toLowerCase().endsWith(".jpeg")) mimeType = "image/jpeg";
+        
+        var blob = Utilities.newBlob(fileBytes, mimeType, fileName);
+        var file = folder.createFile(blob);
+        fileUrl = file.getUrl();
+      } catch (uploadErr) {
+        return "Error Upload KTP: " + uploadErr.message;
+      }
+    } else {
+      return "Error: File KTP wajib diunggah.";
+    }
+    
+    var idAjuan = "AJU-KTP-" + new Date().getTime();
+    var timestamp = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss");
+    
+    // Data yang akan dimasukkan
+    var rowData = [
+      idAjuan,
+      form.id_ptk,
+      form.nama_lama || "-",
+      form.nama_baru || "-",
+      form.nik_lama || "-",
+      form.nik_baru || "-",
+      form.ttl_lama || "-",
+      form.ttl_baru || "-",
+      fileUrl,
+      "Pending",
+      timestamp,
+      userPengusul || "User Web",
+      "-", // Tanggal Eksekusi
+      "-", // User Eksekutor
+      "-"  // Catatan
+    ];
+    
+    sheet.appendRow(rowData);
+    return "Sukses";
+  } catch (e) {
+    return "Error Server: " + e.message;
+  }
+}
