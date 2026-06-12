@@ -571,6 +571,7 @@ function getDaftarUnggahCuti(tahun, bulan, unit, status) {
             tglEdit: row[45], userEdit: row[46],     
             tglVerif: row[47], verifikator: row[48], ket: row[49],
             npsn: row[50] || "",
+            tglAjuan: row[21],
             lastActivity: lastActivityTs
         });
     }
