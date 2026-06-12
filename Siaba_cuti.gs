@@ -822,3 +822,22 @@ function tandaiSemuaNotifCutiDibaca(role, unit) {
         return true;
     } catch (e) { return false; }
 }
+
+function debugCutiSheet() {
+  try {
+    var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
+    var headers = sheet.getRange(1, 40, 1, 15).getValues()[0];
+    var lastRow = sheet.getLastRow();
+    var rowsSample = [];
+    if (lastRow >= 2) {
+      var sampleRange = sheet.getRange(Math.max(2, lastRow - 10), 40, Math.min(10, lastRow - 1), 15).getValues();
+      rowsSample = sampleRange;
+    }
+    return JSON.stringify({
+      headers: headers,
+      rowsSample: rowsSample
+    });
+  } catch (e) {
+    return JSON.stringify({ error: e.message });
+  }
+}
