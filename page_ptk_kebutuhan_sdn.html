@@ -189,7 +189,6 @@
                                         <th></th>
                                         <th></th>
                                         <th></th>
-                                        <th></th>
                                     </tr>
                                 </tfoot>
 
@@ -458,11 +457,13 @@
                         }
                     });
 
-                    var footHtml = '<th class="text-maroon text-left font-weight-bold px-3 py-1 align-middle col-sticky-left text-uppercase" style="z-index:40; border-right: 2px solid #dee2e6;">TOTAL JUMLAH</th>';
-
+                    // Update existing footer cells in-place to avoid breaking DataTables' internal node references (nTf)
+                    var cells = $(api.table().footer()).find('th');
+                    cells.eq(0).html('TOTAL JUMLAH').addClass('text-maroon text-left font-weight-bold px-3 py-1 align-middle col-sticky-left text-uppercase').css({'z-index': '40', 'border-right': '2px solid #dee2e6'});
+                    
                     // Rombel & Murid
-                    footHtml += '<th class="text-center px-2 py-1 font-weight-bold text-maroon bg-white align-middle sultan-total-row">' + totalArr[0] + '</th>';
-                    footHtml += '<th class="text-center px-2 py-1 font-weight-bold text-maroon bg-white align-middle sultan-total-row">' + totalArr[1] + '</th>';
+                    cells.eq(1).html(totalArr[0]).removeClass('text-danger text-primary text-dark').addClass('text-center px-2 py-1 font-weight-bold text-maroon bg-white align-middle sultan-total-row');
+                    cells.eq(2).html(totalArr[1]).removeClass('text-danger text-primary text-dark').addClass('text-center px-2 py-1 font-weight-bold text-maroon bg-white align-middle sultan-total-row');
 
                     // Rekap Metrik (DT col 3-39 -> totalArr index 2-38)
                     for (var i = 2; i < 39; i++) {
@@ -476,19 +477,19 @@
                         } else if ([7, 15, 23, 31, 39].includes(colIndexBackend)) {
                             var totalVal = parseInt(val) || 0;
                             if (totalVal < 0) {
-                                txtColor = "text-danger"; // Teks merah untuk total kurang
+                                txtColor = "text-danger";
                             } else if (totalVal > 0) {
-                                txtColor = "text-primary"; // Teks biru untuk total lebih
+                                txtColor = "text-primary";
                             } else {
                                 txtColor = "text-dark";
                             }
                         }
 
-                        footHtml += '<th class="text-center px-2 py-1 font-weight-bold ' + txtColor + ' ' + bgClass + ' sultan-total-row" style="vertical-align: middle;">' + val + '</th>';
+                        var td = cells.eq(i + 1);
+                        td.html(val).removeClass('text-maroon text-danger text-primary text-dark bg-soft-primary bg-soft-success bg-soft-orange bg-soft-purple bg-soft-danger')
+                          .addClass('text-center px-2 py-1 font-weight-bold sultan-total-row ' + txtColor);
+                        if (bgClass) td.addClass(bgClass);
                     }
-
-                    // Injeksi mutlak ke tag dummy di tfoot
-                    $(api.table().footer()).find('tr').html(footHtml);
                 }
             });
 
