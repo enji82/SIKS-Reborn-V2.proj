@@ -251,36 +251,26 @@
     function kebutuhanptksdn_validasiAksesUser() {
         SultanUI.showLoading('#kebutuhanptksdn_loadingState', 'Mempersiapkan Akses...');
 
-        if (KEBUTUHANPTKSDN_IS_ADMIN) {
-            $('#kebutuhanptksdn_filterUnit').empty().append('<option value="SEMUA">- Semua Unit Kerja -</option>').prop('disabled', false).removeClass('bg-light text-maroon font-weight-bold');
-            $('#kebutuhanptksdn_btnSync').prop('disabled', false);
-            kebutuhanptksdn_tarikDataServer();
-        } else {
-            if (!KEBUTUHANPTKSDN_USER_NPSN) {
-                $('#kebutuhanptksdn_filterUnit').empty().append('<option value="">AKSES DITOLAK</option>');
-                kebutuhanptksdn_updateTabelKosong('<div class="text-danger"><i class="fas fa-ban fa-2x mb-2"></i><br>Akses ditolak: Sesi login tidak valid.</div>');
-                return;
-            }
+        // Semua user (Admin & Sekolah) diizinkan melihat semua unit kerja sdn
+        $('#kebutuhanptksdn_filterUnit').empty().append('<option value="SEMUA">- Semua Unit Kerja -</option>').prop('disabled', false).removeClass('bg-light text-maroon font-weight-bold');
+        $('#kebutuhanptksdn_btnSync').prop('disabled', false);
 
+        if (!KEBUTUHANPTKSDN_IS_ADMIN && KEBUTUHANPTKSDN_USER_NPSN) {
+            // Ambil unit kerja user login untuk dijadikan default filter awal
             google.script.run
                 .withSuccessHandler(function (resUnit) {
                     var dataUnit = JSON.parse(resUnit);
-                    if (dataUnit.error) {
-                        $('#kebutuhanptksdn_filterUnit').empty().append('<option value="">AKSES DITOLAK</option>');
-                        kebutuhanptksdn_updateTabelKosong('<div class="text-danger"><i class="fas fa-exclamation-triangle fa-2x mb-2"></i><br>' + kebutuhanptksdn_escapeHtml(dataUnit.error) + '</div>');
-                        return;
+                    if (!dataUnit.error && dataUnit.unitKerja) {
+                        KEBUTUHANPTKSDN_UNIT_TERKUNCI = dataUnit.unitKerja;
                     }
-
-                    KEBUTUHANPTKSDN_UNIT_TERKUNCI = dataUnit.unitKerja;
-                    $('#kebutuhanptksdn_filterUnit').empty().append('<option value="' + kebutuhanptksdn_escapeHtml(KEBUTUHANPTKSDN_UNIT_TERKUNCI) + '">' + kebutuhanptksdn_escapeHtml(KEBUTUHANPTKSDN_UNIT_TERKUNCI) + '</option>').prop('disabled', true);
-                    $('#kebutuhanptksdn_btnSync').prop('disabled', false);
                     kebutuhanptksdn_tarikDataServer();
                 })
                 .withFailureHandler(function (err) {
-                    $('#kebutuhanptksdn_filterUnit').empty().append('<option value="">ERROR SERVER</option>');
-                    kebutuhanptksdn_updateTabelKosong('<div class="text-danger"><i class="fas fa-wifi fa-2x mb-2"></i><br>Koneksi Terputus: ' + kebutuhanptksdn_escapeHtml(err.message) + '</div>');
+                    kebutuhanptksdn_tarikDataServer();
                 })
                 .getUnitKerjaByNpsnPTK(KEBUTUHANPTKSDN_USER_NPSN);
+        } else {
+            kebutuhanptksdn_tarikDataServer();
         }
     }
 
@@ -289,7 +279,7 @@
 
         var btn = $('#kebutuhanptksdn_btnSync');
         btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin text-maroon"></i>');
-        if (KEBUTUHANPTKSDN_IS_ADMIN) $('#kebutuhanptksdn_filterUnit').prop('disabled', true);
+        $('#kebutuhanptksdn_filterUnit').prop('disabled', true);
 
         $('#kebutuhanptksdn_tableState').hide();
         SultanUI.showLoading('#kebutuhanptksdn_loadingState', 'Mengambil Analisis Kebutuhan Server...');
@@ -297,10 +287,10 @@
         google.script.run
             .withSuccessHandler(function (data) {
                 btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
-                if (KEBUTUHANPTKSDN_IS_ADMIN) $('#kebutuhanptksdn_filterUnit').prop('disabled', false);
+                $('#kebutuhanptksdn_filterUnit').prop('disabled', false);
 
                 KEBUTUHANPTKSDN_CACHE_DATA = data || [];
-                if (KEBUTUHANPTKSDN_IS_ADMIN) kebutuhanptksdn_populateFilterUnit();
+                kebutuhanptksdn_populateFilterUnit();
 
                 kebutuhanptksdn_terapkanFilterLokal();
             })
@@ -326,21 +316,22 @@
             $selUnit.append($('<option>', { value: u, text: u }));
         });
 
-        if (currentUnit && uniqueUnit.has(currentUnit)) $selUnit.val(currentUnit);
+        // Set default filter: pilih filter aktif sebelumnya, atau jika baru load jadikan unit kerja user sebagai default awal
+        if (currentUnit && uniqueUnit.has(currentUnit)) {
+            $selUnit.val(currentUnit);
+        } else if (KEBUTUHANPTKSDN_UNIT_TERKUNCI && uniqueUnit.has(KEBUTUHANPTKSDN_UNIT_TERKUNCI)) {
+            $selUnit.val(KEBUTUHANPTKSDN_UNIT_TERKUNCI);
+        } else {
+            $selUnit.val("SEMUA");
+        }
     }
 
     function kebutuhanptksdn_terapkanFilterLokal() {
-        var tAdminUnit = KEBUTUHANPTKSDN_IS_ADMIN ? ($('#kebutuhanptksdn_filterUnit').val() || "SEMUA").toUpperCase() : "";
-        var tUnitUser = String(KEBUTUHANPTKSDN_UNIT_TERKUNCI).trim().toUpperCase();
+        var tUnit = ($('#kebutuhanptksdn_filterUnit').val() || "SEMUA").toUpperCase();
 
         var filteredData = KEBUTUHANPTKSDN_CACHE_DATA.filter(function (row) {
             var rUnit = String(row[0] || "").trim().toUpperCase();
-
-            if (KEBUTUHANPTKSDN_IS_ADMIN) {
-                return (tAdminUnit === "SEMUA" || rUnit === tAdminUnit);
-            } else {
-                return (rUnit === tUnitUser);
-            }
+            return (tUnit === "SEMUA" || rUnit === tUnit);
         });
 
         kebutuhanptksdn_renderTabel(filteredData);
