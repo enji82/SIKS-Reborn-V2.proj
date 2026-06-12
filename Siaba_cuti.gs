@@ -823,29 +823,54 @@ function tandaiSemuaNotifCutiDibaca(role, unit) {
     } catch (e) { return false; }
 }
 
-function debugCutiUploads() {
-  try {
-    var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
-    var lastRow = sheet.getLastRow();
-    var data = sheet.getRange(2, 1, lastRow - 1, 51).getDisplayValues();
-    var found = [];
-    for (var i = 0; i < data.length; i++) {
-      var row = data[i];
-      if (row[42] !== "" || row[41] !== "") {
-        found.push({
-          rowNum: i + 2,
-          nama: row[1],
-          colAP_42: row[41],
-          colAQ_43: row[42],
-          colAR_44: row[43],
-          colAS_45: row[44],
-          colAT_46: row[45],
-          colAU_47: row[46]
-        });
+/**
+ * BACKFILL: Mengisi kolom AR (Tgl Unggah) dan AS (User Unggah) yang kosong
+ * untuk row yang sudah memiliki file upload di kolom AP.
+ * Tanggal diambil dari metadata file Google Drive (tanggal pembuatan file).
+ * Jalankan SEKALI dari Apps Script Editor: Run > backfillTglUnggahCuti
+ */
+function backfillTglUnggahCuti() {
+  var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) { Logger.log("Tidak ada data."); return; }
+
+  var data = sheet.getRange(2, 1, lastRow - 1, 51).getDisplayValues();
+  var fixed = 0, skipped = 0, errors = [];
+
+  for (var i = 0; i < data.length; i++) {
+    var row = data[i];
+    var fileUrl = String(row[41]).trim();   // AP (col 42, index 41)
+    var tglUnggah = String(row[43]).trim(); // AR (col 44, index 43)
+
+    // Hanya proses row yang punya file URL tapi TGL UNGGAH kosong
+    if (fileUrl.length < 10 || tglUnggah !== "") continue;
+
+    var rowNum = i + 2;
+    var tglStr = "";
+
+    // Coba ambil tanggal pembuatan file dari Google Drive
+    try {
+      var match = fileUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) || fileUrl.match(/id=([a-zA-Z0-9_-]+)/);
+      if (match && match[1]) {
+        var file = DriveApp.getFileById(match[1]);
+        var created = file.getDateCreated();
+        tglStr = "'" + Utilities.formatDate(created, Session.getScriptTimeZone(), "dd-MM-yyyy HH:mm:ss");
       }
+    } catch (e) {
+      // File mungkin sudah dihapus atau tidak bisa diakses
+      errors.push("Row " + rowNum + " (" + row[1] + "): " + e.message);
     }
-    return JSON.stringify(found);
-  } catch (e) {
-    return JSON.stringify({ error: e.message });
+
+    if (!tglStr) tglStr = "'Data tidak tersedia";
+
+    sheet.getRange(rowNum, 44).setValue(tglStr);         // AR: Tgl Unggah
+    sheet.getRange(rowNum, 45).setValue("Backfill");      // AS: User Unggah
+    fixed++;
   }
+
+  SpreadsheetApp.flush();
+  Logger.log("=== BACKFILL SELESAI ===");
+  Logger.log("Diperbaiki: " + fixed + " row");
+  Logger.log("Errors: " + errors.length);
+  if (errors.length > 0) Logger.log(errors.join("\n"));
 }
