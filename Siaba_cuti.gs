@@ -608,8 +608,8 @@ function simpanUnggahSurat(form, fileData) {
         throw new Error("File wajib diunggah.");
     }
 
-    var oldStatus = sheet.getRange(row, 43).getValue();
-    var isEdit = (oldStatus !== "" && oldStatus !== null);
+    var oldTgl = sheet.getRange(row, 44).getValue();
+    var isEdit = (oldTgl !== "" && oldTgl !== null);
 
     if (isEdit) {
         sheet.getRange(row, 42).setValue(fileUrl);      
