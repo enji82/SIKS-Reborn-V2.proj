@@ -808,6 +808,7 @@ function logUserVisit(userData) {
     }
 
     // Auto-clear LOG_ACCESS saat berganti bulan
+    var props = PropertiesService.getScriptProperties();
     var lastLoggedMonth = props.getProperty('LAST_LOG_MONTH'); // Format: yyyy-MM
     if (lastLoggedMonth && lastLoggedMonth !== blnOnly && sheet.getLastRow() > 1) {
         // Hapus semua baris data log lama, sisakan header
