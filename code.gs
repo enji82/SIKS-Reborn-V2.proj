@@ -496,8 +496,27 @@ function getVisitorStats() {
 
       for (var i = 0; i < logs.length; i++) {
         var row = logs[i];
-        var rowTimeStr = row[1]; // yyyy-MM-dd
-        var rowMonth = row[2];   // yyyy-MM
+        
+        // Parse tanggal secara aman baik berupa Date object maupun string "dd/MM/yyyy HH:mm:ss"
+        var rowDate;
+        if (row[0] instanceof Date) {
+          rowDate = row[0];
+        } else {
+          var str = String(row[0] || "");
+          var parts = str.split(' ');
+          var dateParts = parts[0].split('/');
+          if (dateParts.length === 3) {
+            var timeParts = parts[1] ? parts[1].split(':') : [0, 0, 0];
+            rowDate = new Date(dateParts[2], dateParts[1] - 1, dateParts[0], timeParts[0] || 0, timeParts[1] || 0, timeParts[2] || 0);
+          } else {
+            rowDate = new Date(str);
+          }
+        }
+
+        if (!rowDate || isNaN(rowDate.getTime())) continue;
+
+        var rowTimeStr = Utilities.formatDate(rowDate, "Asia/Jakarta", "yyyy-MM-dd");
+        var rowMonth = Utilities.formatDate(rowDate, "Asia/Jakarta", "yyyy-MM");
         var rowUnit = String(row[6] || "").toUpperCase(); // Unit di kolom G
         
         // Skip jika bukan unit yang dicari
@@ -512,13 +531,10 @@ function getVisitorStats() {
         }
 
         // 2. Hitung Mingguan (Minggu ini)
-        var rowDate = new Date(row[0]);
-        if (!isNaN(rowDate.getTime())) {
-          var rowWeek = Utilities.formatDate(rowDate, "Asia/Jakarta", "w");
-          if (rowWeek === currentWeek && rowMonth === currentMonth) {
-            if (isSD) stats.sd_week++;
-            if (isPAUD) stats.paud_week++;
-          }
+        var rowWeek = Utilities.formatDate(rowDate, "Asia/Jakarta", "w");
+        if (rowWeek === currentWeek && rowMonth === currentMonth) {
+          if (isSD) stats.sd_week++;
+          if (isPAUD) stats.paud_week++;
         }
 
         // 3. Hitung Harian (Hari ini)
