@@ -696,13 +696,21 @@
       sultan_initHomeCharts();
   });
 
+  // Re-render chart otomatis saat dark mode di-toggle
+  $(document).off('change.homeTheme', '#sultan_darkModeToggle').on('change.homeTheme', '#sultan_darkModeToggle', function() {
+      // Tunggu sedikit agar class 'dark-mode' selesai diterapkan ke body
+      setTimeout(function() {
+          sultan_initHomeCharts();
+      }, 50);
+  });
+
   function sultan_initHomeCharts() {
       const ctxBar = document.getElementById('sultan_chartAktivitas');
       if (!ctxBar) return;
 
       const isDark = $('body').hasClass('dark-mode');
-      const labelColor = isDark ? 'rgba(255, 255, 255, 0.7)' : '#666666';
-      const gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)';
+      const labelColor = isDark ? 'rgba(255, 255, 255, 0.7)' : '#555555';
+      const gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)';
 
       google.script.run.withSuccessHandler(function(json){
           var parsed;
@@ -721,8 +729,13 @@
           });
           var mVals = mKeys.map(k => parsed.monthly[k]);
 
+          // Hapus chart lama jika ada agar tidak tumpang tindih
+          if (window.sultan_homeChartInstance) {
+              window.sultan_homeChartInstance.destroy();
+          }
+
           // Render chart dengan data riil dari LOG_ACCESS
-          new Chart(ctxBar, {
+          window.sultan_homeChartInstance = new Chart(ctxBar, {
               type: 'bar',
               data: {
                   labels: mKeys,
