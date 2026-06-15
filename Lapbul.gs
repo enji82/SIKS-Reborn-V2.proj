@@ -406,20 +406,11 @@ function prosesSimpanLengkap(dbKey, namaSheet, source, form, fileData) {
             sheet.getRange(newRowId, 53, 1, part2.length).setValues([part2]);
         }
     } else {
-        // SD: Lewati kolom HR & HS (indeks 225 & 226, 1-based kolom 226 & 227) agar ArrayFormula di baris 1 tidak terblokir (#REF!)
         var lastRow = sheet.getLastRow();
         sheet.insertRowAfter(lastRow);
         var newRowId = lastRow + 1;
 
-        // Tulis part 1 (kolom 1 s/d 225, index 0 s/d 224)
-        var part1 = rowData.slice(0, 225);
-        sheet.getRange(newRowId, 1, 1, part1.length).setValues([part1]);
-
-        // Tulis part 2 (kolom 228 onwards, index 227 onwards)
-        if (rowData.length > 227) {
-            var part2 = rowData.slice(227);
-            sheet.getRange(newRowId, 228, 1, part2.length).setValues([part2]);
-        }
+        sheet.getRange(newRowId, 1, 1, rowData.length).setValues([rowData]);
     }
     
     if (typeof updateDataSekolahMaster === 'function') {
@@ -615,16 +606,7 @@ function prosesUpdateLengkap(dbKey, namaSheet, form, fileData) {
             sheet.getRange(rowId, 53, 1, part2.length).setValues([part2]);
         }
     } else {
-        // SD: Lewati kolom HR & HS (indeks 225 & 226, 1-based kolom 226 & 227) agar ArrayFormula di baris 1 tidak terblokir (#REF!)
-        // Tulis part 1 (kolom 1 s/d 225, index 0 s/d 224)
-        var part1 = newRowData.slice(0, 225);
-        sheet.getRange(rowId, 1, 1, part1.length).setValues([part1]);
-
-        // Tulis part 2 (kolom 228 onwards, index 227 onwards)
-        if (newRowData.length > 227) {
-            var part2 = newRowData.slice(227);
-            sheet.getRange(rowId, 228, 1, part2.length).setValues([part2]);
-        }
+        sheet.getRange(rowId, 1, 1, newRowData.length).setValues([newRowData]);
     }
     SpreadsheetApp.flush(); 
     
