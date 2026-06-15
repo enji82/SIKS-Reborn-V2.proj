@@ -253,16 +253,32 @@ function cekBentrokCuti(nipBaru, tglMulaiBaruStr, tglSelesaiBaruStr, rowIdPengec
   var d1 = new Date(tglMulaiBaruStr); d1.setHours(0,0,0,0);
   var d2 = new Date(tglSelesaiBaruStr); d2.setHours(0,0,0,0);
 
+  // Proteksi: jika tanggal input baru tidak valid, tolak langsung
+  if (isNaN(d1.getTime()) || isNaN(d2.getTime())) {
+    return "Gagal: Format tanggal tidak valid.";
+  }
+
   for (var i = 1; i < data.length; i++) {
     if (rowIdPengecualian && (i + 1) == rowIdPengecualian) continue;
-    var st = String(data[i][10]).toLowerCase();
-    if (String(data[i][2]).replace(/'/g,"").trim() === String(nipBaru).trim() && !st.includes("tolak") && !st.includes("batal")) {
-      var tM = parseDateIndo(data[i][4]) || new Date(data[i][4]);
-      var tS = parseDateIndo(data[i][5]) || new Date(data[i][5]);
-      if (tM && tS) {
-        tM.setHours(0,0,0,0); tS.setHours(0,0,0,0);
-        if (d1 <= tS && d2 >= tM) return "Gagal: Tanggal bentrok dengan pengajuan aktif.";
-      }
+    var st = String(data[i][10]).toLowerCase().trim();
+
+    // Hanya cek bentrok untuk pengajuan yang masih aktif ("Diproses")
+    // Skip jika sudah: disetujui, ditolak, dibatalkan, selesai, dll.
+    if (st !== "diproses" && st !== "") continue;
+
+    var nipRow = String(data[i][2]).replace(/'/g,"").trim();
+    if (nipRow !== String(nipBaru).trim()) continue;
+
+    var tM = parseDateIndo(data[i][4]);
+    var tS = parseDateIndo(data[i][5]);
+
+    // Proteksi Invalid Date: skip row jika tanggal tidak bisa di-parse
+    if (!tM || isNaN(tM.getTime()) || !tS || isNaN(tS.getTime())) continue;
+
+    tM.setHours(0,0,0,0); tS.setHours(0,0,0,0);
+    if (d1 <= tS && d2 >= tM) {
+      // Sertakan detail row bentrok untuk debugging
+      return "Gagal: Tanggal bentrok dengan pengajuan aktif (Baris " + (i + 1) + ": " + data[i][3] + " " + data[i][4] + " s/d " + data[i][5] + ", Status: " + (data[i][10] || "Diproses") + ").";
     }
   }
   return null;
