@@ -97,19 +97,48 @@ function getLapbulKelolaData(filterJenjang, filterBulan, filterTahun, filterStat
               if (reqKey && !rNama.toLowerCase().includes(reqKey) && !rNpsn.includes(reqKey)) continue;
 
               var rMurid = 0, rKS = 0, rGuru = 0, rTendik = 0, rPTK = 0;
+              var rCpns = 0, rPns = 0, rPppk = 0, rPppkPw = 0, rGty = 0, rPty = 0, rGtt = 0, rPtt = 0;
+              
+              var sumArr = function(arrLetters) {
+                  var tot = 0;
+                  for (var c = 0; c < arrLetters.length; c++) {
+                      var idx = letterToColIndex(arrLetters[c].toUpperCase());
+                      tot += (parseFloat(String(row[idx] || "").replace(/,/g, "")) || 0);
+                  }
+                  return tot;
+              };
+
               if (sourceLabel === 'PAUD') {
                   rMurid = parseFloat(String(row[letterToColIndex("AZ")] || "").replace(/,/g, "")) || 0;
                   rKS = sumCols(row, "AA", "AD");
                   rGuru = sumCols(row, "AE", "AL") + sumCols(row, "BB", "BI");
                   rTendik = sumCols(row, "AM", "AP") + sumCols(row, "BJ", "BU");
                   rPTK = rKS + rGuru + rTendik;
+                  
+                  rPns = sumArr(["AC","AG","AK","BD","BH","BK","BN","BQ","BT"]);
+                  rPppk = sumArr(["AD","AH","AL","BE","BI","BL","BO","BR","BU"]);
+                  rGty = sumArr(["AA","AE","AI","BB","BF"]);
+                  rPty = sumArr(["AM","AN","AO","AP"]);
+                  rGtt = sumArr(["AB","AF","AJ","BC","BG"]);
+                  rPtt = sumArr(["BJ","BM","BP","BS"]);
               } else {
                   rMurid = parseFloat(String(row[letterToColIndex("HS")] || "").replace(/,/g, "")) || 0;
                   rKS = sumCols(row, "EE", "EG");
                   rGuru = sumCols(row, "EH", "FP");
                   rTendik = sumCols(row, "FQ", "HI");
                   rPTK = rKS + rGuru + rTendik;
+                  
+                  rCpns = sumCols(row, "HW", "IA");
+                  rPns = sumArr(["EE","EH","EM","ER","EW","FB","FG","FL","FQ","FV","GA","GF","GK","GP","GU","GZ","HE"]);
+                  rPppk = sumArr(["EF","EI","EN","ES","EX","FC","FH","FM","FR","FW","GB","GG","GL","GQ","GV","HA","HF"]);
+                  rPppkPw = sumArr(["EJ","EO","ET","EY","FD","FI","FN","FS","FX","GC","GH","GM","GR","GW","HB","HG"]);
+                  rGty = sumArr(["EK","EP","EU","EZ","FE","FJ","FO"]);
+                  rPty = sumArr(["FT","FY","GD","GI","GN","GS","GX","HC","HH"]);
+                  rGtt = sumArr(["EL","EQ","EV","FA","FF","FK","FP"]);
+                  rPtt = sumArr(["FU","FZ","GE","GJ","GO","GT","GY","HD","HI"]);
               }
+
+              var rJmlStatus = rCpns + rPns + rPppk + rPppkPw + rGty + rPty + rGtt + rPtt;
 
               sourceResult.push({
                   rowId: realRowNumber,
@@ -126,6 +155,15 @@ function getLapbulKelolaData(filterJenjang, filterBulan, filterTahun, filterStat
                   guru: rGuru,
                   tendik: rTendik,
                   ptk: rPTK,
+                  cpns: rCpns,
+                  pns: rPns,
+                  pppk: rPppk,
+                  pppkPw: rPppkPw,
+                  gty: rGty,
+                  pty: rPty,
+                  gtt: rGtt,
+                  ptt: rPtt,
+                  jmlStatus: rJmlStatus,
                   fileUrl: (idx.file > -1) ? row[idx.file] : "",
                   tglKirim: cleanStringDate(row[col.tglKirim]),
                   userKirim: row[col.userKirim] || "-",
