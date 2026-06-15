@@ -101,7 +101,7 @@ function getLapbulKelolaData(filterJenjang, filterBulan, filterTahun, filterStat
                   rMurid = parseFloat(String(row[letterToColIndex("AZ")] || "").replace(/,/g, "")) || 0;
                   rKS = sumCols(row, "AA", "AD");
                   rGuru = sumCols(row, "AE", "AL") + sumCols(row, "BB", "BI");
-                  rTendik = sumCols(row, "AM", "AP");
+                  rTendik = sumCols(row, "AM", "AP") + sumCols(row, "BJ", "BU");
                   rPTK = rKS + rGuru + rTendik;
               } else {
                   rMurid = parseFloat(String(row[letterToColIndex("HS")] || "").replace(/,/g, "")) || 0;
@@ -303,10 +303,10 @@ function prosesSimpanLengkap(dbKey, namaSheet, source, form, fileData) {
         isi("KS GTY", form.ks_gty); isi("KS GTT", form.ks_gtt); isi("KS PNS", form.ks_pns); isi("KS PPPK", form.ks_pppk);
         isi("GK GTY", form.gk_gty); isi("GK GTT", form.gk_gtt); isi("GK PNS", form.gk_pns); isi("GK PPPK", form.gk_pppk);
         isi("GP GTY", form.gp_gty); isi("GP GTT", form.gp_gtt); isi("GP PNS", form.gp_pns); isi("GP PPPK", form.gp_pppk);
-        isi(["Penjaga", "Penjaga Sekolah"], form.td_penjaga);
-        isi(["TAS", "Tenaga Administrasi", "Adm"], form.td_adm);
-        isi(["Pustakawan", "Tenaga Perpustakaan"], form.td_perpus);
-        isi(["Tendik Lain", "Tendik Lainnya"], form.td_lain);
+        isi(["Penjaga", "Penjaga Sekolah"], form.td_pjg_pty);
+        isi(["TAS", "Tenaga Administrasi", "Adm"], form.td_tas_pty);
+        isi(["Pustakawan", "Tenaga Perpustakaan"], form.td_pust_pty);
+        isi(["Tendik Lain", "Tendik Lainnya"], form.td_lain_pty);
         
         // Guru Mapel (kolom BB-BE / index 53-56) & Guru Lainnya (kolom BF-BI / index 57-60)
         var mapPAUDCol = function(idx, headerSearch, formVal) {
@@ -324,6 +324,20 @@ function prosesSimpanLengkap(dbKey, namaSheet, source, form, fileData) {
         mapPAUDCol(58, "GL GTT", form.gl_gtt);
         mapPAUDCol(59, "GL PNS", form.gl_pns);
         mapPAUDCol(60, "GL PPPK", form.gl_pppk);
+
+        // Tendik Extended (kolom BJ-BU / index 61-72)
+        mapPAUDCol(61, "TD PJG PTT", form.td_pjg_ptt);
+        mapPAUDCol(62, "TD PJG PNS", form.td_pjg_pns);
+        mapPAUDCol(63, "TD PJG PPPK", form.td_pjg_pppk);
+        mapPAUDCol(64, "TD TAS PTT", form.td_tas_ptt);
+        mapPAUDCol(65, "TD TAS PNS", form.td_tas_pns);
+        mapPAUDCol(66, "TD TAS PPPK", form.td_tas_pppk);
+        mapPAUDCol(67, "TD PUST PTT", form.td_pust_ptt);
+        mapPAUDCol(68, "TD PUST PNS", form.td_pust_pns);
+        mapPAUDCol(69, "TD PUST PPPK", form.td_pust_pppk);
+        mapPAUDCol(70, "TD LAIN PTT", form.td_lain_ptt);
+        mapPAUDCol(71, "TD LAIN PNS", form.td_lain_pns);
+        mapPAUDCol(72, "TD LAIN PPPK", form.td_lain_pppk);
     } else {
         for (var key in form) { isi([key, key.replace(/_/g, " ")], form[key]); }
     }
@@ -335,8 +349,8 @@ function prosesSimpanLengkap(dbKey, namaSheet, source, form, fileData) {
     isi(["user kirim", "user input", "pengirim"], userLogin);
     isi(["dibaca oleh", "read by"], ""); // Reset status baca
     isi(["status data"], "Diproses"); // Set status data ke "Diproses" agar terhitung di rekap/dashboard
-    if (source === "PAUD" && rowData.length > 61) {
-        rowData = rowData.slice(0, 61);
+    if (source === "PAUD" && rowData.length > 73) {
+        rowData = rowData.slice(0, 73);
     }
 
     if (source === "PAUD") {
@@ -503,6 +517,43 @@ function prosesUpdateLengkap(dbKey, namaSheet, form, fileData) {
         else if (i === 60 && namaSheet === "Input PAUD") {
             newRowData.push(form.gl_pppk !== undefined ? form.gl_pppk : (currentRowData[i] !== undefined ? currentRowData[i] : ""));
         }
+        // Tendik Extended (kolom BJ-BU / index 61-72)
+        else if (i === 61 && namaSheet === "Input PAUD") {
+            newRowData.push(form.td_pjg_ptt !== undefined ? form.td_pjg_ptt : (currentRowData[i] !== undefined ? currentRowData[i] : ""));
+        }
+        else if (i === 62 && namaSheet === "Input PAUD") {
+            newRowData.push(form.td_pjg_pns !== undefined ? form.td_pjg_pns : (currentRowData[i] !== undefined ? currentRowData[i] : ""));
+        }
+        else if (i === 63 && namaSheet === "Input PAUD") {
+            newRowData.push(form.td_pjg_pppk !== undefined ? form.td_pjg_pppk : (currentRowData[i] !== undefined ? currentRowData[i] : ""));
+        }
+        else if (i === 64 && namaSheet === "Input PAUD") {
+            newRowData.push(form.td_tas_ptt !== undefined ? form.td_tas_ptt : (currentRowData[i] !== undefined ? currentRowData[i] : ""));
+        }
+        else if (i === 65 && namaSheet === "Input PAUD") {
+            newRowData.push(form.td_tas_pns !== undefined ? form.td_tas_pns : (currentRowData[i] !== undefined ? currentRowData[i] : ""));
+        }
+        else if (i === 66 && namaSheet === "Input PAUD") {
+            newRowData.push(form.td_tas_pppk !== undefined ? form.td_tas_pppk : (currentRowData[i] !== undefined ? currentRowData[i] : ""));
+        }
+        else if (i === 67 && namaSheet === "Input PAUD") {
+            newRowData.push(form.td_pust_ptt !== undefined ? form.td_pust_ptt : (currentRowData[i] !== undefined ? currentRowData[i] : ""));
+        }
+        else if (i === 68 && namaSheet === "Input PAUD") {
+            newRowData.push(form.td_pust_pns !== undefined ? form.td_pust_pns : (currentRowData[i] !== undefined ? currentRowData[i] : ""));
+        }
+        else if (i === 69 && namaSheet === "Input PAUD") {
+            newRowData.push(form.td_pust_pppk !== undefined ? form.td_pust_pppk : (currentRowData[i] !== undefined ? currentRowData[i] : ""));
+        }
+        else if (i === 70 && namaSheet === "Input PAUD") {
+            newRowData.push(form.td_lain_ptt !== undefined ? form.td_lain_ptt : (currentRowData[i] !== undefined ? currentRowData[i] : ""));
+        }
+        else if (i === 71 && namaSheet === "Input PAUD") {
+            newRowData.push(form.td_lain_pns !== undefined ? form.td_lain_pns : (currentRowData[i] !== undefined ? currentRowData[i] : ""));
+        }
+        else if (i === 72 && namaSheet === "Input PAUD") {
+            newRowData.push(form.td_lain_pppk !== undefined ? form.td_lain_pppk : (currentRowData[i] !== undefined ? currentRowData[i] : ""));
+        }
         else if (form[keyForm] !== undefined) {
              var val = form[keyForm];
              if (rawHeader.includes("tgl") || rawHeader.includes("tanggal")) newRowData.push("'" + val); 
@@ -511,8 +562,8 @@ function prosesUpdateLengkap(dbKey, namaSheet, form, fileData) {
         else newRowData.push(currentRowData[i]);
     }
 
-    if (namaSheet === "Input PAUD" && newRowData.length > 61) {
-        newRowData = newRowData.slice(0, 61);
+    if (namaSheet === "Input PAUD" && newRowData.length > 73) {
+        newRowData = newRowData.slice(0, 73);
     }
 
     if (namaSheet === "Input PAUD") {
