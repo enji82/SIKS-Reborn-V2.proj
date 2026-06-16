@@ -711,8 +711,27 @@
             if (pesan.includes('sukses') || pesan.includes('berhasil')) {
                 var $modal = formAktif.closest('.modal');
                 $modal.one('hidden.bs.modal', function () {
-                    salah_tarikDataServer();
-                    Sultan.notif.sukses('Data berhasil disimpan.');
+                    if (recId) {
+                        // VAKSIN ZERO BLINK: Update Cache Lokal Langsung untuk Edit
+                        for (var i = 0; i < SALAH_CACHE_DATA.length; i++) {
+                            if (String(SALAH_CACHE_DATA[i].rowBaris) === String(recId)) {
+                                SALAH_CACHE_DATA[i].unit = dataForm.unit_kerja;
+                                SALAH_CACHE_DATA[i].nama = dataForm.nama_asn;
+                                SALAH_CACHE_DATA[i].nip = dataForm.nip_asn;
+                                SALAH_CACHE_DATA[i].tanggal = dataForm.tanggal;
+                                SALAH_CACHE_DATA[i].jam = dataForm.waktu;
+                                SALAH_CACHE_DATA[i].jenis = dataForm.jenis;
+                                SALAH_CACHE_DATA[i].tglEdit = "Baru saja";
+                                SALAH_CACHE_DATA[i].userEdit = SALAH_USER_AKTIF;
+                                break;
+                            }
+                        }
+                        salah_terapkanFilterLokal();
+                        Sultan.notif.sukses('Data berhasil disimpan.');
+                    } else {
+                        salah_tarikDataServer(); // Tambah baru masih butuh ID dari server
+                        Sultan.notif.sukses('Data berhasil disimpan.');
+                    }
                 });
                 $modal.modal('hide');
             } else { Sultan.alert('error', 'Gagal Menyimpan', res); }
@@ -757,7 +776,9 @@
                     .withSuccessHandler(function (r) {
                         Sultan.notif.tutup();
                         if (r === "Sukses" || String(r).includes("Sukses")) {
-                            salah_tarikDataServer();
+                            // VAKSIN ZERO BLINK: Hapus dari Cache Lokal Langsung
+                            SALAH_CACHE_DATA = SALAH_CACHE_DATA.filter(function(row) { return String(row.rowBaris) !== String(id); });
+                            salah_terapkanFilterLokal();
                             Sultan.notif.sukses('Data telah dihapus permanen.');
                         } else {
                             Sultan.alert('error', 'Gagal Menghapus', r);
@@ -818,7 +839,8 @@
         var btn = formAktif.find('button[type="submit"]'); var txt = btn.html();
         btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i> Eksekusi...');
 
-        var payload = { recId: formAktif.find('#salah_verifIdData').val(), status: st, keterangan: ket, user_verif: SALAH_USER_AKTIF };
+        var rowId = formAktif.find('#salah_verifIdData').val();
+        var payload = { recId: rowId, status: st, keterangan: ket, user_verif: SALAH_USER_AKTIF };
 
         google.script.run
             .withSuccessHandler(function (res) {
@@ -826,7 +848,17 @@
                 if (res === "Sukses" || String(res).includes("Sukses")) {
                     var $modal = formAktif.closest('.modal');
                     $modal.one('hidden.bs.modal', function () {
-                        salah_tarikDataServer();
+                        // VAKSIN ZERO BLINK: Update Cache Lokal Langsung
+                        for (var i = 0; i < SALAH_CACHE_DATA.length; i++) {
+                            if (String(SALAH_CACHE_DATA[i].rowBaris) === String(rowId)) {
+                                SALAH_CACHE_DATA[i].status = st;
+                                SALAH_CACHE_DATA[i].tglVerif = "Baru saja";
+                                SALAH_CACHE_DATA[i].adminVerif = SALAH_USER_AKTIF;
+                                SALAH_CACHE_DATA[i].ket = ket;
+                                break;
+                            }
+                        }
+                        salah_terapkanFilterLokal();
                         Sultan.notif.sukses('Status diperbarui!');
                     });
                     $modal.modal('hide');
