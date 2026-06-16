@@ -975,7 +975,28 @@
                 var $modal = $('#global_modalForm');
                 $modal.one('hidden.bs.modal', function () {
                     Sultan.notif.crud.simpan(!PERDIN_UNI_IS_NEW_SPT);
-                    perdin_tarikDataServer();
+                    
+                    // VAKSIN ZERO BLINK
+                    if (!PERDIN_UNI_IS_NEW_SPT && (!payload.fileData || payload.fileData === "")) {
+                        for (var i = 0; i < PERDIN_CACHE_DATA.length; i++) {
+                            if (String(PERDIN_CACHE_DATA[i].noSpt) === String(payload.header.noSpt)) {
+                                PERDIN_CACHE_DATA[i].jenis = payload.header.jenis;
+                                PERDIN_CACHE_DATA[i].tglSpt = payload.header.tglSpt;
+                                PERDIN_CACHE_DATA[i].tglMulai = payload.header.tglMulai;
+                                PERDIN_CACHE_DATA[i].tglSelesai = payload.header.tglSelesai;
+                                PERDIN_CACHE_DATA[i].tujuan = payload.header.tujuan;
+                                PERDIN_CACHE_DATA[i].kegiatan = payload.header.kegiatan;
+                                PERDIN_CACHE_DATA[i].jenisDok = payload.header.jenisDok;
+                                PERDIN_CACHE_DATA[i].jmlAsn = payload.listPeserta ? payload.listPeserta.length : 0;
+                                PERDIN_CACHE_DATA[i].lastUpdate = "Baru saja";
+                                PERDIN_CACHE_DATA[i].lastUser = PERDIN_USER_AKTIF;
+                                break;
+                            }
+                        }
+                        perdin_terapkanFilterLokal();
+                    } else {
+                        perdin_tarikDataServer(); // Tarik jika tambah baru atau ada upload file
+                    }
                 });
                 $modal.modal('hide');
             } else { Sultan.notif.crud.gagal(res); }
@@ -1103,7 +1124,18 @@
                 $modal.one('hidden.bs.modal', function () {
                     Sultan.notif.crud.sukses('Keputusan ' + st + ' tersimpan ke server!');
                     sultan_tandaiNotifDibaca(rowId, 'Perjadin');
-                    perdin_tarikDataServer();
+                    
+                    // VAKSIN ZERO BLINK
+                    for (var i = 0; i < PERDIN_CACHE_DATA.length; i++) {
+                        if (String(PERDIN_CACHE_DATA[i].rowBaris) === String(rowId)) {
+                            PERDIN_CACHE_DATA[i].status = st;
+                            PERDIN_CACHE_DATA[i].keterangan = ket;
+                            PERDIN_CACHE_DATA[i].tglVerif = "Baru saja";
+                            PERDIN_CACHE_DATA[i].verifikator = PERDIN_USER_AKTIF;
+                            break;
+                        }
+                    }
+                    perdin_terapkanFilterLokal();
                 });
                 $modal.modal('hide');
             } else { Sultan.alert('error', 'Gagal Eksekusi', res); }
@@ -1147,7 +1179,11 @@
                     Sultan.notif.tutup();
                     if (res === "Sukses") {
                         sultan_tandaiNotifDibaca(rowId, 'Perjadin');
-                        perdin_tarikDataServer();
+                        
+                        // VAKSIN ZERO BLINK
+                        PERDIN_CACHE_DATA = PERDIN_CACHE_DATA.filter(function(r) { return String(r.rowBaris) !== String(rowId); });
+                        perdin_terapkanFilterLokal();
+                        
                         Sultan.notif.sukses('Data telah dihapus permanen.');
                     } else {
                         Sultan.alert('error', 'Gagal Menghapus', 'Kode Validasi keamanan salah atau terjadi kesalahan.');

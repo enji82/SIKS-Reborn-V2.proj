@@ -857,7 +857,23 @@
             if (res && res.success) {
                 $('#global_modalForm').modal('hide'); 
                 Sultan.notif.crud.simpan(rowId !== ""); 
-                tugas_tarikDataServer();
+                
+                // VAKSIN ZERO BLINK
+                if (rowId !== "" && !hasFile) {
+                    for (var i = 0; i < TUGAS_CACHE_DATA.length; i++) {
+                        if (String(TUGAS_CACHE_DATA[i].rowBaris) === String(rowId)) {
+                            TUGAS_CACHE_DATA[i].noSk = formData.nomorSk;
+                            TUGAS_CACHE_DATA[i].tglSk = formData.tanggalSk;
+                            TUGAS_CACHE_DATA[i].tglSkDisplay = formData.tanggalSk; // Set as same for simplicity
+                            TUGAS_CACHE_DATA[i].tglUpdate = "Baru saja";
+                            TUGAS_CACHE_DATA[i].userUpdate = formData.userUpdate;
+                            break;
+                        }
+                    }
+                    tugas_terapkanFilterLokal();
+                } else {
+                    tugas_tarikDataServer(); // Tarik jika tambah baru atau ada upload file
+                }
             } else { Sultan.notif.crud.gagal(res.message); }
         };
 
@@ -952,7 +968,18 @@
             if (res.success) {
                 Sultan.modal.tutupVerifikasi();
                 Sultan.notif.crud.sukses('Keputusan ' + st + ' tersimpan!');
-                tugas_tarikDataServer();
+                
+                // VAKSIN ZERO BLINK
+                for (var i = 0; i < TUGAS_CACHE_DATA.length; i++) {
+                    if (String(TUGAS_CACHE_DATA[i].rowBaris) === String(rowId)) {
+                        TUGAS_CACHE_DATA[i].status = st;
+                        TUGAS_CACHE_DATA[i].keterangan = ket;
+                        TUGAS_CACHE_DATA[i].tglVerval = "Baru saja";
+                        TUGAS_CACHE_DATA[i].verifikator = TUGAS_USER_AKTIF;
+                        break;
+                    }
+                }
+                tugas_terapkanFilterLokal();
             } else { Sultan.notif.crud.gagal(res.message); }
         }).verifikasiDataSK(payload);
     }
@@ -983,7 +1010,10 @@
                     Sultan.notif.tutup();
                     if (res.success) {
                         Sultan.notif.crud.hapus();
-                        tugas_tarikDataServer();
+                        
+                        // VAKSIN ZERO BLINK
+                        TUGAS_CACHE_DATA = TUGAS_CACHE_DATA.filter(function(r) { return String(r.rowBaris) !== String(rowId); });
+                        tugas_terapkanFilterLokal();
                     } else {
                         Sultan.notif.crud.gagal(res.message);
                     }

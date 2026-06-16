@@ -800,8 +800,32 @@
             btn.prop('disabled', false).html(txt);
             if (res === "Sukses") {
                 $('#global_modalForm').modal('hide');
-                Sultan.notif.crud.simpan($('#cuti_editRowId').val() !== "");
-                cuti_loadDataServer();
+                var isEdit = $('#cuti_editRowId').val() !== "";
+                Sultan.notif.crud.simpan(isEdit);
+                
+                // VAKSIN ZERO BLINK
+                if (isEdit) {
+                    var editId = $('#cuti_editRowId').val();
+                    for (var i = 0; i < CUTI_DATA_MASTER.length; i++) {
+                        if (String(CUTI_DATA_MASTER[i].rowBaris) === String(editId)) {
+                            CUTI_DATA_MASTER[i].unit = payload.unit;
+                            CUTI_DATA_MASTER[i].nama = payload.nama;
+                            CUTI_DATA_MASTER[i].nip = payload.nip;
+                            CUTI_DATA_MASTER[i].jenis = payload.jenisCuti;
+                            CUTI_DATA_MASTER[i].tglInput = payload.tglPengajuan;
+                            CUTI_DATA_MASTER[i].tglMulai = payload.tglMulai;
+                            CUTI_DATA_MASTER[i].tglSelesai = payload.tglSelesai;
+                            CUTI_DATA_MASTER[i].jumlah = payload.jumlahHari;
+                            CUTI_DATA_MASTER[i].alasan = payload.alasan;
+                            CUTI_DATA_MASTER[i].alamat = payload.alamat;
+                            CUTI_DATA_MASTER[i].hp = payload.hp;
+                            break;
+                        }
+                    }
+                    cuti_jalankanFilterLokal();
+                } else {
+                    cuti_loadDataServer(); // Tarik jika tambah baru
+                }
             } else { Sultan.notif.crud.gagal(res); }
         }).withFailureHandler(function (err) { btn.prop('disabled', false).html(txt); Sultan.notif.crud.gagal(err.toString()); });
 
@@ -822,7 +846,10 @@
                     Sultan.notif.tutup();
                     if (res === 'Sukses') {
                         Sultan.notif.crud.hapus();
-                        cuti_loadDataServer();
+                        
+                        // VAKSIN ZERO BLINK
+                        CUTI_DATA_MASTER = CUTI_DATA_MASTER.filter(function(r) { return String(r.rowBaris) !== String(rowBaris); });
+                        cuti_jalankanFilterLokal();
                     } else {
                         Sultan.notif.crud.gagal(res);
                     }
@@ -900,7 +927,16 @@
             if (res === "Sukses") {
                 $('#global_modalVerifikasi').modal('hide');
                 Sultan.notif.crud.sukses('Verifikasi: ' + status + ' tersimpan.');
-                cuti_loadDataServer();
+                
+                // VAKSIN ZERO BLINK
+                for (var i = 0; i < CUTI_DATA_MASTER.length; i++) {
+                    if (String(CUTI_DATA_MASTER[i].rowBaris) === String(rowId)) {
+                        CUTI_DATA_MASTER[i].status = status;
+                        CUTI_DATA_MASTER[i].ket = catatan;
+                        break;
+                    }
+                }
+                cuti_jalankanFilterLokal();
             } else { Sultan.notif.crud.gagal(res); }
         }).verifikasiPengajuan(rowId, status, catatan, CUTI_USER_AKTIF);
     }
