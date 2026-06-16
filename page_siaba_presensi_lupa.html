@@ -766,8 +766,28 @@
             if (pesan.includes('sukses') || pesan.includes('berhasil')) {
                 var $modal = formAktif.closest('.modal');
                 $modal.one('hidden.bs.modal', function () {
-                    lupa_tarikDataServer();
-                    Sultan.notif.sukses('Data berhasil disimpan.');
+                    if (recId) {
+                        // VAKSIN ZERO BLINK: Update Cache Lokal Langsung untuk Edit
+                        for (var i = 0; i < LUPA_CACHE_DATA.length; i++) {
+                            if (String(LUPA_CACHE_DATA[i].rowBaris) === String(recId)) {
+                                LUPA_CACHE_DATA[i].unit = dataForm.unit_kerja;
+                                LUPA_CACHE_DATA[i].nama = dataForm.nama_asn;
+                                LUPA_CACHE_DATA[i].nip = dataForm.nip_asn;
+                                LUPA_CACHE_DATA[i].tanggal = dataForm.tanggal;
+                                LUPA_CACHE_DATA[i].jam = dataForm.waktu;
+                                LUPA_CACHE_DATA[i].jenis = dataForm.jenis;
+                                LUPA_CACHE_DATA[i].komulatif = dataForm.komulatif;
+                                LUPA_CACHE_DATA[i].tglEdit = "Baru saja";
+                                LUPA_CACHE_DATA[i].userEdit = LUPA_USER_AKTIF;
+                                break;
+                            }
+                        }
+                        lupa_terapkanFilterLokal();
+                        Sultan.notif.sukses('Data berhasil disimpan.');
+                    } else {
+                        lupa_tarikDataServer(); // Tambah baru masih butuh ID dari server
+                        Sultan.notif.sukses('Data berhasil disimpan.');
+                    }
                 });
                 $modal.modal('hide');
             } else {
@@ -848,7 +868,8 @@
         if ((st === 'Ditolak' || st === 'Revisi') && !ket) { Sultan.alert('warning', 'Catatan Wajib', 'Berikan alasan untuk perbaikan user agar tidak diulangi.'); return; }
         var btn = $('#lupa_btnVerifEksekusi'); var txt = btn.html();
         btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i> Mengeksekusi...');
-        var payload = { recId: formAktif.find('#lupa_verifIdData').val(), status: st, keterangan: ket, user_verif: LUPA_USER_AKTIF };
+        var rowId = formAktif.find('#lupa_verifIdData').val();
+        var payload = { recId: rowId, status: st, keterangan: ket, user_verif: LUPA_USER_AKTIF };
 
         google.script.run
             .withSuccessHandler(function (res) {
@@ -856,7 +877,17 @@
                 if (res === "Sukses" || String(res).includes("Sukses")) {
                     var $modal = formAktif.closest('.modal');
                     $modal.one('hidden.bs.modal', function () {
-                        lupa_tarikDataServer();
+                        // VAKSIN ZERO BLINK: Update Cache Lokal Langsung
+                        for (var i = 0; i < LUPA_CACHE_DATA.length; i++) {
+                            if (String(LUPA_CACHE_DATA[i].rowBaris) === String(rowId)) {
+                                LUPA_CACHE_DATA[i].status = st;
+                                LUPA_CACHE_DATA[i].tglVerif = "Baru saja";
+                                LUPA_CACHE_DATA[i].adminVerif = LUPA_USER_AKTIF;
+                                LUPA_CACHE_DATA[i].ket = ket;
+                                break;
+                            }
+                        }
+                        lupa_terapkanFilterLokal();
                         Sultan.notif.sukses('Status berhasil diperbarui!');
                     });
                     $modal.modal('hide');
@@ -899,7 +930,9 @@
                     .withSuccessHandler(function (r) {
                         Sultan.notif.tutup();
                         if (r === "Sukses" || String(r).includes("Sukses")) {
-                            lupa_tarikDataServer();
+                            // VAKSIN ZERO BLINK: Hapus dari Cache Lokal Langsung
+                            LUPA_CACHE_DATA = LUPA_CACHE_DATA.filter(function(row) { return String(row.rowBaris) !== String(id); });
+                            lupa_terapkanFilterLokal();
                             Sultan.notif.sukses('Data telah dihapus permanen.');
                         } else { 
                             Sultan.alert('error', 'Gagal Menghapus', r); 
