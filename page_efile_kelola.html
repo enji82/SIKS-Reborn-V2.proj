@@ -674,10 +674,23 @@ function efilekelola_submitPerbaiki(e) {
             btn.prop('disabled', false).html(txt); var res = JSON.parse(json);
             if(res.success) { 
                 Sultan.modal.tutupForm();
+                // --- VAKSIN ZERO BLINK (PERBAIKI) ---
+                var dIdx = EFILEKELOLA_CACHE_DATA.findIndex(function(r) { return String(r.rowId) === String(payload.rowId); });
+                if (dIdx !== -1) {
+                    EFILEKELOLA_CACHE_DATA[dIdx].tahun = payload.tahun;
+                    EFILEKELOLA_CACHE_DATA[dIdx].periode = payload.periode;
+                    EFILEKELOLA_CACHE_DATA[dIdx].status = "Diproses";
+                    EFILEKELOLA_CACHE_DATA[dIdx].catatan = "";
+                    EFILEKELOLA_CACHE_DATA[dIdx].tgl_upload = Sultan.format.tanggalSekarang();
+                    EFILEKELOLA_CACHE_DATA[dIdx].uploader = EFILEKELOLA_USER_AKTIF;
+                    EFILEKELOLA_CACHE_DATA[dIdx].verifikator = "-";
+                    EFILEKELOLA_CACHE_DATA[dIdx].tgl_verif = "-";
+                }
                 setTimeout(function(){ 
                     Sultan.notif.crud.simpan(true); 
-                    efilekelola_tarikDataServer(); 
+                    efilekelola_terapkanFilterLokal();
                 }, 400); 
+                // -------------------------------------
             } else { Sultan.notif.crud.gagal(res.message); }
         }).withFailureHandler(function(err){ btn.prop('disabled', false).html(txt); Sultan.notif.crud.gagal(err.message); }).perbaikiEfileData(payload, fileData);
     };
@@ -707,10 +720,19 @@ function efilekelola_submitVerif(e) {
         var res = JSON.parse(json);
         if (res.success) { 
             Sultan.modal.tutupVerifikasi();
+            // --- VAKSIN ZERO BLINK (VERIFIKASI) ---
+            var dIdx = EFILEKELOLA_CACHE_DATA.findIndex(function(r) { return String(r.rowId) === String(rId); });
+            if (dIdx !== -1) {
+                EFILEKELOLA_CACHE_DATA[dIdx].status = st;
+                EFILEKELOLA_CACHE_DATA[dIdx].catatan = ket;
+                EFILEKELOLA_CACHE_DATA[dIdx].tgl_verif = Sultan.format.tanggalSekarang();
+                EFILEKELOLA_CACHE_DATA[dIdx].verifikator = EFILEKELOLA_USER_AKTIF;
+            }
             setTimeout(function() { 
                 Sultan.notif.crud.sukses(res.message); 
-                efilekelola_tarikDataServer(); 
+                efilekelola_terapkanFilterLokal();
             }, 400); 
+            // ---------------------------------------
         } else {
             Sultan.notif.crud.gagal(res.message);
         }
@@ -741,8 +763,14 @@ function efilekelola_bukaModalHapus(rowId) {
                 Sultan.notif.tutup();
                 var res = JSON.parse(json);
                 if (res.success) { 
+                    // --- VAKSIN ZERO BLINK (HAPUS) ---
+                    var dIdx = EFILEKELOLA_CACHE_DATA.findIndex(function(r) { return String(r.rowId) === String(rowId); });
+                    if (dIdx !== -1) {
+                        EFILEKELOLA_CACHE_DATA.splice(dIdx, 1);
+                    }
                     Sultan.notif.crud.hapus(); 
-                    efilekelola_tarikDataServer(); 
+                    efilekelola_terapkanFilterLokal();
+                    // ----------------------------------
                 } else { 
                     Sultan.notif.crud.gagal(res.message); 
                 }
