@@ -1155,30 +1155,42 @@
 
         // VAKSIN DUPLIKAT: Tampilkan peringatan jika ada ID ganda
         if (duplikatNames.length > 0 && PTKSDN_IS_ADMIN) {
-            Sultan.confirm('error', 'DUPLIKASI ID TERDETEKSI',
-                '<div class="text-left"><p>Ditemukan <b>' + duplikatNames.length + '</b> data PTK dengan ID ganda di database:</p>' +
-                '<ul class="mb-2">' + duplikatNames.map(function(n){ return '<li class="text-danger font-weight-bold">' + ptksdn_escapeHtml(n) + '</li>'; }).join('') + '</ul>' +
-                '<p class="text-muted small">ID ganda menyebabkan tombol Edit menampilkan data orang lain. Klik <b>Perbaiki Sekarang</b> untuk memperbaiki otomatis.</p></div>',
-                'Perbaiki Sekarang', function () {
-                    Sultan.alert('info', 'Memperbaiki...', 'Sedang memperbaiki ID duplikat di database server...');
+            Swal.fire({
+                icon: 'warning',
+                title: 'DUPLIKASI ID TERDETEKSI',
+                html: '<div class="text-left"><p>Ditemukan <b>' + duplikatNames.length + '</b> data PTK dengan ID ganda di database:</p>' +
+                      '<ul class="mb-2" style="max-height:150px; overflow-y:auto;">' + duplikatNames.map(function(n){ return '<li class="text-danger font-weight-bold">' + ptksdn_escapeHtml(n) + '</li>'; }).join('') + '</ul>' +
+                      '<p class="text-muted small">ID ganda menyebabkan tombol Edit menampilkan data orang lain. Klik <b>Perbaiki Sekarang</b> untuk memperbaiki otomatis.</p></div>',
+                showCancelButton: true,
+                confirmButtonText: 'Perbaiki Sekarang',
+                cancelButtonText: 'Batal',
+                customClass: { popup: 'card-sultan', confirmButton: 'swal2-confirm-sultan', cancelButton: 'swal2-cancel-sultan' }
+            }).then(function (result) {
+                if (result.isConfirmed) {
+                    Sultan.notif.loading('Memperbaiki ID...');
                     google.script.run.withSuccessHandler(function (jsonStr) {
                         try {
+                            Sultan.notif.tutup();
                             var res = JSON.parse(jsonStr);
                             if (res.error) { Sultan.alert('error', 'Gagal', res.error); return; }
                             var msg = res.fixed + ' ID duplikat telah diperbaiki.';
                             if (res.details && res.details.length > 0) {
-                                msg += '<ul class="mt-2 text-left small">';
+                                msg += '<ul class="mt-2 text-left small" style="max-height:100px; overflow-y:auto;">';
                                 res.details.forEach(function(d) { msg += '<li>' + ptksdn_escapeHtml(d.nama) + ' (baris ' + d.baris + ')</li>'; });
                                 msg += '</ul>';
                             }
                             Sultan.alert('success', 'Berhasil Diperbaiki', msg);
                             ptksdn_tarikDataServer(); // Refresh data
-                        } catch (e) { Sultan.alert('error', 'Error', e.message); }
-                    }).withFailureHandler(function (e) {
-                        Sultan.alert('error', 'Koneksi Gagal', e.message);
+                        } catch(e) {
+                            Sultan.notif.tutup();
+                            Sultan.alert('error', 'Gagal', 'Respons dari server tidak valid.');
+                        }
+                    }).withFailureHandler(function(err) {
+                        Sultan.notif.tutup();
+                        Sultan.alert('error', 'Gagal', err.message);
                     }).fixDuplicateIdPTK();
                 }
-            );
+            });
         }
 
         if (PTKSDN_TABEL_INSTANCE) {
