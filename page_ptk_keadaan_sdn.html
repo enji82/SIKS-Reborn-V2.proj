@@ -615,17 +615,20 @@
             KEADAANPTKSDN_TABEL_INSTANCE.page.len(currLen).page(currPage).draw('page');
 
             $(tableClone).find('[style*="display: none"]').remove();
+            $(tableClone).removeClass(); // Remove DataTables/Bootstrap classes
+            $(tableClone).css('border-collapse', 'collapse');
 
             // Transform Table: 1 row 1 data (split NPSN and Unit Kerja), add NO.
             var $theadFirstTr = $(tableClone).find('thead tr:eq(0)');
             var $firstTh = $theadFirstTr.find('th:first');
-            $firstTh.before('<th rowspan="3" style="vertical-align: middle; text-align: center;">NO</th>');
-            $firstTh.before('<th rowspan="3" style="vertical-align: middle; text-align: center;">NPSN</th>');
+            $firstTh.before('<th rowspan="2" style="vertical-align: middle; text-align: center;">NO</th>');
+            $firstTh.before('<th rowspan="2" style="vertical-align: middle; text-align: center;">NPSN</th>');
             $firstTh.text('UNIT KERJA');
 
-            var rowNum = 1;
+            var rowsArray = [];
             $(tableClone).find('tbody tr').each(function() {
-                var $firstTd = $(this).find('td:first');
+                var $tr = $(this);
+                var $firstTd = $tr.find('td:first');
                 var schoolName = $firstTd.find('.sultan-table-primary').text().trim();
                 var npsn = $firstTd.find('.sultan-table-secondary').text().trim();
                 if(!schoolName) {
@@ -633,24 +636,50 @@
                     npsn = "-";
                 }
                 
-                $firstTd.before('<td style="text-align: center;">' + rowNum + '</td>');
-                $firstTd.before('<td style="text-align: center; mso-number-format:\'\\@\';">' + npsn + '</td>');
                 $firstTd.text(schoolName);
+                $firstTd.before('<td style="text-align: center;"></td>'); // NO placeholder
+                $firstTd.before('<td style="text-align: center; mso-number-format:\'\\@\';">' + npsn + '</td>');
+                
+                // Align all other cells to center
+                $tr.find('td').css('text-align', 'center');
+                // Except UNIT KERJA (now the 3rd td)
+                $firstTd.css('text-align', 'left');
+
+                rowsArray.push({
+                    el: $tr,
+                    name: schoolName.toLowerCase()
+                });
+            });
+
+            // Sort rows alphabetically by Unit Kerja
+            rowsArray.sort(function(a, b) {
+                if(a.name < b.name) return -1;
+                if(a.name > b.name) return 1;
+                return 0;
+            });
+
+            var $tbody = $(tableClone).find('tbody');
+            $tbody.empty();
+            var rowNum = 1;
+            rowsArray.forEach(function(item) {
+                item.el.find('td:first').text(rowNum); // Set NO
+                $tbody.append(item.el);
                 rowNum++;
             });
 
             var $tfootTr = $(tableClone).find('tfoot tr:first');
             var $tfootFirstTh = $tfootTr.find('th:first');
             $tfootFirstTh.attr('colspan', 3);
+            $tfootFirstTh.css('text-align', 'left');
 
             // Add Title
             var d = new Date();
             var months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-            var title = "KEADAAN PTK SD NEGERI KORWIL DISDIKBUD KECAMATAN SECANG<br>PERIODE " + months[d.getMonth()].toUpperCase() + " " + d.getFullYear() + " ini";
+            var title = "KEADAAN PTK SD NEGERI KORWIL DISDIKBUD KECAMATAN SECANG<br>PERIODE " + months[d.getMonth()].toUpperCase() + " " + d.getFullYear();
             var totalCols = $(tableClone).find('tbody tr:first td').length; 
             $(tableClone).find('thead').prepend('<tr><th colspan="' + totalCols + '" style="text-align: center; font-size: 16px; font-weight: bold; border: none; padding-bottom: 15px;">' + title + '</th></tr>');
 
-            $(tableClone).find('th, td').css({ 'border': '1px solid #000000', 'border-collapse': 'collapse', 'font-family': 'Satoshi, Arial, sans-serif' });
+            $(tableClone).find('th, td').css({ 'border': 'thin solid black', 'font-family': 'Satoshi, Arial, sans-serif' });
             $(tableClone).find('.opacity-50').css('color', '#cccccc');
             $(tableClone).find('th').css('vertical-align', 'middle');
 
