@@ -42,6 +42,53 @@ function invalidatePtkSdnDataCache_() {
   if (typeof invalidatePtkSdnCache === "function") invalidatePtkSdnCache();
 }
 
+/**
+ * DIAGNOSA & PERBAIKAN: Mendeteksi dan memperbaiki ID duplikat di Master Data GTK.
+ * Jika ditemukan baris dengan ID sama di kolom A, baris kedua dst akan mendapat ID baru.
+ * @returns {string} JSON { fixed: number, details: [...] }
+ */
+function fixDuplicateIdPTK() {
+  try {
+    var sheet = getSheet(KONFIG_PTK.DB_KEY, KONFIG_PTK.SHEET_PTK);
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) return JSON.stringify({ fixed: 0, details: [] });
+
+    var colA = sheet.getRange(2, 1, lastRow - 1, 1).getValues();   // ID
+    var colG = sheet.getRange(2, 7, lastRow - 1, 1).getValues();   // Nama Lengkap
+
+    var seenIds = {};
+    var fixes = [];
+
+    for (var i = 0; i < colA.length; i++) {
+      var currentId = String(colA[i][0]).trim();
+      if (!currentId) continue;
+
+      if (seenIds.hasOwnProperty(currentId)) {
+        // Duplikat ditemukan! Buat ID baru yang unik
+        var newId = "GTK-" + new Date().getTime() + "-" + (i + 2);
+        sheet.getRange(i + 2, 1).setValue(newId);
+        fixes.push({
+          oldId: currentId,
+          newId: newId,
+          nama: String(colG[i][0] || "-"),
+          baris: i + 2
+        });
+        Utilities.sleep(15); // Jeda kecil agar timestamp unik
+      } else {
+        seenIds[currentId] = i + 2;
+      }
+    }
+
+    if (fixes.length > 0) {
+      invalidatePtkSdnDataCache_();
+    }
+
+    return JSON.stringify({ fixed: fixes.length, details: fixes });
+  } catch (e) {
+    return JSON.stringify({ error: e.message });
+  }
+}
+
 // 2. AMBIL DATA UTAMA (cache + baca kolom terbatas)
 function buildPtkListSdn_() {
   var sheet = getSheet(KONFIG_PTK.DB_KEY, KONFIG_PTK.SHEET_PTK);

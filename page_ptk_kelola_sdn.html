@@ -1088,8 +1088,17 @@
 
         data.sort(function (a, b) { var nameA = (a.nama_lengkap || "").toUpperCase(); var nameB = (b.nama_lengkap || "").toUpperCase(); return (nameA < nameB) ? -1 : (nameA > nameB) ? 1 : 0; });
 
-        data.forEach(function (row) {
-            PTKSDN_DATA_MASTER[row.id] = row;
+        var duplikatNames = [];
+
+        data.forEach(function (row, idx) {
+            // VAKSIN DUPLIKAT ID: Gunakan kunci internal unik untuk PTKSDN_DATA_MASTER
+            var masterKey = row.id;
+            if (PTKSDN_DATA_MASTER.hasOwnProperty(masterKey)) {
+                duplikatNames.push(row.nama_lengkap);
+                masterKey = row.id + '__dup__' + idx;
+            }
+            row._masterKey = masterKey;
+            PTKSDN_DATA_MASTER[masterKey] = row;
 
             var tglLahirIndo = ptksdn_formatTanggalIndo(row.tgl_lahir);
             var ttl = '<div class="sultan-table-primary">' + (row.tmp_lahir || '-') + '</div><div class="sultan-table-secondary">' + tglLahirIndo + '</div>';
@@ -1110,10 +1119,10 @@
             var btnHapus = '';
 
             if (PTKSDN_IS_ADMIN) {
-                btnEdit = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning" onclick="ptksdn_bukaModalEdit(\'' + row.id + '\')" title="Edit / Mutasi"><i class="fas fa-pencil-alt"></i></button>';
-                btnHapus = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon" onclick="ptksdn_bukaModalHapus(\'' + row.id + '\', \'' + ptksdn_escapeJs(row.nama_lengkap) + '\')" title="Pensiun/Meninggal/Mutasi Keluar"><i class="fas fa-trash-alt"></i></button>';
+                btnEdit = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning" onclick="ptksdn_bukaModalEdit(\'' + masterKey + '\')" title="Edit / Mutasi"><i class="fas fa-pencil-alt"></i></button>';
+                btnHapus = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon" onclick="ptksdn_bukaModalHapus(\'' + masterKey + '\', \'' + ptksdn_escapeJs(row.nama_lengkap) + '\')" title="Pensiun/Meninggal/Mutasi Keluar"><i class="fas fa-trash-alt"></i></button>';
             } else {
-                btnEdit = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning" onclick="ptksdn_bukaModalEdit(\'' + row.id + '\')" title="Edit Data"><i class="fas fa-pencil-alt"></i></button>';
+                btnEdit = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning" onclick="ptksdn_bukaModalEdit(\'' + masterKey + '\')" title="Edit Data"><i class="fas fa-pencil-alt"></i></button>';
             }
 
             var btnAksi = '<div class="d-flex flex-nowrap justify-content-center" style="gap:5px;">' + btnEdit + ' ' + btnHapus + '</div>';
@@ -1143,6 +1152,34 @@
                 metaInput, metaEdit
             ]);
         });
+
+        // VAKSIN DUPLIKAT: Tampilkan peringatan jika ada ID ganda
+        if (duplikatNames.length > 0 && PTKSDN_IS_ADMIN) {
+            Sultan.confirm('error', 'DUPLIKASI ID TERDETEKSI',
+                '<div class="text-left"><p>Ditemukan <b>' + duplikatNames.length + '</b> data PTK dengan ID ganda di database:</p>' +
+                '<ul class="mb-2">' + duplikatNames.map(function(n){ return '<li class="text-danger font-weight-bold">' + ptksdn_escapeHtml(n) + '</li>'; }).join('') + '</ul>' +
+                '<p class="text-muted small">ID ganda menyebabkan tombol Edit menampilkan data orang lain. Klik <b>Perbaiki Sekarang</b> untuk memperbaiki otomatis.</p></div>',
+                'Perbaiki Sekarang', function () {
+                    Sultan.alert('info', 'Memperbaiki...', 'Sedang memperbaiki ID duplikat di database server...');
+                    google.script.run.withSuccessHandler(function (jsonStr) {
+                        try {
+                            var res = JSON.parse(jsonStr);
+                            if (res.error) { Sultan.alert('error', 'Gagal', res.error); return; }
+                            var msg = res.fixed + ' ID duplikat telah diperbaiki.';
+                            if (res.details && res.details.length > 0) {
+                                msg += '<ul class="mt-2 text-left small">';
+                                res.details.forEach(function(d) { msg += '<li>' + ptksdn_escapeHtml(d.nama) + ' (baris ' + d.baris + ')</li>'; });
+                                msg += '</ul>';
+                            }
+                            Sultan.alert('success', 'Berhasil Diperbaiki', msg);
+                            ptksdn_tarikDataServer(); // Refresh data
+                        } catch (e) { Sultan.alert('error', 'Error', e.message); }
+                    }).withFailureHandler(function (e) {
+                        Sultan.alert('error', 'Koneksi Gagal', e.message);
+                    }).fixDuplicateIdPTK();
+                }
+            );
+        }
 
         if (PTKSDN_TABEL_INSTANCE) {
             PTKSDN_TABEL_INSTANCE.clear().rows.add(dtArray).draw(false);
@@ -2043,8 +2080,10 @@
         }
     }
 
-    function ptksdn_bukaModalHapus(id, nama) {
-        $('#ptksdn_hapusIdData').val(id); $('#ptksdn_hapusNamaView').text(nama);
+    function ptksdn_bukaModalHapus(masterKey, nama) {
+        var row = PTKSDN_DATA_MASTER[masterKey];
+        var realId = row ? row.id : masterKey;
+        $('#ptksdn_hapusIdData').val(realId); $('#ptksdn_hapusNamaView').text(nama);
         $('#ptksdn_hapusAlasan').val(''); $('#ptksdn_hapusInputKode').val('');
         $('#ptksdn_formHapus').removeClass('was-validated');
         $('#ptksdn_modalHapus').modal('show');
@@ -2122,6 +2161,13 @@
     function ptksdn_bukaModalKoreksi(tipe) {
         var id = $('#ptksdn_inputIdData').val();
         var row = PTKSDN_DATA_MASTER[id];
+        // Fallback: jika tidak ditemukan via key langsung, cari berdasarkan row.id asli
+        if (!row) {
+            var keys = Object.keys(PTKSDN_DATA_MASTER);
+            for (var k = 0; k < keys.length; k++) {
+                if (PTKSDN_DATA_MASTER[keys[k]].id === id) { row = PTKSDN_DATA_MASTER[keys[k]]; break; }
+            }
+        }
         if (!row) {
             Sultan.alert('error', 'Gagal', 'Pilih data PTK terlebih dahulu.');
             return;
