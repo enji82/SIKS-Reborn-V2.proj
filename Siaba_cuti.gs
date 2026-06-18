@@ -85,6 +85,7 @@ function getDataCuti(tahun, bulan, unitFilter) {
         tglInput: rowTxt[13], userInput: rowTxt[14],
         tglEdit: rowTxt[15], userEdit: rowTxt[16],
         tglVerif: rowTxt[17], verifikator: rowTxt[18],
+        sisaCT: rowTxt[19] || "0",
         tanggal: rowTxt[21] || "", 
         npsn: rowTxt[50] || "", 
         timestamp: lastActivity
