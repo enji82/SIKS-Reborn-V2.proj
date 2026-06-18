@@ -615,8 +615,44 @@
             KEADAANPTKSDN_TABEL_INSTANCE.page.len(currLen).page(currPage).draw('page');
 
             $(tableClone).find('[style*="display: none"]').remove();
+
+            // Transform Table: 1 row 1 data (split NPSN and Unit Kerja), add NO.
+            var $theadFirstTr = $(tableClone).find('thead tr:eq(0)');
+            var $firstTh = $theadFirstTr.find('th:first');
+            $firstTh.before('<th rowspan="3" style="vertical-align: middle; text-align: center;">NO</th>');
+            $firstTh.before('<th rowspan="3" style="vertical-align: middle; text-align: center;">NPSN</th>');
+            $firstTh.text('UNIT KERJA');
+
+            var rowNum = 1;
+            $(tableClone).find('tbody tr').each(function() {
+                var $firstTd = $(this).find('td:first');
+                var schoolName = $firstTd.find('.sultan-table-primary').text().trim();
+                var npsn = $firstTd.find('.sultan-table-secondary').text().trim();
+                if(!schoolName) {
+                    schoolName = $firstTd.text().trim();
+                    npsn = "-";
+                }
+                
+                $firstTd.before('<td style="text-align: center;">' + rowNum + '</td>');
+                $firstTd.before('<td style="text-align: center; mso-number-format:\'\\@\';">' + npsn + '</td>');
+                $firstTd.text(schoolName);
+                rowNum++;
+            });
+
+            var $tfootTr = $(tableClone).find('tfoot tr:first');
+            var $tfootFirstTh = $tfootTr.find('th:first');
+            $tfootFirstTh.attr('colspan', 3);
+
+            // Add Title
+            var d = new Date();
+            var months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+            var title = "KEADAAN PTK SD NEGERI KORWIL DISDIKBUD KECAMATAN SECANG<br>PERIODE " + months[d.getMonth()].toUpperCase() + " " + d.getFullYear() + " ini";
+            var totalCols = $(tableClone).find('tbody tr:first td').length; 
+            $(tableClone).find('thead').prepend('<tr><th colspan="' + totalCols + '" style="text-align: center; font-size: 16px; font-weight: bold; border: none; padding-bottom: 15px;">' + title + '</th></tr>');
+
             $(tableClone).find('th, td').css({ 'border': '1px solid #000000', 'border-collapse': 'collapse', 'font-family': 'Satoshi, Arial, sans-serif' });
             $(tableClone).find('.opacity-50').css('color', '#cccccc');
+            $(tableClone).find('th').css('vertical-align', 'middle');
 
             // Apply specific background colors to cloned header cells based on classes
             $(tableClone).find('th.bg-soft-success').css('background-color', '#d4edda');
@@ -628,6 +664,9 @@
             $(tableClone).find('th.bg-soft-purple').css('background-color', '#e2d9f3');
             $(tableClone).find('th.bg-soft-danger').css('background-color', '#f8d7da');
             $(tableClone).find('th.bg-soft-warning').css('background-color', '#fff3cd');
+            
+            // Fix title row border after applying global borders
+            $(tableClone).find('thead tr:first th').css('border', 'none');
 
             var htmlData = tableClone.outerHTML;
             var template = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"></head><body>' + htmlData + '</body></html>';
