@@ -817,6 +817,7 @@
 
     function ptkpaud_renderTabel(data) {
         var dtArray = []; PTKPAUD_DATA_MASTER = {};
+        var duplikatNames = [];
 
         if (!data || data.length === 0) {
             ptkpaud_updateTabelKosong("<div class='py-5 text-muted'><i class='fas fa-clipboard-list fa-3x mb-3 text-light opacity-50'></i><br>Tidak ditemukan data PTK PAUD untuk filter tersebut.</div>");
@@ -826,7 +827,15 @@
         data.sort(function (a, b) { var nameA = (a.nama_lengkap || "").toUpperCase(); var nameB = (b.nama_lengkap || "").toUpperCase(); return (nameA < nameB) ? -1 : (nameA > nameB) ? 1 : 0; });
 
         data.forEach(function (row) {
-            PTKPAUD_DATA_MASTER[row.id] = row;
+            // VAKSIN: Pencegahan ID Kembar
+            var masterKey = row.id;
+            if (PTKPAUD_DATA_MASTER[masterKey]) {
+                var idx = 2;
+                while (PTKPAUD_DATA_MASTER[row.id + '__dup__' + idx]) { idx++; }
+                masterKey = row.id + '__dup__' + idx;
+                duplikatNames.push(row.nama_lengkap + ' (' + row.unit + ')');
+            }
+            PTKPAUD_DATA_MASTER[masterKey] = row;
 
             var tglLahirIndo = ptkpaud_formatTanggalIndo(row.tgl_lahir);
             var ttl = '<div class="sultan-table-primary">' + (row.tmp_lahir || '-') + '</div><div class="sultan-table-secondary">' + tglLahirIndo + '</div>';
@@ -853,8 +862,8 @@
             var uiSerdik = '<span class="text-dark font-weight-bold">' + (row.serdik || '-') + '</span>';
             var uiDapodik = '<span class="text-dark font-weight-bold">' + (row.dapodik || '-') + '</span>';
 
-            var btnEdit = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning" onclick="ptkpaud_bukaModalEdit(\'' + row.id + '\')" title="Edit Data"><i class="fas fa-pencil-alt"></i></button>';
-            var btnHapus = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon" onclick="ptkpaud_bukaModalHapus(\'' + row.id + '\', \'' + ptkpaud_escapeJs(row.nama_lengkap) + '\')" title="Hapus"><i class="fas fa-trash-alt"></i></button>';
+            var btnEdit = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning" onclick="ptkpaud_bukaModalEdit(\'' + masterKey + '\')" title="Edit Data"><i class="fas fa-pencil-alt"></i></button>';
+            var btnHapus = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon" onclick="ptkpaud_bukaModalHapus(\'' + masterKey + '\', \'' + ptkpaud_escapeJs(row.nama_lengkap) + '\')" title="Hapus"><i class="fas fa-trash-alt"></i></button>';
             var btnAksi = '<div class="d-flex flex-nowrap justify-content-center" style="gap:4px;">' + btnEdit + ' ' + btnHapus + '</div>';
 
             var uiNama = '<div class="sultan-table-primary">' + ptkpaud_escapeHtml(row.nama_lengkap) + '</div><div class="sultan-table-secondary">' + (ptkpaud_escapeHtml(row.niy) || '-') + '</div>';
@@ -877,6 +886,31 @@
         if (PTKPAUD_TABEL_INSTANCE) {
             PTKPAUD_TABEL_INSTANCE.clear().rows.add(dtArray).draw(false);
             PTKPAUD_TABEL_INSTANCE.columns.adjust();
+        }
+
+        if (duplikatNames.length > 0) {
+            Swal.fire({
+                title: 'Peringatan Duplikasi ID',
+                html: 'Ditemukan ' + duplikatNames.length + ' data dengan ID sistem ganda akibat copy-paste baris di spreadsheet.<br>Ini akan menyebabkan fitur Edit/Hapus tertukar. <br><br><b>Sistem harus memperbaikinya sekarang.</b>',
+                icon: 'warning',
+                showCancelButton: false,
+                confirmButtonText: '<i class="fas fa-tools mr-2"></i>Perbaiki Sekarang',
+                confirmButtonColor: '#e74c3c',
+                allowOutsideClick: false
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({ title: 'Memperbaiki...', html: 'Mohon tunggu, jangan tutup halaman ini.', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+                    google.script.run.withSuccessHandler(function(resStr) {
+                        try {
+                            var res = JSON.parse(resStr);
+                            if (res.error) { Sultan.alert('error','Gagal Memperbaiki', res.error); }
+                            else { 
+                                Swal.fire('Berhasil!', res.fixed + ' ID ganda telah diperbaiki secara otomatis.', 'success').then(() => { ptkpaud_tarikDataServer(); });
+                            }
+                        } catch(e) { Sultan.alert('error','Error', 'Gagal membaca respon perbaikan.'); }
+                    }).withFailureHandler(function(err) { Sultan.alert('error','Error', err.message); }).fixDuplicateIdPTKPAUD();
+                }
+            });
         }
     }
 
@@ -971,11 +1005,12 @@
         $('#ptkpaud_modalForm').modal('show');
     }
 
-    function ptkpaud_bukaModalEdit(id) {
-        var row = PTKPAUD_DATA_MASTER[id]; if (!row) return;
+    function ptkpaud_bukaModalEdit(masterKey) {
+        var row = PTKPAUD_DATA_MASTER[masterKey]; if (!row) return;
+        var realId = row ? row.id : masterKey;
         $('#ptkpaud_formUtama')[0].reset();
         $('#ptkpaud_formUtama').removeClass('was-validated').find('.is-valid, .is-invalid').removeClass('is-valid is-invalid');
-        $('#ptkpaud_inputMode').val('update'); $('#ptkpaud_inputIdData').val(row.id);
+        $('#ptkpaud_inputMode').val('update'); $('#ptkpaud_inputIdData').val(realId);
 
         $('#ptkpaud_headerModalForm').removeClass('modal-header-tambah-edit').addClass('modal-header-sultan-warning');
         $('#ptkpaud_judulModalForm').html('<i class="fas fa-user-edit mr-2"></i>Edit Data PTK PAUD');
@@ -1157,8 +1192,10 @@
         }
     }
 
-    function ptkpaud_bukaModalHapus(id, nama) {
-        $('#ptkpaud_hapusIdData').val(id); $('#ptkpaud_hapusNamaView').text(nama);
+    function ptkpaud_bukaModalHapus(masterKey, nama) {
+        var row = PTKPAUD_DATA_MASTER[masterKey];
+        var realId = row ? row.id : masterKey;
+        $('#ptkpaud_hapusIdData').val(realId); $('#ptkpaud_hapusNamaView').text(nama);
         $('#ptkpaud_hapusAlasan').val(''); $('#ptkpaud_hapusInputKode').val('');
         $('#ptkpaud_formHapus').removeClass('was-validated');
         $('#ptkpaud_modalHapus').modal('show');

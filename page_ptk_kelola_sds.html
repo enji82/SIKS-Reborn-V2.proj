@@ -688,6 +688,7 @@
 
     function ptksds_renderTabel(data) {
         var dtArray = []; PTKSDS_DATA_MASTER = {};
+        var duplikatNames = [];
 
         if (!data || data.length === 0) {
             ptksds_updateTabelKosong("<div class='py-5 text-muted'><i class='fas fa-clipboard-list fa-3x mb-3 text-light opacity-50'></i><br>Tidak ditemukan data PTK SDS untuk filter tersebut.</div>");
@@ -697,7 +698,15 @@
         data.sort(function (a, b) { var nameA = (a.nama_lengkap || "").toUpperCase(); var nameB = (b.nama_lengkap || "").toUpperCase(); return (nameA < nameB) ? -1 : (nameA > nameB) ? 1 : 0; });
 
         data.forEach(function (row) {
-            PTKSDS_DATA_MASTER[row.id] = row;
+            // VAKSIN: Pencegahan ID Kembar
+            var masterKey = row.id;
+            if (PTKSDS_DATA_MASTER[masterKey]) {
+                var idx = 2;
+                while (PTKSDS_DATA_MASTER[row.id + '__dup__' + idx]) { idx++; }
+                masterKey = row.id + '__dup__' + idx;
+                duplikatNames.push(row.nama_lengkap + ' (' + row.unit + ')');
+            }
+            PTKSDS_DATA_MASTER[masterKey] = row;
 
             var tglLahirIndo = ptksds_formatTanggalIndo(row.tgl_lahir);
             var ttl = '<div class="sultan-table-primary">' + (row.tmp_lahir || '-') + '</div><div class="sultan-table-secondary">' + tglLahirIndo + '</div>';
@@ -718,10 +727,10 @@
             var btnHapus = '';
 
             if (PTKSDS_IS_ADMIN) {
-                btnEdit = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning" onclick="ptksds_bukaModalEdit(\'' + row.id + '\')" title="Edit / Mutasi"><i class="fas fa-pencil-alt"></i></button>';
-                btnHapus = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon" onclick="ptksds_bukaModalHapus(\'' + row.id + '\', \'' + ptksds_escapeJs(row.nama_lengkap) + '\')" title="Pindah ke Arsip Non-Aktif"><i class="fas fa-trash-alt"></i></button>';
+                btnEdit = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning" onclick="ptksds_bukaModalEdit(\'' + masterKey + '\')" title="Edit / Mutasi"><i class="fas fa-pencil-alt"></i></button>';
+                btnHapus = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon" onclick="ptksds_bukaModalHapus(\'' + masterKey + '\', \'' + ptksds_escapeJs(row.nama_lengkap) + '\')" title="Pindah ke Arsip Non-Aktif"><i class="fas fa-trash-alt"></i></button>';
             } else {
-                btnEdit = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning" onclick="ptksds_bukaModalEdit(\'' + row.id + '\')" title="Edit Data"><i class="fas fa-pencil-alt"></i></button>';
+                btnEdit = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning" onclick="ptksds_bukaModalEdit(\'' + masterKey + '\')" title="Edit Data"><i class="fas fa-pencil-alt"></i></button>';
             }
             var btnAksi = '<div class="d-flex flex-nowrap justify-content-center" style="gap:5px;">' + btnEdit + ' ' + btnHapus + '</div>';
 
@@ -743,6 +752,31 @@
         if (PTKSDS_TABEL_INSTANCE) {
             PTKSDS_TABEL_INSTANCE.clear().rows.add(dtArray).draw(false);
             setTimeout(function () { PTKSDS_TABEL_INSTANCE.columns.adjust(); }, 300);
+        }
+
+        if (duplikatNames.length > 0) {
+            Swal.fire({
+                title: 'Peringatan Duplikasi ID',
+                html: 'Ditemukan ' + duplikatNames.length + ' data dengan ID sistem ganda akibat copy-paste baris di spreadsheet.<br>Ini akan menyebabkan fitur Edit/Hapus tertukar. <br><br><b>Sistem harus memperbaikinya sekarang.</b>',
+                icon: 'warning',
+                showCancelButton: false,
+                confirmButtonText: '<i class="fas fa-tools mr-2"></i>Perbaiki Sekarang',
+                confirmButtonColor: '#e74c3c',
+                allowOutsideClick: false
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({ title: 'Memperbaiki...', html: 'Mohon tunggu, jangan tutup halaman ini.', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+                    google.script.run.withSuccessHandler(function(resStr) {
+                        try {
+                            var res = JSON.parse(resStr);
+                            if (res.error) { Sultan.alert('error','Gagal Memperbaiki', res.error); }
+                            else { 
+                                Swal.fire('Berhasil!', res.fixed + ' ID ganda telah diperbaiki secara otomatis.', 'success').then(() => { ptksds_tarikDataServer(); });
+                            }
+                        } catch(e) { Sultan.alert('error','Error', 'Gagal membaca respon perbaikan.'); }
+                    }).withFailureHandler(function(err) { Sultan.alert('error','Error', err.message); }).fixDuplicateIdPTKSDS();
+                }
+            });
         }
     }
 
@@ -831,11 +865,12 @@
         $('#ptksds_modalForm').modal('show');
     }
 
-    function ptksds_bukaModalEdit(id) {
-        var row = PTKSDS_DATA_MASTER[id]; if (!row) return;
+    function ptksds_bukaModalEdit(masterKey) {
+        var row = PTKSDS_DATA_MASTER[masterKey]; if (!row) return;
+        var realId = row ? row.id : masterKey;
         $('#ptksds_formUtama')[0].reset();
         $('#ptksds_formUtama').removeClass('was-validated').find('.is-valid, .is-invalid').removeClass('is-valid is-invalid');
-        $('#ptksds_inputMode').val('update'); $('#ptksds_inputIdData').val(row.id);
+        $('#ptksds_inputMode').val('update'); $('#ptksds_inputIdData').val(realId);
 
         var labelJudul = PTKSDS_IS_ADMIN ? '<i class="fas fa-exchange-alt mr-2"></i>Edit / Mutasi PTK' : '<i class="fas fa-user-edit mr-2"></i>Edit Data PTK';
 
@@ -1024,8 +1059,10 @@
         else { google.script.run.withSuccessHandler(cbSuccess).withFailureHandler(cbFail).updateDataPTKSDS(formData); }
     }
 
-    function ptksds_bukaModalHapus(id, nama) {
-        $('#ptksds_hapusIdData').val(id); $('#ptksds_hapusNamaView').text(nama);
+    function ptksds_bukaModalHapus(masterKey, nama) {
+        var row = PTKSDS_DATA_MASTER[masterKey];
+        var realId = row ? row.id : masterKey;
+        $('#ptksds_hapusIdData').val(realId); $('#ptksds_hapusNamaView').text(nama);
         $('#ptksds_hapusAlasan').val(''); $('#ptksds_hapusInputKode').val('');
         $('#ptksds_formHapus').removeClass('was-validated').find('.is-valid, .is-invalid').removeClass('is-valid is-invalid');
         $('#ptksds_modalHapus').modal('show');

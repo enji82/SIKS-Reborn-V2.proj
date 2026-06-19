@@ -89,6 +89,66 @@ function fixDuplicateIdPTK() {
   }
 }
 
+function fixDuplicateIdPTKSDS() {
+  try {
+    var sheet = getSheet(KONFIG_PTK.DB_KEY, "Master Data GTK SDS");
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) return JSON.stringify({ fixed: 0, details: [] });
+
+    var colA = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+    var colG = sheet.getRange(2, 7, lastRow - 1, 1).getValues();
+
+    var seenIds = {};
+    var fixes = [];
+
+    for (var i = 0; i < colA.length; i++) {
+      var currentId = String(colA[i][0]).trim();
+      if (!currentId) continue;
+
+      if (seenIds.hasOwnProperty(currentId)) {
+        var newId = "GTK-" + new Date().getTime() + "-" + (i + 2);
+        sheet.getRange(i + 2, 1).setValue(newId);
+        fixes.push({ oldId: currentId, newId: newId, nama: String(colG[i][0] || "-"), baris: i + 2 });
+        Utilities.sleep(15);
+      } else {
+        seenIds[currentId] = i + 2;
+      }
+    }
+
+    return JSON.stringify({ fixed: fixes.length, details: fixes });
+  } catch (e) { return JSON.stringify({ error: e.message }); }
+}
+
+function fixDuplicateIdPTKPAUD() {
+  try {
+    var sheet = getSheet(KONFIG_PTK.DB_KEY, "Master Data GTK PAUD");
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) return JSON.stringify({ fixed: 0, details: [] });
+
+    var colA = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+    var colG = sheet.getRange(2, 7, lastRow - 1, 1).getValues();
+
+    var seenIds = {};
+    var fixes = [];
+
+    for (var i = 0; i < colA.length; i++) {
+      var currentId = String(colA[i][0]).trim();
+      if (!currentId) continue;
+
+      if (seenIds.hasOwnProperty(currentId)) {
+        var newId = "GTK-" + new Date().getTime() + "-" + (i + 2);
+        sheet.getRange(i + 2, 1).setValue(newId);
+        fixes.push({ oldId: currentId, newId: newId, nama: String(colG[i][0] || "-"), baris: i + 2 });
+        Utilities.sleep(15);
+      } else {
+        seenIds[currentId] = i + 2;
+      }
+    }
+
+    return JSON.stringify({ fixed: fixes.length, details: fixes });
+  } catch (e) { return JSON.stringify({ error: e.message }); }
+}
+
 // 2. AMBIL DATA UTAMA (cache + baca kolom terbatas)
 function buildPtkListSdn_() {
   var sheet = getSheet(KONFIG_PTK.DB_KEY, KONFIG_PTK.SHEET_PTK);
