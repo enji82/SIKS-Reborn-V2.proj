@@ -477,6 +477,16 @@ function getVisitorStats() {
   };
 
   try {
+    var cache = CacheService.getScriptCache();
+    var cachedStats = cache.get("visitor_stats_cache");
+    if (cachedStats != null) {
+      var parsed = JSON.parse(cachedStats);
+      // Timpa dengan data online terbaru karena realtime
+      parsed.online_sd = onlineSD;
+      parsed.online_paud = onlinePAUD;
+      return parsed;
+    }
+
     // Hitung User Terdaftar
     var sheetUser = getSheet("USER_DB", SPREADSHEET_IDS.SHEET_USER_NAME);
     if(sheetUser) stats.users = sheetUser.getLastRow() - 1;
@@ -544,6 +554,9 @@ function getVisitorStats() {
         }
       }
     }
+    
+    // Simpan ke cache selama 5 menit (300 detik)
+    cache.put("visitor_stats_cache", JSON.stringify(stats), 300);
   } catch (e) {
     stats.info = "Maintenance Mode";
     console.log("Error getVisitorStats: " + e.message);
@@ -561,6 +574,11 @@ function saveRunningText(textBaru) {
       sheet.getRange("A1").setValue("RUNNING_TEXT");
     }
     sheet.getRange("B1").setValue(textBaru);
+    
+    // Hapus cache pengumuman agar langsung tampil baru
+    var cache = CacheService.getScriptCache();
+    cache.remove("visitor_stats_cache");
+    
     return { status: 'success', message: 'Berhasil disimpan!' };
   } catch (e) {
     return { status: 'error', message: 'Gagal: ' + e.message };
@@ -860,10 +878,11 @@ function logUserVisit(userData) {
         kategoriUnit
     ]);
 
-    // Invalidate Cache
-    var cache = CacheService.getScriptCache();
-    cache.remove("monitoring_charts");
-    cache.remove("monitoring_users");
+    // Cache TIDAK DIBERSIHKAN di sini agar fungsi caching (5 menit) bisa bekerja maksimal
+    // var cache = CacheService.getScriptCache();
+    // cache.remove("monitoring_charts");
+    // cache.remove("monitoring_users");
+    // cache.remove("visitor_stats_cache");
     
   } catch (e) {
     console.log("Log Error: " + e.message);
