@@ -578,6 +578,7 @@ function saveRunningText(textBaru) {
     // Hapus cache pengumuman agar langsung tampil baru
     var cache = CacheService.getScriptCache();
     cache.remove("visitor_stats_cache");
+    cache.remove("pengumuman_text_cache");
     
     return { status: 'success', message: 'Berhasil disimpan!' };
   } catch (e) {
@@ -588,6 +589,28 @@ function saveRunningText(textBaru) {
 // Untuk memuat halaman Setting di Sidebar
 function loadPageSetting() {
   return HtmlService.createTemplateFromFile('page_setting').evaluate().getContent();
+}
+
+// Fungsi ringan khusus untuk memuat Pengumuman secara instan
+function getPengumumanInfo() {
+  try {
+    var cache = CacheService.getScriptCache();
+    var cached = cache.get("pengumuman_text_cache");
+    if (cached != null) return cached;
+    
+    var sheetSetting = getSheet("USER_DB", "SETTING");
+    var info = "";
+    if (sheetSetting) {
+      info = sheetSetting.getRange("B1").getValue();
+    }
+    
+    if (!info) info = "Tidak ada pengumuman saat ini.";
+    
+    cache.put("pengumuman_text_cache", info, 1800); // Cache 30 menit
+    return info;
+  } catch(e) {
+    return "Gagal memuat pengumuman.";
+  }
 }
 
 /* ======================================================================
