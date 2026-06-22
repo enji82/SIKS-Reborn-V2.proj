@@ -57,3 +57,32 @@ function getKlasifikasiArsip() {
     return JSON.stringify({ error: e.message });
   }
 }
+
+/**
+ * Mengambil file template untuk tata naskah dinas dari Google Drive.
+ */
+function getTemplateNaskahDinasFiles() {
+  try {
+    var folderId = '1KIsSefm0xX-ZAskc2KphIgjRrekRzxdR';
+    var folder = DriveApp.getFolderById(folderId);
+    var files = folder.getFiles();
+    var fileList = [];
+    
+    while (files.hasNext()) {
+      var file = files.next();
+      fileList.push({
+        id: file.getId(),
+        name: file.getName(),
+        url: file.getUrl()
+      });
+    }
+    
+    fileList.sort(function(a, b) {
+      return a.name.localeCompare(b.name);
+    });
+    
+    return JSON.stringify({ status: 'success', data: fileList });
+  } catch (e) {
+    return JSON.stringify({ status: 'error', message: e.message });
+  }
+}
