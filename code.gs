@@ -876,7 +876,7 @@ function logUserVisit(userData) {
   if (!userData) return;
   
   // A. Update Status Online (Realtime)
-  updateOnlineStatus(userData.username || userData.nama, userData.unit);
+  updateOnlineStatus(userData.nama_lengkap || userData.nama || userData.username, userData.unit);
 
   // B. Simpan Log Permanen ke Spreadsheet
   try {
