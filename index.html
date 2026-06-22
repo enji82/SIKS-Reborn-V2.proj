@@ -59,10 +59,21 @@
 
       <ul class="navbar-nav ml-auto align-items-center">
         <!-- ONLINE USERS (ADMIN ONLY) -->
-        <li class="nav-item mr-2" id="nav-online-users" style="display:none;">
-          <a class="nav-link text-white-50" href="#" onclick="sultan_tampilkanOnlineUsers(event)" title="Lihat User Aktif">
+        <li class="nav-item dropdown mr-2" id="nav-online-users" style="display:none;">
+          <a class="nav-link text-white-50" data-toggle="dropdown" href="#" id="sultan_onlineUsersDropdown" onclick="sultan_tampilkanOnlineUsers(event)">
             <i class="fas fa-users" style="font-size: 1.1rem;"></i>
+            <span class="badge shadow-sm font-weight-bold" id="nav-online-count"
+              style="display:none; font-size: 0.65rem; top: 5px; right: 2px; position: absolute; background-color: #28a745 !important; color: #fff !important; border-radius: 4px; padding: 2px 5px; min-width: 18px; text-align: center;">0</span>
           </a>
+          <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right shadow-lg"
+            style="border-radius: 12px; overflow: hidden; padding: 0; min-width: 320px; border: none;">
+            <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom bg-maroon text-white">
+              <span class="font-weight-bold" style="font-size: 0.85rem;"><i class="fas fa-users mr-2"></i>Pengguna Aktif</span>
+            </div>
+            <div id="nav-online-list" style="max-height: 350px; overflow-y: auto;">
+              <div class="text-center p-3 text-muted" style="font-size: 0.85rem;"><i class="fas fa-spinner fa-spin"></i> Memuat...</div>
+            </div>
+          </div>
         </li>
         <!-- NOTIFICATION BELL -->
         <li class="nav-item dropdown mr-2">
@@ -748,66 +759,54 @@
     }
 
     function sultan_tampilkanOnlineUsers(e) {
-      if(e) e.preventDefault();
+      // Tidak di e.preventDefault() agar dropdown Bootstrap tetap berjalan
       
-      var modalHtml = `
-        <div class="text-center py-4" id="loading-online-users">
-          <i class="fas fa-circle-notch fa-spin fa-2x text-maroon mb-2"></i>
-          <p class="text-muted small">Memuat daftar pengguna aktif...</p>
-        </div>
-        <div id="list-online-users" style="display:none; max-height: 400px; overflow-y: auto;">
-        </div>
-      `;
+      var container = document.getElementById('nav-online-list');
+      container.innerHTML = '<div class="text-center p-4 text-muted" style="font-size: 0.85rem;"><i class="fas fa-circle-notch fa-spin fa-2x text-maroon mb-2"></i><br>Memuat pengguna...</div>';
       
-      Swal.fire({
-        title: '<h5 class="font-weight-bold text-maroon mb-0"><i class="fas fa-users text-success mr-2"></i>Pengguna Sedang Aktif</h5>',
-        html: modalHtml,
-        showConfirmButton: false,
-        showCloseButton: true,
-        width: '450px',
-        customClass: {
-          popup: 'rounded-xl sultan-premium-modal',
-          container: 'sultan-swal-container'
-        },
-        didOpen: () => {
-          google.script.run
-            .withSuccessHandler(function(res) {
-              var html = '';
-              if(!res || res.length === 0) {
-                html = '<div class="text-center py-4 text-muted"><i class="fas fa-ghost fa-3x mb-3 opacity-25"></i><br>Tidak ada pengguna aktif dalam 10 menit terakhir.</div>';
-              } else {
-                html = '<div class="list-group list-group-flush text-left">';
-                res.forEach(function(u) {
-                  var badgeColor = u.unit === 'SD' ? 'primary' : (u.unit === 'PAUD' ? 'warning' : 'secondary');
-                  var timeAgo = Math.floor((Date.now() - u.time) / 60000); // dalam menit
-                  var timeStr = timeAgo <= 0 ? 'Baru saja' : timeAgo + ' menit lalu';
-                  
-                  html += `
-                    <div class="list-group-item d-flex justify-content-between align-items-center px-3 py-3 border-bottom" style="background: transparent;">
-                      <div class="d-flex align-items-center">
-                        <div class="bg-success rounded-circle mr-3" style="width: 10px; height: 10px; box-shadow: 0 0 5px #28a745;"></div>
-                        <div>
-                          <h6 class="mb-0 font-weight-bold" style="font-size:0.95rem;">${u.username}</h6>
-                          <small class="text-muted"><i class="far fa-clock mr-1"></i>${timeStr}</small>
-                        </div>
-                      </div>
-                      <span class="badge badge-${badgeColor} rounded-pill px-3 py-1 shadow-sm">${u.unit}</span>
+      google.script.run
+        .withSuccessHandler(function(res) {
+          var html = '';
+          
+          // Filter out users that have "admin" in their username
+          var filteredRes = (res || []).filter(function(u) {
+            return u.username.toLowerCase().indexOf('admin') === -1;
+          });
+
+          if(filteredRes.length === 0) {
+            html = '<div class="text-center py-4 text-muted"><i class="fas fa-ghost fa-2x mb-2 opacity-50"></i><br><small>Tidak ada pengguna aktif.</small></div>';
+            document.getElementById('nav-online-count').style.display = 'none';
+          } else {
+            document.getElementById('nav-online-count').innerText = filteredRes.length;
+            document.getElementById('nav-online-count').style.display = 'block';
+
+            html = '<div class="list-group list-group-flush text-left">';
+            filteredRes.forEach(function(u) {
+              var badgeColor = u.unit === 'SD' ? 'primary' : (u.unit === 'PAUD' ? 'warning' : 'secondary');
+              var timeAgo = Math.floor((Date.now() - u.time) / 60000); // dalam menit
+              var timeStr = timeAgo <= 0 ? 'Baru saja' : timeAgo + ' menit lalu';
+              
+              html += `
+                <div class="list-group-item d-flex justify-content-between align-items-center px-3 py-2 border-bottom" style="background: transparent;">
+                  <div class="d-flex align-items-center">
+                    <div class="bg-success rounded-circle mr-3 flex-shrink-0" style="width: 8px; height: 8px; box-shadow: 0 0 5px #28a745;"></div>
+                    <div class="text-truncate" style="max-width: 190px;">
+                      <h6 class="mb-0 font-weight-bold text-dark text-truncate" style="font-size:0.85rem;">${u.username}</h6>
+                      <small class="text-muted" style="font-size:0.7rem;"><i class="far fa-clock mr-1"></i>${timeStr}</small>
                     </div>
-                  `;
-                });
-                html += '</div>';
-              }
-              document.getElementById('loading-online-users').style.display = 'none';
-              var container = document.getElementById('list-online-users');
-              container.innerHTML = html;
-              container.style.display = 'block';
-            })
-            .withFailureHandler(function(err) {
-              document.getElementById('loading-online-users').innerHTML = '<div class="text-danger py-3"><i class="fas fa-exclamation-triangle mr-2"></i>Gagal memuat data.</div>';
-            })
-            .getActiveUsersList();
-        }
-      });
+                  </div>
+                  <span class="badge badge-${badgeColor} rounded-pill px-2 py-1 shadow-sm" style="font-size:0.65rem;">${u.unit}</span>
+                </div>
+              `;
+            });
+            html += '</div>';
+          }
+          container.innerHTML = html;
+        })
+        .withFailureHandler(function(err) {
+          container.innerHTML = '<div class="text-danger p-3 text-center small"><i class="fas fa-exclamation-triangle mr-2"></i>Gagal memuat data.</div>';
+        })
+        .getActiveUsersList();
     }
   </script>
 
