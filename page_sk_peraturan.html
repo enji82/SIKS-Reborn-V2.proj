@@ -8,7 +8,6 @@
                 <div class="card-sultan">
                     <div class="card-body p-3">
                         
-                        <div class="table-responsive">
                             <table class="table table-hover table-premium table-sultan-compact mb-0 w-100 border-0" id="table-peraturan">
                                 <thead class="thead-sultan-premium text-maroon text-uppercase">
                                     <tr>
@@ -26,7 +25,6 @@
                                 </tbody>
                             </table>
                         </div>
-
                     </div>
                 </div>
 
@@ -38,6 +36,8 @@
 </section>
 
 <script>
+var PERATURAN_TABEL_INSTANCE = null;
+
 $(document).ready(function() {
     loadPeraturanFiles();
 });
@@ -63,7 +63,6 @@ function loadPeraturanFiles() {
 }
 
 function renderTablePeraturan(data) {
-    var isFirstLoad = !$.fn.DataTable.isDataTable('#table-peraturan');
     var dtArray = [];
     
     if (data && data.length > 0) {
@@ -89,15 +88,16 @@ function renderTablePeraturan(data) {
             dtArray.push(rowData);
         });
     }
-    
-    if (typeof SultanTable !== 'undefined') {
-        var tableInstance = SultanTable.init('#table-peraturan', {
+
+    // VAKSIN INISIASI: Buat tabel hanya 1x seumur hidup
+    if (!$.fn.DataTable.isDataTable('#table-peraturan')) {
+        PERATURAN_TABEL_INSTANCE = SultanTable.init('#table-peraturan', {
             "data": dtArray,
+            "destroy": true,
             "ordering": false,
             "pageLength": 10,
-            "dom": "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
-                   "<'row'<'col-sm-12'<'table-responsive'tr>>>" +
-                   "<'row mt-3'<'col-sm-12 col-md-5 text-muted'i><'col-sm-12 col-md-7'p>>",
+            "autoWidth": false,
+            "deferRender": true,
             "columnDefs": [
                 { "targets": 0, "className": "align-middle text-center" },
                 { "targets": 1, "className": "align-middle text-left" },
@@ -105,25 +105,18 @@ function renderTablePeraturan(data) {
             ]
         });
     } else {
-        if ($.fn.DataTable.isDataTable('#table-peraturan')) {
-            $('#table-peraturan').DataTable().clear().destroy();
+        // VAKSIN ANTI-GLITZ: Murni update data tanpa adjust columns berulang-ulang
+        if (PERATURAN_TABEL_INSTANCE) {
+            PERATURAN_TABEL_INSTANCE.clear().rows.add(dtArray).draw(false);
+        } else {
+            // Fallback jika instance hilang
+            $('#table-peraturan').DataTable().clear().rows.add(dtArray).draw(false);
         }
-        $('#table-peraturan').DataTable({
-            "data": dtArray,
-            "language": {
-                "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json",
-                "search": "", "searchPlaceholder": "Cari dokumen..."
-            },
-            "pageLength": 10,
-            "ordering": false,
-            "lengthChange": false,
-            "info": true,
-            "columnDefs": [
-                { "targets": 0, "className": "align-middle text-center" },
-                { "targets": 1, "className": "align-middle text-left" },
-                { "targets": 2, "className": "align-middle text-center" }
-            ]
-        });
+        
+        // Timpa teks kosong jika benar-benar tidak ada data
+        if (dtArray.length === 0) {
+            $('#table-peraturan .dataTables_empty').html('Tidak ada dokumen peraturan.');
+        }
     }
 }
 </script>
