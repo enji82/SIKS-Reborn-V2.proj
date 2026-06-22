@@ -1,0 +1,119 @@
+<section class="content">
+    <div class="container-fluid">
+        <div class="row justify-content-center pt-4">
+            <div class="col-lg-10">
+                <!-- Hero Section -->
+                <div class="card sultan-hero-card mb-4 text-center p-3">
+                    <h5 class="text-white font-weight-bold mb-1"
+                        style="font-size: 1.15rem; letter-spacing: 0.5px; text-transform: uppercase;">PERATURAN SK PEMBAGIAN TUGAS</h5>
+                    <p class="text-white opacity-75 mb-0" style="font-size: 15px;">Daftar Dokumen dan Peraturan Terkait SK Pembagian Tugas</p>
+                </div>
+
+                <div class="card card-sultan shadow-sm">
+                    <div class="card-body p-4 p-md-5">
+                        
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped sultan-table w-100" id="table-peraturan">
+                                <thead>
+                                    <tr>
+                                        <th width="10%" class="text-center">No.</th>
+                                        <th width="60%">Nama Dokumen</th>
+                                        <th width="30%" class="text-center">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td colspan="3" class="text-center text-muted py-4">
+                                            <i class="fas fa-spinner fa-spin mr-2"></i> Memuat data dokumen...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="text-center mt-4 mb-5">
+                    <p class="text-muted mb-0" style="font-size: 14px;">Jika ada kendala dalam mengunduh dokumen, hubungi Admin Korwil setempat.</p>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+$(document).ready(function() {
+    loadPeraturanFiles();
+});
+
+function loadPeraturanFiles() {
+    google.script.run
+        .withSuccessHandler(function(resStr) {
+            try {
+                var res = JSON.parse(resStr);
+                if (res.status === 'success') {
+                    renderTablePeraturan(res.data);
+                } else {
+                    Swal.fire('Gagal', 'Gagal memuat dokumen: ' + res.message, 'error');
+                }
+            } catch (e) {
+                Swal.fire('Error', 'Kesalahan format data: ' + e.message, 'error');
+            }
+        })
+        .withFailureHandler(function(err) {
+            Swal.fire('Error', 'Kesalahan server: ' + err.message, 'error');
+        })
+        .getPeraturanFiles();
+}
+
+function renderTablePeraturan(data) {
+    var tbody = $('#table-peraturan tbody');
+    tbody.empty();
+    
+    if (!data || data.length === 0) {
+        tbody.append('<tr><td colspan="3" class="text-center text-muted py-4">Tidak ada dokumen yang ditemukan.</td></tr>');
+        return;
+    }
+    
+    data.forEach(function(item, index) {
+        // Download URL menggunakan format ID
+        var downloadUrl = 'https://drive.google.com/uc?export=download&id=' + item.id;
+        
+        var aksiHtml = `
+            <div class="d-flex justify-content-center">
+                <button type="button" class="sultan-btn-pdf mr-2" onclick="previewPDF('${item.url}')" title="Lihat Dokumen">
+                    <i class="fas fa-eye mr-1"></i> Lihat
+                </button>
+                <a href="${downloadUrl}" target="_blank" class="sultan-btn-pdf bg-success text-white border-success" title="Unduh Dokumen" style="text-decoration: none;">
+                    <i class="fas fa-download mr-1"></i> Unduh
+                </a>
+            </div>
+        `;
+        
+        var row = `
+            <tr>
+                <td class="text-center align-middle">${index + 1}</td>
+                <td class="align-middle font-weight-bold text-dark">${item.name}</td>
+                <td class="align-middle">${aksiHtml}</td>
+            </tr>
+        `;
+        tbody.append(row);
+    });
+    
+    // Inisialisasi DataTable jika diinginkan
+    if ($.fn.DataTable.isDataTable('#table-peraturan')) {
+        $('#table-peraturan').DataTable().destroy();
+    }
+    $('#table-peraturan').DataTable({
+        "language": {
+            "url": "https://cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json"
+        },
+        "pageLength": 10,
+        "ordering": false,
+        "lengthChange": false,
+        "info": true
+    });
+}
+</script>
