@@ -848,6 +848,22 @@ function getActiveUsersList() {
     var now = new Date().getTime();
     var cutoff = now - (10 * 60 * 1000); 
     
+    // Siapkan mapping dari USER_DB agar jika yang terekam NPSN, otomatis berubah ke Nama Sekolah
+    var nameMap = {};
+    try {
+      var sheetUser = getSheet("USER_DB", SPREADSHEET_IDS.SHEET_USER_NAME);
+      if (sheetUser) {
+        var dataUser = sheetUser.getDataRange().getValues();
+        for (var i = 1; i < dataUser.length; i++) {
+          var un = String(dataUser[i][0]).trim();
+          var realName = String(dataUser[i][2]).trim();
+          if (un && realName) {
+            nameMap[un] = realName;
+          }
+        }
+      }
+    } catch(err) {}
+    
     var result = [];
     for (var u in activeUsers) {
       var item = activeUsers[u];
@@ -855,11 +871,16 @@ function getActiveUsersList() {
       var userUnit = typeof item === 'object' ? item.unit : "LAINNYA";
       
       if (userTime > cutoff) {
-        result.push({
-          username: u,
-          unit: userUnit,
-          time: userTime
-        });
+        var displayName = nameMap[u] || u;
+        
+        // Sembunyikan user yang mengandung kata admin
+        if (displayName.toLowerCase().indexOf('admin') === -1 && u.toLowerCase().indexOf('admin') === -1) {
+          result.push({
+            username: displayName,
+            unit: userUnit,
+            time: userTime
+          });
+        }
       }
     }
     // Urutkan berdasarkan yang paling baru aktif
