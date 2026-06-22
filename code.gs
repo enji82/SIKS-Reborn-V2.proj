@@ -779,7 +779,7 @@ function getMonitoring_Users() {
    ====================================================================== */
 
 // 1. UPDATE STATUS ONLINE (Untuk menghitung User Online Realtime per Unit Kerja)
-function updateOnlineStatus(username, unitStr) {
+function updateOnlineStatus(username, unitStr, roleStr) {
   try {
     var props = PropertiesService.getScriptProperties();
     var now = new Date().getTime();
@@ -802,7 +802,8 @@ function updateOnlineStatus(username, unitStr) {
     if (username) {
       activeUsers[username] = {
         time: now,
-        unit: unitCat
+        unit: unitCat,
+        role: roleStr || ""
       };
     }
     
@@ -816,13 +817,21 @@ function updateOnlineStatus(username, unitStr) {
       // Backward compatibility jika data masih bertipe angka timestamp
       var userTime = typeof item === 'object' ? item.time : item;
       var userUnit = typeof item === 'object' ? item.unit : "LAINNYA";
+      var userRole = typeof item === 'object' && item.role ? item.role : "";
       
       if (userTime > cutoff) {
-        cleanList[u] = { time: userTime, unit: userUnit };
-        if (userUnit === "SD") {
-          countSD++;
-        } else if (userUnit === "PAUD") {
-          countPAUD++;
+        cleanList[u] = { time: userTime, unit: userUnit, role: userRole };
+        
+        var uName = String(u).toLowerCase();
+        var uRoleLower = String(userRole).toLowerCase();
+        
+        // JANGAN hitung akun admin ke dalam statistik SD/PAUD di Beranda (agar sinkron dengan Navbar)
+        if (uName.indexOf('admin') === -1 && uRoleLower.indexOf('admin') === -1) {
+          if (userUnit === "SD") {
+            countSD++;
+          } else if (userUnit === "PAUD") {
+            countPAUD++;
+          }
         }
       }
     }
@@ -869,12 +878,14 @@ function getActiveUsersList() {
       var item = activeUsers[u];
       var userTime = typeof item === 'object' ? item.time : item;
       var userUnit = typeof item === 'object' ? item.unit : "LAINNYA";
+      var userRole = typeof item === 'object' && item.role ? item.role : "";
       
       if (userTime > cutoff) {
         var displayName = nameMap[u] || u;
+        var uRoleLower = String(userRole).toLowerCase();
         
         // Sembunyikan user yang mengandung kata admin
-        if (displayName.toLowerCase().indexOf('admin') === -1 && u.toLowerCase().indexOf('admin') === -1) {
+        if (displayName.toLowerCase().indexOf('admin') === -1 && u.toLowerCase().indexOf('admin') === -1 && uRoleLower.indexOf('admin') === -1) {
           result.push({
             username: displayName,
             unit: userUnit,
@@ -897,7 +908,7 @@ function logUserVisit(userData) {
   if (!userData) return;
   
   // A. Update Status Online (Realtime)
-  updateOnlineStatus(userData.nama_lengkap || userData.nama || userData.username, userData.unit);
+  updateOnlineStatus(userData.nama_lengkap || userData.nama || userData.username, userData.unit, userData.role);
 
   // B. Simpan Log Permanen ke Spreadsheet
   try {
