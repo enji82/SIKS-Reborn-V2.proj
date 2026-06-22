@@ -837,7 +837,40 @@ function updateOnlineStatus(username, unitStr) {
   }
 }
 
-// 2. LOG VISITOR KE SPREADSHEET (Untuk Data Historis & Grafik)
+// 2. MENDAPATKAN DAFTAR USER ONLINE (KHUSUS ADMIN)
+function getActiveUsersList() {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var json = props.getProperty('ONLINE_USERS_DB_V2');
+    if (!json) return [];
+    
+    var activeUsers = JSON.parse(json);
+    var now = new Date().getTime();
+    var cutoff = now - (10 * 60 * 1000); 
+    
+    var result = [];
+    for (var u in activeUsers) {
+      var item = activeUsers[u];
+      var userTime = typeof item === 'object' ? item.time : item;
+      var userUnit = typeof item === 'object' ? item.unit : "LAINNYA";
+      
+      if (userTime > cutoff) {
+        result.push({
+          username: u,
+          unit: userUnit,
+          time: userTime
+        });
+      }
+    }
+    // Urutkan berdasarkan yang paling baru aktif
+    result.sort(function(a, b) { return b.time - a.time; });
+    return result;
+  } catch (e) {
+    return [];
+  }
+}
+
+// 3. LOG VISITOR KE SPREADSHEET (Untuk Data Historis & Grafik)
 function logUserVisit(userData) {
   // Cegah error jika data user kosong
   if (!userData) return;
