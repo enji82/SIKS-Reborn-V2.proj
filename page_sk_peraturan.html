@@ -63,52 +63,53 @@ function loadPeraturanFiles() {
 }
 
 function renderTablePeraturan(data) {
-    var tbody = $('#table-peraturan tbody');
-    tbody.empty();
+    var isFirstLoad = !$.fn.DataTable.isDataTable('#table-peraturan');
+    var dtArray = [];
     
-    if (!data || data.length === 0) {
-        tbody.append('<tr><td colspan="3" class="text-center text-muted py-4">Tidak ada dokumen yang ditemukan.</td></tr>');
-        return;
+    if (data && data.length > 0) {
+        data.forEach(function(item, index) {
+            var downloadUrl = 'https://drive.google.com/uc?export=download&id=' + item.id;
+            
+            var aksiHtml = `
+                <div class="d-flex justify-content-center">
+                    <button type="button" class="sultan-btn-pdf mr-2" onclick="previewPDF('${item.url}')" title="Lihat Dokumen">
+                        <i class="fas fa-eye mr-1"></i> Lihat
+                    </button>
+                    <a href="${downloadUrl}" target="_blank" class="sultan-btn-pdf bg-success text-white border-success" title="Unduh Dokumen" style="text-decoration: none;">
+                        <i class="fas fa-download mr-1"></i> Unduh
+                    </a>
+                </div>
+            `;
+            
+            var rowData = [
+                index + 1,
+                `<span class="font-weight-bold text-dark">${item.name}</span>`,
+                aksiHtml
+            ];
+            dtArray.push(rowData);
+        });
     }
     
-    data.forEach(function(item, index) {
-        // Download URL menggunakan format ID
-        var downloadUrl = 'https://drive.google.com/uc?export=download&id=' + item.id;
-        
-        var aksiHtml = `
-            <div class="d-flex justify-content-center">
-                <button type="button" class="sultan-btn-pdf mr-2" onclick="previewPDF('${item.url}')" title="Lihat Dokumen">
-                    <i class="fas fa-eye mr-1"></i> Lihat
-                </button>
-                <a href="${downloadUrl}" target="_blank" class="sultan-btn-pdf bg-success text-white border-success" title="Unduh Dokumen" style="text-decoration: none;">
-                    <i class="fas fa-download mr-1"></i> Unduh
-                </a>
-            </div>
-        `;
-        
-        var row = `
-            <tr>
-                <td class="text-center align-middle">${index + 1}</td>
-                <td class="align-middle font-weight-bold text-dark">${item.name}</td>
-                <td class="align-middle">${aksiHtml}</td>
-            </tr>
-        `;
-        tbody.append(row);
-    });
-    
     if (typeof SultanTable !== 'undefined') {
-        SultanTable.init('#table-peraturan', {
+        var tableInstance = SultanTable.init('#table-peraturan', {
+            "data": dtArray,
             "ordering": false,
             "pageLength": 10,
             "dom": "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
                    "<'row'<'col-sm-12'<'table-responsive'tr>>>" +
                    "<'row mt-3'<'col-sm-12 col-md-5 text-muted'i><'col-sm-12 col-md-7'p>>",
+            "columnDefs": [
+                { "targets": 0, "className": "align-middle text-center" },
+                { "targets": 1, "className": "align-middle text-left" },
+                { "targets": 2, "className": "align-middle text-center" }
+            ]
         });
     } else {
         if ($.fn.DataTable.isDataTable('#table-peraturan')) {
-            $('#table-peraturan').DataTable().destroy();
+            $('#table-peraturan').DataTable().clear().destroy();
         }
         $('#table-peraturan').DataTable({
+            "data": dtArray,
             "language": {
                 "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json",
                 "search": "", "searchPlaceholder": "Cari dokumen..."
@@ -116,7 +117,12 @@ function renderTablePeraturan(data) {
             "pageLength": 10,
             "ordering": false,
             "lengthChange": false,
-            "info": true
+            "info": true,
+            "columnDefs": [
+                { "targets": 0, "className": "align-middle text-center" },
+                { "targets": 1, "className": "align-middle text-left" },
+                { "targets": 2, "className": "align-middle text-center" }
+            ]
         });
     }
 }
