@@ -627,13 +627,24 @@ function getMonitoring_Charts() {
     var sheetLog = getSheet("USER_DB", "LOG_ACCESS");
     if (!sheetLog) return { error: "Sheet LOG_ACCESS tidak ditemukan" };
 
+    var data = [];
+
+    // Ambil data dari LOG_ACCESS_LAMA jika ada
+    var sheetLama = getSheet("USER_DB", "LOG_ACCESS_LAMA");
+    if (sheetLama && sheetLama.getLastRow() > 1) {
+      var dataLama = sheetLama.getRange(2, 1, sheetLama.getLastRow() - 1, 6).getValues();
+      data = data.concat(dataLama);
+    }
+
     // Ambil Data: Kolom A (Timestamp) & F (Jenis Hari)
     // Kita tidak butuh nama user disini, jadi lebih ringan
     var lastRow = sheetLog.getLastRow();
-    if (lastRow < 2) return { empty: true };
+    if (lastRow > 1) {
+      var dataBaru = sheetLog.getRange(2, 1, lastRow - 1, 6).getValues();
+      data = data.concat(dataBaru);
+    }
     
-    // Ambil A sampai F
-    var data = sheetLog.getRange(2, 1, lastRow - 1, 6).getValues();
+    if (data.length === 0) return { empty: true };
 
     var stats = {
       total: data.length, kerja: 0, libur: 0,
@@ -691,12 +702,23 @@ function getMonitoring_Users() {
     // 1. Ambil Log User (Kolom D = Nama User)
     var sheetLog = ss.getSheetByName("LOG_ACCESS");
     var userActivityMap = {}; // Menghitung frekuensi login
+    var dataLogAll = [];
     
+    var sheetLama = ss.getSheetByName("LOG_ACCESS_LAMA");
+    if (sheetLama && sheetLama.getLastRow() > 1) {
+      var dataLama = sheetLama.getRange(2, 4, sheetLama.getLastRow() - 1, 1).getValues();
+      dataLogAll = dataLogAll.concat(dataLama);
+    }
+
     if (sheetLog && sheetLog.getLastRow() > 1) {
       // Ambil hanya kolom D (Index 4)
-      var dataLog = sheetLog.getRange(2, 4, sheetLog.getLastRow() - 1, 1).getValues();
-      for (var i = 0; i < dataLog.length; i++) {
-        var uName = String(dataLog[i][0]).trim();
+      var dataBaru = sheetLog.getRange(2, 4, sheetLog.getLastRow() - 1, 1).getValues();
+      dataLogAll = dataLogAll.concat(dataBaru);
+    }
+    
+    if (dataLogAll.length > 0) {
+      for (var i = 0; i < dataLogAll.length; i++) {
+        var uName = String(dataLogAll[i][0]).trim();
         if (uName) {
           userActivityMap[uName] = (userActivityMap[uName] || 0) + 1;
         }
@@ -868,6 +890,19 @@ function logUserVisit(userData) {
     var props = PropertiesService.getScriptProperties();
     var lastLoggedMonth = props.getProperty('LAST_LOG_MONTH'); // Format: yyyy-MM
     if (lastLoggedMonth && lastLoggedMonth !== blnOnly && sheet.getLastRow() > 1) {
+        // Buat atau ambil sheet LOG_ACCESS_LAMA
+        var sheetLama = ss.getSheetByName("LOG_ACCESS_LAMA");
+        if (!sheetLama) {
+            sheetLama = ss.insertSheet("LOG_ACCESS_LAMA");
+            sheetLama.appendRow(["Timestamp", "Tanggal", "Bulan", "Nama User", "Role", "Jenis Hari", "Kategori Unit"]);
+            // Bekukan baris pertama
+            sheetLama.setFrozenRows(1);
+        }
+        
+        // Pindahkan data ke LOG_ACCESS_LAMA
+        var dataLama = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
+        sheetLama.getRange(sheetLama.getLastRow() + 1, 1, dataLama.length, dataLama[0].length).setValues(dataLama);
+
         // Hapus semua baris data log lama, sisakan header
         sheet.deleteRows(2, sheet.getLastRow() - 1);
         // Hapus cache monitoring
@@ -952,12 +987,20 @@ function getUserActivityTimeline(username, displayName) {
     var dName = String(displayName || "").trim().toLowerCase();
     if (!uName && !dName) return [];
 
-    // 1. Ambil dari LOG_ACCESS (Login/Access)
+    // 1. Ambil dari LOG_ACCESS (Login/Access) dan LOG_ACCESS_LAMA
+    var dataLogAll = [];
+    var sheetLama = getSheet("USER_DB", "LOG_ACCESS_LAMA");
+    if (sheetLama && sheetLama.getLastRow() > 1) {
+      dataLogAll = dataLogAll.concat(sheetLama.getDataRange().getValues().slice(1));
+    }
     var sheetLog = getSheet("USER_DB", "LOG_ACCESS");
-    if (sheetLog) {
-      var dataLog = sheetLog.getDataRange().getValues();
-      for (var i = dataLog.length - 1; i >= 1; i--) {
-        var row = dataLog[i];
+    if (sheetLog && sheetLog.getLastRow() > 1) {
+      dataLogAll = dataLogAll.concat(sheetLog.getDataRange().getValues().slice(1));
+    }
+
+    if (dataLogAll.length > 0) {
+      for (var i = dataLogAll.length - 1; i >= 0; i--) {
+        var row = dataLogAll[i];
         var logUser = String(row[3] || "").trim().toLowerCase();
         
         var isMatch = false;
