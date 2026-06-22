@@ -86,3 +86,32 @@ function getTemplateNaskahDinasFiles() {
     return JSON.stringify({ status: 'error', message: e.message });
   }
 }
+
+/**
+ * Mengambil file Peraturan Perundang-Undangan untuk tata naskah dinas dari Google Drive.
+ */
+function getPeraturanTNDFiles() {
+  try {
+    var folderId = '1bLYKIIUIjpxHbKYJXhuxjBacXEMDwqbA';
+    var folder = DriveApp.getFolderById(folderId);
+    var files = folder.getFiles();
+    var fileList = [];
+    
+    while (files.hasNext()) {
+      var file = files.next();
+      fileList.push({
+        id: file.getId(),
+        name: file.getName(),
+        url: file.getUrl()
+      });
+    }
+    
+    fileList.sort(function(a, b) {
+      return a.name.localeCompare(b.name);
+    });
+    
+    return JSON.stringify({ status: 'success', data: fileList });
+  } catch (e) {
+    return JSON.stringify({ status: 'error', message: e.message });
+  }
+}
