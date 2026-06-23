@@ -198,6 +198,30 @@ function hapusPengajuanCuti(rowBaris, kodeInput, userDelete) {
   } catch (e) { return (e.message.includes("lock")) ? "Sistem sibuk." : "Error: " + e.message; } finally { lock.releaseLock(); }
 }
 
+function ajukanBatalCuti(rowBaris, alasan, userName) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
+    var row = parseInt(rowBaris);
+    var oldKet = String(sheet.getRange(row, 12).getValue());
+    var sysDateStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MM-yyyy HH:mm:ss");
+    
+    var newKet = "[Usulan Batal oleh " + (userName || "User") + " pada " + sysDateStr + "] Alasan: " + alasan;
+    if (oldKet && oldKet.length > 2 && oldKet !== "null" && oldKet !== "undefined") {
+       newKet = oldKet + "\n" + newKet;
+    }
+
+    sheet.getRange(row, 11).setValue("Usul Batal");
+    sheet.getRange(row, 12).setValue("'" + newKet);
+    sheet.getRange(row, 18).setValue("'" + sysDateStr);
+    sheet.getRange(row, 19).setValue(userName || "User");
+
+    SpreadsheetApp.flush();
+    return "Sukses";
+  } catch (e) { return (e.message.includes("lock")) ? "Sistem sibuk." : "Error: " + e.message; } finally { lock.releaseLock(); }
+}
+
 function verifikasiPengajuan(rowBaris, status, catatan, adminName) {
   var lock = LockService.getScriptLock();
   try {

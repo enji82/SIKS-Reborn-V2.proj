@@ -398,6 +398,7 @@
         $(document).off('click', '.cuti-btn-verif').on('click', '.cuti-btn-verif', function () { cuti_bukaModalVerif($(this).attr('data-id')); });
         $(document).off('click', '.cuti-btn-preview').on('click', '.cuti-btn-preview', function () { cuti_previewDokumenByRow($(this).attr('data-id')); });
         $(document).off('click', '.cuti-btn-catatan').on('click', '.cuti-btn-catatan', function () { cuti_lihatCatatanSultan($(this).attr('data-pesan')); });
+        $(document).off('click', '.cuti-btn-ajukan-batal').on('click', '.cuti-btn-ajukan-batal', function () { cuti_ajukanBatal($(this).attr('data-id')); });
 
         google.script.run.withSuccessHandler(function (json) {
             try {
@@ -630,8 +631,14 @@
 
             var btnVerif = CUTI_IS_ADMIN ? `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-verif cuti-btn-verif" data-id="${safeId}" title="Verifikasi"><i class="fas fa-clipboard-check"></i></button>` : '';
             var btnDetail = `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning cuti-btn-edit" data-id="${safeId}" title="Edit/Detail" ${attrDis}><i class="fas fa-pencil-alt"></i></button>`;
+            
+            var btnBatal = '';
+            if (stButton === 'disetujui' || stButton.includes('setuju')) {
+                btnBatal = `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-danger cuti-btn-ajukan-batal" data-id="${safeId}" title="Ajukan Pembatalan Cuti"><i class="fas fa-times"></i></button>`;
+            }
+
             var btnHapus = `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon cuti-btn-hapus" data-id="${safeId}" data-nama="${cuti_escapeHtml(row.nama)}" title="Hapus" ${attrDis}><i class="fas fa-trash-alt"></i></button>`;
-            var groupAksi = `<div class="d-flex flex-nowrap justify-content-center" style="gap:5px;">${btnVerif}${btnDetail}${btnHapus}</div>`;
+            var groupAksi = `<div class="d-flex flex-nowrap justify-content-center" style="gap:5px;">${btnVerif}${btnBatal}${btnDetail}${btnHapus}</div>`;
 
             var txtUnitHtml = CUTI_IS_ADMIN ? `<div class="data-tersier mt-1 text-left">${cuti_escapeHtml(row.unit) || '-'}</div>` : '';
             var uiNama = `<div style="text-align:left !important;"><div class="sultan-table-primary text-uppercase text-left">${cuti_escapeHtml(row.nama)}</div><div class="sultan-table-secondary text-left">${cuti_escapeHtml(row.nip)}</div>${txtUnitHtml}</div>`;
@@ -865,10 +872,70 @@
         });
     }
 
+    function cuti_ajukanBatal(rowIdx) {
+        var data = CUTI_ROW_DATA[rowIdx];
+        if (!data) return;
+
+        Swal.fire({
+            title: 'Ajukan Pembatalan Cuti?',
+            text: "Cuti ini sudah disetujui. Silakan masukkan alasan yang jelas mengapa cuti ini perlu dibatalkan:",
+            input: 'textarea',
+            inputPlaceholder: 'Ketik alasan pembatalan...',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Ya, Ajukan Batal!',
+            cancelButtonText: 'Kembali'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                if (!result.value || result.value.trim().length < 5) {
+                    Sultan.alert('warning', 'Perhatian', 'Alasan pembatalan terlalu pendek. Harap jelaskan dengan lebih rinci.');
+                    return;
+                }
+                Sultan.notif.loading("Mengajukan pembatalan...");
+                google.script.run.withSuccessHandler(function (res) {
+                    Sultan.notif.tutup();
+                    if (res === 'Sukses') {
+                        Sultan.notif.crud.sukses("Usulan Batal berhasil dikirim.");
+                        for (var i = 0; i < CUTI_DATA_MASTER.length; i++) {
+                            if (String(CUTI_DATA_MASTER[i].rowBaris) === String(rowIdx)) {
+                                CUTI_DATA_MASTER[i].status = "Usul Batal";
+                                CUTI_DATA_MASTER[i].ket = result.value.trim();
+                                break;
+                            }
+                        }
+                        cuti_jalankanFilterLokal();
+                    } else {
+                        Sultan.notif.crud.gagal(res);
+                    }
+                }).withFailureHandler(function (err) {
+                    Sultan.notif.tutup();
+                    Sultan.notif.crud.gagal(err.toString());
+                }).ajukanBatalCuti(rowIdx, result.value.trim(), CUTI_USER_AKTIF);
+            }
+        });
+    }
+
     function cuti_bukaModalVerif(rowIdx) {
         try {
             var data = CUTI_ROW_DATA[rowIdx]; if (!data) return;
             $('#cuti_verifRowId').val(rowIdx); $('#cuti_verifStatus').val(""); $('#cuti_verifCatatan').val(data.ket || "");
+            
+            var isBatalMode = (String(data.status).toLowerCase().trim() === "usul batal");
+            var selStatus = $('#cuti_verifStatus');
+            selStatus.empty();
+            if (isBatalMode) {
+                selStatus.append('<option value="">-- Pilih Keputusan Pembatalan --</option>');
+                selStatus.append('<option value="Dibatalkan">Dibatalkan (Setuju Batal)</option>');
+                selStatus.append('<option value="Disetujui">Disetujui (Tolak Batal)</option>');
+            } else {
+                selStatus.append('<option value="">-- Pilih Keputusan --</option>');
+                selStatus.append('<option value="Disetujui">Disetujui</option>');
+                selStatus.append('<option value="Revisi">Revisi</option>');
+                selStatus.append('<option value="Ditolak">Ditolak</option>');
+            }
+
             $('#cuti_reqCatatanVerif').hide();
             $('#cuti_verifNama').text(data.nama || '-');
             $('#cuti_verifNip').text(data.nip || '-');
@@ -1098,7 +1165,11 @@
         var icon = 'clock';
         var labelStatus = status || 'Diproses';
 
-        if (s.includes('ok') || s.includes('setuju') || s.includes('acc')) {
+        if (s === "usul batal") {
+            style = 'sultan-badge-warning" style="background:#fd7e14; color:#fff;'; icon = 'hand-paper';
+        } else if (s.includes('batal')) {
+            style = 'sultan-badge-danger" style="background:#c92a2a;'; icon = 'ban';
+        } else if (s.includes('ok') || s.includes('setuju') || s.includes('acc')) {
             style = 'sultan-badge-success'; icon = 'check-circle';
         } else if (s.includes('revisi')) {
             style = 'sultan-badge-info'; icon = 'sync-alt';
