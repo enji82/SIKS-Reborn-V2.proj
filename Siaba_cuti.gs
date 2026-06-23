@@ -263,9 +263,8 @@ function cekBentrokCuti(nipBaru, tglMulaiBaruStr, tglSelesaiBaruStr, rowIdPengec
     if (rowIdPengecualian && (i + 1) == rowIdPengecualian) continue;
     var st = String(data[i][10]).toLowerCase().trim();
 
-    // Hanya cek bentrok untuk pengajuan yang masih aktif ("Diproses")
-    // Skip jika sudah: disetujui, ditolak, dibatalkan, selesai, dll.
-    if (st !== "diproses" && st !== "") continue;
+    // Cek bentrok untuk SEMUA pengajuan KECUALI yang sudah Ditolak atau Dibatalkan
+    if (st.includes("tolak") || st.includes("batal")) continue;
 
     var nipRow = String(data[i][2]).replace(/'/g,"").trim();
     if (nipRow !== String(nipBaru).trim()) continue;
