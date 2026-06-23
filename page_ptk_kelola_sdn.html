@@ -805,6 +805,7 @@
             { id: 'ptksdn_filterUnit', placeholder: '- Memvalidasi Akses... -', disabled: true },
             { id: 'ptksdn_filterStatus', value: 'SEMUA', text: '- Semua Status -' },
             { id: 'ptksdn_filterJabatan', value: 'SEMUA', text: '- Semua Jabatan -' },
+            { id: 'ptksdn_filterPangkatGol', value: 'SEMUA', text: '- Semua Pangkat/Gol -' },
             { id: 'ptksdn_filterTugas', value: 'SEMUA', text: '- Semua Tugas -' }
         ];
         var extraButtons = `
@@ -872,8 +873,8 @@
             ptksdn_ajukanMutasi();
         });
 
-        $(document).off('change', '#ptksdn_filterUnit, #ptksdn_filterStatus, #ptksdn_filterJabatan, #ptksdn_filterTugas')
-            .on('change', '#ptksdn_filterUnit, #ptksdn_filterStatus, #ptksdn_filterJabatan, #ptksdn_filterTugas', ptksdn_terapkanFilterLokal);
+        $(document).off('change', '#ptksdn_filterUnit, #ptksdn_filterStatus, #ptksdn_filterJabatan, #ptksdn_filterPangkatGol, #ptksdn_filterTugas')
+            .on('change', '#ptksdn_filterUnit, #ptksdn_filterStatus, #ptksdn_filterJabatan, #ptksdn_filterPangkatGol, #ptksdn_filterTugas', ptksdn_terapkanFilterLokal);
 
         $(document).off('change', '#ptksdn_selStatusPeg').on('change', '#ptksdn_selStatusPeg', function () {
             ptksdn_togglePangkatFields();
@@ -1007,6 +1008,7 @@
         var uniqueUnits = new Set();
         var uniqueStatus = new Set();
         var uniqueJabatan = new Set();
+        var uniquePangkat = new Set();
         var uniqueTugas = new Set();
         PTKSDN_MAP_UNIT_NPSN = {};
 
@@ -1014,12 +1016,14 @@
             var u = String(row.unit || "").trim();
             var s = String(row.status_peg || "").trim();
             var j = String(row.jabatan || "").trim();
+            var p = String(row.pangkat || "").trim();
             var t = String(row.tugas || "").trim();
             var n = String(row.npsn || "").trim();
 
             if (u) { uniqueUnits.add(u); if (n) PTKSDN_MAP_UNIT_NPSN[u] = n; }
             if (s) uniqueStatus.add(s);
             if (j) uniqueJabatan.add(j);
+            if (p) uniquePangkat.add(p);
             if (t) uniqueTugas.add(t);
         });
 
@@ -1040,6 +1044,11 @@
         Array.from(uniqueJabatan).sort().forEach(function (j) { $selJabatan.append($('<option>', { value: j, text: j })); });
         if (curJab && uniqueJabatan.has(curJab)) $selJabatan.val(curJab);
 
+        var curPangkat = $('#ptksdn_filterPangkatGol').val();
+        var $selPangkat = $('#ptksdn_filterPangkatGol').empty().append('<option value="SEMUA">- Semua Pangkat/Gol -</option>');
+        Array.from(uniquePangkat).sort().forEach(function (p) { $selPangkat.append($('<option>', { value: p, text: p })); });
+        if (curPangkat && uniquePangkat.has(curPangkat)) $selPangkat.val(curPangkat);
+
         var curTug = $('#ptksdn_filterTugas').val();
         var $selTugas = $('#ptksdn_filterTugas').empty().append('<option value="SEMUA">- Semua Tugas -</option>');
         Array.from(uniqueTugas).sort().forEach(function (t) { $selTugas.append($('<option>', { value: t, text: t })); });
@@ -1049,18 +1058,21 @@
     function ptksdn_terapkanFilterLokal() {
         var fStatus = $('#ptksdn_filterStatus').val() || "SEMUA";
         var fJabatan = $('#ptksdn_filterJabatan').val() || "SEMUA";
+        var fPangkat = $('#ptksdn_filterPangkatGol').val() || "SEMUA";
         var fTugas = $('#ptksdn_filterTugas').val() || "SEMUA";
         var tAdminUnit = PTKSDN_IS_ADMIN ? ($('#ptksdn_filterUnit').val() || "SEMUA").toUpperCase() : "";
         var tUnitUser = String(PTKSDN_UNIT_TERKUNCI).trim().toUpperCase();
 
         var clStatus = ptksdn_cleanString(fStatus);
         var clJabatan = ptksdn_cleanString(fJabatan);
+        var clPangkat = ptksdn_cleanString(fPangkat);
         var clTugas = ptksdn_cleanString(fTugas);
 
         var hasil = PTKSDN_CACHE_DATA.filter(function (row) {
             var rUnit = ptksdn_cleanString(row.unit);
             var rStatus = ptksdn_cleanString(row.status_peg);
             var rJabatan = ptksdn_cleanString(row.jabatan);
+            var rPangkat = ptksdn_cleanString(row.pangkat);
             var rTugas = ptksdn_cleanString(row.tugas);
 
             var passUnit = false;
@@ -1069,10 +1081,11 @@
 
             var passStatus = (clStatus === "SEMUA") || (rStatus === clStatus);
             var passJabatan = (clJabatan === "SEMUA") || (rJabatan === clJabatan);
+            var passPangkat = (clPangkat === "SEMUA") || (rPangkat === clPangkat);
             var passTugas = (clTugas === "SEMUA") || (rTugas === clTugas);
             var passPending = !row.is_pending_baru;
 
-            return passUnit && passStatus && passJabatan && passTugas && passPending;
+            return passUnit && passStatus && passJabatan && passPangkat && passTugas && passPending;
         });
 
         ptksdn_renderTabel(hasil);
@@ -1321,18 +1334,21 @@
         // 1. Ambil data terfilter (logika sama persis dengan ptksdn_terapkanFilterLokal)
         var fStatus = $('#ptksdn_filterStatus').val() || "SEMUA";
         var fJabatan = $('#ptksdn_filterJabatan').val() || "SEMUA";
+        var fPangkat = $('#ptksdn_filterPangkatGol').val() || "SEMUA";
         var fTugas = $('#ptksdn_filterTugas').val() || "SEMUA";
         var tAdminUnit = PTKSDN_IS_ADMIN ? ($('#ptksdn_filterUnit').val() || "SEMUA").toUpperCase() : "";
         var tUnitUser = String(PTKSDN_UNIT_TERKUNCI).trim().toUpperCase();
 
         var clStatus = ptksdn_cleanString(fStatus);
         var clJabatan = ptksdn_cleanString(fJabatan);
+        var clPangkat = ptksdn_cleanString(fPangkat);
         var clTugas = ptksdn_cleanString(fTugas);
 
         var dataFiltered = PTKSDN_CACHE_DATA.filter(function (row) {
             var rUnit = ptksdn_cleanString(row.unit);
             var rStatus = ptksdn_cleanString(row.status_peg);
             var rJabatan = ptksdn_cleanString(row.jabatan);
+            var rPangkat = ptksdn_cleanString(row.pangkat);
             var rTugas = ptksdn_cleanString(row.tugas);
 
             var passUnit = false;
@@ -1341,10 +1357,11 @@
 
             var passStatus = (clStatus === "SEMUA") || (rStatus === clStatus);
             var passJabatan = (clJabatan === "SEMUA") || (rJabatan === clJabatan);
+            var passPangkat = (clPangkat === "SEMUA") || (rPangkat === clPangkat);
             var passTugas = (clTugas === "SEMUA") || (rTugas === clTugas);
             var passPending = !row.is_pending_baru;
 
-            return passUnit && passStatus && passJabatan && passTugas && passPending;
+            return passUnit && passStatus && passJabatan && passPangkat && passTugas && passPending;
         });
 
         if (dataFiltered.length === 0) {
