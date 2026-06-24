@@ -145,6 +145,7 @@ function tpg_savePerbaikan(formData) {
       "", "" // edit
     ]);
     
+    SpreadsheetApp.flush();
     return { status: 'success', message: 'Data berhasil disimpan.' };
   } catch (e) {
     return { status: 'error', message: e.message };
@@ -196,6 +197,7 @@ function tpg_updatePerbaikan(formData) {
     sheet.getRange(rowIndex, 17).setValue(currentUser); // edit oleh
     sheet.getRange(rowIndex, 18).setValue(now); // waktu edit
     
+    SpreadsheetApp.flush();
     return { status: 'success', message: 'Data berhasil diperbarui.' };
   } catch (e) {
     return { status: 'error', message: e.message };
@@ -218,6 +220,7 @@ function tpg_deletePerbaikan(id) {
     
     if (rowIndex !== -1) {
       sheet.deleteRow(rowIndex);
+      SpreadsheetApp.flush();
       return { status: 'success', message: 'Data berhasil dihapus.' };
     } else {
       return { status: 'error', message: 'Data tidak ditemukan.' };
@@ -251,6 +254,7 @@ function tpg_verifikasiPerbaikan(id, status, notes, userLogin) {
     sheet.getRange(rowIndex, 13).setValue(now);
     sheet.getRange(rowIndex, 14).setValue(notes);
     
+    SpreadsheetApp.flush();
     return { status: 'success', message: 'Status verifikasi berhasil disimpan.' };
   } catch (e) {
     return { status: 'error', message: e.message };
