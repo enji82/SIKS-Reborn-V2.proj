@@ -210,22 +210,8 @@
         </div>
     </form>
 </div>
-
-<div class="modal fade" id="tpg_pg_modalForm" data-backdrop="static" data-keyboard="false">
-    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-sultan">
-        <div class="modal-content modal-content-sultan">
-            <div class="modal-header modal-header-sultan">
-                <h5 class="modal-title sultan-modal-title" id="tpg_pg_modalTitle"><i class="fas fa-edit mr-2"></i> FORM PENGAJUAN PERUBAHAN GAJI TPG</h5>
-                <button type="button" class="close sultan-modal-close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body-wrapper d-flex flex-column" id="tpg_pg_formContainer">
-                <!-- Template form masuk di sini -->
-            </div>
-        </div>
-    </div>
-</div><div id="tpg_pg_templates" style="display: none;">
+</div>
+<div id="tpg_pg_templates" style="display: none;">
     <form id="tpg_pg_formVerif" class="d-flex flex-column flex-grow-1 overflow-hidden m-0 p-0">
         <div class="px-4 pb-4 flex-grow-1 overflow-auto" style="padding-top: 15px !important;">
             <input type="hidden" id="tpg_pg_verifIdData">
@@ -609,23 +595,32 @@
             "dom": "<'row mb-3'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6 text-right'f>>" +
                 "<'row'<'col-sm-12'tr>>" +
                 "<'row mt-3'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>"
-        });
+});
 
         tpgPg_applyFilter();
     }
 
     function tpgPg_showModal(mode, id = null) {
-        $('#tpg_pg_formUtama').appendTo('#tpg_pg_formContainer');
+        $('#tpg_pg_formUtama')[0].reset();
+        $('#tpg_pg_inputIdData').val('');
+        $('#tpg_pg_dokumenLamaContainer').hide();
+        $('#tpg_pg_uploadContainer').show();
+        $('#tpg_pg_inputDokumen').next('.custom-file-label').html('Pilih File PDF...');
+        
+        let title = mode === 'edit' ? 'EDIT PENGAJUAN PERUBAHAN GAJI TPG' : 'FORM PENGAJUAN PERUBAHAN GAJI TPG';
+        let icon = mode === 'edit' ? 'fas fa-edit' : 'fas fa-file-signature';
 
-        $('#tpg_pg_modalForm').off('hidden.bs.modal.tpg_pg').on('hidden.bs.modal.tpg_pg', function () {
+        $('#global_modalFormSize').removeClass('modal-xl modal-md').addClass('modal-lg');
+        $('#global_modalFormHeader').removeClass('modal-header-sultan-primary modal-header-sultan-warning modal-header-sultan-danger modal-header-sultan-success modal-header-sultan-info modal-header-sultan-dark modal-header-edit modal-header-tambah-edit modal-header-hapus').addClass(mode === 'edit' ? 'modal-header-edit' : 'modal-header-tambah-edit');
+        $('#global_modalFormTitle').html('<i class="' + icon + ' mr-2"></i> ' + title);
+
+        $('#global_modalFormBody, #global_modalFormFooter').hide();
+        $('#tpg_pg_formUtama').appendTo('#global_modalFormSize .modal-content');
+
+        $('#global_modalForm').off('hidden.bs.modal.tpg').on('hidden.bs.modal.tpg', function () {
             $('#tpg_pg_formUtama').appendTo('#tpg_pg_templates');
-            $('#tpg_pg_formUtama')[0].reset();
-            $('#tpg_pg_inputUnit').off('change');
-            $('#tpg_pg_inputNama').off('change');
-            $('#tpg_pg_inputDokumen').off('change');
-            $('#tpg_pg_checkUbahDokumen').off('change');
-            $('#tpg_pg_btnLihatDokumenLama').off('click');
             $('#tpg_pg_formUtama').off('submit');
+            $('#global_modalFormBody, #global_modalFormFooter').show();
         });
 
         let activeUnit = '';
@@ -749,15 +744,10 @@
             tpgPg_submitForm(mode);
         });
 
-        const modalHeader = $('#tpg_pg_modalForm .modal-header');
-        modalHeader.removeClass('modal-header-sultan-primary modal-header-sultan-warning modal-header-sultan-danger modal-header-sultan-success modal-header-sultan-info modal-header-sultan-dark modal-header-edit modal-header-tambah-edit modal-header-hapus');
-
         const btnSimpan = $('#tpg_pg_btnSimpan');
 
         if (mode === 'edit') {
-            modalHeader.addClass('modal-header-edit');
             btnSimpan.removeClass('modal-btn-simpan').addClass('modal-btn-perbarui').html('<i class="fas fa-save mr-2"></i>PERBARUI DATA');
-            $('#tpg_pg_modalTitle').html('<i class="fas fa-edit mr-2"></i> EDIT PENGAJUAN PERUBAHAN GAJI TPG');
             
             if (rowData) {
                 $('#tpg_pg_inputIdData').val(rowData.id);
@@ -780,15 +770,13 @@
                 }
             }
         } else {
-            modalHeader.addClass('modal-header-tambah-edit');
             btnSimpan.removeClass('modal-btn-perbarui').addClass('modal-btn-simpan').html('<i class="fas fa-save mr-2"></i>SIMPAN DATA');
-            $('#tpg_pg_modalTitle').html('<i class="fas fa-plus mr-2"></i> FORM PENGAJUAN PERUBAHAN GAJI TPG');
             $('#tpg_pg_dokumenLamaContainer').hide();
             $('#tpg_pg_uploadContainer').show();
             $('#tpg_pg_inputDokumen').prop('required', true);
         }
 
-        $('#tpg_pg_modalForm').modal('show');
+        $('#global_modalForm').modal('show');
     }
 
     function tpgPg_populateNamaDropdown(unitKerja, selectNamaAsn = null) {
@@ -867,7 +855,7 @@
             .withSuccessHandler(function (response) {
                 btnSubmit.html(defaultText).prop('disabled', false);
                 if (response.status === 'success') {
-                    $('#tpg_pg_modalForm').modal('hide');
+                    $('#global_modalForm').modal('hide');
                     Sultan.notif.crud.simpan(mode === 'edit');
                     
                     if (mode === 'tambah') {
