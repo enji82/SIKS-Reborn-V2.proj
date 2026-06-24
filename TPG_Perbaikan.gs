@@ -111,8 +111,7 @@ function tpg_getPerbaikanData() {
 // 4. Create
 function tpg_savePerbaikan(formData) {
   try {
-    var sessionUser = getSessionUser();
-    var currentUser = sessionUser ? sessionUser.nama : "Unknown";
+    var currentUser = formData.userLogin || "Unknown";
     
     var sheet = tpgPg_ensureSheet();
     var newId = "TPG-PG-" + new Date().getTime();
@@ -155,8 +154,7 @@ function tpg_savePerbaikan(formData) {
 // 5. Update
 function tpg_updatePerbaikan(formData) {
   try {
-    var sessionUser = getSessionUser();
-    var currentUser = sessionUser ? sessionUser.nama : "Unknown";
+    var currentUser = formData.userLogin || "Unknown";
     var now = new Date();
     
     var sheet = tpgPg_ensureSheet();
@@ -230,10 +228,9 @@ function tpg_deletePerbaikan(id) {
 }
 
 // 7. Verify
-function tpg_verifikasiPerbaikan(id, status, notes) {
+function tpg_verifikasiPerbaikan(id, status, notes, userLogin) {
   try {
-    var sessionUser = getSessionUser();
-    var verifikator = sessionUser ? sessionUser.nama : "Unknown";
+    var verifikator = userLogin || "Unknown";
     var now = new Date();
     
     var sheet = tpgPg_ensureSheet();
