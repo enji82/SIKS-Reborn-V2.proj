@@ -37,6 +37,7 @@ const SPREADSHEET_IDS = {
   SIABA_PAK_DB: "1mAXwf7cHaOqIj2uf51Fup5tyyBzijTeIxVS8uO1E4dM",
   SIABA_LOOKUP_DB: "1wiDKez4rL5UYnpP2-OZjYowvmt1nRx-fIMy9trJlhBA",
   TATA_NASKAH_DINAS_DB: "1yvRXr-tyWv42nJfJLedELp-_R_WEo5gDxwCRIQTUVtk",
+  TPG_PERBAIKAN_DB: "1ABwt8Uy5ghb8y5FaZREQFVgWEjqpUK5Nz4UqAuJCVW8",
 };
 
 // 2. FOLDER CONFIG (Digunakan oleh semua file .gs lainnya)
@@ -56,6 +57,7 @@ const FOLDER_CONFIG = {
   SIABA_PAK_DOCS: "1cvn-pOufs-OIbFQfqhmxc3fcmFuox4Sc",
   SIABA_ARSIP_ROOT: "1D0rwRT_tIj9QZTPPG3cRk4NRcbhMzDHm",
   EFILE_DOCS: "1BUHkoCanHu24ApTnfwhbBCgOEFxBAmAo", // Folder E-File Documents
+  TPG_PERBAIKAN_DOCS: "1BEcqcHJ9Vp3u3OfbFsxSebFzgO6BZKh1",
 };
 
 // ==========================================
