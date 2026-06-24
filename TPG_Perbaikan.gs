@@ -68,7 +68,7 @@ function tpg_getGuruOptions(unitKerja) {
 }
 
 // 3. Read Data
-function tpg_getPerbaikanData() {
+function tpg_getPerbaikanData(unitKerja, isAdmin) {
   try {
     var sheet = tpgPg_ensureSheet();
     var lastRow = sheet.getLastRow();
@@ -79,9 +79,16 @@ function tpg_getPerbaikanData() {
     var tz = Session.getScriptTimeZone();
     
     for (var i = 0; i < data.length; i++) {
+      var rowUnit = data[i][1];
+      
+      // Jika bukan admin, hanya ambil data milik unit kerjanya saja
+      if (!isAdmin && rowUnit !== unitKerja) {
+        continue;
+      }
+      
       result.push({
         id: data[i][0],
-        unitKerja: data[i][1],
+        unitKerja: rowUnit,
         namaAsn: data[i][2],
         nip: data[i][3],
         statusPegawai: data[i][4],
