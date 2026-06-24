@@ -519,7 +519,7 @@
         if (isAdmin) {
              $('#tpg_pg_filterUnit option').each(function() {
                  if($(this).val() !== '') {
-                     unitSelect.append('<option value="'+$(this).val()+'">'+$(this).text()+'</option>');
+                     unitSelect.append('<option value="'+$(this).text()+'">'+$(this).text()+'</option>');
                  }
              });
              unitSelect.prop('disabled', false);
@@ -530,8 +530,10 @@
              unitSelect.prop('disabled', true);
         }
 
-        // Initialize Nama select
-        tpgPg_populateNamaDropdown(unitSelect.val());
+        // We don't populate here if it's edit mode because we'll populate inside the edit block below
+        if (mode !== 'edit') {
+            tpgPg_populateNamaDropdown(unitSelect.val());
+        }
 
         unitSelect.on('change', function() {
             tpgPg_populateNamaDropdown($(this).val());
@@ -614,13 +616,8 @@
                 $('#tpg_pg_inputTMT').val(rowData.tmt);
                 $('#tpg_pg_inputGajiPokok').val(rowData.gajiPokok);
                 
-                // wait for nama to populate then select
-                setTimeout(() => {
-                    const guru = tpgPgGuruList.find(g => g.nama === rowData.namaAsn);
-                    if(guru) {
-                        $('#tpg_pg_inputNama').val(guru.nip).trigger('change');
-                    }
-                }, 1000);
+                // Populate Nama dropdown and select the current user
+                tpgPg_populateNamaDropdown(activeUnit, rowData.namaAsn);
 
                 if(rowData.dokumenUrl) {
                     $('#tpg_pg_dokumenLamaContainer').show();
@@ -645,7 +642,7 @@
         $('#tpg_pg_modalForm').modal('show');
     }
 
-    function tpgPg_populateNamaDropdown(unitKerja) {
+    function tpgPg_populateNamaDropdown(unitKerja, selectNamaAsn = null) {
         const selectNama = $('#tpg_pg_inputNama');
         selectNama.html('<option value="">- Memuat Data... -</option>').prop('disabled', true);
         
@@ -659,6 +656,13 @@
                         selectNama.append('<option value="'+g.nip+'">'+g.nama+'</option>');
                     });
                     selectNama.prop('disabled', false);
+
+                    if (selectNamaAsn) {
+                        const guru = tpgPgGuruList.find(g => g.nama === selectNamaAsn);
+                        if (guru) {
+                            selectNama.val(guru.nip).trigger('change');
+                        }
+                    }
                 } else {
                     selectNama.html('<option value="">- Gagal memuat -</option>');
                 }
