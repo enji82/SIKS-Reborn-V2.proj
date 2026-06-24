@@ -891,3 +891,68 @@ function migrateBelajarIdFilesToMain() {
     return "Error: " + error.message;
   }
 }
+
+/* ======================================================================
+   SCRIPT AUTO-MATCH FILE (UNDUH-UNGGAH MASSAL)
+   ====================================================================== */
+function autoMatchUploadedFiles() {
+  try {
+    var sheet = getSheet("SK_DATA_DB", "Unggah_SK");
+    var targetFolderId = FOLDER_CONFIG.MAIN_SK; // Folder utama SK
+    var targetFolder = DriveApp.getFolderById(targetFolderId);
+    var data = sheet.getDataRange().getValues();
+    
+    var KOLOM_LINK = 7; // H (indeks 7)
+    var KOLOM_NAMA_FILE = 19; // T (indeks 19)
+    
+    // 1. Dapatkan semua file di folder target dan simpan dalam memory (Dictionary/Object)
+    // agar pencarian sangat cepat
+    var fileIterator = targetFolder.getFiles();
+    var mapFiles = {};
+    while (fileIterator.hasNext()) {
+      var file = fileIterator.next();
+      var nama = file.getName();
+      // Simpan file teratas (jika ada nama ganda, akan ditimpa)
+      mapFiles[nama] = file;
+    }
+    
+    // 2. Looping baris di spreadsheet
+    var counterBerhasil = 0;
+    for (var i = 1; i <= 258; i++) {
+      if (!data[i]) continue;
+      
+      var namaDiSheet = String(data[i][KOLOM_NAMA_FILE] || "").trim();
+      
+      // Jika kolom T berisi nama file yang valid (bukan pesan error dan bukan kosong)
+      if (namaDiSheet !== "" && namaDiSheet.indexOf("Gagal:") === -1) {
+        
+        // Cek apakah file dengan nama tersebut ada di folder SIKS-Reborn
+        var matchedFile = mapFiles[namaDiSheet];
+        if (matchedFile) {
+          // Set agar publik supaya bisa dibuka di tabel (berjaga-jaga)
+          matchedFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+          
+          var urlBaru = matchedFile.getUrl();
+          
+          // Timpa link lama dengan link baru di Kolom H
+          sheet.getRange(i + 1, KOLOM_LINK + 1).setValue(urlBaru);
+          
+          // Beri tanda bahwa sudah berhasil di kolom U
+          sheet.getRange(i + 1, KOLOM_NAMA_FILE + 2).setValue("Berhasil Dicocokkan");
+          
+          counterBerhasil++;
+        } else {
+          sheet.getRange(i + 1, KOLOM_NAMA_FILE + 2).setValue("Gagal: File tidak diupload");
+        }
+      }
+    }
+    
+    SpreadsheetApp.flush();
+    Logger.log("Proses selesai! " + counterBerhasil + " file berhasil dicocokkan dan diperbarui.");
+    return "Selesai";
+    
+  } catch (error) {
+    Logger.log("Error utama: " + error.message);
+    return "Error: " + error.message;
+  }
+}
