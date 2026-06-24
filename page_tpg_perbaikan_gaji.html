@@ -510,21 +510,52 @@
             $('#tpg_pg_formUtama').off('submit');
         });
 
-        const activeUnit = $('#tpg_pg_filterUnit').val();
+        let activeUnit = '';
+        let rowData = null;
+
+        if (mode === 'edit') {
+            rowData = globalTpgPgData.find(item => item.id == id);
+            if (rowData) {
+                activeUnit = rowData.unitKerja;
+            }
+        } else {
+            // For 'tambah', if admin, default to empty or keep what was in filter
+            // if not admin, default to their unit
+            const filterUnit = $('#tpg_pg_filterUnit').val();
+            const isAdmin = $('#tpg_pg_filterUnit').prop('disabled') === false;
+            
+            if (isAdmin) {
+                // Find proper case for filter unit if selected
+                if (filterUnit) {
+                    $('#tpg_pg_filterUnit option').each(function() {
+                        if ($(this).val() === filterUnit) {
+                            activeUnit = $(this).text();
+                        }
+                    });
+                }
+            } else {
+                activeUnit = $('#tpg_pg_filterUnit option:selected').text();
+            }
+        }
+
         const isAdmin = $('#tpg_pg_filterUnit').prop('disabled') === false;
 
         let unitSelect = $('#tpg_pg_inputUnit');
         unitSelect.empty();
         
         if (isAdmin) {
+             unitSelect.append('<option value="">- Memilih... -</option>');
              $('#tpg_pg_filterUnit option').each(function() {
                  if($(this).val() !== '') {
                      unitSelect.append('<option value="'+$(this).text()+'">'+$(this).text()+'</option>');
                  }
              });
              unitSelect.prop('disabled', false);
-             unitSelect.val(activeUnit);
+             if (activeUnit) unitSelect.val(activeUnit);
         } else {
+             if (!activeUnit) {
+                  activeUnit = getSesiUser() ? String(getSesiUser().unit || "").trim() : "";
+             }
              unitSelect.append('<option value="' + activeUnit + '">' + activeUnit + '</option>');
              unitSelect.val(activeUnit);
              unitSelect.prop('disabled', true);
@@ -609,7 +640,7 @@
             modalHeader.addClass('modal-header-edit');
             btnSimpan.removeClass('modal-btn-simpan').addClass('modal-btn-perbarui').html('<i class="fas fa-save mr-2"></i>PERBARUI DATA');
             $('#tpg_pg_modalTitle').html('<i class="fas fa-edit mr-2"></i> EDIT PENGAJUAN PERUBAHAN GAJI TPG');
-            const rowData = globalTpgPgData.find(item => item.id == id);
+            
             if (rowData) {
                 $('#tpg_pg_inputIdData').val(rowData.id);
                 $('#tpg_pg_inputJenisSK').val(rowData.jenisSK);
