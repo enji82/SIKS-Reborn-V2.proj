@@ -371,20 +371,45 @@
                 })
                 .tpg_getDaftarUnit();
         } else {
-            SultanUI.hideLoading('#tpg_pg_loadingState');
-            let unitSelect = $('#tpg_pg_filterUnit');
-            unitSelect.empty();
-            unitSelect.append('<option value="' + unitKerja + '">' + unitKerja + '</option>');
-            unitSelect.val(unitKerja);
-            unitSelect.prop('disabled', true);
-            $('#tpg_pg_btnTambah').removeAttr('disabled').prop('disabled', false).show();
-            
-            tpgPg_initGuruList(unitKerja);
+            var npsn = user ? (user.npsn || user.username || "") : "";
+            if (!npsn) {
+                SultanUI.hideLoading('#tpg_pg_loadingState');
+                $('#tpg_pg_loadingState').html('<div class="alert alert-danger"><i class="fas fa-ban mr-2"></i>Akses ditolak: Sesi login tidak valid.</div>').show();
+                return;
+            }
 
-            $('#tpg_pg_filterUnit, #tpg_pg_filterPegawai, #tpg_pg_filterJenisSK, #tpg_pg_filterStatus').on('change', function () {
-                tpgPg_applyFilter();
-            });
-            tpgPg_loadData();
+            google.script.run
+                .withSuccessHandler(function (resUnit) {
+                    var dataUnit = JSON.parse(resUnit);
+                    if (dataUnit.error) {
+                        SultanUI.hideLoading('#tpg_pg_loadingState');
+                        $('#tpg_pg_loadingState').html('<div class="alert alert-danger"><i class="fas fa-exclamation-triangle mr-2"></i>' + dataUnit.error + '</div>').show();
+                        return;
+                    }
+                    
+                    var unitKerja = dataUnit.unitKerja;
+                    window.tpgPgUserUnit = unitKerja; // simpan secara global
+
+                    SultanUI.hideLoading('#tpg_pg_loadingState');
+                    let unitSelect = $('#tpg_pg_filterUnit');
+                    unitSelect.empty();
+                    unitSelect.append('<option value="' + unitKerja + '">' + unitKerja + '</option>');
+                    unitSelect.val(unitKerja);
+                    unitSelect.prop('disabled', true);
+                    $('#tpg_pg_btnTambah').removeAttr('disabled').prop('disabled', false).show();
+                    
+                    tpgPg_initGuruList(unitKerja);
+
+                    $('#tpg_pg_filterUnit, #tpg_pg_filterPegawai, #tpg_pg_filterJenisSK, #tpg_pg_filterStatus').on('change', function () {
+                        tpgPg_applyFilter();
+                    });
+                    tpgPg_loadData();
+                })
+                .withFailureHandler(function (error) {
+                    SultanUI.hideLoading('#tpg_pg_loadingState');
+                    $('#tpg_pg_loadingState').html('<div class="alert alert-danger"><i class="fas fa-wifi mr-2"></i>Koneksi Terputus: ' + error.message + '</div>').show();
+                })
+                .getUnitKerjaByNPSN(npsn, "TPG_PERBAIKAN_DB");
         }
 
         $('#tpg_pg_btnTambah').click(function () {
@@ -444,7 +469,7 @@
         tpgPg_renderLoadingState();
         var user = getSesiUser();
         var isAdmin = checkUserRoleIsAdmin();
-        var unitKerja = user ? String(user.unit || "").trim() : "";
+        var unitKerja = isAdmin ? "" : (window.tpgPgUserUnit || $('#tpg_pg_filterUnit').val() || "");
 
         google.script.run
             .withSuccessHandler(function (response) {
