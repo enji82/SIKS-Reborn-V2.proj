@@ -829,3 +829,52 @@ function tandaiSemuaNotifDibaca(role, unit) {
     return false;
   }
 }
+
+/* ======================================================================
+   ONE-TIME MIGRATION SCRIPT (MIGRASI FILE BELAJAR.ID KE AKUN UTAMA)
+   ====================================================================== */
+function migrateBelajarIdFilesToMain() {
+  try {
+    var sheet = getSheet("SK_DATA_DB", "Unggah_SK");
+    var targetFolderId = FOLDER_CONFIG.MAIN_SK; // Folder utama SK
+    var targetFolder = DriveApp.getFolderById(targetFolderId);
+    var data = sheet.getDataRange().getValues();
+    
+    // Kolom link file adalah H (indeks 7) 
+    var KOLOM_LINK = 7; 
+    
+    for (var i = 1; i < data.length; i++) {
+      var link = String(data[i][KOLOM_LINK] || "");
+      
+      // Deteksi jika link adalah URL Google Drive
+      if (link.includes("drive.google.com")) {
+        // Ekstrak ID File dari URL
+        var match = link.match(/[-\w]{25,}/);
+        if (match) {
+          var fileId = match[0];
+          try {
+            var oldFile = DriveApp.getFileById(fileId);
+            
+            // Lakukan duplikasi ke folder target. 
+            // Karena dijalankan oleh akun ini, file baru akan menjadi milik akun ini.
+            var newFile = oldFile.makeCopy(oldFile.getName(), targetFolder);
+            
+            // Set agar bisa di-embed di iframe SPA
+            newFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+            
+            // Tulis link baru ke spreadsheet (i + 1 karena array 0-indexed, baris Google Sheet 1-indexed)
+            sheet.getRange(i + 1, KOLOM_LINK + 1).setValue(newFile.getUrl());
+            Logger.log("Berhasil migrasi baris " + (i + 1) + ": " + newFile.getName());
+            
+          } catch (e) {
+            Logger.log("Gagal migrasi baris " + (i + 1) + " (Mungkin bukan file belajar.id atau akses ditolak): " + e.message);
+          }
+        }
+      }
+    }
+    return "Migrasi Selesai! Silakan cek Logs (Eksekusi) untuk detailnya.";
+  } catch (error) {
+    Logger.log("Error utama: " + error.message);
+    return "Error: " + error.message;
+  }
+}
