@@ -838,37 +838,33 @@
     }
 
     function tpgPg_confirmDelete(id) {
-        Swal.fire({
-            title: 'Hapus Data?',
-            text: "Data yang dihapus tidak dapat dikembalikan!",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Ya, Hapus!',
-            cancelButtonText: 'Batal'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                SultanUI.showLoading('#tpg_pg_loadingState', 'Menghapus Data...');
+        const rowData = globalTpgPgData.find(item => item.id == id);
+        if (!rowData) return;
+
+        Sultan.modal.konfirmasiHapus({
+            title: 'HAPUS DATA PERBAIKAN GAJI',
+            teksUtama: 'Apakah Anda yakin ingin menghapus data usulan ini?',
+            detailData: [
+                { label: 'Nama ASN', value: rowData.namaAsn || '-' },
+                { label: 'Unit Kerja', value: rowData.unitKerja || '-' },
+                { label: 'Jenis SK', value: rowData.jenisSK || '-' },
+                { label: 'TMT', value: rowData.tmt ? formatTanggalIndo(rowData.tmt) : '-' }
+            ],
+            onConfirm: function () {
+                Sultan.notif.loading('Menghapus Data...');
                 google.script.run
                     .withSuccessHandler(function (response) {
-                        SultanUI.hideLoading('#tpg_pg_loadingState');
+                        Sultan.notif.tutupLoading();
                         if (response.status === 'success') {
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Terhapus!',
-                                text: 'Data berhasil dihapus.',
-                                showConfirmButton: false,
-                                timer: 1500
-                            });
+                            Sultan.notif.sukses('Data telah dihapus permanen.');
                             tpgPg_loadData();
                         } else {
-                            Swal.fire('Gagal', response.message, 'error');
+                            Sultan.alert('error', 'Gagal Menghapus', response.message);
                         }
                     })
                     .withFailureHandler(function (error) {
-                        SultanUI.hideLoading('#tpg_pg_loadingState');
-                        Swal.fire('Error', 'Gagal menghapus data: ' + error, 'error');
+                        Sultan.notif.tutupLoading();
+                        Sultan.alert('error', 'Koneksi Terputus', error);
                     })
                     .tpg_deletePerbaikan(id);
             }
