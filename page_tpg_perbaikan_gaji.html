@@ -225,6 +225,66 @@
             </div>
         </div>
     </div>
+</div><div id="tpg_pg_templates" style="display: none;">
+    <form id="tpg_pg_formVerif" class="d-flex flex-column flex-grow-1 overflow-hidden m-0 p-0">
+        <div class="px-4 pb-4 flex-grow-1 overflow-auto" style="padding-top: 15px !important;">
+            <input type="hidden" id="tpg_pg_verifIdData">
+            
+            <h6 class="modal-verifikasi-section-title"><i class="fas fa-list-alt mr-2"></i> DETAIL DATA</h6>
+            
+            <div class="sultan-detail-container mb-4">
+                <div class="sultan-detail-item">
+                    <label class="sultan-detail-label">Nama ASN</label>
+                    <div class="sultan-detail-value text-uppercase" id="tpg_pg_vNama">-</div>
+                </div>
+                <div class="sultan-detail-item">
+                    <label class="sultan-detail-label">NIP</label>
+                    <div class="sultan-detail-value" id="tpg_pg_vNip">-</div>
+                </div>
+                <div class="sultan-detail-item">
+                    <label class="sultan-detail-label">Unit Kerja</label>
+                    <div class="sultan-detail-value text-uppercase" id="tpg_pg_vUnit">-</div>
+                </div>
+                <div class="sultan-detail-item">
+                    <label class="sultan-detail-label">Status Pegawai</label>
+                    <div class="sultan-detail-value" id="tpg_pg_vStatusPeg">-</div>
+                </div>
+                <div class="sultan-detail-item">
+                    <label class="sultan-detail-label">Jenis SK</label>
+                    <div class="sultan-detail-value text-maroon" id="tpg_pg_vJenis">-</div>
+                </div>
+                <div class="sultan-detail-item">
+                    <label class="sultan-detail-label">TMT</label>
+                    <div class="sultan-detail-value text-danger" id="tpg_pg_vTmt">-</div>
+                </div>
+                <div class="sultan-detail-item border-0 mb-0">
+                    <label class="sultan-detail-label">Gaji Pokok</label>
+                    <div class="sultan-detail-value font-weight-bold" id="tpg_pg_vGaji">-</div>
+                </div>
+            </div>
+
+            <h6 class="modal-verifikasi-section-title"><i class="fas fa-check-circle mr-2"></i> VERIFIKASI</h6>
+
+            <div class="form-group mb-3">
+                <label class="modal-verifikasi-form-label">Status Verifikasi <span class="text-danger">*</span></label>
+                <select class="modal-verifikasi-select font-weight-bold" id="tpg_pg_verifStatus" required>
+                    <option value="">-- Pilih Status --</option>
+                    <option value="Disetujui">✅ Disetujui</option>
+                    <option value="Revisi">🔄 Revisi</option>
+                    <option value="Ditolak">❌ Ditolak</option>
+                </select>
+            </div>
+            <div class="form-group mb-0">
+                <label class="modal-verifikasi-form-label">Catatan Admin <span id="tpg_pg_verifWajibCatatan" class="text-danger d-none">*</span></label>
+                <textarea class="modal-verifikasi-textarea" id="tpg_pg_verifCatatan" rows="3" placeholder="Wajib diisi jika Ditolak/Revisi..."></textarea>
+            </div>
+        </div>
+        <div class="modal-verifikasi-footer" id="tpg_pg_verifFooter">
+            <button type="button" class="modal-btn-batal" data-dismiss="modal"><i class="fas fa-times mr-2"></i>BATAL</button>
+            <button type="submit" id="tpg_pg_btnVerifEksekusi" class="modal-verifikasi-btn-verifikasi" form="tpg_pg_formVerif">
+                <i class="fas fa-check mr-2"></i>VERIFIKASI</button>
+        </div>
+    </form>
 </div>
 
 <script>
@@ -334,6 +394,12 @@
         $('#tpg_pg_btnRefresh').click(function () {
             tpgPg_loadData();
         });
+
+        // Submit Form Tambah/Edit
+        $('#tpg_pg_modalForm').on('submit', '#tpg_pg_formTambahEdit', tpgPg_submitForm);
+
+        // Submit Form Verifikasi
+        $(document).off('submit', '#tpg_pg_formVerif').on('submit', '#tpg_pg_formVerif', tpgPg_submitVerifikasi);
 
         // Delegate event listeners for table buttons
         $('#tpg_pg_tabelUtama').on('click', '.tpg_pg_btnEdit', function () {
@@ -806,47 +872,88 @@
             }
         });
     }
-
     function tpgPg_showVerifikasiModal(id) {
         const rowData = globalTpgPgData.find(item => item.id == id);
         if (!rowData) return;
 
-        showSiabaVerifikasiModal({
+        $('#tpg_pg_verifIdData').val(id);
+        $('#tpg_pg_verifStatus').val('');
+        $('#tpg_pg_verifCatatan').val(rowData.keterangan || '');
+
+        $('#tpg_pg_vNama').text(rowData.namaAsn || '-');
+        $('#tpg_pg_vNip').text(rowData.nip || '-');
+        $('#tpg_pg_vUnit').text(rowData.unitKerja || '-');
+        $('#tpg_pg_vStatusPeg').text(rowData.statusPegawai || '-');
+        $('#tpg_pg_vJenis').text(rowData.jenisSK || '-');
+        $('#tpg_pg_vTmt').text(rowData.tmt ? formatTanggalIndo(rowData.tmt) : '-');
+        $('#tpg_pg_vGaji').text(new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(rowData.gajiPokok || 0));
+
+        Sultan.modal.verifikasi({
             title: "VERIFIKASI PERBAIKAN GAJI TPG",
-            pdfUrl: rowData.dokumenUrl,
-            data: {
-                "Unit Kerja": rowData.unitKerja,
-                "Nama ASN": rowData.namaAsn,
-                "NIP": rowData.nip,
-                "Status Pegawai": rowData.statusPegawai,
-                "NUPTK": rowData.nuptk,
-                "Jenis SK": rowData.jenisSK,
-                "TMT": rowData.tmt ? formatTanggalIndo(rowData.tmt) : '-',
-                "Gaji Pokok": new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(rowData.gajiPokok || 0)
-            },
-            currentStatus: rowData.status,
-            currentNotes: rowData.keterangan || '',
-            onVerify: function(status, notes) {
-                SultanUI.showLoading('#tpg_pg_loadingState', 'Menyimpan Verifikasi...');
-                google.script.run
-                    .withSuccessHandler(function(response) {
-                        SultanUI.hideLoading('#tpg_pg_loadingState');
-                        if (response.status === 'success') {
-                            hideSiabaVerifikasiModal();
-                            Swal.fire('Berhasil!', 'Status berhasil diperbarui.', 'success');
-                            tpgPg_loadData();
-                        } else {
-                            Swal.fire('Gagal', response.message, 'error');
-                        }
-                    })
-                    .withFailureHandler(function(error) {
-                        SultanUI.hideLoading('#tpg_pg_loadingState');
-                        Swal.fire('Error', 'Terjadi kesalahan: ' + error, 'error');
-                    })
-                    .tpg_verifikasiPerbaikan(id, status, notes, getSesiUser() ? getSesiUser().nama : 'Unknown');
-            }
+            url: rowData.dokumenUrl || "",
+            isImage: false
+        });
+
+        $('#tpg_pg_formVerif').appendTo('#global_verifikasiFormArea');
+        $('#tpg_pg_verifFooter').appendTo('#global_verifikasiFooterArea');
+        $('#global_verifikasiFooterArea').show();
+
+        tpgPg_cekStatusVerif($('#tpg_pg_verifStatus').val());
+
+        $('#tpg_pg_verifStatus').off('change').on('change', function () {
+            tpgPg_cekStatusVerif($(this).val());
+        });
+
+        $('#global_modalVerifikasi').off('hidden.bs.modal').on('hidden.bs.modal', function () {
+            $('#tpg_pg_verifFooter').appendTo('#tpg_pg_formVerif');
+            $('#tpg_pg_formVerif').appendTo('#tpg_pg_templates');
+            $('#global_verifikasiFooterArea').hide().empty();
         });
     }
+
+    function tpgPg_cekStatusVerif(val) {
+        if (val === 'Revisi' || val === 'Ditolak') {
+            $('#tpg_pg_verifCatatan').attr('placeholder', 'Wajib diisi untuk menjelaskan alasan revisi/penolakan kepada user...').focus();
+            $('#tpg_pg_verifWajibCatatan').removeClass('d-none');
+        } else {
+            $('#tpg_pg_verifCatatan').attr('placeholder', 'Catatan opsional (misal: Data sudah sesuai).');
+            $('#tpg_pg_verifWajibCatatan').addClass('d-none');
+        }
+    }
+
+    function tpgPg_submitVerifikasi(e) {
+        e.preventDefault();
+        var formAktif = $(e.target);
+        var st = formAktif.find('#tpg_pg_verifStatus').val();
+        var ket = formAktif.find('#tpg_pg_verifCatatan').val().trim();
+        if (!st) { Swal.fire('Perhatian', 'Tentukan status verifikasi.', 'warning'); return; }
+        if ((st === 'Ditolak' || st === 'Revisi') && !ket) { Swal.fire('Perhatian', 'Berikan alasan untuk perbaikan user.', 'warning'); return; }
+
+        var btn = $('#tpg_pg_btnVerifEksekusi'); 
+        var txt = btn.html();
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i> Menyimpan...');
+        
+        var id = formAktif.find('#tpg_pg_verifIdData').val();
+        var userLogin = getSesiUser() ? getSesiUser().nama : 'Unknown';
+
+        google.script.run
+            .withSuccessHandler(function (response) {
+                btn.prop('disabled', false).html(txt);
+                if (response.status === 'success') {
+                    Sultan.modal.tutupVerifikasi();
+                    Swal.fire('Berhasil!', 'Status berhasil diperbarui.', 'success');
+                    tpgPg_loadData();
+                } else {
+                    Swal.fire('Gagal', response.message, 'error');
+                }
+            })
+            .withFailureHandler(function (error) {
+                btn.prop('disabled', false).html(txt);
+                Swal.fire('Error', 'Terjadi kesalahan: ' + error, 'error');
+            })
+            .tpg_verifikasiPerbaikan(id, st, ket, userLogin);
+    }
+
 
     // Jalankan inisialisasi secara langsung
     tpgPg_init();
