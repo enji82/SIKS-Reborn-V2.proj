@@ -151,9 +151,29 @@ function tpg_savePerbaikan(formData) {
       now,
       "", "" // edit
     ]);
+    var savedData = {
+      id: newId,
+      unitKerja: formData.unitKerja,
+      namaAsn: formData.namaAsn,
+      nip: formData.nip,
+      statusPegawai: formData.statusPegawai,
+      nuptk: formData.nuptk,
+      jenisSK: formData.jenisSK,
+      tmt: formData.tmt || "",
+      gajiPokok: formData.gajiPokok,
+      dokumenUrl: docUrl,
+      status: "Diproses",
+      verifikasiOleh: "",
+      waktuVerifikasi: "",
+      keterangan: "",
+      uploadOleh: currentUser,
+      waktuUpload: now ? Utilities.formatDate(now, Session.getScriptTimeZone(), "yyyy-MM-dd'T'HH:mm:ss") : "",
+      editOleh: "",
+      waktuEdit: ""
+    };
     
     SpreadsheetApp.flush();
-    return { status: 'success', message: 'Data berhasil disimpan.' };
+    return { status: 'success', message: 'Data berhasil disimpan.', data: savedData };
   } catch (e) {
     return { status: 'error', message: e.message };
   }
@@ -204,8 +224,30 @@ function tpg_updatePerbaikan(formData) {
     sheet.getRange(rowIndex, 17).setValue(currentUser); // edit oleh
     sheet.getRange(rowIndex, 18).setValue(now); // waktu edit
     
+    var tz = Session.getScriptTimeZone();
+    var updatedData = {
+      id: formData.id,
+      unitKerja: formData.unitKerja,
+      namaAsn: formData.namaAsn,
+      nip: formData.nip,
+      statusPegawai: formData.statusPegawai,
+      nuptk: formData.nuptk,
+      jenisSK: formData.jenisSK,
+      tmt: formData.tmt || "",
+      gajiPokok: formData.gajiPokok,
+      dokumenUrl: docUrl,
+      status: "Diproses",
+      verifikasiOleh: data[rowIndex - 1][10],
+      waktuVerifikasi: data[rowIndex - 1][11] ? Utilities.formatDate(new Date(data[rowIndex - 1][11]), tz, "yyyy-MM-dd'T'HH:mm:ss") : "",
+      keterangan: data[rowIndex - 1][12],
+      uploadOleh: data[rowIndex - 1][13],
+      waktuUpload: data[rowIndex - 1][14] ? Utilities.formatDate(new Date(data[rowIndex - 1][14]), tz, "yyyy-MM-dd'T'HH:mm:ss") : "",
+      editOleh: currentUser,
+      waktuEdit: now ? Utilities.formatDate(now, tz, "yyyy-MM-dd'T'HH:mm:ss") : ""
+    };
+
     SpreadsheetApp.flush();
-    return { status: 'success', message: 'Data berhasil diperbarui.' };
+    return { status: 'success', message: 'Data berhasil diperbarui.', data: updatedData };
   } catch (e) {
     return { status: 'error', message: e.message };
   }
@@ -262,7 +304,7 @@ function tpg_verifikasiPerbaikan(id, status, notes, userLogin) {
     sheet.getRange(rowIndex, 14).setValue(notes);
     
     SpreadsheetApp.flush();
-    return { status: 'success', message: 'Status verifikasi berhasil disimpan.' };
+    return { status: 'success', message: 'Verifikasi berhasil.', data: { status: status, keterangan: notes, verifikasiOleh: verifikator, waktuVerifikasi: Utilities.formatDate(now, Session.getScriptTimeZone(), "yyyy-MM-dd'T'HH:mm:ss") } };
   } catch (e) {
     return { status: 'error', message: e.message };
   }
