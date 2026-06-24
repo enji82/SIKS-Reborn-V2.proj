@@ -82,7 +82,7 @@ function tpg_getPerbaikanData(unitKerja, isAdmin) {
       var rowUnit = data[i][1];
       
       // Jika bukan admin, hanya ambil data milik unit kerjanya saja
-      if (!isAdmin && rowUnit !== unitKerja) {
+      if (!isAdmin && String(rowUnit).trim().toLowerCase() !== String(unitKerja).trim().toLowerCase()) {
         continue;
       }
       
