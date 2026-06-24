@@ -956,3 +956,79 @@ function autoMatchUploadedFiles() {
     return "Error: " + error.message;
   }
 }
+
+/* ======================================================================
+   SCRIPT MERAPIKAN DAN RENAME FILE KE FOLDER TAHUN & SEMESTER
+   ====================================================================== */
+function organizeAndRenameFiles() {
+  try {
+    var sheet = getSheet("SK_DATA_DB", "Unggah_SK");
+    var mainFolderId = FOLDER_CONFIG.MAIN_SK; 
+    var mainFolder = DriveApp.getFolderById(mainFolderId);
+    var data = sheet.getDataRange().getValues();
+    
+    // Index Kolom Google Sheets (0-indexed)
+    var KOLOM_NAMA_SD = 1; // B
+    var KOLOM_TAHUN = 2; // C
+    var KOLOM_SEMESTER = 3; // D
+    var KOLOM_NO_SK = 4; // E
+    var KOLOM_KRITERIA = 6; // G
+    var KOLOM_LINK = 7; // H
+    
+    var counter = 0;
+    
+    // Looping semua baris dari baris 2 sampai akhir
+    for (var i = 1; i < data.length; i++) {
+      if (!data[i]) continue;
+      
+      var link = String(data[i][KOLOM_LINK] || "").trim();
+      var namaSd = String(data[i][KOLOM_NAMA_SD] || "").trim();
+      var tahunAjaran = String(data[i][KOLOM_TAHUN] || "").trim();
+      var semester = String(data[i][KOLOM_SEMESTER] || "").trim();
+      var kriteria = String(data[i][KOLOM_KRITERIA] || "").trim();
+      var nomorSk = String(data[i][KOLOM_NO_SK] || "").trim().replace(/^'/, ""); // hapus tanda petik satu jika terbawa
+      
+      // Jika ada link dan tahun ajaran
+      if (link.includes("drive.google.com") && tahunAjaran !== "") {
+        var match = link.match(/[-\w]{25,}/);
+        if (match) {
+          var fileId = match[0];
+          try {
+            var file = DriveApp.getFileById(fileId);
+            
+            // 1. Rename File sesuai format standar sistem:
+            // SD MUH PAYAMAN - 2024-2025 - Semester 1 - Pembagian Tugas - 421.2/01.pdf
+            var namaFileBaru = namaSd + " - " + tahunAjaran.replace(/\//g,'-') + " - " + semester + " - " + kriteria + " - " + nomorSk + ".pdf";
+            
+            if (file.getName() !== namaFileBaru) {
+               file.setName(namaFileBaru);
+            }
+            
+            // 2. Tentukan & Buat Folder Target
+            var namaFolderTahun = tahunAjaran.replace(/\//g, '-');
+            var folderTahun = getOrCreateFolder(mainFolder, namaFolderTahun);
+            var folderSemester = getOrCreateFolder(folderTahun, semester);
+            
+            // 3. Pindahkan file jika belum berada di folder target
+            var parents = file.getParents();
+            var currentParentId = parents.hasNext() ? parents.next().getId() : null;
+            
+            if (currentParentId !== folderSemester.getId()) {
+               file.moveTo(folderSemester);
+            }
+            
+            counter++;
+          } catch (e) {
+            Logger.log("Gagal memproses baris " + (i+1) + " (File mungkin tidak ditemukan): " + e.message);
+          }
+        }
+      }
+    }
+    
+    Logger.log("Selesai! " + counter + " file berhasil di-rename dan dipindahkan ke folder.");
+    return "Selesai!";
+    
+  } catch (error) {
+    Logger.log("Error utama: " + error.message);
+  }
+}
