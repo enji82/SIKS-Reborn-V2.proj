@@ -855,6 +855,19 @@ function migrateBelajarIdFilesToMain() {
           try {
             var oldFile = DriveApp.getFileById(fileId);
             
+            // Cek apakah file ini sudah menjadi milik akun SIKS-Reborn (sudah termigrasi)
+            var isAlreadyOwned = false;
+            try {
+              if (oldFile.getOwner() && oldFile.getOwner().getEmail() === Session.getActiveUser().getEmail()) {
+                isAlreadyOwned = true;
+              }
+            } catch(e) {}
+
+            if (isAlreadyOwned) {
+               Logger.log("Baris " + (i + 1) + " dilewati (Sudah termigrasi sebelumnya).");
+               continue; 
+            }
+            
             // Lakukan duplikasi ke folder target. 
             // Karena dijalankan oleh akun ini, file baru akan menjadi milik akun ini.
             var newFile = oldFile.makeCopy(oldFile.getName(), targetFolder);
@@ -867,7 +880,7 @@ function migrateBelajarIdFilesToMain() {
             Logger.log("Berhasil migrasi baris " + (i + 1) + ": " + newFile.getName());
             
           } catch (e) {
-            Logger.log("Gagal migrasi baris " + (i + 1) + " (Mungkin bukan file belajar.id atau akses ditolak): " + e.message);
+            Logger.log("Gagal migrasi baris " + (i + 1) + " (Akses ditolak / Error): " + e.message);
           }
         }
       }
