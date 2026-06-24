@@ -868,21 +868,15 @@
                 btnSubmit.html(defaultText).prop('disabled', false);
                 if (response.status === 'success') {
                     $('#tpg_pg_modalForm').modal('hide');
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Berhasil!',
-                        text: response.message,
-                        showConfirmButton: false,
-                        timer: 1500
-                    });
+                    Sultan.notif.crud.simpan(mode === 'edit');
                     tpgPg_loadData();
                 } else {
-                    Swal.fire('Gagal', response.message, 'error');
+                    Sultan.notif.crud.gagal(response.message);
                 }
             })
             .withFailureHandler(function (error) {
                 btnSubmit.html(defaultText).prop('disabled', false);
-                Swal.fire('Error', 'Terjadi kesalahan sistem: ' + error, 'error');
+                Sultan.notif.crud.gagal(error);
             })
             [mode === 'tambah' ? 'tpg_savePerbaikan' : 'tpg_updatePerbaikan'](formData);
     }
@@ -915,14 +909,14 @@
                             // VAKSIN ZERO BLINK: Hapus dari Cache Lokal Langsung
                             globalTpgPgData = globalTpgPgData.filter(function (item) { return item.id != id; });
                             tpgPg_renderTable();
-                            Sultan.notif.sukses('Data telah dihapus permanen.');
+                            Sultan.notif.crud.hapus();
                         } else {
-                            Sultan.alert('error', 'Gagal Menghapus', response.message);
+                            Sultan.notif.crud.gagal(response.message);
                         }
                     })
                     .withFailureHandler(function (error) {
                         closeModal();
-                        Sultan.alert('error', 'Koneksi Terputus', error);
+                        Sultan.notif.crud.gagal(error);
                     })
                     .tpg_deletePerbaikan(id);
             }
@@ -982,8 +976,8 @@
         var formAktif = $(e.target);
         var st = formAktif.find('#tpg_pg_verifStatus').val();
         var ket = formAktif.find('#tpg_pg_verifCatatan').val().trim();
-        if (!st) { Swal.fire('Perhatian', 'Tentukan status verifikasi.', 'warning'); return; }
-        if ((st === 'Ditolak' || st === 'Revisi') && !ket) { Swal.fire('Perhatian', 'Berikan alasan untuk perbaikan user.', 'warning'); return; }
+        if (!st) { Sultan.notif.info('Tentukan status verifikasi terlebih dahulu.'); return; }
+        if ((st === 'Ditolak' || st === 'Revisi') && !ket) { Sultan.notif.info('Berikan alasan untuk perbaikan user.'); return; }
 
         var btn = $('#tpg_pg_btnVerifEksekusi'); 
         var txt = btn.html();
@@ -997,15 +991,15 @@
                 btn.prop('disabled', false).html(txt);
                 if (response.status === 'success') {
                     Sultan.modal.tutupVerifikasi();
-                    Swal.fire('Berhasil!', 'Status berhasil diperbarui.', 'success');
+                    Sultan.notif.sukses('Status verifikasi berhasil diperbarui.');
                     tpgPg_loadData();
                 } else {
-                    Swal.fire('Gagal', response.message, 'error');
+                    Sultan.notif.crud.gagal(response.message);
                 }
             })
             .withFailureHandler(function (error) {
                 btn.prop('disabled', false).html(txt);
-                Swal.fire('Error', 'Terjadi kesalahan: ' + error, 'error');
+                Sultan.notif.crud.gagal(error);
             })
             .tpg_verifikasiPerbaikan(id, st, ket, userLogin);
     }
