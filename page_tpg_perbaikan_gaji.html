@@ -234,47 +234,52 @@
         SultanUI.showLoading('#tpg_pg_loadingState', 'Memuat Halaman Perbaikan Gaji TPG...');
         tpgPg_renderLoadingState();
         
-        google.script.run
-            .withSuccessHandler(function (response) {
-                SultanUI.hideLoading('#tpg_pg_loadingState');
-                const allowedUnit = response.unitKerja;
-                const isAdmin = response.isAdmin;
-                
-                let unitSelect = $('#tpg_pg_filterUnit');
-                unitSelect.empty();
-                
-                if (isAdmin) {
+        var user = getSesiUser();
+        var isAdmin = checkUserRoleIsAdmin();
+        var unitKerja = String(user.unit || "").trim();
+
+        if (isAdmin) {
+            google.script.run
+                .withSuccessHandler(function (daftarUnit) {
+                    SultanUI.hideLoading('#tpg_pg_loadingState');
+                    let unitSelect = $('#tpg_pg_filterUnit');
+                    unitSelect.empty();
                     unitSelect.append('<option value="">- Semua Unit Kerja -</option>');
-                    if (response.daftarUnit && response.daftarUnit.length > 0) {
-                        response.daftarUnit.forEach(function (u) {
+                    if (daftarUnit && daftarUnit.length > 0) {
+                        daftarUnit.forEach(function (u) {
                             unitSelect.append('<option value="' + u + '">' + u + '</option>');
                         });
                     }
                     unitSelect.prop('disabled', false);
-                    $('#tpg_pg_btnTambah').hide(); // Admin tidak perlu tambah
-                } else {
-                    unitSelect.append('<option value="' + allowedUnit + '">' + allowedUnit + '</option>');
-                    unitSelect.val(allowedUnit);
-                    unitSelect.prop('disabled', true);
-                    $('#tpg_pg_btnTambah').prop('disabled', false).show();
-                    
-                    // Init the guru list for this unit to make modal snappier
-                    tpgPg_initGuruList(allowedUnit);
-                }
+                    $('#tpg_pg_btnTambah').hide();
 
-                $('#tpg_pg_btnRefresh').prop('disabled', false);
+                    $('#tpg_pg_btnRefresh').prop('disabled', false);
+                    $('#tpg_pg_filterUnit, #tpg_pg_filterPegawai, #tpg_pg_filterJenisSK, #tpg_pg_filterStatus').on('change', function () {
+                        tpgPg_applyFilter();
+                    });
+                    tpgPg_loadData();
+                })
+                .withFailureHandler(function (error) {
+                    SultanUI.hideLoading('#tpg_pg_loadingState');
+                    Swal.fire('Error', 'Gagal memuat daftar unit: ' + error, 'error');
+                })
+                .tpg_getDaftarUnit();
+        } else {
+            SultanUI.hideLoading('#tpg_pg_loadingState');
+            let unitSelect = $('#tpg_pg_filterUnit');
+            unitSelect.empty();
+            unitSelect.append('<option value="' + unitKerja + '">' + unitKerja + '</option>');
+            unitSelect.val(unitKerja);
+            unitSelect.prop('disabled', true);
+            $('#tpg_pg_btnTambah').prop('disabled', false).show();
+            
+            tpgPg_initGuruList(unitKerja);
 
-                $('#tpg_pg_filterUnit, #tpg_pg_filterPegawai, #tpg_pg_filterJenisSK, #tpg_pg_filterStatus').on('change', function () {
-                    tpgPg_applyFilter();
-                });
-
-                tpgPg_loadData();
-            })
-            .withFailureHandler(function (error) {
-                SultanUI.hideLoading('#tpg_pg_loadingState');
-                Swal.fire('Error', 'Gagal memvalidasi akses: ' + error, 'error');
-            })
-            .tpg_validateAccessWithUnit();
+            $('#tpg_pg_filterUnit, #tpg_pg_filterPegawai, #tpg_pg_filterJenisSK, #tpg_pg_filterStatus').on('change', function () {
+                tpgPg_applyFilter();
+            });
+            tpgPg_loadData();
+        }
 
         $('#tpg_pg_btnTambah').click(function () {
             tpgPg_showModal('tambah');

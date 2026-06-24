@@ -260,34 +260,13 @@ function tpg_verifikasiPerbaikan(id, status, notes) {
   }
 }
 
-// Validasi Akses dan Unit Kerja
-function tpg_validateAccessWithUnit() {
-  const userRole = checkUserRoleIsAdmin(); // asumsikan fungsi ini global
-  const isSekolah = checkUserRoleIsSekolah(); 
-  const email = Session.getActiveUser().getEmail();
-  
-  let unitKerja = "";
-  if (!userRole) {
-    unitKerja = getUnitKerjaByUser(email); // asumsikan fungsi ini global
+// Mendapatkan Daftar Unit Kerja (hanya untuk admin)
+function tpg_getDaftarUnit() {
+  try {
+    return getAllSchoolsList(); // Menggunakan helper dari file Lapbul.gs atau Siaba_helper.gs
+  } catch (e) {
+    throw new Error("Gagal mengambil daftar unit: " + e.message);
   }
-  
-  let daftarUnit = [];
-  if (userRole) {
-    // ambil daftar seluruh SDN dari master data
-    // ini disesuaikan jika diperlukan
-    const ss = SpreadsheetApp.openById(MASTER_GTK_ID);
-    const ws = ss.getSheetByName("PTK SDN");
-    if (ws) {
-      const data = ws.getRange(2, 3, ws.getLastRow(), 1).getValues(); // Misal kolom C = Unit Kerja
-      let setUnit = new Set();
-      data.forEach(r => { if(r[0]) setUnit.add(r[0].toString().trim()); });
-      daftarUnit = Array.from(setUnit).sort();
-    }
-  }
-
-  return {
-    isAdmin: userRole,
-    unitKerja: unitKerja,
-    daftarUnit: daftarUnit
-  };
 }
+
+
