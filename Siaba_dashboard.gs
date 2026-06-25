@@ -29,7 +29,7 @@ function getSiabaMetric(type) {
   var now = new Date();
   var curYear = now.getFullYear();
   var curMonth = now.getMonth();
-  var cacheKey = "metric_v2_final_" + type + "_" + curYear + "_" + curMonth;
+  var cacheKey = "metric_v2_1_" + type + "_" + curYear + "_" + curMonth;
   var cached = cache.get(cacheKey);
   if (cached) return cached;
 
@@ -65,6 +65,7 @@ function getSiabaMetric(type) {
 
         var bln = tgl.getMonth();
         var st = String(row[config.idxStat]||"").toLowerCase();
+        if (st.includes("batal")) continue;
 
         res.total++;
         if (bln === curMonth) res.bulanIni++;
