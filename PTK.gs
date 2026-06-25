@@ -1630,7 +1630,9 @@ function tandaiNotifMutasiPAUDDibaca(rowId, role) {
 // =============================================================
 
 function ajukanMutasiPTKSDN(idPtk, jenis, tujuan, tanggal, base64Data, fileName, userPengusul) {
+  var lock = LockService.getScriptLock();
   try {
+    lock.waitLock(15000);
     var sheetSource = getSheet(KONFIG_PTK.DB_KEY, KONFIG_PTK.SHEET_PTK);
     var sheetUsulan = getSheet(KONFIG_PTK.DB_KEY, "usulan_mutasi_sdn");
     
@@ -1834,7 +1836,7 @@ function hapusUsulanPTKSDN(dataKirim) {
     var validCode = Utilities.formatDate(now, "Asia/Jakarta", "yyyyMMdd");
     if(String(dataKirim.kode).trim() !== validCode) throw new Error("KODE_SALAH"); 
 
-    var fileUrl = data[rowIdx-1][6]; 
+    var fileUrl = data[rowIdx-1][7]; // Index 7 adalah File SK
     
     // Hapus file drive jika ada
     if (fileUrl && String(fileUrl).includes("drive")) {
@@ -2055,7 +2057,9 @@ function getUsulanMutasiPTKSDS() {
 }
 
 function updateUsulanMutasiPTKSDN(idUsulan, idPtk, jenis, tujuan, tanggal, base64Data, fileName, userPengusul) {
+  var lock = LockService.getScriptLock();
   try {
+    lock.waitLock(15000);
     var sheetUsulan = getSheet(KONFIG_PTK.DB_KEY, "usulan_mutasi_sdn");
     if (!sheetUsulan) return "Error: Sheet usulan tidak ditemukan.";
     
@@ -2103,6 +2107,8 @@ function updateUsulanMutasiPTKSDN(idUsulan, idPtk, jenis, tujuan, tanggal, base6
     return "Sukses";
   } catch (e) {
     return "Error: " + e.message;
+  } finally {
+    lock.releaseLock();
   }
 }
 
