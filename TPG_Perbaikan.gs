@@ -320,3 +320,159 @@ function tpg_getDaftarUnit() {
 }
 
 
+
+// ======================================================================
+// NOTIFIKASI TPG PERBAIKAN GAJI
+// ======================================================================
+function getNotifikasiPerbaikanGaji(role, unit) {
+  try {
+    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS[TPG_PG_CONFIG.DB_KEY]);
+    var sheet = ss.getSheetByName(TPG_PG_CONFIG.SHEET_NAME);
+    if (!sheet) return { count: 0, recent: [] };
+
+    var data = sheet.getDataRange().getValues();
+    if (data.length < 2) return { count: 0, recent: [] };
+
+    var rLower = String(role || "").toLowerCase();
+    var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1 || rLower.indexOf('tpg') > -1);
+    
+    var notifList = [];
+    var unreadCount = 0;
+
+    for (var i = 1; i < data.length; i++) {
+        var row = data[i];
+        if (!row[0]) continue;
+        
+        var id = row[0];
+        var unitData = String(row[1] || "").trim();
+        var namaData = String(row[2] || "").trim();
+        var jenisSk = String(row[6] || "").trim();
+        var status = String(row[10] || "").trim();
+        var wktKirim = row[17] || row[15] || ""; // 15: Waktu Upload, 17: Waktu Edit
+        var wktVerif = row[12] || ""; // 12: Waktu Verifikasi
+
+        var isDiproses = (status === "Diproses" || status === "Menunggu" || status === "");
+        var isTarget = false;
+        
+        if (isAdmin) {
+            isTarget = isDiproses;
+        } else {
+            isTarget = (unitData.toUpperCase() === String(unit).trim().toUpperCase() && !isDiproses);
+        }
+        
+        if (isTarget) {
+            var isRead = false;
+            var readBy = String(row[18] || ""); // Kolom ke-19 untuk Read By
+            var readByList = readBy.split(",");
+            if (isAdmin && readByList.indexOf("Admin") > -1) isRead = true;
+            if (!isAdmin && readByList.indexOf("User") > -1) isRead = true;
+            
+            var stLower = status.toLowerCase();
+            var isSelesai = stLower.includes("setuju") || stLower.includes("ok") || stLower.includes("valid") || stLower.includes("selesai");
+            
+            if (isAdmin) {
+                unreadCount++;
+            } else {
+                if (isSelesai && isRead) {
+                    // skip
+                } else {
+                    unreadCount++;
+                }
+            }
+            
+            if (!isAdmin && isSelesai && isRead) {
+               // skip
+            } else {
+                notifList.push({
+                    rowId: i + 1,
+                    source: "TPG_PG",
+                    nama: namaData,
+                    jenis: jenisSk,
+                    status: status || "Diproses",
+                    waktu: wktVerif && !isDiproses ? wktVerif : (wktKirim || new Date()),
+                    isRead: isRead
+                });
+            }
+        }
+    }
+    
+    // Sort
+    notifList.sort(function(a, b) {
+        if (a.isRead !== b.isRead) return a.isRead ? 1 : -1;
+        return parseSiabaDateTime(b.waktu) - parseSiabaDateTime(a.waktu);
+    });
+    
+    return { count: unreadCount, recent: notifList.slice(0, 5) };
+  } catch (e) {
+    return { count: 0, recent: [] };
+  }
+}
+
+function tandaiSemuaNotifPerbaikanGajiDibaca(role, unit) {
+  try {
+    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS[TPG_PG_CONFIG.DB_KEY]);
+    var sheet = ss.getSheetByName(TPG_PG_CONFIG.SHEET_NAME);
+    if (!sheet) return;
+    var data = sheet.getDataRange().getValues();
+    if (data.length < 2) return;
+    
+    var rLower = String(role || "").toLowerCase();
+    var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1 || rLower.indexOf('tpg') > -1);
+    
+    var updates = [];
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      var status = String(row[10] || "").trim();
+      var unitData = String(row[1] || "").trim();
+      var isDiproses = (status === "Diproses" || status === "Menunggu" || status === "");
+      
+      var isTarget = false;
+      if (isAdmin) { isTarget = isDiproses; } 
+      else { isTarget = (unitData.toUpperCase() === String(unit).trim().toUpperCase() && !isDiproses); }
+      
+      if (isTarget) {
+        var readBy = String(row[18] || "");
+        var readByList = readBy.split(",").filter(function(x){ return x; });
+        var changed = false;
+        if (isAdmin && readByList.indexOf("Admin") === -1) { readByList.push("Admin"); changed = true; }
+        if (!isAdmin && readByList.indexOf("User") === -1) { readByList.push("User"); changed = true; }
+        
+        if (changed) {
+          updates.push({ row: i + 1, val: readByList.join(",") });
+        }
+      }
+    }
+    
+    if (updates.length > 0) {
+      updates.forEach(function(u) {
+        sheet.getRange(u.row, 19).setValue(u.val);
+      });
+      SpreadsheetApp.flush();
+    }
+  } catch (e) {
+    Logger.log("SULTAN Error TPG Read: " + e.message);
+  }
+}
+
+function tandaiNotifPerbaikanGajiDibaca(rowId, role) {
+  try {
+    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS[TPG_PG_CONFIG.DB_KEY]);
+    var sheet = ss.getSheetByName(TPG_PG_CONFIG.SHEET_NAME);
+    if (!sheet) return;
+    
+    var rLower = String(role || "").toLowerCase();
+    var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1 || rLower.indexOf('tpg') > -1);
+    
+    var readBy = String(sheet.getRange(rowId, 19).getValue() || "");
+    var readByList = readBy.split(",").filter(function(x){ return x; });
+    var targetRole = isAdmin ? "Admin" : "User";
+    
+    if (readByList.indexOf(targetRole) === -1) {
+      readByList.push(targetRole);
+      sheet.getRange(rowId, 19).setValue(readByList.join(","));
+      SpreadsheetApp.flush();
+    }
+  } catch (e) {
+    Logger.log("SULTAN Error tandaiNotifPerbaikanGajiDibaca: " + e.message);
+  }
+}

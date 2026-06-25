@@ -675,6 +675,7 @@ function getNotifikasiGlobal(role, unit) {
     callSafe('mutasi_paud', getNotifikasiMutasiPAUD, role, unit);
     callSafe('mutasi_sdn', getNotifikasiMutasiSDN, role, unit);
     callSafe('mutasi_sds', getNotifikasiMutasiSDS, role, unit);
+    callSafe('perbaikan_gaji', getNotifikasiPerbaikanGaji, role, unit);
   } catch (err) {
     Logger.log("SULTAN Critical Error: " + err.message);
   }
@@ -702,6 +703,14 @@ function tandaiSemuaNotifGlobalDibaca(role, unit) {
     tandaiSemuaNotifPerdinDibaca(role, unit);
     tandaiSemuaNotifCutiDibaca_Global(role, unit); 
     tandaiSemuaNotifEfileDibaca_Global(role, unit);
+    tandaiSemuaNotifMutasiPAUDDibaca(role, unit);
+    tandaiSemuaNotifMutasiSDNDibaca(role, unit);
+    tandaiSemuaNotifMutasiSDSDibaca(role, unit);
+    if(typeof tandaiSemuaNotifPerbaikanGajiDibaca === 'function') {
+      tandaiSemuaNotifPerbaikanGajiDibaca(role, unit);
+    }
+    
+    // Clear Global Cache
     tandaiSemuaNotifMutasiDibaca_Global(role, unit);
     // Hapus cache agar fetch berikutnya mengambil data segar
     invalidateNotifCache(role, unit);
