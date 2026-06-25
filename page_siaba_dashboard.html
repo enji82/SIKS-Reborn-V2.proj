@@ -137,7 +137,7 @@
                                     <tr>
                                         <th class="col-sticky-left align-middle text-left px-3 border-0 sultan-table-th"
                                             style="background: rgba(128,0,0,0.04); font-size: 13px; text-transform: uppercase; letter-spacing: 1px; font-weight: 800; border-bottom: 2px solid rgba(128,0,0,0.1) !important;">
-                                            NAMA SEKOLAH</th>
+                                            UNIT KERJA</th>
                                         <th class="text-center align-middle px-2 border-0 sultan-table-th"
                                             style="background: rgba(128,0,0,0.04); width: 60px; font-size: 13px; text-transform: uppercase; font-weight: 800; border-bottom: 2px solid rgba(128,0,0,0.1) !important;">
                                             JML</th>
@@ -164,7 +164,16 @@
                         </h3>
                     </div>
                     <div class="card-body p-0">
-                        <div class="table-responsive sultan-scroll" style="height: 440px; overflow-y: auto;">
+                        <div class="px-3 py-3 d-flex align-items-center justify-content-start">
+                            <div class="w-100">
+                                <select id="dashsiaba_dashFilterUnitRincian"
+                                    class="form-control form-control-sm rounded-pill border-maroon"
+                                    style="width: 100%; font-size: 0.85rem;" onchange="dashsiaba_renderRincianBelumLengkap()">
+                                    <option value="">Semua Unit Kerja</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="table-responsive sultan-scroll" style="height: 380px; overflow-y: auto;">
                             <table class="table table-sm table-hover table-striped table-head-fixed text-nowrap mb-0"
                                 id="dashsiaba_dashTableRincianBelumLengkap">
                                 <thead>
@@ -392,29 +401,15 @@
                     tbodyRincian.html(okHtml);
                     return;
                 }
+                window.dashsiaba_globalBelumLengkapRows = data.rows;
                 var unitCounts = {};
-                var rincianHtml = "";
+                var unitOptionsHtml = '<option value="">Semua Unit Kerja</option>';
 
                 data.rows.forEach(function (row) { 
                     var unit = row[row.length - 1]; 
                     if (unit) { unitCounts[unit] = (unitCounts[unit] || 0) + 1; } 
-
-                    var namaAsn = row[0] || "-";
-                    var nipAsn = row[1] || "";
-                    var jumlah = row[2] || "0";
-                    if (parseInt(jumlah) > 0) {
-                        rincianHtml += '<tr>' +
-                            '<td class="align-middle px-3 py-2" style="border-bottom: 1px solid rgba(0,0,0,0.03);">' +
-                            '<div class="font-weight-bold" style="font-size: 0.8rem; line-height: 1.2;">' + dashsiaba_escapeHtml(namaAsn) + '</div>' + 
-                            (nipAsn ? '<div class="text-muted mt-1" style="font-size: 0.75rem;">' + dashsiaba_escapeHtml(nipAsn) + '</div>' : '') +
-                            '<div class="text-danger mt-1" style="font-size: 0.7rem; font-weight: 600;">' + dashsiaba_escapeHtml(unit) + '</div>' +
-                            '</td>' +
-                            '<td class="text-center align-middle" style="border-bottom: 1px solid rgba(0,0,0,0.03);">' +
-                            '<span class="sultan-jml-badge bg-danger shadow-sm">' + jumlah + '</span>' +
-                            '</td>' +
-                            '</tr>';
-                    }
                 });
+
                 var sortedUnits = Object.keys(unitCounts).map(function (key) { return { nama: key, jumlah: unitCounts[key] }; }).sort(function (a, b) { return b.jumlah - a.jumlah; });
                 var strH = "";
                 sortedUnits.forEach(function (item) {
@@ -427,8 +422,16 @@
                         '</td>' +
                         '</tr>';
                 });
+
+                var alphaUnits = Object.keys(unitCounts).sort();
+                alphaUnits.forEach(function(u) {
+                    unitOptionsHtml += '<option value="' + dashsiaba_escapeHtml(u) + '">' + dashsiaba_escapeHtml(u) + '</option>';
+                });
+                $('#dashsiaba_dashFilterUnitRincian').html(unitOptionsHtml);
+
                 tbody.html(strH || '<tr><td colspan="2" class="text-center text-muted py-5">Data Kosong</td></tr>');
-                tbodyRincian.html(rincianHtml || '<tr><td colspan="2" class="text-center text-muted py-5">Data Kosong</td></tr>');
+                
+                dashsiaba_renderRincianBelumLengkap();
             })
             .withFailureHandler(function (e) { 
                 $('#dashsiaba_dashBtnRefreshTable').prop('disabled', false).html('<i class="fas fa-sync-alt mr-1"></i> PERBARUI DATA'); 
@@ -437,6 +440,37 @@
                 $('#dashsiaba_dashBodyRincianBelumLengkap').html(errHtml);
             })
             .getSiabaTidakData(th, bl, "SEMUA");
+    }
+
+    window.dashsiaba_globalBelumLengkapRows = [];
+
+    function dashsiaba_renderRincianBelumLengkap() {
+        var tbodyRincian = $('#dashsiaba_dashBodyRincianBelumLengkap');
+        var filterUnit = $('#dashsiaba_dashFilterUnitRincian').val() || "";
+        var rincianHtml = "";
+
+        window.dashsiaba_globalBelumLengkapRows.forEach(function (row) {
+            var unit = row[row.length - 1]; 
+            if (filterUnit && unit !== filterUnit) return;
+
+            var namaAsn = row[0] || "-";
+            var nipAsn = row[1] || "";
+            var jumlah = row[2] || "0";
+            if (parseInt(jumlah) > 0) {
+                rincianHtml += '<tr>' +
+                    '<td class="align-middle px-3 py-2" style="border-bottom: 1px solid rgba(0,0,0,0.03);">' +
+                    '<div class="font-weight-bold" style="font-size: 0.8rem; line-height: 1.2;">' + dashsiaba_escapeHtml(namaAsn) + '</div>' + 
+                    (nipAsn ? '<div class="text-muted mt-1" style="font-size: 0.75rem;">' + dashsiaba_escapeHtml(nipAsn) + '</div>' : '') +
+                    '<div class="text-danger mt-1" style="font-size: 0.7rem; font-weight: 600;">' + dashsiaba_escapeHtml(unit) + '</div>' +
+                    '</td>' +
+                    '<td class="text-center align-middle" style="border-bottom: 1px solid rgba(0,0,0,0.03);">' +
+                    '<span class="sultan-jml-badge bg-danger shadow-sm">' + jumlah + '</span>' +
+                    '</td>' +
+                    '</tr>';
+            }
+        });
+
+        tbodyRincian.html(rincianHtml || '<tr><td colspan="2" class="text-center text-muted py-5">Data Kosong</td></tr>');
     }
 
     function dashsiaba_initPieChart() {
