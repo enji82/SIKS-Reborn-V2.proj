@@ -501,29 +501,32 @@
             .tpg_getPerbaikanData(unitKerja, isAdmin);
     }
 
+    if (!window.tpgPgFilterInit) {
+        window.tpgPgFilterInit = true;
+        $.fn.dataTable.ext.search.push(
+            function (settings, data, dataIndex) {
+                if (settings.nTable.id !== 'tpg_pg_tabelUtama') return true;
+                if (typeof globalTpgPgData === 'undefined') return true;
+
+                const rowData = globalTpgPgData[dataIndex];
+                if (!rowData) return true;
+
+                const filterUnit = $('#tpg_pg_filterUnit').val() ? String($('#tpg_pg_filterUnit').val()).trim().toLowerCase() : '';
+                const filterJenisSK = $('#tpg_pg_filterJenisSK').val() ? $('#tpg_pg_filterJenisSK').val().toLowerCase() : '';
+                const filterStatus = $('#tpg_pg_filterStatus').val() ? $('#tpg_pg_filterStatus').val().toLowerCase() : '';
+
+                const fUnit = filterUnit ? String(rowData.unitKerja).trim().toLowerCase() === filterUnit : true;
+                const fJenis = filterJenisSK ? rowData.jenisSK.toLowerCase() === filterJenisSK : true;
+                const fStatus = filterStatus ? rowData.status.toLowerCase() === filterStatus : true;
+
+                return fUnit && fJenis && fStatus;
+            }
+        );
+    }
+
     function tpgPg_applyFilter() {
         if (tpgPgTable) {
-            const filterUnit = $('#tpg_pg_filterUnit').val() ? String($('#tpg_pg_filterUnit').val()).trim().toLowerCase() : '';
-            const filterJenisSK = $('#tpg_pg_filterJenisSK').val() ? $('#tpg_pg_filterJenisSK').val().toLowerCase() : '';
-            const filterStatus = $('#tpg_pg_filterStatus').val() ? $('#tpg_pg_filterStatus').val().toLowerCase() : '';
-
-            $.fn.dataTable.ext.search.push(
-                function (settings, data, dataIndex) {
-                    if (settings.nTable.id !== 'tpg_pg_tabelUtama') return true;
-
-                    const rowData = globalTpgPgData[dataIndex];
-                    if (!rowData) return true;
-
-                    const fUnit = filterUnit ? String(rowData.unitKerja).trim().toLowerCase() === filterUnit : true;
-                    const fJenis = filterJenisSK ? rowData.jenisSK.toLowerCase() === filterJenisSK : true;
-                    const fStatus = filterStatus ? rowData.status.toLowerCase() === filterStatus : true;
-
-                    return fUnit && fJenis && fStatus;
-                }
-            );
-
             tpgPgTable.draw();
-            $.fn.dataTable.ext.search.pop();
         }
     }
 
