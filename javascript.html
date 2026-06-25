@@ -1151,6 +1151,37 @@
         $tabel.addClass('table table-bordered table-premium table-sultan-compact w-100');
       }
 
+      // ROLE-BASED ADAPTIVE TABLE: Deteksi role admin
+      var isAdminRole = checkUserRoleIsAdmin();
+      var savedPref = localStorage.getItem('sultan_table_mode'); // 'full' atau 'fold'
+      var useResponsive = true; // default: tabel lipat (user biasa)
+
+      if (isAdminRole) {
+        // Admin default: tabel penuh, kecuali ada preferensi manual 'fold'
+        useResponsive = (savedPref === 'fold');
+      }
+      // User biasa: selalu responsive/fold (savedPref diabaikan)
+
+      var sultanResponsiveConfig = {
+        details: {
+          renderer: function (api, rowIdx, columns) {
+            var data = $.map(columns, function (col, i) {
+              return col.hidden ?
+                '<tr data-dt-row="' + col.rowIndex + '" data-dt-column="' + col.columnIndex + '">' +
+                '<td class="font-weight-bold text-dark text-uppercase align-middle" style="width: 150px; border-bottom: 1px dashed #e9ecef; padding: 0.75rem 0.5rem;">' + col.title + '</td> ' +
+                '<td class="align-middle" style="border-bottom: 1px dashed #e9ecef; padding: 0.75rem 0.5rem;">' + col.data + '</td>' +
+                '</tr>' :
+                '';
+            }).join('');
+
+            return data ?
+              $('<div class="p-3 mb-2 rounded border" style="background-color: #fcfcfc;">').append(
+                $('<table class="table table-borderless table-sm mb-0 w-100">').append(data)
+              ) : false;
+          }
+        }
+      };
+
       var defaultOptions = {
         "destroy": true,
         "ordering": false,
@@ -1161,25 +1192,7 @@
           "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json",
           "emptyTable": "Tidak ada data yang ditemukan."
         },
-        "responsive": {
-          details: {
-            renderer: function (api, rowIdx, columns) {
-              var data = $.map(columns, function (col, i) {
-                return col.hidden ?
-                  '<tr data-dt-row="' + col.rowIndex + '" data-dt-column="' + col.columnIndex + '">' +
-                  '<td class="font-weight-bold text-dark text-uppercase align-middle" style="width: 150px; border-bottom: 1px dashed #e9ecef; padding: 0.75rem 0.5rem;">' + col.title + '</td> ' +
-                  '<td class="align-middle" style="border-bottom: 1px dashed #e9ecef; padding: 0.75rem 0.5rem;">' + col.data + '</td>' +
-                  '</tr>' :
-                  '';
-              }).join('');
-
-              return data ?
-                $('<div class="p-3 mb-2 rounded border" style="background-color: #fcfcfc;">').append(
-                  $('<table class="table table-borderless table-sm mb-0 w-100">').append(data)
-                ) : false;
-            }
-          }
-        },
+        "responsive": useResponsive ? sultanResponsiveConfig : false,
         "dom": "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
           "<'row'<'col-sm-12'tr>>" +
           "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
@@ -1192,6 +1205,11 @@
           $scroll.attr('tabindex', '0');
           $scroll.css('outline', 'none');
 
+          // ROLE-BASED: Sisipkan tombol toggle untuk admin
+          if (isAdminRole) {
+            sultanTable_insertToggleBtn(targetId, useResponsive);
+          }
+
           if (options.initComplete) {
             options.initComplete.call(this, settings, json);
           }
@@ -1203,8 +1221,10 @@
 
       // FIX: $.extend(true) can sometimes mangle function references in deeply nested objects.
       // Re-assign responsive manually to ensure the renderer function stays intact.
-      if (defaultOptions.responsive && options.responsive !== false) {
-          finalOptions.responsive = defaultOptions.responsive;
+      if (useResponsive && options.responsive !== false) {
+          finalOptions.responsive = sultanResponsiveConfig;
+      } else if (!useResponsive) {
+          finalOptions.responsive = false;
       }
 
       // Tambahkan class khusus untuk responsive jika diaktifkan
@@ -1235,6 +1255,48 @@
 
       return $tabel.DataTable(finalOptions);
     }
+  };
+
+  /* =============================================================
+     ROLE-BASED TABLE TOGGLE (Tombol Ganti Mode untuk Admin)
+     ============================================================= */
+
+  /**
+   * Sisipkan tombol toggle mode tabel di dekat tabel target.
+   * Tombol hanya muncul untuk admin.
+   */
+  function sultanTable_insertToggleBtn(targetId, currentIsResponsive) {
+    var $wrapper = $(targetId).closest('.dataTables_wrapper');
+    if ($wrapper.length === 0) return;
+
+    // Cegah duplikasi tombol
+    if ($wrapper.find('.sultan-table-toggle-btn').length > 0) return;
+
+    var iconClass = currentIsResponsive ? 'fa-expand-arrows-alt' : 'fa-compress-arrows-alt';
+    var labelText = currentIsResponsive ? 'Mode Penuh' : 'Mode Ringkas';
+
+    var btnHtml = '<button type="button" class="sultan-table-toggle-btn" title="Ganti mode tampilan tabel" onclick="sultanTable_toggleMode()">' +
+      '<i class="fas ' + iconClass + ' mr-1"></i> ' + labelText + '</button>';
+
+    // Sisipkan di baris pertama DataTable wrapper (sejajar dengan search/length)
+    var $topRow = $wrapper.children('.row').first();
+    if ($topRow.length > 0) {
+      $topRow.find('[class*="col-"]').last().append(btnHtml);
+    }
+  }
+
+  /**
+   * Toggle mode tabel (full <-> fold) dan reload halaman.
+   */
+  window.sultanTable_toggleMode = function () {
+    var current = localStorage.getItem('sultan_table_mode');
+    if (current === 'fold') {
+      localStorage.setItem('sultan_table_mode', 'full');
+    } else {
+      localStorage.setItem('sultan_table_mode', 'fold');
+    }
+    // Reload halaman agar DataTable di-reinit dengan mode baru
+    location.reload();
   };
 
   function getBadgeSultan(status) {

@@ -608,26 +608,43 @@
             tbody.append(tr);
         });
 
-        tpgPgTable = $('#tpg_pg_tabelUtama').DataTable({
-            "responsive": {
-                details: {
-                    renderer: function (api, rowIdx, columns) {
-                        var data = $.map(columns, function (col, i) {
-                            return col.hidden ?
-                                '<tr data-dt-row="' + col.rowIndex + '" data-dt-column="' + col.columnIndex + '">' +
-                                '<td class="font-weight-bold text-dark text-uppercase align-middle" style="width: 150px; border-bottom: 1px dashed #e9ecef; padding: 0.75rem 0.5rem;">' + col.title + '</td> ' +
-                                '<td class="align-middle" style="border-bottom: 1px dashed #e9ecef; padding: 0.75rem 0.5rem;">' + col.data + '</td>' +
-                                '</tr>' :
-                                '';
-                        }).join('');
+        // ROLE-BASED ADAPTIVE TABLE
+        var tpgIsAdmin = (typeof checkUserRoleIsAdmin === 'function') && checkUserRoleIsAdmin();
+        var tpgSavedPref = localStorage.getItem('sultan_table_mode');
+        var tpgUseResponsive = tpgIsAdmin ? (tpgSavedPref === 'fold') : true;
 
-                        return data ?
-                            $('<div class="p-3 mb-2 rounded border" style="background-color: #fcfcfc;">').append(
-                                $('<table class="table table-borderless table-sm mb-0 w-100">').append(data)
-                            ) : false;
-                    }
+        var tpgResponsiveConfig = tpgUseResponsive ? {
+            details: {
+                renderer: function (api, rowIdx, columns) {
+                    var data = $.map(columns, function (col, i) {
+                        return col.hidden ?
+                            '<tr data-dt-row="' + col.rowIndex + '" data-dt-column="' + col.columnIndex + '">' +
+                            '<td class="font-weight-bold text-dark text-uppercase align-middle" style="width: 150px; border-bottom: 1px dashed #e9ecef; padding: 0.75rem 0.5rem;">' + col.title + '</td> ' +
+                            '<td class="align-middle" style="border-bottom: 1px dashed #e9ecef; padding: 0.75rem 0.5rem;">' + col.data + '</td>' +
+                            '</tr>' :
+                            '';
+                    }).join('');
+
+                    return data ?
+                        $('<div class="p-3 mb-2 rounded border" style="background-color: #fcfcfc;">').append(
+                            $('<table class="table table-borderless table-sm mb-0 w-100">').append(data)
+                        ) : false;
                 }
-            },
+            }
+        } : false;
+
+        var tpgDomRowTr = tpgUseResponsive 
+            ? "<'row'<'col-sm-12'tr>>" 
+            : "<'row'<'col-sm-12'<'table-responsive sultan-scroll'tr>>>";
+
+        if (tpgUseResponsive) {
+            $('#tpg_pg_tabelUtama').addClass('dt-responsive nowrap');
+        } else {
+            $('#tpg_pg_tabelUtama').removeClass('dt-responsive nowrap');
+        }
+
+        tpgPgTable = $('#tpg_pg_tabelUtama').DataTable({
+            "responsive": tpgResponsiveConfig,
             "autoWidth": false,
             "ordering": false,
             "pageLength": 10,
@@ -636,8 +653,13 @@
                 "emptyTable": "Tidak ada data yang ditemukan."
             },
             "dom": "<'row mb-3'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6 text-right'f>>" +
-                "<'row'<'col-sm-12'tr>>" +
-                "<'row mt-3'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>"
+                tpgDomRowTr +
+                "<'row mt-3'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+            "initComplete": function () {
+                if (tpgIsAdmin && typeof sultanTable_insertToggleBtn === 'function') {
+                    sultanTable_insertToggleBtn('#tpg_pg_tabelUtama', tpgUseResponsive);
+                }
+            }
         });
 
         tpgPg_applyFilter();
