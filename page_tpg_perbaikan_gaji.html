@@ -531,6 +531,16 @@
         $('#tpg_pg_loadingState').hide();
         $('#tpg_pg_tableState').show();
 
+        globalTpgPgData.sort(function(a, b) {
+            var getVal = function(r) {
+                var v1 = r.waktuVerifikasi ? new Date(r.waktuVerifikasi).getTime() : 0;
+                var v2 = r.waktuEdit ? new Date(r.waktuEdit).getTime() : 0;
+                var v3 = r.waktuUpload ? new Date(r.waktuUpload).getTime() : 0;
+                return Math.max(v1, v2, v3);
+            };
+            return getVal(b) - getVal(a);
+        });
+
         if ($.fn.DataTable.isDataTable('#tpg_pg_tabelUtama')) {
             $('#tpg_pg_tabelUtama').DataTable().destroy();
         }
@@ -843,7 +853,7 @@
     function tpgPg_submitForm(mode) {
         const btnSubmit = $('#tpg_pg_btnSimpan');
         const defaultText = btnSubmit.html();
-        btnSubmit.html('<i class="fas fa-spinner fa-spin mr-1"></i> Menyimpan...').prop('disabled', true);
+        Sultan.notif.loading('Menyimpan Perbaikan Gaji...');
 
         const nip = $('#tpg_pg_inputNama').val();
         const guru = tpgPgGuruList.find(g => g.nip === nip);
@@ -883,7 +893,7 @@
     function tpgPg_sendDataToServer(mode, formData, btnSubmit, defaultText) {
         google.script.run
             .withSuccessHandler(function (response) {
-                btnSubmit.html(defaultText).prop('disabled', false);
+                Sultan.notif.tutup();
                 if (response.status === 'success') {
                     $('#global_modalForm').modal('hide');
                     Sultan.notif.crud.simpan(mode === 'edit');
@@ -898,14 +908,14 @@
                     }
                     tpgPg_renderTable();
                 } else {
-                    Sultan.notif.crud.gagal(response.message);
+                    Sultan.notif.gagal(response.message);
                 }
             })
             .withFailureHandler(function (error) {
-                btnSubmit.html(defaultText).prop('disabled', false);
-                Sultan.notif.crud.gagal(error);
+                Sultan.notif.tutup();
+                Sultan.notif.crud.gagal(error.message || error);
             })
-        [mode === 'tambah' ? 'tpg_savePerbaikan' : 'tpg_updatePerbaikan'](formData);
+            [mode === 'tambah' ? 'tpg_savePerbaikan' : 'tpg_updatePerbaikan'](formData);
     }
 
     function tpgPg_confirmDelete(id) {

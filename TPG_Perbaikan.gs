@@ -117,7 +117,9 @@ function tpg_getPerbaikanData(unitKerja, isAdmin) {
 
 // 4. Create
 function tpg_savePerbaikan(formData) {
+  var lock = LockService.getScriptLock();
   try {
+    lock.waitLock(15000);
     var currentUser = formData.userLogin || "Unknown";
     
     var sheet = tpgPg_ensureSheet();
@@ -176,12 +178,16 @@ function tpg_savePerbaikan(formData) {
     return { status: 'success', message: 'Data berhasil disimpan.', data: savedData };
   } catch (e) {
     return { status: 'error', message: e.message };
+  } finally {
+    lock.releaseLock();
   }
 }
 
 // 5. Update
 function tpg_updatePerbaikan(formData) {
+  var lock = LockService.getScriptLock();
   try {
+    lock.waitLock(15000);
     var currentUser = formData.userLogin || "Unknown";
     var now = new Date();
     
@@ -250,6 +256,8 @@ function tpg_updatePerbaikan(formData) {
     return { status: 'success', message: 'Data berhasil diperbarui.', data: updatedData };
   } catch (e) {
     return { status: 'error', message: e.message };
+  } finally {
+    lock.releaseLock();
   }
 }
 
