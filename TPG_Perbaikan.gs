@@ -136,6 +136,24 @@ function tpg_savePerbaikan(formData) {
       docUrl = file.getUrl();
     }
     
+    // Cek duplikasi data
+    var lastRow = sheet.getLastRow();
+    if (lastRow > 1) {
+      var data = sheet.getRange(2, 1, lastRow - 1, 8).getValues(); // Ambil sampai kolom TMT (H=8)
+      var tz = Session.getScriptTimeZone();
+      for (var i = 0; i < data.length; i++) {
+        var existingNip = String(data[i][3]).trim();
+        var existingJenis = String(data[i][6]).trim();
+        var existingTmt = data[i][7] ? Utilities.formatDate(new Date(data[i][7]), tz, "yyyy-MM-dd") : "";
+        
+        if (existingNip === String(formData.nip).trim() && 
+            existingJenis.toLowerCase() === String(formData.jenisSK).trim().toLowerCase() && 
+            existingTmt === String(formData.tmt).trim()) {
+          return { status: 'error', message: 'Data Pengajuan Ganda: ASN ini sudah memiliki pengajuan untuk Jenis SK dan TMT yang sama.' };
+        }
+      }
+    }
+    
     sheet.appendRow([
       newId,
       formData.unitKerja,
