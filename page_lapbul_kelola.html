@@ -1563,21 +1563,17 @@
 
                 var blnStr = d.bulan || cariDataFetch(["bulan", "bln"]) || "";
                 var thnStr = d.tahun || cariDataFetch(["tahun", "thn"]) || "";
-                
-                // USER DEBUGGING AID
-                if (blnStr === "" || thnStr === "") {
-                    var debugKeys = Object.keys(d).join(", ");
-                    alert("DEBUG - Gagal membaca bulan/tahun. Kolom yang terbaca dari Spreadsheet: \n" + debugKeys);
-                }
 
                 $('#lapbulkelola_infoAwalBulan').removeClass('d-none');
                 $('#lapbulkelola_txtLaporanTerakhir').text('Laporan terakhir yang Anda unggah adalah bulan ' + blnStr + ' tahun ' + thnStr);
                 
                 for(var k=1; k<=6; k++) {
                     var n = parseInt(d['rombel_'+k] || cariDataFetch([`rombel ${k}`, `rombel_${k}`]) || 0);
-                    if (n === 0) {
-                        var cekL = parseInt(d['k'+k+'_l'] || d['k'+k+'a_l'] || cariDataFetch([`k${k} l`, `k${k}a l`]) || 0);
-                        if (cekL > 0) n = 1;
+                    if (n === 0 || isNaN(n)) {
+                        // Detect rombel count from data presence
+                        if (parseInt(d[`k${k}c_l`] || 0) > 0 || parseInt(d[`k${k}c_p`] || 0) > 0) n = 3;
+                        else if (parseInt(d[`k${k}b_l`] || 0) > 0 || parseInt(d[`k${k}b_p`] || 0) > 0) n = 2;
+                        else n = 1;
                     }
                     $(`.sel-rombel-new[data-kelas="${k}"]`).val(n || 1);
                 }
@@ -1590,8 +1586,11 @@
                         var suf = (n === 1) ? '' : (r === 0 ? 'a' : (r === 1 ? 'b' : 'c'));
                         var rombelStr = (n === 1) ? '1' : (r + 1);
                         
-                        var valL = d[`k${k}${suf}_l`] !== undefined ? d[`k${k}${suf}_l`] : (d[`k${k}a_l`] !== undefined ? d[`k${k}a_l`] : cariDataFetch([`k${k}${suf} l`, `k${k}a l`]));
-                        var valP = d[`k${k}${suf}_p`] !== undefined ? d[`k${k}${suf}_p`] : (d[`k${k}a_p`] !== undefined ? d[`k${k}a_p`] : cariDataFetch([`k${k}${suf} p`, `k${k}a p`]));
+                        var keyL = `k${k}${suf}_l`; var keyP = `k${k}${suf}_p`;
+                        var keyAL = `k${k}a_l`; var keyAP = `k${k}a_p`;
+                        
+                        var valL = d[keyL] || d[keyAL] || cariDataFetch([`k${k}${suf} l`, `k${k}a l`]) || "";
+                        var valP = d[keyP] || d[keyAP] || cariDataFetch([`k${k}${suf} p`, `k${k}a p`]) || "";
                         
                         $(`.val-awal[data-kelas="${k}"][data-rombel="${rombelStr}"][data-tipe="al"]`).val(valL == 0 ? "" : valL);
                         $(`.val-awal[data-kelas="${k}"][data-rombel="${rombelStr}"][data-tipe="ap"]`).val(valP == 0 ? "" : valP);
