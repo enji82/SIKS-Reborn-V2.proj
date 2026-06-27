@@ -1192,48 +1192,7 @@
         $('#lapbulkelola_formContentArea').html(htmlContent);
     }
 
-    function lapbulkelola_editLapbul(idx) {
-        if (!LAPBULKELOLA_CACHE_DATA[idx]) return;
-        var r = LAPBULKELOLA_CACHE_DATA[idx];
-        var isSD = r.source === 'SD';
-        
-        LAPBULKELOLA_IS_EDIT_MODE = true;
-        LAPBULKELOLA_EDIT_ROW_ID = r.rowId;
-        LAPBULKELOLA_DATA_PTK_INDUK = [];
-        LAPBULKELOLA_DATA_PTK_NONINDUK = [];
-        
-        $('#lapbulkelola_headerModalForm').removeClass('modal-header-tambah-edit bg-dark modal-header-sultan-warning modal-header-sultan-primary modal-header-sultan-aksi-utama').addClass('modal-header-sultan-warning');
-        $('#lapbulkelola_judulModalForm').html('<i class="fas fa-edit mr-2"></i> EDIT LAPORAN BULAN').removeClass('text-white').addClass('text-dark');
-        $('#lapbulkelola_btnTutupModalForm').removeClass('text-white').addClass('text-dark');
-        
-        $('#lapbulkelola_viewPilihJenjang').removeClass('d-flex').addClass('d-none');
-        $('#lapbulkelola_viewFormContainer').removeClass('d-none').addClass('d-flex');
-        
-        $('#lapbulkelola_formPAUD, #lapbulkelola_formSD').hide();
-        var formId = isSD ? '#lapbulkelola_formSD' : '#lapbulkelola_formPAUD';
-        $(formId).show();
 
-        Sultan.notif.loading("Memuat data laporan...");
-        google.script.run.withSuccessHandler(function (d) {
-            Sultan.notif.tutup();
-            if (d && d.status === 'success' && d.data) {
-                if (isSD) {
-                    lapbulkelola_populateFormSD(d.data);
-                    
-                    // Aktifkan area info & tombol Sinkronisasi untuk mode Edit SD
-                    $('#lapbulkelola_infoAwalBulan').removeClass('d-none');
-                    $('#lapbulkelola_txtLaporanTerakhir').html(`Anda sedang mengedit Laporan: <span class="text-maroon">${r.bulan} ${r.tahun}</span>`);
-                    $('#lapbulkelola_btnTarikAwalBulan').removeClass('d-none');
-                    
-                } else lapbulkelola_populateFormPAUD(d.data);
-                $('#lapbulkelola_modalTambahData').modal('show');
-            } else {
-                Sultan.notif.gagal("Gagal mengambil data detail untuk diedit.");
-            }
-        }).withFailureHandler(function (e) {
-            Sultan.notif.gagal(e.message);
-        })[isSD ? 'lapbul_getDetailRowSD' : 'lapbul_getDetailRowPAUD'](r.rowId);
-    }
 
     function lapbulkelola_sinkronisasiDataPtk() {
         if (!window.sekolahData || !window.sekolahData.npsn) {
@@ -2717,7 +2676,16 @@
             var tabId = (source === 'SD') ? '#lapbulkelola_tabSD' : '#lapbulkelola_tabPAUD';
             $(tabId + ' .nav-link').removeClass('disabled-tab');
 
-            if (source === 'SD') lapbulkelola_populateFormSD(data); else {
+            if (source === 'SD') {
+                lapbulkelola_populateFormSD(data);
+                
+                // Aktifkan area info & tombol Sinkronisasi untuk mode Edit SD
+                var bln = findValue(["bulan"]);
+                var thn = findValue(["tahun"]);
+                $('#lapbulkelola_infoAwalBulan').removeClass('d-none');
+                $('#lapbulkelola_txtLaporanTerakhir').html(`Anda sedang mengedit Laporan: <span class="text-maroon">${bln} ${thn}</span>`);
+                $('#lapbulkelola_btnTarikAwalBulan').removeClass('d-none');
+            } else {
                 try {
                     lapbulkelola_populateFormPAUD(data);
                 } catch(errPop) {
