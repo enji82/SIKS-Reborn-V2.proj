@@ -1950,9 +1950,66 @@
         lapbulkelola_nextTab('lapbulkelola_ts4');
     }
 
+    function lapbulkelola_syncModernToLegacySD() {
+        if ($('#ptk-modern-ui').hasClass('d-none')) return;
+        
+        // Zero all PTK inputs
+        $('.val-ks, .val-ptk').val('');
+        
+        var allPtk = LAPBULKELOLA_DATA_PTK_INDUK.concat(LAPBULKELOLA_DATA_PTK_NONINDUK);
+        allPtk.forEach(function(ptk) {
+            var jbt = String(ptk.jabatan || "").toLowerCase();
+            var st = String(ptk.status || "").toUpperCase().replace(/\s/g, '');
+            
+            // Tentukan status suffix
+            var suffix = "";
+            if (st.includes('CPNS')) suffix = "_cpns";
+            else if (st.includes('PNS')) suffix = "_pns";
+            else if (st.includes('PPPK') && (st.includes('PARUH') || st.includes('PW'))) suffix = "_pppk_pw";
+            else if (st.includes('PPPK')) suffix = "_pppk";
+            else if (st.includes('GTY') || st.includes('PTY')) suffix = (jbt.includes('guru') || jbt.includes('kepala sekolah')) ? "_gty" : "_pty";
+            else if (st.includes('GTT') || st.includes('HONOR') || st.includes('NONASN') || st.includes('BOS') || st.includes('PTT')) suffix = (jbt.includes('guru') || jbt.includes('kepala sekolah')) ? "_gtt" : "_ptt";
+            
+            // Jika tidak ada suffix valid, lewati
+            if (!suffix) return;
+            
+            var prefix = "";
+            if (jbt.includes('kepala sekolah')) {
+                prefix = "ks";
+                if (suffix === "_cpns" || suffix === "_pns") suffix = "_pns";
+                else if (suffix === "_pppk" || suffix === "_pppk_pw") suffix = "_pppk";
+                else suffix = "_non_asn";
+            } 
+            else if (jbt.includes('guru kelas')) prefix = "gk";
+            else if (jbt.includes('pai')) prefix = "gpai";
+            else if (jbt.includes('pjok') || jbt.includes('penjasorkes')) prefix = "gpjok";
+            else if (jbt.includes('kristen')) prefix = "gkris";
+            else if (jbt.includes('katolik')) prefix = "gkat";
+            else if (jbt.includes('inggris')) prefix = "gbing";
+            else if (jbt.includes('guru')) prefix = "gmap"; // Guru Mapel Lainnya
+            else if (jbt.includes('pengelola umum')) prefix = "puo";
+            else if (jbt.includes('operator layanan')) prefix = "olo";
+            else if (jbt.includes('pengelola layanan')) prefix = "plo";
+            else if (jbt.includes('penata layanan')) prefix = "ptlo";
+            else if (jbt.includes('administrasi perkantoran')) prefix = "adm";
+            else if (jbt.includes('penjaga')) prefix = "pjg";
+            else if (jbt.includes('administrasi') || jbt.includes('tas')) prefix = "tas";
+            else if (jbt.includes('pustakawan') || jbt.includes('perpustakaan')) prefix = "pust";
+            else prefix = "lain"; // Tendik Lainnya
+            
+            var inputName = prefix + suffix;
+            var el = $(`#lapbulkelola_formSD input[name="${inputName}"]`);
+            if (el.length > 0) {
+                var cur = parseInt(el.val()) || 0;
+                el.val(cur + 1);
+            }
+        });
+    }
+
     function lapbulkelola_submitFormSD(e) {
         e.preventDefault();
         
+        lapbulkelola_syncModernToLegacySD();
         lapbulkelola_calcTableMurid(); lapbulkelola_calcTableAgama();
         var totMuridL = parseInt($('#lapbulkelola_footMurid td:eq(10)').text()) || 0;
         var totMuridP = parseInt($('#lapbulkelola_footMurid td:eq(11)').text()) || 0;
@@ -2257,8 +2314,54 @@
         lapbulkelola_handleTabClickPAUD('lapbulkelola_tp4');
     }
 
+    function lapbulkelola_syncModernToLegacyPAUD() {
+        if ($('#ptk-modern-ui-paud').hasClass('d-none')) return;
+        
+        // Zero all PAUD PTK inputs
+        $('.val-ks-paud, .val-ptk-paud, .val-tendik-paud').val('');
+        
+        var allPtk = LAPBULKELOLA_DATA_PTK_INDUK.concat(LAPBULKELOLA_DATA_PTK_NONINDUK);
+        allPtk.forEach(function(ptk) {
+            var jbt = String(ptk.jabatan || "").toLowerCase();
+            var st = String(ptk.status || "").toUpperCase().replace(/\s/g, '');
+            
+            // Tentukan status suffix
+            var suffix = "";
+            if (st.includes('CPNS') || st.includes('PNS')) suffix = "_pns";
+            else if (st.includes('PPPK')) suffix = "_pppk";
+            else if (st.includes('GTY') || st.includes('PTY')) suffix = (jbt.includes('guru') || jbt.includes('kepala sekolah')) ? "_gty" : "_ptt"; // Fallback Tendik to PTT or PTY? PAUD uses PTT/PNS/PPPK for Tendik. Wait, let's look at PAUD Tendik suffixes.
+            else if (st.includes('GTT') || st.includes('HONOR') || st.includes('NONASN') || st.includes('BOS') || st.includes('PTT')) suffix = (jbt.includes('guru') || jbt.includes('kepala sekolah')) ? "_gtt" : "_ptt";
+            
+            if (!suffix) return;
+            
+            var prefix = "";
+            if (jbt.includes('kepala sekolah')) prefix = "ks";
+            else if (jbt.includes('guru kelas')) prefix = "gk";
+            else if (jbt.includes('guru pendamping')) prefix = "gp";
+            else if (jbt.includes('guru mapel')) prefix = "gm";
+            else if (jbt.includes('guru')) prefix = "gl"; // Guru Lainnya
+            else if (jbt.includes('penjaga')) prefix = "td_pjg";
+            else if (jbt.includes('administrasi') || jbt.includes('tas')) prefix = "td_tas";
+            else if (jbt.includes('pustakawan') || jbt.includes('perpustakaan')) prefix = "td_pust";
+            else prefix = "td_lain"; // Tendik Lainnya
+            
+            // PAUD tends to use PTT for non-ASN tendik
+            if (prefix.startsWith('td_') && (suffix === "_gty" || suffix === "_gtt")) suffix = "_ptt";
+            
+            var inputName = prefix + suffix;
+            var el = $(`#lapbulkelola_formPAUD input[name="${inputName}"]`);
+            if (el.length > 0) {
+                var cur = parseInt(el.val()) || 0;
+                el.val(cur + 1);
+            }
+        });
+    }
+
     function lapbulkelola_submitFormPAUD(e) {
         e.preventDefault();
+        
+        lapbulkelola_syncModernToLegacyPAUD();
+        
         $('input[type="date"], input[type="number"]').each(function () { if ($(this).val() === "-") { $(this).val(""); } });
         if (LAPBULKELOLA_IS_EDIT_MODE) { lapbulkelola_submitUpdatePAUD(); return; }
 
