@@ -3410,13 +3410,14 @@
         if (!report) return;
         
         var $btn = $(this);
+        if ($btn.hasClass('is-loading')) return;
         var oriHtml = $btn.html();
-        $btn.html('<i class="fas fa-spinner fa-spin"></i>').prop('disabled', true);
+        $btn.addClass('is-loading').html('<i class="fas fa-spinner fa-spin"></i>').prop('disabled', true);
         
         var backendCall = (report.source === 'SD') ? 'getDetailRowSD' : 'getDetailRowPAUD';
         google.script.run
             .withSuccessHandler(function(data) {
-                $btn.html(oriHtml).prop('disabled', false);
+                $btn.removeClass('is-loading').html(oriHtml).prop('disabled', false);
                 if(data.error) { Sultan.notif.gagal(data.error); return; }
                 
                 // Data murid disimpan per-kolom di spreadsheet, bukan dalam kolom JSON
@@ -3602,7 +3603,7 @@
                 $('#lapbulkelola_modalViewData').modal('show');
             })
             .withFailureHandler(function(e) {
-                $btn.html(oriHtml).prop('disabled', false);
+                $btn.removeClass('is-loading').html(oriHtml).prop('disabled', false);
                 Sultan.notif.gagal("Gagal memuat data: " + e.message);
             })[backendCall](id);
     });
@@ -3614,13 +3615,157 @@
         if (!report) return;
         
         var $btn = $(this);
+        if ($btn.hasClass('is-loading')) return;
         var oriHtml = $btn.html();
-        $btn.html('<i class="fas fa-spinner fa-spin"></i>').prop('disabled', true);
+        $btn.addClass('is-loading').html('<i class="fas fa-spinner fa-spin"></i>').prop('disabled', true);
         
         var backendCall = (report.source === 'SD') ? 'getDetailRowSD' : 'getDetailRowPAUD';
         google.script.run
             .withSuccessHandler(function(data) {
-                $btn.html(oriHtml).prop('disabled', false);
+                $btn.removeClass('is-loading').html(oriHtml).prop('disabled', false);
+                if(data.error) { Sultan.notif.gagal(data.error); return; }
+                
+                var dInduk = [];
+                var dNonInduk = [];
+                try { 
+                    // Nama kolom di spreadsheet adalah "Data PTK" (bukan "DATA PTK")
+                    var rawInduk = lapbulkelola_getDataKey(data, 'Data PTK') || lapbulkelola_getDataKey(data, 'DATA PTK') || '';
+                    var rawNonInduk = lapbulkelola_getDataKey(data, 'Data PTK Non Induk') || lapbulkelola_getDataKey(data, 'DATA PTK NON INDUK') || '';
+                    if(rawInduk) dInduk = JSON.parse(rawInduk);
+                    if(rawNonInduk) dNonInduk = JSON.parse(rawNonInduk);
+                } catch (e) { console.error("Invalid dataPTK", e); }
+        
+                function buildViewPtkTable(dataArray, title, icon) {
+                    if (!dataArray || dataArray.length === 0) return '';
+                    
+                    var tableHtml = lapbulkelola_buildPtkModernUi();
+                    // Strip the header/wrapper we don't need
+                    tableHtml = tableHtml.substring(tableHtml.indexOf('<div class="table-responsive'));
+                    tableHtml = tableHtml.substring(0, tableHtml.indexOf('</table>') + 8);
+                    tableHtml += '</div>';
+                    
+                    // Replace IDs to avoid collision
+                    tableHtml = tableHtml.replace(/id="lapbulkelola_tablePTKInduk"/g, 'class="table table-bordered table-sm table-matrix text-center mb-0"');
+                    tableHtml = tableHtml.replace(/id="lapbulkelola_tbodyPTKInduk"/g, '');
+                    tableHtml = tableHtml.replace(/id="footPTK_A_[a-z0-9]+"/g, 'class="d-none"');
+                    tableHtml = tableHtml.replace(/<tfoot[\s\S]*?<\/tfoot>/g, '');
+                    
+                    var tbody = '';
+                    var mkCheck = function(val, target) { return (String(val).toLowerCase().replace(/\s/g, '') === String(target).toLowerCase().replace(/\s/g, '')) ? '<i class="fas fa-check text-success"></i>' : ''; };
+                    var mkCheckInc = function(val, target) { return (String(val).toLowerCase().replace(/\s/g, '').includes(String(target).toLowerCase().replace(/\s/g, ''))) ? '<i class="fas fa-check text-success"></i>' : ''; };
+                    
+                    for (var i = 0; i < dataArray.length; i++) {
+                        var r = dataArray[i];
+                        var ijz = r.ijazah || "";
+                        var st = r.status_pegawai || "";
+                        var gol = r.gol || "";
+                        
+                        var ab_dd = parseInt(r.absen_dd) || 0;
+                        var ab_dl = parseInt(r.absen_dl) || 0;
+                        var ab_ct = parseInt(r.absen_ct) || 0;
+                        var ab_cap = parseInt(r.absen_cap) || 0;
+                        var ab_cs = parseInt(r.absen_cs) || 0;
+                        var ab_cm = parseInt(r.absen_cm) || 0;
+                        var ab_a = parseInt(r.absen_a) || 0;
+                        var ab_jml = ab_dd + ab_dl + ab_ct + ab_cap + ab_cs + ab_cm + ab_a;
+                        var fmtZ = function(v) { return v === 0 ? '-' : v; };
+                        
+                        tbody += `<tr>
+                            <td class="align-middle">${i+1}</td>
+                            <td class="text-left align-middle font-weight-bold text-dark text-nowrap">
+                                ${lapbulkelola_escapeHtml(r.nama)}<br>
+                                <small class="text-muted">${lapbulkelola_escapeHtml(r.nip_nuptk || "-")}</small>
+                            </td>
+                            <td class="align-middle">${lapbulkelola_escapeHtml(r.nuptk || "-")}</td>
+                            <td class="align-middle">${mkCheck(r.lp, "L")}</td>
+                            <td class="align-middle">${mkCheck(r.lp, "P")}</td>
+                            <td class="align-middle">${lapbulkelola_escapeHtml(r.agama || "-")}</td>
+                            <td class="align-middle">${lapbulkelola_escapeHtml(r.tmpt_lahir || "-")}</td>
+                            <td class="align-middle text-nowrap">${lapbulkelola_escapeHtml(r.tgl_lahir || "-")}</td>
+                            <td class="align-middle">${mkCheck(ijz, "s2")}</td>
+                            <td class="align-middle">${mkCheck(ijz, "s1")}</td>
+                            <td class="align-middle">${mkCheckInc(ijz, "d3")}</td>
+                            <td class="align-middle">${mkCheckInc(ijz, "d2")}</td>
+                            <td class="align-middle">${mkCheck(ijz, "sma")}</td>
+                            <td class="align-middle">${mkCheck(ijz, "smp")}</td>
+                            <td class="align-middle">${mkCheck(ijz, "sd")}</td>
+                            <td class="align-middle">${mkCheck(st, "cpns")}</td>
+                            <td class="align-middle">${mkCheck(st, "pns")}</td>
+                            <td class="align-middle">${st === "PPPK" ? '<i class="fas fa-check text-success"></i>' : ''}</td>
+                            <td class="align-middle">${mkCheckInc(st, "pppk pw") || mkCheckInc(st, "pppk paruh")}</td>
+                            <td class="align-middle">${mkCheck(st, "gty")}</td>
+                            <td class="align-middle">${mkCheck(st, "pty")}</td>
+                            <td class="align-middle">${mkCheckInc(st, "gtt") || mkCheckInc(st, "honor") || mkCheckInc(st, "non asn")}</td>
+                            <td class="align-middle">${mkCheck(st, "ptt")}</td>
+                            <td class="align-middle text-nowrap">${lapbulkelola_escapeHtml(r.tmt || "-")}</td>
+                            <td class="align-middle">${mkCheck(gol, "ix")}</td>
+                            <td class="align-middle">${mkCheck(gol, "iiia") || mkCheck(gol, "iii/a")}</td>
+                            <td class="align-middle">${mkCheck(gol, "iiib") || mkCheck(gol, "iii/b")}</td>
+                            <td class="align-middle">${mkCheck(gol, "iiic") || mkCheck(gol, "iii/c")}</td>
+                            <td class="align-middle">${mkCheck(gol, "iiid") || mkCheck(gol, "iii/d")}</td>
+                            <td class="align-middle">${mkCheck(gol, "iva") || mkCheck(gol, "iv/a")}</td>
+                            <td class="align-middle">${mkCheck(gol, "ivb") || mkCheck(gol, "iv/b")}</td>
+                            <td class="align-middle">${mkCheck(gol, "ivc") || mkCheck(gol, "iv/c")}</td>
+                            <td class="align-middle">${mkCheck(r.serdik, "sudah")}</td>
+                            <td class="align-middle">${mkCheck(r.status_dapodik, "sudah")}</td>
+                            <td class="align-middle text-nowrap text-left">${lapbulkelola_escapeHtml(r.jabatan || "-")}</td>
+                            <td class="align-middle text-maroon font-weight-bold text-nowrap">${lapbulkelola_escapeHtml(r.mengajar || "-")}</td>
+                            <td class="align-middle">${fmtZ(ab_dd)}</td>
+                            <td class="align-middle">${fmtZ(ab_dl)}</td>
+                            <td class="align-middle">${fmtZ(ab_ct)}</td>
+                            <td class="align-middle">${fmtZ(ab_cap)}</td>
+                            <td class="align-middle">${fmtZ(ab_cs)}</td>
+                            <td class="align-middle">${fmtZ(ab_cm)}</td>
+                            <td class="align-middle">${fmtZ(ab_a)}</td>
+                            <td class="align-middle bg-light text-dark font-weight-bold">${fmtZ(ab_jml)}</td>
+                        </tr>`;
+                    }
+                    
+                    tableHtml = tableHtml.replace('<tbody id="" style="font-size: 11px;">', '<tbody style="font-size: 11px;">' + tbody);
+                    
+                    return `
+                    <h6 class="font-weight-bold text-maroon mb-2 mt-4"><i class="${icon} mr-2"></i> ${title}</h6>
+                    ${tableHtml}
+                    `;
+                }
+        
+                var ptkNonIndukHtml = buildViewPtkTable(dNonInduk, "PTK Non Induk", "fas fa-user-plus");
+                var ptkIndukHtml = buildViewPtkTable(dInduk, "PTK Definitif (Induk)", "fas fa-user-check");
+
+                var bodyHtml = `
+                <div class="alert alert-secondary border mb-4 text-center font-weight-bold">
+                    Laporan Periode: <span class="text-maroon">${report.bulan} ${report.tahun}</span>
+                </div>
+                ${ptkIndukHtml}
+                ${ptkNonIndukHtml}
+                `;
+
+                $('#lapbulkelola_modalViewData_header').removeClass('modal-header-sultan-primary modal-header-sultan-warning modal-header-sultan-danger modal-header-sultan-success modal-header-sultan-info modal-header-sultan-dark').addClass('modal-header-sultan-success');
+                $('#lapbulkelola_modalViewData_title').html('<i class="fas fa-user-tie mr-2"></i> DATA PTK - ' + report.namaSekolah);
+                $('#lapbulkelola_modalViewData_body').html(bodyHtml);
+                $('#lapbulkelola_modalViewData').modal('show');
+            })
+            .withFailureHandler(function(e) {
+                $btn.removeClass('is-loading').html(oriHtml).prop('disabled', false);
+                Sultan.notif.gagal("Gagal memuat data: " + e.message);
+            })[backendCall](id);
+    });
+
+    // Event listener for Lihat Data PTK
+    $(document).on('click', '.btn-lihat-ptk', function () {
+        var id = $(this).data('id');
+        var report = LAPBULKELOLA_CACHE_DATA.find(r => r.rowId == id);
+        if (!report) return;
+        
+        var $btn = $(this);
+        if ($btn.hasClass('is-loading')) return;
+        var oriHtml = $btn.html();
+        $btn.addClass('is-loading').html('<i class="fas fa-spinner fa-spin"></i>').prop('disabled', true);
+        
+        var backendCall = (report.source === 'SD') ? 'getDetailRowSD' : 'getDetailRowPAUD';
+        google.script.run
+            .withSuccessHandler(function(data) {
+                $btn.removeClass('is-loading').html(oriHtml).prop('disabled', false);
                 if(data.error) { Sultan.notif.gagal(data.error); return; }
                 
                 var dInduk = [];
@@ -3722,7 +3867,7 @@
                 $('#lapbulkelola_modalViewData').modal('show');
             })
             .withFailureHandler(function(e) {
-                $btn.html(oriHtml).prop('disabled', false);
+                $btn.removeClass('is-loading').html(oriHtml).prop('disabled', false);
                 Sultan.notif.gagal("Gagal memuat data: " + e.message);
             })[backendCall](id);
     });
