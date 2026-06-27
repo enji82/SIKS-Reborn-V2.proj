@@ -393,7 +393,7 @@ function prosesSimpanLengkap(dbKey, namaSheet, source, form, fileData) {
     var sheet = getSheet(dbKey, namaSheet);
     var userLogin = form.user_login || "System";
     
-    var headers = sheet.getRange(1, 1, 1, 300).getValues()[0].map(function(h) { 
+    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(function(h) { 
       return String(h).toLowerCase().trim(); 
     });
     
