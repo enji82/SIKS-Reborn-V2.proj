@@ -2547,6 +2547,7 @@ function kirimAjuanKoreksiKtp(form, base64Data, fileName, userPengusul) {
 function getPTKSekolahByNpsnLapbul(npsn, jenjang) {
   try {
     if (!npsn || !jenjang) return [];
+    var searchNpsn = String(npsn).trim();
     
     var data = [];
     // Coba SDN dulu
@@ -2555,7 +2556,7 @@ function getPTKSekolahByNpsnLapbul(npsn, jenjang) {
       var lastRow = sheet.getLastRow();
       if (lastRow >= 2) {
         var values = sheet.getRange(2, 1, lastRow - 1, 30).getValues();
-        data = values.filter(function(r) { return String(r[1]).trim() === String(npsn); });
+        data = values.filter(function(r) { return String(r[1]).trim() === searchNpsn; });
       }
     }
     
@@ -2566,7 +2567,7 @@ function getPTKSekolahByNpsnLapbul(npsn, jenjang) {
         var lastRow = sheet.getLastRow();
         if (lastRow >= 2) {
           var values = sheet.getRange(2, 1, lastRow - 1, 30).getValues();
-          data = values.filter(function(r) { return String(r[1]).trim() === String(npsn); });
+          data = values.filter(function(r) { return String(r[1]).trim() === searchNpsn; });
         }
       }
     }
