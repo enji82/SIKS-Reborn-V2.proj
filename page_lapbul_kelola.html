@@ -3366,23 +3366,108 @@
             </div>
         </div>
     </div>
-</div><!-- MODAL LIHAT MURID -->
-<div class="modal fade" id="lapbulkelola_modalLihatMurid" tabindex="-1" role="dialog" data-backdrop="static" style="z-index: 1060;">
-    <div class="modal-dialog modal-xl" role="document">
-        <div class="modal-content modal-content-sultan border-0 shadow-lg">
-            <div class="modal-header bg-info flex-shrink-0">
-                <h5 class="modal-title font-weight-bold text-white"><i class="fas fa-users mr-2"></i> DATA MURID</h5>
-                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
-            </div>
-            <div class="modal-body p-4 bg-light sultan-scroll" style="max-height: 75vh; overflow-y: auto;">
-                <div class="alert alert-secondary border mb-4 text-center font-weight-bold">
-                    Laporan Periode: <span id="lapbulkelola_viewMuridPeriode" class="text-maroon"></span>
-                </div>
-                <!-- B. JUMLAH MURID -->
+</div><script>
+    // Event listener for Lihat Data Murid
+    $(document).on('click', '.btn-lihat-murid', function () {
+        var id = $(this).data('id');
+        var source = $(this).data('source') || 'SD'; // from cache data source if needed
+        var report = LAPBULKELOLA_CACHE_DATA.find(r => r.rowId == id);
+        if (!report) return;
+        
+        var $btn = $(this);
+        var oriHtml = $btn.html();
+        $btn.html('<i class="fas fa-spinner fa-spin"></i>').prop('disabled', true);
+        
+        var backendCall = (report.source === 'SD') ? 'getDetailRowSD' : 'getDetailRowPAUD';
+        google.script.run
+            .withSuccessHandler(function(data) {
+                $btn.html(oriHtml).prop('disabled', false);
+                if(data.error) { Sultan.notif.gagal(data.error); return; }
+                
+                var d = {};
+                try { d = JSON.parse(data["DATA MURID SD"] || "{}"); } catch (e) { console.error("Invalid dataMurid", e); }
+                
+                // Render B. KEADAAN MURID (Awal, Masuk, Keluar, Akhir, Absen)
+                var rombels = ['1','2','3','4','5','6'];
+                var body = [], foot = [];
+                var tk_aw_l=0, tk_aw_p=0, tk_aw_jml=0;
+                var tk_ms_l=0, tk_ms_p=0, tk_ms_jml=0;
+                var tk_kl_l=0, tk_kl_p=0, tk_kl_jml=0;
+                var tk_ak_l=0, tk_ak_p=0, tk_ak_jml=0;
+                var tk_abs_s=0, tk_abs_i=0, tk_abs_a=0, tk_abs_jml=0;
+        
+                for (var i = 0; i < rombels.length; i++) {
+                    var k = rombels[i];
+                    var rombel = d[`rombel_${k}`] || 1;
+                    var aw_l = d[`aw_${k}_l`] || 0, aw_p = d[`aw_${k}_p`] || 0;
+                    var ms_l = d[`ms_${k}_l`] || 0, ms_p = d[`ms_${k}_p`] || 0;
+                    var kl_l = d[`kl_${k}_l`] || 0, kl_p = d[`kl_${k}_p`] || 0;
+                    var abs_s = d[`ab_${k}_s`] || 0, abs_i = d[`ab_${k}_i`] || 0, abs_a = d[`ab_${k}_a`] || 0;
+                    
+                    var aw_jml = parseInt(aw_l||0) + parseInt(aw_p||0);
+                    var ms_jml = parseInt(ms_l||0) + parseInt(ms_p||0);
+                    var kl_jml = parseInt(kl_l||0) + parseInt(kl_p||0);
+                    var ak_l = parseInt(aw_l||0) + parseInt(ms_l||0) - parseInt(kl_l||0);
+                    var ak_p = parseInt(aw_p||0) + parseInt(ms_p||0) - parseInt(kl_p||0);
+                    var ak_jml = ak_l + ak_p;
+                    var abs_jml = parseInt(abs_s||0) + parseInt(abs_i||0) + parseInt(abs_a||0);
+        
+                    tk_aw_l+=parseInt(aw_l||0); tk_aw_p+=parseInt(aw_p||0); tk_aw_jml+=aw_jml;
+                    tk_ms_l+=parseInt(ms_l||0); tk_ms_p+=parseInt(ms_p||0); tk_ms_jml+=ms_jml;
+                    tk_kl_l+=parseInt(kl_l||0); tk_kl_p+=parseInt(kl_p||0); tk_kl_jml+=kl_jml;
+                    tk_ak_l+=ak_l; tk_ak_p+=ak_p; tk_ak_jml+=ak_jml;
+                    tk_abs_s+=parseInt(abs_s||0); tk_abs_i+=parseInt(abs_i||0); tk_abs_a+=parseInt(abs_a||0); tk_abs_jml+=abs_jml;
+        
+                    body.push(`<tr><td class="font-weight-bold align-middle">Kelas ${k}</td>
+                        <td><span class="font-weight-bold text-maroon">${rombel}</span></td>
+                        <td>${aw_l||""}</td><td>${aw_p||""}</td><td class="font-weight-bold bg-light">${aw_jml||""}</td>
+                        <td>${ms_l||""}</td><td>${ms_p||""}</td><td class="font-weight-bold bg-light">${ms_jml||""}</td>
+                        <td>${kl_l||""}</td><td>${kl_p||""}</td><td class="font-weight-bold bg-light">${kl_jml||""}</td>
+                        <td class="font-weight-bold text-primary">${ak_l||0}</td><td class="font-weight-bold text-primary">${ak_p||0}</td><td class="font-weight-bold bg-light text-primary">${ak_jml||0}</td>
+                        <td>${abs_s||""}</td><td>${abs_i||""}</td><td>${abs_a||""}</td><td class="font-weight-bold bg-light text-danger">${abs_jml||""}</td>
+                    </tr>`);
+                }
+        
+                foot.push(`<tr><td colspan="2" class="text-right align-middle">TOTAL JUMLAH KESELURUHAN</td>
+                    <td>${tk_aw_l||0}</td><td>${tk_aw_p||0}</td><td>${tk_aw_jml||0}</td>
+                    <td>${tk_ms_l||0}</td><td>${tk_ms_p||0}</td><td>${tk_ms_jml||0}</td>
+                    <td>${tk_kl_l||0}</td><td>${tk_kl_p||0}</td><td>${tk_kl_jml||0}</td>
+                    <td>${tk_ak_l||0}</td><td>${tk_ak_p||0}</td><td>${tk_ak_jml||0}</td>
+                    <td>${tk_abs_s||0}</td><td>${tk_abs_i||0}</td><td>${tk_abs_a||0}</td><td>${tk_abs_jml||0}</td>
+                </tr>`);
+                
+                // Render C. AGAMA MURID
+                var agamas = [ { prefix: 'islam', label: 'Islam' }, { prefix: 'kristen', label: 'Kristen' }, { prefix: 'katolik', label: 'Katolik' }, { prefix: 'hindu', label: 'Hindu' }, { prefix: 'buddha', label: 'Buddha' }, { prefix: 'konghucu', label: 'Konghucu' } ];
+                var tbodyAgama = [], tfootAgama = [];
+                var totalColsAgama = { k1_l:0,k1_p:0,k1_j:0, k2_l:0,k2_p:0,k2_j:0, k3_l:0,k3_p:0,k3_j:0, k4_l:0,k4_p:0,k4_j:0, k5_l:0,k5_p:0,k5_j:0, k6_l:0,k6_p:0,k6_j:0, all_l:0,all_p:0,all_j:0 };
+        
+                for (var a = 0; a < agamas.length; a++) {
+                    var tr = `<tr><td class="align-middle">${a+1}</td><td class="text-left font-weight-bold align-middle">${agamas[a].label}</td>`;
+                    var rowL = 0, rowP = 0, rowJ = 0;
+                    for(var k=1; k<=6; k++) {
+                        var vL = d[`k${k}_${agamas[a].prefix}_l`] || 0;
+                        var vP = d[`k${k}_${agamas[a].prefix}_p`] || 0;
+                        var vJ = parseInt(vL||0) + parseInt(vP||0);
+                        rowL += parseInt(vL||0); rowP += parseInt(vP||0); rowJ += vJ;
+                        totalColsAgama[`k${k}_l`] += parseInt(vL||0); totalColsAgama[`k${k}_p`] += parseInt(vP||0); totalColsAgama[`k${k}_j`] += vJ;
+                        tr += `<td>${vL||""}</td><td>${vP||""}</td><td class="font-weight-bold bg-light">${vJ||""}</td>`;
+                    }
+                    totalColsAgama.all_l += rowL; totalColsAgama.all_p += rowP; totalColsAgama.all_j += rowJ;
+                    tr += `<td class="font-weight-bold text-primary">${rowL||""}</td><td class="font-weight-bold text-primary">${rowP||""}</td><td class="font-weight-bold bg-light text-primary">${rowJ||""}</td></tr>`;
+                    tbodyAgama.push(tr);
+                }
+        
+                var fTr = `<tr><td colspan="2" class="text-right align-middle">TOTAL JUMLAH PER KELAS</td>`;
+                for(var k=1; k<=6; k++) { fTr += `<td>${totalColsAgama[`k${k}_l`]||0}</td><td>${totalColsAgama[`k${k}_p`]||0}</td><td>${totalColsAgama[`k${k}_j`]||0}</td>`; }
+                fTr += `<td>${totalColsAgama.all_l||0}</td><td>${totalColsAgama.all_p||0}</td><td>${totalColsAgama.all_j||0}</td></tr>`;
+                tfootAgama.push(fTr);
+        
+                var bodyHtml = `
+                <div class="alert alert-info border mb-4 text-center font-weight-bold">Laporan Periode: <span class="text-maroon">${report.bulan} ${report.tahun}</span></div>
                 <div class="group-box mb-4">
-                    <span class="group-title text-maroon font-weight-bold"><i class="fas fa-users mr-2"></i>B. JUMLAH MURID</span>
+                    <span class="group-title text-info font-weight-bold"><i class="fas fa-users mr-2"></i>B. KEADAAN MURID</span>
                     <div class="table-responsive sultan-scroll mt-2">
-                        <table class="table table-sm table-bordered table-matrix small mb-0 text-center bg-white" style="min-width: 900px;" id="lapbulkelola_tabelViewMurid">
+                        <table class="table table-sm table-bordered table-matrix small mb-0 text-center bg-white" style="min-width: 900px;">
                             <thead class="bg-dark text-white">
                                 <tr>
                                     <th rowspan="2" class="align-middle">Kls.</th>
@@ -3401,17 +3486,15 @@
                                     <th>s</th><th>i</th><th>a</th><th>Jml</th>
                                 </tr>
                             </thead>
-                            <tbody id="lapbulkelola_bodyViewMurid"></tbody>
-                            <tfoot class="bg-secondary text-white font-weight-bold" id="lapbulkelola_footViewMurid"></tfoot>
+                            <tbody>${body.join('')}</tbody>
+                            <tfoot class="bg-secondary text-white font-weight-bold">${foot.join('')}</tfoot>
                         </table>
                     </div>
                 </div>
-
-                <!-- C. AGAMA MURID -->
                 <div class="group-box mb-4">
                     <span class="group-title text-maroon font-weight-bold"><i class="fas fa-praying-hands mr-2"></i>C. AGAMA MURID</span>
                     <div class="table-responsive sultan-scroll mt-2">
-                        <table class="table table-sm table-bordered table-matrix small mb-0 text-center bg-white" style="min-width: 800px;" id="lapbulkelola_tabelViewAgama">
+                        <table class="table table-sm table-bordered table-matrix small mb-0 text-center bg-white" style="min-width: 800px;">
                             <thead class="bg-dark text-white">
                                 <tr>
                                     <th rowspan="2" class="align-middle">No</th>
@@ -3431,59 +3514,82 @@
                                     <th>L</th><th>P</th><th>Jml</th>
                                 </tr>
                             </thead>
-                            <tbody id="lapbulkelola_bodyViewAgama"></tbody>
-                            <tfoot class="bg-secondary text-white font-weight-bold" id="lapbulkelola_footViewAgama"></tfoot>
+                            <tbody>${tbodyAgama.join('')}</tbody>
+                            <tfoot class="bg-secondary text-white font-weight-bold">${tfootAgama.join('')}</tfoot>
                         </table>
                     </div>
-                </div>
-            </div>
-            <div class="modal-footer bg-white border-top-0">
-                <button type="button" class="btn btn-secondary font-weight-bold px-4" data-dismiss="modal"><i class="fas fa-times mr-2"></i> TUTUP</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- MODAL LIHAT PTK -->
-<div class="modal fade" id="lapbulkelola_modalLihatPTK" tabindex="-1" role="dialog" data-backdrop="static" style="z-index: 1060;">
-    <div class="modal-dialog modal-xl" role="document">
-        <div class="modal-content modal-content-sultan border-0 shadow-lg">
-            <div class="modal-header bg-success flex-shrink-0">
-                <h5 class="modal-title font-weight-bold text-white"><i class="fas fa-user-tie mr-2"></i> DATA PTK</h5>
-                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
-            </div>
-            <div class="modal-body p-4 bg-light sultan-scroll" style="max-height: 75vh; overflow-y: auto;">
-                <div class="alert alert-secondary border mb-4 text-center font-weight-bold">
-                    Laporan Periode: <span id="lapbulkelola_viewPTKPeriode" class="text-maroon"></span>
-                </div>
+                </div>`;
                 
-                <h6 class="font-weight-bold text-maroon mb-2"><i class="fas fa-user-check mr-2"></i> PTK Definitif (Induk)</h6>
-                <div class="table-responsive sultan-scroll mb-4 border rounded shadow-sm bg-white">
-                    <table class="table table-bordered table-sm table-matrix text-center mb-0" id="lapbulkelola_tabelViewPTKInduk">
-                        <thead class="bg-dark text-white align-middle" style="font-size: 11px;">
-                            <tr>
-                                <th rowspan="2" class="align-middle">NO</th>
-                                <th rowspan="2" class="align-middle text-left" style="min-width: 200px;">NAMA PTK</th>
-                                <th rowspan="2" class="align-middle">L/P</th>
-                                <th rowspan="2" class="align-middle">STATUS<br>PEGAWAI</th>
-                                <th rowspan="2" class="align-middle text-left" style="min-width: 150px;">JENIS PTK</th>
-                                <th rowspan="2" class="align-middle">MENGAJAR<br>KELAS/MAPEL</th>
-                                <th colspan="3" class="align-middle">IJAZAH</th>
-                            </tr>
-                            <tr>
-                                <th>SD/SMP/SMA</th>
-                                <th>D1/D2/D3</th>
-                                <th>S1/S2/S3</th>
-                            </tr>
-                        </thead>
-                        <tbody id="lapbulkelola_bodyViewPTKInduk"></tbody>
-                    </table>
-                </div>
+                Sultan.modal.showForm({
+                    size: 'modal-xl',
+                    theme: 'info',
+                    icon: 'fas fa-users',
+                    title: 'DATA MURID - ' + report.namaSekolah,
+                    bodyHtml: bodyHtml,
+                    footerHtml: '<button type="button" class="btn btn-secondary font-weight-bold px-4" data-dismiss="modal"><i class="fas fa-times mr-2"></i> TUTUP</button>'
+                });
+            })
+            .withFailureHandler(function(e) {
+                $btn.html(oriHtml).prop('disabled', false);
+                Sultan.notif.gagal("Gagal memuat data: " + e.message);
+            })[backendCall](id);
+    });
 
-                <div id="lapbulkelola_containerViewPTKNonInduk">
+    // Event listener for Lihat Data PTK
+    $(document).on('click', '.btn-lihat-ptk', function () {
+        var id = $(this).data('id');
+        var report = LAPBULKELOLA_CACHE_DATA.find(r => r.rowId == id);
+        if (!report) return;
+        
+        var $btn = $(this);
+        var oriHtml = $btn.html();
+        $btn.html('<i class="fas fa-spinner fa-spin"></i>').prop('disabled', true);
+        
+        var backendCall = (report.source === 'SD') ? 'getDetailRowSD' : 'getDetailRowPAUD';
+        google.script.run
+            .withSuccessHandler(function(data) {
+                $btn.html(oriHtml).prop('disabled', false);
+                if(data.error) { Sultan.notif.gagal(data.error); return; }
+                
+                var dInduk = [];
+                var dNonInduk = [];
+                try { 
+                    if(data["DATA PTK"]) dInduk = JSON.parse(data["DATA PTK"]);
+                    if(data["DATA PTK NON INDUK"]) dNonInduk = JSON.parse(data["DATA PTK NON INDUK"]);
+                } catch (e) { console.error("Invalid dataPTK", e); }
+        
+                function renderRowsHtml(dataArray) {
+                    var html = [];
+                    if(!dataArray || dataArray.length === 0) {
+                        html.push(`<tr><td colspan="9" class="text-center font-italic text-muted">Tidak ada data</td></tr>`);
+                    } else {
+                        for (var i = 0; i < dataArray.length; i++) {
+                            var r = dataArray[i];
+                            html.push(`<tr>
+                                <td class="align-middle">${i+1}</td>
+                                <td class="text-left align-middle font-weight-bold text-dark">
+                                    ${lapbulkelola_escapeHtml(r.nama)}<br>
+                                    <small class="text-muted">${lapbulkelola_escapeHtml(r.nip_nuptk || "-")}</small>
+                                </td>
+                                <td class="align-middle">${lapbulkelola_escapeHtml(r.lp || "-")}</td>
+                                <td class="align-middle">${lapbulkelola_escapeHtml(r.status_pegawai || "-")}</td>
+                                <td class="text-left align-middle">${lapbulkelola_escapeHtml(r.jenis_ptk || "-")}</td>
+                                <td class="align-middle text-maroon font-weight-bold">${lapbulkelola_escapeHtml(r.mengajar || "-")}</td>
+                                <td class="align-middle">${(r.ijazah || "").toLowerCase().includes("sma") || (r.ijazah || "").toLowerCase().includes("smp") || (r.ijazah || "").toLowerCase().includes("sd") ? '<i class="fas fa-check text-success"></i>' : '-'}</td>
+                                <td class="align-middle">${(r.ijazah || "").toLowerCase().includes("d1") || (r.ijazah || "").toLowerCase().includes("d2") || (r.ijazah || "").toLowerCase().includes("d3") ? '<i class="fas fa-check text-success"></i>' : '-'}</td>
+                                <td class="align-middle">${(r.ijazah || "").toLowerCase().includes("s1") || (r.ijazah || "").toLowerCase().includes("s2") || (r.ijazah || "").toLowerCase().includes("s3") ? '<i class="fas fa-check text-success"></i>' : '-'}</td>
+                            </tr>`);
+                        }
+                    }
+                    return html.join('');
+                }
+        
+                var ptkNonIndukHtml = '';
+                if(dNonInduk && dNonInduk.length > 0) {
+                    ptkNonIndukHtml = `
                     <h6 class="font-weight-bold text-maroon mb-2 mt-4"><i class="fas fa-user-plus mr-2"></i> PTK Non Induk</h6>
                     <div class="table-responsive sultan-scroll mb-4 border rounded shadow-sm bg-white">
-                        <table class="table table-bordered table-sm table-matrix text-center mb-0" id="lapbulkelola_tabelViewPTKNonInduk">
+                        <table class="table table-bordered table-sm table-matrix text-center mb-0">
                             <thead class="bg-secondary text-white align-middle" style="font-size: 11px;">
                                 <tr>
                                     <th rowspan="2" class="align-middle">NO</th>
@@ -3500,166 +3606,54 @@
                                     <th>S1/S2/S3</th>
                                 </tr>
                             </thead>
-                            <tbody id="lapbulkelola_bodyViewPTKNonInduk"></tbody>
+                            <tbody>${renderRowsHtml(dNonInduk)}</tbody>
                         </table>
-                    </div>
-                </div>
-
-            </div>
-            <div class="modal-footer bg-white border-top-0">
-                <button type="button" class="btn btn-secondary font-weight-bold px-4" data-dismiss="modal"><i class="fas fa-times mr-2"></i> TUTUP</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-    // Event listener for Lihat Data Murid
-    $(document).on('click', '.btn-lihat-murid', function () {
-        var id = $(this).data('id');
-        var report = LAPBULKELOLA_CACHE_DATA.find(r => r.rowId == id);
-        if (!report) return;
-
-        $('#lapbulkelola_viewMuridPeriode').text(report.bulan + ' ' + report.tahun);
-        
-        var d = {};
-        try { d = JSON.parse(report.dataMuridSD || "{}"); } catch (e) { console.error("Invalid dataMuridSD", e); }
-
-        var body = [];
-        var foot = [];
-        
-        // Render B. JUMLAH MURID
-        var tk_aw_l=0, tk_aw_p=0, tk_aw_jml=0, tk_ms_l=0, tk_ms_p=0, tk_ms_jml=0;
-        var tk_kl_l=0, tk_kl_p=0, tk_kl_jml=0, tk_ak_l=0, tk_ak_p=0, tk_ak_jml=0;
-        var tk_abs_s=0, tk_abs_i=0, tk_abs_a=0, tk_abs_jml=0;
-
-        for (var k=1; k<=6; k++) {
-            var rombel = d[`rombel_${k}`] || "";
-            var aw_l = d[`aw_${k}_l`] || 0, aw_p = d[`aw_${k}_p`] || 0;
-            var ms_l = d[`ms_${k}_l`] || 0, ms_p = d[`ms_${k}_p`] || 0;
-            var kl_l = d[`kl_${k}_l`] || 0, kl_p = d[`kl_${k}_p`] || 0;
-            var abs_s = d[`ab_${k}_s`] || 0, abs_i = d[`ab_${k}_i`] || 0, abs_a = d[`ab_${k}_a`] || 0;
-            
-            var aw_jml = parseInt(aw_l||0) + parseInt(aw_p||0);
-            var ms_jml = parseInt(ms_l||0) + parseInt(ms_p||0);
-            var kl_jml = parseInt(kl_l||0) + parseInt(kl_p||0);
-            var ak_l = parseInt(aw_l||0) + parseInt(ms_l||0) - parseInt(kl_l||0);
-            var ak_p = parseInt(aw_p||0) + parseInt(ms_p||0) - parseInt(kl_p||0);
-            var ak_jml = ak_l + ak_p;
-            var abs_jml = parseInt(abs_s||0) + parseInt(abs_i||0) + parseInt(abs_a||0);
-
-            tk_aw_l+=parseInt(aw_l||0); tk_aw_p+=parseInt(aw_p||0); tk_aw_jml+=aw_jml;
-            tk_ms_l+=parseInt(ms_l||0); tk_ms_p+=parseInt(ms_p||0); tk_ms_jml+=ms_jml;
-            tk_kl_l+=parseInt(kl_l||0); tk_kl_p+=parseInt(kl_p||0); tk_kl_jml+=kl_jml;
-            tk_ak_l+=ak_l; tk_ak_p+=ak_p; tk_ak_jml+=ak_jml;
-            tk_abs_s+=parseInt(abs_s||0); tk_abs_i+=parseInt(abs_i||0); tk_abs_a+=parseInt(abs_a||0); tk_abs_jml+=abs_jml;
-
-            body.push(`<tr><td class="font-weight-bold align-middle">Kelas ${k}</td>
-                <td><span class="font-weight-bold text-maroon">${rombel}</span></td>
-                <td>${aw_l||""}</td><td>${aw_p||""}</td><td class="font-weight-bold bg-light">${aw_jml||""}</td>
-                <td>${ms_l||""}</td><td>${ms_p||""}</td><td class="font-weight-bold bg-light">${ms_jml||""}</td>
-                <td>${kl_l||""}</td><td>${kl_p||""}</td><td class="font-weight-bold bg-light">${kl_jml||""}</td>
-                <td class="font-weight-bold text-primary">${ak_l||0}</td><td class="font-weight-bold text-primary">${ak_p||0}</td><td class="font-weight-bold bg-light text-primary">${ak_jml||0}</td>
-                <td>${abs_s||""}</td><td>${abs_i||""}</td><td>${abs_a||""}</td><td class="font-weight-bold bg-light text-danger">${abs_jml||""}</td>
-            </tr>`);
-        }
-
-        foot.push(`<tr><td colspan="2" class="text-right align-middle">TOTAL JUMLAH KESELURUHAN</td>
-            <td>${tk_aw_l||0}</td><td>${tk_aw_p||0}</td><td>${tk_aw_jml||0}</td>
-            <td>${tk_ms_l||0}</td><td>${tk_ms_p||0}</td><td>${tk_ms_jml||0}</td>
-            <td>${tk_kl_l||0}</td><td>${tk_kl_p||0}</td><td>${tk_kl_jml||0}</td>
-            <td>${tk_ak_l||0}</td><td>${tk_ak_p||0}</td><td>${tk_ak_jml||0}</td>
-            <td>${tk_abs_s||0}</td><td>${tk_abs_i||0}</td><td>${tk_abs_a||0}</td><td>${tk_abs_jml||0}</td>
-        </tr>`);
-        
-        $('#lapbulkelola_bodyViewMurid').html(body.join(''));
-        $('#lapbulkelola_footViewMurid').html(foot.join(''));
-
-
-        // Render C. AGAMA MURID
-        var agamas = [ { prefix: 'islam', label: 'Islam' }, { prefix: 'kristen', label: 'Kristen' }, { prefix: 'katolik', label: 'Katolik' }, { prefix: 'hindu', label: 'Hindu' }, { prefix: 'buddha', label: 'Buddha' }, { prefix: 'konghucu', label: 'Konghucu' } ];
-        var tbodyAgama = [], tfootAgama = [];
-        var totalColsAgama = { k1_l:0,k1_p:0,k1_j:0, k2_l:0,k2_p:0,k2_j:0, k3_l:0,k3_p:0,k3_j:0, k4_l:0,k4_p:0,k4_j:0, k5_l:0,k5_p:0,k5_j:0, k6_l:0,k6_p:0,k6_j:0, all_l:0,all_p:0,all_j:0 };
-
-        for (var a = 0; a < agamas.length; a++) {
-            var tr = `<tr><td class="align-middle">${a+1}</td><td class="text-left font-weight-bold align-middle">${agamas[a].label}</td>`;
-            var rowL = 0, rowP = 0, rowJ = 0;
-            for(var k=1; k<=6; k++) {
-                var vL = d[`k${k}_${agamas[a].prefix}_l`] || 0;
-                var vP = d[`k${k}_${agamas[a].prefix}_p`] || 0;
-                var vJ = parseInt(vL||0) + parseInt(vP||0);
-                rowL += parseInt(vL||0); rowP += parseInt(vP||0); rowJ += vJ;
-                totalColsAgama[`k${k}_l`] += parseInt(vL||0); totalColsAgama[`k${k}_p`] += parseInt(vP||0); totalColsAgama[`k${k}_j`] += vJ;
-                tr += `<td>${vL||""}</td><td>${vP||""}</td><td class="font-weight-bold bg-light">${vJ||""}</td>`;
-            }
-            totalColsAgama.all_l += rowL; totalColsAgama.all_p += rowP; totalColsAgama.all_j += rowJ;
-            tr += `<td class="font-weight-bold text-primary">${rowL||""}</td><td class="font-weight-bold text-primary">${rowP||""}</td><td class="font-weight-bold bg-light text-primary">${rowJ||""}</td></tr>`;
-            tbodyAgama.push(tr);
-        }
-
-        var fTr = `<tr><td colspan="2" class="text-right align-middle">TOTAL JUMLAH PER KELAS</td>`;
-        for(var k=1; k<=6; k++) { fTr += `<td>${totalColsAgama[`k${k}_l`]||0}</td><td>${totalColsAgama[`k${k}_p`]||0}</td><td>${totalColsAgama[`k${k}_j`]||0}</td>`; }
-        fTr += `<td>${totalColsAgama.all_l||0}</td><td>${totalColsAgama.all_p||0}</td><td>${totalColsAgama.all_j||0}</td></tr>`;
-        tfootAgama.push(fTr);
-
-        $('#lapbulkelola_bodyViewAgama').html(tbodyAgama.join(''));
-        $('#lapbulkelola_footViewAgama').html(tfootAgama.join(''));
-
-        $('#lapbulkelola_modalLihatMurid').modal('show');
-    });
-
-
-    // Event listener for Lihat Data PTK
-    $(document).on('click', '.btn-lihat-ptk', function () {
-        var id = $(this).data('id');
-        var report = LAPBULKELOLA_CACHE_DATA.find(r => r.rowId == id);
-        if (!report) return;
-
-        $('#lapbulkelola_viewPTKPeriode').text(report.bulan + ' ' + report.tahun);
-        
-        var dInduk = [];
-        var dNonInduk = [];
-        try { 
-            if(report.dataPTK) dInduk = JSON.parse(report.dataPTK);
-            if(report.dataPTKNonInduk) dNonInduk = JSON.parse(report.dataPTKNonInduk);
-        } catch (e) { console.error("Invalid dataPTK", e); }
-
-        function renderRows(dataArray, targetTbody) {
-            var html = [];
-            if(!dataArray || dataArray.length === 0) {
-                html.push(`<tr><td colspan="9" class="text-center font-italic text-muted">Tidak ada data</td></tr>`);
-            } else {
-                for (var i = 0; i < dataArray.length; i++) {
-                    var r = dataArray[i];
-                    html.push(`<tr>
-                        <td class="align-middle">${i+1}</td>
-                        <td class="text-left align-middle font-weight-bold text-dark">
-                            ${lapbulkelola_escapeHtml(r.nama)}<br>
-                            <small class="text-muted">${lapbulkelola_escapeHtml(r.nip_nuptk || "-")}</small>
-                        </td>
-                        <td class="align-middle">${lapbulkelola_escapeHtml(r.lp || "-")}</td>
-                        <td class="align-middle">${lapbulkelola_escapeHtml(r.status_pegawai || "-")}</td>
-                        <td class="text-left align-middle">${lapbulkelola_escapeHtml(r.jenis_ptk || "-")}</td>
-                        <td class="align-middle text-maroon font-weight-bold">${lapbulkelola_escapeHtml(r.mengajar || "-")}</td>
-                        <td class="align-middle">${(r.ijazah || "").toLowerCase().includes("sma") || (r.ijazah || "").toLowerCase().includes("smp") || (r.ijazah || "").toLowerCase().includes("sd") ? '<i class="fas fa-check text-success"></i>' : '-'}</td>
-                        <td class="align-middle">${(r.ijazah || "").toLowerCase().includes("d1") || (r.ijazah || "").toLowerCase().includes("d2") || (r.ijazah || "").toLowerCase().includes("d3") ? '<i class="fas fa-check text-success"></i>' : '-'}</td>
-                        <td class="align-middle">${(r.ijazah || "").toLowerCase().includes("s1") || (r.ijazah || "").toLowerCase().includes("s2") || (r.ijazah || "").toLowerCase().includes("s3") ? '<i class="fas fa-check text-success"></i>' : '-'}</td>
-                    </tr>`);
+                    </div>`;
                 }
-            }
-            $(targetTbody).html(html.join(''));
-        }
 
-        renderRows(dInduk, '#lapbulkelola_bodyViewPTKInduk');
-        
-        if(dNonInduk && dNonInduk.length > 0) {
-            renderRows(dNonInduk, '#lapbulkelola_bodyViewPTKNonInduk');
-            $('#lapbulkelola_containerViewPTKNonInduk').removeClass('d-none');
-        } else {
-            $('#lapbulkelola_containerViewPTKNonInduk').addClass('d-none');
-        }
+                var bodyHtml = `
+                <div class="alert alert-secondary border mb-4 text-center font-weight-bold">
+                    Laporan Periode: <span class="text-maroon">${report.bulan} ${report.tahun}</span>
+                </div>
+                
+                <h6 class="font-weight-bold text-maroon mb-2"><i class="fas fa-user-check mr-2"></i> PTK Definitif (Induk)</h6>
+                <div class="table-responsive sultan-scroll mb-4 border rounded shadow-sm bg-white">
+                    <table class="table table-bordered table-sm table-matrix text-center mb-0">
+                        <thead class="bg-dark text-white align-middle" style="font-size: 11px;">
+                            <tr>
+                                <th rowspan="2" class="align-middle">NO</th>
+                                <th rowspan="2" class="align-middle text-left" style="min-width: 200px;">NAMA PTK</th>
+                                <th rowspan="2" class="align-middle">L/P</th>
+                                <th rowspan="2" class="align-middle">STATUS<br>PEGAWAI</th>
+                                <th rowspan="2" class="align-middle text-left" style="min-width: 150px;">JENIS PTK</th>
+                                <th rowspan="2" class="align-middle">MENGAJAR<br>KELAS/MAPEL</th>
+                                <th colspan="3" class="align-middle">IJAZAH</th>
+                            </tr>
+                            <tr>
+                                <th>SD/SMP/SMA</th>
+                                <th>D1/D2/D3</th>
+                                <th>S1/S2/S3</th>
+                            </tr>
+                        </thead>
+                        <tbody>${renderRowsHtml(dInduk)}</tbody>
+                    </table>
+                </div>
+                ${ptkNonIndukHtml}
+                `;
 
-        $('#lapbulkelola_modalLihatPTK').modal('show');
+                Sultan.modal.showForm({
+                    size: 'modal-xl',
+                    theme: 'success',
+                    icon: 'fas fa-user-tie',
+                    title: 'DATA PTK - ' + report.namaSekolah,
+                    bodyHtml: bodyHtml,
+                    footerHtml: '<button type="button" class="btn btn-secondary font-weight-bold px-4" data-dismiss="modal"><i class="fas fa-times mr-2"></i> TUTUP</button>'
+                });
+            })
+            .withFailureHandler(function(e) {
+                $btn.html(oriHtml).prop('disabled', false);
+                Sultan.notif.gagal("Gagal memuat data: " + e.message);
+            })[backendCall](id);
     });
-</script>
 
+</script>
