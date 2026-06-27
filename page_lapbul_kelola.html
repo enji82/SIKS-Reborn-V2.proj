@@ -3392,6 +3392,16 @@
         </div>
     </div>
 </div><script>
+    // Helper: ambil nilai dari object data dengan berbagai variasi penulisan kunci
+    function lapbulkelola_getDataKey(data, key) {
+        if (data[key] !== undefined) return data[key];
+        var keyLower = key.toLowerCase();
+        for (var k in data) {
+            if (String(k).toLowerCase().trim() === keyLower) return data[k];
+        }
+        return '';
+    }
+
     // Event listener for Lihat Data Murid
     $(document).on('click', '.btn-lihat-murid', function () {
         var id = $(this).data('id');
@@ -3409,8 +3419,10 @@
                 $btn.html(oriHtml).prop('disabled', false);
                 if(data.error) { Sultan.notif.gagal(data.error); return; }
                 
-                var d = {};
-                try { d = JSON.parse(data["DATA MURID SD"] || "{}"); } catch (e) { console.error("Invalid dataMurid", e); }
+                // Data murid disimpan per-kolom di spreadsheet, bukan dalam kolom JSON
+                // Nama kolom: "K1 1 Awal L", "K1 1 Awal P", "K1 1 Masuk L", dsb
+                // Helper untuk membaca nilai kolom
+                var d = data; // langsung gunakan object data dari backend
                 
                 // Render B. KEADAAN MURID (Awal, Masuk, Keluar, Akhir, Absen)
                 var rombels = ['1','2','3','4','5','6'];
@@ -3423,11 +3435,40 @@
         
                 for (var i = 0; i < rombels.length; i++) {
                     var k = rombels[i];
-                    var rombel = d[`rombel_${k}`] || 1;
-                    var aw_l = d[`aw_${k}_l`] || 0, aw_p = d[`aw_${k}_p`] || 0;
-                    var ms_l = d[`ms_${k}_l`] || 0, ms_p = d[`ms_${k}_p`] || 0;
-                    var kl_l = d[`kl_${k}_l`] || 0, kl_p = d[`kl_${k}_p`] || 0;
-                    var abs_s = d[`ab_${k}_s`] || 0, abs_i = d[`ab_${k}_i`] || 0, abs_a = d[`ab_${k}_a`] || 0;
+                    // Baca nilai dari kolom spreadsheet langsung
+                    // Kolom "rombel" sudah disimpan di kolom tersendiri, kita skip
+                    // Data per kelas: "K{k} 1 Awal L", "K{k} 1 Masuk L", dll
+                    // Lapbul SD menyimpan rombel dengan prefix K1, K2, dst.
+                    // Untuk view, kita hanya tampilkan per kelas (aggregate semua rombel dalam kelas)
+                    var aw_l = 0, aw_p = 0, ms_l = 0, ms_p = 0, kl_l = 0, kl_p = 0;
+                    var abs_s = 0, abs_i = 0, abs_a = 0;
+                    var rombelCount = 0;
+                    
+                    // Coba 3 rombel per kelas (1, 2, 3) / (a, b, c)
+                    var rombelSufs = ['1', '2', '3'];
+                    for (var rr = 0; rr < rombelSufs.length; rr++) {
+                        var rs = rombelSufs[rr];
+                        var colPrefix = 'K' + k + ' ' + rs;
+                        // Cek apakah rombel ini ada datanya
+                        var vAwL = parseFloat(lapbulkelola_getDataKey(d, colPrefix + ' Awal L') || 0);
+                        var vAwP = parseFloat(lapbulkelola_getDataKey(d, colPrefix + ' Awal P') || 0);
+                        var vMsL = parseFloat(lapbulkelola_getDataKey(d, colPrefix + ' Masuk L') || 0);
+                        var vMsP = parseFloat(lapbulkelola_getDataKey(d, colPrefix + ' Masuk P') || 0);
+                        var vKlL = parseFloat(lapbulkelola_getDataKey(d, colPrefix + ' Keluar L') || 0);
+                        var vKlP = parseFloat(lapbulkelola_getDataKey(d, colPrefix + ' Keluar P') || 0);
+                        var vAbsS = parseFloat(lapbulkelola_getDataKey(d, colPrefix + ' Absen S') || 0);
+                        var vAbsI = parseFloat(lapbulkelola_getDataKey(d, colPrefix + ' Absen I') || 0);
+                        var vAbsA = parseFloat(lapbulkelola_getDataKey(d, colPrefix + ' Absen A') || 0);
+                        // Jika kolom 1 tidak ada, skip
+                        if (rr === 0 || vAwL + vAwP + vMsL + vMsP > 0) {
+                            aw_l += vAwL; aw_p += vAwP;
+                            ms_l += vMsL; ms_p += vMsP;
+                            kl_l += vKlL; kl_p += vKlP;
+                            abs_s += vAbsS; abs_i += vAbsI; abs_a += vAbsA;
+                            if (rr === 0) rombelCount = 1; else rombelCount++;
+                        }
+                    }
+                    var rombel = lapbulkelola_getDataKey(d, 'rombel') || rombelCount || 1;
                     
                     var aw_jml = parseInt(aw_l||0) + parseInt(aw_p||0);
                     var ms_jml = parseInt(ms_l||0) + parseInt(ms_p||0);
@@ -3462,19 +3503,29 @@
                 </tr>`);
                 
                 // Render C. AGAMA MURID
-                var agamas = [ { prefix: 'islam', label: 'Islam' }, { prefix: 'kristen', label: 'Kristen' }, { prefix: 'katolik', label: 'Katolik' }, { prefix: 'hindu', label: 'Hindu' }, { prefix: 'buddha', label: 'Buddha' }, { prefix: 'konghucu', label: 'Konghucu' } ];
+                // Kolom di spreadsheet: "K1 Islam L", "K1 Islam P", "K2 Kristen L", dst.
+                var agamas = [ 
+                    { colSuf: 'Islam', label: 'Islam' }, 
+                    { colSuf: 'Kristen', label: 'Kristen' }, 
+                    { colSuf: 'Katolik', label: 'Katolik' }, 
+                    { colSuf: 'Hindu', label: 'Hindu' }, 
+                    { colSuf: 'Buddha', label: 'Buddha' }, 
+                    { colSuf: 'Konghucu', label: 'Konghucu' } 
+                ];
                 var tbodyAgama = [], tfootAgama = [];
                 var totalColsAgama = { k1_l:0,k1_p:0,k1_j:0, k2_l:0,k2_p:0,k2_j:0, k3_l:0,k3_p:0,k3_j:0, k4_l:0,k4_p:0,k4_j:0, k5_l:0,k5_p:0,k5_j:0, k6_l:0,k6_p:0,k6_j:0, all_l:0,all_p:0,all_j:0 };
         
+                var rombels2 = ['1','2','3','4','5','6'];
                 for (var a = 0; a < agamas.length; a++) {
                     var tr = `<tr><td class="align-middle">${a+1}</td><td class="text-left font-weight-bold align-middle">${agamas[a].label}</td>`;
                     var rowL = 0, rowP = 0, rowJ = 0;
-                    for(var k=1; k<=6; k++) {
-                        var vL = d[`k${k}_${agamas[a].prefix}_l`] || 0;
-                        var vP = d[`k${k}_${agamas[a].prefix}_p`] || 0;
-                        var vJ = parseInt(vL||0) + parseInt(vP||0);
-                        rowL += parseInt(vL||0); rowP += parseInt(vP||0); rowJ += vJ;
-                        totalColsAgama[`k${k}_l`] += parseInt(vL||0); totalColsAgama[`k${k}_p`] += parseInt(vP||0); totalColsAgama[`k${k}_j`] += vJ;
+                    for(var k2=1; k2<=6; k2++) {
+                        // Kolom agama: "k{k} {prefix} l", "k{k} {prefix} p"
+                        var vL = parseFloat(lapbulkelola_getDataKey(d, 'k' + k2 + ' ' + agamas[a].colSuf + ' l') || 0);
+                        var vP = parseFloat(lapbulkelola_getDataKey(d, 'k' + k2 + ' ' + agamas[a].colSuf + ' p') || 0);
+                        var vJ = vL + vP;
+                        rowL += vL; rowP += vP; rowJ += vJ;
+                        totalColsAgama[`k${k2}_l`] += vL; totalColsAgama[`k${k2}_p`] += vP; totalColsAgama[`k${k2}_j`] += vJ;
                         tr += `<td>${vL||""}</td><td>${vP||""}</td><td class="font-weight-bold bg-light">${vJ||""}</td>`;
                     }
                     totalColsAgama.all_l += rowL; totalColsAgama.all_p += rowP; totalColsAgama.all_j += rowJ;
@@ -3575,8 +3626,11 @@
                 var dInduk = [];
                 var dNonInduk = [];
                 try { 
-                    if(data["DATA PTK"]) dInduk = JSON.parse(data["DATA PTK"]);
-                    if(data["DATA PTK NON INDUK"]) dNonInduk = JSON.parse(data["DATA PTK NON INDUK"]);
+                    // Nama kolom di spreadsheet adalah "Data PTK" (bukan "DATA PTK")
+                    var rawInduk = lapbulkelola_getDataKey(data, 'Data PTK') || lapbulkelola_getDataKey(data, 'DATA PTK') || '';
+                    var rawNonInduk = lapbulkelola_getDataKey(data, 'Data PTK Non Induk') || lapbulkelola_getDataKey(data, 'DATA PTK NON INDUK') || '';
+                    if(rawInduk) dInduk = JSON.parse(rawInduk);
+                    if(rawNonInduk) dNonInduk = JSON.parse(rawNonInduk);
                 } catch (e) { console.error("Invalid dataPTK", e); }
         
                 function renderRowsHtml(dataArray) {
