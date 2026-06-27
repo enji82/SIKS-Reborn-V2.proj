@@ -1872,13 +1872,55 @@
         lapbulkelola_calcTableMurid();
         lapbulkelola_calcTableAgama();
         
-        var totMuridL = parseInt($('#lapbulkelola_footMurid td:eq(10)').text()) || 0;
-        var totMuridP = parseInt($('#lapbulkelola_footMurid td:eq(11)').text()) || 0;
-        var totAgamaL = parseInt($('#lapbulkelola_footAgama td:eq(19)').text()) || 0;
-        var totAgamaP = parseInt($('#lapbulkelola_footAgama td:eq(20)').text()) || 0;
+        // Bersihkan semua peringatan warna kuning sebelumnya
+        $('#lapbulkelola_bodyMurid input.val-akhir').removeClass('bg-warning text-dark').addClass('text-maroon');
+        $('#lapbulkelola_footAgama td').removeClass('bg-warning text-dark font-weight-bold');
         
-        if (totMuridL !== totAgamaL || totMuridP !== totAgamaP) {
-            Sultan.notif.gagal(`Total Akhir Bulan (L:${totMuridL}, P:${totMuridP}) tidak sama dengan Total Agama (L:${totAgamaL}, P:${totAgamaP})!`);
+        var muridPerKelas = { 1: {l:0, p:0}, 2: {l:0, p:0}, 3: {l:0, p:0}, 4: {l:0, p:0}, 5: {l:0, p:0}, 6: {l:0, p:0} };
+        
+        $('#lapbulkelola_bodyMurid tr.row-murid').each(function() {
+            var row = $(this);
+            var kelas = row.find('.val-awal').data('kelas');
+            var hl = parseInt(row.find('.val-akhir[data-tipe="hl"]').val()) || 0;
+            var hp = parseInt(row.find('.val-akhir[data-tipe="hp"]').val()) || 0;
+            if (kelas) {
+                muridPerKelas[kelas].l += hl;
+                muridPerKelas[kelas].p += hp;
+            }
+        });
+        
+        var agamaPerKelas = { 1: {l:0, p:0}, 2: {l:0, p:0}, 3: {l:0, p:0}, 4: {l:0, p:0}, 5: {l:0, p:0}, 6: {l:0, p:0} };
+        $('#lapbulkelola_bodyAgama tr.row-agama').each(function() {
+            var row = $(this);
+            for(var k=1; k<=6; k++) {
+                agamaPerKelas[k].l += (parseInt(row.find(`.val-agama-l-${k}`).val()) || 0);
+                agamaPerKelas[k].p += (parseInt(row.find(`.val-agama-p-${k}`).val()) || 0);
+            }
+        });
+
+        var arrGagal = [];
+        for(var k=1; k<=6; k++) {
+            if (muridPerKelas[k].l !== agamaPerKelas[k].l || muridPerKelas[k].p !== agamaPerKelas[k].p) {
+                arrGagal.push(k);
+                
+                // Highlight input Akhir Bulan di tabel Murid untuk kelas ini
+                $(`#lapbulkelola_bodyMurid .val-awal[data-kelas="${k}"]`).closest('tr').find('.val-akhir').removeClass('text-maroon').addClass('bg-warning text-dark');
+                
+                // Highlight td di footer Agama untuk kelas ini 
+                // Kolom L = (k * 3) - 2; Kolom P = (k * 3) - 1; Kolom Jml = (k * 3)
+                var tdL = (k * 3) - 2; 
+                var tdP = (k * 3) - 1;
+                var tdJ = (k * 3);
+                
+                $('#lapbulkelola_footAgama td').eq(tdL).addClass('bg-warning text-dark font-weight-bold');
+                $('#lapbulkelola_footAgama td').eq(tdP).addClass('bg-warning text-dark font-weight-bold');
+                $('#lapbulkelola_footAgama td').eq(tdJ).addClass('bg-warning text-dark font-weight-bold');
+            }
+        }
+        
+        if (arrGagal.length > 0) {
+            var msg = `Validasi Gagal pada Kelas ${arrGagal.join(', ')}!<br><small>Total Akhir Bulan tidak sama dengan Total Agama. Perhatikan sel berwarna kuning!</small>`;
+            Sultan.notif.gagal(msg);
             return;
         }
         
