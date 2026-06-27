@@ -328,6 +328,40 @@ function getAllSchoolsList() {
   }
 }
 
+function lapbul_migrasi_header_sd() {
+  try {
+    var ss = SpreadsheetApp.openById(KONFIG_LAPBUL.SD_DB);
+    var sheet = ss.getSheetByName("Input SD");
+    if (!sheet) return "Sheet 'Input SD' tidak ditemukan.";
+    
+    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    var headerStr = headers.map(function(h) { return String(h).toLowerCase().trim(); });
+    
+    // Check if the first new header already exists
+    if (headerStr.indexOf("k1 1 awal l") > -1) {
+      return "Kolom rincian murid (K1 1 Awal L, dst) sudah ada di spreadsheet.";
+    }
+
+    var newHeaders = [];
+    for (var k = 1; k <= 6; k++) {
+      var sufs = ['1', '2', '3', 'a', 'b', 'c'];
+      sufs.forEach(function(s) {
+        var prefix = "K" + k + " " + s.toUpperCase();
+        newHeaders.push(prefix + " Awal L", prefix + " Awal P");
+        newHeaders.push(prefix + " Masuk L", prefix + " Masuk P");
+        newHeaders.push(prefix + " Keluar L", prefix + " Keluar P");
+        newHeaders.push(prefix + " Absen S", prefix + " Absen I", prefix + " Absen A");
+      });
+    }
+    
+    var lastCol = sheet.getLastColumn();
+    sheet.getRange(1, lastCol + 1, 1, newHeaders.length).setValues([newHeaders]);
+    return "Berhasil menambahkan " + newHeaders.length + " kolom rincian murid baru ke ujung kanan Spreadsheet SD!";
+  } catch (e) {
+    return "Error: " + e.message;
+  }
+}
+
 function simpanLapbulSD_Complex(form, fileData) {
   return prosesSimpanLengkap(KONFIG_LAPBUL.SD_DB, "Input SD", "SD", form, fileData);
 }
