@@ -361,6 +361,19 @@ function lapbul_migrasi_header_sd() {
     }
     
     sheet.getRange(1, lastCol + 1, 1, newHeaders.length).setValues([newHeaders]);
+    
+    // Pastikan kolom "Data PTK" juga ada
+    var currentHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    var hasDataPtk = false;
+    for (var i = 0; i < currentHeaders.length; i++) {
+      if (String(currentHeaders[i]).toLowerCase().trim() === "data ptk") {
+        hasDataPtk = true; break;
+      }
+    }
+    if (!hasDataPtk) {
+      sheet.getRange(1, sheet.getLastColumn() + 1).setValue("Data PTK");
+    }
+
     return "Berhasil menambahkan " + newHeaders.length + " kolom rincian murid baru ke ujung kanan Spreadsheet SD!";
   } catch (e) {
     return "Error: " + e.message;
