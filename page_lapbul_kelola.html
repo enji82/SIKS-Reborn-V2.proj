@@ -2435,6 +2435,23 @@
             } catch(e) {
                 console.error("Gagal parse data_ptk JSON:", e);
             }
+        } else {
+            // Jika data_ptk kosong (misal edit laporan baru tapi data sebelumnya belum ada)
+            // Cek apakah ini laporan format baru (Juni 2026 ke atas)
+            var idxBulan = months.indexOf(String(valBulan).toLowerCase());
+            var isModern = (valTahun > 2026) || (valTahun === 2026 && idxBulan >= 5);
+            if (isModern) {
+                var theNpsn = cariData(["npsn"]);
+                if (theNpsn) {
+                    $('#lapbulkelola_tbodyPTKInduk').html('<tr><td colspan="44" class="text-center font-italic text-muted py-4">Memuat data PTK dari Server... <i class="fas fa-circle-notch fa-spin"></i></td></tr>');
+                    google.script.run.withSuccessHandler(function (ptkInduk) {
+                        LAPBULKELOLA_DATA_PTK_INDUK = ptkInduk || [];
+                        if (typeof lapbulkelola_renderPtkMatrix === 'function') lapbulkelola_renderPtkMatrix();
+                    }).withFailureHandler(function (e) {
+                        $('#lapbulkelola_tbodyPTKInduk').html('<tr><td colspan="44" class="text-center font-italic text-danger py-4">Gagal memuat PTK: ' + e.message + '</td></tr>');
+                    }).getPTKSekolahByNpsnLapbul(theNpsn, 'SD');
+                }
+            }
         }
         
         $.each(data, function (rawKey, value) {
