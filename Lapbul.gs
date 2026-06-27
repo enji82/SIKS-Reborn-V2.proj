@@ -1297,3 +1297,64 @@ function tandaiSemuaNotifLapbulDibaca(role, unit) {
     return true;
   } catch (e) { return false; }
 }
+function lapbul_getPreviousMonthDataSD(npsn, currentBulan, currentTahun) {
+  var bulanList = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+  
+  // Normalisasi input
+  var currB = String(currentBulan).trim();
+  var bIdx = -1;
+  for(var i=0; i<bulanList.length; i++){
+    if(bulanList[i].toLowerCase() === currB.toLowerCase()) { bIdx = i; break; }
+  }
+  
+  if (bIdx === -1) return { status: 'error', message: "Bulan tidak valid" };
+  
+  var targetBulan = "";
+  var targetTahun = parseInt(currentTahun);
+  
+  if (bIdx === 0) { 
+    targetBulan = 'Desember'; 
+    targetTahun = targetTahun - 1; 
+  } else { 
+    targetBulan = bulanList[bIdx - 1]; 
+  }
+  
+  try {
+    var sheet = getSheet(KONFIG_LAPBUL.SD_DB, "Input SD");
+    if (!sheet) return { status: 'error', message: "Sheet Input SD tidak ditemukan!" };
+
+    var lastRow = sheet.getLastRow();
+    var lastCol = sheet.getLastColumn();
+    if (lastRow < 2) return { status: 'success', data: null, prevMonthStr: targetBulan + ' ' + targetTahun };
+
+    var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    var data = sheet.getRange(2, 1, lastRow - 1, lastCol).getDisplayValues();
+    
+    var npsnColIdx = -1, blnColIdx = -1, thnColIdx = -1;
+    for (var i = 0; i < headers.length; i++) {
+        var h = String(headers[i]).toLowerCase().trim();
+        if (h === "npsn") npsnColIdx = i;
+        if (h === "bulan" || h === "bln") blnColIdx = i;
+        if (h === "tahun" || h === "thn") thnColIdx = i;
+    }
+    
+    if (npsnColIdx === -1) return { status: 'error', message: "Kolom NPSN tidak ditemukan" };
+    
+    for (var r = data.length - 1; r >= 0; r--) {
+        if (String(data[r][npsnColIdx]).trim() === String(npsn).trim() &&
+            String(data[r][blnColIdx]).trim().toLowerCase() === targetBulan.toLowerCase() &&
+            String(data[r][thnColIdx]).trim() === String(targetTahun)) {
+            
+            var result = {};
+            for (var i = 0; i < headers.length; i++) {
+                result[String(headers[i]).trim()] = data[r][i];
+            }
+            return { status: 'success', data: result, prevMonthStr: targetBulan + ' ' + targetTahun };
+        }
+    }
+    
+    return { status: 'success', data: null, prevMonthStr: targetBulan + ' ' + targetTahun };
+  } catch(e) {
+    return { status: 'error', message: e.toString() };
+  }
+}
