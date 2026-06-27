@@ -2646,6 +2646,7 @@
         
         $.each(data, function (rawKey, value) {
             var cleanKey = String(rawKey).trim().toLowerCase().replace(/\s+/g, '_');
+            
             // Pemetaan mundur (backward compat) untuk file lama (misal: "k1_awal_l" ke "k1_1_awal_l")
             var legacyMatch = cleanKey.match(/^k([1-6])_(awal_l|awal_p|masuk_l|masuk_p|keluar_l|keluar_p)$/);
             if (legacyMatch) {
@@ -2654,6 +2655,26 @@
                     cleanKey = modernKey;
                 }
             }
+            
+            // Pemetaan mundur ekstrim untuk file yang sangat lama (misal: "k1_l" ke "k1_1_awal_l")
+            // Kolom jadul SD: K1 L, K1 P, K1A L, K1A P, K1B L, K1B P, K1C L, K1C P
+            var veryLegacyMatch = cleanKey.match(/^k([1-6])([a-c])?_(l|p)$/);
+            if (veryLegacyMatch && !legacyMatch) {
+                var kelas = veryLegacyMatch[1];
+                var suffixRom = veryLegacyMatch[2]; // a, b, c, atau undefined
+                var gender = veryLegacyMatch[3]; // l atau p
+                
+                var rombelNum = 1;
+                if (suffixRom === 'a') rombelNum = 2;
+                else if (suffixRom === 'b') rombelNum = 3;
+                else if (suffixRom === 'c') rombelNum = 4;
+                
+                var modernKeyExtreme = `k${kelas}_${rombelNum}_awal_${gender}`;
+                if (data[modernKeyExtreme] === undefined && data[modernKeyExtreme.replace(/_/g, " ")] === undefined) {
+                    cleanKey = modernKeyExtreme;
+                }
+            }
+            
             var input = $(`#lapbulkelola_formSD [name="${cleanKey}"]`);
             if (input.length > 0) {
                 var type = input.attr('type');
