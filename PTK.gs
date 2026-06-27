@@ -2539,3 +2539,129 @@ function kirimAjuanKoreksiKtp(form, base64Data, fileName, userPengusul) {
     return "Error Server: " + e.message;
   }
 }
+
+/* ======================================================================
+   LAPBUL PTK HELPERS
+   ====================================================================== */
+
+function getPTKSekolahByNpsnLapbul(npsn, jenjang) {
+  try {
+    if (!npsn || !jenjang) return [];
+    
+    var data = [];
+    // Coba SDN dulu
+    var sheet = getSheet(KONFIG_PTK.DB_KEY, "Master Data GTK");
+    if (sheet) {
+      var lastRow = sheet.getLastRow();
+      if (lastRow >= 2) {
+        var values = sheet.getRange(2, 1, lastRow - 1, 30).getValues();
+        data = values.filter(function(r) { return String(r[1]).trim() === String(npsn); });
+      }
+    }
+    
+    // Jika kosong, coba SDS
+    if (data.length === 0) {
+      sheet = getSheet(KONFIG_PTK.DB_KEY, "Master Data GTK SDS");
+      if (sheet) {
+        var lastRow = sheet.getLastRow();
+        if (lastRow >= 2) {
+          var values = sheet.getRange(2, 1, lastRow - 1, 30).getValues();
+          data = values.filter(function(r) { return String(r[1]).trim() === String(npsn); });
+        }
+      }
+    }
+    
+    var tz = Session.getScriptTimeZone();
+    return data.map(function(r) {
+      var tglLahirStr = r[9] ? (r[9] instanceof Date ? Utilities.formatDate(r[9], tz, "dd-MM-yyyy") : r[9]) : "-";
+      return {
+        id_ptk: r[0],
+        nama: r[6],
+        nip_niy: r[7],
+        nuptk: r[26],
+        jk: r[11],
+        agama: r[12],
+        tempat_lahir: r[8],
+        tgl_lahir: tglLahirStr,
+        pendidikan: r[24],
+        status: r[20],
+        tmt: r[23],
+        gol_asn: r[21],
+        serdik: r[27],
+        dapodik: r[28],
+        is_induk: true,
+        jabatan: "",
+        mengajar: "",
+        alpa: "",
+        sakit: "",
+        izin: "",
+        cuti: "",
+        tugas_luar: "",
+        tugas_belajar: "",
+        lainnya: ""
+      };
+    });
+  } catch (e) {
+    return [];
+  }
+}
+
+function searchPTKGlobalLapbul(keyword, jenjang) {
+  try {
+    if (!keyword || keyword.length < 3) return [];
+    var key = keyword.toLowerCase().trim();
+    
+    var results = [];
+    var sheets = ["Master Data GTK", "Master Data GTK SDS"];
+    
+    sheets.forEach(function(sName) {
+      var sheet = getSheet(KONFIG_PTK.DB_KEY, sName);
+      if (sheet) {
+        var lastRow = sheet.getLastRow();
+        if (lastRow >= 2) {
+          var values = sheet.getRange(2, 1, lastRow - 1, 30).getValues();
+          for (var i = 0; i < values.length; i++) {
+            var r = values[i];
+            if (String(r[6]).toLowerCase().indexOf(key) !== -1 || String(r[7]).toLowerCase().indexOf(key) !== -1 || String(r[26]).toLowerCase().indexOf(key) !== -1) {
+              var tz = Session.getScriptTimeZone();
+              var tglLahirStr = r[9] ? (r[9] instanceof Date ? Utilities.formatDate(r[9], tz, "dd-MM-yyyy") : r[9]) : "-";
+              results.push({
+                id_ptk: r[0],
+                npsn: r[1],
+                unit: r[2],
+                nama: r[6],
+                nip_niy: r[7],
+                nuptk: r[26],
+                jk: r[11],
+                agama: r[12],
+                tempat_lahir: r[8],
+                tgl_lahir: tglLahirStr,
+                pendidikan: r[24],
+                status: r[20],
+                tmt: r[23],
+                gol_asn: r[21],
+                serdik: r[27],
+                dapodik: r[28],
+                is_induk: false,
+                jabatan: "",
+                mengajar: "",
+                alpa: "",
+                sakit: "",
+                izin: "",
+                cuti: "",
+                tugas_luar: "",
+                tugas_belajar: "",
+                lainnya: ""
+              });
+              if (results.length > 30) break; // Limit search
+            }
+          }
+        }
+      }
+    });
+    
+    return results;
+  } catch (e) {
+    return { error: e.message };
+  }
+}

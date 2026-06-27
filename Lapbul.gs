@@ -10,6 +10,74 @@ const KONFIG_LAPBUL = {
 };
 
 /* ======================================================================
+   0. INISIALISASI SCHEMA (MENAMBAH KOLOM DATA PTK)
+   ====================================================================== */
+function initLapbulSchema() {
+  var sheetSD = getSheet(KONFIG_LAPBUL.SD_DB, "Input SD");
+  if (sheetSD) {
+    var headers = sheetSD.getRange(1, 1, 1, sheetSD.getLastColumn()).getValues()[0];
+    var hasDataPtk = false;
+    for (var i = 0; i < headers.length; i++) {
+      if (String(headers[i]).toLowerCase().trim() === "data ptk") {
+        hasDataPtk = true; break;
+      }
+    }
+    if (!hasDataPtk) {
+      sheetSD.getRange(1, headers.length + 1).setValue("Data PTK");
+    }
+  }
+  return "Schema updated";
+}
+
+function getLapbulPtkInduk(npsn, statusSekolah) {
+  try {
+    var rawData = (statusSekolah === "Negeri") ? getDataPTKSD() : getDataPTKSDS();
+    var allData = JSON.parse(rawData);
+    var targetNpsn = String(npsn).trim().toUpperCase();
+    var filtered = allData.filter(function(item) {
+      return String(item.npsn).trim().toUpperCase() === targetNpsn;
+    });
+    // Add default values for lapbul specific inputs
+    filtered.forEach(function(item) {
+      item.mengajar_kelas = "-";
+      item.absen_dd = ""; item.absen_dl = ""; item.absen_ct = ""; 
+      item.absen_cap = ""; item.absen_cs = ""; item.absen_cm = ""; item.absen_a = "";
+    });
+    return JSON.stringify({ success: true, data: filtered });
+  } catch (e) {
+    return JSON.stringify({ success: false, message: e.message });
+  }
+}
+
+function searchLapbulPtkGlobal(keyword) {
+  try {
+    var key = String(keyword).trim().toLowerCase();
+    if (key.length < 3) return JSON.stringify({ success: true, data: [] });
+    
+    var dataSDN = JSON.parse(getDataPTKSD());
+    var dataSDS = JSON.parse(getDataPTKSDS());
+    var allData = dataSDN.concat(dataSDS);
+    
+    var matched = allData.filter(function(item) {
+      var n = String(item.nama_lengkap || "").toLowerCase();
+      var nip = String(item.nip || item.niy || "").toLowerCase();
+      var nuptk = String(item.nuptk || "").toLowerCase();
+      return n.indexOf(key) > -1 || nip.indexOf(key) > -1 || nuptk.indexOf(key) > -1;
+    });
+    
+    matched = matched.slice(0, 20); // Limit to 20 results
+    matched.forEach(function(item) {
+      item.mengajar_kelas = "-";
+      item.absen_dd = ""; item.absen_dl = ""; item.absen_ct = ""; 
+      item.absen_cap = ""; item.absen_cs = ""; item.absen_cm = ""; item.absen_a = "";
+    });
+    return JSON.stringify({ success: true, data: matched });
+  } catch (e) {
+    return JSON.stringify({ success: false, message: e.message });
+  }
+}
+
+/* ======================================================================
    1. MODUL KELOLA DATA (PARTIAL FETCH)
    ====================================================================== */
 function getLapbulKelolaData(filterJenjang, filterBulan, filterTahun, filterStatus, keyword) {

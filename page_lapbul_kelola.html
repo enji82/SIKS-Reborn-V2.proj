@@ -113,6 +113,13 @@
                         <style>
                             .bg-tugas { background-color: #fff9e6 !important; }
                             .bg-status { background-color: #e6f7ff !important; }
+                            .th-vert {
+                                writing-mode: vertical-rl;
+                                transform: rotate(180deg);
+                                white-space: nowrap;
+                                padding: 10px 5px !important;
+                                vertical-align: middle !important;
+                            }
                             
                             .dark-mode .bg-tugas { background-color: rgba(255, 193, 7, 0.1) !important; color: #ffca28; }
                             .dark-mode .bg-status { background-color: rgba(23, 162, 184, 0.1) !important; color: #4dd0e1; }
@@ -656,6 +663,8 @@
     var LAPBULKELOLA_IS_ADMIN = false;
     var LAPBULKELOLA_UNIT_TERKUNCI = "";
     var LAPBULKELOLA_USER_NPSN = "";
+    var LAPBULKELOLA_DATA_PTK_INDUK = [];
+    var LAPBULKELOLA_DATA_PTK_NONINDUK = [];
     var LAPBULKELOLA_IS_INIT = true; // FLAG UNTUK MENCEGAH DOUBLE LOAD SAAT STARTUP
 
     $(document).ready(function () {
@@ -685,6 +694,10 @@
         });
         $(document).off('keyup', '.input-cari-sekolah').on('keyup', '.input-cari-sekolah', function () { lapbulkelola_filterSekolah(this, $(this).data('tipe')); });
         $(document).off('click', '.item-sekolah-sugesti').on('click', '.item-sekolah-sugesti', function () { lapbulkelola_pilihSekolah($(this).attr('data-sekolah'), $(this).data('tipe')); });
+
+        $(document).off('change', '#lapbulkelola_sel_bulan, #lapbulkelola_sel_tahun').on('change', '#lapbulkelola_sel_bulan, #lapbulkelola_sel_tahun', function() {
+            lapbulkelola_togglePtkUi();
+        });
 
         // Event Form Navigasi Tab (Vaksinasi onclick string)
         $(document).off('click', '.btn-tab-sd').on('click', '.btn-tab-sd', function (e) { e.preventDefault(); lapbulkelola_handleTabClick($(this).attr('data-target') || $(this).data('target')); });
@@ -1262,6 +1275,173 @@
         }
     }
 
+    function lapbulkelola_buildPtkModernUi() {
+        return `
+        <div id="ptk-modern-ui" class="d-none">
+            <div class="alert alert-info border mb-3 small shadow-sm"><i class="fas fa-info-circle mr-2"></i><b>Laporan Format Baru:</b> Silakan lengkapi data ketidakhadiran dan kelas/mapel. Jumlah agregat Kepsek, Guru, dan Tendik akan dihitung secara otomatis berdasarkan tabel di bawah ini.</div>
+            <h6 class="font-weight-bold text-maroon mb-2"><i class="fas fa-user-tie mr-1"></i> A. PTK Definitif (Induk)</h6>
+            <div class="table-responsive sultan-scroll mb-4 border rounded shadow-sm bg-white">
+                <table class="table table-bordered table-sm table-matrix text-center mb-0" id="lapbulkelola_tablePTKInduk">
+                    <thead class="bg-dark text-white align-middle" style="font-size: 11px;">
+                        <tr>
+                            <th rowspan="3" class="align-middle">No.</th>
+                            <th rowspan="3" class="align-middle" style="min-width: 180px;">Nama dan NIP/NIY</th>
+                            <th rowspan="3" class="align-middle" style="min-width: 120px;">NUPTK</th>
+                            <th colspan="2">JK</th>
+                            <th rowspan="3" class="align-middle">Agama</th>
+                            <th rowspan="3" class="align-middle">Tempat Lahir</th>
+                            <th rowspan="3" class="align-middle" style="min-width: 80px;">Tanggal Lahir</th>
+                            <th colspan="7">Pendidikan</th>
+                            <th colspan="8">Status</th>
+                            <th rowspan="3" class="align-middle" style="min-width: 80px;">TMT</th>
+                            <th colspan="8">Golongan ASN</th>
+                            <th rowspan="3" class="align-middle th-vert">Serdik</th>
+                            <th rowspan="3" class="align-middle th-vert">Dapodik</th>
+                            <th rowspan="3" class="align-middle" style="min-width: 100px;">Jabatan/ Tugas</th>
+                            <th rowspan="3" class="align-middle" style="min-width: 70px;">Mengajar<br>Kelas<br>/Mapel</th>
+                            <th colspan="8">Tidak Hadir Karena</th>
+                        </tr>
+                        <tr>
+                            <th rowspan="2" class="align-middle">L</th><th rowspan="2" class="align-middle">P</th>
+                            <th rowspan="2" class="align-middle">S2</th><th rowspan="2" class="align-middle">S1</th><th rowspan="2" class="align-middle">D3</th><th rowspan="2" class="align-middle">D2</th><th rowspan="2" class="align-middle">SMA</th><th rowspan="2" class="align-middle">SMP</th><th rowspan="2" class="align-middle">SD</th>
+                            <th rowspan="2" class="align-middle th-vert">CPNS</th>
+                            <th rowspan="2" class="align-middle th-vert">PNS</th>
+                            <th rowspan="2" class="align-middle th-vert">PPPK</th>
+                            <th rowspan="2" class="align-middle th-vert">PPPK PW</th>
+                            <th rowspan="2" class="align-middle th-vert">GTY</th>
+                            <th rowspan="2" class="align-middle th-vert">PTY</th>
+                            <th rowspan="2" class="align-middle th-vert">GTT</th>
+                            <th rowspan="2" class="align-middle th-vert">PTT</th>
+                            <th rowspan="2" class="align-middle">IX</th>
+                            <th colspan="4">Golongan III</th>
+                            <th colspan="3">Golongan IV</th>
+                            <th rowspan="2" class="align-middle">DD</th><th rowspan="2" class="align-middle">DL</th><th rowspan="2" class="align-middle">CT</th><th rowspan="2" class="align-middle">CAP</th><th rowspan="2" class="align-middle">CS</th><th rowspan="2" class="align-middle">CM</th><th rowspan="2" class="align-middle">A</th><th rowspan="2" class="align-middle bg-light text-dark font-weight-bold">Jml</th>
+                        </tr>
+                        <tr>
+                            <th class="align-middle">a</th><th class="align-middle">b</th><th class="align-middle">c</th><th class="align-middle">d</th>
+                            <th class="align-middle">a</th><th class="align-middle">b</th><th class="align-middle">c</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lapbulkelola_tbodyPTKInduk" style="font-size: 11px;">
+                    </tbody>
+                    <tfoot class="bg-light font-weight-bold" style="font-size: 11px;">
+                        <tr>
+                            <td colspan="8" class="text-right align-middle">JUMLAH</td>
+                            <td id="footPTK_A_s2">-</td><td id="footPTK_A_s1">-</td><td id="footPTK_A_d3">-</td><td id="footPTK_A_d2">-</td><td id="footPTK_A_sma">-</td><td id="footPTK_A_smp">-</td><td id="footPTK_A_sd">-</td>
+                            <td id="footPTK_A_cpns">-</td><td id="footPTK_A_pns">-</td><td id="footPTK_A_pppk">-</td><td id="footPTK_A_pppkpw">-</td><td id="footPTK_A_gty">-</td><td id="footPTK_A_pty">-</td><td id="footPTK_A_gtt">-</td><td id="footPTK_A_ptt">-</td>
+                            <td></td>
+                            <td id="footPTK_A_ix">-</td><td id="footPTK_A_3a">-</td><td id="footPTK_A_3b">-</td><td id="footPTK_A_3c">-</td><td id="footPTK_A_3d">-</td><td id="footPTK_A_4a">-</td><td id="footPTK_A_4b">-</td><td id="footPTK_A_4c">-</td>
+                            <td id="footPTK_A_serdik">-</td><td id="footPTK_A_dapodik">-</td>
+                            <td></td>
+                            <td></td>
+                            <td id="footPTK_A_dd">-</td><td id="footPTK_A_dl">-</td><td id="footPTK_A_ct">-</td><td id="footPTK_A_cap">-</td><td id="footPTK_A_cs">-</td><td id="footPTK_A_cm">-</td><td id="footPTK_A_a">-</td><td id="footPTK_A_jml">-</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-2 mt-4">
+                <h6 class="font-weight-bold text-maroon mb-0"><i class="fas fa-users mr-1"></i> B. PTK Non Induk</h6>
+                <button type="button" class="sultan-btn sultan-btn-sm sultan-btn-aksi-utama shadow-sm" onclick="lapbulkelola_showModalPTKNonInduk()"><i class="fas fa-plus"></i> Tambah PTK</button>
+            </div>
+            <div class="table-responsive sultan-scroll mb-4 border rounded shadow-sm bg-white">
+                <table class="table table-bordered table-sm table-matrix text-center mb-0" id="lapbulkelola_tablePTKNonInduk">
+                    <thead class="bg-secondary text-white align-middle" style="font-size: 11px;">
+                        <tr>
+                            <th rowspan="3" class="align-middle">No.</th>
+                            <th rowspan="3" class="align-middle" style="min-width: 180px;">Nama dan NIP/NIY</th>
+                            <th rowspan="3" class="align-middle" style="min-width: 120px;">NUPTK</th>
+                            <th colspan="2">JK</th>
+                            <th rowspan="3" class="align-middle">Agama</th>
+                            <th rowspan="3" class="align-middle">Tempat Lahir</th>
+                            <th rowspan="3" class="align-middle" style="min-width: 80px;">Tanggal Lahir</th>
+                            <th colspan="7">Pendidikan</th>
+                            <th colspan="8">Status</th>
+                            <th rowspan="3" class="align-middle" style="min-width: 80px;">TMT</th>
+                            <th colspan="8">Golongan ASN</th>
+                            <th rowspan="3" class="align-middle th-vert">Serdik</th>
+                            <th rowspan="3" class="align-middle th-vert">Dapodik</th>
+                            <th rowspan="3" class="align-middle" style="min-width: 100px;">Jabatan/ Tugas</th>
+                            <th rowspan="3" class="align-middle" style="min-width: 70px;">Mengajar<br>Kelas<br>/Mapel</th>
+                            <th colspan="8">Tidak Hadir Karena</th>
+                            <th rowspan="3" class="align-middle text-danger"><i class="fas fa-trash"></i></th>
+                        </tr>
+                        <tr>
+                            <th rowspan="2" class="align-middle">L</th><th rowspan="2" class="align-middle">P</th>
+                            <th rowspan="2" class="align-middle">S2</th><th rowspan="2" class="align-middle">S1</th><th rowspan="2" class="align-middle">D3</th><th rowspan="2" class="align-middle">D2</th><th rowspan="2" class="align-middle">SMA</th><th rowspan="2" class="align-middle">SMP</th><th rowspan="2" class="align-middle">SD</th>
+                            <th rowspan="2" class="align-middle th-vert">CPNS</th>
+                            <th rowspan="2" class="align-middle th-vert">PNS</th>
+                            <th rowspan="2" class="align-middle th-vert">PPPK</th>
+                            <th rowspan="2" class="align-middle th-vert">PPPK PW</th>
+                            <th rowspan="2" class="align-middle th-vert">GTY</th>
+                            <th rowspan="2" class="align-middle th-vert">PTY</th>
+                            <th rowspan="2" class="align-middle th-vert">GTT</th>
+                            <th rowspan="2" class="align-middle th-vert">PTT</th>
+                            <th rowspan="2" class="align-middle">IX</th>
+                            <th colspan="4">Golongan III</th>
+                            <th colspan="3">Golongan IV</th>
+                            <th rowspan="2" class="align-middle">DD</th><th rowspan="2" class="align-middle">DL</th><th rowspan="2" class="align-middle">CT</th><th rowspan="2" class="align-middle">CAP</th><th rowspan="2" class="align-middle">CS</th><th rowspan="2" class="align-middle">CM</th><th rowspan="2" class="align-middle">A</th><th rowspan="2" class="align-middle bg-light text-dark font-weight-bold">Jml</th>
+                        </tr>
+                        <tr>
+                            <th class="align-middle">a</th><th class="align-middle">b</th><th class="align-middle">c</th><th class="align-middle">d</th>
+                            <th class="align-middle">a</th><th class="align-middle">b</th><th class="align-middle">c</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lapbulkelola_tbodyPTKNonInduk" style="font-size: 11px;">
+                        <tr><td colspan="40" class="text-muted font-italic">Belum ada PTK Non Induk</td></tr>
+                    </tbody>
+                    <tfoot class="bg-light font-weight-bold" style="font-size: 11px;">
+                        <tr>
+                            <td colspan="8" class="text-right align-middle">JUMLAH</td>
+                            <td id="footPTK_B_s2">-</td><td id="footPTK_B_s1">-</td><td id="footPTK_B_d3">-</td><td id="footPTK_B_d2">-</td><td id="footPTK_B_sma">-</td><td id="footPTK_B_smp">-</td><td id="footPTK_B_sd">-</td>
+                            <td id="footPTK_B_cpns">-</td><td id="footPTK_B_pns">-</td><td id="footPTK_B_pppk">-</td><td id="footPTK_B_pppkpw">-</td><td id="footPTK_B_gty">-</td><td id="footPTK_B_pty">-</td><td id="footPTK_B_gtt">-</td><td id="footPTK_B_ptt">-</td>
+                            <td></td>
+                            <td id="footPTK_B_ix">-</td><td id="footPTK_B_3a">-</td><td id="footPTK_B_3b">-</td><td id="footPTK_B_3c">-</td><td id="footPTK_B_3d">-</td><td id="footPTK_B_4a">-</td><td id="footPTK_B_4b">-</td><td id="footPTK_B_4c">-</td>
+                            <td id="footPTK_B_serdik">-</td><td id="footPTK_B_dapodik">-</td>
+                            <td></td>
+                            <td></td>
+                            <td id="footPTK_B_dd">-</td><td id="footPTK_B_dl">-</td><td id="footPTK_B_ct">-</td><td id="footPTK_B_cap">-</td><td id="footPTK_B_cs">-</td><td id="footPTK_B_cm">-</td><td id="footPTK_B_a">-</td><td id="footPTK_B_jml">-</td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            
+            <div class="modal-footer-sultan mt-4 pt-3 border-top">
+                <button type="button" class="sultan-btn sultan-btn-sm sultan-btn-aksi-batal btn-tab-sd" data-target="lapbulkelola_ts2"><i class="fas fa-arrow-left"></i> DATA MURID</button>
+                <button type="button" class="sultan-btn sultan-btn-sm sultan-btn-aksi-utama btn-val-ptk-sd">UNGGAH FILE <i class="fas fa-arrow-right"></i></button>
+            </div>
+            <input type="hidden" name="data_ptk" id="lapbulkelola_data_ptk_input" value="[]">
+        </div>
+        `;
+    }
+
+    function lapbulkelola_togglePtkUi() {
+        var blnStr = $('#lapbulkelola_sel_bulan').val() || "";
+        var thnStr = $('#lapbulkelola_sel_tahun').val() || "";
+        var isModern = false;
+        
+        if (thnStr && blnStr) {
+            var thn = parseInt(thnStr);
+            var months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+            var blnIdx = months.indexOf(blnStr);
+            
+            if (thn > 2026) {
+                isModern = true;
+            } else if (thn === 2026 && blnIdx >= 5) { // Juni is index 5
+                isModern = true;
+            }
+        }
+        
+        if (isModern) {
+            $('#ptk-modern-ui').removeClass('d-none');
+            $('#ptk-legacy-ui').addClass('d-none');
+        } else {
+            $('#ptk-modern-ui').addClass('d-none');
+            $('#ptk-legacy-ui').removeClass('d-none');
+        }
+    }
+
     function lapbulkelola_initFormSD() {
         var now = new Date(); var curYear = now.getFullYear(); var curMonth = now.getMonth();
         var targetMonthIdx = (curMonth === 0) ? 11 : (curMonth - 1);
@@ -1277,12 +1457,12 @@
             $('#lapbulkelola_sel_bulan').html(htmlBulan);
         }
         $('#lapbulkelola_sel_bulan').val(months[targetMonthIdx]);
-        $('#lapbulkelola_sel_bulan').val(months[targetMonthIdx]);
 
 
-        var ptkHtml = `<div class="card card-sultan shadow-sm border-0"><div class="card-header bg-light p-0 border-bottom"><ul class="nav nav-pills nav-fill small font-weight-bold" id="lapbulkelola_subTabPTK"><li class="nav-item"><a class="nav-link active py-2" data-toggle="pill" href="#lapbulkelola_ptk1">1. Kepala Sekolah</a></li><li class="nav-item"><a class="nav-link py-2" data-toggle="pill" href="#lapbulkelola_ptk2">2. Pendidik (Guru)</a></li><li class="nav-item"><a class="nav-link py-2" data-toggle="pill" href="#lapbulkelola_ptk3">3. Tenaga Kependidikan</a></li></ul></div><div class="card-body p-3 tab-content"><div class="tab-pane fade show active" id="lapbulkelola_ptk1"><div class="alert alert-warning border mb-4 small font-weight-bold" style="color: #856404 !important; background-color: #fff3cd !important; border-color: #ffeeba !important; padding: 0.75rem;"><i class="fas fa-info-circle mr-1" style="color: #856404 !important;"></i> Isikan jumlah Kepala Sekolah (Maksimal 1).</div><div class="row justify-content-center"><div class="col-md-3 text-center"><label class="form-label-sultan small font-weight-bold text-muted text-uppercase mb-1">PNS</label><input type="number" name="ks_pns" class="form-control form-control-sm form-control-sultan text-center val-ks mx-auto border-maroon" style="max-width:100px;" min="0"></div><div class="col-md-3 text-center"><label class="form-label-sultan small font-weight-bold text-muted text-uppercase mb-1">PPPK</label><input type="number" name="ks_pppk" class="form-control form-control-sm form-control-sultan text-center val-ks mx-auto border-maroon" style="max-width:100px;" min="0"></div><div class="col-md-3 text-center"><label class="form-label-sultan small font-weight-bold text-muted text-uppercase mb-1">Non ASN</label><input type="number" name="ks_non_asn" class="form-control form-control-sm form-control-sultan text-center val-ks mx-auto border-maroon" style="max-width:100px;" min="0"></div></div><div class="text-center mt-2"><small id="lapbulkelola_errKS" class="text-danger font-weight-bold d-none"><i class="fas fa-exclamation-circle mr-1"></i> Jumlah KS tidak boleh lebih dari 1!</small></div><div class="modal-footer-sultan mt-4 pt-3 border-top"><button type="button" class="sultan-btn sultan-btn-sm sultan-btn-aksi-batal btn-tab-sd" data-target="lapbulkelola_ts2"><i class="fas fa-arrow-left"></i> DATA MURID</button><button type="button" class="sultan-btn sultan-btn-sm sultan-btn-aksi-utama btn-nav-ptk" data-target="#lapbulkelola_ptk2">PENDIDIK <i class="fas fa-arrow-right"></i></button></div></div><div class="tab-pane fade" id="lapbulkelola_ptk2"><div class="table-responsive"><table class="table table-sm table-bordered table-striped table-matrix small mb-0"><thead class="bg-dark text-white text-center"><tr><th class="col-jabatan align-middle">Jabatan Guru</th><th class="align-middle">CPNS</th><th class="align-middle">PNS</th><th class="align-middle">PPPK</th><th class="align-middle">PPPK PW</th><th class="align-middle">GTY</th><th class="align-middle">GTT</th></tr></thead><tbody id="lapbulkelola_bodyGuru"></tbody></table></div><div class="modal-footer-sultan mt-3 pt-3 border-top"><button type="button" class="sultan-btn sultan-btn-sm sultan-btn-aksi-batal btn-nav-ptk" data-target="#lapbulkelola_ptk1"><i class="fas fa-arrow-left"></i> KEPSEK</button><button type="button" class="sultan-btn sultan-btn-sm sultan-btn-aksi-utama btn-nav-ptk" data-target="#lapbulkelola_ptk3">TENDIK <i class="fas fa-arrow-right"></i></button></div></div><div class="tab-pane fade" id="lapbulkelola_ptk3"><div class="table-responsive"><table class="table table-sm table-bordered table-striped table-matrix small mb-0"><thead class="bg-secondary text-white text-center"><tr><th class="col-jabatan align-middle">Jabatan Tendik</th><th class="align-middle">PNS</th><th class="align-middle">PPPK</th><th class="align-middle">PPPK PW</th><th class="align-middle">PTY</th><th class="align-middle">PTT</th></tr></thead><tbody id="lapbulkelola_bodyTendik"></tbody></table></div><div class="modal-footer-sultan mt-3 pt-3 border-top"><button type="button" class="sultan-btn sultan-btn-sm sultan-btn-aksi-batal btn-nav-ptk" data-target="#lapbulkelola_ptk2"><i class="fas fa-arrow-left"></i> PENDIDIK</button><button type="button" class="sultan-btn sultan-btn-sm sultan-btn-aksi-utama btn-val-ptk-sd">UNGGAH FILE <i class="fas fa-arrow-right"></i></button></div></div></div></div>`;
+        var ptkHtmlLegacy = `<div id="ptk-legacy-ui"><div class="card card-sultan shadow-sm border-0"><div class="card-header bg-light p-0 border-bottom"><ul class="nav nav-pills nav-fill small font-weight-bold" id="lapbulkelola_subTabPTK"><li class="nav-item"><a class="nav-link active py-2" data-toggle="pill" href="#lapbulkelola_ptk1">1. Kepala Sekolah</a></li><li class="nav-item"><a class="nav-link py-2" data-toggle="pill" href="#lapbulkelola_ptk2">2. Pendidik (Guru)</a></li><li class="nav-item"><a class="nav-link py-2" data-toggle="pill" href="#lapbulkelola_ptk3">3. Tenaga Kependidikan</a></li></ul></div><div class="card-body p-3 tab-content"><div class="tab-pane fade show active" id="lapbulkelola_ptk1"><div class="alert alert-warning border mb-4 small font-weight-bold" style="color: #856404 !important; background-color: #fff3cd !important; border-color: #ffeeba !important; padding: 0.75rem;"><i class="fas fa-info-circle mr-1" style="color: #856404 !important;"></i> Isikan jumlah Kepala Sekolah (Maksimal 1).</div><div class="row justify-content-center"><div class="col-md-3 text-center"><label class="form-label-sultan small font-weight-bold text-muted text-uppercase mb-1">PNS</label><input type="number" name="ks_pns" class="form-control form-control-sm form-control-sultan text-center val-ks mx-auto border-maroon" style="max-width:100px;" min="0"></div><div class="col-md-3 text-center"><label class="form-label-sultan small font-weight-bold text-muted text-uppercase mb-1">PPPK</label><input type="number" name="ks_pppk" class="form-control form-control-sm form-control-sultan text-center val-ks mx-auto border-maroon" style="max-width:100px;" min="0"></div><div class="col-md-3 text-center"><label class="form-label-sultan small font-weight-bold text-muted text-uppercase mb-1">Non ASN</label><input type="number" name="ks_non_asn" class="form-control form-control-sm form-control-sultan text-center val-ks mx-auto border-maroon" style="max-width:100px;" min="0"></div></div><div class="text-center mt-2"><small id="lapbulkelola_errKS" class="text-danger font-weight-bold d-none"><i class="fas fa-exclamation-circle mr-1"></i> Jumlah KS tidak boleh lebih dari 1!</small></div><div class="modal-footer-sultan mt-4 pt-3 border-top"><button type="button" class="sultan-btn sultan-btn-sm sultan-btn-aksi-batal btn-tab-sd" data-target="lapbulkelola_ts2"><i class="fas fa-arrow-left"></i> DATA MURID</button><button type="button" class="sultan-btn sultan-btn-sm sultan-btn-aksi-utama btn-nav-ptk" data-target="#lapbulkelola_ptk2">PENDIDIK <i class="fas fa-arrow-right"></i></button></div></div><div class="tab-pane fade" id="lapbulkelola_ptk2"><div class="table-responsive"><table class="table table-sm table-bordered table-striped table-matrix small mb-0"><thead class="bg-dark text-white text-center"><tr><th class="col-jabatan align-middle">Jabatan Guru</th><th class="align-middle">CPNS</th><th class="align-middle">PNS</th><th class="align-middle">PPPK</th><th class="align-middle">PPPK PW</th><th class="align-middle">GTY</th><th class="align-middle">GTT</th></tr></thead><tbody id="lapbulkelola_bodyGuru"></tbody></table></div><div class="modal-footer-sultan mt-3 pt-3 border-top"><button type="button" class="sultan-btn sultan-btn-sm sultan-btn-aksi-batal btn-nav-ptk" data-target="#lapbulkelola_ptk1"><i class="fas fa-arrow-left"></i> KEPSEK</button><button type="button" class="sultan-btn sultan-btn-sm sultan-btn-aksi-utama btn-nav-ptk" data-target="#lapbulkelola_ptk3">TENDIK <i class="fas fa-arrow-right"></i></button></div></div><div class="tab-pane fade" id="lapbulkelola_ptk3"><div class="table-responsive"><table class="table table-sm table-bordered table-striped table-matrix small mb-0"><thead class="bg-secondary text-white text-center"><tr><th class="col-jabatan align-middle">Jabatan Tendik</th><th class="align-middle">PNS</th><th class="align-middle">PPPK</th><th class="align-middle">PPPK PW</th><th class="align-middle">PTY</th><th class="align-middle">PTT</th></tr></thead><tbody id="lapbulkelola_bodyTendik"></tbody></table></div><div class="modal-footer-sultan mt-3 pt-3 border-top"><button type="button" class="sultan-btn sultan-btn-sm sultan-btn-aksi-batal btn-nav-ptk" data-target="#lapbulkelola_ptk2"><i class="fas fa-arrow-left"></i> PENDIDIK</button><button type="button" class="sultan-btn sultan-btn-sm sultan-btn-aksi-utama btn-val-ptk-sd">UNGGAH FILE <i class="fas fa-arrow-right"></i></button></div></div></div></div></div>`;
 
-        $('#lapbulkelola_ts3').html(ptkHtml);
+        var ptkModernUi = lapbulkelola_buildPtkModernUi();
+        $('#lapbulkelola_ts3').html(ptkHtmlLegacy + ptkModernUi);
 
         var guruMapel = [['Guru Kelas', 'gk'], ['Guru PAI', 'gpai'], ['Guru PJOK', 'gpjok'], ['Guru PA Kristen', 'gkris'], ['Guru PA Katolik', 'gkat'], ['Guru Bhs. Inggris', 'gbing', true], ['Guru Mapel Lainnya', 'gmap', true]];
         var htmlG = "";
@@ -1295,6 +1475,7 @@
         $('#lapbulkelola_bodyTendik').html(htmlT);
 
         lapbulkelola_isiOtomatisSekolahUser('SD');
+        lapbulkelola_togglePtkUi();
     }
 
     function lapbulkelola_renderTableMurid() {
@@ -1526,6 +1707,15 @@
                 $('#lapbulkelola_boxRombelTK, #lapbulkelola_txtTotRombel').hide().addClass('d-none');
                 $('#lapbulkelola_gridRombelTK input[name^="kel_"]').removeClass('hitung-paud-rombel');
             }
+        } else if (tipe === 'SD' && !LAPBULKELOLA_IS_EDIT_MODE) {
+            // Muat Data PTK Induk Default
+            $('#lapbulkelola_tbodyPTKInduk').html('<tr><td colspan="35" class="text-center font-italic text-muted py-4">Memuat data PTK dari Server... <i class="fas fa-circle-notch fa-spin"></i></td></tr>');
+            google.script.run.withSuccessHandler(function (ptkInduk) {
+                LAPBULKELOLA_DATA_PTK_INDUK = ptkInduk || [];
+                if (typeof lapbulkelola_renderPtkMatrix === 'function') lapbulkelola_renderPtkMatrix();
+            }).withFailureHandler(function (e) {
+                $('#lapbulkelola_tbodyPTKInduk').html('<tr><td colspan="35" class="text-center font-italic text-danger py-4">Gagal memuat PTK Induk: ' + e.message + '</td></tr>');
+            }).getPTKSekolahByNpsnLapbul(s.npsn, 'SD');
         }
     }
 
@@ -2235,6 +2425,18 @@
         lapbulkelola_renderTableMurid();
         lapbulkelola_renderTableAgama();
         
+        var dataPtkStr = cariData(["data ptk", "data_ptk"]);
+        if (dataPtkStr && dataPtkStr !== "-") {
+            try {
+                var ptkArr = JSON.parse(dataPtkStr);
+                LAPBULKELOLA_DATA_PTK_INDUK = ptkArr.filter(function(p) { return p.is_induk; });
+                LAPBULKELOLA_DATA_PTK_NONINDUK = ptkArr.filter(function(p) { return !p.is_induk; });
+                if (typeof lapbulkelola_renderPtkMatrix === 'function') lapbulkelola_renderPtkMatrix();
+            } catch(e) {
+                console.error("Gagal parse data_ptk JSON:", e);
+            }
+        }
+        
         $.each(data, function (rawKey, value) {
             var cleanKey = String(rawKey).trim().toLowerCase().replace(/\s+/g, '_');
             var input = $(`#lapbulkelola_formSD [name="${cleanKey}"]`);
@@ -2470,4 +2672,265 @@
             btn.prop('disabled', false).html(txt); Sultan.notif.crud.gagal(err.message);
         }).processVerifikasiLapbul(LAPBULKELOLA_V_TARGET_SOURCE, LAPBULKELOLA_V_TARGET_ID, status, ket, LAPBULKELOLA_USER_AKTIF);
     }
+
+    function lapbulkelola_renderPtkMatrix() {
+        lapbulkelola_drawPtkRows(LAPBULKELOLA_DATA_PTK_INDUK, '#lapbulkelola_tbodyPTKInduk', 'A');
+        lapbulkelola_drawPtkRows(LAPBULKELOLA_DATA_PTK_NONINDUK, '#lapbulkelola_tbodyPTKNonInduk', 'B');
+        lapbulkelola_serializePtkData();
+    }
+
+    function lapbulkelola_drawPtkRows(arr, tbodyId, type) {
+        var html = '';
+        var totals = {
+            s2:0, s1:0, d3:0, d2:0, sma:0, smp:0, sd:0,
+            cpns:0, pns:0, pppk:0, pppkpw:0, gty:0, pty:0, gtt:0, ptt:0,
+            ix:0, '3a':0, '3b':0, '3c':0, '3d':0, '4a':0, '4b':0, '4c':0,
+            serdik:0, dapodik:0,
+            dd:0, dl:0, ct:0, cap:0, cs:0, cm:0, a:0, jml:0
+        };
+
+        if (arr.length === 0) {
+            html = `<tr><td colspan="44" class="text-center font-italic text-muted py-4">Belum ada data PTK.</td></tr>`;
+        }
+
+        arr.forEach(function(ptk, idx) {
+            var pendidikan = String(ptk.pendidikan || "").toUpperCase();
+            var isS2 = pendidikan.includes('S2') || pendidikan.includes('S-2') || pendidikan.includes('S.2');
+            var isS1 = !isS2 && (pendidikan.includes('S1') || pendidikan.includes('S-1') || pendidikan.includes('S.1') || pendidikan.includes('D4') || pendidikan.includes('D-4'));
+            var isD3 = !isS1 && !isS2 && (pendidikan.includes('D3') || pendidikan.includes('D-3'));
+            var isD2 = !isS1 && !isS2 && !isD3 && (pendidikan.includes('D2') || pendidikan.includes('D-2') || pendidikan.includes('D1') || pendidikan.includes('D-1'));
+            var isSMA = !isS1 && !isS2 && !isD3 && !isD2 && (pendidikan.includes('SMA') || pendidikan.includes('SMK') || pendidikan.includes('SLTA'));
+            var isSMP = !isS1 && !isS2 && !isD3 && !isD2 && !isSMA && (pendidikan.includes('SMP') || pendidikan.includes('SLTP') || pendidikan.includes('MTS'));
+            var isSD = !isS1 && !isS2 && !isD3 && !isD2 && !isSMA && !isSMP && (pendidikan.includes('SD') || pendidikan.includes('MI') || pendidikan.includes('SR'));
+
+            var st = String(ptk.status || "").toUpperCase();
+            var isCPNS = st.includes('CPNS');
+            var isPNS = !isCPNS && st.includes('PNS');
+            var isPPPK = st.includes('PPPK') && !st.includes('PARUH');
+            var isPPPKPW = st.includes('PPPK') && (st.includes('PARUH') || st.includes('PW'));
+            var isGTY = st.includes('GTY');
+            var isPTY = st.includes('PTY');
+            var isGTT = st.includes('GTT') || st.includes('HONOR');
+            var isPTT = st.includes('PTT');
+
+            var gol = String(ptk.gol_asn || "").toUpperCase();
+            var isIX = gol.includes('IX');
+            var is3A = gol.includes('III/A');
+            var is3B = gol.includes('III/B');
+            var is3C = gol.includes('III/C');
+            var is3D = gol.includes('III/D');
+            var is4A = gol.includes('IV/A');
+            var is4B = gol.includes('IV/B');
+            var is4C = gol.includes('IV/C') || gol.includes('IV/D') || gol.includes('IV/E');
+
+            var isSerdik = ptk.serdik && String(ptk.serdik).toLowerCase() !== 'belum' && String(ptk.serdik).trim() !== '-' && String(ptk.serdik).trim() !== '';
+            var isDapodik = ptk.dapodik && String(ptk.dapodik).toLowerCase() !== 'belum' && String(ptk.dapodik).trim() !== '-' && String(ptk.dapodik).trim() !== '';
+
+            if (isS2) totals.s2++; if (isS1) totals.s1++; if (isD3) totals.d3++; if (isD2) totals.d2++; if (isSMA) totals.sma++; if (isSMP) totals.smp++; if (isSD) totals.sd++;
+            if (isCPNS) totals.cpns++; if (isPNS) totals.pns++; if (isPPPK) totals.pppk++; if (isPPPKPW) totals.pppkpw++; if (isGTY) totals.gty++; if (isPTY) totals.pty++; if (isGTT) totals.gtt++; if (isPTT) totals.ptt++;
+            if (isIX) totals.ix++; if (is3A) totals['3a']++; if (is3B) totals['3b']++; if (is3C) totals['3c']++; if (is3D) totals['3d']++; if (is4A) totals['4a']++; if (is4B) totals['4b']++; if (is4C) totals['4c']++;
+            if (isSerdik) totals.serdik++; if (isDapodik) totals.dapodik++;
+
+            var vDD = parseInt(ptk.dd) || 0; var vDL = parseInt(ptk.dl) || 0; var vCT = parseInt(ptk.ct) || 0; var vCAP = parseInt(ptk.cap) || 0; var vCS = parseInt(ptk.cs) || 0; var vCM = parseInt(ptk.cm) || 0; var vA = parseInt(ptk.alpa) || parseInt(ptk.a) || 0;
+            var vJml = vDD + vDL + vCT + vCAP + vCS + vCM + vA;
+
+            totals.dd += vDD; totals.dl += vDL; totals.ct += vCT; totals.cap += vCAP; totals.cs += vCS; totals.cm += vCM; totals.a += vA; totals.jml += vJml;
+
+            html += `<tr>
+                <td class="align-middle">${idx + 1}</td>
+                <td class="align-middle text-left font-weight-bold" style="font-size: 10px;">${ptk.nama}<br><span class="text-muted font-weight-normal">${ptk.nip_niy}</span></td>
+                <td class="align-middle">${ptk.nuptk || '-'}</td>
+                <td class="align-middle">${ptk.jk === 'L' ? '<i class="fas fa-check text-success"></i>' : ''}</td>
+                <td class="align-middle">${ptk.jk === 'P' ? '<i class="fas fa-check text-success"></i>' : ''}</td>
+                <td class="align-middle">${ptk.agama || '-'}</td>
+                <td class="align-middle">${ptk.tempat_lahir || '-'}</td>
+                <td class="align-middle text-nowrap">${ptk.tgl_lahir || '-'}</td>
+                
+                <td class="align-middle">${isS2 ? '<i class="fas fa-check text-success"></i>' : ''}</td>
+                <td class="align-middle">${isS1 ? '<i class="fas fa-check text-success"></i>' : ''}</td>
+                <td class="align-middle">${isD3 ? '<i class="fas fa-check text-success"></i>' : ''}</td>
+                <td class="align-middle">${isD2 ? '<i class="fas fa-check text-success"></i>' : ''}</td>
+                <td class="align-middle">${isSMA ? '<i class="fas fa-check text-success"></i>' : ''}</td>
+                <td class="align-middle">${isSMP ? '<i class="fas fa-check text-success"></i>' : ''}</td>
+                <td class="align-middle">${isSD ? '<i class="fas fa-check text-success"></i>' : ''}</td>
+
+                <td class="align-middle">${isCPNS ? '<i class="fas fa-check text-success"></i>' : ''}</td>
+                <td class="align-middle">${isPNS ? '<i class="fas fa-check text-success"></i>' : ''}</td>
+                <td class="align-middle">${isPPPK ? '<i class="fas fa-check text-success"></i>' : ''}</td>
+                <td class="align-middle">${isPPPKPW ? '<i class="fas fa-check text-success"></i>' : ''}</td>
+                <td class="align-middle">${isGTY ? '<i class="fas fa-check text-success"></i>' : ''}</td>
+                <td class="align-middle">${isPTY ? '<i class="fas fa-check text-success"></i>' : ''}</td>
+                <td class="align-middle">${isGTT ? '<i class="fas fa-check text-success"></i>' : ''}</td>
+                <td class="align-middle">${isPTT ? '<i class="fas fa-check text-success"></i>' : ''}</td>
+
+                <td class="align-middle text-nowrap">${ptk.tmt || '-'}</td>
+
+                <td class="align-middle">${isIX ? '<i class="fas fa-check text-success"></i>' : ''}</td>
+                <td class="align-middle">${is3A ? '<i class="fas fa-check text-success"></i>' : ''}</td>
+                <td class="align-middle">${is3B ? '<i class="fas fa-check text-success"></i>' : ''}</td>
+                <td class="align-middle">${is3C ? '<i class="fas fa-check text-success"></i>' : ''}</td>
+                <td class="align-middle">${is3D ? '<i class="fas fa-check text-success"></i>' : ''}</td>
+                <td class="align-middle">${is4A ? '<i class="fas fa-check text-success"></i>' : ''}</td>
+                <td class="align-middle">${is4B ? '<i class="fas fa-check text-success"></i>' : ''}</td>
+                <td class="align-middle">${is4C ? '<i class="fas fa-check text-success"></i>' : ''}</td>
+
+                <td class="align-middle">${isSerdik ? '<i class="fas fa-check text-success"></i>' : ''}</td>
+                <td class="align-middle">${isDapodik ? '<i class="fas fa-check text-success"></i>' : ''}</td>
+
+                <td class="align-middle p-1"><input type="text" class="form-control form-control-sm text-center ptk-input" data-type="${type}" data-idx="${idx}" data-field="jabatan" value="${ptk.jabatan || ''}" style="font-size: 10px; min-width: 90px; max-width: 120px; padding: 0.2rem;"></td>
+                <td class="align-middle p-1"><input type="text" class="form-control form-control-sm text-center ptk-input" data-type="${type}" data-idx="${idx}" data-field="mengajar" value="${ptk.mengajar || ''}" style="font-size: 10px; min-width: 60px; max-width: 80px; padding: 0.2rem;"></td>
+
+                <td class="align-middle p-1"><input type="number" min="0" class="form-control form-control-sm text-center ptk-input hide-arrow" data-type="${type}" data-idx="${idx}" data-field="dd" value="${ptk.dd || ''}" style="font-size: 10px; min-width: 40px; padding: 0.2rem;"></td>
+                <td class="align-middle p-1"><input type="number" min="0" class="form-control form-control-sm text-center ptk-input hide-arrow" data-type="${type}" data-idx="${idx}" data-field="dl" value="${ptk.dl || ''}" style="font-size: 10px; min-width: 40px; padding: 0.2rem;"></td>
+                <td class="align-middle p-1"><input type="number" min="0" class="form-control form-control-sm text-center ptk-input hide-arrow" data-type="${type}" data-idx="${idx}" data-field="ct" value="${ptk.ct || ''}" style="font-size: 10px; min-width: 40px; padding: 0.2rem;"></td>
+                <td class="align-middle p-1"><input type="number" min="0" class="form-control form-control-sm text-center ptk-input hide-arrow" data-type="${type}" data-idx="${idx}" data-field="cap" value="${ptk.cap || ''}" style="font-size: 10px; min-width: 40px; padding: 0.2rem;"></td>
+                <td class="align-middle p-1"><input type="number" min="0" class="form-control form-control-sm text-center ptk-input hide-arrow" data-type="${type}" data-idx="${idx}" data-field="cs" value="${ptk.cs || ''}" style="font-size: 10px; min-width: 40px; padding: 0.2rem;"></td>
+                <td class="align-middle p-1"><input type="number" min="0" class="form-control form-control-sm text-center ptk-input hide-arrow" data-type="${type}" data-idx="${idx}" data-field="cm" value="${ptk.cm || ''}" style="font-size: 10px; min-width: 40px; padding: 0.2rem;"></td>
+                <td class="align-middle p-1"><input type="number" min="0" class="form-control form-control-sm text-center ptk-input hide-arrow" data-type="${type}" data-idx="${idx}" data-field="a" value="${ptk.a || ptk.alpa || ''}" style="font-size: 10px; min-width: 40px; padding: 0.2rem;"></td>
+                <td class="align-middle font-weight-bold bg-light" style="min-width: 40px;">${vJml || '-'}</td>
+                ${type === 'B' ? `<td class="align-middle p-1"><button type="button" class="btn btn-sm btn-danger py-0 px-2 rounded btn-hapus-ptk-non" data-idx="${idx}"><i class="fas fa-times"></i></button></td>` : ''}
+            </tr>`;
+        });
+        
+        $(tbodyId).html(html);
+
+        for (var k in totals) {
+            $('#footPTK_' + type + '_' + k).text(totals[k] > 0 ? totals[k] : '-');
+        }
+    }
+
+    function lapbulkelola_serializePtkData() {
+        var allPtk = LAPBULKELOLA_DATA_PTK_INDUK.concat(LAPBULKELOLA_DATA_PTK_NONINDUK);
+        var jsonStr = JSON.stringify(allPtk);
+        
+        if ($('#lapbulkelola_formSD input[name="data_ptk"]').length === 0) {
+            $('#lapbulkelola_formSD').append('<input type="hidden" name="data_ptk">');
+        }
+        $('#lapbulkelola_formSD input[name="data_ptk"]').val(jsonStr);
+    }
+
+    $(document).off('change', '.ptk-input').on('change', '.ptk-input', function() {
+        var type = $(this).data('type');
+        var idx = parseInt($(this).data('idx'));
+        var field = $(this).data('field');
+        var val = $(this).val();
+
+        if (type === 'A') {
+            LAPBULKELOLA_DATA_PTK_INDUK[idx][field] = val;
+        } else {
+            LAPBULKELOLA_DATA_PTK_NONINDUK[idx][field] = val;
+        }
+        lapbulkelola_renderPtkMatrix();
+    });
+
+    $(document).off('click', '.btn-hapus-ptk-non').on('click', '.btn-hapus-ptk-non', function() {
+        var idx = parseInt($(this).data('idx'));
+        if (confirm("Hapus PTK Non Induk ini dari laporan?")) {
+            LAPBULKELOLA_DATA_PTK_NONINDUK.splice(idx, 1);
+            lapbulkelola_renderPtkMatrix();
+        }
+    });
+
+    function lapbulkelola_showModalPTKNonInduk() {
+        $('#lapbulkelola_inCariPTKNon').val('');
+        $('#lapbulkelola_hasilCariPTKNon').html('<div class="p-3 text-center text-muted font-italic">Hasil pencarian akan tampil di sini.</div>');
+        $('#lapbulkelola_modalPTKNonInduk').modal('show');
+    }
+
+    $(document).off('click', '#lapbulkelola_btnCariPTKNon').on('click', '#lapbulkelola_btnCariPTKNon', function() {
+        var keyword = $('#lapbulkelola_inCariPTKNon').val().trim();
+        if (keyword.length < 3) {
+            Sultan.notif.info('Ketik minimal 3 karakter untuk mencari.');
+            return;
+        }
+
+        var btn = $(this);
+        btn.prop('disabled', true).html('<i class="fas fa-circle-notch fa-spin"></i>');
+        $('#lapbulkelola_hasilCariPTKNon').html('<div class="p-4 text-center"><i class="fas fa-circle-notch fa-spin fa-2x text-primary mb-2"></i><br>Mencari data PTK...</div>');
+
+        google.script.run.withSuccessHandler(function(res) {
+            btn.prop('disabled', false).html('<i class="fas fa-search mr-1"></i> Cari');
+            if (res.error) {
+                $('#lapbulkelola_hasilCariPTKNon').html('<div class="p-3 text-center text-danger"><i class="fas fa-exclamation-triangle"></i> ' + res.error + '</div>');
+                return;
+            }
+            if (res.length === 0) {
+                $('#lapbulkelola_hasilCariPTKNon').html('<div class="p-3 text-center text-muted"><i class="fas fa-folder-open mb-2 fa-2x"></i><br>Tidak ditemukan PTK dengan kata kunci tersebut.</div>');
+                return;
+            }
+
+            var html = '';
+            res.forEach(function(ptk, idx) {
+                var isExist = LAPBULKELOLA_DATA_PTK_INDUK.find(p => p.id_ptk === ptk.id_ptk) || LAPBULKELOLA_DATA_PTK_NONINDUK.find(p => p.id_ptk === ptk.id_ptk);
+                
+                var btnHtml = isExist ? 
+                    `<button class="btn btn-sm btn-secondary" disabled><i class="fas fa-check"></i> Sudah Ada</button>` :
+                    `<button class="btn btn-sm btn-success btn-pilih-ptk-non" data-idx="${idx}"><i class="fas fa-plus"></i> Tambahkan</button>`;
+
+                html += `<div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-1 font-weight-bold text-dark">${ptk.nama}</h6>
+                        <small class="text-muted d-block"><i class="fas fa-id-card mr-1"></i> NIP: ${ptk.nip_niy} | NUPTK: ${ptk.nuptk || '-'}</small>
+                        <small class="text-info"><i class="fas fa-school mr-1"></i> ${ptk.unit || 'Sekolah Tidak Diketahui'}</small>
+                    </div>
+                    <div>
+                        ${btnHtml}
+                    </div>
+                </div>`;
+            });
+            $('#lapbulkelola_hasilCariPTKNon').html(html);
+            $('#lapbulkelola_hasilCariPTKNon').data('raw', res);
+        }).withFailureHandler(function(err) {
+            btn.prop('disabled', false).html('<i class="fas fa-search mr-1"></i> Cari');
+            $('#lapbulkelola_hasilCariPTKNon').html('<div class="p-3 text-center text-danger"><i class="fas fa-exclamation-triangle"></i> Error: ' + err.message + '</div>');
+        }).searchPTKGlobalLapbul(keyword, 'SD');
+    });
+
+    $(document).off('click', '.btn-pilih-ptk-non').on('click', '.btn-pilih-ptk-non', function() {
+        var idx = $(this).data('idx');
+        var res = $('#lapbulkelola_hasilCariPTKNon').data('raw');
+        if (res && res[idx]) {
+            var ptk = res[idx];
+            LAPBULKELOLA_DATA_PTK_NONINDUK.push(ptk);
+            lapbulkelola_renderPtkMatrix();
+            Sultan.notif.sukses(ptk.nama + ' berhasil ditambahkan sebagai PTK Non Induk.');
+            $('#lapbulkelola_modalPTKNonInduk').modal('hide');
+        }
+    });
+
+    $(document).off('keypress', '#lapbulkelola_inCariPTKNon').on('keypress', '#lapbulkelola_inCariPTKNon', function(e) {
+        if (e.which == 13) {
+            $('#lapbulkelola_btnCariPTKNon').trigger('click');
+            return false;
+        }
+    });
+
 </script>
+
+<div class="modal fade" id="lapbulkelola_modalPTKNonInduk" tabindex="-1" role="dialog" data-backdrop="static" style="z-index: 1060;">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content modal-content-sultan border-0 shadow-lg">
+            <div class="modal-header modal-header-tambah-edit flex-shrink-0" id="lapbulkelola_headerModalPTKNon">
+                <h5 class="modal-title font-weight-bold"><i class="fas fa-search mr-2"></i> TAMBAH PTK NON INDUK</h5>
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <div class="form-group mb-3">
+                    <label class="font-weight-bold text-dark">Cari Berdasarkan Nama / NIP / NUPTK</label>
+                    <div class="input-group">
+                        <input type="text" id="lapbulkelola_inCariPTKNon" class="form-control" placeholder="Ketik minimal 3 karakter..." autocomplete="off">
+                        <div class="input-group-append">
+                            <button type="button" id="lapbulkelola_btnCariPTKNon" class="btn btn-primary"><i class="fas fa-search mr-1"></i> Cari</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="lapbulkelola_hasilCariPTKNon" class="list-group border rounded shadow-sm bg-white" style="max-height: 400px; overflow-y: auto;">
+                    <div class="p-3 text-center text-muted font-italic">Hasil pencarian akan tampil di sini.</div>
+                </div>
+            </div>
+            <div class="modal-footer bg-white border-top-0">
+                <button type="button" class="btn btn-secondary font-weight-bold px-4" data-dismiss="modal"><i class="fas fa-times mr-2"></i> BATAL</button>
+            </div>
+        </div>
+    </div>
+</div>
