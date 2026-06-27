@@ -665,6 +665,7 @@
     var LAPBULKELOLA_USER_NPSN = "";
     var LAPBULKELOLA_DATA_PTK_INDUK = [];
     var LAPBULKELOLA_DATA_PTK_NONINDUK = [];
+    var LAPBULKELOLA_IS_LOADING_PTK = false;
     var LAPBULKELOLA_IS_INIT = true; // FLAG UNTUK MENCEGAH DOUBLE LOAD SAAT STARTUP
 
     $(document).ready(function () {
@@ -1709,12 +1710,15 @@
             }
         } else if (tipe === 'SD' && !LAPBULKELOLA_IS_EDIT_MODE) {
             // Muat Data PTK Induk Default
-            $('#lapbulkelola_tbodyPTKInduk').html('<tr><td colspan="35" class="text-center font-italic text-muted py-4">Memuat data PTK dari Server... <i class="fas fa-circle-notch fa-spin"></i></td></tr>');
+            LAPBULKELOLA_IS_LOADING_PTK = true;
+            $('#lapbulkelola_tbodyPTKInduk').html('<tr><td colspan="44" class="text-center font-italic text-muted py-4">Memuat data PTK dari Server... <i class="fas fa-circle-notch fa-spin"></i></td></tr>');
             google.script.run.withSuccessHandler(function (ptkInduk) {
+                LAPBULKELOLA_IS_LOADING_PTK = false;
                 LAPBULKELOLA_DATA_PTK_INDUK = ptkInduk || [];
                 if (typeof lapbulkelola_renderPtkMatrix === 'function') lapbulkelola_renderPtkMatrix();
             }).withFailureHandler(function (e) {
-                $('#lapbulkelola_tbodyPTKInduk').html('<tr><td colspan="35" class="text-center font-italic text-danger py-4">Gagal memuat PTK Induk: ' + e.message + '</td></tr>');
+                LAPBULKELOLA_IS_LOADING_PTK = false;
+                $('#lapbulkelola_tbodyPTKInduk').html('<tr><td colspan="44" class="text-center font-italic text-danger py-4">Gagal memuat PTK Induk: ' + e.message + '</td></tr>');
             }).getPTKSekolahByNpsnLapbul(s.npsn, 'SD');
         }
     }
@@ -2707,7 +2711,11 @@
         };
 
         if (arr.length === 0) {
-            html = `<tr><td colspan="44" class="text-center font-italic text-muted py-4">Belum ada data PTK.</td></tr>`;
+            if (LAPBULKELOLA_IS_LOADING_PTK && type === 'A') {
+                html = `<tr><td colspan="44" class="text-center font-italic text-muted py-4">Memuat data PTK dari Server... <i class="fas fa-circle-notch fa-spin"></i></td></tr>`;
+            } else {
+                html = `<tr><td colspan="44" class="text-center font-italic text-muted py-4">Belum ada data PTK.</td></tr>`;
+            }
         }
 
         arr.forEach(function(ptk, idx) {
