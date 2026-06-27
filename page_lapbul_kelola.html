@@ -1714,11 +1714,16 @@
             $('#lapbulkelola_tbodyPTKInduk').html('<tr><td colspan="44" class="text-center font-italic text-muted py-4">Memuat data PTK dari Server... <i class="fas fa-circle-notch fa-spin"></i></td></tr>');
             google.script.run.withSuccessHandler(function (ptkInduk) {
                 LAPBULKELOLA_IS_LOADING_PTK = false;
-                LAPBULKELOLA_DATA_PTK_INDUK = ptkInduk || [];
+                // Cek apakah response adalah error object
+                if (ptkInduk && ptkInduk.error) {
+                    $('#lapbulkelola_tbodyPTKInduk').html('<tr><td colspan="44" class="text-center font-italic text-danger py-4"><i class="fas fa-exclamation-triangle mr-2"></i>Error: ' + ptkInduk.error + '</td></tr>');
+                    return;
+                }
+                LAPBULKELOLA_DATA_PTK_INDUK = Array.isArray(ptkInduk) ? ptkInduk : [];
                 if (typeof lapbulkelola_renderPtkMatrix === 'function') lapbulkelola_renderPtkMatrix();
             }).withFailureHandler(function (e) {
                 LAPBULKELOLA_IS_LOADING_PTK = false;
-                $('#lapbulkelola_tbodyPTKInduk').html('<tr><td colspan="44" class="text-center font-italic text-danger py-4">Gagal memuat PTK Induk: ' + e.message + '</td></tr>');
+                $('#lapbulkelola_tbodyPTKInduk').html('<tr><td colspan="44" class="text-center font-italic text-danger py-4"><i class="fas fa-exclamation-triangle mr-2"></i>Gagal memuat PTK Induk: ' + e.message + '</td></tr>');
             }).getPTKSekolahByNpsnLapbul(s.npsn, 'SD');
         }
     }

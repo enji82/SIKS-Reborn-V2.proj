@@ -2546,64 +2546,121 @@ function kirimAjuanKoreksiKtp(form, base64Data, fileName, userPengusul) {
 
 function getPTKSekolahByNpsnLapbul(npsn, jenjang) {
   try {
-    if (!npsn || !jenjang) return [];
+    if (!npsn || !jenjang) return { error: 'NPSN atau jenjang kosong.' };
     var searchNpsn = String(npsn).trim();
-    
-    var data = [];
-    // Coba SDN dulu
-    var sheet = getSheet(KONFIG_PTK.DB_KEY, "Master Data GTK");
-    if (sheet) {
-      var lastRow = sheet.getLastRow();
-      if (lastRow >= 2) {
-        var values = sheet.getRange(2, 1, lastRow - 1, 30).getValues();
-        data = values.filter(function(r) { return String(r[1]).trim() === searchNpsn; });
-      }
-    }
-    
-    // Jika kosong, coba SDS
-    if (data.length === 0) {
-      sheet = getSheet(KONFIG_PTK.DB_KEY, "Master Data GTK SDS");
-      if (sheet) {
-        var lastRow = sheet.getLastRow();
-        if (lastRow >= 2) {
-          var values = sheet.getRange(2, 1, lastRow - 1, 30).getValues();
-          data = values.filter(function(r) { return String(r[1]).trim() === searchNpsn; });
-        }
-      }
-    }
-    
     var tz = Session.getScriptTimeZone();
-    return data.map(function(r) {
-      var tglLahirStr = r[9] ? (r[9] instanceof Date ? Utilities.formatDate(r[9], tz, "dd-MM-yyyy") : r[9]) : "-";
+
+    // ── Helper format tanggal ──
+    var fmtTgl = function(v) {
+      if (!v) return '-';
+      if (v instanceof Date) return Utilities.formatDate(v, tz, 'dd-MM-yyyy');
+      return String(v);
+    };
+
+    // ── Helper map baris SDN → objek ──
+    // Pemetaan kolom berdasarkan buildPtkListSdn_:
+    // A(0)=ID, B(1)=NPSN, C(2)=Unit, D(3)=gelar_depan, E(4)=nama_no_gelar, F(5)=gelar_belakang
+    // G(6)=nama_lengkap, H(7)=nip, I(8)=tmp_lahir, J(9)=tgl_lahir, K(10)=nik
+    // L(11)=lp, M(12)=agama, N(13)=pendidikan, O(14)=jurusan, P(15)=thn_lulus
+    // Q(16)=alamat_ktp, R(17)=alamat_domisili, S(18)=hp
+    // T(19)=status_peg, U(20)=jabatan, V(21)=tmt_jabatan, W(22)=pangkat/gol, X(23)=tmt_gol
+    // Y(24)=mkg, Z(25)=tugas, AA(26)=nuptk, AB(27)=serdik, AC(28)=dapodik
+    var mapSdn = function(r, sumber) {
       return {
-        id_ptk: r[0],
-        nama: r[6],
-        nip_niy: r[7],
-        nuptk: r[26],
-        jk: r[11],
-        agama: r[12],
-        tempat_lahir: r[8],
-        tgl_lahir: tglLahirStr,
-        pendidikan: r[24],
-        status: r[20],
-        tmt: r[23],
-        gol_asn: r[21],
-        serdik: r[27],
-        dapodik: r[28],
-        is_induk: true,
-        jabatan: "",
-        mengajar: "",
-        alpa: "",
-        sakit: "",
-        izin: "",
-        cuti: "",
-        tugas_luar: "",
-        tugas_belajar: "",
-        lainnya: ""
+        id_ptk       : r[0],
+        npsn_asal    : String(r[1]),
+        unit         : r[2],
+        nama         : String(r[6] || ''),
+        nip_niy      : String(r[7] || ''),
+        tempat_lahir : String(r[8] || '-'),
+        tgl_lahir    : fmtTgl(r[9]),
+        jk           : String(r[11] || ''),
+        agama        : String(r[12] || '-'),
+        pendidikan   : String(r[13] || ''),   // ← kolom N
+        status       : String(r[19] || ''),   // ← kolom T (status_peg)
+        jabatan      : String(r[20] || ''),   // ← kolom U
+        tmt          : fmtTgl(r[21]),         // ← kolom V (tmt_jabatan)
+        gol_asn      : String(r[22] || ''),   // ← kolom W (pangkat/gol)
+        nuptk        : String(r[26] || ''),   // ← kolom AA
+        serdik       : String(r[27] || ''),   // ← kolom AB
+        dapodik      : String(r[28] || ''),   // ← kolom AC
+        sumber       : sumber,
+        is_induk     : true,
+        jabatan_lapbul : '', mengajar: '', alpa: '', sakit: '', izin: '',
+        cuti: '', tugas_luar: '', tugas_belajar: '', lainnya: ''
       };
-    });
+    };
+
+    // ── Helper map baris SDS → objek ──
+    // Pemetaan kolom berdasarkan getDataPTKSDS:
+    // A(0)=ID, B(1)=NPSN, C(2)=Unit, D(3)=gelar_depan, E(4)=nama_no_gelar, F(5)=gelar_belakang
+    // G(6)=nama_lengkap, H(7)=niy, I(8)=tmp_lahir, J(9)=tgl_lahir, K(10)=nik
+    // L(11)=lp, M(12)=agama, N(13)=pendidikan, O(14)=jurusan, P(15)=thn_lulus
+    // Q(16)=alamat_ktp, R(17)=alamat_domisili, S(18)=hp
+    // T(19)=status_peg, U(20)=jabatan, V(21)=tmt_jabatan, W(22)=inpassing, X(23)=tmt_inpassing
+    // Y(24)=nuptk, Z(25)=serdik, AA(26)=dapodik
+    var mapSds = function(r, sumber) {
+      return {
+        id_ptk       : r[0],
+        npsn_asal    : String(r[1]),
+        unit         : r[2],
+        nama         : String(r[6] || ''),
+        nip_niy      : String(r[7] || ''),
+        tempat_lahir : String(r[8] || '-'),
+        tgl_lahir    : String(r[9] || '-'),  // SDS pakai displayValues, sudah string
+        jk           : String(r[11] || ''),
+        agama        : String(r[12] || '-'),
+        pendidikan   : String(r[13] || ''),   // ← kolom N (sama)
+        status       : String(r[19] || ''),   // ← kolom T (status_peg)
+        jabatan      : String(r[20] || ''),   // ← kolom U
+        tmt          : String(r[21] || '-'),  // ← kolom V (tmt_jabatan)
+        gol_asn      : String(r[22] || ''),   // ← kolom W (inpassing, bukan gol ASN)
+        nuptk        : String(r[24] || ''),   // ← kolom Y (berbeda dari SDN!)
+        serdik       : String(r[25] || ''),   // ← kolom Z
+        dapodik      : String(r[26] || ''),   // ← kolom AA
+        sumber       : sumber,
+        is_induk     : true,
+        jabatan_lapbul : '', mengajar: '', alpa: '', sakit: '', izin: '',
+        cuti: '', tugas_luar: '', tugas_belajar: '', lainnya: ''
+      };
+    };
+
+    var result = [];
+
+    // ── Cari di SDN ──
+    try {
+      var sheetSdn = getSheet(KONFIG_PTK.DB_KEY, 'Master Data GTK');
+      var lastRowSdn = sheetSdn.getLastRow();
+      if (lastRowSdn >= 2) {
+        var valSdn = sheetSdn.getRange(2, 1, lastRowSdn - 1, 30).getValues();
+        var filteredSdn = valSdn.filter(function(r) {
+          return r[0] && String(r[1]).trim() === searchNpsn;
+        });
+        result = result.concat(filteredSdn.map(function(r) { return mapSdn(r, 'SDN'); }));
+      }
+    } catch(eSdn) {
+      Logger.log('getPTKSekolahByNpsnLapbul SDN error: ' + eSdn.message);
+    }
+
+    // ── Cari di SDS ──
+    try {
+      var sheetSds = getSheet(KONFIG_PTK.DB_KEY, 'Master Data GTK SDS');
+      var lastRowSds = sheetSds.getLastRow();
+      if (lastRowSds >= 2) {
+        var valSds = sheetSds.getRange(2, 1, lastRowSds - 1, 28).getDisplayValues();
+        var filteredSds = valSds.filter(function(r) {
+          return r[0] && String(r[1]).trim() === searchNpsn;
+        });
+        result = result.concat(filteredSds.map(function(r) { return mapSds(r, 'SDS'); }));
+      }
+    } catch(eSds) {
+      Logger.log('getPTKSekolahByNpsnLapbul SDS error: ' + eSds.message);
+    }
+
+    return result;
   } catch (e) {
-    return [];
+    Logger.log('getPTKSekolahByNpsnLapbul ERROR: ' + e.message);
+    return { error: e.message };
   }
 }
 
@@ -2611,58 +2668,109 @@ function searchPTKGlobalLapbul(keyword, jenjang) {
   try {
     if (!keyword || keyword.length < 3) return [];
     var key = keyword.toLowerCase().trim();
-    
+    var tz = Session.getScriptTimeZone();
     var results = [];
-    var sheets = ["Master Data GTK", "Master Data GTK SDS"];
-    
-    sheets.forEach(function(sName) {
-      var sheet = getSheet(KONFIG_PTK.DB_KEY, sName);
-      if (sheet) {
-        var lastRow = sheet.getLastRow();
-        if (lastRow >= 2) {
-          var values = sheet.getRange(2, 1, lastRow - 1, 30).getValues();
-          for (var i = 0; i < values.length; i++) {
-            var r = values[i];
-            if (String(r[6]).toLowerCase().indexOf(key) !== -1 || String(r[7]).toLowerCase().indexOf(key) !== -1 || String(r[26]).toLowerCase().indexOf(key) !== -1) {
-              var tz = Session.getScriptTimeZone();
-              var tglLahirStr = r[9] ? (r[9] instanceof Date ? Utilities.formatDate(r[9], tz, "dd-MM-yyyy") : r[9]) : "-";
-              results.push({
-                id_ptk: r[0],
-                npsn: r[1],
-                unit: r[2],
-                nama: r[6],
-                nip_niy: r[7],
-                nuptk: r[26],
-                jk: r[11],
-                agama: r[12],
-                tempat_lahir: r[8],
-                tgl_lahir: tglLahirStr,
-                pendidikan: r[24],
-                status: r[20],
-                tmt: r[23],
-                gol_asn: r[21],
-                serdik: r[27],
-                dapodik: r[28],
-                is_induk: false,
-                jabatan: "",
-                mengajar: "",
-                alpa: "",
-                sakit: "",
-                izin: "",
-                cuti: "",
-                tugas_luar: "",
-                tugas_belajar: "",
-                lainnya: ""
-              });
-              if (results.length > 30) break; // Limit search
-            }
+
+    // ── Helper format tanggal ──
+    var fmtTgl = function(v) {
+      if (!v) return '-';
+      if (v instanceof Date) return Utilities.formatDate(v, tz, 'dd-MM-yyyy');
+      return String(v);
+    };
+
+    // ── Cari di SDN ──
+    // Kolom: G(6)=nama, H(7)=nip, AA(26)=nuptk, N(13)=pendidikan, T(19)=status, U(20)=jabatan
+    try {
+      var sheetSdn = getSheet(KONFIG_PTK.DB_KEY, 'Master Data GTK');
+      var lastRowSdn = sheetSdn.getLastRow();
+      if (lastRowSdn >= 2) {
+        var valSdn = sheetSdn.getRange(2, 1, lastRowSdn - 1, 30).getValues();
+        for (var i = 0; i < valSdn.length; i++) {
+          if (results.length >= 50) break;
+          var r = valSdn[i];
+          if (!r[0]) continue;
+          var nama = String(r[6]).toLowerCase();
+          var nip  = String(r[7]).toLowerCase();
+          var nuptk = String(r[26]).toLowerCase();
+          if (nama.indexOf(key) !== -1 || nip.indexOf(key) !== -1 || nuptk.indexOf(key) !== -1) {
+            results.push({
+              id_ptk       : r[0],
+              npsn_asal    : String(r[1]),
+              unit         : String(r[2] || ''),
+              nama         : String(r[6] || ''),
+              nip_niy      : String(r[7] || ''),
+              tempat_lahir : String(r[8] || '-'),
+              tgl_lahir    : fmtTgl(r[9]),
+              jk           : String(r[11] || ''),
+              agama        : String(r[12] || '-'),
+              pendidikan   : String(r[13] || ''),
+              status       : String(r[19] || ''),
+              jabatan      : String(r[20] || ''),
+              tmt          : fmtTgl(r[21]),
+              gol_asn      : String(r[22] || ''),
+              nuptk        : String(r[26] || ''),
+              serdik       : String(r[27] || ''),
+              dapodik      : String(r[28] || ''),
+              sumber       : 'SDN',
+              is_induk     : false,
+              jabatan_lapbul : '', mengajar: '', alpa: '', sakit: '', izin: '',
+              cuti: '', tugas_luar: '', tugas_belajar: '', lainnya: ''
+            });
           }
         }
       }
-    });
-    
+    } catch(eSdn) {
+      Logger.log('searchPTKGlobalLapbul SDN error: ' + eSdn.message);
+    }
+
+    // ── Cari di SDS ──
+    // Kolom: G(6)=nama, H(7)=niy, Y(24)=nuptk, N(13)=pendidikan, T(19)=status
+    try {
+      var sheetSds = getSheet(KONFIG_PTK.DB_KEY, 'Master Data GTK SDS');
+      var lastRowSds = sheetSds.getLastRow();
+      if (lastRowSds >= 2) {
+        var valSds = sheetSds.getRange(2, 1, lastRowSds - 1, 28).getDisplayValues();
+        for (var j = 0; j < valSds.length; j++) {
+          if (results.length >= 50) break;
+          var r = valSds[j];
+          if (!r[0]) continue;
+          var nama = String(r[6]).toLowerCase();
+          var niy  = String(r[7]).toLowerCase();
+          var nuptk = String(r[24]).toLowerCase();
+          if (nama.indexOf(key) !== -1 || niy.indexOf(key) !== -1 || nuptk.indexOf(key) !== -1) {
+            results.push({
+              id_ptk       : r[0],
+              npsn_asal    : String(r[1]),
+              unit         : String(r[2] || ''),
+              nama         : String(r[6] || ''),
+              nip_niy      : String(r[7] || ''),
+              tempat_lahir : String(r[8] || '-'),
+              tgl_lahir    : String(r[9] || '-'),
+              jk           : String(r[11] || ''),
+              agama        : String(r[12] || '-'),
+              pendidikan   : String(r[13] || ''),
+              status       : String(r[19] || ''),
+              jabatan      : String(r[20] || ''),
+              tmt          : String(r[21] || '-'),
+              gol_asn      : String(r[22] || ''),
+              nuptk        : String(r[24] || ''),
+              serdik       : String(r[25] || ''),
+              dapodik      : String(r[26] || ''),
+              sumber       : 'SDS',
+              is_induk     : false,
+              jabatan_lapbul : '', mengajar: '', alpa: '', sakit: '', izin: '',
+              cuti: '', tugas_luar: '', tugas_belajar: '', lainnya: ''
+            });
+          }
+        }
+      }
+    } catch(eSds) {
+      Logger.log('searchPTKGlobalLapbul SDS error: ' + eSds.message);
+    }
+
     return results;
   } catch (e) {
+    Logger.log('searchPTKGlobalLapbul ERROR: ' + e.message);
     return { error: e.message };
   }
 }
