@@ -2578,7 +2578,7 @@ function getPTKSekolahByNpsnLapbul(npsn, jenjang) {
         agama        : String(r[12] || '-'),
         pendidikan   : String(r[13] || ''),   // ← kolom N
         status       : String(r[19] || ''),   // ← kolom T (status_peg)
-        jabatan      : String(r[20] || ''),   // ← kolom U
+        jabatan      : String(r[25] || ''),   // ← kolom Z (tugas)
         tmt          : fmtTgl(r[21]),         // ← kolom V (tmt_jabatan)
         gol_asn      : String(r[22] || ''),   // ← kolom W (pangkat/gol)
         nuptk        : String(r[26] || ''),   // ← kolom AA
@@ -2705,7 +2705,7 @@ function searchPTKGlobalLapbul(keyword, jenjang) {
               agama        : String(r[12] || '-'),
               pendidikan   : String(r[13] || ''),
               status       : String(r[19] || ''),
-              jabatan      : String(r[20] || ''),
+              jabatan      : String(r[25] || ''),
               tmt          : fmtTgl(r[21]),
               gol_asn      : String(r[22] || ''),
               nuptk        : String(r[26] || ''),
