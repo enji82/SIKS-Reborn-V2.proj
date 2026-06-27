@@ -1897,6 +1897,38 @@
                 });
                 return;
             }
+
+            // Validasi Mengajar Kelas/Mapel
+            var wajibMengajarKeywords = ["guru kelas", "guru pai", "guru pjok", "guru mapel lainnya", "guru pa kristen", "guru bahasa inggris"];
+            var ptkIncomplete = [];
+
+            var checkMengajar = function(ptkList) {
+                for (var i = 0; i < ptkList.length; i++) {
+                    var p = ptkList[i];
+                    var jbt = String(p.jabatan || "").toLowerCase();
+                    var isWajib = false;
+                    for (var k = 0; k < wajibMengajarKeywords.length; k++) {
+                        if (jbt.includes(wajibMengajarKeywords[k])) {
+                            isWajib = true;
+                            break;
+                        }
+                    }
+                    if (isWajib) {
+                        var mengajar = String(p.mengajar || "").trim();
+                        if (mengajar === "" || mengajar === "-") {
+                            ptkIncomplete.push(p.nama);
+                        }
+                    }
+                }
+            };
+            
+            checkMengajar(LAPBULKELOLA_DATA_PTK_INDUK);
+            checkMengajar(LAPBULKELOLA_DATA_PTK_NONINDUK);
+
+            if (ptkIncomplete.length > 0) {
+                Sultan.notif.gagal("Harap isi kolom 'Mengajar' untuk PTK berikut: " + ptkIncomplete.join(', '));
+                return;
+            }
         } else {
             // Legacy UI Validation
             var ks = 0; $('.val-ks').each(function () { ks += Number($(this).val()) });
