@@ -330,7 +330,7 @@ function getAllSchoolsList() {
 
 function lapbul_migrasi_header_sd() {
   try {
-    var ss = SpreadsheetApp.openById(KONFIG_LAPBUL.SD_DB);
+    var ss = getDB(KONFIG_LAPBUL.SD_DB);
     var sheet = ss.getSheetByName("Input SD");
     if (!sheet) return "Sheet 'Input SD' tidak ditemukan.";
     
