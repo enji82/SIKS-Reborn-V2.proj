@@ -355,6 +355,11 @@ function lapbul_migrasi_header_sd() {
     }
     
     var lastCol = sheet.getLastColumn();
+    var maxCol = sheet.getMaxColumns();
+    if (lastCol + newHeaders.length > maxCol) {
+      sheet.insertColumnsAfter(maxCol, (lastCol + newHeaders.length) - maxCol);
+    }
+    
     sheet.getRange(1, lastCol + 1, 1, newHeaders.length).setValues([newHeaders]);
     return "Berhasil menambahkan " + newHeaders.length + " kolom rincian murid baru ke ujung kanan Spreadsheet SD!";
   } catch (e) {
