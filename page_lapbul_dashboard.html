@@ -406,8 +406,6 @@
     // BAB VIII: FETCH DATA SERVER (DENGAN RACE CONDITION HANDLER)
     // ======================================================================
     function dashlapbul_loadDashboard() {
-        dashlapbul_pendingRequests = 2; // SD and PAUD requests
-
         // 1. Spinner untuk Angka Statistik
         $('.dashlapbul-count').html('<i class="fas fa-spinner fa-spin text-muted opacity-50" style="font-size: 1.5rem;"></i>');
         $('.badge-info, .badge-warning, .badge-success, .badge-primary').css('opacity', '0.5');
@@ -418,7 +416,8 @@
             '<span class="small text-muted font-weight-bold">Memuat...</span></li>';
         $('#dashlapbul_listBelumSd, #dashlapbul_listBelumTk, #dashlapbul_listBelumKb, #dashlapbul_listBelumSps').html(listLoading);
 
-        $('#dashlapbul_btnRefresh').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
+        var btn = $('#dashlapbul_btnRefresh');
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
         $('.card-sultan').css('opacity', '0.85');
 
         var t = $('#dashlapbul_dashTahun').val();
@@ -429,55 +428,150 @@
 
         DASHLAPBUL_GLOBAL_BELUM_LAPOR = { sd: [], tk: [], kb: [], sps: [] };
 
-        google.script.run
-            .withSuccessHandler(function (json) { dashlapbul_handleResponse('sd', json); })
-            .withFailureHandler(function (e) { dashlapbul_finishRequest('sd'); Sultan.alert('error', 'Koneksi Error', e.message); })
-            .getLapbulMetric_SD(t, b);
+        Lapbul_GetMasterSekolah(function(masterSekolah) {
+            // Kita pass admin true karena dashboard butuh data agregat SEMUA sekolah (bukan 1 sekolah)
+            Lapbul_GetGlobalData(t, "", true, function(res) {
+                
+                if (res && res.error) {
+                    btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-sultan-utama"></i>');
+                    Sultan.alert('error', 'Gagal Sinkronisasi', res.error);
+                    return;
+                }
 
-        google.script.run
-            .withSuccessHandler(function (json) { dashlapbul_handleResponse('paud', json); })
-            .withFailureHandler(function (e) { dashlapbul_finishRequest('paud'); })
-            .getLapbulMetric_PAUD(t, b);
+                var metrics = dashlapbul_calculateMetrics(masterSekolah || [], res || [], t, b);
+                dashlapbul_renderMetrics(metrics);
+                
+                DASHLAPBUL_IS_INIT = false; // BUKA KUNCI SETELAH SEMUA DATA TIBA
+                $('.card-sultan').css('opacity', '1');
+                $('.badge-info, .badge-warning, .badge-success, .badge-primary').css('opacity', '1');
+                btn.prop('disabled', false).html('<i class="fas fa-sync-alt"></i>');
+
+            }, function(err) {
+                btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-sultan-utama"></i>');
+                Sultan.alert('error', 'Koneksi Terputus', err.message);
+            });
+        });
     }
 
-    function dashlapbul_finishRequest(source) {
-        dashlapbul_pendingRequests--;
-        if (dashlapbul_pendingRequests <= 0) {
-            DASHLAPBUL_IS_INIT = false; // BUKA KUNCI SETELAH SEMUA DATA TIBA
-            $('.card-sultan').css('opacity', '1');
-            $('.badge-info, .badge-warning, .badge-success, .badge-primary').css('opacity', '1');
-            $('#dashlapbul_btnRefresh').prop('disabled', false).html('<i class="fas fa-sync-alt"></i>');
+    function dashlapbul_calculateMetrics(masterSekolah, rawData, targetTahun, targetBulan) {
+        var result = {
+            sd: { total:0, sudah:0, belum:0, persen:0, disetujui:0, diproses:0, revisi:0, ditolak:0, listBelum: [] },
+            tk: { total:0, sudah:0, belum:0, persen:0, disetujui:0, diproses:0, revisi:0, ditolak:0, listBelum: [] },
+            kb: { total:0, sudah:0, belum:0, persen:0, disetujui:0, diproses:0, revisi:0, ditolak:0, listBelum: [] },
+            sps: { total:0, sudah:0, belum:0, persen:0, disetujui:0, diproses:0, revisi:0, ditolak:0, listBelum: [] }
+        };
+
+        var schoolMap = {};
+
+        // 1. Inisialisasi Master Sekolah sebagai baseline
+        if (masterSekolah && masterSekolah.length > 0) {
+            masterSekolah.forEach(function(s) {
+                var sNpsn = String(s.npsn || "").trim();
+                var sNama = String(s.nama || "").trim();
+                var sJenjang = String(s.jenjang || "").trim().toLowerCase();
+                var sStatus = String(s.status || "").toLowerCase();
+
+                // Jangan hitung sekolah yang sudah tutup/nonaktif
+                if (sStatus.indexOf("tutup") > -1 || sStatus.indexOf("non") > -1) return;
+
+                if (result[sJenjang]) {
+                    var sKey = sNpsn ? sNpsn : sNama;
+                    schoolMap[sKey] = {
+                        nama: sNama,
+                        jenjang: sJenjang,
+                        statusData: "-" // Secara bawaan divonis Belum Lapor
+                    };
+                }
+            });
         }
+
+        // 2. Timpa status dengan raw data dari Kelola Data
+        var mths = ['januari', 'februari', 'maret', 'april', 'mei', 'juni', 'juli', 'agustus', 'september', 'oktober', 'november', 'desember'];
+        var targetMonthStr = mths[targetBulan - 1]; // targetBulan is 1-12
+
+        if (rawData && rawData.length > 0) {
+            rawData.forEach(function(r) {
+                var rNpsn = String(r.npsn || "").trim();
+                var rNama = String(r.namaSekolah || "").trim();
+                var rJenjang = String(r.jenjang || "").trim().toLowerCase();
+                var rTahun = String(r.tahun || "").trim();
+                var rBulan = String(r.bulan || "").trim().toLowerCase();
+
+                if (rTahun !== String(targetTahun)) return;
+                if (rBulan !== targetMonthStr) return;
+                
+                // Normalisasi jenjang PAUD
+                if (rJenjang === 'tpa') rJenjang = 'tk'; // SIKS groups TPA under PAUD/TK if any
+                if (!result[rJenjang]) return; // Hanya SD, TK, KB, SPS
+
+                var sKey = rNpsn ? rNpsn : rNama;
+                if (schoolMap[sKey]) {
+                    schoolMap[sKey].statusData = String(r.statusData || "Diproses");
+                } else {
+                    // Safety net jika sekolah ada di transaksi tapi tidak ada di master
+                    schoolMap[sKey] = {
+                        nama: rNama,
+                        jenjang: rJenjang,
+                        statusData: String(r.statusData || "Diproses")
+                    };
+                }
+            });
+        }
+
+        // 3. Rekapitulasi Metrik
+        Object.keys(schoolMap).forEach(function(key) {
+            var s = schoolMap[key];
+            var j = s.jenjang;
+            var st = s.statusData.toLowerCase();
+
+            result[j].total++;
+
+            if (st === "-" || st === "") {
+                result[j].belum++;
+                result[j].listBelum.push(s.nama);
+            } else {
+                result[j].sudah++;
+                if (st.indexOf("verif") > -1 || st.indexOf("setuju") > -1 || st.indexOf("ok") > -1 || st.indexOf("valid") > -1) {
+                    result[j].disetujui++;
+                }
+                else if (st.indexOf("tolak") > -1 || st.indexOf("x") > -1 || st.indexOf("salah") > -1) {
+                    result[j].ditolak++;
+                }
+                else if (st.indexOf("revisi") > -1 || st.indexOf("perbaiki") > -1) {
+                    result[j].revisi++;
+                }
+                else { // proses/tunggu dll
+                    result[j].diproses++;
+                }
+            }
+        });
+
+        // 4. Kalkulasi Persentase & Sort List
+        ['sd', 'tk', 'kb', 'sps'].forEach(function(j) {
+            if (result[j].total > 0) {
+                result[j].persen = Math.round((result[j].sudah / result[j].total) * 100);
+            }
+            result[j].listBelum.sort(function(a, b) {
+                return String(a).localeCompare(String(b));
+            });
+        });
+
+        return result;
     }
 
-    function dashlapbul_handleResponse(source, json) {
-        var data;
-        try {
-            data = JSON.parse(json);
-        } catch (e) {
-            dashlapbul_finishRequest(source); return;
-        }
+    function dashlapbul_renderMetrics(data) {
+        ['sd', 'tk', 'kb', 'sps'].forEach(function(jenjang) {
+            var d = data[jenjang];
+            var CapJenjang = jenjang.charAt(0).toUpperCase() + jenjang.slice(1);
+            
+            dashlapbul_updateCard(CapJenjang, d);
+            dashlapbul_updateStore(jenjang, d);
+            
+            DASHLAPBUL_GLOBAL_BELUM_LAPOR[jenjang] = d.listBelum || [];
+            dashlapbul_renderListBelum(CapJenjang, DASHLAPBUL_GLOBAL_BELUM_LAPOR[jenjang]);
+        });
 
-        if (source === 'sd') {
-            dashlapbul_updateCard('Sd', data.sd); dashlapbul_updateStore('sd', data.sd);
-            DASHLAPBUL_GLOBAL_BELUM_LAPOR.sd = data.sd.listBelum || [];
-            dashlapbul_renderListBelum('Sd', DASHLAPBUL_GLOBAL_BELUM_LAPOR.sd);
-        }
-        else if (source === 'paud') {
-            dashlapbul_updateCard('Tk', data.tk); dashlapbul_updateStore('tk', data.tk);
-            dashlapbul_updateCard('Kb', data.kb); dashlapbul_updateStore('kb', data.kb);
-            dashlapbul_updateCard('Sps', data.sps); dashlapbul_updateStore('sps', data.sps);
-
-            DASHLAPBUL_GLOBAL_BELUM_LAPOR.tk = data.tk.listBelum || [];
-            DASHLAPBUL_GLOBAL_BELUM_LAPOR.kb = data.kb.listBelum || [];
-            DASHLAPBUL_GLOBAL_BELUM_LAPOR.sps = data.sps.listBelum || [];
-
-            dashlapbul_renderListBelum('Tk', DASHLAPBUL_GLOBAL_BELUM_LAPOR.tk);
-            dashlapbul_renderListBelum('Kb', DASHLAPBUL_GLOBAL_BELUM_LAPOR.kb);
-            dashlapbul_renderListBelum('Sps', DASHLAPBUL_GLOBAL_BELUM_LAPOR.sps);
-        }
         dashlapbul_updateChart();
-        dashlapbul_finishRequest(source);
     }
 
     function dashlapbul_renderListBelum(jenjang, dataList) {
