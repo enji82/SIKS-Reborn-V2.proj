@@ -1575,12 +1575,18 @@
                 var nmAkhir = (n === 1) ? `k${k}` : `k${k}${suf}`;
                 var nmPrefix = `k${k}_${rombelStr}`; 
                 
+                var nAwal = parseInt($(`.sel-rombel-new[data-kelas="${k}"]`).attr('data-awal') || 0);
+                var isJuli = String($('#lapbulkelola_sel_bulan').val()).toLowerCase() === 'juli';
+                var isChanged = (nAwal > 0 && n !== nAwal) || isJuli;
+                var readOnlyAttr = isChanged ? '' : 'readonly tabindex="-1"';
+                var bgClass = isChanged ? 'bg-warning text-dark' : '';
+                
                 html += `<tr class="row-murid">
                     ${r === 0 ? `<td rowspan="${n}" class="align-middle font-weight-bold">${k}</td>` : ''}
                     <td class="align-middle font-weight-bold">${rombels[r]}</td>
                     
-                    <td><input type="number" class="form-control form-control-sm text-center px-1 calc-murid val-awal" data-tipe="al" data-kelas="${k}" data-rombel="${rombelStr}" name="${nmPrefix}_awal_l" readonly tabindex="-1" placeholder="" value=""></td>
-                    <td><input type="number" class="form-control form-control-sm text-center px-1 calc-murid val-awal" data-tipe="ap" data-kelas="${k}" data-rombel="${rombelStr}" name="${nmPrefix}_awal_p" readonly tabindex="-1" placeholder="" value=""></td>
+                    <td><input type="number" class="form-control form-control-sm text-center px-1 calc-murid val-awal ${bgClass}" data-tipe="al" data-kelas="${k}" data-rombel="${rombelStr}" name="${nmPrefix}_awal_l" ${readOnlyAttr} placeholder="" value=""></td>
+                    <td><input type="number" class="form-control form-control-sm text-center px-1 calc-murid val-awal ${bgClass}" data-tipe="ap" data-kelas="${k}" data-rombel="${rombelStr}" name="${nmPrefix}_awal_p" ${readOnlyAttr} placeholder="" value=""></td>
                     <td class="font-weight-bold bg-light align-middle sum-awal-jml">-</td>
                     
                     <td><input type="number" class="form-control form-control-sm text-center px-1 calc-murid val-masuk" data-tipe="ml" name="${nmPrefix}_masuk_l" min="0" placeholder="" value=""></td>
@@ -1869,7 +1875,14 @@
                 var thnStr = d.tahun || cariDataFetch(["tahun", "thn"]) || "";
 
                 $('#lapbulkelola_infoAwalBulan').removeClass('d-none');
-                $('#lapbulkelola_txtLaporanTerakhir').text('Laporan terakhir yang Anda unggah adalah bulan ' + blnStr + ' tahun ' + thnStr);
+                var isJuli = String($('#lapbulkelola_sel_bulan').val()).toLowerCase() === 'juli';
+                if (isJuli) {
+                    $('#lapbulkelola_txtLaporanTerakhir').html('<b>TAHUN AJARAN BARU</b>: Silakan input data Awal Bulan secara manual. Semua kolom dibuka.');
+                    $('#lapbulkelola_containerTarikAwalBulan').addClass('d-none');
+                } else {
+                    $('#lapbulkelola_txtLaporanTerakhir').text('Laporan terakhir yang Anda unggah adalah bulan ' + blnStr + ' tahun ' + thnStr);
+                    $('#lapbulkelola_containerTarikAwalBulan').removeClass('d-none');
+                }
                 
                 for(var k=1; k<=6; k++) {
                     var n = parseInt(d['rombel_'+k] || cariDataFetch([`rombel ${k}`, `rombel_${k}`]) || 0);
@@ -1879,7 +1892,7 @@
                         else if (parseInt(d[`k${k}b_l`] || 0) > 0 || parseInt(d[`k${k}b_p`] || 0) > 0) n = 2;
                         else n = 1;
                     }
-                    $(`.sel-rombel-new[data-kelas="${k}"]`).val(n || 1);
+                    $(`.sel-rombel-new[data-kelas="${k}"]`).val(n || 1).attr('data-awal', n || 1);
                 }
                 lapbulkelola_renderTableMurid();
                 lapbulkelola_renderTableAgama();
@@ -1893,11 +1906,16 @@
                         var keyL = `k${k}${suf}_l`; var keyP = `k${k}${suf}_p`;
                         var keyAL = `k${k}a_l`; var keyAP = `k${k}a_p`;
                         
-                        var keywordsL = [`k${k}${suf} l`, `k${k}a l`, `kelas ${k}${suf} l`, `kelas ${k} l`, `kls ${k} l`];
-                        var keywordsP = [`k${k}${suf} p`, `k${k}a p`, `kelas ${k}${suf} p`, `kelas ${k} p`, `kls ${k} p`];
+                        var keywordsL = [`k${k}${suf} l`, `kelas ${k}${suf} l`];
+                        var keywordsP = [`k${k}${suf} p`, `kelas ${k}${suf} p`];
+                        if (r === 0) {
+                            keywordsL.push(`k${k}a l`, `kelas ${k}a l`, `kelas ${k} l`, `kls ${k} l`);
+                            keywordsP.push(`k${k}a p`, `kelas ${k}a p`, `kelas ${k} p`, `kls ${k} p`);
+                        }
                         
-                        var valL = d[keyL] || d[keyAL] || cariDataFetch(keywordsL) || "";
-                        var valP = d[keyP] || d[keyAP] || cariDataFetch(keywordsP) || "";
+                        var isJuli = String($('#lapbulkelola_sel_bulan').val()).toLowerCase() === 'juli';
+                        var valL = !isJuli ? (d[keyL] || d[keyAL] || cariDataFetch(keywordsL) || "") : "";
+                        var valP = !isJuli ? (d[keyP] || d[keyAP] || cariDataFetch(keywordsP) || "") : "";
                         
                         $(`.val-awal[data-kelas="${k}"][data-rombel="${rombelStr}"][data-tipe="al"]`).val(valL == 0 ? "" : valL);
                         $(`.val-awal[data-kelas="${k}"][data-rombel="${rombelStr}"][data-tipe="ap"]`).val(valP == 0 ? "" : valP);
@@ -1910,8 +1928,9 @@
                         var nameL = `k${k}_${agamas[a].prefix}_l`;
                         var nameP = `k${k}_${agamas[a].prefix}_p`;
                         
-                        var vL = d[nameL] !== undefined ? d[nameL] : cariDataFetch([`k${k} ${agamas[a].prefix} l`]);
-                        var vP = d[nameP] !== undefined ? d[nameP] : cariDataFetch([`k${k} ${agamas[a].prefix} p`]);
+                        var isJuli = String($('#lapbulkelola_sel_bulan').val()).toLowerCase() === 'juli';
+                        var vL = !isJuli ? (d[nameL] !== undefined ? d[nameL] : cariDataFetch([`k${k} ${agamas[a].prefix} l`])) : "";
+                        var vP = !isJuli ? (d[nameP] !== undefined ? d[nameP] : cariDataFetch([`k${k} ${agamas[a].prefix} p`])) : "";
                         
                         $(`.val-agama-l-${k}[name="${nameL}"]`).val(vL == 0 ? "" : vL);
                         $(`.val-agama-p-${k}[name="${nameP}"]`).val(vP == 0 ? "" : vP);
@@ -1986,8 +2005,12 @@
                             var keyL = `k${k}${suf}_l`; var keyP = `k${k}${suf}_p`;
                             var keyAL = `k${k}a_l`; var keyAP = `k${k}a_p`;
                             
-                            var keywordsL = [`k${k}${suf} l`, `k${k}a l`, `kelas ${k}${suf} l`, `kelas ${k} l`, `kls ${k} l`];
-                            var keywordsP = [`k${k}${suf} p`, `k${k}a p`, `kelas ${k}${suf} p`, `kelas ${k} p`, `kls ${k} p`];
+                            var keywordsL = [`k${k}${suf} l`, `kelas ${k}${suf} l`];
+                            var keywordsP = [`k${k}${suf} p`, `kelas ${k}${suf} p`];
+                            if (r === 0) {
+                                keywordsL.push(`k${k}a l`, `kelas ${k}a l`, `kelas ${k} l`, `kls ${k} l`);
+                                keywordsP.push(`k${k}a p`, `kelas ${k}a p`, `kelas ${k} p`, `kls ${k} p`);
+                            }
                             
                             var valL = d[keyL] || d[keyAL] || cariDataFetch(keywordsL) || "";
                             var valP = d[keyP] || d[keyAP] || cariDataFetch(keywordsP) || "";
