@@ -1353,7 +1353,10 @@
         return `
         <div id="ptk-modern-ui" class="mb-4 d-none">
             <div class="alert alert-info border mb-3 small shadow-sm text-adaptive-sultan"><i class="fas fa-info-circle mr-2"></i><b>Laporan Format Baru:</b> Silakan lengkapi data ketidakhadiran dan kelas/mapel. Jumlah agregat Kepsek, Guru, dan Tendik akan dihitung secara otomatis berdasarkan tabel di bawah ini.</div>
-            <h6 class="font-weight-bold text-maroon mb-2"><i class="fas fa-user-tie mr-1"></i> A. PTK Definitif (Induk)</h6>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="font-weight-bold text-maroon mb-0"><i class="fas fa-user-tie mr-1"></i> A. PTK Definitif (Induk)</h6>
+                <button type="button" class="btn btn-sm btn-outline-maroon font-weight-bold" onclick="lapbulkelola_sortPTKCerdas('A')" title="Urutkan sesuai SOP"><i class="fas fa-sort-amount-down mr-1"></i>Urutkan Cerdas (Sesuai SOP)</button>
+            </div>
             <div class="text-muted small mb-2 font-italic"><i class="fas fa-info-circle mr-1"></i>Apabila ada data yang tidak sesuai, perbaiki di menu Data PTK.</div>
             <div class="table-responsive sultan-scroll mb-4 border rounded shadow-sm bg-white">
                 <table class="table table-bordered table-sm table-matrix text-center mb-0" id="lapbulkelola_tablePTKInduk">
@@ -1416,8 +1419,13 @@
             </div>
 
             <div class="d-flex justify-content-between align-items-center mb-2 mt-4">
-                <h6 class="font-weight-bold text-maroon mb-0"><i class="fas fa-users mr-1"></i> B. PTK Non Induk</h6>
-                <button type="button" class="sultan-btn sultan-btn-sm sultan-btn-aksi-utama shadow-sm" onclick="lapbulkelola_showModalPTKNonInduk()"><i class="fas fa-plus"></i> Tambah PTK</button>
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <h6 class="font-weight-bold text-maroon mb-0"><i class="fas fa-users mr-1"></i> B. PTK Non Induk</h6>
+                    <div>
+                        <button type="button" class="btn btn-sm btn-outline-maroon font-weight-bold mr-2" onclick="lapbulkelola_sortPTKCerdas('B')" title="Urutkan sesuai SOP"><i class="fas fa-sort-amount-down mr-1"></i>Urutkan Cerdas</button>
+                        <button type="button" class="sultan-btn sultan-btn-sm sultan-btn-aksi-utama shadow-sm" onclick="lapbulkelola_showModalPTKNonInduk()"><i class="fas fa-plus"></i> Tambah PTK</button>
+                    </div>
+                </div>
             </div>
             <div class="table-responsive sultan-scroll mb-4 border rounded shadow-sm bg-white">
                 <table class="table table-bordered table-sm table-matrix text-center mb-0" id="lapbulkelola_tablePTKNonInduk">
@@ -3218,7 +3226,13 @@
             totals.dd += vDD; totals.dl += vDL; totals.ct += vCT; totals.cap += vCAP; totals.cs += vCS; totals.cm += vCM; totals.a += vA; totals.jml += vJml;
 
             html += `<tr>
-                <td class="align-middle">${idx + 1}</td>
+                <td class="align-middle text-nowrap">
+                    ${idx + 1}
+                    <div class="d-flex flex-column align-items-center mt-1">
+                        ${idx > 0 ? `<button type="button" class="btn btn-xs btn-outline-secondary p-0 px-1 mb-1 btn-ptk-move" data-type="${type}" data-idx="${idx}" data-dir="up" title="Naik"><i class="fas fa-caret-up"></i></button>` : ''}
+                        ${idx < arr.length - 1 ? `<button type="button" class="btn btn-xs btn-outline-secondary p-0 px-1 btn-ptk-move" data-type="${type}" data-idx="${idx}" data-dir="down" title="Turun"><i class="fas fa-caret-down"></i></button>` : ''}
+                    </div>
+                </td>
                 <td class="align-middle text-left font-weight-bold" style="font-size: 10px;">${ptk.nama}<br><span class="text-muted font-weight-normal">${ptk.nip_niy}</span></td>
                 <td class="align-middle">${ptk.nuptk || '-'}</td>
                 <td class="align-middle">${ptk.jk === 'L' ? '<i class="fas fa-check text-success"></i>' : ''}</td>
@@ -3897,4 +3911,106 @@
             })[backendCall](id);
     });
 
+
+    // --- PENAMBAHAN FITUR PENGURUTAN PTK ---
+    
+    function lapbulkelola_getScorePTK(ptk) {
+        var jab = String(ptk.jabatan || "").toLowerCase().trim();
+        var st = String(ptk.status || ptk.status_pegawai || "").toLowerCase().trim();
+        var gol = String(ptk.gol_asn || ptk.gol || "").toUpperCase().replace(/\s/g, '');
+        
+        var isTendik = !jab.includes('guru') && !jab.includes('kepala sekolah');
+        
+        // 1. Kepala Sekolah
+        if (jab.includes('kepala sekolah') || jab === 'ks' || jab === 'kepsek') return 100;
+        
+        // 2. Guru PNS
+        if ((st.includes('pns') || st.includes('cpns')) && !st.includes('non') && !isTendik) {
+            var pangkatScore = 99;
+            if (gol.includes('IV/E') || gol.includes('IVE')) pangkatScore = 1;
+            else if (gol.includes('IV/D') || gol.includes('IVD')) pangkatScore = 2;
+            else if (gol.includes('IV/C') || gol.includes('IVC')) pangkatScore = 3;
+            else if (gol.includes('IV/B') || gol.includes('IVB')) pangkatScore = 4;
+            else if (gol.includes('IV/A') || gol.includes('IVA')) pangkatScore = 5;
+            else if (gol.includes('III/D') || gol.includes('IIID')) pangkatScore = 6;
+            else if (gol.includes('III/C') || gol.includes('IIIC')) pangkatScore = 7;
+            else if (gol.includes('III/B') || gol.includes('IIIB')) pangkatScore = 8;
+            else if (gol.includes('III/A') || gol.includes('IIIA')) pangkatScore = 9;
+            else if (gol.includes('II/D') || gol.includes('IID')) pangkatScore = 10;
+            else if (gol.includes('II/C') || gol.includes('IIC')) pangkatScore = 11;
+            else if (gol.includes('II/B') || gol.includes('IIB')) pangkatScore = 12;
+            else if (gol.includes('II/A') || gol.includes('IIA')) pangkatScore = 13;
+            else if (gol.includes('I/D') || gol.includes('ID')) pangkatScore = 14;
+            else if (gol.includes('I/C') || gol.includes('IC')) pangkatScore = 15;
+            return 200 + pangkatScore;
+        }
+        
+        // PPPK Checks
+        if (st.includes('pppk') || st.includes('p3k')) {
+            var isParuhWaktu = st.includes('paruh') || st.includes('pw');
+            if (!isParuhWaktu) {
+                if (jab.includes('guru kelas')) return 300;
+                if (jab.includes('pjok') || jab.includes('penjas')) return 400;
+                if (jab.includes('pai') || jab.includes('agama islam')) return 500;
+                if (jab.includes('kristen')) return 600;
+                return 699; // Other full-time PPPK
+            } else {
+                if (!isTendik) return 700; // Guru PPPK Paruh Waktu
+                return 800; // Tendik PPPK Paruh Waktu
+            }
+        }
+        
+        // Non ASN
+        var isGTT = st.includes('gtt') || st.includes('honor') || st.includes('non asn') || st.includes('bos');
+        var isPTT = st.includes('ptt');
+        var isGTY = st.includes('gty');
+        var isPTY = st.includes('pty');
+        
+        if ((isGTT || isGTY) || (st.includes('honor') && !isTendik)) return 900; // Guru Non ASN
+        if ((isPTT || isPTY) || (st.includes('honor') && isTendik)) return 1000; // Tendik Non ASN
+        
+        return 9999;
+    }
+
+    function lapbulkelola_sortPTKCerdas(type) {
+        var arr = (type === 'A') ? LAPBULKELOLA_DATA_PTK_INDUK : LAPBULKELOLA_DATA_PTK_NONINDUK;
+        
+        arr.sort(function(a, b) {
+            var scoreA = lapbulkelola_getScorePTK(a);
+            var scoreB = lapbulkelola_getScorePTK(b);
+            
+            if (scoreA !== scoreB) {
+                return scoreA - scoreB;
+            } else {
+                // If scores are equal, sort by Name alphabetically
+                var namaA = String(a.nama || "").toLowerCase();
+                var namaB = String(b.nama || "").toLowerCase();
+                if (namaA < namaB) return -1;
+                if (namaA > namaB) return 1;
+                return 0;
+            }
+        });
+        
+        Sultan.notif.sukses("Data PTK telah diurutkan!");
+        lapbulkelola_renderPtkMatrix();
+    }
+
+    $(document).off('click', '.btn-ptk-move').on('click', '.btn-ptk-move', function() {
+        var type = $(this).data('type');
+        var idx = parseInt($(this).data('idx'));
+        var dir = $(this).data('dir');
+        var arr = (type === 'A') ? LAPBULKELOLA_DATA_PTK_INDUK : LAPBULKELOLA_DATA_PTK_NONINDUK;
+        
+        if (dir === 'up' && idx > 0) {
+            var temp = arr[idx];
+            arr[idx] = arr[idx - 1];
+            arr[idx - 1] = temp;
+            lapbulkelola_renderPtkMatrix();
+        } else if (dir === 'down' && idx < arr.length - 1) {
+            var temp = arr[idx];
+            arr[idx] = arr[idx + 1];
+            arr[idx + 1] = temp;
+            lapbulkelola_renderPtkMatrix();
+        }
+    });
 </script>
