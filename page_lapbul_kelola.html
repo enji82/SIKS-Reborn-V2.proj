@@ -1353,10 +1353,7 @@
         return `
         <div id="ptk-modern-ui" class="mb-4 d-none">
             <div class="alert alert-info border mb-3 small shadow-sm text-adaptive-sultan"><i class="fas fa-info-circle mr-2"></i><b>Laporan Format Baru:</b> Silakan lengkapi data ketidakhadiran dan kelas/mapel. Jumlah agregat Kepsek, Guru, dan Tendik akan dihitung secara otomatis berdasarkan tabel di bawah ini.</div>
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <h6 class="font-weight-bold text-maroon mb-0"><i class="fas fa-user-tie mr-1"></i> A. PTK Definitif (Induk)</h6>
-                <button type="button" class="btn btn-sm btn-outline-maroon font-weight-bold" onclick="lapbulkelola_sortPTKCerdas('A')" title="Urutkan sesuai SOP"><i class="fas fa-sort-amount-down mr-1"></i>Urutkan Cerdas (Sesuai SOP)</button>
-            </div>
+            <h6 class="font-weight-bold text-maroon mb-2"><i class="fas fa-user-tie mr-1"></i> A. PTK Definitif (Induk)</h6>
             <div class="text-muted small mb-2 font-italic"><i class="fas fa-info-circle mr-1"></i>Apabila ada data yang tidak sesuai, perbaiki di menu Data PTK.</div>
             <div class="table-responsive sultan-scroll mb-4 border rounded shadow-sm bg-white">
                 <table class="table table-bordered table-sm table-matrix text-center mb-0" id="lapbulkelola_tablePTKInduk">
@@ -1419,13 +1416,8 @@
             </div>
 
             <div class="d-flex justify-content-between align-items-center mb-2 mt-4">
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                    <h6 class="font-weight-bold text-maroon mb-0"><i class="fas fa-users mr-1"></i> B. PTK Non Induk</h6>
-                    <div>
-                        <button type="button" class="btn btn-sm btn-outline-maroon font-weight-bold mr-2" onclick="lapbulkelola_sortPTKCerdas('B')" title="Urutkan sesuai SOP"><i class="fas fa-sort-amount-down mr-1"></i>Urutkan Cerdas</button>
-                        <button type="button" class="sultan-btn sultan-btn-sm sultan-btn-aksi-utama shadow-sm" onclick="lapbulkelola_showModalPTKNonInduk()"><i class="fas fa-plus"></i> Tambah PTK</button>
-                    </div>
-                </div>
+                <h6 class="font-weight-bold text-maroon mb-0"><i class="fas fa-users mr-1"></i> B. PTK Non Induk</h6>
+                <button type="button" class="sultan-btn sultan-btn-sm sultan-btn-aksi-utama shadow-sm" onclick="lapbulkelola_showModalPTKNonInduk()"><i class="fas fa-plus"></i> Tambah PTK</button>
             </div>
             <div class="table-responsive sultan-scroll mb-4 border rounded shadow-sm bg-white">
                 <table class="table table-bordered table-sm table-matrix text-center mb-0" id="lapbulkelola_tablePTKNonInduk">
@@ -3159,6 +3151,8 @@
     }
 
     function lapbulkelola_renderPtkMatrix() {
+        lapbulkelola_sortPTKData(LAPBULKELOLA_DATA_PTK_INDUK);
+        lapbulkelola_sortPTKData(LAPBULKELOLA_DATA_PTK_NONINDUK);
         lapbulkelola_drawPtkRows(LAPBULKELOLA_DATA_PTK_INDUK, '#lapbulkelola_tbodyPTKInduk', 'A');
         lapbulkelola_drawPtkRows(LAPBULKELOLA_DATA_PTK_NONINDUK, '#lapbulkelola_tbodyPTKNonInduk', 'B');
         lapbulkelola_serializePtkData();
@@ -3226,13 +3220,7 @@
             totals.dd += vDD; totals.dl += vDL; totals.ct += vCT; totals.cap += vCAP; totals.cs += vCS; totals.cm += vCM; totals.a += vA; totals.jml += vJml;
 
             html += `<tr>
-                <td class="align-middle text-nowrap">
-                    ${idx + 1}
-                    <div class="d-flex flex-column align-items-center mt-1">
-                        ${idx > 0 ? `<button type="button" class="btn btn-xs btn-outline-secondary p-0 px-1 mb-1 btn-ptk-move" data-type="${type}" data-idx="${idx}" data-dir="up" title="Naik"><i class="fas fa-caret-up"></i></button>` : ''}
-                        ${idx < arr.length - 1 ? `<button type="button" class="btn btn-xs btn-outline-secondary p-0 px-1 btn-ptk-move" data-type="${type}" data-idx="${idx}" data-dir="down" title="Turun"><i class="fas fa-caret-down"></i></button>` : ''}
-                    </div>
-                </td>
+                <td class="align-middle">${idx + 1}</td>
                 <td class="align-middle text-left font-weight-bold" style="font-size: 10px;">${ptk.nama}<br><span class="text-muted font-weight-normal">${ptk.nip_niy}</span></td>
                 <td class="align-middle">${ptk.nuptk || '-'}</td>
                 <td class="align-middle">${ptk.jk === 'L' ? '<i class="fas fa-check text-success"></i>' : ''}</td>
@@ -3972,9 +3960,8 @@
         return 9999;
     }
 
-    function lapbulkelola_sortPTKCerdas(type) {
-        var arr = (type === 'A') ? LAPBULKELOLA_DATA_PTK_INDUK : LAPBULKELOLA_DATA_PTK_NONINDUK;
-        
+    function lapbulkelola_sortPTKData(arr) {
+        if (!arr || !Array.isArray(arr)) return;
         arr.sort(function(a, b) {
             var scoreA = lapbulkelola_getScorePTK(a);
             var scoreB = lapbulkelola_getScorePTK(b);
@@ -3982,7 +3969,6 @@
             if (scoreA !== scoreB) {
                 return scoreA - scoreB;
             } else {
-                // If scores are equal, sort by Name alphabetically
                 var namaA = String(a.nama || "").toLowerCase();
                 var namaB = String(b.nama || "").toLowerCase();
                 if (namaA < namaB) return -1;
@@ -3990,27 +3976,6 @@
                 return 0;
             }
         });
-        
-        Sultan.notif.sukses("Data PTK telah diurutkan!");
-        lapbulkelola_renderPtkMatrix();
     }
 
-    $(document).off('click', '.btn-ptk-move').on('click', '.btn-ptk-move', function() {
-        var type = $(this).data('type');
-        var idx = parseInt($(this).data('idx'));
-        var dir = $(this).data('dir');
-        var arr = (type === 'A') ? LAPBULKELOLA_DATA_PTK_INDUK : LAPBULKELOLA_DATA_PTK_NONINDUK;
-        
-        if (dir === 'up' && idx > 0) {
-            var temp = arr[idx];
-            arr[idx] = arr[idx - 1];
-            arr[idx - 1] = temp;
-            lapbulkelola_renderPtkMatrix();
-        } else if (dir === 'down' && idx < arr.length - 1) {
-            var temp = arr[idx];
-            arr[idx] = arr[idx + 1];
-            arr[idx + 1] = temp;
-            lapbulkelola_renderPtkMatrix();
-        }
-    });
 </script>
