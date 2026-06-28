@@ -831,6 +831,15 @@ function processDeleteData(source, rowId, inputCode, userLogin) {
     
     var r = parseInt(rowId);
     var lastCol = sheetMain.getLastColumn();
+    var maxRow = sheetMain.getMaxRows();
+    
+    if (r < 2 || r > maxRow) {
+        return { success: false, message: "Baris data tidak ditemukan atau sudah dihapus." };
+    }
+    if (lastCol < 1) {
+        return { success: false, message: "Format tabel database tidak valid." };
+    }
+    
     var rowValues = sheetMain.getRange(r, 1, 1, lastCol).getValues()[0];
     
     var fileUrl = "";
