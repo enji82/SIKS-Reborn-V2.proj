@@ -253,37 +253,61 @@
             SultanUI.showLoading('#lapbulstatus_loadingState', 'Menyinkronkan data server...');
         }
 
-        google.script.run
-            .withSuccessHandler(function (res) {
-                btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-sultan-utama"></i>');
-                LAPBULSTATUS_IS_INIT = false; // BUKA KUNCI SETELAH DATA TIBA
+        var valKeyword = LAPBULSTATUS_IS_ADMIN ? "" : LAPBULSTATUS_USER_NPSN;
 
-                if (res.error) {
-                    $('#lapbulstatus_tableState').hide();
-                    $('#lapbulstatus_loadingState').html('<div class="text-center text-danger p-5"><i class="fas fa-exclamation-triangle fa-2x mb-2"></i><br>' + lapbulstatus_escapeHtml(res.error) + '</div>');
-                    return;
-                }
+        Lapbul_GetGlobalData(valTahun, valKeyword, LAPBULSTATUS_IS_ADMIN, function(res) {
+            btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-sultan-utama"></i>');
+            LAPBULSTATUS_IS_INIT = false; // BUKA KUNCI SETELAH DATA TIBA
 
-                try {
-                    LAPBULSTATUS_CACHE_DATA = res.rows || [];
-                    LAPBULSTATUS_CACHE_TAHUN = valTahun;
-
-                    if (LAPBULSTATUS_IS_ADMIN) lapbulstatus_updateDropdownSekolah();
-
-
-                    lapbulstatus_terapkanFilterLokal();
-
-                } catch (e) {
-                    $('#lapbulstatus_tableState').hide();
-                    $('#lapbulstatus_loadingState').html('<div class="text-center text-danger p-5"><i class="fas fa-exclamation-triangle fa-2x mb-2"></i><br>Gagal merakit tabel: ' + lapbulstatus_escapeHtml(e.message) + '</div>');
-                }
-            })
-            .withFailureHandler(function (err) {
-                btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-sultan-utama"></i>');
+            if (res && res.error) {
                 $('#lapbulstatus_tableState').hide();
-                $('#lapbulstatus_loadingState').html('<div class="text-center text-danger p-5"><i class="fas fa-wifi fa-2x mb-2"></i><br>Koneksi Terputus: ' + lapbulstatus_escapeHtml(err.message) + '</div>');
-            })
-            .getRekapLapbulStatus(valTahun);
+                $('#lapbulstatus_loadingState').html('<div class="text-center text-danger p-5"><i class="fas fa-exclamation-triangle fa-2x mb-2"></i><br>' + lapbulstatus_escapeHtml(res.error) + '</div>');
+                return;
+            }
+
+            try {
+                // Transformasi raw data dari Kelola Data menjadi format Status Data (Array matriks)
+                LAPBULSTATUS_CACHE_DATA = lapbulstatus_transformRawData(res || [], valTahun);
+                LAPBULSTATUS_CACHE_TAHUN = valTahun;
+
+                if (LAPBULSTATUS_IS_ADMIN) lapbulstatus_updateDropdownSekolah();
+
+                lapbulstatus_terapkanFilterLokal();
+
+            } catch (e) {
+                $('#lapbulstatus_tableState').hide();
+                $('#lapbulstatus_loadingState').html('<div class="text-center text-danger p-5"><i class="fas fa-exclamation-triangle fa-2x mb-2"></i><br>Gagal merakit tabel: ' + lapbulstatus_escapeHtml(e.message) + '</div>');
+            }
+        }, function(err) {
+            btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-sultan-utama"></i>');
+            $('#lapbulstatus_tableState').hide();
+            $('#lapbulstatus_loadingState').html('<div class="text-center text-danger p-5"><i class="fas fa-wifi fa-2x mb-2"></i><br>Koneksi Terputus: ' + lapbulstatus_escapeHtml(err.message) + '</div>');
+        });
+    }
+
+    function lapbulstatus_transformRawData(rawData, tahun) {
+        var map = {};
+        rawData.forEach(function(r) {
+            var npsn = String(r.npsn || "").trim();
+            var nama = String(r.namaSekolah || "").trim();
+            if(!npsn) return;
+            if(!map[npsn]) {
+                // [0:Nama, 1:NPSN, 2:Jenjang, 3:Tahun, 4:Jan ... 15:Des]
+                map[npsn] = [nama, npsn, r.jenjang, tahun, "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-"];
+            }
+            var mths = ['januari', 'februari', 'maret', 'april', 'mei', 'juni', 'juli', 'agustus', 'september', 'oktober', 'november', 'desember'];
+            var idx = mths.indexOf(String(r.bulan).toLowerCase());
+            if(idx > -1) {
+                map[npsn][4 + idx] = String(r.statusData || "Diproses");
+            }
+        });
+        
+        // Convert map to array and sort by Nama Sekolah
+        var result = Object.values(map);
+        result.sort(function(a, b) {
+            return String(a[0]).localeCompare(String(b[0]));
+        });
+        return result;
     }
 
     function lapbulstatus_terapkanFilterLokal() {

@@ -1628,4 +1628,49 @@
       }
     }
   };
+
+  /* =============================================================
+     CACHE LAPORAN BULAN
+     ============================================================= */
+  window.LAPBUL_GLOBAL_CACHE = {};
+
+  function Lapbul_GetGlobalData(tahun, keyword, is_admin, callback, fallbackHandler) {
+    if (window.LAPBUL_GLOBAL_CACHE[tahun]) {
+      // Data sudah ada di cache lokal browser
+      callback(window.LAPBUL_GLOBAL_CACHE[tahun]);
+      return;
+    }
+
+    // Jika belum ada, ambil dari server
+    var reqKeyword = is_admin ? "" : keyword;
+    
+    var runner = google.script.run.withSuccessHandler(function(data) {
+      if (!data) data = [];
+      if (!data.error) {
+        var finalData = Array.isArray(data) ? data : (data.rows || []);
+        window.LAPBUL_GLOBAL_CACHE[tahun] = finalData;
+        callback(finalData);
+      } else {
+        callback(data); // Kirim pesan error ke callback
+      }
+    });
+
+    if (fallbackHandler) {
+      runner = runner.withFailureHandler(fallbackHandler);
+    } else {
+      runner = runner.withFailureHandler(function(e) {
+        Sultan.notif.gagal('Koneksi Terputus: ' + e.message);
+      });
+    }
+
+    runner.getLapbulKelolaData("", "", tahun, "", reqKeyword);
+  }
+
+  function Lapbul_ClearGlobalCache(tahun) {
+    if (tahun) {
+      delete window.LAPBUL_GLOBAL_CACHE[tahun];
+    } else {
+      window.LAPBUL_GLOBAL_CACHE = {};
+    }
+  }
 </script>
