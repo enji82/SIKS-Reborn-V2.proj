@@ -3902,17 +3902,38 @@
 
     // --- PENAMBAHAN FITUR PENGURUTAN PTK ---
     
-    function lapbulkelola_getScorePTK(ptk) {
+    function lapbulkelola_getScorePTK(ptk, isSwasta) {
         var jab = String(ptk.jabatan || "").toLowerCase().trim();
         var st = String(ptk.status || ptk.status_pegawai || "").toLowerCase().trim();
         var gol = String(ptk.gol_asn || ptk.gol || "").toUpperCase().replace(/\s/g, '');
         
         var isTendik = !jab.includes('guru') && !jab.includes('kepala sekolah');
         
+        var isGTT = st.includes('gtt') || st.includes('honor') || st.includes('non asn') || st.includes('bos');
+        var isPTT = st.includes('ptt');
+        var isGTY = st.includes('gty');
+        var isPTY = st.includes('pty');
+        
         // 1. Kepala Sekolah
         if (jab.includes('kepala sekolah') || jab === 'ks' || jab === 'kepsek') return 100;
         
-        // 2. Guru PNS
+        if (isSwasta) {
+            if (isGTY && !isTendik) {
+                if (jab.includes('guru kelas')) return 200;
+                if (jab.includes('pjok') || jab.includes('penjas')) return 300;
+                if (jab.includes('pai') || jab.includes('agama islam')) return 400;
+                return 500; // Guru selain Kelas, PJOK, PAI GTY
+            }
+            if (isPTY || (st.includes('pty') && isTendik)) return 600;
+            if (isGTT && !isTendik) return 700;
+            if (isPTT || (st.includes('ptt') && isTendik)) return 800;
+            
+            // Fallback for others in Swasta
+            if (!isTendik) return 900;
+            return 1000;
+        }
+        
+        // 2. Guru PNS (Untuk Sekolah Negeri)
         if ((st.includes('pns') || st.includes('cpns')) && !st.includes('non') && !isTendik) {
             var pangkatScore = 99;
             if (gol.includes('IV/E') || gol.includes('IVE')) pangkatScore = 1;
@@ -3949,11 +3970,6 @@
         }
         
         // Non ASN
-        var isGTT = st.includes('gtt') || st.includes('honor') || st.includes('non asn') || st.includes('bos');
-        var isPTT = st.includes('ptt');
-        var isGTY = st.includes('gty');
-        var isPTY = st.includes('pty');
-        
         if ((isGTT || isGTY) || (st.includes('honor') && !isTendik)) return 900; // Guru Non ASN
         if ((isPTT || isPTY) || (st.includes('honor') && isTendik)) return 1000; // Tendik Non ASN
         
@@ -3962,9 +3978,12 @@
 
     function lapbulkelola_sortPTKData(arr) {
         if (!arr || !Array.isArray(arr)) return;
+        var statusSekolah = String($('#lapbulkelola_val_status').val() || "").toUpperCase();
+        var isSwasta = statusSekolah.includes('SWASTA');
+
         arr.sort(function(a, b) {
-            var scoreA = lapbulkelola_getScorePTK(a);
-            var scoreB = lapbulkelola_getScorePTK(b);
+            var scoreA = lapbulkelola_getScorePTK(a, isSwasta);
+            var scoreB = lapbulkelola_getScorePTK(b, isSwasta);
             
             if (scoreA !== scoreB) {
                 return scoreA - scoreB;
