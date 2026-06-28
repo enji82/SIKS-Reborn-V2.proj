@@ -255,38 +255,55 @@
 
         var valKeyword = LAPBULSTATUS_IS_ADMIN ? "" : LAPBULSTATUS_USER_NPSN;
 
-        Lapbul_GetGlobalData(valTahun, valKeyword, LAPBULSTATUS_IS_ADMIN, function(res) {
-            btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-sultan-utama"></i>');
-            LAPBULSTATUS_IS_INIT = false; // BUKA KUNCI SETELAH DATA TIBA
+        // Tarik Master Sekolah dulu, kemudian tarik data Laporan Bulan
+        Lapbul_GetMasterSekolah(function(masterSekolah) {
+            Lapbul_GetGlobalData(valTahun, valKeyword, LAPBULSTATUS_IS_ADMIN, function(res) {
+                btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-sultan-utama"></i>');
+                LAPBULSTATUS_IS_INIT = false; // BUKA KUNCI SETELAH DATA TIBA
 
-            if (res && res.error) {
+                if (res && res.error) {
+                    $('#lapbulstatus_tableState').hide();
+                    $('#lapbulstatus_loadingState').html('<div class="text-center text-danger p-5"><i class="fas fa-exclamation-triangle fa-2x mb-2"></i><br>' + lapbulstatus_escapeHtml(res.error) + '</div>');
+                    return;
+                }
+
+                try {
+                    // Transformasi raw data menggunakan Master Sekolah sebagai Baseline
+                    LAPBULSTATUS_CACHE_DATA = lapbulstatus_transformRawData(res || [], valTahun, masterSekolah || []);
+                    LAPBULSTATUS_CACHE_TAHUN = valTahun;
+
+                    if (LAPBULSTATUS_IS_ADMIN) lapbulstatus_updateDropdownSekolah();
+
+                    lapbulstatus_terapkanFilterLokal();
+
+                } catch (e) {
+                    $('#lapbulstatus_tableState').hide();
+                    $('#lapbulstatus_loadingState').html('<div class="text-center text-danger p-5"><i class="fas fa-exclamation-triangle fa-2x mb-2"></i><br>Gagal merakit tabel: ' + lapbulstatus_escapeHtml(e.message) + '</div>');
+                }
+            }, function(err) {
+                btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-sultan-utama"></i>');
                 $('#lapbulstatus_tableState').hide();
-                $('#lapbulstatus_loadingState').html('<div class="text-center text-danger p-5"><i class="fas fa-exclamation-triangle fa-2x mb-2"></i><br>' + lapbulstatus_escapeHtml(res.error) + '</div>');
-                return;
-            }
-
-            try {
-                // Transformasi raw data dari Kelola Data menjadi format Status Data (Array matriks)
-                LAPBULSTATUS_CACHE_DATA = lapbulstatus_transformRawData(res || [], valTahun);
-                LAPBULSTATUS_CACHE_TAHUN = valTahun;
-
-                if (LAPBULSTATUS_IS_ADMIN) lapbulstatus_updateDropdownSekolah();
-
-                lapbulstatus_terapkanFilterLokal();
-
-            } catch (e) {
-                $('#lapbulstatus_tableState').hide();
-                $('#lapbulstatus_loadingState').html('<div class="text-center text-danger p-5"><i class="fas fa-exclamation-triangle fa-2x mb-2"></i><br>Gagal merakit tabel: ' + lapbulstatus_escapeHtml(e.message) + '</div>');
-            }
-        }, function(err) {
-            btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-sultan-utama"></i>');
-            $('#lapbulstatus_tableState').hide();
-            $('#lapbulstatus_loadingState').html('<div class="text-center text-danger p-5"><i class="fas fa-wifi fa-2x mb-2"></i><br>Koneksi Terputus: ' + lapbulstatus_escapeHtml(err.message) + '</div>');
+                $('#lapbulstatus_loadingState').html('<div class="text-center text-danger p-5"><i class="fas fa-wifi fa-2x mb-2"></i><br>Koneksi Terputus: ' + lapbulstatus_escapeHtml(err.message) + '</div>');
+            });
         });
     }
 
-    function lapbulstatus_transformRawData(rawData, tahun) {
+    function lapbulstatus_transformRawData(rawData, tahun, masterSekolah) {
         var map = {};
+        
+        // 1. Masukkan baseline dari Master Sekolah agar sekolah yang pasif (0 laporan) tetap muncul
+        if (masterSekolah && masterSekolah.length > 0) {
+            masterSekolah.forEach(function(s) {
+                var npsn = String(s.npsn || "").trim();
+                var nama = String(s.nama || "").trim();
+                var jenjang = String(s.jenjang || "").trim();
+                if (npsn) {
+                    map[npsn] = [nama, npsn, jenjang, tahun, "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-"];
+                }
+            });
+        }
+
+        // 2. Timpa dengan data aktual dari Kelola Data
         rawData.forEach(function(r) {
             var npsn = String(r.npsn || "").trim();
             var nama = String(r.namaSekolah || "").trim();
