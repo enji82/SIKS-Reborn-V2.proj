@@ -2825,11 +2825,60 @@
             return "";
         };
 
+        var npsnTarget = cariData(["npsn"]);
+        
+        // 1. Tentukan jumlah rombel terlebih dahulu agar tabel murid bisa dirender
+        for (var i = 1; i <= 6; i++) {
+            var valRomStr = cariData(["rombel " + i, "rombel_" + i]);
+            var valRom = parseInt(valRomStr);
+            if (!valRom || valRom < 1) valRom = 1; // Default to 1 if invalid
+            $(`.sel-rombel-new[data-kelas="${i}"]`).val(valRom);
+        }
+        
+        // 2. Render struktur tabel form murid & agama
+        lapbulkelola_renderTableMurid();
+        lapbulkelola_renderTableAgama();
+        
+        // 3. Populate semua input di form
         $.each(data, function (rawKey, value) {
             var cleanKey = String(rawKey).trim().toLowerCase().replace(/\s+/g, '_');
+            
+            // Pemetaan mundur (backward compat) untuk file lama (misal: "k1_awal_l" ke "k1_1_awal_l")
+            var legacyMatch = cleanKey.match(/^k([1-6])_(awal_l|awal_p|masuk_l|masuk_p|keluar_l|keluar_p)$/);
+            if (legacyMatch) {
+                var modernKey = `k${legacyMatch[1]}_1_${legacyMatch[2]}`;
+                if (data[modernKey] === undefined && data[modernKey.replace(/_/g, " ")] === undefined) {
+                    cleanKey = modernKey;
+                }
+            }
+            
+            // Pemetaan mundur ekstrim untuk file yang sangat lama (misal: "k1_l" ke "k1_1_awal_l")
+            var veryLegacyMatch = cleanKey.match(/^k([1-6])([a-c])?_(l|p)$/);
+            if (veryLegacyMatch && !legacyMatch) {
+                var kelas = veryLegacyMatch[1];
+                var suffixRom = veryLegacyMatch[2]; // a, b, c, atau undefined
+                var gender = veryLegacyMatch[3]; // l atau p
+                
+                var rombelNum = 1;
+                if (suffixRom === 'a') rombelNum = 2;
+                else if (suffixRom === 'b') rombelNum = 3;
+                else if (suffixRom === 'c') rombelNum = 4;
+                
+                var modernKeyExtreme = `k${kelas}_${rombelNum}_awal_${gender}`;
+                if (data[modernKeyExtreme] === undefined && data[modernKeyExtreme.replace(/_/g, " ")] === undefined) {
+                    cleanKey = modernKeyExtreme;
+                }
+            }
+            
             var input = $(`#lapbulkelola_formSD [name="${cleanKey}"], #lapbulkelola_formSD [name="${rawKey}"]`);
             if (input.length > 0) {
                 var type = input.attr('type');
+                
+                var strVal = String(value).trim();
+                if ((strVal === "-" || strVal === "") && input.val() !== "") {
+                    return;
+                }
+                
                 if ((type === 'date' || type === 'number') && (value === "-" || value === "")) { input.val(""); }
                 else if (type === 'radio') { input.filter(`[value="${value}"]`).prop('checked', true); }
                 else { input.val(value); }
@@ -2865,17 +2914,7 @@
             $('#lapbulkelola_in_alamat').val(cariData(["alamat"])); $('#lapbulkelola_in_telepon').val(cariData(["telepon", "hp"])); $('#lapbulkelola_in_email').val(cariData(["email"]));
         }
 
-        for (var i = 1; i <= 6; i++) {
-            var valRomStr = cariData(["rombel " + i, "rombel_" + i]);
-            var valRom = parseInt(valRomStr);
-            if (!valRom || valRom < 1) valRom = 1; // Default to 1 if invalid
-            $(`.sel-rombel-new[data-kelas="${i}"]`).val(valRom);
-        }
-        
         console.log("DEBUG: Data Keys dari Spreadsheet:", Object.keys(data).filter(k => k.startsWith('k1')));
-        
-        lapbulkelola_renderTableMurid();
-        lapbulkelola_renderTableAgama();
         
         var dataPtkStr = cariData(["data ptk", "data_ptk"]);
         if (dataPtkStr && dataPtkStr !== "-") {
