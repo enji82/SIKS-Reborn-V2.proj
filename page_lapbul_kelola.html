@@ -3450,8 +3450,141 @@
         }
     });
 
-</script>
 
+
+    function lapbulkelola_validasiKronologis(jenjang, showAlert, cb) {
+        var npsn = $("#lapbulkelola_val_npsn").val() || LAPBULKELOLA_USER_NPSN;
+        if (!npsn) { if (cb) cb(true); return; }
+        
+        var blnId = jenjang === "SD" ? "#lapbulkelola_sel_bulan" : "#lapbulkelola_sel_bulan_paud";
+        var thnId = jenjang === "SD" ? "#lapbulkelola_sel_tahun" : "#lapbulkelola_sel_tahun_paud";
+        var btnId = jenjang === "SD" ? "#lapbulkelola_btnFinal" : "#lapbulkelola_btnFinalPAUD";
+        
+        var bln = $(blnId).val();
+        var thn = $(thnId).val();
+        if (!bln || !thn) { if (cb) cb(true); return; }
+        
+        if (String(bln).toLowerCase() === "juli") {
+            $(btnId).prop("disabled", false);
+            if (cb) cb(true);
+            return;
+        }
+        
+        var txtAwal = $(btnId).html();
+        $(btnId).prop("disabled", true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Validasi...');
+        
+        google.script.run.withSuccessHandler(function(res) {
+            if (res.success) {
+                $(btnId).prop("disabled", false).html(txtAwal);
+                if (cb) cb(true);
+            } else {
+                $(btnId).prop("disabled", true).html('<i class="fas fa-lock mr-1"></i> Terkunci');
+                if (showAlert) Sultan.alert("warning", "Validasi Laporan", res.message);
+                if (cb) cb(false);
+            }
+        }).withFailureHandler(function(err) {
+            $(btnId).prop("disabled", false).html(txtAwal);
+            if (cb) cb(true);
+        }).cekKelengkapanLaporanSebelumnya(npsn, jenjang, bln, thn);
+    }
+
+    function lapbulkelola_getScorePTK(ptk, isSwasta) {
+        var jab = String(ptk.jabatan || "").toLowerCase().trim();
+        var st = String(ptk.status || ptk.status_pegawai || "").toLowerCase().trim();
+        var gol = String(ptk.gol_asn || ptk.gol || "").toUpperCase().replace(/\s/g, '');
+        
+        var isTendik = !jab.includes('guru') && !jab.includes('kepala sekolah');
+        
+        var isGTT = st.includes('gtt') || st.includes('honor') || st.includes('non asn') || st.includes('bos');
+        var isPTT = st.includes('ptt');
+        var isGTY = st.includes('gty');
+        var isPTY = st.includes('pty');
+        
+        // 1. Kepala Sekolah
+        if (jab.includes('kepala sekolah') || jab === 'ks' || jab === 'kepsek') return 100;
+        
+        if (isSwasta) {
+            if (isGTY && !isTendik) {
+                if (jab.includes('guru kelas')) return 200;
+                if (jab.includes('pjok') || jab.includes('penjas')) return 300;
+                if (jab.includes('pai') || jab.includes('agama islam')) return 400;
+                return 500; // Guru selain Kelas, PJOK, PAI GTY
+            }
+            if (isPTY || (st.includes('pty') && isTendik)) return 600;
+            if (isGTT && !isTendik) return 700;
+            if (isPTT || (st.includes('ptt') && isTendik)) return 800;
+            
+            // Fallback for others in Swasta
+            if (!isTendik) return 900;
+            return 1000;
+        }
+        
+        // 2. Guru PNS (Untuk Sekolah Negeri)
+        if ((st.includes('pns') || st.includes('cpns')) && !st.includes('non') && !isTendik) {
+            var pangkatScore = 99;
+            if (gol.includes('IV/E') || gol.includes('IVE')) pangkatScore = 1;
+            else if (gol.includes('IV/D') || gol.includes('IVD')) pangkatScore = 2;
+            else if (gol.includes('IV/C') || gol.includes('IVC')) pangkatScore = 3;
+            else if (gol.includes('IV/B') || gol.includes('IVB')) pangkatScore = 4;
+            else if (gol.includes('IV/A') || gol.includes('IVA')) pangkatScore = 5;
+            else if (gol.includes('III/D') || gol.includes('IIID')) pangkatScore = 6;
+            else if (gol.includes('III/C') || gol.includes('IIIC')) pangkatScore = 7;
+            else if (gol.includes('III/B') || gol.includes('IIIB')) pangkatScore = 8;
+            else if (gol.includes('III/A') || gol.includes('IIIA')) pangkatScore = 9;
+            else if (gol.includes('II/D') || gol.includes('IID')) pangkatScore = 10;
+            else if (gol.includes('II/C') || gol.includes('IIC')) pangkatScore = 11;
+            else if (gol.includes('II/B') || gol.includes('IIB')) pangkatScore = 12;
+            else if (gol.includes('II/A') || gol.includes('IIA')) pangkatScore = 13;
+            else if (gol.includes('I/D') || gol.includes('ID')) pangkatScore = 14;
+            else if (gol.includes('I/C') || gol.includes('IC')) pangkatScore = 15;
+            return 200 + pangkatScore;
+        }
+        
+        // PPPK Checks
+        if (st.includes('pppk') || st.includes('p3k')) {
+            var isParuhWaktu = st.includes('paruh') || st.includes('pw');
+            if (!isParuhWaktu) {
+                if (jab.includes('guru kelas')) return 300;
+                if (jab.includes('pjok') || jab.includes('penjas')) return 400;
+                if (jab.includes('pai') || jab.includes('agama islam')) return 500;
+                if (jab.includes('kristen')) return 600;
+                return 699; // Other full-time PPPK
+            } else {
+                if (!isTendik) return 700; // Guru PPPK Paruh Waktu
+                return 800; // Tendik PPPK Paruh Waktu
+            }
+        }
+        
+        // Non ASN
+        if ((isGTT || isGTY) || (st.includes('honor') && !isTendik)) return 900; // Guru Non ASN
+        if ((isPTT || isPTY) || (st.includes('honor') && isTendik)) return 1000; // Tendik Non ASN
+        
+        return 9999;
+    }
+
+
+    function lapbulkelola_sortPTKData(arr) {
+        if (!arr || !Array.isArray(arr)) return;
+        var statusSekolah = String($('#lapbulkelola_val_status').val() || "").toUpperCase();
+        var isSwasta = statusSekolah.includes('SWASTA');
+
+        arr.sort(function(a, b) {
+            var scoreA = lapbulkelola_getScorePTK(a, isSwasta);
+            var scoreB = lapbulkelola_getScorePTK(b, isSwasta);
+            
+            if (scoreA !== scoreB) {
+                return scoreA - scoreB;
+            } else {
+                var namaA = String(a.nama || "").toLowerCase();
+                var namaB = String(b.nama || "").toLowerCase();
+                if (namaA < namaB) return -1;
+                if (namaA > namaB) return 1;
+                return 0;
+            }
+        });
+    }
+
+</script>
 <div class="modal fade" id="lapbulkelola_modalPTKNonInduk" tabindex="-1" role="dialog" data-backdrop="static" style="z-index: 1060;">
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content modal-content-sultan border-0 shadow-lg">
@@ -3478,7 +3611,8 @@
             </div>
         </div>
     </div>
-</div><script>
+</div>
+<script>
     // Helper: ambil nilai dari object data dengan berbagai variasi penulisan kunci
     function lapbulkelola_getDataKey(data, key) {
         if (data[key] !== undefined) return data[key];
@@ -3964,135 +4098,5 @@
 
     // --- PENAMBAHAN FITUR PENGURUTAN PTK ---
     
-    function lapbulkelola_getScorePTK(ptk, isSwasta) {
-        var jab = String(ptk.jabatan || "").toLowerCase().trim();
-        var st = String(ptk.status || ptk.status_pegawai || "").toLowerCase().trim();
-        var gol = String(ptk.gol_asn || ptk.gol || "").toUpperCase().replace(/\s/g, '');
-        
-        var isTendik = !jab.includes('guru') && !jab.includes('kepala sekolah');
-        
-        var isGTT = st.includes('gtt') || st.includes('honor') || st.includes('non asn') || st.includes('bos');
-        var isPTT = st.includes('ptt');
-        var isGTY = st.includes('gty');
-        var isPTY = st.includes('pty');
-        
-        // 1. Kepala Sekolah
-        if (jab.includes('kepala sekolah') || jab === 'ks' || jab === 'kepsek') return 100;
-        
-        if (isSwasta) {
-            if (isGTY && !isTendik) {
-                if (jab.includes('guru kelas')) return 200;
-                if (jab.includes('pjok') || jab.includes('penjas')) return 300;
-                if (jab.includes('pai') || jab.includes('agama islam')) return 400;
-                return 500; // Guru selain Kelas, PJOK, PAI GTY
-            }
-            if (isPTY || (st.includes('pty') && isTendik)) return 600;
-            if (isGTT && !isTendik) return 700;
-            if (isPTT || (st.includes('ptt') && isTendik)) return 800;
-            
-            // Fallback for others in Swasta
-            if (!isTendik) return 900;
-            return 1000;
-        }
-        
-        // 2. Guru PNS (Untuk Sekolah Negeri)
-        if ((st.includes('pns') || st.includes('cpns')) && !st.includes('non') && !isTendik) {
-            var pangkatScore = 99;
-            if (gol.includes('IV/E') || gol.includes('IVE')) pangkatScore = 1;
-            else if (gol.includes('IV/D') || gol.includes('IVD')) pangkatScore = 2;
-            else if (gol.includes('IV/C') || gol.includes('IVC')) pangkatScore = 3;
-            else if (gol.includes('IV/B') || gol.includes('IVB')) pangkatScore = 4;
-            else if (gol.includes('IV/A') || gol.includes('IVA')) pangkatScore = 5;
-            else if (gol.includes('III/D') || gol.includes('IIID')) pangkatScore = 6;
-            else if (gol.includes('III/C') || gol.includes('IIIC')) pangkatScore = 7;
-            else if (gol.includes('III/B') || gol.includes('IIIB')) pangkatScore = 8;
-            else if (gol.includes('III/A') || gol.includes('IIIA')) pangkatScore = 9;
-            else if (gol.includes('II/D') || gol.includes('IID')) pangkatScore = 10;
-            else if (gol.includes('II/C') || gol.includes('IIC')) pangkatScore = 11;
-            else if (gol.includes('II/B') || gol.includes('IIB')) pangkatScore = 12;
-            else if (gol.includes('II/A') || gol.includes('IIA')) pangkatScore = 13;
-            else if (gol.includes('I/D') || gol.includes('ID')) pangkatScore = 14;
-            else if (gol.includes('I/C') || gol.includes('IC')) pangkatScore = 15;
-            return 200 + pangkatScore;
-        }
-        
-        // PPPK Checks
-        if (st.includes('pppk') || st.includes('p3k')) {
-            var isParuhWaktu = st.includes('paruh') || st.includes('pw');
-            if (!isParuhWaktu) {
-                if (jab.includes('guru kelas')) return 300;
-                if (jab.includes('pjok') || jab.includes('penjas')) return 400;
-                if (jab.includes('pai') || jab.includes('agama islam')) return 500;
-                if (jab.includes('kristen')) return 600;
-                return 699; // Other full-time PPPK
-            } else {
-                if (!isTendik) return 700; // Guru PPPK Paruh Waktu
-                return 800; // Tendik PPPK Paruh Waktu
-            }
-        }
-        
-        // Non ASN
-        if ((isGTT || isGTY) || (st.includes('honor') && !isTendik)) return 900; // Guru Non ASN
-        if ((isPTT || isPTY) || (st.includes('honor') && isTendik)) return 1000; // Tendik Non ASN
-        
-        return 9999;
-    }
 
-    function lapbulkelola_sortPTKData(arr) {
-        if (!arr || !Array.isArray(arr)) return;
-        var statusSekolah = String($('#lapbulkelola_val_status').val() || "").toUpperCase();
-        var isSwasta = statusSekolah.includes('SWASTA');
-
-        arr.sort(function(a, b) {
-            var scoreA = lapbulkelola_getScorePTK(a, isSwasta);
-            var scoreB = lapbulkelola_getScorePTK(b, isSwasta);
-            
-            if (scoreA !== scoreB) {
-                return scoreA - scoreB;
-            } else {
-                var namaA = String(a.nama || "").toLowerCase();
-                var namaB = String(b.nama || "").toLowerCase();
-                if (namaA < namaB) return -1;
-                if (namaA > namaB) return 1;
-                return 0;
-            }
-        });
-    }
-
-
-    function lapbulkelola_validasiKronologis(jenjang, showAlert, cb) {
-        var npsn = $("#lapbulkelola_val_npsn").val() || LAPBULKELOLA_USER_NPSN;
-        if (!npsn) { if (cb) cb(true); return; }
-        
-        var blnId = jenjang === "SD" ? "#lapbulkelola_sel_bulan" : "#lapbulkelola_sel_bulan_paud";
-        var thnId = jenjang === "SD" ? "#lapbulkelola_sel_tahun" : "#lapbulkelola_sel_tahun_paud";
-        var btnId = jenjang === "SD" ? "#lapbulkelola_btnFinal" : "#lapbulkelola_btnFinalPAUD";
-        
-        var bln = $(blnId).val();
-        var thn = $(thnId).val();
-        if (!bln || !thn) { if (cb) cb(true); return; }
-        
-        if (String(bln).toLowerCase() === "juli") {
-            $(btnId).prop("disabled", false);
-            if (cb) cb(true);
-            return;
-        }
-        
-        var txtAwal = $(btnId).html();
-        $(btnId).prop("disabled", true).html("<i class="fas fa-spinner fa-spin mr-1"></i> Validasi...");
-        
-        google.script.run.withSuccessHandler(function(res) {
-            if (res.success) {
-                $(btnId).prop("disabled", false).html(txtAwal);
-                if (cb) cb(true);
-            } else {
-                $(btnId).prop("disabled", true).html("<i class="fas fa-lock mr-1"></i> Terkunci");
-                if (showAlert) Sultan.alert("warning", "Validasi Laporan", res.message);
-                if (cb) cb(false);
-            }
-        }).withFailureHandler(function(err) {
-            $(btnId).prop("disabled", false).html(txtAwal);
-            if (cb) cb(true);
-        }).cekKelengkapanLaporanSebelumnya(npsn, jenjang, bln, thn);
-    }
 </script>
