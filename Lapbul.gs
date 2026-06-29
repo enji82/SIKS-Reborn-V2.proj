@@ -420,6 +420,63 @@ function lapbul_migrasi_header_sd() {
   }
 }
 
+function cekKelengkapanLaporanSebelumnya(npsn, jenjang, bulan, tahun) {
+  try {
+    var bulanClean = String(bulan).trim();
+    if (bulanClean.toLowerCase() === 'juli') {
+      return { success: true, message: "Valid" };
+    }
+    
+    var arrBulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+    var idx = -1;
+    for (var i = 0; i < arrBulan.length; i++) {
+      if (arrBulan[i].toLowerCase() === bulanClean.toLowerCase()) {
+        idx = i;
+        break;
+      }
+    }
+    
+    if (idx === -1) return { success: true, message: "Bulan tidak dikenali, lewati validasi." };
+    
+    var targetBulanIdx = (idx === 0) ? 11 : (idx - 1);
+    var targetTahun = (idx === 0) ? (parseInt(tahun) - 1) : parseInt(tahun);
+    var targetBulanStr = arrBulan[targetBulanIdx];
+    
+    var dbKey = (String(jenjang).toUpperCase() === "PAUD") ? KONFIG_LAPBUL.PAUD_DB : KONFIG_LAPBUL.SD_DB;
+    var namaSheet = (String(jenjang).toUpperCase() === "PAUD") ? "Input PAUD" : "Input SD";
+    var sheet = getSheet(dbKey, namaSheet);
+    
+    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(function(h) { return String(h).toLowerCase().trim(); });
+    var idxNpsn = headers.indexOf("npsn");
+    var idxBulan = headers.indexOf("bulan");
+    var idxTahun = headers.indexOf("tahun");
+    var idxStatus = headers.indexOf("status data");
+    
+    if (idxNpsn > -1 && idxBulan > -1 && idxTahun > -1) {
+      var lastRow = sheet.getLastRow();
+      if (lastRow >= 2) {
+        var rangeValues = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
+        // Cari dari bawah karena kemungkinan laporan sebelumnya ada di baris bawah
+        for (var i = rangeValues.length - 1; i >= 0; i--) {
+          var r = rangeValues[i];
+          var st = (idxStatus > -1) ? String(r[idxStatus]).toLowerCase() : "";
+          if (st.includes("hapus")) continue;
+          
+          if (String(r[idxNpsn]).trim() === String(npsn).trim() && 
+              String(r[idxBulan]).trim().toLowerCase() === targetBulanStr.toLowerCase() && 
+              String(r[idxTahun]).trim() === String(targetTahun)) {
+            return { success: true, message: "Valid" };
+          }
+        }
+      }
+    }
+    
+    return { success: false, message: "Anda belum mengisi laporan bulan " + targetBulanStr + " " + targetTahun + ".\n\nSistem mensyaratkan pengisian laporan harus berurutan. Silakan isi laporan bulan " + targetBulanStr + " " + targetTahun + " terlebih dahulu." };
+  } catch(e) {
+    return { success: true, message: "Error check, allow." };
+  }
+}
+
 function simpanLapbulSD_Complex(form, fileData) {
   return prosesSimpanLengkap(KONFIG_LAPBUL.SD_DB, "Input SD", "SD", form, fileData);
 }

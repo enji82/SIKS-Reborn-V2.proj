@@ -505,6 +505,42 @@
             
         </div>
     </form>
+
+    function lapbulkelola_validasiKronologis(jenjang, showAlert, cb) {
+        var npsn = $("#lapbulkelola_val_npsn").val() || LAPBULKELOLA_USER_NPSN;
+        if (!npsn) { if (cb) cb(true); return; }
+        
+        var blnId = jenjang === "SD" ? "#lapbulkelola_sel_bulan" : "#lapbulkelola_sel_bulan_paud";
+        var thnId = jenjang === "SD" ? "#lapbulkelola_sel_tahun" : "#lapbulkelola_sel_tahun_paud";
+        var btnId = jenjang === "SD" ? "#lapbulkelola_btnFinal" : "#lapbulkelola_btnFinalPAUD";
+        
+        var bln = $(blnId).val();
+        var thn = $(thnId).val();
+        if (!bln || !thn) { if (cb) cb(true); return; }
+        
+        if (String(bln).toLowerCase() === "juli") {
+            $(btnId).prop("disabled", false);
+            if (cb) cb(true);
+            return;
+        }
+        
+        var txtAwal = $(btnId).html();
+        $(btnId).prop("disabled", true).html("<i class="fas fa-spinner fa-spin mr-1"></i> Validasi...");
+        
+        google.script.run.withSuccessHandler(function(res) {
+            if (res.success) {
+                $(btnId).prop("disabled", false).html(txtAwal);
+                if (cb) cb(true);
+            } else {
+                $(btnId).prop("disabled", true).html("<i class="fas fa-lock mr-1"></i> Terkunci");
+                if (showAlert) Sultan.alert("warning", "Validasi Laporan", res.message);
+                if (cb) cb(false);
+            }
+        }).withFailureHandler(function(err) {
+            $(btnId).prop("disabled", false).html(txtAwal);
+            if (cb) cb(true);
+        }).cekKelengkapanLaporanSebelumnya(npsn, jenjang, bln, thn);
+    }
 </script>
 
 <script type="text/template" id="lapbulkelola_tplFormPAUD">
@@ -601,6 +637,42 @@
             
         </div>
     </form>
+
+    function lapbulkelola_validasiKronologis(jenjang, showAlert, cb) {
+        var npsn = $("#lapbulkelola_val_npsn").val() || LAPBULKELOLA_USER_NPSN;
+        if (!npsn) { if (cb) cb(true); return; }
+        
+        var blnId = jenjang === "SD" ? "#lapbulkelola_sel_bulan" : "#lapbulkelola_sel_bulan_paud";
+        var thnId = jenjang === "SD" ? "#lapbulkelola_sel_tahun" : "#lapbulkelola_sel_tahun_paud";
+        var btnId = jenjang === "SD" ? "#lapbulkelola_btnFinal" : "#lapbulkelola_btnFinalPAUD";
+        
+        var bln = $(blnId).val();
+        var thn = $(thnId).val();
+        if (!bln || !thn) { if (cb) cb(true); return; }
+        
+        if (String(bln).toLowerCase() === "juli") {
+            $(btnId).prop("disabled", false);
+            if (cb) cb(true);
+            return;
+        }
+        
+        var txtAwal = $(btnId).html();
+        $(btnId).prop("disabled", true).html("<i class="fas fa-spinner fa-spin mr-1"></i> Validasi...");
+        
+        google.script.run.withSuccessHandler(function(res) {
+            if (res.success) {
+                $(btnId).prop("disabled", false).html(txtAwal);
+                if (cb) cb(true);
+            } else {
+                $(btnId).prop("disabled", true).html("<i class="fas fa-lock mr-1"></i> Terkunci");
+                if (showAlert) Sultan.alert("warning", "Validasi Laporan", res.message);
+                if (cb) cb(false);
+            }
+        }).withFailureHandler(function(err) {
+            $(btnId).prop("disabled", false).html(txtAwal);
+            if (cb) cb(true);
+        }).cekKelengkapanLaporanSebelumnya(npsn, jenjang, bln, thn);
+    }
 </script>
 
 <div id="lapbulkelola_templates" style="display:none;">
@@ -734,6 +806,10 @@
 
         $(document).off('change', '#lapbulkelola_sel_bulan, #lapbulkelola_sel_tahun').on('change', '#lapbulkelola_sel_bulan, #lapbulkelola_sel_tahun', function() {
             lapbulkelola_togglePtkUi();
+        });
+        
+        $(document).off('change', '#lapbulkelola_sel_bulan_paud, #lapbulkelola_sel_tahun_paud').on('change', '#lapbulkelola_sel_bulan_paud, #lapbulkelola_sel_tahun_paud', function() {
+            lapbulkelola_validasiKronologis("PAUD", true);
         });
 
         // Event Form Navigasi Tab (Vaksinasi onclick string)
@@ -2218,6 +2294,8 @@
 
     function lapbulkelola_submitFormSD(e) {
         e.preventDefault();
+        lapbulkelola_validasiKronologis("SD", true, function(isValid) {
+            if (!isValid) return;
         
         lapbulkelola_syncModernToLegacySD();
         lapbulkelola_calcTableMurid(); lapbulkelola_calcTableAgama();
@@ -2302,6 +2380,7 @@
             }).simpanLapbulSD_Complex(d, fd);
         };
         r.readAsDataURL(f.files[0]);
+        });
     }
 
     function lapbulkelola_submitUpdateSD() {
@@ -2591,6 +2670,8 @@
 
     function lapbulkelola_submitFormPAUD(e) {
         e.preventDefault();
+        lapbulkelola_validasiKronologis("PAUD", true, function(isValid) {
+            if (!isValid) return;
         
         lapbulkelola_syncModernToLegacyPAUD();
         
@@ -2625,6 +2706,7 @@
             }).simpanLapbulPAUD(d, fd);
         };
         r.readAsDataURL(f.files[0]);
+        });
     }
 
     function lapbulkelola_submitUpdatePAUD() {
@@ -3431,6 +3513,42 @@
         }
     });
 
+
+    function lapbulkelola_validasiKronologis(jenjang, showAlert, cb) {
+        var npsn = $("#lapbulkelola_val_npsn").val() || LAPBULKELOLA_USER_NPSN;
+        if (!npsn) { if (cb) cb(true); return; }
+        
+        var blnId = jenjang === "SD" ? "#lapbulkelola_sel_bulan" : "#lapbulkelola_sel_bulan_paud";
+        var thnId = jenjang === "SD" ? "#lapbulkelola_sel_tahun" : "#lapbulkelola_sel_tahun_paud";
+        var btnId = jenjang === "SD" ? "#lapbulkelola_btnFinal" : "#lapbulkelola_btnFinalPAUD";
+        
+        var bln = $(blnId).val();
+        var thn = $(thnId).val();
+        if (!bln || !thn) { if (cb) cb(true); return; }
+        
+        if (String(bln).toLowerCase() === "juli") {
+            $(btnId).prop("disabled", false);
+            if (cb) cb(true);
+            return;
+        }
+        
+        var txtAwal = $(btnId).html();
+        $(btnId).prop("disabled", true).html("<i class="fas fa-spinner fa-spin mr-1"></i> Validasi...");
+        
+        google.script.run.withSuccessHandler(function(res) {
+            if (res.success) {
+                $(btnId).prop("disabled", false).html(txtAwal);
+                if (cb) cb(true);
+            } else {
+                $(btnId).prop("disabled", true).html("<i class="fas fa-lock mr-1"></i> Terkunci");
+                if (showAlert) Sultan.alert("warning", "Validasi Laporan", res.message);
+                if (cb) cb(false);
+            }
+        }).withFailureHandler(function(err) {
+            $(btnId).prop("disabled", false).html(txtAwal);
+            if (cb) cb(true);
+        }).cekKelengkapanLaporanSebelumnya(npsn, jenjang, bln, thn);
+    }
 </script>
 
 <div class="modal fade" id="lapbulkelola_modalPTKNonInduk" tabindex="-1" role="dialog" data-backdrop="static" style="z-index: 1060;">
@@ -4040,4 +4158,40 @@
         });
     }
 
+
+    function lapbulkelola_validasiKronologis(jenjang, showAlert, cb) {
+        var npsn = $("#lapbulkelola_val_npsn").val() || LAPBULKELOLA_USER_NPSN;
+        if (!npsn) { if (cb) cb(true); return; }
+        
+        var blnId = jenjang === "SD" ? "#lapbulkelola_sel_bulan" : "#lapbulkelola_sel_bulan_paud";
+        var thnId = jenjang === "SD" ? "#lapbulkelola_sel_tahun" : "#lapbulkelola_sel_tahun_paud";
+        var btnId = jenjang === "SD" ? "#lapbulkelola_btnFinal" : "#lapbulkelola_btnFinalPAUD";
+        
+        var bln = $(blnId).val();
+        var thn = $(thnId).val();
+        if (!bln || !thn) { if (cb) cb(true); return; }
+        
+        if (String(bln).toLowerCase() === "juli") {
+            $(btnId).prop("disabled", false);
+            if (cb) cb(true);
+            return;
+        }
+        
+        var txtAwal = $(btnId).html();
+        $(btnId).prop("disabled", true).html("<i class="fas fa-spinner fa-spin mr-1"></i> Validasi...");
+        
+        google.script.run.withSuccessHandler(function(res) {
+            if (res.success) {
+                $(btnId).prop("disabled", false).html(txtAwal);
+                if (cb) cb(true);
+            } else {
+                $(btnId).prop("disabled", true).html("<i class="fas fa-lock mr-1"></i> Terkunci");
+                if (showAlert) Sultan.alert("warning", "Validasi Laporan", res.message);
+                if (cb) cb(false);
+            }
+        }).withFailureHandler(function(err) {
+            $(btnId).prop("disabled", false).html(txtAwal);
+            if (cb) cb(true);
+        }).cekKelengkapanLaporanSebelumnya(npsn, jenjang, bln, thn);
+    }
 </script>
