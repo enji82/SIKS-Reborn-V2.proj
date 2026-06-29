@@ -453,7 +453,8 @@ function cekKelengkapanLaporanSebelumnya(npsn, jenjang, bulan, tahun, isEditMode
     if (idxNpsn > -1 && idxBulan > -1 && idxTahun > -1) {
       var lastRow = sheet.getLastRow();
       if (lastRow >= 2) {
-        var rangeValues = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
+        var maxColIndex = Math.max(idxNpsn, idxBulan, idxTahun, idxStatus) + 1;
+        var rangeValues = sheet.getRange(2, 1, lastRow - 1, maxColIndex).getValues();
         
         if (!isEditMode) {
             for (var i = rangeValues.length - 1; i >= 0; i--) {
@@ -739,7 +740,6 @@ function lapbul_getLastMonthDataSD(npsn) {
     if (lastRow < 2) return { status: 'success', data: null };
 
     var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
-    var data = sheet.getRange(2, 1, lastRow - 1, lastCol).getDisplayValues();
     
     var npsnColIdx = -1;
     var blnColIdx = -1;
@@ -755,9 +755,12 @@ function lapbul_getLastMonthDataSD(npsn) {
     
     if (npsnColIdx === -1) return { status: 'error', message: "Kolom NPSN tidak ditemukan" };
     
+    var maxColIndex = Math.max(npsnColIdx, blnColIdx, thnColIdx, statusColIdx) + 1;
+    var data = sheet.getRange(2, 1, lastRow - 1, maxColIndex).getDisplayValues();
+    
     var arrBulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
     
-    var bestRow = null;
+    var bestRowIdx = -1;
     var bestScore = -1;
     
     for (var r = 0; r < data.length; r++) {
@@ -774,15 +777,16 @@ function lapbul_getLastMonthDataSD(npsn) {
             var score = (thnVal * 12) + blnIdx;
             if (score > bestScore) {
                 bestScore = score;
-                bestRow = data[r];
+                bestRowIdx = r + 2; // +2 karena row index spreadsheet mulai dari 2 (baris data)
             }
         }
     }
     
-    if (bestRow) {
+    if (bestRowIdx > -1) {
+        var fullRowData = sheet.getRange(bestRowIdx, 1, 1, lastCol).getDisplayValues()[0];
         var result = {};
         for (var i = 0; i < headers.length; i++) {
-            result[String(headers[i]).trim()] = bestRow[i];
+            result[String(headers[i]).trim()] = fullRowData[i];
         }
         return { status: 'success', data: result };
     }

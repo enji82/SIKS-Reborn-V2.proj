@@ -2430,6 +2430,16 @@
                             }
                             c.L_jumlah = totL; 
                             c.P_jumlah = totP;
+                            
+                            var totPTK_L = 0, totPTK_P = 0;
+                            $('#lapbulkelola_formSD .val-ptk').each(function() {
+                                var n = $(this).attr('name');
+                                var val = parseInt($(this).val()) || 0;
+                                if (n && n.endsWith('_l')) totPTK_L += val;
+                                if (n && n.endsWith('_p')) totPTK_P += val;
+                            });
+                            c.ptk_l = totPTK_L;
+                            c.ptk_p = totPTK_P;
                         }
                     } else { Lapbul_ClearGlobalCache(); LAPBULKELOLA_CACHE_DATA = []; }
                     lapbulkelola_prosesCariData(false);
@@ -2441,9 +2451,12 @@
         };
 
         if (hasFile) {
-            var r = new FileReader();
-            r.onload = function (ev) { prosesKirim({ data: ev.target.result.split(',')[1], mimeType: f.files[0].type, name: f.files[0].name }); };
-            r.readAsDataURL(f.files[0]);
+            // Memberi waktu UI untuk merender tombol MENGUPDATE sebelum membaca file (mencegah freeze 3-5 detik)
+            setTimeout(function() {
+                var r = new FileReader();
+                r.onload = function (ev) { prosesKirim({ data: ev.target.result.split(',')[1], mimeType: f.files[0].type, name: f.files[0].name }); };
+                r.readAsDataURL(f.files[0]);
+            }, 100);
         } else { prosesKirim(null); }
     }
 
@@ -2865,7 +2878,9 @@
                 else if (suffixRom === 'c') rombelNum = 4;
                 
                 var modernKeyExtreme = `k${kelas}_${rombelNum}_awal_${gender}`;
-                if (data[modernKeyExtreme] === undefined && data[modernKeyExtreme.replace(/_/g, " ")] === undefined) {
+                var legacyKey = `k${kelas}_awal_${gender}`;
+                if (data[modernKeyExtreme] === undefined && data[modernKeyExtreme.replace(/_/g, " ")] === undefined &&
+                    data[legacyKey] === undefined && data[legacyKey.replace(/_/g, " ")] === undefined) {
                     cleanKey = modernKeyExtreme;
                 }
             }
