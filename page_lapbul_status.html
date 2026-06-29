@@ -60,6 +60,10 @@
                         disabled>
                         <i class="fas fa-sync-alt"></i>
                     </button>
+
+                    <button type="button" id="lapbulstatus_btnExcel" class="sultan-btn-refresh text-success" title="Unduh Excel" disabled>
+                        <i class="fas fa-file-excel"></i>
+                    </button>
                 </div>
 
                 <div class="card-sultan">
@@ -113,6 +117,7 @@
     var LAPBULSTATUS_USER_NPSN = "";
     var LAPBULSTATUS_UNIT_TERKUNCI = "";
     var LAPBULSTATUS_IS_INIT = true; // FLAG PENGAMAN STARTUP
+    var LAPBULSTATUS_DATA_FILTERED = []; // Data tabel yang telah difilter
 
     $(document).ready(function () {
         LAPBULSTATUS_TABEL_INSTANCE = null;
@@ -142,6 +147,10 @@
         $(document).off('click', '#lapbulstatus_btnRefresh').on('click', '#lapbulstatus_btnRefresh', function (e) {
             e.preventDefault();
             lapbulstatus_tarikDataServer();
+        });
+        $(document).off('click', '#lapbulstatus_btnExcel').on('click', '#lapbulstatus_btnExcel', function (e) {
+            e.preventDefault();
+            lapbulstatus_unduhExcel();
         });
 
         lapbulstatus_initFilters();
@@ -352,6 +361,9 @@
             return true;
         });
 
+        LAPBULSTATUS_DATA_FILTERED = hasil;
+        $('#lapbulstatus_btnExcel').prop('disabled', hasil.length === 0);
+
         lapbulstatus_renderTabel(hasil);
     }
 
@@ -500,5 +512,123 @@
         }
 
         return iconHtml;
+    }
+
+    // =================================================================
+    // 7. EXPORT EXCEL
+    // =================================================================
+    function lapbulstatus_unduhExcel() {
+        if (typeof XLSX === 'undefined') {
+            Sultan.notif.error('Modul Excel belum dimuat. Muat ulang halaman.');
+            return;
+        }
+
+        var tahun = $('#lapbulstatus_filterTahun').val() || "-";
+        var jenjangVal = LAPBULSTATUS_IS_ADMIN ? $('#lapbulstatus_filterJenjang').val() : "";
+        var jenjangText = jenjangVal === "SEMUA" || !jenjangVal ? "SEMUA JENJANG" : "JENJANG " + jenjangVal.toUpperCase();
+
+        var wsData = [];
+        
+        // Baris 1
+        wsData.push(['REKAPITULASI PENGIRIMAN LAPORAN BULAN TAHUN ' + tahun]);
+        // Baris 2
+        wsData.push([jenjangText + ' KORWIL DISDIKBUD KECAMATAN SECANG']);
+        // Baris 3
+        wsData.push([]);
+        // Baris 4
+        var headers = ['NO', 'NAMA SEKOLAH', 'NPSN', 'JAN', 'FEB', 'MAR', 'APR', 'MEI', 'JUN', 'JUL', 'AGU', 'SEP', 'OKT', 'NOV', 'DES'];
+        wsData.push(headers);
+
+        var dataRows = LAPBULSTATUS_DATA_FILTERED || [];
+        dataRows.forEach(function(row, idx) {
+            var nama = row[0] || "-";
+            var npsn = row[1] || "-";
+            
+            var excelRow = [idx + 1, nama, npsn];
+            
+            for (var i = 4; i <= 15; i++) {
+                var rawStatus = String(row[i] || "").split('|')[0].trim();
+                var stLower = rawStatus.toLowerCase();
+                var cellVal = "-";
+                
+                if (rawStatus && rawStatus !== "-") {
+                    if (stLower.includes('revisi') || stLower.includes('perbaiki')) {
+                        cellVal = "🔄"; // Revisi
+                    } else if (stLower.includes('tolak') || stLower.includes('x') || stLower.includes('salah')) {
+                        cellVal = "❌"; // Tolak
+                    } else if (stLower.includes('verif') || stLower.includes('setuju') || stLower.includes('ok') || stLower.includes('valid')) {
+                        cellVal = "✅"; // Setuju
+                    } else if (stLower.includes('proses') || stLower.includes('tunggu') || rawStatus.length > 5) {
+                        cellVal = "⏳"; // Proses
+                    } else {
+                        cellVal = rawStatus;
+                    }
+                }
+                excelRow.push(cellVal);
+            }
+            wsData.push(excelRow);
+        });
+
+        var ws = XLSX.utils.aoa_to_sheet(wsData);
+
+        // Merge headers
+        if (!ws['!merges']) ws['!merges'] = [];
+        ws['!merges'].push(XLSX.utils.decode_range("A1:O1"));
+        ws['!merges'].push(XLSX.utils.decode_range("A2:O2"));
+
+        // Styling
+        var range = XLSX.utils.decode_range(ws['!ref']);
+        for (var R = range.s.r; R <= range.e.r; ++R) {
+            for (var C = range.s.c; C <= range.e.c; ++C) {
+                var cellAddr = XLSX.utils.encode_cell({ r: R, c: C });
+                if (!ws[cellAddr]) continue;
+                if (!ws[cellAddr].s) ws[cellAddr].s = {};
+
+                // Default border for table
+                if (R >= 3) {
+                    ws[cellAddr].s.border = {
+                        top: { style: "thin", color: { auto: 1 } },
+                        bottom: { style: "thin", color: { auto: 1 } },
+                        left: { style: "thin", color: { auto: 1 } },
+                        right: { style: "thin", color: { auto: 1 } }
+                    };
+                }
+
+                // Header styling
+                if (R === 0 || R === 1) {
+                    ws[cellAddr].s.font = { bold: true, sz: 12 };
+                    ws[cellAddr].s.alignment = { horizontal: "center", vertical: "center" };
+                } else if (R === 3) {
+                    ws[cellAddr].s.font = { bold: true };
+                    ws[cellAddr].s.fill = { fgColor: { rgb: "EAEAEA" } };
+                    ws[cellAddr].s.alignment = { horizontal: "center", vertical: "center" };
+                } else if (R >= 4) {
+                    ws[cellAddr].s.alignment = { vertical: "center" };
+                    if (C === 0 || C >= 3) { // NO and Bulan columns
+                        ws[cellAddr].s.alignment.horizontal = "center";
+                    } else {
+                        ws[cellAddr].s.alignment.horizontal = "left";
+                    }
+                }
+            }
+        }
+
+        // Set column widths
+        var colWidths = [
+            { wch: 5 },   // NO
+            { wch: 40 },  // NAMA SEKOLAH
+            { wch: 15 }   // NPSN
+        ];
+        for (var i = 0; i < 12; i++) {
+            colWidths.push({ wch: 8 }); // JAN - DES
+        }
+        ws['!cols'] = colWidths;
+
+        var wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Status_Lapbul');
+
+        var safeUnit = String(LAPBULSTATUS_IS_ADMIN ? $('#lapbulstatus_filterSekolah').val() : LAPBULSTATUS_UNIT_TERKUNCI).replace(/[^a-zA-Z0-9]/g, '_');
+        var fileName = 'Rekap_Status_Lapbul_' + tahun + '_' + safeUnit + '.xlsx';
+        XLSX.writeFile(wb, fileName);
     }
 </script>
