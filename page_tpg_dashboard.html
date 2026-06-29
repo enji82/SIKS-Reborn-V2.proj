@@ -144,11 +144,38 @@
   function tpgDb_init() {
     var user = getSesiUser();
     var isAdmin = checkUserRoleIsAdmin();
-    var unitKerja = String(user.unit || "").trim();
 
     SultanUI.showLoading('#tpgDb_loadingState', 'Memuat Data Dashboard...');
     $('#tpgDb_mainContainer').hide();
 
+    if (isAdmin) {
+      tpgDb_fetchData("", true);
+    } else {
+      var npsn = user ? (user.npsn || user.username || "") : "";
+      if (!npsn) {
+          SultanUI.hideLoading('#tpgDb_loadingState');
+          Sultan.modal.error({ title: 'Gagal', message: 'Akses ditolak: Sesi login tidak valid.' });
+          return;
+      }
+      google.script.run
+        .withSuccessHandler(function (resUnit) {
+            var dataUnit = JSON.parse(resUnit);
+            if (dataUnit.error) {
+                SultanUI.hideLoading('#tpgDb_loadingState');
+                Sultan.modal.error({ title: 'Gagal', message: dataUnit.error });
+                return;
+            }
+            tpgDb_fetchData(dataUnit.unitKerja, false);
+        })
+        .withFailureHandler(function (error) {
+            SultanUI.hideLoading('#tpgDb_loadingState');
+            Sultan.modal.error({ title: 'Error', message: 'Koneksi Terputus: ' + error.message });
+        })
+        .getUnitKerjaByNPSN(npsn, "SIABA_LUPA_DB");
+    }
+  }
+
+  function tpgDb_fetchData(unitKerja, isAdmin) {
     google.script.run
       .withSuccessHandler(function (response) {
         SultanUI.hideLoading('#tpgDb_loadingState');
