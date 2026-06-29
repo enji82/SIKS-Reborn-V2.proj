@@ -488,9 +488,7 @@ function cekKelengkapanLaporanSebelumnya(npsn, jenjang, bulan, tahun, isEditMode
         }
         
         if (!prevExists) {
-            return { success: false, message: "Anda belum mengisi laporan bulan " + targetBulanStr + " " + targetTahun + ".
-
-Sistem mensyaratkan pengisian laporan harus berurutan. Silakan isi laporan bulan " + targetBulanStr + " " + targetTahun + " terlebih dahulu." };
+            return { success: false, message: "Anda belum mengisi laporan bulan " + targetBulanStr + " " + targetTahun + ".\\n\\nSistem mensyaratkan pengisian laporan harus berurutan. Silakan isi laporan bulan " + targetBulanStr + " " + targetTahun + " terlebih dahulu." };
         } else {
             return { success: true, message: "Valid" };
         }
@@ -498,9 +496,7 @@ Sistem mensyaratkan pengisian laporan harus berurutan. Silakan isi laporan bulan
     }
     
     if (bulanClean.toLowerCase() === "juli") return { success: true, message: "Valid" };
-    return { success: false, message: "Anda belum mengisi laporan bulan " + targetBulanStr + " " + targetTahun + ".
-
-Sistem mensyaratkan pengisian laporan harus berurutan. Silakan isi laporan bulan " + targetBulanStr + " " + targetTahun + " terlebih dahulu." };
+    return { success: false, message: "Anda belum mengisi laporan bulan " + targetBulanStr + " " + targetTahun + ".\\n\\nSistem mensyaratkan pengisian laporan harus berurutan. Silakan isi laporan bulan " + targetBulanStr + " " + targetTahun + " terlebih dahulu." };
     
   } catch(e) {
     return { success: true, message: "Error check, allow." };
