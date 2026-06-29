@@ -40,8 +40,9 @@ function getDaftarDinas(tahun, bulan, status, _cb) {
       var matchTahun = (fTahun === "") || (rowTahun === fTahun);
       var matchBulan = (fBulan === "") || (rowBulan === fBulan);
       var matchStatus = (fStatus === "") || (String(row[9]) == fStatus);
+      var isDiproses = (String(row[9]).trim() === "Diproses" || String(row[9]).trim() === "");
 
-      if (matchTahun && matchBulan && matchStatus) {
+      if ((matchTahun && matchBulan && matchStatus) || isDiproses) {
         var t1 = parseSiabaDateTime(row[11]); 
         var t2 = parseSiabaDateTime(row[13]); 
         var t3 = parseSiabaDateTime(row[15]); 
