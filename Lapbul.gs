@@ -686,58 +686,6 @@ function getDetailRowSD(rowId) { return getDetailGeneral(KONFIG_LAPBUL.SD_DB, "I
 
 function lapbul_getLastMonthDataSD(npsn) {
   try {
-    var dbKey = KONFIG_LAPBUL.SD_DB;
-    var sheet = getSheet(dbKey, "Input SD");
-    if (!sheet) return { status: 'error', message: 'Sheet Input SD tidak ditemukan' };
-    
-    var data = sheet.getDataRange().getDisplayValues();
-    if (data.length <= 1) return { status: 'error', message: 'Tidak ada data' };
-    var headers = data[0].map(function(h) { return String(h).toLowerCase().trim().replace(/\s+/g, '_'); });
-    var npsnIdx = -1;
-    for (var i = 0; i < headers.length; i++) {
-        if (headers[i] === 'npsn') { npsnIdx = i; break; }
-    }
-    if (npsnIdx === -1) return { status: 'error', message: 'Kolom NPSN tidak ditemukan' };
-    
-    // Cari baris terakhir milik NPSN ini
-    var foundRow = null;
-    for (var r = data.length - 1; r >= 1; r--) {
-        if (String(data[r][npsnIdx]).trim() === String(npsn).trim()) {
-            foundRow = data[r];
-            break;
-        }
-    }
-    if (!foundRow) return { status: 'error', message: 'Data sekolah belum ada bulan sebelumnya' };
-    
-    var resultObj = {};
-    for (var c = 0; c < headers.length; c++) {
-        resultObj[headers[c]] = foundRow[c];
-    }
-    return { status: 'success', data: resultObj };
-  } catch (e) {
-    return { status: 'error', message: String(e) };
-  }
-}
-function getDetailRowPAUD(rowId) { return getDetailGeneral(KONFIG_LAPBUL.PAUD_DB, "Input PAUD", rowId); }
-
-function getDetailGeneral(dbKey, namaSheet, rowId) {
-  var result = {};
-  try {
-    var sheet = getSheet(dbKey, namaSheet);
-    if (!sheet) return { error: "Sheet tidak ditemukan!" };
-
-    var lastCol = sheet.getLastColumn();
-    var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
-    var data = sheet.getRange(parseInt(rowId), 1, 1, lastCol).getDisplayValues()[0];
-    
-    for (var i = 0; i < headers.length; i++) { result[String(headers[i]).trim()] = data[i]; }
-    result.ROW_ID = rowId;
-    return result;
-  } catch (e) { return { error: "Error Backend: " + e.toString() }; }
-}
-
-function lapbul_getLastMonthDataSD(npsn) {
-  try {
     var sheet = getSheet(KONFIG_LAPBUL.SD_DB, "Input SD");
     if (!sheet) return { status: 'error', message: "Sheet tidak ditemukan!" };
 
@@ -749,20 +697,49 @@ function lapbul_getLastMonthDataSD(npsn) {
     var data = sheet.getRange(2, 1, lastRow - 1, lastCol).getDisplayValues();
     
     var npsnColIdx = -1;
+    var blnColIdx = -1;
+    var thnColIdx = -1;
+    var statusColIdx = -1;
     for (var i = 0; i < headers.length; i++) {
-        if (String(headers[i]).toLowerCase().trim() === "npsn") npsnColIdx = i;
+        var h = String(headers[i]).toLowerCase().trim();
+        if (h === "npsn") npsnColIdx = i;
+        if (h === "bulan") blnColIdx = i;
+        if (h === "tahun") thnColIdx = i;
+        if (h === "status data") statusColIdx = i;
     }
     
     if (npsnColIdx === -1) return { status: 'error', message: "Kolom NPSN tidak ditemukan" };
     
-    for (var r = data.length - 1; r >= 0; r--) {
+    var arrBulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+    
+    var bestRow = null;
+    var bestScore = -1;
+    
+    for (var r = 0; r < data.length; r++) {
         if (String(data[r][npsnColIdx]).trim() === String(npsn).trim()) {
-            var result = {};
-            for (var i = 0; i < headers.length; i++) {
-                result[String(headers[i]).trim()] = data[r][i];
+            if (statusColIdx > -1 && String(data[r][statusColIdx]).toLowerCase().includes("hapus")) continue;
+            
+            var thnVal = parseInt(data[r][thnColIdx]) || 0;
+            var blnVal = String(data[r][blnColIdx]).trim();
+            var blnIdx = -1;
+            for(var i=0; i<arrBulan.length; i++){
+               if(arrBulan[i].toLowerCase() === blnVal.toLowerCase()) { blnIdx = i; break; }
             }
-            return { status: 'success', data: result };
+            
+            var score = (thnVal * 12) + blnIdx;
+            if (score > bestScore) {
+                bestScore = score;
+                bestRow = data[r];
+            }
         }
+    }
+    
+    if (bestRow) {
+        var result = {};
+        for (var i = 0; i < headers.length; i++) {
+            result[String(headers[i]).trim()] = bestRow[i];
+        }
+        return { status: 'success', data: result };
     }
     
     return { status: 'success', data: null };
