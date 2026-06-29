@@ -420,14 +420,11 @@ function lapbul_migrasi_header_sd() {
   }
 }
 
-function cekKelengkapanLaporanSebelumnya(npsn, jenjang, bulan, tahun) {
+function cekKelengkapanLaporanSebelumnya(npsn, jenjang, bulan, tahun, isEditMode) {
   try {
     var bulanClean = String(bulan).trim();
-    if (bulanClean.toLowerCase() === 'juli') {
-      return { success: true, message: "Valid" };
-    }
-    
     var arrBulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+    
     var idx = -1;
     for (var i = 0; i < arrBulan.length; i++) {
       if (arrBulan[i].toLowerCase() === bulanClean.toLowerCase()) {
@@ -445,6 +442,7 @@ function cekKelengkapanLaporanSebelumnya(npsn, jenjang, bulan, tahun) {
     var dbKey = (String(jenjang).toUpperCase() === "PAUD") ? KONFIG_LAPBUL.PAUD_DB : KONFIG_LAPBUL.SD_DB;
     var namaSheet = (String(jenjang).toUpperCase() === "PAUD") ? "Input PAUD" : "Input SD";
     var sheet = getSheet(dbKey, namaSheet);
+    if(!sheet) return { success: true, message: "Sheet tidak ada, lewati validasi." };
     
     var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(function(h) { return String(h).toLowerCase().trim(); });
     var idxNpsn = headers.indexOf("npsn");
@@ -456,7 +454,26 @@ function cekKelengkapanLaporanSebelumnya(npsn, jenjang, bulan, tahun) {
       var lastRow = sheet.getLastRow();
       if (lastRow >= 2) {
         var rangeValues = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
-        // Cari dari bawah karena kemungkinan laporan sebelumnya ada di baris bawah
+        
+        if (!isEditMode) {
+            for (var i = rangeValues.length - 1; i >= 0; i--) {
+              var r = rangeValues[i];
+              var st = (idxStatus > -1) ? String(r[idxStatus]).toLowerCase() : "";
+              if (st.includes("hapus")) continue;
+              
+              if (String(r[idxNpsn]).trim() === String(npsn).trim() && 
+                  String(r[idxBulan]).trim().toLowerCase() === bulanClean.toLowerCase() && 
+                  String(r[idxTahun]).trim() === String(tahun)) {
+                return { success: false, message: "Laporan untuk bulan " + bulanClean + " " + tahun + " sudah ada! Silakan gunakan fitur Edit pada tabel data." };
+              }
+            }
+        }
+        
+        if (bulanClean.toLowerCase() === "juli") {
+            return { success: true, message: "Valid" };
+        }
+        
+        var prevExists = false;
         for (var i = rangeValues.length - 1; i >= 0; i--) {
           var r = rangeValues[i];
           var st = (idxStatus > -1) ? String(r[idxStatus]).toLowerCase() : "";
@@ -465,13 +482,26 @@ function cekKelengkapanLaporanSebelumnya(npsn, jenjang, bulan, tahun) {
           if (String(r[idxNpsn]).trim() === String(npsn).trim() && 
               String(r[idxBulan]).trim().toLowerCase() === targetBulanStr.toLowerCase() && 
               String(r[idxTahun]).trim() === String(targetTahun)) {
-            return { success: true, message: "Valid" };
+            prevExists = true;
+            break;
           }
+        }
+        
+        if (!prevExists) {
+            return { success: false, message: "Anda belum mengisi laporan bulan " + targetBulanStr + " " + targetTahun + ".
+
+Sistem mensyaratkan pengisian laporan harus berurutan. Silakan isi laporan bulan " + targetBulanStr + " " + targetTahun + " terlebih dahulu." };
+        } else {
+            return { success: true, message: "Valid" };
         }
       }
     }
     
-    return { success: false, message: "Anda belum mengisi laporan bulan " + targetBulanStr + " " + targetTahun + ".\n\nSistem mensyaratkan pengisian laporan harus berurutan. Silakan isi laporan bulan " + targetBulanStr + " " + targetTahun + " terlebih dahulu." };
+    if (bulanClean.toLowerCase() === "juli") return { success: true, message: "Valid" };
+    return { success: false, message: "Anda belum mengisi laporan bulan " + targetBulanStr + " " + targetTahun + ".
+
+Sistem mensyaratkan pengisian laporan harus berurutan. Silakan isi laporan bulan " + targetBulanStr + " " + targetTahun + " terlebih dahulu." };
+    
   } catch(e) {
     return { success: true, message: "Error check, allow." };
   }
