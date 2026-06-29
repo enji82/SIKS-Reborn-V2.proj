@@ -109,7 +109,26 @@ function tpg_getPerbaikanData(unitKerja, isAdmin) {
     }
     
     result.reverse();
-    return { status: 'success', data: result };
+    var isOpen = true;
+    try {
+      var props = PropertiesService.getScriptProperties();
+      var status = props.getProperty('TPG_PG_IS_OPEN');
+      isOpen = (status === null ? true : (status === 'true'));
+    } catch(e) {}
+
+    return { status: 'success', data: result, isOpen: isOpen };
+  } catch (e) {
+    return { status: 'error', message: e.message };
+  }
+}
+
+function tpgPg_toggleOpenStatus(isAdmin, currentStatus) {
+  if (!isAdmin) return { status: 'error', message: 'Akses ditolak.' };
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var newStatus = !currentStatus;
+    props.setProperty('TPG_PG_IS_OPEN', newStatus.toString());
+    return { status: 'success', isOpen: newStatus };
   } catch (e) {
     return { status: 'error', message: e.message };
   }
@@ -120,6 +139,14 @@ function tpg_savePerbaikan(formData) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(15000);
+    
+    var props = PropertiesService.getScriptProperties();
+    var status = props.getProperty('TPG_PG_IS_OPEN');
+    var isOpen = (status === null ? true : (status === 'true'));
+    if (!isOpen) {
+       return { status: 'error', message: 'Penambahan data saat ini sedang ditutup oleh Admin.' };
+    }
+
     var currentUser = formData.userLogin || "Unknown";
     
     var sheet = tpgPg_ensureSheet();

@@ -79,6 +79,10 @@
 
                     <div class="ml-auto d-none d-md-block"></div>
 
+                    <button type="button" id="tpg_pg_btnToggleBuka" class="btn font-weight-bold d-none mr-2" style="border-radius: 50px; font-size: 0.85rem; padding: 6px 15px;">
+                        <i class="fas fa-lock-open mr-1"></i> BUKA/TUTUP
+                    </button>
+
                     <button type="button" id="tpg_pg_btnTambah" class="sultan-btn-tambah" disabled>
                         <i class="fas fa-plus"></i> TAMBAH DATA
                     </button>
@@ -308,6 +312,7 @@
     var globalTpgPgData = [];
     var tpgPgTable;
     var tpgPgGuruList = []; // Simpan list guru di frontend agar tidak bolak balik request
+    var globalTpgPgIsOpen = true;
 
     function formatTanggalIndo(tglStr) {
         if (!tglStr) return '-';
@@ -465,6 +470,25 @@
                 Sultan.alert('info', 'Catatan Verifikasi', decodeURIComponent(escape(atob(pesan))));
             }
         });
+
+        $('#tpg_pg_btnToggleBuka').click(function () {
+            var isAdmin = checkUserRoleIsAdmin();
+            if (!isAdmin) return;
+            Sultan.notif.loading('Mengubah status akses...');
+            google.script.run
+                .withSuccessHandler(function(res) {
+                    if (res.status === 'success') {
+                        Sultan.notif.success('Status akses berhasil diubah.');
+                        tpgPg_loadData();
+                    } else {
+                        Sultan.notif.error(res.message);
+                    }
+                })
+                .withFailureHandler(function(err) {
+                    Sultan.notif.error(err.message || err);
+                })
+                .tpgPg_toggleOpenStatus(isAdmin, globalTpgPgIsOpen);
+        });
     }
 
     function tpgPg_initGuruList(unitKerja) {
@@ -492,6 +516,25 @@
             .withSuccessHandler(function (response) {
                 if (response.status === 'success') {
                     globalTpgPgData = response.data;
+                    if (response.isOpen !== undefined) {
+                        globalTpgPgIsOpen = response.isOpen;
+                    }
+
+                    if (isAdmin) {
+                        $('#tpg_pg_btnToggleBuka').removeClass('d-none');
+                        if (globalTpgPgIsOpen) {
+                            $('#tpg_pg_btnToggleBuka').removeClass('btn-outline-danger btn-danger').addClass('btn-outline-success').html('<i class="fas fa-unlock mr-1"></i> AKSES TERBUKA');
+                        } else {
+                            $('#tpg_pg_btnToggleBuka').removeClass('btn-outline-success btn-success').addClass('btn-outline-danger').html('<i class="fas fa-lock mr-1"></i> AKSES DITUTUP');
+                        }
+                    }
+
+                    if (globalTpgPgIsOpen) {
+                        $('#tpg_pg_btnTambah').prop('disabled', false).html('<i class="fas fa-plus"></i> TAMBAH DATA').removeClass('btn-secondary').addClass('sultan-btn-tambah');
+                    } else {
+                        $('#tpg_pg_btnTambah').prop('disabled', true).html('<i class="fas fa-lock"></i> DITUTUP').removeClass('sultan-btn-tambah').addClass('btn btn-secondary font-weight-bold');
+                    }
+
                     tpgPg_renderTable();
                 } else {
                     $('#tpg_pg_loadingState').html('<div class="alert alert-danger"><i class="fas fa-exclamation-circle mr-2"></i>Gagal memuat data: ' + response.message + '</div>');
