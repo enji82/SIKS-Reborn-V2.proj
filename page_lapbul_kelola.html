@@ -2770,12 +2770,33 @@
     function lapbulkelola_populateFormSD(data) {
         var cariData = function (keywords) {
             if (!Array.isArray(keywords)) keywords = [keywords];
+            
+            // 1. Cek di data utama (level teratas) - Exact match dulu
             for (var key in data) {
-                var k = String(key).toLowerCase();
+                var k = String(key).toLowerCase().trim();
                 for (var i = 0; i < keywords.length; i++) {
-                    if (k === keywords[i].toLowerCase() || k.includes(keywords[i].toLowerCase())) return data[key];
+                    if (k === keywords[i].toLowerCase().trim()) return data[key];
                 }
             }
+            
+            // 2. Cek di rowDataObj (raw data) - Exact match
+            if (data.rowDataObj) {
+                for (var key in data.rowDataObj) {
+                    var k = String(key).toLowerCase().trim();
+                    for (var i = 0; i < keywords.length; i++) {
+                        if (k === keywords[i].toLowerCase().trim()) return data.rowDataObj[key];
+                    }
+                }
+            }
+            
+            // 3. Fallback substring match di data utama
+            for (var key in data) {
+                var k = String(key).toLowerCase().trim();
+                for (var i = 0; i < keywords.length; i++) {
+                    if (k.includes(keywords[i].toLowerCase().trim())) return data[key];
+                }
+            }
+            
             return "";
         };
 
@@ -2947,6 +2968,7 @@
     function lapbulkelola_populateFormPAUD(data) {
         var cariData = function (keywords) {
             if (!Array.isArray(keywords)) keywords = [keywords];
+            
             // 1. Cek kecocokan persis (exact match) terlebih dahulu agar tidak salah tangkap substring
             for (var key in data) {
                 var k = String(key).toLowerCase().trim(); var v = data[key];
@@ -2958,7 +2980,22 @@
                     }
                 }
             }
-            // 2. Fallback ke substring match
+            
+            // 2. Cek di rowDataObj (raw data) - Exact match
+            if (data.rowDataObj) {
+                for (var key in data.rowDataObj) {
+                    var k = String(key).toLowerCase().trim(); var v = data.rowDataObj[key];
+                    for (var i = 0; i < keywords.length; i++) {
+                        var kw = keywords[i].toLowerCase().trim();
+                        if (k === kw) {
+                            if (v && typeof v === 'string' && v.includes("T00:00:00")) return v.split("T")[0];
+                            return v;
+                        }
+                    }
+                }
+            }
+            
+            // 3. Fallback ke substring match di data utama
             for (var key in data) {
                 var k = String(key).toLowerCase().trim(); var v = data[key];
                 for (var i = 0; i < keywords.length; i++) {

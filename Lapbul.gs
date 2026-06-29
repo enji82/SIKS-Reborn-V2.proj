@@ -163,6 +163,13 @@ function getLapbulKelolaData(filterJenjang, filterBulan, filterTahun, filterStat
               var rNama = (idx.nama > -1) ? String(row[idx.nama]) : "Tanpa Nama";
               var rNpsn = (idx.npsn > -1) ? String(row[idx.npsn]) : "";
               if (reqKey && !rNama.toLowerCase().includes(reqKey) && !rNpsn.includes(reqKey)) continue;
+              
+              var rowDataObj = {};
+              for (var h = 0; h < headers.length; h++) {
+                  var rawHdr = String(headers[h]).toLowerCase().trim();
+                  var keyHdr = rawHdr.replace(/\s+/g, '_');
+                  if (keyHdr) rowDataObj[keyHdr] = row[h];
+              }
 
               var rMurid = 0, rKS = 0, rGuru = 0, rTendik = 0, rPTK = 0;
               var rCpns = 0, rPns = 0, rPppk = 0, rPppkPw = 0, rGty = 0, rPty = 0, rGtt = 0, rPtt = 0;
@@ -170,10 +177,33 @@ function getLapbulKelolaData(filterJenjang, filterBulan, filterTahun, filterStat
               var sumArr = function(arrLetters) {
                   var tot = 0;
                   for (var c = 0; c < arrLetters.length; c++) {
-                      var idx = letterToColIndex(arrLetters[c].toUpperCase());
-                      tot += (parseFloat(String(row[idx] || "").replace(/,/g, "")) || 0);
+                      var hIdx = letterToColIndex(arrLetters[c].toUpperCase());
+                      tot += (parseFloat(String(row[hIdx] || "").replace(/,/g, "")) || 0);
                   }
                   return tot;
+              };
+              
+              var sumCols = function(rowArr, startLetter, endLetter) {
+                  var sIdx = letterToColIndex(startLetter);
+                  var eIdx = letterToColIndex(endLetter);
+                  var tot = 0;
+                  for (var c = sIdx; c <= eIdx; c++) {
+                      tot += (parseFloat(String(rowArr[c] || "").replace(/,/g, "")) || 0);
+                  }
+                  return tot;
+              };
+              
+              var sumByHeaders = function(fallbackValue, headerList) {
+                  var tot = 0;
+                  var found = false;
+                  for (var c = 0; c < headerList.length; c++) {
+                      var keyHdr = headerList[c].toLowerCase().trim().replace(/\s+/g, '_');
+                      if (rowDataObj[keyHdr] !== undefined && rowDataObj[keyHdr] !== "") {
+                          found = true;
+                          tot += (parseFloat(String(rowDataObj[keyHdr] || "").replace(/,/g, "")) || 0);
+                      }
+                  }
+                  return found ? tot : fallbackValue;
               };
 
               if (sourceLabel === 'PAUD') {
@@ -191,19 +221,28 @@ function getLapbulKelolaData(filterJenjang, filterBulan, filterTahun, filterStat
                   rPtt = sumArr(["BJ","BM","BP","BS"]);
               } else {
                   rMurid = parseFloat(String(row[letterToColIndex("HS")] || "").replace(/,/g, "")) || 0;
-                  rKS = sumCols(row, "EE", "EG");
-                  rGuru = sumCols(row, "EH", "FP");
-                  rTendik = sumCols(row, "FQ", "HI");
+                  
+                  // Gunakan kolom dinamis berdasarkan header (untuk mengatasi pergeseran kolom manual), fallback ke EE dkk.
+                  rKS = sumByHeaders(sumCols(row, "EE", "EG"), ["ks_pns", "ks_pppk", "ks_non_asn"]);
+                  rGuru = sumByHeaders(sumCols(row, "EH", "FP"), ["gk_cpns", "gk_pns", "gk_pppk", "gk_pppk_pw", "gk_gty", "gk_gtt", "gpai_cpns", "gpai_pns", "gpai_pppk", "gpai_pppk_pw", "gpai_gty", "gpai_gtt", "gpjok_cpns", "gpjok_pns", "gpjok_pppk", "gpjok_pppk_pw", "gpjok_gty", "gpjok_gtt", "gpa_kris_pns", "gpa_kris_pppk", "gpa_kris_pppk_pw", "gpa_kris_gty", "gpa_kris_gtt", "gpa_kat_pns", "gpa_kat_pppk", "gpa_kat_pppk_pw", "gpa_kat_gty", "gpa_kat_gtt", "gbing_pns", "gbing_pppk", "gbing_pppk_pw", "gbing_gty", "gbing_gtt", "gmap_pns", "gmap_pppk", "gmap_pppk_pw", "gmap_gty", "gmap_gtt"]);
+                  rTendik = sumByHeaders(sumCols(row, "FQ", "HI"), ["puo_pns", "puo_pppk", "puo_pppk_pw", "puo_pty", "puo_ptt", "olo_pns", "olo_pppk", "olo_pppk_pw", "olo_pty", "olo_ptt", "plo_pns", "plo_pppk", "plo_pppk_pw", "plo_pty", "plo_ptt", "ptlo_pns", "ptlo_pppk", "ptlo_pppk_pw", "ptlo_pty", "ptlo_ptt", "adm_kan_pns", "adm_kan_pppk", "adm_kan_pppk_pw", "adm_kan_pty", "adm_kan_ptt", "pjg_pns", "pjg_pppk", "pjg_pppk_pw", "pjg_pty", "pjg_ptt", "tas_pns", "tas_pppk", "tas_pppk_pw", "tas_pty", "tas_ptt", "pust_pns", "pust_pppk", "pust_pppk_pw", "pust_pty", "pust_ptt", "tdklain_pns", "tdklain_pppk", "tdklain_pppk_pw", "tdklain_pty", "tdklain_ptt"]);
                   rPTK = rKS + rGuru + rTendik;
                   
-                  rCpns = sumCols(row, "HW", "IA");
-                  rPns = sumArr(["EE","EH","EM","ER","EW","FB","FG","FL","FQ","FV","GA","GF","GK","GP","GU","GZ","HE"]);
-                  rPppk = sumArr(["EF","EI","EN","ES","EX","FC","FH","FM","FR","FW","GB","GG","GL","GQ","GV","HA","HF"]);
-                  rPppkPw = sumArr(["EJ","EO","ET","EY","FD","FI","FN","FS","FX","GC","GH","GM","GR","GW","HB","HG"]);
-                  rGty = sumArr(["EK","EP","EU","EZ","FE","FJ","FO"]);
-                  rPty = sumArr(["FT","FY","GD","GI","GN","GS","GX","HC","HH"]);
-                  rGtt = sumArr(["EL","EQ","EV","FA","FF","FK","FP"]);
-                  rPtt = sumArr(["FU","FZ","GE","GJ","GO","GT","GY","HD","HI"]);
+                  rCpns = sumByHeaders(sumCols(row, "HW", "IA"), ["gk_cpns", "gpai_cpns", "gpjok_cpns"]);
+                  rPns = sumByHeaders(sumArr(["EE","EH","EM","ER","EW","FB","FG","FL","FQ","FV","GA","GF","GK","GP","GU","GZ","HE"]), ["ks_pns", "gk_pns", "gpai_pns", "gpjok_pns", "gpa_kris_pns", "gpa_kat_pns", "gbing_pns", "gmap_pns", "puo_pns", "olo_pns", "plo_pns", "ptlo_pns", "adm_kan_pns", "pjg_pns", "tas_pns", "pust_pns", "tdklain_pns"]);
+                  rPppk = sumByHeaders(sumArr(["EF","EI","EN","ES","EX","FC","FH","FM","FR","FW","GB","GG","GL","GQ","GV","HA","HF"]), ["ks_pppk", "gk_pppk", "gpai_pppk", "gpjok_pppk", "gpa_kris_pppk", "gpa_kat_pppk", "gbing_pppk", "gmap_pppk", "puo_pppk", "olo_pppk", "plo_pppk", "ptlo_pppk", "adm_kan_pppk", "pjg_pppk", "tas_pppk", "pust_pppk", "tdklain_pppk"]);
+                  rPppkPw = sumByHeaders(sumArr(["EJ","EO","ET","EY","FD","FI","FN","FS","FX","GC","GH","GM","GR","GW","HB","HG"]), ["gk_pppk_pw", "gpai_pppk_pw", "gpjok_pppk_pw", "gpa_kris_pppk_pw", "gpa_kat_pppk_pw", "gbing_pppk_pw", "gmap_pppk_pw", "puo_pppk_pw", "olo_pppk_pw", "plo_pppk_pw", "ptlo_pppk_pw", "adm_kan_pppk_pw", "pjg_pppk_pw", "tas_pppk_pw", "pust_pppk_pw", "tdklain_pppk_pw"]);
+                  rGty = sumByHeaders(sumArr(["EK","EP","EU","EZ","FE","FJ","FO"]), ["gk_gty", "gpai_gty", "gpjok_gty", "gpa_kris_gty", "gpa_kat_gty", "gbing_gty", "gmap_gty"]);
+                  rPty = sumByHeaders(sumArr(["FT","FY","GD","GI","GN","GS","GX","HC","HH"]), ["puo_pty", "olo_pty", "plo_pty", "ptlo_pty", "adm_kan_pty", "pjg_pty", "tas_pty", "pust_pty", "tdklain_pty"]);
+                  rGtt = sumByHeaders(sumArr(["EL","EQ","EV","FA","FF","FK","FP"]), ["gk_gtt", "gpai_gtt", "gpjok_gtt", "gpa_kris_gtt", "gpa_kat_gtt", "gbing_gtt", "gmap_gtt"]);
+                  rPtt = sumByHeaders(sumArr(["FU","FZ","GE","GJ","GO","GT","GY","HD","HI"]), ["puo_ptt", "olo_ptt", "plo_ptt", "ptlo_ptt", "adm_kan_ptt", "pjg_ptt", "tas_ptt", "pust_ptt", "tdklain_ptt"]);
+                  
+                  // Tangani KS NON ASN (bisa GTY/GTT secara konsep, tapi kolomnya tersendiri)
+                  var rKsNonAsn = sumByHeaders(0, ["ks_non_asn"]);
+                  if (rKsNonAsn > 0) {
+                      // Tambahkan ke GTT jika status guru bukan PNS/PPPK/GTY, atau sediakan kolom khusus di rekap
+                      rGtt += rKsNonAsn; 
+                  }
               }
 
               var rJmlStatus = rCpns + rPns + rPppk + rPppkPw + rGty + rPty + rGtt + rPtt;
@@ -240,7 +279,8 @@ function getLapbulKelolaData(filterJenjang, filterBulan, filterTahun, filterStat
                   tglVerif: cleanStringDate(row[col.tglVerif]),
                   verifikator: row[col.userVerif] || "-",
                   statusData: rStatusData,
-                  keterangan: row[col.ket] || ""
+                  keterangan: row[col.ket] || "",
+                  rowDataObj: rowDataObj
               });
           }
       } catch (e) {}
