@@ -16,7 +16,7 @@ function tpgPg_ensureSheet() {
     sheet = ss.insertSheet(TPG_PG_CONFIG.SHEET_NAME);
     var headers = [
       "ID", "Unit Kerja", "Nama ASN", "NIP", "Status Pegawai", "NUPTK", 
-      "Jenis SK", "TMT", "Gaji Pokok", "Dokumen", "Status", "Verifikasi Oleh", 
+      "Jenis SK", "TMT", "Gaji Pokok", "Nomor SKTPG", "Bulan Pembayaran TPG Terakhir", "Nilai Salur Bruto", "Dokumen", "Status", "Verifikasi Oleh", 
       "Waktu Verifikasi", "Keterangan", "Upload Oleh", "Waktu Upload", 
       "Edit Oleh", "Waktu Edit"
     ];
@@ -74,7 +74,7 @@ function tpg_getPerbaikanData(unitKerja, isAdmin) {
     var lastRow = sheet.getLastRow();
     if (lastRow < 2) return { status: 'success', data: [] };
     
-    var data = sheet.getRange(2, 1, lastRow - 1, 18).getValues();
+    var data = sheet.getRange(2, 1, lastRow - 1, 21).getValues();
     var result = [];
     var tz = Session.getScriptTimeZone();
     
@@ -96,15 +96,18 @@ function tpg_getPerbaikanData(unitKerja, isAdmin) {
         jenisSK: data[i][6],
         tmt: data[i][7] ? Utilities.formatDate(new Date(data[i][7]), tz, "yyyy-MM-dd") : "",
         gajiPokok: data[i][8],
-        dokumenUrl: data[i][9],
-        status: data[i][10] || "Diproses",
-        verifikasiOleh: data[i][11],
-        waktuVerifikasi: data[i][12] ? Utilities.formatDate(new Date(data[i][12]), tz, "yyyy-MM-dd'T'HH:mm:ss") : "",
-        keterangan: data[i][13],
-        uploadOleh: data[i][14],
-        waktuUpload: data[i][15] ? Utilities.formatDate(new Date(data[i][15]), tz, "yyyy-MM-dd'T'HH:mm:ss") : "",
-        editOleh: data[i][16],
-        waktuEdit: data[i][17] ? Utilities.formatDate(new Date(data[i][17]), tz, "yyyy-MM-dd'T'HH:mm:ss") : ""
+        noSktpg: data[i][9],
+        bulanTpg: data[i][10],
+        nilaiSalur: data[i][11],
+        dokumenUrl: data[i][12],
+        status: data[i][13] || "Diproses",
+        verifikasiOleh: data[i][14],
+        waktuVerifikasi: data[i][15] ? Utilities.formatDate(new Date(data[i][15]), tz, "yyyy-MM-dd'T'HH:mm:ss") : "",
+        keterangan: data[i][16],
+        uploadOleh: data[i][17],
+        waktuUpload: data[i][18] ? Utilities.formatDate(new Date(data[i][18]), tz, "yyyy-MM-dd'T'HH:mm:ss") : "",
+        editOleh: data[i][19],
+        waktuEdit: data[i][20] ? Utilities.formatDate(new Date(data[i][20]), tz, "yyyy-MM-dd'T'HH:mm:ss") : ""
       });
     }
     
@@ -191,6 +194,9 @@ function tpg_savePerbaikan(formData) {
       formData.jenisSK,
       tmtDate,
       formData.gajiPokok,
+      formData.noSktpg,
+      formData.bulanTpg,
+      formData.nilaiSalur,
       docUrl,
       "Diproses",
       "", "", "", // verifikasi
@@ -208,6 +214,9 @@ function tpg_savePerbaikan(formData) {
       jenisSK: formData.jenisSK,
       tmt: formData.tmt || "",
       gajiPokok: formData.gajiPokok,
+      noSktpg: formData.noSktpg,
+      bulanTpg: formData.bulanTpg,
+      nilaiSalur: formData.nilaiSalur,
       dokumenUrl: docUrl,
       status: "Diproses",
       verifikasiOleh: "",
@@ -249,7 +258,7 @@ function tpg_updatePerbaikan(formData) {
     
     if (rowIndex === -1) return { status: 'error', message: 'Data tidak ditemukan.' };
     
-    var docUrl = data[rowIndex - 1][9];
+    var docUrl = data[rowIndex - 1][12];
     if (formData.ubahDokumen && formData.fileData) {
       var folder = DriveApp.getFolderById(FOLDER_CONFIG[TPG_PG_CONFIG.FOLDER_KEY]);
       var blob = Utilities.newBlob(Utilities.base64Decode(formData.fileData), formData.fileMimeType, formData.fileName);
@@ -268,12 +277,15 @@ function tpg_updatePerbaikan(formData) {
     sheet.getRange(rowIndex, 7).setValue(formData.jenisSK);
     sheet.getRange(rowIndex, 8).setValue(tmtDate);
     sheet.getRange(rowIndex, 9).setValue(formData.gajiPokok);
-    sheet.getRange(rowIndex, 10).setValue(docUrl);
+    sheet.getRange(rowIndex, 10).setValue(formData.noSktpg);
+    sheet.getRange(rowIndex, 11).setValue(formData.bulanTpg);
+    sheet.getRange(rowIndex, 12).setValue(formData.nilaiSalur);
+    sheet.getRange(rowIndex, 13).setValue(docUrl);
     
     // Status kembali ke diproses jika diedit user
-    sheet.getRange(rowIndex, 11).setValue("Diproses");
-    sheet.getRange(rowIndex, 17).setValue(currentUser); // edit oleh
-    sheet.getRange(rowIndex, 18).setValue(now); // waktu edit
+    sheet.getRange(rowIndex, 14).setValue("Diproses");
+    sheet.getRange(rowIndex, 20).setValue(currentUser); // edit oleh
+    sheet.getRange(rowIndex, 21).setValue(now); // waktu edit
     
     var tz = Session.getScriptTimeZone();
     var updatedData = {
@@ -286,13 +298,16 @@ function tpg_updatePerbaikan(formData) {
       jenisSK: formData.jenisSK,
       tmt: formData.tmt || "",
       gajiPokok: formData.gajiPokok,
+      noSktpg: formData.noSktpg,
+      bulanTpg: formData.bulanTpg,
+      nilaiSalur: formData.nilaiSalur,
       dokumenUrl: docUrl,
       status: "Diproses",
-      verifikasiOleh: data[rowIndex - 1][10],
-      waktuVerifikasi: data[rowIndex - 1][11] ? Utilities.formatDate(new Date(data[rowIndex - 1][11]), tz, "yyyy-MM-dd'T'HH:mm:ss") : "",
-      keterangan: data[rowIndex - 1][12],
-      uploadOleh: data[rowIndex - 1][13],
-      waktuUpload: data[rowIndex - 1][14] ? Utilities.formatDate(new Date(data[rowIndex - 1][14]), tz, "yyyy-MM-dd'T'HH:mm:ss") : "",
+      verifikasiOleh: data[rowIndex - 1][14],
+      waktuVerifikasi: data[rowIndex - 1][15] ? Utilities.formatDate(new Date(data[rowIndex - 1][15]), tz, "yyyy-MM-dd'T'HH:mm:ss") : "",
+      keterangan: data[rowIndex - 1][16],
+      uploadOleh: data[rowIndex - 1][17],
+      waktuUpload: data[rowIndex - 1][18] ? Utilities.formatDate(new Date(data[rowIndex - 1][18]), tz, "yyyy-MM-dd'T'HH:mm:ss") : "",
       editOleh: currentUser,
       waktuEdit: now ? Utilities.formatDate(now, tz, "yyyy-MM-dd'T'HH:mm:ss") : ""
     };
