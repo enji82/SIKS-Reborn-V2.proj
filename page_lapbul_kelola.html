@@ -2363,6 +2363,9 @@
         b.prop('disabled', true).html('<i class="fas fa-circle-notch fa-spin mr-2"></i>Mengupdate...');
 
         var prosesKirim = function (fileData) {
+            // Hapus atribut disabled/readonly sementara agar PASTI terserialisasi
+            $('#lapbulkelola_formSD input').removeAttr('disabled').removeAttr('readonly');
+
             var d = {}; 
             for (var k=1; k<=6; k++) {
                 var sufs = ['1','2','3','a','b','c'];
@@ -2378,14 +2381,6 @@
                 d[`k${k}c_l`] = ""; d[`k${k}c_p`] = "";
             }
             $('#lapbulkelola_formSD').serializeArray().forEach(i => d[i.name] = i.value);
-            
-            // Antisipasi jika ada browser/versi jQuery yang tidak men-serialize readonly input
-            $('#lapbulkelola_formSD input[readonly]').each(function() {
-                if (this.name && d[this.name] === "") {
-                    d[this.name] = $(this).val();
-                }
-            });
-            
 
             // Backward compatibility: map kX_1 to old keys without _1 for legacy spreadsheets
             for (var k=1; k<=6; k++) {
@@ -2415,6 +2410,8 @@
             
             d.user_login = LAPBULKELOLA_USER_AKTIF;
             d.EDIT_ROW_ID = LAPBULKELOLA_EDIT_ROW_ID;
+            
+            console.log("PAYLOAD KE SERVER (Copy-Paste ini jika error):", JSON.stringify(d));
 
             google.script.run.withSuccessHandler(function (res) {
                 b.prop('disabled', false).html(t);
@@ -2440,15 +2437,11 @@
                             c.L_jumlah = totL; 
                             c.P_jumlah = totP;
                             
-                            var totPTK_L = 0, totPTK_P = 0;
+                            var totPTK = 0;
                             $('#lapbulkelola_formSD .val-ptk').each(function() {
-                                var n = $(this).attr('name');
-                                var val = parseInt($(this).val()) || 0;
-                                if (n && n.endsWith('_l')) totPTK_L += val;
-                                if (n && n.endsWith('_p')) totPTK_P += val;
+                                totPTK += parseInt($(this).val()) || 0;
                             });
-                            c.ptk_l = totPTK_L;
-                            c.ptk_p = totPTK_P;
+                            c.ptk = totPTK; // Di dashboard yang dipakai adalah c.ptk
                         }
                     } else { Lapbul_ClearGlobalCache(); LAPBULKELOLA_CACHE_DATA = []; }
                     lapbulkelola_prosesCariData(false);
@@ -2466,7 +2459,7 @@
                 r.onload = function (ev) { prosesKirim({ data: ev.target.result.split(',')[1], mimeType: f.files[0].type, name: f.files[0].name }); };
                 r.readAsDataURL(f.files[0]);
             }, 100);
-        } else { prosesKirim(null); }
+        } else { setTimeout(function() { prosesKirim(null); }, 50); }
     }
 
     // ---------------- PAUD LOGIC ----------------
