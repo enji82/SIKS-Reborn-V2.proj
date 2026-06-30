@@ -2393,6 +2393,7 @@
                 oldKeys.forEach(function(suffix) {
                     if (d[`k${k}_1_${suffix}`] !== undefined && d[`k${k}_1_${suffix}`] !== "") {
                         d[`k${k}_${suffix}`] = d[`k${k}_1_${suffix}`];
+                        d[`kelas_${k}_${suffix}`] = d[`k${k}_1_${suffix}`]; // Support custom headers
                     }
                 });
             }
@@ -2864,7 +2865,7 @@
         $.each(data, function (rawKey, value) {
             var cleanKey = String(rawKey).trim().toLowerCase().replace(/\s+/g, '_');
             
-            var legacyMatch = cleanKey.match(/^k([1-6])_(awal_l|awal_p|masuk_l|masuk_p|keluar_l|keluar_p)$/);
+            var legacyMatch = cleanKey.match(/^(?:kelas|k)_?([1-6])_(awal_l|awal_p|masuk_l|masuk_p|keluar_l|keluar_p)$/);
             if (legacyMatch) {
                 var modernKey = `k${legacyMatch[1]}_1_${legacyMatch[2]}`;
                 var valModern = cariData([modernKey, modernKey.replace(/_/g, " ")]);
@@ -2886,12 +2887,21 @@
                 else if (suffixRom === 'c') rombelNum = 4;
                 
                 var modernKeyExtreme = `k${kelas}_${rombelNum}_awal_${gender}`;
-                var legacyKey = `k${kelas}_awal_${gender}`;
                 
-                var valModern = cariData([modernKeyExtreme, modernKeyExtreme.replace(/_/g, " ")]);
-                var valLegacy = cariData([legacyKey, legacyKey.replace(/_/g, " ")]);
+                // Cari apakah ada sembarang kolom Awal untuk kelas ini di spreadsheet
+                // Misalnya "K1 Awal L", "Kelas 1 Awal L", dsb.
+                var hasAwalColumn = false;
+                for (var key in data) {
+                    var k = String(key).toLowerCase();
+                    if (k.includes('awal') && (k.includes('k' + kelas) || k.includes('kelas ' + kelas))) {
+                        hasAwalColumn = true;
+                        break;
+                    }
+                }
                 
-                if (valModern === "" && valLegacy === "") {
+                // HANYA jika TIDAK ADA kolom Awal sama sekali (Very Legacy Spreadsheet), 
+                // barulah Akhir dipetakan ke Awal.
+                if (!hasAwalColumn) {
                     cleanKey = modernKeyExtreme;
                 }
             }
