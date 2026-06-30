@@ -1924,19 +1924,23 @@
                         var suf = (n === 1) ? '' : (r === 0 ? 'a' : (r === 1 ? 'b' : 'c'));
                         var rombelStr = (n === 1) ? '1' : (r + 1);
                         
-                        var keyL = `k${k}${suf}_l`; var keyP = `k${k}${suf}_p`;
-                        var keyAL = `k${k}a_l`; var keyAP = `k${k}a_p`;
-                        
-                        var keywordsL = [`k${k}${suf} l`, `kelas ${k}${suf} l`];
-                        var keywordsP = [`k${k}${suf} p`, `kelas ${k}${suf} p`];
-                        if (r === 0) {
-                            keywordsL.push(`k${k}a l`, `kelas ${k}a l`, `kelas ${k} l`, `kls ${k} l`);
-                            keywordsP.push(`k${k}a p`, `kelas ${k}a p`, `kelas ${k} p`, `kls ${k} p`);
-                        }
-                        
+                        var rombelKeyword = (suf === '') ? '1' : suf; 
                         var isJuli = String($('#lapbulkelola_sel_bulan').val()).toLowerCase() === 'juli';
-                        var valL = !isJuli ? (d[keyL] || d[keyAL] || cariDataFetch(keywordsL) || "") : "";
-                        var valP = !isJuli ? (d[keyP] || d[keyAP] || cariDataFetch(keywordsP) || "") : "";
+                        
+                        var getAwal = function(jk) {
+                            var kw = [`k${k} ${rombelKeyword} awal ${jk}`, `k${k}${rombelKeyword} awal ${jk}`];
+                            if (rombelKeyword === 'a') kw.push(`k${k} 1 awal ${jk}`);
+                            if (rombelKeyword === '1') kw.push(`k${k} a awal ${jk}`);
+                            if (rombelKeyword === 'b') kw.push(`k${k} 2 awal ${jk}`);
+                            if (rombelKeyword === '2') kw.push(`k${k} b awal ${jk}`);
+                            if (rombelKeyword === 'c') kw.push(`k${k} 3 awal ${jk}`);
+                            if (rombelKeyword === '3') kw.push(`k${k} c awal ${jk}`);
+                            var matchStr = cariDataFetch(kw);
+                            return parseInt(matchStr) || 0;
+                        };
+                        
+                        var valL = !isJuli ? getAwal('l') : "";
+                        var valP = !isJuli ? getAwal('p') : "";
                         
                         $(`.val-awal[data-kelas="${k}"][data-rombel="${rombelStr}"][data-tipe="al"]`).val(valL == 0 ? "" : valL);
                         $(`.val-awal[data-kelas="${k}"][data-rombel="${rombelStr}"][data-tipe="ap"]`).val(valP == 0 ? "" : valP);
@@ -2060,12 +2064,17 @@
                         }
                     }
                     
-                    for (var i = 0; i < updates.length; i++) {
-                        var u = updates[i];
-                        $(`.val-awal[data-kelas="${u.k}"][data-rombel="${u.rombelStr}"][data-tipe="al"]`).val(u.valL == 0 ? "" : u.valL);
-                        $(`.val-awal[data-kelas="${u.k}"][data-rombel="${u.rombelStr}"][data-tipe="ap"]`).val(u.valP == 0 ? "" : u.valP);
+                    if (totalPrevAkhir > 0) {
+                        for (var i = 0; i < updates.length; i++) {
+                            var u = updates[i];
+                            $(`.val-awal[data-kelas="${u.k}"][data-rombel="${u.rombelStr}"][data-tipe="al"]`).val(u.valL == 0 ? "" : u.valL);
+                            $(`.val-awal[data-kelas="${u.k}"][data-rombel="${u.rombelStr}"][data-tipe="ap"]`).val(u.valP == 0 ? "" : u.valP);
+                        }
+                        if (!isAuto) Sultan.notif.sukses("Data Awal Bulan berhasil disinkronisasi dengan data Akhir Bulan pada " + (res.prevMonthStr || "sebelumnya"));
+                    } else {
+                        // Jika bulan sebelumnya kosong (0), buka kunci agar user bisa input manual (penting saat migrasi sistem)
+                        $('.val-awal').removeAttr('readonly').removeAttr('tabindex');
                     }
-                    if (!isAuto) Sultan.notif.sukses("Data Awal Bulan berhasil disinkronisasi dengan data Akhir Bulan pada " + (res.prevMonthStr || "sebelumnya"));
                     
                     lapbulkelola_calcTableMurid();
                 } else {
