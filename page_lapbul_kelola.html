@@ -1900,11 +1900,10 @@
                 var isJuli = String($('#lapbulkelola_sel_bulan').val()).toLowerCase() === 'juli';
                 if (isJuli) {
                     $('#lapbulkelola_txtLaporanTerakhir').html('<b>TAHUN AJARAN BARU</b>: Silakan input data Awal Bulan secara manual. Semua kolom dibuka.');
-                    $('#lapbulkelola_containerTarikAwalBulan').addClass('d-none');
                 } else {
                     $('#lapbulkelola_txtLaporanTerakhir').text('Laporan terakhir yang Anda unggah adalah bulan ' + blnStr + ' tahun ' + thnStr);
-                    $('#lapbulkelola_containerTarikAwalBulan').removeClass('d-none');
                 }
+                $('#lapbulkelola_containerTarikAwalBulan').removeClass('d-flex').addClass('d-none');
                 
                 for(var k=1; k<=6; k++) {
                     var n = parseInt(d['rombel_'+k] || cariDataFetch([`rombel ${k}`, `rombel_${k}`]) || 0);
@@ -2023,18 +2022,24 @@
                             var suf = (n === 1) ? '' : (r === 0 ? 'a' : (r === 1 ? 'b' : 'c'));
                             var rombelStr = (n === 1) ? '1' : (r + 1);
                             
-                            var keyL = `k${k}${suf}_l`; var keyP = `k${k}${suf}_p`;
-                            var keyAL = `k${k}a_l`; var keyAP = `k${k}a_p`;
+                            var rombelKeyword = (suf === '') ? '1' : suf; 
                             
-                            var keywordsL = [`k${k}${suf} l`, `kelas ${k}${suf} l`];
-                            var keywordsP = [`k${k}${suf} p`, `kelas ${k}${suf} p`];
-                            if (r === 0) {
-                                keywordsL.push(`k${k}a l`, `kelas ${k}a l`, `kelas ${k} l`, `kls ${k} l`);
-                                keywordsP.push(`k${k}a p`, `kelas ${k}a p`, `kelas ${k} p`, `kls ${k} p`);
-                            }
+                            var getVal = function(tipe, jk) {
+                                var kw = [`k${k} ${rombelKeyword} ${tipe} ${jk}`, `k${k}${rombelKeyword} ${tipe} ${jk}`];
+                                if (rombelKeyword === 'a') kw.push(`k${k} 1 ${tipe} ${jk}`);
+                                if (rombelKeyword === '1') kw.push(`k${k} a ${tipe} ${jk}`);
+                                return parseInt(cariDataFetch(kw)) || 0;
+                            };
                             
-                            var valL = d[keyL] || d[keyAL] || cariDataFetch(keywordsL) || "";
-                            var valP = d[keyP] || d[keyAP] || cariDataFetch(keywordsP) || "";
+                            var prevAwalL = getVal('awal', 'l');
+                            var prevMasukL = getVal('masuk', 'l');
+                            var prevKeluarL = getVal('keluar', 'l');
+                            var valL = Math.max(0, prevAwalL + prevMasukL - prevKeluarL);
+
+                            var prevAwalP = getVal('awal', 'p');
+                            var prevMasukP = getVal('masuk', 'p');
+                            var prevKeluarP = getVal('keluar', 'p');
+                            var valP = Math.max(0, prevAwalP + prevMasukP - prevKeluarP);
                             
                             $(`.val-awal[data-kelas="${k}"][data-rombel="${rombelStr}"][data-tipe="al"]`).val(valL == 0 ? "" : valL);
                             $(`.val-awal[data-kelas="${k}"][data-rombel="${rombelStr}"][data-tipe="ap"]`).val(valP == 0 ? "" : valP);
@@ -2755,12 +2760,12 @@
             if (source === 'SD') {
                 lapbulkelola_populateFormSD(data);
                 
-                // Aktifkan area info & tombol Sinkronisasi untuk mode Edit SD
+                // Aktifkan area info untuk mode Edit SD (Tombol Sinkron dihapus karena full auto-sync)
                 var bln = findValue(["bulan"]);
                 var thn = findValue(["tahun"]);
                 $('#lapbulkelola_infoAwalBulan').removeClass('d-none');
                 $('#lapbulkelola_txtLaporanTerakhir').html(`Anda sedang mengedit Laporan: <span class="text-maroon">${bln} ${thn}</span>`);
-                $('#lapbulkelola_containerTarikAwalBulan').removeClass('d-none').addClass('d-flex');
+                $('#lapbulkelola_containerTarikAwalBulan').removeClass('d-flex').addClass('d-none');
 
                 // Auto-sync secara silent
                 setTimeout(function() {
