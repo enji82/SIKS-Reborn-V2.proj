@@ -1982,26 +1982,25 @@
 
     $(document).off('click', '#lapbulkelola_btnTarikAwalBulan').on('click', '#lapbulkelola_btnTarikAwalBulan', lapbulkelola_syncPreviousMonth);
 
-    function lapbulkelola_syncPreviousMonth() {
+    function lapbulkelola_syncPreviousMonth(eventOrAuto) {
+        var isAuto = (eventOrAuto === true);
         var npsn = $('#lapbulkelola_val_npsn').val();
         var bln = $('#lapbulkelola_sel_bulan').val();
         var thn = $('#lapbulkelola_sel_tahun').val();
         
         if (!npsn || !bln || !thn) return;
+        if (String(bln).toLowerCase() === 'juli') return; // Jangan auto-sync jika Juli
         
-        Sultan.konfirmasi({
-            judul: 'Konfirmasi Sinkronisasi',
-            teks: 'Data Awal Bulan saat ini akan ditimpa dengan data Akhir Bulan dari laporan sebelumnya. Lanjutkan?',
-            btnYa: 'SINKRONKAN'
-        }, function () {
+        var runSync = function() {
             var btn = $('#lapbulkelola_btnTarikAwalBulan');
             var txt = btn.html();
-            btn.prop('disabled', true).html('<i class="fas fa-circle-notch fa-spin"></i>');
-            Sultan.notif.loading("Menarik data bulan sebelumnya...");
+            if (!isAuto) {
+                btn.prop('disabled', true).html('<i class="fas fa-circle-notch fa-spin"></i>');
+                Sultan.notif.loading("Menarik data bulan sebelumnya...");
+            }
             
             google.script.run.withSuccessHandler(function (res) {
-                btn.prop('disabled', false).html(txt);
-                Sultan.notif.tutup();
+                if (!isAuto) { btn.prop('disabled', false).html(txt); Sultan.notif.tutup(); }
                 if (res && res.status === 'success' && res.data) {
                     var d = res.data;
                     
@@ -2042,15 +2041,24 @@
                         }
                     }
                     lapbulkelola_calcTableMurid();
-                    Sultan.notif.sukses("Data Awal Bulan berhasil disinkronisasi dengan bulan " + (res.prevMonthStr || "sebelumnya") + ".");
+                    if (!isAuto) Sultan.notif.sukses("Data Awal Bulan berhasil disinkronisasi dengan bulan " + (res.prevMonthStr || "sebelumnya") + ".");
                 } else {
-                    Sultan.notif.info(res.message || "Tidak ada data pada bulan sebelumnya.");
+                    if (!isAuto) Sultan.notif.info(res.message || "Tidak ada data pada bulan sebelumnya.");
                 }
             }).withFailureHandler(function (err) {
-                btn.prop('disabled', false).html(txt);
-                Sultan.notif.gagal("Gagal mengambil data: " + err.message);
+                if (!isAuto) { btn.prop('disabled', false).html(txt); Sultan.notif.gagal("Gagal mengambil data: " + err.message); }
             }).lapbul_getPreviousMonthDataSD(npsn, bln, thn);
-        });
+        };
+
+        if (isAuto) {
+            runSync();
+        } else {
+            Sultan.konfirmasi({
+                judul: 'Konfirmasi Sinkronisasi',
+                teks: 'Data Awal Bulan saat ini akan ditimpa dengan data Akhir Bulan dari laporan sebelumnya. Lanjutkan?',
+                btnYa: 'SINKRONKAN'
+            }, runSync);
+        }
     }
 
     function lapbulkelola_validateMuridAndNext() {
@@ -2753,6 +2761,11 @@
                 $('#lapbulkelola_infoAwalBulan').removeClass('d-none');
                 $('#lapbulkelola_txtLaporanTerakhir').html(`Anda sedang mengedit Laporan: <span class="text-maroon">${bln} ${thn}</span>`);
                 $('#lapbulkelola_containerTarikAwalBulan').removeClass('d-none').addClass('d-flex');
+
+                // Auto-sync secara silent
+                setTimeout(function() {
+                    lapbulkelola_syncPreviousMonth(true);
+                }, 800);
             } else {
                 try {
                     lapbulkelola_populateFormPAUD(data);
