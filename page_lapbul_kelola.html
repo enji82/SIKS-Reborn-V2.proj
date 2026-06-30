@@ -2016,6 +2016,9 @@
                         return "";
                     };
                     
+                    var updates = [];
+                    var totalPrevAkhir = 0;
+                    
                     for(var k=1; k<=6; k++) {
                         var n = parseInt($(`.sel-rombel-new[data-kelas="${k}"]`).val());
                         for (var r = 0; r < n; r++) {
@@ -2045,12 +2048,23 @@
                             var prevKeluarP = getVal('keluar', 'p');
                             var valP = Math.max(0, prevAwalP + prevMasukP - prevKeluarP);
                             
-                            $(`.val-awal[data-kelas="${k}"][data-rombel="${rombelStr}"][data-tipe="al"]`).val(valL == 0 ? "" : valL);
-                            $(`.val-awal[data-kelas="${k}"][data-rombel="${rombelStr}"][data-tipe="ap"]`).val(valP == 0 ? "" : valP);
+                            totalPrevAkhir += valL + valP;
+                            updates.push({ k: k, rombelStr: rombelStr, valL: valL, valP: valP });
                         }
                     }
+                    
+                    if (totalPrevAkhir > 0) {
+                        for (var i = 0; i < updates.length; i++) {
+                            var u = updates[i];
+                            $(`.val-awal[data-kelas="${u.k}"][data-rombel="${u.rombelStr}"][data-tipe="al"]`).val(u.valL == 0 ? "" : u.valL);
+                            $(`.val-awal[data-kelas="${u.k}"][data-rombel="${u.rombelStr}"][data-tipe="ap"]`).val(u.valP == 0 ? "" : u.valP);
+                        }
+                        if (!isAuto) Sultan.notif.sukses("Data Awal Bulan berhasil disinkronisasi dengan data Akhir Bulan pada " + (res.prevMonthStr || "sebelumnya"));
+                    } else {
+                        if (!isAuto) Sultan.notif.info("Data bulan sebelumnya (" + (res.prevMonthStr || "sebelumnya") + ") ternyata kosong. Sinkronisasi dibatalkan agar tidak menghapus data Anda saat ini.");
+                    }
+                    
                     lapbulkelola_calcTableMurid();
-                    if (!isAuto) Sultan.notif.sukses("Data Awal Bulan berhasil disinkronisasi dengan bulan " + (res.prevMonthStr || "sebelumnya") + ".");
                 } else {
                     if (!isAuto) Sultan.notif.info(res.message || "Tidak ada data pada bulan sebelumnya.");
                 }
