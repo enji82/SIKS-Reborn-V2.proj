@@ -1588,6 +1588,13 @@
                 var readOnlyAttr = isChanged ? '' : 'readonly tabindex="-1"';
                 var bgClass = isChanged ? 'bg-warning text-dark' : '';
                 
+                // Jika rombel berubah (isChanged), hapus nilai Awal Bulan dari savedValues agar input menjadi kosong
+                if (isChanged && !isJuli) {
+                    delete savedValues[`${nmPrefix}_awal_l`];
+                    delete savedValues[`${nmPrefix}_awal_p`];
+                }
+
+                
                 html += `<tr class="row-murid">
                     ${r === 0 ? `<td rowspan="${n}" class="align-middle font-weight-bold">${k}</td>` : ''}
                     <td class="align-middle font-weight-bold">${rombels[r]}</td>
@@ -1903,7 +1910,7 @@
                 } else {
                     $('#lapbulkelola_txtLaporanTerakhir').text('Laporan terakhir yang Anda unggah adalah bulan ' + blnStr + ' tahun ' + thnStr);
                 }
-                $('#lapbulkelola_containerTarikAwalBulan').removeClass('d-flex').addClass('d-none');
+                $('#lapbulkelola_containerTarikAwalBulan').removeClass('d-none').addClass('d-flex');
                 
                 for(var k=1; k<=6; k++) {
                     var n = parseInt(d['rombel_'+k] || cariDataFetch([`rombel ${k}`, `rombel_${k}`]) || 0);
@@ -1916,10 +1923,37 @@
                     $(`.sel-rombel-new[data-kelas="${k}"]`).val(n || 1).attr('data-awal', n || 1);
                 }
                 lapbulkelola_renderTableMurid();
+                
+                // Kembalikan logika mengisi Awal Bulan dari database
+                var totalAwalTersimpan = 0;
+                for(var k=1; k<=6; k++) {
+                    var sufs = ['1','2','3','a','b','c'];
+                    sufs.forEach(function(s) {
+                        var kwAwalL = [`k${k}_${s}_awal_l`]; var kwAwalP = [`k${k}_${s}_awal_p`];
+                        if (s === '1') { kwAwalL.push(`k${k}_a_awal_l`); kwAwalP.push(`k${k}_a_awal_p`); }
+                        if (s === '2') { kwAwalL.push(`k${k}_b_awal_l`); kwAwalP.push(`k${k}_b_awal_p`); }
+                        if (s === '3') { kwAwalL.push(`k${k}_c_awal_l`); kwAwalP.push(`k${k}_c_awal_p`); }
+                        
+                        var al = parseInt(cariDataFetch(kwAwalL));
+                        var ap = parseInt(cariDataFetch(kwAwalP));
+                        
+                        if (!isNaN(al) && al > 0) totalAwalTersimpan += al;
+                        if (!isNaN(ap) && ap > 0) totalAwalTersimpan += ap;
+                        
+                        var elAl = $(`.val-awal[name="k${k}_${s}_awal_l"]`);
+                        var elAp = $(`.val-awal[name="k${k}_${s}_awal_p"]`);
+                        if(elAl.length) elAl.val(isNaN(al) || al===0 ? "" : al);
+                        if(elAp.length) elAp.val(isNaN(ap) || ap===0 ? "" : ap);
+                    });
+                }
+                
                 lapbulkelola_renderTableAgama();
                 
-                // Kolom Awal Bulan TIDAK diisi dari sini.
-                // Selalu diambil dari Akhir Bulan sebelumnya oleh lapbulkelola_syncPreviousMonth.
+                // Jika total Awal Bulan tersimpan adalah 0 (misalnya data lama), 
+                // maka otomatis trigger sinkronisasi dari bulan sebelumnya
+                if (totalAwalTersimpan === 0) {
+                    setTimeout(function() { lapbulkelola_syncPreviousMonth(true); }, 500);
+                }
 
                 var agamas = [ { prefix: 'islam' }, { prefix: 'kristen' }, { prefix: 'katolik' }, { prefix: 'hindu' }, { prefix: 'buddha' }, { prefix: 'konghucu' } ];
                 for (var a = 0; a < agamas.length; a++) {
@@ -2773,15 +2807,15 @@
             if (source === 'SD') {
                 lapbulkelola_populateFormSD(data);
                 
-                // Aktifkan area info untuk mode Edit SD (Tombol Sinkron dihapus karena full auto-sync)
+                // Aktifkan area info untuk mode Edit SD dan kembalikan tombol Sinkron
                 var bln = findValue(["bulan"]);
                 var thn = findValue(["tahun"]);
                 $('#lapbulkelola_infoAwalBulan').removeClass('d-none');
                 $('#lapbulkelola_txtLaporanTerakhir').html(`Anda sedang mengedit Laporan: <span class="text-maroon">${bln} ${thn}</span>`);
-                $('#lapbulkelola_containerTarikAwalBulan').removeClass('d-flex').addClass('d-none');
+                $('#lapbulkelola_containerTarikAwalBulan').removeClass('d-none').addClass('d-flex');
 
-                // Auto-sync segera (tanpa delay) agar Awal Bulan langsung terisi dari Akhir Bulan sebelumnya
-                lapbulkelola_syncPreviousMonth(true);
+                // Tidak perlu auto-sync di sini lagi karena populateFormSD sudah memuat data asli,
+                // kecuali jika datanya kosong (di-handle oleh populateFormSD).
             } else {
                 try {
                     lapbulkelola_populateFormPAUD(data);
