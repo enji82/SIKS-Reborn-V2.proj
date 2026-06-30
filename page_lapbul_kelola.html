@@ -420,7 +420,7 @@
                         </div>
 
                         <!-- B. JUMLAH MURID -->
-                        <div class="group-box mb-4">
+                        <div class="group-box mb-4" id="lapbulkelola_sectionMurid">
                             <span class="group-title text-maroon font-weight-bold"><i class="fas fa-users mr-2"></i>B. JUMLAH MURID</span>
                             <div class="table-responsive sultan-scroll mt-2">
                                 <table class="table table-sm table-bordered table-matrix small mb-0 text-center" style="min-width: 900px;" id="lapbulkelola_tableMurid">
@@ -1981,10 +1981,15 @@
             if (!isAuto) {
                 btn.prop('disabled', true).html('<i class="fas fa-circle-notch fa-spin"></i>');
                 Sultan.notif.loading("Menarik data bulan sebelumnya...");
+            } else {
+                // Tampilkan loading di kolom Awal Bulan selama auto-sync
+                $('.val-awal').val('').attr('placeholder', '...');
+                $('#lapbulkelola_sectionMurid').css('opacity', '0.5');
             }
             
             google.script.run.withSuccessHandler(function (res) {
                 if (!isAuto) { btn.prop('disabled', false).html(txt); Sultan.notif.tutup(); }
+                else { $('#lapbulkelola_sectionMurid').css('opacity', ''); $('.val-awal').attr('placeholder', ''); }
                 if (res && res.status === 'success' && res.data) {
                     var d = res.data;
                     
@@ -2057,9 +2062,7 @@
                             }
 
                             
-                            console.log(`[SYNC DEBUG] Kelas ${k}${suf} -> AkhirL/NewAwalL: ${valL}`);
-                            
-                            totalPrevAkhir += valL + valP;
+                            totalPrevAkhir += (isNaN(valL) ? 0 : valL) + (isNaN(valP) ? 0 : valP);
                             updates.push({ k: k, rombelStr: rombelStr, valL: valL, valP: valP });
                         }
                     }
@@ -2082,6 +2085,7 @@
                 }
             }).withFailureHandler(function (err) {
                 if (!isAuto) { btn.prop('disabled', false).html(txt); Sultan.notif.gagal("Gagal mengambil data: " + err.message); }
+                else { $('#lapbulkelola_sectionMurid').css('opacity', ''); $('.val-awal').attr('placeholder', ''); }
             }).lapbul_getPreviousMonthDataSD(npsn, bln, thn);
         };
 
