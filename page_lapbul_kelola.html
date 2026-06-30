@@ -2018,20 +2018,28 @@
                                 if (rombelKeyword === 'c') kw.push(`k${k} 3 ${tipe} ${jk}`);
                                 if (rombelKeyword === '3') kw.push(`k${k} c ${tipe} ${jk}`);
                                 var matchStr = cariDataFetch(kw);
-                                return parseInt(matchStr) || 0;
+                                return parseInt(matchStr);
                             };
                             
-                            var prevAwalL = getVal('awal', 'l');
-                            var prevMasukL = getVal('masuk', 'l');
-                            var prevKeluarL = getVal('keluar', 'l');
-                            var valL = Math.max(0, prevAwalL + prevMasukL - prevKeluarL);
-
-                            var prevAwalP = getVal('awal', 'p');
-                            var prevMasukP = getVal('masuk', 'p');
-                            var prevKeluarP = getVal('keluar', 'p');
-                            var valP = Math.max(0, prevAwalP + prevMasukP - prevKeluarP);
+                            // Try to get Akhir directly first (new schema)
+                            var valL = getVal('akhir', 'l');
+                            var valP = getVal('akhir', 'p');
                             
-                            console.log(`[SYNC DEBUG] Kelas ${k}${suf} -> AwalL:${prevAwalL}, MasukL:${prevMasukL}, KeluarL:${prevKeluarL} => AkhirL/NewAwalL: ${valL}`);
+                            // Backward compatibility: If 'akhir' column is missing or empty, calculate it mathematically from Awal+Masuk-Keluar
+                            if (isNaN(valL)) {
+                                var prevAwalL = getVal('awal', 'l') || 0;
+                                var prevMasukL = getVal('masuk', 'l') || 0;
+                                var prevKeluarL = getVal('keluar', 'l') || 0;
+                                valL = Math.max(0, prevAwalL + prevMasukL - prevKeluarL);
+                            }
+                            if (isNaN(valP)) {
+                                var prevAwalP = getVal('awal', 'p') || 0;
+                                var prevMasukP = getVal('masuk', 'p') || 0;
+                                var prevKeluarP = getVal('keluar', 'p') || 0;
+                                valP = Math.max(0, prevAwalP + prevMasukP - prevKeluarP);
+                            }
+                            
+                            console.log(`[SYNC DEBUG] Kelas ${k}${suf} -> AkhirL/NewAwalL: ${valL}`);
                             
                             totalPrevAkhir += valL + valP;
                             updates.push({ k: k, rombelStr: rombelStr, valL: valL, valP: valP });
@@ -2290,6 +2298,7 @@
                     d[`k${k}_${s}_awal_l`] = ""; d[`k${k}_${s}_awal_p`] = "";
                     d[`k${k}_${s}_masuk_l`] = ""; d[`k${k}_${s}_masuk_p`] = "";
                     d[`k${k}_${s}_keluar_l`] = ""; d[`k${k}_${s}_keluar_p`] = "";
+                    d[`k${k}_${s}_akhir_l`] = ""; d[`k${k}_${s}_akhir_p`] = "";
                     d[`k${k}_${s}_absen_s`] = ""; d[`k${k}_${s}_absen_i`] = ""; d[`k${k}_${s}_absen_a`] = "";
                 });
                 d[`k${k}_l`] = ""; d[`k${k}_p`] = "";

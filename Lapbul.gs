@@ -377,9 +377,14 @@ function lapbul_migrasi_header_sd() {
     var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     var headerStr = headers.map(function(h) { return String(h).toLowerCase().trim(); });
     
-    // Check if the first new header already exists
-    if (headerStr.indexOf("k1 1 awal l") > -1) {
-      return "Kolom rincian murid (K1 1 Awal L, dst) sudah ada di spreadsheet.";
+    // Check if Akhir columns exist
+    var needsAkhir = headerStr.indexOf("k1 1 akhir l") === -1;
+    
+    // Check if new Awal/Masuk/Keluar/Absen columns exist
+    var needsAwal = headerStr.indexOf("k1 1 awal l") === -1;
+    
+    if (!needsAwal && !needsAkhir) {
+      return "Kolom rincian murid dan Akhir Bulan sudah lengkap di spreadsheet.";
     }
 
     var newHeaders = [];
@@ -387,12 +392,20 @@ function lapbul_migrasi_header_sd() {
       var sufs = ['1', '2', '3', 'a', 'b', 'c'];
       sufs.forEach(function(s) {
         var prefix = "K" + k + " " + s.toUpperCase();
-        newHeaders.push(prefix + " Awal L", prefix + " Awal P");
-        newHeaders.push(prefix + " Masuk L", prefix + " Masuk P");
-        newHeaders.push(prefix + " Keluar L", prefix + " Keluar P");
-        newHeaders.push(prefix + " Absen S", prefix + " Absen I", prefix + " Absen A");
+        if (needsAwal) {
+          newHeaders.push(prefix + " Awal L", prefix + " Awal P");
+          newHeaders.push(prefix + " Masuk L", prefix + " Masuk P");
+          newHeaders.push(prefix + " Keluar L", prefix + " Keluar P");
+          newHeaders.push(prefix + " Absen S", prefix + " Absen I", prefix + " Absen A");
+        }
+        if (needsAkhir) {
+          newHeaders.push(prefix + " Akhir L", prefix + " Akhir P");
+        }
       });
     }
+    
+    if (newHeaders.length === 0) return "Tidak ada kolom baru yang perlu ditambahkan.";
+
     
     var lastCol = sheet.getLastColumn();
     var maxCol = sheet.getMaxColumns();
