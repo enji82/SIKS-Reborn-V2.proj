@@ -2003,12 +2003,16 @@
                 if (res && res.status === 'success' && res.data) {
                     var d = res.data;
                     
+                    var normalize = function(str) {
+                        return String(str).toLowerCase().replace(/[^a-z0-9]/g, "");
+                    };
                     var cariDataFetch = function (keywords) {
                         if (!Array.isArray(keywords)) keywords = [keywords];
+                        var normKeywords = keywords.map(normalize);
                         for (var key in d) {
-                            var k = String(key).toLowerCase().trim().replace(/_/g, " ");
-                            for (var i = 0; i < keywords.length; i++) {
-                                if (k === keywords[i].toLowerCase() || k.includes(keywords[i].toLowerCase())) {
+                            var k = normalize(key);
+                            for (var i = 0; i < normKeywords.length; i++) {
+                                if (k === normKeywords[i] || k.includes(normKeywords[i])) {
                                     if (d[key] !== "" && d[key] !== null && d[key] !== undefined) return d[key];
                                 }
                             }
@@ -2035,7 +2039,8 @@
                                 if (rombelKeyword === '2') kw.push(`k${k} b ${tipe} ${jk}`);
                                 if (rombelKeyword === 'c') kw.push(`k${k} 3 ${tipe} ${jk}`);
                                 if (rombelKeyword === '3') kw.push(`k${k} c ${tipe} ${jk}`);
-                                return parseInt(cariDataFetch(kw)) || 0;
+                                var matchStr = cariDataFetch(kw);
+                                return parseInt(matchStr) || 0;
                             };
                             
                             var prevAwalL = getVal('awal', 'l');
@@ -2048,21 +2053,19 @@
                             var prevKeluarP = getVal('keluar', 'p');
                             var valP = Math.max(0, prevAwalP + prevMasukP - prevKeluarP);
                             
+                            console.log(`[SYNC DEBUG] Kelas ${k}${suf} -> AwalL:${prevAwalL}, MasukL:${prevMasukL}, KeluarL:${prevKeluarL} => AkhirL/NewAwalL: ${valL}`);
+                            
                             totalPrevAkhir += valL + valP;
                             updates.push({ k: k, rombelStr: rombelStr, valL: valL, valP: valP });
                         }
                     }
                     
-                    if (totalPrevAkhir > 0) {
-                        for (var i = 0; i < updates.length; i++) {
-                            var u = updates[i];
-                            $(`.val-awal[data-kelas="${u.k}"][data-rombel="${u.rombelStr}"][data-tipe="al"]`).val(u.valL == 0 ? "" : u.valL);
-                            $(`.val-awal[data-kelas="${u.k}"][data-rombel="${u.rombelStr}"][data-tipe="ap"]`).val(u.valP == 0 ? "" : u.valP);
-                        }
-                        if (!isAuto) Sultan.notif.sukses("Data Awal Bulan berhasil disinkronisasi dengan data Akhir Bulan pada " + (res.prevMonthStr || "sebelumnya"));
-                    } else {
-                        if (!isAuto) Sultan.notif.info("Data bulan sebelumnya (" + (res.prevMonthStr || "sebelumnya") + ") ternyata kosong. Sinkronisasi dibatalkan agar tidak menghapus data Anda saat ini.");
+                    for (var i = 0; i < updates.length; i++) {
+                        var u = updates[i];
+                        $(`.val-awal[data-kelas="${u.k}"][data-rombel="${u.rombelStr}"][data-tipe="al"]`).val(u.valL == 0 ? "" : u.valL);
+                        $(`.val-awal[data-kelas="${u.k}"][data-rombel="${u.rombelStr}"][data-tipe="ap"]`).val(u.valP == 0 ? "" : u.valP);
                     }
+                    if (!isAuto) Sultan.notif.sukses("Data Awal Bulan berhasil disinkronisasi dengan data Akhir Bulan pada " + (res.prevMonthStr || "sebelumnya"));
                     
                     lapbulkelola_calcTableMurid();
                 } else {
