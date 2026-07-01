@@ -79,8 +79,12 @@
 
                     <div class="ml-auto d-none d-md-block"></div>
 
-                    <button type="button" id="tpg_pg_btnToggleBuka" class="btn font-weight-bold d-none mr-2" style="border-radius: 50px; font-size: 0.85rem; padding: 6px 15px;">
-                        <i class="fas fa-lock-open mr-1"></i> BUKA/TUTUP
+                    <button type="button" id="tpg_pg_btnToggleAdd" class="btn font-weight-bold d-none mr-2" style="border-radius: 50px; font-size: 0.85rem; padding: 6px 15px;">
+                        <i class="fas fa-lock-open mr-1"></i> BUKA TAMBAH
+                    </button>
+
+                    <button type="button" id="tpg_pg_btnToggleEdit" class="btn font-weight-bold d-none mr-2" style="border-radius: 50px; font-size: 0.85rem; padding: 6px 15px;">
+                        <i class="fas fa-lock-open mr-1"></i> BUKA EDIT
                     </button>
 
                     <button type="button" id="tpg_pg_btnTambah" class="sultan-btn-tambah" disabled>
@@ -352,6 +356,8 @@
 
 <script>
     var globalTpgPgData = [];
+    var globalTpgPgIsAddOpen = true;
+    var globalTpgPgIsEditOpen = true;
     var tpgPgTable;
     var tpgPgGuruList = []; // Simpan list guru di frontend agar tidak bolak balik request
     var globalTpgPgIsOpen = true;
@@ -513,7 +519,15 @@
             }
         });
 
-        $('#tpg_pg_btnToggleBuka').click(function () {
+        $('#tpg_pg_btnToggleAdd').click(function () {
+            tpgPg_triggerToggleAccess('add', globalTpgPgIsAddOpen);
+        });
+
+        $('#tpg_pg_btnToggleEdit').click(function () {
+            tpgPg_triggerToggleAccess('edit', globalTpgPgIsEditOpen);
+        });
+
+        function tpgPg_triggerToggleAccess(type, currentStatus) {
             var isAdmin = checkUserRoleIsAdmin();
             if (!isAdmin) return;
             Sultan.notif.loading('Mengubah status akses...');
@@ -529,8 +543,8 @@
                 .withFailureHandler(function(err) {
                     Sultan.notif.gagal(err.message || err);
                 })
-                .tpgPg_toggleOpenStatus(isAdmin, globalTpgPgIsOpen);
-        });
+                .tpgPg_toggleAccess(isAdmin, type, currentStatus);
+        }
     }
 
     function tpgPg_initGuruList(unitKerja) {
@@ -558,20 +572,30 @@
             .withSuccessHandler(function (response) {
                 if (response.status === 'success') {
                     globalTpgPgData = response.data;
-                    if (response.isOpen !== undefined) {
-                        globalTpgPgIsOpen = response.isOpen;
+                    if (response.isAddOpen !== undefined) {
+                        globalTpgPgIsAddOpen = response.isAddOpen;
+                    }
+                    if (response.isEditOpen !== undefined) {
+                        globalTpgPgIsEditOpen = response.isEditOpen;
                     }
 
                     if (isAdmin) {
-                        $('#tpg_pg_btnToggleBuka').removeClass('d-none');
-                        if (globalTpgPgIsOpen) {
-                            $('#tpg_pg_btnToggleBuka').removeClass('btn-outline-danger btn-danger').addClass('btn-outline-success').html('<i class="fas fa-unlock mr-1"></i> AKSES TERBUKA');
+                        $('#tpg_pg_btnToggleAdd').removeClass('d-none');
+                        $('#tpg_pg_btnToggleEdit').removeClass('d-none');
+                        if (globalTpgPgIsAddOpen) {
+                            $('#tpg_pg_btnToggleAdd').removeClass('btn-outline-danger btn-danger').addClass('btn-outline-success').html('<i class="fas fa-unlock mr-1"></i> TAMBAH DIBUKA');
                         } else {
-                            $('#tpg_pg_btnToggleBuka').removeClass('btn-outline-success btn-success').addClass('btn-outline-danger').html('<i class="fas fa-lock mr-1"></i> AKSES DITUTUP');
+                            $('#tpg_pg_btnToggleAdd').removeClass('btn-outline-success btn-success').addClass('btn-outline-danger').html('<i class="fas fa-lock mr-1"></i> TAMBAH DITUTUP');
+                        }
+
+                        if (globalTpgPgIsEditOpen) {
+                            $('#tpg_pg_btnToggleEdit').removeClass('btn-outline-danger btn-danger').addClass('btn-outline-success').html('<i class="fas fa-unlock mr-1"></i> EDIT DIBUKA');
+                        } else {
+                            $('#tpg_pg_btnToggleEdit').removeClass('btn-outline-success btn-success').addClass('btn-outline-danger').html('<i class="fas fa-lock mr-1"></i> EDIT DITUTUP');
                         }
                     }
 
-                    if (globalTpgPgIsOpen) {
+                    if (globalTpgPgIsAddOpen) {
                         $('#tpg_pg_btnTambah').prop('disabled', false).html('<i class="fas fa-plus"></i> TAMBAH DATA').removeClass('btn-secondary').addClass('sultan-btn-tambah');
                     } else {
                         $('#tpg_pg_btnTambah').prop('disabled', true).html('<i class="fas fa-lock"></i> DITUTUP').removeClass('sultan-btn-tambah').addClass('btn btn-secondary font-weight-bold');
@@ -643,9 +667,10 @@
         globalTpgPgData.forEach(function (row) {
             let actionHtml = '';
             let isApproved = row.status === 'Disetujui';
-            let disAttr = isApproved ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : '';
-            let btnEdit = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning tpg_pg_btnEdit" data-id="' + row.id + '" title="Edit" ' + disAttr + '><i class="fas fa-pencil-alt"></i></button>';
-            let btnDelete = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon tpg_pg_btnHapus" data-id="' + row.id + '" title="Hapus" ' + disAttr + '><i class="fas fa-trash-alt"></i></button>';
+            let disAttrEdit = (isApproved || !globalTpgPgIsEditOpen && !isAdmin) ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : '';
+            let disAttrDelete = isApproved ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : '';
+            let btnEdit = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning tpg_pg_btnEdit" data-id="' + row.id + '" title="Edit" ' + disAttrEdit + '><i class="fas fa-pencil-alt"></i></button>';
+            let btnDelete = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon tpg_pg_btnHapus" data-id="' + row.id + '" title="Hapus" ' + disAttrDelete + '><i class="fas fa-trash-alt"></i></button>';
 
             let btnVerifikasiIcon = '';
             if (isAdmin) {

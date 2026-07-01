@@ -112,26 +112,33 @@ function tpg_getPerbaikanData(unitKerja, isAdmin) {
     }
     
     result.reverse();
-    var isOpen = true;
+    var isAddOpen = true;
+    var isEditOpen = true;
     try {
       var props = PropertiesService.getScriptProperties();
-      var status = props.getProperty('TPG_PG_IS_OPEN');
-      isOpen = (status === null ? true : (status === 'true'));
+      var addStatus = props.getProperty('TPG_PG_IS_ADD_OPEN');
+      var editStatus = props.getProperty('TPG_PG_IS_EDIT_OPEN');
+      isAddOpen = (addStatus === null ? true : (addStatus === 'true'));
+      isEditOpen = (editStatus === null ? true : (editStatus === 'true'));
     } catch(e) {}
 
-    return { status: 'success', data: result, isOpen: isOpen };
+    return { status: 'success', data: result, isAddOpen: isAddOpen, isEditOpen: isEditOpen };
   } catch (e) {
     return { status: 'error', message: e.message };
   }
 }
 
-function tpgPg_toggleOpenStatus(isAdmin, currentStatus) {
+function tpgPg_toggleAccess(isAdmin, type, currentStatus) {
   if (!isAdmin) return { status: 'error', message: 'Akses ditolak.' };
   try {
     var props = PropertiesService.getScriptProperties();
     var newStatus = !currentStatus;
-    props.setProperty('TPG_PG_IS_OPEN', newStatus.toString());
-    return { status: 'success', isOpen: newStatus };
+    if (type === 'add') {
+      props.setProperty('TPG_PG_IS_ADD_OPEN', newStatus.toString());
+    } else if (type === 'edit') {
+      props.setProperty('TPG_PG_IS_EDIT_OPEN', newStatus.toString());
+    }
+    return { status: 'success', newStatus: newStatus, type: type };
   } catch (e) {
     return { status: 'error', message: e.message };
   }
@@ -144,9 +151,9 @@ function tpg_savePerbaikan(formData) {
     lock.waitLock(15000);
     
     var props = PropertiesService.getScriptProperties();
-    var status = props.getProperty('TPG_PG_IS_OPEN');
-    var isOpen = (status === null ? true : (status === 'true'));
-    if (!isOpen) {
+    var status = props.getProperty('TPG_PG_IS_ADD_OPEN');
+    var isAddOpen = (status === null ? true : (status === 'true'));
+    if (!isAddOpen) {
        return { status: 'error', message: 'Penambahan data saat ini sedang ditutup oleh Admin.' };
     }
 
@@ -245,6 +252,13 @@ function tpg_updatePerbaikan(formData) {
     var currentUser = formData.userLogin || "Unknown";
     var now = new Date();
     
+    var props = PropertiesService.getScriptProperties();
+    var editStatus = props.getProperty('TPG_PG_IS_EDIT_OPEN');
+    var isEditOpen = (editStatus === null ? true : (editStatus === 'true'));
+    if (!isEditOpen) {
+       return { status: 'error', message: 'Perubahan data saat ini sedang ditutup oleh Admin.' };
+    }
+
     var sheet = tpgPg_ensureSheet();
     var data = sheet.getDataRange().getValues();
     var rowIndex = -1;
