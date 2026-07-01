@@ -1226,8 +1226,8 @@
                         globalTpgPgData[idx].keterangan = response.data.keterangan;
                         globalTpgPgData[idx].verifikasiOleh = response.data.verifikasiOleh;
                         globalTpgPgData[idx].waktuVerifikasi = response.data.waktuVerifikasi;
+                        tpgPg_updateRowInTable(globalTpgPgData[idx]);
                     }
-                    tpgPg_renderTable();
                 } else {
                     Sultan.notif.crud.gagal(response.message);
                 }
@@ -1239,6 +1239,38 @@
             .tpg_verifikasiPerbaikan(id, st, ket, userLogin);
     }
 
+
+    function tpgPg_updateRowInTable(row) {
+        // Find the row in the DataTable by the verifikasi button's data-id
+        var isAdmin = ($('#tpg_pg_filterUnit').prop('disabled') === false);
+        var $btn = $('.tpg_pg_btnVerifikasi[data-id="' + row.id + '"]');
+        if (!$btn.length || !tpgPgTable) return;
+
+        var $tr = $btn.closest('tr');
+
+        // Update status badge (column index 1)
+        var badgeStatus = tpgPg_buildBadgeStatus(row.status, row.keterangan);
+        $tr.find('td').eq(1).html(badgeStatus);
+
+        // Update action button icon (column index 0)
+        var btnVerifikasiIcon = '';
+        if (isAdmin) {
+            if (row.status === 'Disetujui') {
+                btnVerifikasiIcon = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-verif tpg_pg_btnVerifikasi" data-id="' + row.id + '" title="Lihat"><i class="fas fa-check-circle"></i></button>';
+            } else if (row.status === 'Revisi' || row.status === 'Ditolak') {
+                btnVerifikasiIcon = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning tpg_pg_btnVerifikasi" data-id="' + row.id + '" title="Lihat"><i class="fas fa-exclamation-triangle"></i></button>';
+            } else {
+                btnVerifikasiIcon = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-verif tpg_pg_btnVerifikasi" data-id="' + row.id + '" title="Verifikasi"><i class="fas fa-clipboard-check"></i></button>';
+            }
+        }
+        var $actionCell = $tr.find('td').eq(0);
+        $actionCell.find('.tpg_pg_btnVerifikasi').replaceWith(btnVerifikasiIcon);
+
+        // Update meta verifikasi (last column)
+        var metaVerif = '<div class="sultan-table-secondary"><span class="font-weight-bold text-dark">' + (row.waktuVerifikasi ? formatWaktuIndo(row.waktuVerifikasi) : '-') + '</span><span>' + (row.verifikasiOleh || '-') + '</span></div>';
+        var totalCols = $tr.find('td').length;
+        $tr.find('td').eq(totalCols - 1).html(metaVerif);
+    }
 
     // Jalankan inisialisasi secara langsung
     tpgPg_init();
