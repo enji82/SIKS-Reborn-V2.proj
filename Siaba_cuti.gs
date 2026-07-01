@@ -577,7 +577,7 @@ function getDaftarUnggahCuti(tahun, bulan, unit, status) {
     for (var i = 0; i < data.length; i++) {
         var row = data[i];
         if (!row[1]) continue; 
-        
+        if (!row[1] && !row[2]) continue; // Filter baris kosong
         if (String(row[10]).trim().toLowerCase() !== "disetujui") continue;
 
         var rawTgl = String(row[4]).trim(); 
