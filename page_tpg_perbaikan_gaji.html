@@ -646,7 +646,7 @@
 
     function tpgPg_applyFilter() {
         if (tpgPgTable) {
-            tpgPgTable.draw();
+            tpgPgTable.draw(false);
         }
     }
 
@@ -664,8 +664,13 @@
             return getVal(b) - getVal(a);
         });
 
+        var savedPage = 0;
         if ($.fn.DataTable.isDataTable('#tpg_pg_tabelUtama')) {
-            $('#tpg_pg_tabelUtama').DataTable().destroy();
+            var dt = $('#tpg_pg_tabelUtama').DataTable();
+            if (dt.page.info()) {
+                savedPage = dt.page.info().page;
+            }
+            dt.destroy();
         }
 
         const tbody = $('#tpg_pg_tabelUtama tbody');
@@ -784,6 +789,13 @@
                 tpgDomRowTr +
                 "<'row mt-3'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>"
         });
+
+        if (savedPage > 0) {
+            // Restore the page before drawing if the page still exists
+            var totalPages = tpgPgTable.page.info().pages;
+            if (savedPage >= totalPages) savedPage = Math.max(0, totalPages - 1);
+            tpgPgTable.page(savedPage);
+        }
 
         tpgPg_applyFilter();
     }
