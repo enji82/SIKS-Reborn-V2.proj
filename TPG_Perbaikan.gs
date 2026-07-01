@@ -429,9 +429,9 @@ function getNotifikasiPerbaikanGaji(role, unit) {
         var unitData = String(row[1] || "").trim();
         var namaData = String(row[2] || "").trim();
         var jenisSk = String(row[6] || "").trim();
-        var status = String(row[10] || "").trim();
-        var wktKirim = row[17] || row[15] || ""; // 15: Waktu Upload, 17: Waktu Edit
-        var wktVerif = row[12] || ""; // 12: Waktu Verifikasi
+        var status = String(row[13] || "").trim();
+        var wktKirim = row[20] || row[18] || ""; // 19: Waktu Upload, 21: Waktu Edit
+        var wktVerif = row[15] || ""; // 16: Waktu Verifikasi
 
         var isDiproses = (status === "Diproses" || status === "Menunggu" || status === "");
         var isTarget = false;
@@ -444,7 +444,7 @@ function getNotifikasiPerbaikanGaji(role, unit) {
         
         if (isTarget) {
             var isRead = false;
-            var readBy = String(row[18] || ""); // Kolom ke-19 untuk Read By
+            var readBy = String(row[21] || ""); // Kolom ke-22 untuk Read By
             var readByList = readBy.split(",");
             if (isAdmin && readByList.indexOf("Admin") > -1) isRead = true;
             if (!isAdmin && readByList.indexOf("User") > -1) isRead = true;
@@ -513,7 +513,7 @@ function tandaiSemuaNotifPerbaikanGajiDibaca(role, unit) {
       else { isTarget = (unitData.toUpperCase() === String(unit).trim().toUpperCase() && !isDiproses); }
       
       if (isTarget) {
-        var readBy = String(row[18] || "");
+        var readBy = String(row[21] || "");
         var readByList = readBy.split(",").filter(function(x){ return x; });
         var changed = false;
         if (isAdmin && readByList.indexOf("Admin") === -1) { readByList.push("Admin"); changed = true; }
@@ -527,7 +527,7 @@ function tandaiSemuaNotifPerbaikanGajiDibaca(role, unit) {
     
     if (updates.length > 0) {
       updates.forEach(function(u) {
-        sheet.getRange(u.row, 19).setValue(u.val);
+        sheet.getRange(u.row, 22).setValue(u.val);
       });
       SpreadsheetApp.flush();
     }
@@ -545,13 +545,13 @@ function tandaiNotifPerbaikanGajiDibaca(rowId, role) {
     var rLower = String(role || "").toLowerCase();
     var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1 || rLower.indexOf('tpg') > -1);
     
-    var readBy = String(sheet.getRange(rowId, 19).getValue() || "");
+    var readBy = String(sheet.getRange(rowId, 22).getValue() || "");
     var readByList = readBy.split(",").filter(function(x){ return x; });
     var targetRole = isAdmin ? "Admin" : "User";
     
     if (readByList.indexOf(targetRole) === -1) {
       readByList.push(targetRole);
-      sheet.getRange(rowId, 19).setValue(readByList.join(","));
+      sheet.getRange(rowId, 22).setValue(readByList.join(","));
       SpreadsheetApp.flush();
     }
   } catch (e) {
