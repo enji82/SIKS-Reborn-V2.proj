@@ -47,7 +47,7 @@ function getDataCuti(tahun, bulan, unitFilter) {
     
     var lastRow = sheet.getLastRow();
     if (lastRow < 2) return JSON.stringify([]);
-    var dataDisplay = sheet.getRange(1, 1, lastRow, 51).getDisplayValues(); 
+    var dataDisplay = sheet.getRange(1, 1, lastRow, 52).getDisplayValues(); 
     var result = [];
     
     var fTahun = tahun ? String(tahun).trim() : "";
@@ -120,7 +120,7 @@ function simpanPengajuanCuti(payload) {
     var pData = setupPdfData(payload, dbData, pejabat, tglPengajuanFormat, tglMulaiIndo, tglSelesaiIndo);
     var linkPdf = generatePdfCuti(pData); 
 
-    var rowData = new Array(51).fill("");
+    var rowData = new Array(52).fill("");
     rowData[0]=payload.unit; rowData[1]=payload.nama; rowData[2]="'"+payload.nip; rowData[3]=payload.jenisCuti;
     rowData[4]=tglMulaiIndo; rowData[5]=tglSelesaiIndo; rowData[6]=payload.jumlahHari; rowData[7]=payload.alasan;
     rowData[8]=payload.alamat; rowData[9]="'"+payload.hp; rowData[10]="Diproses"; rowData[11]=""; rowData[12]=linkPdf;
@@ -229,7 +229,7 @@ function verifikasiPengajuan(rowBaris, status, catatan, adminName) {
     var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
     var row = parseInt(rowBaris);
 
-    var rowData = sheet.getRange(row, 1, 1, 51).getDisplayValues()[0];
+    var rowData = sheet.getRange(row, 1, 1, 52).getDisplayValues()[0];
     var oldUrl = rowData[12]; 
 
     sheet.getRange(row, 11).setValue(status);
@@ -542,7 +542,7 @@ function getDaftarUnggahCuti(tahun, bulan, unit, status) {
     var lastRow = sheet.getLastRow();
     if (lastRow < 2) return JSON.stringify([]);
     
-    var data = sheet.getRange(2, 1, lastRow - 1, 51).getDisplayValues();
+    var data = sheet.getRange(2, 1, lastRow - 1, 52).getDisplayValues();
     var result = [];
 
     var fTahun  = (tahun && String(tahun).trim() !== "") ? String(tahun).trim() : null;
@@ -667,7 +667,7 @@ function simpanUnggahSurat(form, fileData) {
     }
 
     SpreadsheetApp.flush();
-    sheet.getRange(row, 51).setValue(""); 
+    sheet.getRange(row, 52).setValue(""); 
     return JSON.stringify({ status: "Sukses", url: fileUrl }); 
   } catch (e) { throw new Error("Gagal Unggah: " + e.message); }
 }
@@ -779,7 +779,7 @@ function getNotifikasiSuratCuti(role, unit) {
         
         if (isTarget) {
             var labelStatus = (statusUnggah === "") ? "Belum Unggah" : statusUnggah;
-            var readByList = String(row[50] || "").split(","); 
+            var readByList = String(row[51] || "").split(","); 
             var isRead = (isAdmin && readByList.indexOf("Admin") > -1) || (!isAdmin && readByList.indexOf("User") > -1);
             
             var stLower = String(statusUnggah || "").toLowerCase();
@@ -836,9 +836,9 @@ function tandaiNotifSuratCutiDibaca(rowId, role) {
     try {
         var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
         var r = parseInt(rowId); var mark = (role === "Admin") ? "Admin" : "User";
-        var cur = String(sheet.getRange(r, 51).getDisplayValue() || "").trim();
-        if (cur === "") sheet.getRange(r, 51).setValue(mark);
-        else { var l = cur.split(","); if (l.indexOf(mark) === -1) { l.push(mark); sheet.getRange(r, 51).setValue(l.join(",")); } }
+        var cur = String(sheet.getRange(r, 52).getDisplayValue() || "").trim();
+        if (cur === "") sheet.getRange(r, 52).setValue(mark);
+        else { var l = cur.split(","); if (l.indexOf(mark) === -1) { l.push(mark); sheet.getRange(r, 52).setValue(l.join(",")); } }
         return true;
     } catch (e) { return false; }
 }
@@ -874,7 +874,7 @@ function backfillTglUnggahCuti() {
   var lastRow = sheet.getLastRow();
   if (lastRow < 2) { Logger.log("Tidak ada data."); return; }
 
-  var data = sheet.getRange(2, 1, lastRow - 1, 51).getDisplayValues();
+  var data = sheet.getRange(2, 1, lastRow - 1, 52).getDisplayValues();
   var fixed = 0, skipped = 0, errors = [];
 
   for (var i = 0; i < data.length; i++) {
