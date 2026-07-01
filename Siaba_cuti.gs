@@ -680,10 +680,10 @@ function verifikasiUnggahSurat(form) {
     var now = new Date();
     var sysDateStr = "'" + Utilities.formatDate(now, Session.getScriptTimeZone(), "dd-MM-yyyy HH:mm:ss");
 
-    sheet.getRange(row, 43).setValue(form.status);
-    sheet.getRange(row, 48).setValue(sysDateStr);      
-    sheet.getRange(row, 49).setValue(form.user_verif); 
-    sheet.getRange(row, 50).setValue("'" + form.ket);        
+    sheet.getRange(row, 11).setValue(form.status);
+    sheet.getRange(row, 18).setValue(sysDateStr);      
+    sheet.getRange(row, 19).setValue(form.user_verif); 
+    sheet.getRange(row, 12).setValue("'" + form.ket);        
 
     SpreadsheetApp.flush(); // VAKSIN MUTLAK: Sinkronisasi database
     return "Sukses";
