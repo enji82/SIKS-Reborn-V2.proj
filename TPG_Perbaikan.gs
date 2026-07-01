@@ -380,10 +380,10 @@ function tpg_verifikasiPerbaikan(id, status, notes, userLogin) {
     
     if (rowIndex === -1) return { status: 'error', message: 'Data tidak ditemukan.' };
     
-    sheet.getRange(rowIndex, 11).setValue(status);
-    sheet.getRange(rowIndex, 12).setValue(verifikator);
-    sheet.getRange(rowIndex, 13).setValue(now);
-    sheet.getRange(rowIndex, 14).setValue(notes);
+    sheet.getRange(rowIndex, 14).setValue(status);
+    sheet.getRange(rowIndex, 15).setValue(verifikator);
+    sheet.getRange(rowIndex, 16).setValue(now);
+    sheet.getRange(rowIndex, 17).setValue(notes);
     
     SpreadsheetApp.flush();
     return { status: 'success', message: 'Verifikasi berhasil.', data: { status: status, keterangan: notes, verifikasiOleh: verifikator, waktuVerifikasi: Utilities.formatDate(now, Session.getScriptTimeZone(), "yyyy-MM-dd'T'HH:mm:ss") } };
