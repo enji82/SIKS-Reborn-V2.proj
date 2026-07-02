@@ -480,7 +480,7 @@ function getVisitorStats() {
 
   try {
     var cache = CacheService.getScriptCache();
-    var cachedStats = cache.get("visitor_stats_cache_v2");
+    var cachedStats = cache.get("visitor_stats_cache_v3");
     if (cachedStats != null) {
       var parsed = JSON.parse(cachedStats);
       // Timpa dengan data online terbaru karena realtime
@@ -533,6 +533,13 @@ function getVisitorStats() {
         var rowMonth = Utilities.formatDate(rowDate, "Asia/Jakarta", "yyyy-MM");
         var rowUnit = String(row[6] || "").toUpperCase(); // Unit di kolom G
         
+        // Fallback untuk log lama yang belum punya kolom G
+        if (!rowUnit || rowUnit === "LAINNYA") {
+          var rowName = String(row[3] || "").toUpperCase();
+          if (rowName.includes("SD")) rowUnit = "SD";
+          else if (rowName.includes("PAUD") || rowName.includes("TK") || rowName.includes("KB")) rowUnit = "PAUD";
+        }
+
         // Skip jika bukan unit yang dicari
         var isSD = (rowUnit === "SD");
         var isPAUD = (rowUnit === "PAUD");
@@ -560,7 +567,7 @@ function getVisitorStats() {
     }
     
     // Simpan ke cache selama 5 menit (300 detik)
-    cache.put("visitor_stats_cache_v2", JSON.stringify(stats), 300);
+    cache.put("visitor_stats_cache_v3", JSON.stringify(stats), 300);
   } catch (e) {
     stats.info = "Maintenance Mode";
     console.log("Error getVisitorStats: " + e.message);
@@ -625,7 +632,7 @@ function getPengumumanInfo() {
 function getMonitoring_Charts() {
   try {
     var cache = CacheService.getScriptCache();
-    var cached = cache.get("monitoring_charts_v2");
+    var cached = cache.get("monitoring_charts_v3");
     if (cached != null) return cached;
 
     var ss = getDB("USER_DB");
@@ -669,9 +676,23 @@ function getMonitoring_Charts() {
         stats.kerja++;
       }
 
-      // 2. Olah Tanggal
-      var d = new Date(rawTime);
-      if (isNaN(d.getTime())) continue; // Skip jika tanggal error
+      // 2. Olah Tanggal secara aman
+      var d;
+      if (rawTime instanceof Date) {
+        d = rawTime;
+      } else {
+        var str = String(rawTime || "");
+        var parts = str.split(' ');
+        var dateParts = parts[0].split('/');
+        if (dateParts.length === 3) {
+          var timeParts = parts[1] ? parts[1].split(':') : [0, 0, 0];
+          d = new Date(dateParts[2], dateParts[1] - 1, dateParts[0], timeParts[0] || 0, timeParts[1] || 0, timeParts[2] || 0);
+        } else {
+          d = new Date(str);
+        }
+      }
+
+      if (!d || isNaN(d.getTime())) continue; // Skip jika tanggal error
 
       // Harian (yyyy-mm-dd)
       var tglKey = Utilities.formatDate(d, "Asia/Jakarta", "yyyy-MM-dd");
@@ -688,7 +709,7 @@ function getMonitoring_Charts() {
     }
 
     var result = JSON.stringify(stats);
-    cache.put("monitoring_charts_v2", result, 300);
+    cache.put("monitoring_charts_v3", result, 300);
     return result;
 
   } catch (e) { return JSON.stringify({ error: e.toString() }); }
