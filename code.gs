@@ -480,7 +480,7 @@ function getVisitorStats() {
 
   try {
     var cache = CacheService.getScriptCache();
-    var cachedStats = cache.get("visitor_stats_cache");
+    var cachedStats = cache.get("visitor_stats_cache_v2");
     if (cachedStats != null) {
       var parsed = JSON.parse(cachedStats);
       // Timpa dengan data online terbaru karena realtime
@@ -560,7 +560,7 @@ function getVisitorStats() {
     }
     
     // Simpan ke cache selama 5 menit (300 detik)
-    cache.put("visitor_stats_cache", JSON.stringify(stats), 300);
+    cache.put("visitor_stats_cache_v2", JSON.stringify(stats), 300);
   } catch (e) {
     stats.info = "Maintenance Mode";
     console.log("Error getVisitorStats: " + e.message);
@@ -625,7 +625,7 @@ function getPengumumanInfo() {
 function getMonitoring_Charts() {
   try {
     var cache = CacheService.getScriptCache();
-    var cached = cache.get("monitoring_charts");
+    var cached = cache.get("monitoring_charts_v2");
     if (cached != null) return cached;
 
     var ss = getDB("USER_DB");
@@ -688,7 +688,7 @@ function getMonitoring_Charts() {
     }
 
     var result = JSON.stringify(stats);
-    cache.put("monitoring_charts", result, 300);
+    cache.put("monitoring_charts_v2", result, 300);
     return result;
 
   } catch (e) { return JSON.stringify({ error: e.toString() }); }
@@ -698,7 +698,7 @@ function getMonitoring_Charts() {
 function getMonitoring_Users() {
   try {
     var cache = CacheService.getScriptCache();
-    var cached = cache.get("monitoring_users");
+    var cached = cache.get("monitoring_users_v2");
     if (cached != null) return cached;
 
     var ss = getDB("USER_DB");
@@ -766,7 +766,7 @@ function getMonitoring_Users() {
       topUsers: top10,
       passiveUsers: userPasif
     });
-    cache.put("monitoring_users", result, 300);
+    cache.put("monitoring_users_v2", result, 300);
     return result;
 
   } catch (e) { return JSON.stringify({ error: e.toString() }); }
