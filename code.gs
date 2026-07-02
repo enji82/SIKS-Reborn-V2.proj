@@ -498,6 +498,16 @@ function debugLogAccess() {
   }
 }
 
+// Fungsi satu kali untuk reset LAST_LOG_MONTH ke bulan berjalan
+// (Panggil sekali dari Apps Script Editor jika log stuck)
+function resetLogMonth() {
+  var props = PropertiesService.getScriptProperties();
+  var now = new Date();
+  var blnOnly = Utilities.formatDate(now, "Asia/Jakarta", "yyyy-MM");
+  props.setProperty('LAST_LOG_MONTH', blnOnly);
+  console.log("LAST_LOG_MONTH reset ke: " + blnOnly);
+}
+
 // ==========================================
 // 5. VISITOR COUNTER & SETTING
 // ==========================================
@@ -984,26 +994,23 @@ function logUserVisit(userData) {
     // Jika sheet belum ada, buat baru otomatis
     if (!sheet) {
         sheet = ss.insertSheet("LOG_ACCESS");
-        sheet.appendRow(["Timestamp", "Tanggal", "Bulan", "Nama User", "Role", "Jenis Hari"]);
+        sheet.appendRow(["TIMESTAMP", "TANGGAL", "BULAN", "NAMA_USER", "ROLE", "JENIS_HARI", ""]);
     }
     
     var now = new Date();
-    var timestamp = Utilities.formatDate(now, "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss");
-    var tgalOnly  = Utilities.formatDate(now, "Asia/Jakarta", "yyyy-MM-dd");
-    var blnOnly   = Utilities.formatDate(now, "Asia/Jakarta", "yyyy-MM");
+    var blnOnly = Utilities.formatDate(now, "Asia/Jakarta", "yyyy-MM");
+    var tgalOnly = Utilities.formatDate(now, "Asia/Jakarta", "yyyy-MM-dd");
     
     // Cek Hari Libur (Sabtu/Minggu)
     var dayIndex = now.getDay();
     var jenisHari = "Hari Efektif";
     var ketHari = "Reguler";
-
-    // 1. Cek Weekend
     if (dayIndex === 0 || dayIndex === 6) {
       jenisHari = "Hari Libur";
       ketHari = (dayIndex === 0) ? "Minggu" : "Sabtu";
     }
 
-    // 2. Cek Kalender Libur (Jika Anda punya sheet DATA_LIBUR)
+    // Cek Kalender Libur
     var sheetLibur = ss.getSheetByName("DATA_LIBUR");
     if (sheetLibur && sheetLibur.getLastRow() > 1) {
       var dataLibur = sheetLibur.getRange(2, 1, sheetLibur.getLastRow()-1, 2).getValues();
@@ -1017,42 +1024,6 @@ function logUserVisit(userData) {
       }
     }
 
-    // Auto-clear LOG_ACCESS saat berganti bulan
-    var props = PropertiesService.getScriptProperties();
-    var lastLoggedMonth = props.getProperty('LAST_LOG_MONTH'); // Format: yyyy-MM
-    if (lastLoggedMonth && lastLoggedMonth !== blnOnly && sheet.getLastRow() > 1) {
-        // Buat atau ambil sheet LOG_ACCESS_LAMA
-        var sheetLama = ss.getSheetByName("LOG_ACCESS_LAMA");
-        if (!sheetLama) {
-            sheetLama = ss.insertSheet("LOG_ACCESS_LAMA");
-            sheetLama.appendRow(["Timestamp", "Tanggal", "Bulan", "Nama User", "Role", "Jenis Hari", "Kategori Unit"]);
-            // Bekukan baris pertama
-            sheetLama.setFrozenRows(1);
-        }
-        
-        // Pindahkan data ke LOG_ACCESS_LAMA
-        var numRows = sheet.getLastRow() - 1;
-        var numCols = sheet.getLastColumn();
-        var dataLama = sheet.getRange(2, 1, numRows, numCols).getValues();
-        
-        // Pastikan sheetLama punya baris yang cukup
-        var targetStartRow = sheetLama.getLastRow() + 1;
-        var requiredRows = targetStartRow + numRows - 1;
-        if (sheetLama.getMaxRows() < requiredRows) {
-            sheetLama.insertRowsAfter(sheetLama.getMaxRows(), requiredRows - sheetLama.getMaxRows());
-        }
-        
-        sheetLama.getRange(targetStartRow, 1, numRows, numCols).setValues(dataLama);
-
-        // Hapus semua baris data log lama, sisakan header
-        sheet.deleteRows(2, numRows);
-        // Hapus cache monitoring
-        var cache = CacheService.getScriptCache();
-        cache.remove("monitoring_charts");
-        cache.remove("monitoring_users");
-    }
-    props.setProperty('LAST_LOG_MONTH', blnOnly);
-
     // Deteksi Unit Kerja User (SD, PAUD, TK, dll.)
     var userUnit = String(userData.unit || "").trim().toUpperCase();
     var kategoriUnit = "LAINNYA";
@@ -1061,31 +1032,97 @@ function logUserVisit(userData) {
     } else if (userUnit.includes("PAUD") || userUnit.includes("TK") || userUnit.includes("KB")) {
       kategoriUnit = "PAUD";
     } else {
-      // Jika kosong atau admin, coba tebak dari username/role atau kosongkan
       var userRole = String(userData.role || "").trim().toUpperCase();
       if (userRole.includes("ADMIN")) kategoriUnit = "ADMIN";
     }
 
-    // Simpan Baris Log (Kolom G/Index 6 untuk kategori unit)
+    // ===== TULIS LOG BARU DULU (PRIORITAS UTAMA) =====
     sheet.appendRow([
-        timestamp, 
-        tgalOnly, 
-        blnOnly, 
+        now,           // Kolom A: Timestamp sebagai Date Object (agar mudah di-filter)
+        now,           // Kolom B: Tanggal
+        now,           // Kolom C: Bulan
         userData.nama || userData.username, 
         userData.role, 
         jenisHari + " (" + ketHari + ")",
         kategoriUnit
     ]);
 
-    // Cache TIDAK DIBERSIHKAN di sini agar fungsi caching (5 menit) bisa bekerja maksimal
-    // var cache = CacheService.getScriptCache();
-    // cache.remove("monitoring_charts");
-    // cache.remove("monitoring_users");
-    // cache.remove("visitor_stats_cache");
+    // ===== ARSIPKAN DATA BULAN LALU (SETELAH LOG BERHASIL) =====
+    var props = PropertiesService.getScriptProperties();
+    var lastLoggedMonth = props.getProperty('LAST_LOG_MONTH');
+    props.setProperty('LAST_LOG_MONTH', blnOnly);
+    
+    if (lastLoggedMonth && lastLoggedMonth !== blnOnly) {
+      try {
+        archiveLastMonthLog(ss, sheet, lastLoggedMonth);
+      } catch(archiveErr) {
+        // Arsipkan gagal tidak boleh crash seluruh fungsi
+        console.log("Archive error (non-fatal): " + archiveErr.message);
+      }
+    }
     
   } catch (e) {
     console.log("Log Error: " + e.message);
   }
+}
+
+// Fungsi arsip terpisah agar bisa timeout tanpa merusak log
+function archiveLastMonthLog(ss, sheetLog, oldMonth) {
+  var dataCount = sheetLog.getLastRow() - 1;
+  if (dataCount < 1) return;
+  
+  // Ambil semua data (tanpa baris header) dari LOG_ACCESS
+  var numCols = sheetLog.getLastColumn();
+  var allData = sheetLog.getRange(2, 1, dataCount, numCols).getValues();
+  
+  // Filter: pisahkan yang bulan lama vs bulan baru
+  var dataLama = [];
+  var dataBaru = [];
+  for (var i = 0; i < allData.length; i++) {
+    var rowDate = allData[i][0]; // Kolom A: Timestamp
+    var rowMonth = "";
+    if (rowDate instanceof Date) {
+      rowMonth = Utilities.formatDate(rowDate, "Asia/Jakarta", "yyyy-MM");
+    }
+    if (rowMonth === oldMonth) {
+      dataLama.push(allData[i]);
+    } else {
+      dataBaru.push(allData[i]);
+    }
+  }
+  
+  // Jika tidak ada data lama, tidak perlu arsip
+  if (dataLama.length === 0) return;
+  
+  // Simpan ke sheet LOG_ACCESS_LAMA
+  var sheetLama = ss.getSheetByName("LOG_ACCESS_LAMA");
+  if (!sheetLama) {
+    sheetLama = ss.insertSheet("LOG_ACCESS_LAMA");
+    sheetLama.appendRow(["TIMESTAMP", "TANGGAL", "BULAN", "NAMA_USER", "ROLE", "JENIS_HARI", "KATEGORI_UNIT"]);
+    sheetLama.setFrozenRows(1);
+  }
+  
+  var targetStart = sheetLama.getLastRow() + 1;
+  var needed = targetStart + dataLama.length - 1;
+  if (sheetLama.getMaxRows() < needed) {
+    sheetLama.insertRowsAfter(sheetLama.getMaxRows(), needed - sheetLama.getMaxRows());
+  }
+  sheetLama.getRange(targetStart, 1, dataLama.length, dataLama[0].length).setValues(dataLama);
+  
+  // Tulis ulang LOG_ACCESS hanya dengan data bulan baru
+  // Hapus semua data (sisakan header baris 1)
+  if (sheetLog.getLastRow() > 1) {
+    sheetLog.deleteRows(2, sheetLog.getLastRow() - 1);
+  }
+  if (dataBaru.length > 0) {
+    sheetLog.getRange(2, 1, dataBaru.length, dataBaru[0].length).setValues(dataBaru);
+  }
+  
+  // Bersihkan cache monitoring
+  var cache = CacheService.getScriptCache();
+  cache.remove("monitoring_charts_v3");
+  cache.remove("monitoring_users_v3");
+  cache.remove("visitor_stats_cache_v3");
 }
 
 /* ======================================================================
