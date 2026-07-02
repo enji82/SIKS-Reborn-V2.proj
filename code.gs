@@ -489,16 +489,18 @@ function getVisitorStats() {
       return parsed;
     }
 
+    var ss = getDB("USER_DB");
+
     // Hitung User Terdaftar
-    var sheetUser = getSheet("USER_DB", SPREADSHEET_IDS.SHEET_USER_NAME);
+    var sheetUser = ss.getSheetByName(SPREADSHEET_IDS.SHEET_USER_NAME);
     if(sheetUser) stats.users = sheetUser.getLastRow() - 1;
     
     // Ambil Running Text
-    var sheetSetting = getSheet("USER_DB", "SETTING");
+    var sheetSetting = ss.getSheetByName("SETTING");
     if (sheetSetting) stats.info = sheetSetting.getRange("B1").getValue();
 
     // Hitung Kunjungan dari LOG_ACCESS
-    var sheetLog = getSheet("USER_DB", "LOG_ACCESS");
+    var sheetLog = ss.getSheetByName("LOG_ACCESS");
     if (sheetLog && sheetLog.getLastRow() > 1) {
       var logs = sheetLog.getRange(2, 1, sheetLog.getLastRow() - 1, 7).getValues();
       var now = new Date();
