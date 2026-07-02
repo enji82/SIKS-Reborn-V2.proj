@@ -1639,35 +1639,25 @@
      CACHE LAPORAN BULAN
      ============================================================= */
   window.LAPBUL_GLOBAL_CACHE = {};
-  window.LAPBUL_ALL_DATA_FETCHED = false;
 
   function Lapbul_GetGlobalData(tahun, keyword, is_admin, callback, fallbackHandler) {
-    // Fungsi pembantu untuk memfilter data berdasarkan tahun
-    var filterByTahun = function(allData, targetTahun) {
-        if (!targetTahun) return allData;
-        return allData.filter(function(row) {
-            return String(row.tahun) === String(targetTahun);
-        });
-    };
+    var cacheKey = tahun || "ALL";
 
-    if (window.LAPBUL_ALL_DATA_FETCHED && window.LAPBUL_GLOBAL_CACHE["ALL"]) {
-      // Semua data sudah ditarik di awal, tinggal difilter secara instan
-      callback(filterByTahun(window.LAPBUL_GLOBAL_CACHE["ALL"], tahun));
+    if (window.LAPBUL_GLOBAL_CACHE[cacheKey]) {
+      callback(window.LAPBUL_GLOBAL_CACHE[cacheKey]);
       return;
     }
 
-    // Jika belum ada, ambil SELURUH TAHUN SEKALIGUS dari server
     var reqKeyword = is_admin ? "" : keyword;
     
     var runner = google.script.run.withSuccessHandler(function(data) {
       if (!data) data = [];
       if (!data.error) {
         var finalData = Array.isArray(data) ? data : (data.rows || []);
-        window.LAPBUL_GLOBAL_CACHE["ALL"] = finalData;
-        window.LAPBUL_ALL_DATA_FETCHED = true;
-        callback(filterByTahun(finalData, tahun));
+        window.LAPBUL_GLOBAL_CACHE[cacheKey] = finalData;
+        callback(finalData);
       } else {
-        callback(data); // Kirim pesan error ke callback
+        callback(data);
       }
     });
 
@@ -1679,14 +1669,15 @@
       });
     }
 
-    // Tarik seluruh tahun (parameter tahun dikosongkan)
-    runner.getLapbulKelolaData("", "", "", "", reqKeyword, new Date().getTime());
+    runner.getLapbulKelolaData("", "", tahun, "", reqKeyword, new Date().getTime());
   }
 
   function Lapbul_ClearGlobalCache(tahun) {
-    // Karena sekarang sistem borongan, hapus semua cache agar ditarik ulang secara penuh
-    window.LAPBUL_GLOBAL_CACHE = {};
-    window.LAPBUL_ALL_DATA_FETCHED = false;
+    if (tahun) {
+      delete window.LAPBUL_GLOBAL_CACHE[tahun];
+    } else {
+      window.LAPBUL_GLOBAL_CACHE = {};
+    }
   }
 
   window.LAPBUL_GLOBAL_MASTER = null;
