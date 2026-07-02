@@ -471,10 +471,11 @@ function debugLogAccess() {
     
     if (lastRow < 2) return JSON.stringify({ error: "Sheet LOG_ACCESS kosong", lastRow: lastRow });
     
-    // Ambil 5 baris teratas (baris 2-6) sebagai sampel
+    // Ambil 5 baris terakhir sebagai sampel
     var sampleRows = Math.min(5, lastRow - 1);
+    var startRow = lastRow - sampleRows + 1;
     var headers = sheetLog.getRange(1, 1, 1, lastCol).getValues()[0];
-    var data = sheetLog.getRange(2, 1, sampleRows, lastCol).getValues();
+    var data = sheetLog.getRange(startRow, 1, sampleRows, lastCol).getValues();
     
     var samples = [];
     for (var i = 0; i < data.length; i++) {
