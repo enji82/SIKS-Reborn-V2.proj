@@ -1031,11 +1031,21 @@ function logUserVisit(userData) {
         }
         
         // Pindahkan data ke LOG_ACCESS_LAMA
-        var dataLama = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
-        sheetLama.getRange(sheetLama.getLastRow() + 1, 1, dataLama.length, dataLama[0].length).setValues(dataLama);
+        var numRows = sheet.getLastRow() - 1;
+        var numCols = sheet.getLastColumn();
+        var dataLama = sheet.getRange(2, 1, numRows, numCols).getValues();
+        
+        // Pastikan sheetLama punya baris yang cukup
+        var targetStartRow = sheetLama.getLastRow() + 1;
+        var requiredRows = targetStartRow + numRows - 1;
+        if (sheetLama.getMaxRows() < requiredRows) {
+            sheetLama.insertRowsAfter(sheetLama.getMaxRows(), requiredRows - sheetLama.getMaxRows());
+        }
+        
+        sheetLama.getRange(targetStartRow, 1, numRows, numCols).setValues(dataLama);
 
         // Hapus semua baris data log lama, sisakan header
-        sheet.deleteRows(2, sheet.getLastRow() - 1);
+        sheet.deleteRows(2, numRows);
         // Hapus cache monitoring
         var cache = CacheService.getScriptCache();
         cache.remove("monitoring_charts");
