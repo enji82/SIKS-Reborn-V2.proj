@@ -626,13 +626,14 @@ function getMonitoring_Charts() {
     var cached = cache.get("monitoring_charts");
     if (cached != null) return cached;
 
-    var sheetLog = getSheet("USER_DB", "LOG_ACCESS");
-    if (!sheetLog) return { error: "Sheet LOG_ACCESS tidak ditemukan" };
+    var ss = getDB("USER_DB");
+    var sheetLog = ss.getSheetByName("LOG_ACCESS");
+    if (!sheetLog) return JSON.stringify({ error: "Sheet LOG_ACCESS tidak ditemukan" });
 
     var data = [];
 
     // Ambil data dari LOG_ACCESS_LAMA jika ada
-    var sheetLama = getSheet("USER_DB", "LOG_ACCESS_LAMA");
+    var sheetLama = ss.getSheetByName("LOG_ACCESS_LAMA");
     if (sheetLama && sheetLama.getLastRow() > 1) {
       var dataLama = sheetLama.getRange(2, 1, sheetLama.getLastRow() - 1, 6).getValues();
       data = data.concat(dataLama);
@@ -640,13 +641,12 @@ function getMonitoring_Charts() {
 
     // Ambil Data: Kolom A (Timestamp) & F (Jenis Hari)
     // Kita tidak butuh nama user disini, jadi lebih ringan
-    var lastRow = sheetLog.getLastRow();
-    if (lastRow > 1) {
-      var dataBaru = sheetLog.getRange(2, 1, lastRow - 1, 6).getValues();
+    if (sheetLog && sheetLog.getLastRow() > 1) {
+      var dataBaru = sheetLog.getRange(2, 1, sheetLog.getLastRow() - 1, 6).getValues();
       data = data.concat(dataBaru);
     }
     
-    if (data.length === 0) return { empty: true };
+    if (data.length === 0) return JSON.stringify({ empty: true });
 
     var stats = {
       total: data.length, kerja: 0, libur: 0,
