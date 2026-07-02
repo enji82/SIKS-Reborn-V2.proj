@@ -458,6 +458,46 @@ function hapusUser(username) {
 }
 
 // ==========================================
+// DEBUG FUNCTION (HAPUS SETELAH SELESAI)
+// ==========================================
+function debugLogAccess() {
+  try {
+    var ss = getDB("USER_DB");
+    var sheetLog = ss.getSheetByName("LOG_ACCESS");
+    if (!sheetLog) return JSON.stringify({ error: "Sheet LOG_ACCESS tidak ada" });
+    
+    var lastRow = sheetLog.getLastRow();
+    var lastCol = sheetLog.getLastColumn();
+    
+    if (lastRow < 2) return JSON.stringify({ error: "Sheet LOG_ACCESS kosong", lastRow: lastRow });
+    
+    // Ambil 5 baris teratas (baris 2-6) sebagai sampel
+    var sampleRows = Math.min(5, lastRow - 1);
+    var headers = sheetLog.getRange(1, 1, 1, lastCol).getValues()[0];
+    var data = sheetLog.getRange(2, 1, sampleRows, lastCol).getValues();
+    
+    var samples = [];
+    for (var i = 0; i < data.length; i++) {
+      var rowData = {};
+      for (var j = 0; j < headers.length; j++) {
+        var val = data[i][j];
+        rowData["col_" + (j+1) + "_" + (headers[j] || "?")] = val instanceof Date ? val.toString() : val;
+      }
+      samples.push(rowData);
+    }
+    
+    return JSON.stringify({
+      lastRow: lastRow,
+      lastCol: lastCol,
+      headers: headers,
+      samples: samples
+    });
+  } catch(e) {
+    return JSON.stringify({ error: e.toString() });
+  }
+}
+
+// ==========================================
 // 5. VISITOR COUNTER & SETTING
 // ==========================================
 function getVisitorStats() {
