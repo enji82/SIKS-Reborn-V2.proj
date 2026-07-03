@@ -558,18 +558,15 @@ function debugLogAccess() {
       }
     }
     
-    var chartResult;
-    try {
-      chartResult = JSON.parse(getMonitoring_Charts());
-    } catch(chartErr) {
-      chartResult = { error: "CRASH: " + chartErr.toString() };
-    }
+    var sheetLama = ss.getSheetByName("LOG_ACCESS_LAMA");
+    var lamaRow = sheetLama ? sheetLama.getLastRow() : 0;
     
     return JSON.stringify({
       target_today: todayStr,
       target_month: currentMonth,
       target_week: currentWeek,
       total_rows: totalRows,
+      lama_rows: lamaRow,
       parsed_dates: parsedDates,
       skipped_invalid_date: skippedInvalidDate,
       skipped_not_unit: skippedNotUnit,
@@ -578,7 +575,6 @@ function debugLogAccess() {
       match_month: matchMonth,
       match_week: matchWeek,
       match_today: matchToday,
-      chart_result: chartResult,
       samples: samples
     });
   } catch(e) {
