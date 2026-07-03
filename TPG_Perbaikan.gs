@@ -161,7 +161,7 @@ function tpg_savePerbaikan(formData) {
     
     var sheet = tpgPg_ensureSheet();
     var newId = "TPG-PG-" + new Date().getTime();
-    var tmtDate = formData.tmt ? new Date(formData.tmt) : "";
+    var tmtDate = formData.tmt ? String(formData.tmt).trim() : "";
     var now = new Date();
     
     var docUrl = "";
@@ -281,7 +281,7 @@ function tpg_updatePerbaikan(formData) {
       docUrl = file.getUrl();
     }
     
-    var tmtDate = formData.tmt ? new Date(formData.tmt) : "";
+    var tmtDate = formData.tmt ? String(formData.tmt).trim() : "";
     
     sheet.getRange(rowIndex, 2).setValue(formData.unitKerja);
     sheet.getRange(rowIndex, 3).setValue(formData.namaAsn);
