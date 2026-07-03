@@ -195,9 +195,9 @@ function tpg_savePerbaikan(formData) {
       newId,
       formData.unitKerja,
       formData.namaAsn,
-      formData.nip,
+      formData.nip ? "'" + formData.nip : "",
       formData.statusPegawai,
-      formData.nuptk,
+      formData.nuptk ? "'" + formData.nuptk : "",
       formData.jenisSK,
       tmtDate,
       formData.gajiPokok,
@@ -285,9 +285,9 @@ function tpg_updatePerbaikan(formData) {
     
     sheet.getRange(rowIndex, 2).setValue(formData.unitKerja);
     sheet.getRange(rowIndex, 3).setValue(formData.namaAsn);
-    sheet.getRange(rowIndex, 4).setValue(formData.nip);
+    sheet.getRange(rowIndex, 4).setValue(formData.nip ? "'" + formData.nip : "");
     sheet.getRange(rowIndex, 5).setValue(formData.statusPegawai);
-    sheet.getRange(rowIndex, 6).setValue(formData.nuptk);
+    sheet.getRange(rowIndex, 6).setValue(formData.nuptk ? "'" + formData.nuptk : "");
     sheet.getRange(rowIndex, 7).setValue(formData.jenisSK);
     sheet.getRange(rowIndex, 8).setValue(tmtDate);
     sheet.getRange(rowIndex, 9).setValue(formData.gajiPokok);
