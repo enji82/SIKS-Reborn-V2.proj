@@ -776,15 +776,17 @@ function getMonitoring_Charts() {
 
     var data = [];
 
-    // Ambil data dari LOG_ACCESS_LAMA jika ada
+    // Ambil data dari LOG_ACCESS_LAMA jika ada (Maksimal 10.000 baris terbaru agar tidak crash memori)
     var sheetLama = ss.getSheetByName("LOG_ACCESS_LAMA");
     if (sheetLama && sheetLama.getLastRow() > 1) {
-      var dataLama = sheetLama.getRange(2, 1, sheetLama.getLastRow() - 1, 6).getValues();
+      var lastRowLama = sheetLama.getLastRow();
+      var numRowsLama = Math.min(10000, lastRowLama - 1);
+      var startRowLama = lastRowLama - numRowsLama + 1;
+      var dataLama = sheetLama.getRange(startRowLama, 1, numRowsLama, 6).getValues();
       data = data.concat(dataLama);
     }
 
     // Ambil Data: Kolom A (Timestamp) & F (Jenis Hari)
-    // Kita tidak butuh nama user disini, jadi lebih ringan
     if (sheetLog && sheetLog.getLastRow() > 1) {
       var dataBaru = sheetLog.getRange(2, 1, sheetLog.getLastRow() - 1, 6).getValues();
       data = data.concat(dataBaru);
@@ -1132,16 +1134,31 @@ function logUserVisit(userData) {
     ]);
 
     // ===== ARSIPKAN DATA BULAN LALU (SETELAH LOG BERHASIL) =====
-    var props = PropertiesService.getScriptProperties();
-    var lastLoggedMonth = props.getProperty('LAST_LOG_MONTH');
-    props.setProperty('LAST_LOG_MONTH', blnOnly);
-    
-    if (lastLoggedMonth && lastLoggedMonth !== blnOnly) {
-      try {
-        archiveLastMonthLog(ss, sheet, lastLoggedMonth);
-      } catch(archiveErr) {
-        // Arsipkan gagal tidak boleh crash seluruh fungsi
-        console.log("Archive error (non-fatal): " + archiveErr.message);
+    if (sheet.getLastRow() > 2) { 
+      var firstRowDate = sheet.getRange(2, 1).getValue();
+      var firstRowMonth = "";
+      if (firstRowDate instanceof Date) {
+        firstRowMonth = Utilities.formatDate(firstRowDate, "Asia/Jakarta", "yyyy-MM");
+      } else {
+        var str = String(firstRowDate || "");
+        var parts = str.split(' ');
+        var dateParts = parts[0].split('/');
+        if (dateParts.length === 3) {
+          firstRowMonth = dateParts[2] + "-" + (dateParts[1].length === 1 ? "0" + dateParts[1] : dateParts[1]);
+        } else {
+          var dTmp = new Date(str);
+          if (!isNaN(dTmp.getTime())) {
+            firstRowMonth = Utilities.formatDate(dTmp, "Asia/Jakarta", "yyyy-MM");
+          }
+        }
+      }
+      
+      if (firstRowMonth && firstRowMonth !== blnOnly) {
+        try {
+          archiveLastMonthLog(ss, sheet, firstRowMonth);
+        } catch(archiveErr) {
+          console.log("Archive error (non-fatal): " + archiveErr.message);
+        }
       }
     }
     
