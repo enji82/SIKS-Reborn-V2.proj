@@ -467,30 +467,110 @@ function debugLogAccess() {
     if (!sheetLog) return JSON.stringify({ error: "Sheet LOG_ACCESS tidak ada" });
     
     var lastRow = sheetLog.getLastRow();
-    var lastCol = sheetLog.getLastColumn();
+    if (lastRow < 2) return JSON.stringify({ error: "Sheet LOG_ACCESS kosong" });
     
-    if (lastRow < 2) return JSON.stringify({ error: "Sheet LOG_ACCESS kosong", lastRow: lastRow });
+    var logs = sheetLog.getRange(2, 1, lastRow - 1, 7).getValues();
+    var now = new Date();
+    var todayStr = Utilities.formatDate(now, "Asia/Jakarta", "yyyy-MM-dd");
+    var currentMonth = Utilities.formatDate(now, "Asia/Jakarta", "yyyy-MM");
+    var currentWeek = Utilities.formatDate(now, "Asia/Jakarta", "w");
     
-    // Ambil 5 baris terakhir sebagai sampel
-    var sampleRows = Math.min(5, lastRow - 1);
-    var startRow = lastRow - sampleRows + 1;
-    var headers = sheetLog.getRange(1, 1, 1, lastCol).getValues()[0];
-    var data = sheetLog.getRange(startRow, 1, sampleRows, lastCol).getValues();
+    var totalRows = logs.length;
+    var parsedDates = 0;
+    var matchMonth = 0;
+    var matchWeek = 0;
+    var matchToday = 0;
+    var sdCount = 0;
+    var paudCount = 0;
+    var skippedInvalidDate = 0;
+    var skippedNotUnit = 0;
     
     var samples = [];
-    for (var i = 0; i < data.length; i++) {
-      var rowData = {};
-      for (var j = 0; j < headers.length; j++) {
-        var val = data[i][j];
-        rowData["col_" + (j+1) + "_" + (headers[j] || "?")] = val instanceof Date ? val.toString() : val;
+    
+    for (var i = 0; i < logs.length; i++) {
+      var row = logs[i];
+      var rawTime = row[0];
+      
+      var rowDate;
+      if (rawTime instanceof Date) {
+        rowDate = rawTime;
+      } else {
+        var str = String(rawTime || "");
+        var parts = str.split(' ');
+        var dateParts = parts[0].split('/');
+        if (dateParts.length === 3) {
+          var timeParts = parts[1] ? parts[1].split(':') : [0, 0, 0];
+          rowDate = new Date(dateParts[2], dateParts[1] - 1, dateParts[0], timeParts[0] || 0, timeParts[1] || 0, timeParts[2] || 0);
+        } else {
+          rowDate = new Date(str);
+        }
       }
-      samples.push(rowData);
+      
+      if (!rowDate || isNaN(rowDate.getTime())) {
+        skippedInvalidDate++;
+        continue;
+      }
+      
+      parsedDates++;
+      
+      var rowTimeStr = Utilities.formatDate(rowDate, "Asia/Jakarta", "yyyy-MM-dd");
+      var rowMonth = Utilities.formatDate(rowDate, "Asia/Jakarta", "yyyy-MM");
+      var rowUnit = String(row[6] || "").toUpperCase();
+      
+      if (!rowUnit || rowUnit === "LAINNYA") {
+        var rowName = String(row[3] || "").toUpperCase();
+        if (rowName.includes("SD")) rowUnit = "SD";
+        else if (rowName.includes("PAUD") || rowName.includes("TK") || rowName.includes("KB")) rowUnit = "PAUD";
+      }
+      
+      var isSD = (rowUnit === "SD");
+      var isPAUD = (rowUnit === "PAUD");
+      
+      if (!isSD && !isPAUD) {
+        skippedNotUnit++;
+        continue;
+      }
+      
+      if (isSD) sdCount++;
+      if (isPAUD) paudCount++;
+      
+      if (rowMonth === currentMonth) {
+        matchMonth++;
+      }
+      var rowWeek = Utilities.formatDate(rowDate, "Asia/Jakarta", "w");
+      if (rowWeek === currentWeek && rowMonth === currentMonth) {
+        matchWeek++;
+      }
+      if (rowTimeStr === todayStr) {
+        matchToday++;
+      }
+      
+      // Simpan 3 baris terakhir yang COCOK sebagai sampel
+      if (samples.length < 3 && rowMonth === currentMonth) {
+        samples.push({
+          idx: i + 2,
+          rawTime: rawTime instanceof Date ? rawTime.toString() : rawTime,
+          parsedTime: rowTimeStr,
+          rowUnit: rowUnit,
+          rowName: row[3],
+          rowRole: row[4]
+        });
+      }
     }
     
     return JSON.stringify({
-      lastRow: lastRow,
-      lastCol: lastCol,
-      headers: headers,
+      target_today: todayStr,
+      target_month: currentMonth,
+      target_week: currentWeek,
+      total_rows: totalRows,
+      parsed_dates: parsedDates,
+      skipped_invalid_date: skippedInvalidDate,
+      skipped_not_unit: skippedNotUnit,
+      sd_total_matched: sdCount,
+      paud_total_matched: paudCount,
+      match_month: matchMonth,
+      match_week: matchWeek,
+      match_today: matchToday,
       samples: samples
     });
   } catch(e) {
@@ -531,7 +611,7 @@ function getVisitorStats() {
 
   try {
     var cache = CacheService.getScriptCache();
-    var cachedStats = cache.get("visitor_stats_cache_v3");
+    var cachedStats = cache.get("visitor_stats_cache_v4");
     if (cachedStats != null) {
       var parsed = JSON.parse(cachedStats);
       // Timpa dengan data online terbaru karena realtime
@@ -618,7 +698,7 @@ function getVisitorStats() {
     }
     
     // Simpan ke cache selama 5 menit (300 detik)
-    cache.put("visitor_stats_cache_v3", JSON.stringify(stats), 300);
+    cache.put("visitor_stats_cache_v4", JSON.stringify(stats), 300);
   } catch (e) {
     stats.info = "Maintenance Mode";
     console.log("Error getVisitorStats: " + e.message);
