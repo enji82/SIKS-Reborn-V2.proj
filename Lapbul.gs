@@ -586,6 +586,14 @@ function prosesSimpanLengkap(dbKey, namaSheet, source, form, fileData) {
     isi(["rombel", "total rombel", "jumlah rombel"], form.total_rombel || form.jumlah_rombel);
 
     if (source === "PAUD") {
+        checkAndCreateColumnsPAUD(sheet, form);
+        headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(function(h) { return String(h).toLowerCase().trim(); });
+        var oldLength = rowData.length;
+        if (headers.length > oldLength) {
+            var diff = headers.length - oldLength;
+            for (var d = 0; d < diff; d++) rowData.push(null);
+        }
+        
         isi("0-1 L", form.u01_l); isi("0-1 P", form.u01_p);
         isi("1-2 L", form.u12_l); isi("1-2 P", form.u12_p);
         isi("2-3 L", form.u23_l); isi("2-3 P", form.u23_p);
@@ -633,6 +641,11 @@ function prosesSimpanLengkap(dbKey, namaSheet, source, form, fileData) {
         mapPAUDCol(70, "TD LAIN PTT", form.td_lain_ptt);
         mapPAUDCol(71, "TD LAIN PNS", form.td_lain_pns);
         mapPAUDCol(72, "TD LAIN PPPK", form.td_lain_pppk);
+
+        // Petakan semua form key lainnya (termasuk kolom murid mutasi baru)
+        for (var key in form) {
+            isi([key, key.replace(/_/g, " ")], form[key]);
+        }
     } else {
         for (var key in form) { isi([key, key.replace(/_/g, " ")], form[key]); }
     }
@@ -644,8 +657,8 @@ function prosesSimpanLengkap(dbKey, namaSheet, source, form, fileData) {
     isi(["user kirim", "user input", "pengirim"], userLogin);
     isi(["dibaca oleh", "read by"], ""); // Reset status baca
     isi(["status data"], "Diproses"); // Set status data ke "Diproses" agar terhitung di rekap/dashboard
-    if (source === "PAUD" && rowData.length > 73) {
-        rowData = rowData.slice(0, 73);
+    if (source === "PAUD" && rowData.length > headers.length) {
+        rowData = rowData.slice(0, headers.length);
     }
 
     if (source === "PAUD") {
@@ -813,7 +826,6 @@ function lapbul_getLastMonthDataSD(npsn) {
 
 function updateLapbulSD(form, fileData) { return prosesUpdateLengkap(KONFIG_LAPBUL.SD_DB, "Input SD", form, fileData); }
 function updateLapbulPAUD(form, fileData) { return prosesUpdateLengkap(KONFIG_LAPBUL.PAUD_DB, "Input PAUD", form, fileData); }
-
 function prosesUpdateLengkap(dbKey, namaSheet, form, fileData) {
   try {
     var sheet = getSheet(dbKey, namaSheet);
@@ -825,11 +837,14 @@ function prosesUpdateLengkap(dbKey, namaSheet, form, fileData) {
        fileUrl = uploadFileToDrive(fileData, folderId, "Laporan " + namaSheet + " - " + form.nama_sekolah + " - " + form.bulan + " " + form.tahun + " (Revisi)");
     }
 
+    if (namaSheet === "Input PAUD") {
+        checkAndCreateColumnsPAUD(sheet, form);
+    }
+
     var lastCol = sheet.getLastColumn();
     var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
     var currentRowData = sheet.getRange(rowId, 1, 1, lastCol).getValues()[0];
     var newRowData = [];
-
     var now = new Date();
     var strTglEdit = Utilities.formatDate(now, "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss");
     var strUserEdit = form.user_login || "Admin";
@@ -918,8 +933,8 @@ function prosesUpdateLengkap(dbKey, namaSheet, form, fileData) {
         else newRowData.push(currentRowData[i]);
     }
 
-    if (namaSheet === "Input PAUD" && newRowData.length > 73) {
-        newRowData = newRowData.slice(0, 73);
+    if (namaSheet === "Input PAUD" && newRowData.length > headers.length) {
+        newRowData = newRowData.slice(0, headers.length);
     }
 
     if (namaSheet === "Input PAUD") {
@@ -1467,6 +1482,162 @@ function lapbul_getPreviousMonthDataSD(npsn, currentBulan, currentTahun) {
   try {
     var sheet = getSheet(KONFIG_LAPBUL.SD_DB, "Input SD");
     if (!sheet) return { status: 'error', message: "Sheet Input SD tidak ditemukan!" };
+
+    var lastRow = sheet.getLastRow();
+    var lastCol = sheet.getLastColumn();
+    if (lastRow < 2) return { status: 'success', data: null, prevMonthStr: targetBulan + ' ' + targetTahun };
+
+    var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    var data = sheet.getRange(2, 1, lastRow - 1, lastCol).getDisplayValues();
+    
+    var npsnColIdx = -1, blnColIdx = -1, thnColIdx = -1;
+    for (var i = 0; i < headers.length; i++) {
+        var h = String(headers[i]).toLowerCase().trim();
+        if (h === "npsn") npsnColIdx = i;
+        if (h === "bulan" || h === "bln") blnColIdx = i;
+        if (h === "tahun" || h === "thn") thnColIdx = i;
+    }
+    
+    if (npsnColIdx === -1) return { status: 'error', message: "Kolom NPSN tidak ditemukan" };
+    
+    for (var r = data.length - 1; r >= 0; r--) {
+        if (String(data[r][npsnColIdx]).trim() === String(npsn).trim() &&
+            String(data[r][blnColIdx]).trim().toLowerCase() === targetBulan.toLowerCase() &&
+            String(data[r][thnColIdx]).trim() === String(targetTahun)) {
+            
+            var result = {};
+            for (var i = 0; i < headers.length; i++) {
+                result[String(headers[i]).trim()] = data[r][i];
+            }
+            return { status: 'success', data: result, prevMonthStr: targetBulan + ' ' + targetTahun };
+        }
+    }
+    
+    return { status: 'success', data: null, prevMonthStr: targetBulan + ' ' + targetTahun };
+  } catch(e) {
+    return { status: 'error', message: e.toString() };
+  }
+}
+
+function checkAndCreateColumnsPAUD(sheet, form) {
+  var lastCol = sheet.getLastColumn();
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(function(h) { return String(h).toLowerCase().trim(); });
+  
+  var newHeaders = [];
+  for (var key in form) {
+    if (key === "EDIT_ROW_ID" || key === "file_url_lama" || key === "user_login" || key === "file_data" || key.startsWith("ks_") || key.startsWith("gk_") || key.startsWith("gp_") || key.startsWith("gm_") || key.startsWith("gl_") || key.startsWith("td_")) {
+      continue;
+    }
+    
+    var isMuridNewField = key.includes("_awal_") || key.includes("_masuk_") || key.includes("_keluar_") || key.includes("_akhir_") || key.includes("_abk_") || 
+                          key.endsWith("_islam") || key.endsWith("_kristen") || key.endsWith("_katolik") || key.endsWith("_hindu") || key.endsWith("_buddha") || key.endsWith("_konghucu") ||
+                          key === "rombel_kb" || key === "rombel_a" || key === "rombel_b";
+                          
+    if (isMuridNewField) {
+      var normalizedKey = key.toLowerCase().trim();
+      if (headers.indexOf(normalizedKey) === -1) {
+        newHeaders.push(key);
+      }
+    }
+  }
+  
+  if (newHeaders.length > 0) {
+    sheet.insertColumnsAfter(lastCol, newHeaders.length);
+    sheet.getRange(1, lastCol + 1, 1, newHeaders.length).setValues([newHeaders]);
+    SpreadsheetApp.flush();
+  }
+}
+
+function lapbul_getLastMonthDataPAUD(npsn) {
+  try {
+    var sheet = getSheet(KONFIG_LAPBUL.PAUD_DB, "Input PAUD");
+    if (!sheet) return { status: 'error', message: "Sheet tidak ditemukan!" };
+
+    var lastRow = sheet.getLastRow();
+    var lastCol = sheet.getLastColumn();
+    if (lastRow < 2) return { status: 'success', data: null };
+
+    var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    
+    var npsnColIdx = -1;
+    var blnColIdx = -1;
+    var thnColIdx = -1;
+    var statusColIdx = -1;
+    for (var i = 0; i < headers.length; i++) {
+        var h = String(headers[i]).toLowerCase().trim();
+        if (h === "npsn") npsnColIdx = i;
+        if (h === "bulan") blnColIdx = i;
+        if (h === "tahun") thnColIdx = i;
+        if (h === "status data") statusColIdx = i;
+    }
+    
+    if (npsnColIdx === -1) return { status: 'error', message: "Kolom NPSN tidak ditemukan" };
+    
+    var maxColIndex = Math.max(npsnColIdx, blnColIdx, thnColIdx, statusColIdx) + 1;
+    var data = sheet.getRange(2, 1, lastRow - 1, maxColIndex).getDisplayValues();
+    
+    var arrBulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+    
+    var bestRowIdx = -1;
+    var bestScore = -1;
+    
+    for (var r = 0; r < data.length; r++) {
+        if (String(data[r][npsnColIdx]).trim() === String(npsn).trim()) {
+            if (statusColIdx > -1 && String(data[r][statusColIdx]).toLowerCase().includes("hapus")) continue;
+            
+            var thnVal = parseInt(data[r][thnColIdx]) || 0;
+            var blnVal = String(data[r][blnColIdx]).trim();
+            var blnIdx = -1;
+            for(var i=0; i<arrBulan.length; i++){
+               if(arrBulan[i].toLowerCase() === blnVal.toLowerCase()) { blnIdx = i; break; }
+            }
+            
+            var score = (thnVal * 12) + blnIdx;
+            if (score > bestScore) {
+                bestScore = score;
+                bestRowIdx = r + 2;
+            }
+        }
+    }
+    
+    if (bestRowIdx > -1) {
+        var fullRowData = sheet.getRange(bestRowIdx, 1, 1, lastCol).getDisplayValues()[0];
+        var result = {};
+        for (var i = 0; i < headers.length; i++) {
+            result[String(headers[i]).trim()] = fullRowData[i];
+        }
+        return { status: 'success', data: result };
+    }
+    
+    return { status: 'success', data: null };
+  } catch(e) {
+    return { status: 'error', message: e.toString() };
+  }
+}
+
+function lapbul_getPreviousMonthDataPAUD(npsn, currentBulan, currentTahun) {
+  var bulanList = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+  var currB = String(currentBulan).trim();
+  var bIdx = -1;
+  for(var i=0; i<bulanList.length; i++){
+    if(bulanList[i].toLowerCase() === currB.toLowerCase()) { bIdx = i; break; }
+  }
+  
+  if (bIdx === -1) return { status: 'error', message: "Bulan tidak valid" };
+  
+  var targetBulan = "";
+  var targetTahun = parseInt(currentTahun);
+  
+  if (bIdx === 0) { 
+    targetBulan = 'Desember'; 
+    targetTahun = targetTahun - 1; 
+  } else { 
+    targetBulan = bulanList[bIdx - 1]; 
+  }
+  
+  try {
+    var sheet = getSheet(KONFIG_LAPBUL.PAUD_DB, "Input PAUD");
+    if (!sheet) return { status: 'error', message: "Sheet Input PAUD tidak ditemukan!" };
 
     var lastRow = sheet.getLastRow();
     var lastCol = sheet.getLastColumn();
