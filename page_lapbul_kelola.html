@@ -2890,6 +2890,12 @@
             var totAgama = islam + kristen + katolik + hindu + buddha + konghucu;
             row.find('.cell-agama-jml').text(totAgama);
             tot.islam += islam; tot.kristen += kristen; tot.katolik += katolik; tot.hindu += hindu; tot.buddha += buddha; tot.konghucu += konghucu;
+            
+            if ((akhir_l + akhir_p) !== totAgama) {
+                row.find('.cell-akhir-jml, .cell-agama-jml').addClass('bg-warning text-dark');
+            } else {
+                row.find('.cell-akhir-jml, .cell-agama-jml').removeClass('bg-warning text-dark');
+            }
         });
         
         var f = $(footId);
@@ -2954,27 +2960,33 @@
         var totAgamaRombel = totRombel.islam + totRombel.kristen + totRombel.katolik + totRombel.hindu + totRombel.buddha + totRombel.konghucu;
         checkAndHighlight('tot-agama-jml', totAgamaUsia, totAgamaRombel);
 
+        var hasInternalMismatch = $('#lapbulkelola_formPAUD .bg-warning').length > 0;
+        if (hasInternalMismatch) {
+            isValid = false;
+            reason = "Total Akhir Bulan & Agama tidak sama pada baris tertentu";
+        }
+
         var totalAkhirUsia = totUsia.akhir_l + totUsia.akhir_p;
         if (totalAkhirUsia === 0) {
             isValid = false;
             reason = "Data murid kosong";
         }
 
-
         if (!crossMatch) {
             isValid = false;
             reason = "Jumlah total tabel Usia dan Rombongan Belajar tidak cocok";
-            // Beri warna latar abu-abu gelap ke tr footer agar menandakan ada cell merah di dalamnya
             $('#lapbulkelola_footMuridUsiaPAUD tr, #lapbulkelola_footMuridRombelPAUD tr').addClass('bg-secondary text-white');
         } else {
             $('#lapbulkelola_footMuridUsiaPAUD tr, #lapbulkelola_footMuridRombelPAUD tr').removeClass('bg-secondary text-white').addClass('bg-secondary text-white');
         }
         
         if (isValid) {
-            badge.removeClass('badge-danger badge-warning').addClass('badge-success').html('<i class="fas fa-check-circle mr-1"></i>Sesuai');
+            badge.removeClass('badge-danger badge-warning text-dark').addClass('badge-success').html('<i class="fas fa-check-circle mr-1"></i>Sesuai');
             return true;
         } else {
-            badge.removeClass('badge-success badge-warning').addClass('badge-danger').html('<i class="fas fa-times-circle mr-1"></i>' + reason);
+            var badgeClass = (!crossMatch || totalAkhirUsia === 0) ? 'badge-danger' : 'badge-warning';
+            badge.removeClass('badge-success badge-danger badge-warning text-dark').addClass(badgeClass).html('<i class="fas fa-times-circle mr-1"></i>' + reason);
+            if (badgeClass === 'badge-warning') badge.addClass('text-dark');
             return false;
         }
     }
