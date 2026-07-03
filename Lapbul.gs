@@ -437,8 +437,8 @@ function getLastUploadedReportInfo(sheet, npsn, idxNpsn, idxBulan, idxTahun, idx
   var lastRow = sheet.getLastRow();
   if (lastRow < 2) return null;
   
-  var maxCol = Math.max(idxNpsn, idxBulan, idxTahun, idxStatus) + 1;
-  var rangeValues = sheet.getRange(2, 1, lastRow - 1, maxCol).getValues();
+  var maxCol = sheet.getLastColumn();
+  var rangeValues = sheet.getRange(2, 1, lastRow - 1, maxCol).getDisplayValues();
   
   var arrBulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
   
@@ -451,7 +451,10 @@ function getLastUploadedReportInfo(sheet, npsn, idxNpsn, idxBulan, idxTahun, idx
     var st = (idxStatus > -1) ? String(r[idxStatus]).toLowerCase() : "";
     if (st.includes("hapus")) continue;
     
-    if (String(r[idxNpsn]).trim() === String(npsn).trim()) {
+    var rowNpsn = String(r[idxNpsn]).trim().replace(/\.0+$/, "");
+    var targetNpsn = String(npsn).trim().replace(/\.0+$/, "");
+    
+    if (rowNpsn === targetNpsn) {
       var bStr = String(r[idxBulan]).trim();
       var tVal = parseInt(r[idxTahun]) || 0;
       
@@ -512,8 +515,8 @@ function cekKelengkapanLaporanSebelumnya(npsn, jenjang, bulan, tahun, isEditMode
     if (idxNpsn > -1 && idxBulan > -1 && idxTahun > -1) {
       var lastRow = sheet.getLastRow();
       if (lastRow >= 2) {
-        var maxColIndex = Math.max(idxNpsn, idxBulan, idxTahun, idxStatus) + 1;
-        var rangeValues = sheet.getRange(2, 1, lastRow - 1, maxColIndex).getValues();
+        var maxColIndex = sheet.getLastColumn();
+        var rangeValues = sheet.getRange(2, 1, lastRow - 1, maxColIndex).getDisplayValues();
         
         if (!isEditMode) {
             for (var i = rangeValues.length - 1; i >= 0; i--) {
@@ -521,7 +524,10 @@ function cekKelengkapanLaporanSebelumnya(npsn, jenjang, bulan, tahun, isEditMode
               var st = (idxStatus > -1) ? String(r[idxStatus]).toLowerCase() : "";
               if (st.includes("hapus")) continue;
               
-              if (String(r[idxNpsn]).trim() === String(npsn).trim() && 
+              var rowNpsn = String(r[idxNpsn]).trim().replace(/\.0+$/, "");
+              var targetNpsn = String(npsn).trim().replace(/\.0+$/, "");
+              
+              if (rowNpsn === targetNpsn && 
                   String(r[idxBulan]).trim().toLowerCase() === bulanClean.toLowerCase() && 
                   String(r[idxTahun]).trim() === String(tahun)) {
                 return { success: false, message: "Laporan untuk bulan " + bulanClean + " " + tahun + " sudah ada! Silakan gunakan fitur Edit pada tabel data." };
@@ -539,7 +545,10 @@ function cekKelengkapanLaporanSebelumnya(npsn, jenjang, bulan, tahun, isEditMode
           var st = (idxStatus > -1) ? String(r[idxStatus]).toLowerCase() : "";
           if (st.includes("hapus")) continue;
           
-          if (String(r[idxNpsn]).trim() === String(npsn).trim() && 
+          var rowNpsn = String(r[idxNpsn]).trim().replace(/\.0+$/, "");
+          var targetNpsn = String(npsn).trim().replace(/\.0+$/, "");
+          
+          if (rowNpsn === targetNpsn && 
               String(r[idxBulan]).trim().toLowerCase() === targetBulanStr.toLowerCase() && 
               String(r[idxTahun]).trim() === String(targetTahun)) {
             prevExists = true;
@@ -549,23 +558,18 @@ function cekKelengkapanLaporanSebelumnya(npsn, jenjang, bulan, tahun, isEditMode
         
         if (!prevExists) {
             var lastRep = getLastUploadedReportInfo(sheet, npsn, idxNpsn, idxBulan, idxTahun, idxStatus);
-            var lastRepMsg = lastRep ? ("Laporan bulan terakhir Anda adalah bulan " + lastRep.bulan + " " + lastRep.tahun + ".<br>") : "Anda belum pernah mengisi laporan sebelumnya.<br>";
-            var nextTargetBulan = targetBulanStr;
-            var nextTargetTahun = targetTahun;
+            var msg = "Sistem mensyaratkan pengisian laporan harus berurutan.<br>";
             if (lastRep) {
+              msg += "Laporan bulan terakhir Anda adalah bulan " + lastRep.bulan + " " + lastRep.tahun + ".<br>";
               var lastBlnIdx = arrBulan.indexOf(lastRep.bulan);
               var nextBlnIdx = (lastBlnIdx === 11) ? 0 : (lastBlnIdx + 1);
               var nextThn = (lastBlnIdx === 11) ? (parseInt(lastRep.tahun) + 1) : parseInt(lastRep.tahun);
-              nextTargetBulan = arrBulan[nextBlnIdx];
-              nextTargetTahun = nextThn;
+              msg += "Silakan isi laporan bulan " + arrBulan[nextBlnIdx] + " " + nextThn + " terlebih dahulu.";
+            } else {
+              msg += "Anda belum pernah mengisi laporan sebelumnya.<br>";
+              msg += "Silakan isi laporan bulan Juli " + tahun + " terlebih dahulu.";
             }
-            return { 
-              success: false, 
-              message: "Anda belum mengisi laporan bulan " + bulanClean + " " + tahun + ".<br><br>" +
-                       "Sistem mensyaratkan pengisian laporan harus berurutan.<br>" +
-                       lastRepMsg +
-                       "Silakan isi laporan bulan " + nextTargetBulan + " " + nextTargetTahun + " terlebih dahulu." 
-            };
+            return { success: false, message: msg };
         } else {
             return { success: true, message: "Valid" };
         }
@@ -575,23 +579,18 @@ function cekKelengkapanLaporanSebelumnya(npsn, jenjang, bulan, tahun, isEditMode
     if (bulanClean.toLowerCase() === "juli") return { success: true, message: "Valid" };
     
     var lastRep = getLastUploadedReportInfo(sheet, npsn, idxNpsn, idxBulan, idxTahun, idxStatus);
-    var lastRepMsg = lastRep ? ("Laporan bulan terakhir Anda adalah bulan " + lastRep.bulan + " " + lastRep.tahun + ".<br>") : "Anda belum pernah mengisi laporan sebelumnya.<br>";
-    var nextTargetBulan = targetBulanStr;
-    var nextTargetTahun = targetTahun;
+    var msg = "Sistem mensyaratkan pengisian laporan harus berurutan.<br>";
     if (lastRep) {
+      msg += "Laporan bulan terakhir Anda adalah bulan " + lastRep.bulan + " " + lastRep.tahun + ".<br>";
       var lastBlnIdx = arrBulan.indexOf(lastRep.bulan);
       var nextBlnIdx = (lastBlnIdx === 11) ? 0 : (lastBlnIdx + 1);
       var nextThn = (lastBlnIdx === 11) ? (parseInt(lastRep.tahun) + 1) : parseInt(lastRep.tahun);
-      nextTargetBulan = arrBulan[nextBlnIdx];
-      nextTargetTahun = nextThn;
+      msg += "Silakan isi laporan bulan " + arrBulan[nextBlnIdx] + " " + nextThn + " terlebih dahulu.";
+    } else {
+      msg += "Anda belum pernah mengisi laporan sebelumnya.<br>";
+      msg += "Silakan isi laporan bulan Juli " + tahun + " terlebih dahulu.";
     }
-    return { 
-      success: false, 
-      message: "Anda belum mengisi laporan bulan " + bulanClean + " " + tahun + ".<br><br>" +
-               "Sistem mensyaratkan pengisian laporan harus berurutan.<br>" +
-               lastRepMsg +
-               "Silakan isi laporan bulan " + nextTargetBulan + " " + nextTargetTahun + " terlebih dahulu." 
-    };
+    return { success: false, message: msg };
     
   } catch(e) {
     return { success: true, message: "Error check, allow." };
