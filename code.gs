@@ -763,7 +763,7 @@ function getPengumumanInfo() {
 function getMonitoring_Charts() {
   try {
     var cache = CacheService.getScriptCache();
-    var cached = cache.get("monitoring_charts_v3");
+    var cached = cache.get("monitoring_charts_v4");
     if (cached != null) return cached;
 
     var ss = getDB("USER_DB");
@@ -840,7 +840,7 @@ function getMonitoring_Charts() {
     }
 
     var result = JSON.stringify(stats);
-    cache.put("monitoring_charts_v3", result, 300);
+    cache.put("monitoring_charts_v4", result, 300);
     return result;
 
   } catch (e) { return JSON.stringify({ error: e.toString() }); }
@@ -1200,9 +1200,9 @@ function archiveLastMonthLog(ss, sheetLog, oldMonth) {
   
   // Bersihkan cache monitoring
   var cache = CacheService.getScriptCache();
-  cache.remove("monitoring_charts_v3");
-  cache.remove("monitoring_users_v3");
-  cache.remove("visitor_stats_cache_v3");
+  cache.remove("monitoring_charts_v4");
+  cache.remove("monitoring_users_v3"); // Note: users_v3 can stay as v3 or we can update it if we want.
+  cache.remove("visitor_stats_cache_v4");
 }
 
 /* ======================================================================
