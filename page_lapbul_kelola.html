@@ -3999,8 +3999,38 @@
                 $(btnId).prop("disabled", false).html(txtAwal);
                 if (cb) cb(true);
             } else {
-                $(btnId).prop("disabled", true).html('<i class="fas fa-lock mr-1"></i> Terkunci');
-                if (showAlert) Sultan.alert("warning", "Validasi Laporan", res.message);
+                $(btnId).prop("disabled", false).html(txtAwal); // Sediakan tombol kembali aktif agar bisa dicoba lagi
+                if (showAlert) {
+                    if (res.targetBulan && res.targetTahun) {
+                        var promptHtml = res.message + "<br><br><b>Apakah Anda ingin melanjutkan mengisi laporan Bulan " + res.targetBulan + " " + res.targetTahun + "?</b>";
+                        Sultan.konfirmasi({
+                            judul: 'Validasi Laporan',
+                            html: promptHtml,
+                            btnYa: 'LANJUTKAN',
+                            btnBatal: 'TIDAK'
+                        }, function() {
+                            $(blnId).val(res.targetBulan).trigger('change');
+                            $(thnId).val(res.targetTahun).trigger('change');
+                            $('#lapbulkelola_modalKonfirmasiPeriode').modal('hide');
+                            
+                            if (jenjang === "SD") {
+                                Sultan.notif.loading("Mengambil riwayat bulan lalu...");
+                                lapbulkelola_fetchLastMonthDataSD(npsn, function() {
+                                    Sultan.notif.tutup();
+                                    lapbulkelola_nextTab('lapbulkelola_ts2');
+                                });
+                            } else {
+                                Sultan.notif.loading("Mengambil riwayat bulan lalu...");
+                                lapbulkelola_fetchLastMonthDataPAUD(npsn, function() {
+                                    Sultan.notif.tutup();
+                                    lapbulkelola_nextTabPAUD('lapbulkelola_tp2');
+                                });
+                            }
+                        });
+                    } else {
+                        Sultan.alert("warning", "Validasi Laporan", res.message);
+                    }
+                }
                 if (cb) cb(false);
             }
         }).withFailureHandler(function(err) {
