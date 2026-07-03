@@ -558,6 +558,13 @@ function debugLogAccess() {
       }
     }
     
+    var chartResult;
+    try {
+      chartResult = JSON.parse(getMonitoring_Charts());
+    } catch(chartErr) {
+      chartResult = { error: "CRASH: " + chartErr.toString() };
+    }
+    
     return JSON.stringify({
       target_today: todayStr,
       target_month: currentMonth,
@@ -571,6 +578,7 @@ function debugLogAccess() {
       match_month: matchMonth,
       match_week: matchWeek,
       match_today: matchToday,
+      chart_result: chartResult,
       samples: samples
     });
   } catch(e) {
