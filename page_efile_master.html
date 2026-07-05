@@ -120,14 +120,29 @@
           </select>
         </div>
         <div class="col-md-6">
-          <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Wajib Untuk</label>
-          <select id="efilemaster_f_wajib" class="form-control form-control-sultan">
-            <option value="">Semua Pegawai</option>
-            <option value="PNS">PNS</option>
-            <option value="PPPK">PPPK</option>
-            <option value="PNS,PPPK">PNS dan PPPK</option>
-            <option value="Honorer">Honorer</option>
-          </select>
+          <label class="form-label-sultan small font-weight-bold text-muted text-uppercase d-block mb-2">Wajib Untuk (Bisa Pilih > 1)</label>
+          <div class="border rounded p-2 bg-light d-flex flex-wrap" style="gap:10px; min-height: 38px;">
+            <div class="custom-control custom-checkbox mr-2">
+              <input type="checkbox" class="custom-control-input efilemaster-f-wajib-cb" id="efilemaster_cb_cpns" value="CPNS">
+              <label class="custom-control-label small font-weight-bold" for="efilemaster_cb_cpns">CPNS</label>
+            </div>
+            <div class="custom-control custom-checkbox mr-2">
+              <input type="checkbox" class="custom-control-input efilemaster-f-wajib-cb" id="efilemaster_cb_pns" value="PNS">
+              <label class="custom-control-label small font-weight-bold" for="efilemaster_cb_pns">PNS</label>
+            </div>
+            <div class="custom-control custom-checkbox mr-2">
+              <input type="checkbox" class="custom-control-input efilemaster-f-wajib-cb" id="efilemaster_cb_pppk" value="PPPK">
+              <label class="custom-control-label small font-weight-bold" for="efilemaster_cb_pppk">PPPK</label>
+            </div>
+            <div class="custom-control custom-checkbox mr-2">
+              <input type="checkbox" class="custom-control-input efilemaster-f-wajib-cb" id="efilemaster_cb_pppkpw" value="PPPK Paruh Waktu">
+              <label class="custom-control-label small font-weight-bold" for="efilemaster_cb_pppkpw">PPPK Paruh Waktu</label>
+            </div>
+            <div class="custom-control custom-checkbox mr-2">
+              <input type="checkbox" class="custom-control-input efilemaster-f-wajib-cb" id="efilemaster_cb_nonasn" value="Tenaga Non ASN">
+              <label class="custom-control-label small font-weight-bold" for="efilemaster_cb_nonasn">Tenaga Non ASN</label>
+            </div>
+          </div>
         </div>
       </div>
       <div class="form-group mb-3">
@@ -291,6 +306,7 @@ function efilemaster_renderTabel(data) {
 function efilemaster_bukaModalTambah() {
   var $form = $('#efilemaster_formSimpan');
   $form[0].reset(); $form.removeClass('was-validated');
+  $('.efilemaster-f-wajib-cb').prop('checked', false);
   $('#efilemaster_f_rowid').val('');
   $('#efilemaster_f_id').prop('readonly', false).val('');
   $('input[name="efilemaster_f_aktif"][value="true"]').prop('checked', true);
@@ -302,13 +318,24 @@ function efilemaster_bukaModalEdit(idKat) {
   if (!d) return;
   var $form = $('#efilemaster_formSimpan');
   $form[0].reset(); $form.removeClass('was-validated');
+  $('.efilemaster-f-wajib-cb').prop('checked', false);
+
   $('#efilemaster_f_rowid').val(d.rowId);
   $('#efilemaster_f_id').prop('readonly', true).val(d.idKat);
   $('#efilemaster_f_nama').val(d.namaKat);
   $('#efilemaster_f_parent').val(d.parent);
   $('#efilemaster_f_format').val(d.format || 'PDF');
   $('#efilemaster_f_periode').val(d.jenisPeriode || '');
-  $('#efilemaster_f_wajib').val(d.statusPegawaiWajib || '');
+  
+  if (d.statusPegawaiWajib) {
+    var arrWajib = d.statusPegawaiWajib.split(',').map(function(s) { return s.trim(); });
+    $('.efilemaster-f-wajib-cb').each(function() {
+      if (arrWajib.indexOf($(this).val()) > -1) {
+        $(this).prop('checked', true);
+      }
+    });
+  }
+
   $('#efilemaster_f_keterangan').val(d.keterangan || '');
   $('input[name="efilemaster_f_aktif"][value="' + (d.aktif ? 'true' : 'false') + '"]').prop('checked', true);
   efilemaster_bukaModal('edit', 'Edit Kategori: ' + d.namaKat);
@@ -333,6 +360,12 @@ function efilemaster_submitSimpan(e) {
   e.preventDefault();
   var $form = $(this);
   if (!$form[0].checkValidity()) { $form.addClass('was-validated'); return; }
+
+  var selectedWajib = [];
+  $('.efilemaster-f-wajib-cb:checked').each(function() {
+    selectedWajib.push($(this).val());
+  });
+
   var payload = {
     rowId:              $('#efilemaster_f_rowid').val() || null,
     idKat:              $('#efilemaster_f_id').val().trim(),
@@ -340,7 +373,7 @@ function efilemaster_submitSimpan(e) {
     parent:             $('#efilemaster_f_parent').val().trim(),
     format:             $('#efilemaster_f_format').val(),
     jenisPeriode:       $('#efilemaster_f_periode').val(),
-    statusPegawaiWajib: $('#efilemaster_f_wajib').val(),
+    statusPegawaiWajib: selectedWajib.join(','),
     keterangan:         $('#efilemaster_f_keterangan').val().trim(),
     aktif:              $('input[name="efilemaster_f_aktif"]:checked').val() !== 'false'
   };
