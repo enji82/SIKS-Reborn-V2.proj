@@ -124,11 +124,15 @@ function getEfileMasterData(npsnFilter) {
     var resKat = [];
     for(var i=1; i<dataKat.length; i++) {
         if(String(dataKat[i][0]).trim() !== "") {
+            // Hanya tampilkan kategori yang aktif (kolom G = TRUE atau kosong = default aktif)
+            var isAktif = String(dataKat[i][6] || "TRUE").trim().toUpperCase() !== "FALSE";
+            if (!isAktif) continue;
             resKat.push({ 
                 idKat: dataKat[i][0], namaKat: dataKat[i][1], parent: dataKat[i][2],
                 format: dataKat[i][3] ? String(dataKat[i][3]).trim().toUpperCase() : "PDF",
                 jenisPeriode: dataKat[i][4] ? String(dataKat[i][4]).trim().toUpperCase() : "",
-                statusPegawaiWajib: dataKat[i][5] ? String(dataKat[i][5]).trim() : ""
+                statusPegawaiWajib: dataKat[i][5] ? String(dataKat[i][5]).trim() : "",
+                keterangan: dataKat[i][7] ? String(dataKat[i][7]).trim() : ""
             });
         }
     }
@@ -218,51 +222,92 @@ function getEfileData(npsnFilter) {
 function simpanEfileBatch(batchData) {
   var lock = LockService.getScriptLock();
   try {
-    lock.waitLock(30000); 
+    lock.waitLock(30000);
     var sheet = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile");
     var now = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
     var pFolder = DriveApp.getFolderById(KONFIG_EFILE.FOLDER_ID);
     var rowsToAppend = [];
-    
-    for(var i = 0; i < batchData.length; i++) {
-        var item = batchData[i]; var fileUrl = "";
-        if (item.fileBase64) {
-            // Folder: Kategori berkas - Tahun
-            var folderKatName = (item.nama_kategori || "Berkas") + " - " + (item.tahun || "Umum");
-            var idFolderKat = pFolder.getFoldersByName(folderKatName);
-            var fKat = idFolderKat.hasNext() ? idFolderKat.next() : pFolder.createFolder(folderKatName);
-            
-            // Subfolder: Nama Sekolah (Unit Kerja)
-            var unitName = getUnitNameByPtkId(item.id_ptk);
-            var idFolderUnit = fKat.getFoldersByName(unitName);
-            var fUnit = idFolderUnit.hasNext() ? idFolderUnit.next() : fKat.createFolder(unitName);
+    var laporan = [];
+    var berhasilCount = 0;
+    var skipCount = 0;
 
-            var blob = Utilities.newBlob(Utilities.base64Decode(item.fileBase64), item.mimeType, item.nama_file);
-            var file = fUnit.createFile(blob); file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-            fileUrl = file.getUrl();
-        } else { throw new Error("File tidak valid."); }
-        
-        rowsToAppend.push([
-            item.id_ptk, item.nama_ptk, item.id_kategori, item.nama_kategori, 
-            item.tahun, item.nama_file, fileUrl, "Diproses", "", "'" + now, item.user_login, item.npsn,
-            "", "", item.periode
-        ]);
+    for (var i = 0; i < batchData.length; i++) {
+      var item = batchData[i];
+      var periodeItem = String(item.periode || "-").trim();
+
+      // ============================================================
+      // PROTEKSI DUPLIKAT: Cek sebelum upload
+      // ============================================================
+      var duplikat = efileCheckDuplikat(sheet, item.id_ptk, item.id_kategori, item.tahun, periodeItem);
+      if (duplikat.ada) {
+        var alasan = (duplikat.status.toLowerCase().includes('setuju') || duplikat.status.toLowerCase().includes('ok'))
+          ? "Sudah Disetujui, tidak dapat diubah lagi."
+          : "Sudah ada dengan status '" + duplikat.status + "'. Gunakan tombol Edit (✏️).";
+        laporan.push({ nama_kategori: item.nama_kategori, tahun: item.tahun, periode: periodeItem, result: "SKIP", alasan: alasan });
+        skipCount++;
+        continue;
+      }
+
+      var fileUrl = "";
+      if (item.fileBase64) {
+        var folderKatName = (item.nama_kategori || "Berkas") + " - " + (item.tahun || "Umum");
+        var idFolderKat = pFolder.getFoldersByName(folderKatName);
+        var fKat = idFolderKat.hasNext() ? idFolderKat.next() : pFolder.createFolder(folderKatName);
+        var unitName = getUnitNameByPtkId(item.id_ptk);
+        var idFolderUnit = fKat.getFoldersByName(unitName);
+        var fUnit = idFolderUnit.hasNext() ? idFolderUnit.next() : fKat.createFolder(unitName);
+        var blob = Utilities.newBlob(Utilities.base64Decode(item.fileBase64), item.mimeType, item.nama_file);
+        var file = fUnit.createFile(blob);
+        file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        fileUrl = file.getUrl();
+      } else {
+        laporan.push({ nama_kategori: item.nama_kategori, tahun: item.tahun, periode: periodeItem, result: "ERROR", alasan: "File tidak valid atau kosong." });
+        skipCount++;
+        continue;
+      }
+
+      // Kolom A-O + P(Tgl_Edit kosong) + Q(User_Edit kosong) = 17 kolom
+      rowsToAppend.push([
+        item.id_ptk, item.nama_ptk, item.id_kategori, item.nama_kategori,
+        item.tahun, item.nama_file, fileUrl, "Diproses", "", "'" + now,
+        item.user_login, item.npsn, "", "", periodeItem, "", ""
+      ]);
+      laporan.push({ nama_kategori: item.nama_kategori, tahun: item.tahun, periode: periodeItem, result: "OK", alasan: "" });
+      berhasilCount++;
     }
-    if(rowsToAppend.length > 0) sheet.getRange(sheet.getLastRow() + 1, 1, rowsToAppend.length, rowsToAppend[0].length).setValues(rowsToAppend);
+
+    if (rowsToAppend.length > 0) {
+      sheet.getRange(sheet.getLastRow() + 1, 1, rowsToAppend.length, rowsToAppend[0].length).setValues(rowsToAppend);
+    }
     SpreadsheetApp.flush();
 
     try {
-        var uniqueNpsns = {};
-        batchData.forEach(function(item) {
-            if (item.npsn) uniqueNpsns[item.npsn] = true;
-        });
-        Object.keys(uniqueNpsns).forEach(function(npsn) {
-            onEfileDataChange(npsn);
-        });
+      var uniqueNpsns = {};
+      batchData.forEach(function(item) { if (item.npsn) uniqueNpsns[item.npsn] = true; });
+      Object.keys(uniqueNpsns).forEach(function(npsn) { onEfileDataChange(npsn); });
     } catch(err) {}
 
-    return JSON.stringify({ success: true, message: batchData.length + " Berkas berhasil diunggah." });
-  } catch(e) { return JSON.stringify({ success: false, message: e.message }); } finally { lock.releaseLock(); }
+    var msg;
+    if (berhasilCount > 0 && skipCount === 0) {
+      msg = berhasilCount + " berkas berhasil diunggah.";
+    } else if (berhasilCount > 0 && skipCount > 0) {
+      msg = berhasilCount + " berkas berhasil, " + skipCount + " dilewati.";
+    } else {
+      msg = "Tidak ada berkas yang berhasil diunggah. " + skipCount + " berkas dilewati.";
+    }
+
+    return JSON.stringify({
+      success: berhasilCount > 0,
+      message: msg,
+      berhasil: berhasilCount,
+      skip: skipCount,
+      laporan: laporan
+    });
+  } catch(e) {
+    return JSON.stringify({ success: false, message: e.message });
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function verifikasiEfileData(rowId, status, catatan, adminName) {
@@ -342,16 +387,16 @@ function perbaikiEfileData(payload, fileData) {
     
     var now = "'" + Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
 
-    sheet.getRange(r, 5).setValue(payload.tahun);        // E: Edit Tahun
-    sheet.getRange(r, 6).setValue(payload.nama_file);    // F: Edit Nama File
+    sheet.getRange(r, 5).setValue(payload.tahun);        // E: Tahun
+    sheet.getRange(r, 6).setValue(payload.nama_file);    // F: Nama File
     sheet.getRange(r, 7).setValue(newFileUrl);           // G: URL Baru atau Lama
-    sheet.getRange(r, 8).setValue("Diproses");           // H: Reset Status
+    sheet.getRange(r, 8).setValue("Diproses");           // H: Reset Status ke Diproses
     sheet.getRange(r, 9).setValue("");                   // I: Kosongkan Catatan
-    sheet.getRange(r, 10).setValue(now);                 // J: Tgl Edit
-    sheet.getRange(r, 11).setValue(payload.user_login);  // K: Uploader
-    sheet.getRange(r, 13).setValue("");                  // M: Kosongkan Verif
-    sheet.getRange(r, 14).setValue("");                  // N: Kosongkan Verif
-    sheet.getRange(r, 15).setValue(payload.periode);     // O: Edit Periode             
+    sheet.getRange(r, 13).setValue("");                  // M: Kosongkan Tgl Verifikasi
+    sheet.getRange(r, 14).setValue("");                  // N: Kosongkan User Verifikasi
+    sheet.getRange(r, 15).setValue(payload.periode);     // O: Periode
+    sheet.getRange(r, 16).setValue(now);                 // P: Tgl_Edit
+    sheet.getRange(r, 17).setValue(payload.user_login);  // Q: User_Edit
 
     SpreadsheetApp.flush();
     
@@ -383,7 +428,7 @@ function getNotifikasiEfile(role, unit) {
         var isTarget = isAdmin ? isDiproses : (String(row[11]).trim().toUpperCase() === String(unit).trim().toUpperCase() && !isDiproses);
         
         if (isTarget) {
-            var readByList = String(row[15] || "").split(","); 
+            var readByList = String(row[17] || "").split(",");
             var isRead = (isAdmin && readByList.indexOf("Admin") > -1) || (!isAdmin && readByList.indexOf("User") > -1);
             
             var stLower = String(status || "").toLowerCase();
@@ -415,9 +460,10 @@ function tandaiNotifEfileDibaca(rowId, role) {
     try {
         var sheet = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile");
         var r = parseInt(rowId); var mark = (role === "Admin") ? "Admin" : "User";
-        var cur = String(sheet.getRange(r, 16).getDisplayValue() || "").trim();
-        if (cur === "") sheet.getRange(r, 16).setValue(mark);
-        else { var l = cur.split(","); if (l.indexOf(mark) === -1) { l.push(mark); sheet.getRange(r, 16).setValue(l.join(",")); } }
+        // Kolom R (18) = Notif_ReadMark (dipindahkan dari kolom P agar tidak bentrok dengan Tgl_Edit)
+        var cur = String(sheet.getRange(r, 18).getDisplayValue() || "").trim();
+        if (cur === "") sheet.getRange(r, 18).setValue(mark);
+        else { var l = cur.split(","); if (l.indexOf(mark) === -1) { l.push(mark); sheet.getRange(r, 18).setValue(l.join(",")); } }
         return true;
     } catch (e) { return false; }
 }
@@ -692,4 +738,149 @@ function onEfileDataChange(npsn) {
       invalidateNotifCache("User", npsn);
     }
   } catch(e) {}
+}
+
+/* ======================================================================
+   MODUL E-FILE — FUNGSI HELPER & MASTER KATEGORI (CRUD ADMIN)
+   ====================================================================== */
+
+/**
+ * Helper: Cek apakah kombinasi id_ptk + id_kategori + tahun + periode
+ * sudah ada di Database_Efile. Digunakan untuk proteksi duplikat.
+ * @returns {{ ada: boolean, status: string, rowId: number }}
+ */
+function efileCheckDuplikat(sheet, id_ptk, id_kategori, tahun, periode) {
+  try {
+    var data = sheet.getDataRange().getDisplayValues();
+    var cleanPtk     = String(id_ptk     || "").trim();
+    var cleanKat     = String(id_kategori || "").trim();
+    var cleanThn     = String(tahun       || "").trim();
+    var cleanPeriode = String(periode     || "-").trim();
+
+    for (var i = 1; i < data.length; i++) {
+      var rowPtk     = String(data[i][0]  || "").trim();  // A: ID_PTK
+      var rowKat     = String(data[i][2]  || "").trim();  // C: ID_Kategori
+      var rowThn     = String(data[i][4]  || "").trim();  // E: Tahun
+      var rowPeriode = String(data[i][14] || "-").trim(); // O: Periode
+      var rowStatus  = String(data[i][7]  || "").trim();  // H: Status
+
+      if (rowPtk === cleanPtk && rowKat === cleanKat && rowThn === cleanThn && rowPeriode === cleanPeriode) {
+        return { ada: true, status: rowStatus, rowId: i + 1 };
+      }
+    }
+    return { ada: false, status: "", rowId: -1 };
+  } catch(e) {
+    return { ada: false, status: "", rowId: -1 };
+  }
+}
+
+/**
+ * Admin: Baca seluruh Master_Kategori_Efile termasuk kolom aktif (G) & keterangan (H).
+ */
+function getEfileMasterKategoriAdmin() {
+  try {
+    var shKat = getSheet(KONFIG_EFILE.DB_KEY, "Master_Kategori_Efile");
+    if (!shKat) return JSON.stringify({ success: false, message: "Sheet Master_Kategori_Efile tidak ditemukan." });
+    var dataKat = shKat.getDataRange().getDisplayValues();
+    var result = [];
+    for (var i = 1; i < dataKat.length; i++) {
+      if (String(dataKat[i][0]).trim() !== "") {
+        result.push({
+          rowId: i + 1,
+          idKat: dataKat[i][0],
+          namaKat: dataKat[i][1],
+          parent: dataKat[i][2],
+          format: dataKat[i][3] || "PDF",
+          jenisPeriode: dataKat[i][4] || "",
+          statusPegawaiWajib: dataKat[i][5] || "",
+          aktif: String(dataKat[i][6] || "TRUE").trim().toUpperCase() !== "FALSE",
+          keterangan: dataKat[i][7] || ""
+        });
+      }
+    }
+    return JSON.stringify({ success: true, data: result });
+  } catch(e) {
+    return JSON.stringify({ success: false, message: e.message });
+  }
+}
+
+/**
+ * Admin: Tambah atau edit baris di Master_Kategori_Efile.
+ * Jika payload.rowId ada → mode Edit. Jika tidak → mode Tambah.
+ */
+function simpanMasterKategori(payload) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    var shKat = getSheet(KONFIG_EFILE.DB_KEY, "Master_Kategori_Efile");
+    if (!shKat) return JSON.stringify({ success: false, message: "Sheet tidak ditemukan." });
+
+    var idKat   = String(payload.idKat   || "").trim();
+    var namaKat = String(payload.namaKat || "").trim();
+    if (!idKat)   return JSON.stringify({ success: false, message: "ID Kategori tidak boleh kosong." });
+    if (!namaKat) return JSON.stringify({ success: false, message: "Nama Kategori tidak boleh kosong." });
+
+    var rowData = [
+      idKat,
+      namaKat,
+      String(payload.parent             || "").trim(),
+      String(payload.format             || "PDF").trim().toUpperCase(),
+      String(payload.jenisPeriode       || "").trim().toUpperCase(),
+      String(payload.statusPegawaiWajib || "").trim(),
+      payload.aktif !== false ? "TRUE" : "FALSE",
+      String(payload.keterangan         || "").trim()
+    ];
+
+    if (payload.rowId) {
+      // Mode EDIT
+      var r = parseInt(payload.rowId);
+      shKat.getRange(r, 1, 1, rowData.length).setValues([rowData]);
+      SpreadsheetApp.flush();
+      invalidateEfileDashboardCache();
+      return JSON.stringify({ success: true, message: "Kategori berhasil diperbarui." });
+    } else {
+      // Mode TAMBAH — validasi ID unik
+      var dataAll = shKat.getDataRange().getDisplayValues();
+      for (var i = 1; i < dataAll.length; i++) {
+        if (String(dataAll[i][0]).trim().toUpperCase() === idKat.toUpperCase()) {
+          return JSON.stringify({ success: false, message: "ID Kategori '" + idKat + "' sudah digunakan." });
+        }
+      }
+      shKat.appendRow(rowData);
+      SpreadsheetApp.flush();
+      invalidateEfileDashboardCache();
+      return JSON.stringify({ success: true, message: "Kategori baru berhasil ditambahkan." });
+    }
+  } catch(e) {
+    return JSON.stringify({ success: false, message: e.message });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Admin: Toggle kolom aktif (G) di Master_Kategori_Efile.
+ * Tidak menghapus data — kategori nonaktif tetap tersimpan untuk riwayat.
+ */
+function toggleAktifMasterKategori(idKat, aktifBaru) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    var shKat = getSheet(KONFIG_EFILE.DB_KEY, "Master_Kategori_Efile");
+    if (!shKat) return JSON.stringify({ success: false, message: "Sheet tidak ditemukan." });
+    var dataKat = shKat.getDataRange().getDisplayValues();
+    for (var i = 1; i < dataKat.length; i++) {
+      if (String(dataKat[i][0]).trim().toUpperCase() === String(idKat).trim().toUpperCase()) {
+        shKat.getRange(i + 1, 7).setValue(aktifBaru ? "TRUE" : "FALSE");
+        SpreadsheetApp.flush();
+        invalidateEfileDashboardCache();
+        return JSON.stringify({ success: true, message: "Status kategori berhasil diperbarui." });
+      }
+    }
+    return JSON.stringify({ success: false, message: "ID Kategori tidak ditemukan." });
+  } catch(e) {
+    return JSON.stringify({ success: false, message: e.message });
+  } finally {
+    lock.releaseLock();
+  }
 }

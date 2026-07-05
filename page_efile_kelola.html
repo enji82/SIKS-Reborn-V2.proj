@@ -235,9 +235,41 @@ $(document).ready(function() {
             else { fileIn.attr('accept', 'application/pdf'); fText.text('PDF (Maks 1MB)'); fIcon.removeClass('fa-file-image fa-file-upload').addClass('fa-file-pdf'); }
             
             var jPeriode = String(katData.jenisPeriode).toUpperCase();
-            if(jPeriode.includes("TMT")) { katWrap.removeClass('col-md-5').addClass('col-md-3'); pWrap.show(); pLabel.text("TMT"); pInput.attr("type", "date").attr("placeholder", "").prop("required", true).val(""); }
-            else if(jPeriode.includes("PERIODE")) { katWrap.removeClass('col-md-5').addClass('col-md-3'); pWrap.show(); pLabel.text("Periode"); pInput.attr("type", "text").attr("placeholder", "Bulan - Bulan").prop("required", true).val(""); }
-            else { katWrap.removeClass('col-md-3').addClass('col-md-5'); pWrap.hide(); pInput.prop("required", false).val("-"); }
+            var katWrapEl = row.find('.efilekelola-kat-wrapper');
+            if(jPeriode.includes("TMT")) {
+                katWrapEl.removeClass('col-md-5').addClass('col-md-3');
+                pWrap.show(); pLabel.text("TMT");
+                pInput.replaceWith('<input type="date" class="form-control form-control-sultan border-maroon efilekelola-periode-input" required>');
+                row.find('.efilekelola-periode-input').prop("required", true).val("");
+            } else if(jPeriode.includes("PERIODE")) {
+                katWrapEl.removeClass('col-md-5').addClass('col-md-3');
+                var bulanOpts = '<option value="">-</option><option>Jan</option><option>Feb</option><option>Mar</option><option>Apr</option><option>Mei</option><option>Jun</option><option>Jul</option><option>Agu</option><option>Sep</option><option>Okt</option><option>Nov</option><option>Des</option>';
+                pWrap.show();
+                pInput.replaceWith(
+                    '<div class="d-flex gap-1 align-items-center efilekelola-periode-input" style="gap:4px;">'
+                    + '<select class="form-control form-control-sultan border-maroon efilekelola-periode-mulai" required style="min-width:70px;padding:4px 2px;">'+bulanOpts+'</select>'
+                    + '<span class="font-weight-bold text-muted px-1">&ndash;</span>'
+                    + '<select class="form-control form-control-sultan border-maroon efilekelola-periode-akhir" required style="min-width:70px;padding:4px 2px;">'+bulanOpts+'</select>'
+                    + '</div>'
+                );
+                pLabel.text("Periode (Bln)");
+            } else if(jPeriode.includes("PERMANEN")) {
+                katWrapEl.removeClass('col-md-3').addClass('col-md-5');
+                pWrap.hide();
+                pInput.prop("required", false).val("PERMANEN");
+            } else {
+                katWrapEl.removeClass('col-md-3').addClass('col-md-5');
+                pWrap.hide();
+                pInput.prop("required", false).val("-");
+            }
+
+            // Tampilkan keterangan kategori jika ada
+            var keterBx = row.find('.efilekelola-kat-keterangan');
+            if (katData.keterangan && katData.keterangan.trim() !== "") {
+                keterBx.html('<i class="fas fa-info-circle mr-1"></i>' + $('<span>').text(katData.keterangan).html()).show();
+            } else {
+                keterBx.hide().html('');
+            }
         }
     });
 
@@ -340,7 +372,7 @@ function efilekelola_renderTabel(dataRows) {
     dataRows.forEach(function(r) {
         var id = r.rowId; var st = String(r.status || "").toLowerCase(); var isDisetujui = st.includes('setuju') || st.includes('ok');
         var btnV = ""; if (EFILEKELOLA_IS_ADMIN) btnV = `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-primary efilekelola-btn-verif" data-id="${id}" title="${st.includes('proses') ? 'Verif' : 'Edit Verif'}"><i class="fas fa-clipboard-check"></i></button>`;
-        var btnP = `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning efilekelola-btn-perbaiki" data-id="${id}" title="Edit Berkas"><i class="fas fa-edit"></i></button>`;
+        var btnP = `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning efilekelola-btn-perbaiki" data-id="${id}" ${isDisetujui ? 'disabled style="opacity:0.5;" title="Tidak dapat diedit, status Disetujui"' : 'title="Edit Berkas"'}><i class="fas fa-edit"></i></button>`;
         var btnH = `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon efilekelola-btn-hapus" data-id="${id}" ${isDisetujui ? 'disabled style="opacity:0.5;"' : ''} title="Hapus Berkas"><i class="fas fa-trash-alt"></i></button>`;
         var aksi = `<div class="d-flex flex-nowrap justify-content-center" style="gap:5px;">${btnV}${btnP}${btnH}</div>`;
 
@@ -466,6 +498,7 @@ function efilekelola_createUploadRowContext($c) {
             <div class="col-md-5 mb-2 mb-md-0 efilekelola-kat-wrapper">
                 <label class="form-label-sultan small text-muted text-uppercase mb-1">Kategori Berkas <span class="text-danger">*</span></label>
                 <select class="form-control form-control-sultan border-maroon efilekelola-kategori-select" required>${htmlKat}</select>
+                <div class="efilekelola-kat-keterangan alert-soft-info rounded small px-2 py-1 mt-1" style="display:none; font-size:11px;"></div>
             </div>
             <div class="col-md-2 mb-2 mb-md-0">
                 <label class="form-label-sultan small text-muted text-uppercase mb-1">Tahun <span class="text-danger">*</span></label>
@@ -502,7 +535,19 @@ function efilekelola_submitBatchUpload(e) {
         var idKat = String($(this).find('.efilekelola-kategori-select').val() || "").trim();
         var thn = String($(this).find('.efilekelola-tahun-input').val() || "").trim();
         var pWrap = $(this).find('.efilekelola-periode-wrapper');
-        var per = pWrap.is(':visible') ? String($(this).find('.efilekelola-periode-input').val() || "").trim() : "-";
+        var per = "-";
+        if (pWrap.is(':visible')) {
+            var pMulai = $(this).find('.efilekelola-periode-mulai');
+            var pAkhir = $(this).find('.efilekelola-periode-akhir');
+            if (pMulai.length > 0) {
+                // 2-dropdown bulan (jenis PERIODE)
+                var bMulai = pMulai.val() || ""; var bAkhir = pAkhir.val() || "";
+                per = (bMulai && bAkhir) ? (bMulai + " - " + bAkhir + " " + thn) : "";
+            } else {
+                // Input tunggal (jenis TMT)
+                per = String($(this).find('.efilekelola-periode-input').val() || "").trim();
+            }
+        }
         var fIn = $(this).find('.efilekelola-file-input')[0];
         
         if(!idKat || !thn || fIn.files.length === 0) return;
@@ -539,13 +584,28 @@ function efilekelola_submitBatchUpload(e) {
         if(batch.length === 0) { btn.prop('disabled', false).html(txt); return; }
         google.script.run.withSuccessHandler(function(json) {
             btn.prop('disabled', false).html(txt); var res = JSON.parse(json);
-            if(res.success) { 
+            if (res.success) {
                 Sultan.modal.tutupForm();
-                setTimeout(function(){ 
-                    Sultan.notif.crud.simpan(false); 
-                    efilekelola_tarikDataServer(); 
-                }, 400); 
-            } else { Sultan.notif.crud.gagal(res.message); }
+                if (res.skip > 0 && res.laporan && res.laporan.length > 0) {
+                    // Ada item yang dilewati — tampilkan modal laporan
+                    var laporHtml = '<div class="mb-2 small">';
+                    res.laporan.forEach(function(l) {
+                        var ic = l.result === 'OK' ? '<i class="fas fa-check-circle text-success mr-1"></i>' : '<i class="fas fa-exclamation-triangle text-warning mr-1"></i>';
+                        laporHtml += '<div class="border-bottom py-1">' + ic + '<strong>' + $('<span>').text(l.nama_kategori).html() + '</strong> (' + $('<span>').text(l.tahun).html();
+                        if (l.periode && l.periode !== '-') laporHtml += ' · ' + $('<span>').text(l.periode).html();
+                        laporHtml += ')';
+                        if (l.result !== 'OK') laporHtml += '<br><span class="text-muted ml-3">' + $('<span>').text(l.alasan).html() + '</span>';
+                        laporHtml += '</div>';
+                    });
+                    laporHtml += '</div>';
+                    Sultan.alert('info', 'Laporan Upload: ' + res.berhasil + ' OK, ' + res.skip + ' Dilewati', laporHtml);
+                    setTimeout(function(){ efilekelola_tarikDataServer(); }, 400);
+                } else {
+                    setTimeout(function(){ Sultan.notif.crud.simpan(false); efilekelola_tarikDataServer(); }, 400);
+                }
+            } else {
+                Sultan.notif.crud.gagal(res.message);
+            }
         }).withFailureHandler(function(err){ btn.prop('disabled', false).html(txt); Sultan.notif.crud.gagal(err.message); }).simpanEfileBatch(batch);
     }).catch(function(err) { btn.prop('disabled', false).html(txt); Sultan.notif.crud.gagal(err); });
 }
