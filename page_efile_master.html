@@ -393,20 +393,36 @@ function efilemaster_submitSimpan(e) {
 }
 
 function efilemaster_toggleAktif(idKat, isAktifSekarang) {
-  var label = isAktifSekarang ? "nonaktifkan" : "aktifkan kembali";
-  Sultan.modal.konfirmasiHapus({
+  var aksi = isAktifSekarang ? "Menonaktifkan" : "Mengaktifkan";
+  var detailAksi = isAktifSekarang ? "Kategori ini tidak akan muncul lagi pada form upload baru pegawai, namun riwayat berkas lama tetap aman." : "Kategori ini akan kembali muncul pada form upload pegawai.";
+
+  // Kita gunakan Swal langsung (karena project menggunakan AdminLTE/SweetAlert2)
+  // Atau menggunakan modal konfirmasi custom bawaan template jika ada.
+  // Untuk keandalan, kita gunakan SweetAlert/Swal standar yang biasa terpasang di sistem.
+  Swal.fire({
     title: 'Konfirmasi Perubahan Status',
-    kode: null,
-    detail: { 'ID Kategori': idKat, 'Aksi': (isAktifSekarang ? 'Nonaktifkan' : 'Aktifkan') + ' kategori ini' },
-    onConfirm: function() {
+    html: 'Apakah Anda yakin ingin <b>' + (isAktifSekarang ? 'nonaktifkan' : 'aktifkan') + '</b> kategori <b>' + idKat + '</b>?<br><br><small class="text-muted">' + detailAksi + '</small>',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: isAktifSekarang ? '#ffc107' : '#28a745',
+    cancelButtonColor: '#6c757d',
+    confirmButtonText: 'Ya, ' + (isAktifSekarang ? 'Nonaktifkan' : 'Aktifkan'),
+    cancelButtonText: 'Batal'
+  }).then(function(result) {
+    if (result.isConfirmed) {
       Sultan.notif.loading('Memproses...');
       google.script.run.withSuccessHandler(function(json) {
         Sultan.notif.tutup();
         var res = JSON.parse(json);
-        if (res.success) { Sultan.notif.crud.sukses(res.message); efilemaster_tarikData(); }
-        else { Sultan.notif.crud.gagal(res.message); }
+        if (res.success) { 
+          Sultan.notif.crud.sukses(res.message); 
+          efilemaster_tarikData(); 
+        } else { 
+          Sultan.notif.crud.gagal(res.message); 
+        }
       }).withFailureHandler(function(err) {
-        Sultan.notif.tutup(); Sultan.notif.crud.gagal(err.message);
+        Sultan.notif.tutup(); 
+        Sultan.notif.crud.gagal(err.message);
       }).toggleAktifMasterKategori(idKat, !isAktifSekarang);
     }
   });
