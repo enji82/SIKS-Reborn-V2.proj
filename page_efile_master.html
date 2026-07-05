@@ -393,39 +393,75 @@ function efilemaster_submitSimpan(e) {
 }
 
 function efilemaster_toggleAktif(idKat, isAktifSekarang) {
-  var aksi = isAktifSekarang ? "Menonaktifkan" : "Mengaktifkan";
-  var detailAksi = isAktifSekarang ? "Kategori ini tidak akan muncul lagi pada form upload baru pegawai, namun riwayat berkas lama tetap aman." : "Kategori ini akan kembali muncul pada form upload pegawai.";
+  var $modal = $('#global_modalHapus');
+  var $header = $modal.find('.modal-header');
+  var $icon = $modal.find('.text-danger i');
+  var $securityBox = $modal.find('#global_hapusKodePengaman').closest('.bg-adaptive-sultan');
+  var $btnConfirm = $('#global_btnConfirmHapus');
+  var $btnBatal = $modal.find('.modal-btn-batal');
 
-  // Kita gunakan Swal langsung (karena project menggunakan AdminLTE/SweetAlert2)
-  // Atau menggunakan modal konfirmasi custom bawaan template jika ada.
-  // Untuk keandalan, kita gunakan SweetAlert/Swal standar yang biasa terpasang di sistem.
-  Swal.fire({
-    title: 'Konfirmasi Perubahan Status',
-    html: 'Apakah Anda yakin ingin <b>' + (isAktifSekarang ? 'nonaktifkan' : 'aktifkan') + '</b> kategori <b>' + idKat + '</b>?<br><br><small class="text-muted">' + detailAksi + '</small>',
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonColor: isAktifSekarang ? '#ffc107' : '#28a745',
-    cancelButtonColor: '#6c757d',
-    confirmButtonText: 'Ya, ' + (isAktifSekarang ? 'Nonaktifkan' : 'Aktifkan'),
-    cancelButtonText: 'Batal'
-  }).then(function(result) {
-    if (result.isConfirmed) {
-      Sultan.notif.loading('Memproses...');
-      google.script.run.withSuccessHandler(function(json) {
-        Sultan.notif.tutup();
-        var res = JSON.parse(json);
-        if (res.success) { 
-          Sultan.notif.crud.sukses(res.message); 
-          efilemaster_tarikData(); 
-        } else { 
-          Sultan.notif.crud.gagal(res.message); 
-        }
-      }).withFailureHandler(function(err) {
-        Sultan.notif.tutup(); 
-        Sultan.notif.crud.gagal(err.message);
-      }).toggleAktifMasterKategori(idKat, !isAktifSekarang);
-    }
+  // 1. Kustomisasi Dynamic Visual agar Identik dengan Kode Sultan
+  $header.removeClass('modal-header-sultan-danger').addClass('modal-header-sultan-warning');
+  $icon.removeClass('fa-trash-alt fa-exclamation-triangle text-danger').addClass('fa-exclamation-circle text-warning');
+  $modal.find('.text-danger').removeClass('text-danger').addClass('text-warning');
+  
+  // Sembunyikan box input kode keamanan (karena ini bukan hapus permanen)
+  $securityBox.hide();
+  $modal.find('#global_hapusKodePengaman').prop('required', false).val('BYPASS_FOR_STATUS'); // isi dummy
+  
+  // Ubah Teks & Tombol
+  $('#global_modalHapusTitle').html('<i class="fas fa-exclamation-circle mr-2"></i>Konfirmasi Perubahan Status');
+  $('#global_hapusTeksUtama').text('Apakah Anda yakin ingin ' + (isAktifSekarang ? 'nonaktifkan' : 'aktifkan') + ' kategori ini?');
+  
+  var detailAksi = isAktifSekarang 
+    ? 'Kategori tidak akan muncul lagi di dropdown upload baru pegawai, namun data berkas lama tetap aman.' 
+    : 'Kategori akan kembali muncul di dropdown upload baru pegawai.';
+  $('#global_hapusTeksSub').text(detailAksi);
+  
+  $btnConfirm.removeClass('modal-btn-hapus btn-danger').addClass('modal-btn-simpan btn-warning text-dark font-weight-bold')
+    .html('<i class="fas fa-check mr-2"></i>YA, UBAH STATUS');
+
+  // Render Detail Data Dinamis agar identik
+  var detailArea = $('#global_hapusDetailArea');
+  detailArea.empty().hide();
+  var html = '<div class="sultan-detail-item border-0 mb-0">';
+  html += '  <label class="sultan-detail-label">ID KATEGORI</label>';
+  html += '  <div class="sultan-detail-value text-uppercase font-weight-bold text-maroon">' + idKat + '</div>';
+  html += '</div>';
+  detailArea.html(html).show();
+
+  // 2. Submit Handler
+  $('#global_formHapus').off('submit').on('submit', function (e) {
+    e.preventDefault();
+    $btnConfirm.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i>MEMPROSES...');
+    
+    google.script.run.withSuccessHandler(function(json) {
+      $modal.modal('hide');
+      var res = JSON.parse(json);
+      if (res.success) { 
+        Sultan.notif.crud.sukses(res.message); 
+        efilemaster_tarikData(); 
+      } else { 
+        Sultan.notif.crud.gagal(res.message); 
+      }
+    }).withFailureHandler(function(err) {
+      $modal.modal('hide');
+      Sultan.notif.crud.gagal(err.message);
+    }).toggleAktifMasterKategori(idKat, !isAktifSekarang);
   });
+
+  // 3. Reset state saat modal ditutup (kembalikan ke default Hapus Permanen)
+  $modal.off('hidden.bs.modal.efilemaster').on('hidden.bs.modal.efilemaster', function () {
+    $header.removeClass('modal-header-sultan-warning').addClass('modal-header-sultan-danger');
+    $icon.removeClass('fa-exclamation-circle text-warning').addClass('fa-exclamation-triangle text-danger');
+    $modal.find('.text-warning').removeClass('text-warning').addClass('text-danger');
+    $securityBox.show();
+    $modal.find('#global_hapusKodePengaman').prop('required', true).val('');
+    $btnConfirm.removeClass('modal-btn-simpan btn-warning text-dark font-weight-bold').addClass('modal-btn-hapus')
+      .html('<i class="fas fa-trash-alt mr-2"></i>HAPUS');
+  });
+
+  $modal.modal('show');
 }
 
 function efilemaster_esc(t) {
