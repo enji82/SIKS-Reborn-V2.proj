@@ -686,15 +686,59 @@ function prosesSimpanLengkap(dbKey, namaSheet, source, form, fileData) {
             for (var d = 0; d < diff; d++) rowData.push(null);
         }
         
-        isi("0-1 L", form.u01_l); isi("0-1 P", form.u01_p);
-        isi("1-2 L", form.u12_l); isi("1-2 P", form.u12_p);
-        isi("2-3 L", form.u23_l); isi("2-3 P", form.u23_p);
-        isi("3-4 L", form.u34_l); isi("3-4 P", form.u34_p);
-        isi("4-5 L", form.u45_l); isi("4-5 P", form.u45_p);
-        isi("5-6 L", form.u56_l); isi("5-6 P", form.u56_p);
-        isi(["> 6 L", ">6 l"], form.u6_l);  isi(["> 6 P", ">6 p"], form.u6_p);
-        isi("A L", form.kel_a_l); isi("A P", form.kel_a_p);
-        isi("B L", form.kel_b_l); isi("B P", form.kel_b_p);
+        var u01_l = form.u01_l !== undefined ? form.u01_l : 0;
+        var u01_p = form.u01_p !== undefined ? form.u01_p : 0;
+        var u12_l = form.u12_l !== undefined ? form.u12_l : (parseInt(form.u02_akhir_l) || 0);
+        var u12_p = form.u12_p !== undefined ? form.u12_p : (parseInt(form.u02_akhir_p) || 0);
+        var u23_l = form.u23_l !== undefined ? form.u23_l : (parseInt(form.u23_akhir_l) || 0);
+        var u23_p = form.u23_p !== undefined ? form.u23_p : (parseInt(form.u23_akhir_p) || 0);
+        var u34_l = form.u34_l !== undefined ? form.u34_l : (parseInt(form.u34_akhir_l) || 0);
+        var u34_p = form.u34_p !== undefined ? form.u34_p : (parseInt(form.u34_akhir_p) || 0);
+        var u45_l = form.u45_l !== undefined ? form.u45_l : (parseInt(form.u45_akhir_l) || 0);
+        var u45_p = form.u45_p !== undefined ? form.u45_p : (parseInt(form.u45_akhir_p) || 0);
+        var u56_l = form.u56_l !== undefined ? form.u56_l : (parseInt(form.u56_akhir_l) || 0);
+        var u56_p = form.u56_p !== undefined ? form.u56_p : (parseInt(form.u56_akhir_p) || 0);
+        
+        var u6_l = form.u6_l !== undefined ? form.u6_l : ((parseInt(form.u67_akhir_l) || 0) + (parseInt(form.u7_akhir_l) || 0));
+        var u6_p = form.u6_p !== undefined ? form.u6_p : ((parseInt(form.u67_akhir_p) || 0) + (parseInt(form.u7_akhir_p) || 0));
+        
+        var kel_a_l = form.kel_a_l !== undefined ? form.kel_a_l : 0;
+        var kel_a_p = form.kel_a_p !== undefined ? form.kel_a_p : 0;
+        var kel_b_l = form.kel_b_l !== undefined ? form.kel_b_l : 0;
+        var kel_b_p = form.kel_b_p !== undefined ? form.kel_b_p : 0;
+        
+        if (form.kel_a_l === undefined) {
+            for (var key in form) {
+                var val = parseInt(form[key]) || 0;
+                var kLower = key.toLowerCase();
+                if (kLower.startsWith("a") && kLower.endsWith("_akhir_l")) {
+                    var suffix = kLower.substring(1);
+                    if (/^\d+_akhir_l$/.test(suffix)) kel_a_l += val;
+                }
+                if (kLower.startsWith("a") && kLower.endsWith("_akhir_p")) {
+                    var suffix = kLower.substring(1);
+                    if (/^\d+_akhir_p$/.test(suffix)) kel_a_p += val;
+                }
+                if (kLower.startsWith("b") && kLower.endsWith("_akhir_l")) {
+                    var suffix = kLower.substring(1);
+                    if (/^\d+_akhir_l$/.test(suffix)) kel_b_l += val;
+                }
+                if (kLower.startsWith("b") && kLower.endsWith("_akhir_p")) {
+                    var suffix = kLower.substring(1);
+                    if (/^\d+_akhir_p$/.test(suffix)) kel_b_p += val;
+                }
+            }
+        }
+        
+        isi("0-1 L", u01_l); isi("0-1 P", u01_p);
+        isi("1-2 L", u12_l); isi("1-2 P", u12_p);
+        isi("2-3 L", u23_l); isi("2-3 P", u23_p);
+        isi("3-4 L", u34_l); isi("3-4 P", u34_p);
+        isi("4-5 L", u45_l); isi("4-5 P", u45_p);
+        isi("5-6 L", u56_l); isi("5-6 P", u56_p);
+        isi(["> 6 L", ">6 l"], u6_l);  isi(["> 6 P", ">6 p"], u6_p);
+        isi("A L", kel_a_l); isi("A P", kel_a_p);
+        isi("B L", kel_b_l); isi("B P", kel_b_p);
         isi("KS GTY", form.ks_gty); isi("KS GTT", form.ks_gtt); isi("KS PNS", form.ks_pns); isi("KS PPPK", form.ks_pppk);
         isi("GK GTY", form.gk_gty); isi("GK GTT", form.gk_gtt); isi("GK PNS", form.gk_pns); isi("GK PPPK", form.gk_pppk);
         isi("GP GTY", form.gp_gty); isi("GP GTT", form.gp_gtt); isi("GP PNS", form.gp_pns); isi("GP PPPK", form.gp_pppk);
