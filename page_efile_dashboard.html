@@ -323,6 +323,7 @@ function efiledash_loadDataKategori(indexMap, forceRefresh) {
             $('#efiledash_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>' + efiledash_escapeHtml(data.message) + '</span>'); return; 
         }
         
+        EFILEDASH_JENIS_PERIODE = data.jenisPeriode || "TAHUNAN";
         EFILEDASH_CACHE_REKAP = data.rekap || [];
         EFILEDASH_CACHE_BELUM = data.belum || [];
         
@@ -381,16 +382,45 @@ function efiledash_initDropdownUnit() {
     }
 }
 
+var EFILEDASH_JENIS_PERIODE = "TAHUNAN";
+
 function efiledash_initDropdownTahun() {
     var unique = new Set();
     EFILEDASH_CACHE_REKAP.forEach(function(r) { var thn = String(r.tahun || "").trim(); if(thn) unique.add(thn); });
-    var sorted = Array.from(unique).sort(function(a, b) {
-        var na = parseInt(a, 10), nb = parseInt(b, 10);
-        if (!isNaN(na) && !isNaN(nb)) return nb - na;
-        return String(b).localeCompare(String(a));
-    });
-    var select = $('#efiledash_filterTahun'); var curVal = select.val();
-    select.empty().append('<option value="SEMUA">- Semua Tahun -</option>');
+    
+    var select = $('#efiledash_filterTahun');
+    var curVal = select.val();
+    
+    // Sesuaikan Label Dropdown secara Dinamis berdasarkan jenis periode kategori
+    if (EFILEDASH_JENIS_PERIODE === "PERIODE") {
+        select.empty().append('<option value="SEMUA">- Semua Bulan/Tahun -</option>');
+    } else if (EFILEDASH_JENIS_PERIODE === "PERMANEN") {
+        select.empty().append('<option value="SEMUA">- Permanen (Semua Waktu) -</option>');
+    } else {
+        select.empty().append('<option value="SEMUA">- Semua Tahun -</option>');
+    }
+    
+    var sorted = Array.from(unique);
+    if (EFILEDASH_JENIS_PERIODE === "PERIODE") {
+        var mapBulan = {"Jan":1, "Feb":2, "Mar":3, "Apr":4, "Mei":5, "Jun":6, "Jul":7, "Agu":8, "Sep":9, "Okt":10, "Nov":11, "Des":12};
+        sorted.sort(function(a, b) {
+            var partsA = a.split(" ");
+            var partsB = b.split(" ");
+            var yA = parseInt(partsA[1] || partsA[0] || 0);
+            var yB = parseInt(partsB[1] || partsB[0] || 0);
+            if (yA !== yB) return yB - yA;
+            var bA = mapBulan[partsA[0]] || 0;
+            var bB = mapBulan[partsB[0]] || 0;
+            return bB - bA;
+        });
+    } else {
+        sorted.sort(function(a, b) {
+            var na = parseInt(a, 10), nb = parseInt(b, 10);
+            if (!isNaN(na) && !isNaN(nb)) return nb - na;
+            return String(b).localeCompare(String(a));
+        });
+    }
+    
     sorted.forEach(function(t) { select.append(`<option value="${efiledash_escapeHtml(t)}">${efiledash_escapeHtml(t)}</option>`); });
     if (!EFILEDASH_TAHUN_DEFAULTED && sorted.length > 0) {
         select.val(sorted[0]);
@@ -436,16 +466,31 @@ function efiledash_rowMatchesUnit(r, fUnitAdmin) {
 function efiledash_getRekapForMetrics(dataRekap, fTahun) {
     if (fTahun !== "SEMUA" && fTahun !== "") return dataRekap;
     var maxTahun = "";
-    var maxNum = -Infinity;
-    dataRekap.forEach(function(r) {
-        var t = String(r.tahun || "").trim();
-        var n = parseInt(t, 10);
-        if (!isNaN(n)) {
-            if (n > maxNum) { maxNum = n; maxTahun = t; }
-        } else if (t && (!maxTahun || t.localeCompare(maxTahun) > 0)) {
-            maxTahun = t;
-        }
-    });
+    if (EFILEDASH_JENIS_PERIODE === "PERIODE") {
+        // Cari Bulan/Tahun terbaru
+        var mapBulan = {"Jan":1, "Feb":2, "Mar":3, "Apr":4, "Mei":5, "Jun":6, "Jul":7, "Agu":8, "Sep":9, "Okt":10, "Nov":11, "Des":12};
+        var maxYA = 0, maxBA = 0;
+        dataRekap.forEach(function(r) {
+            var t = String(r.tahun || "").trim();
+            var parts = t.split(" ");
+            var yA = parseInt(parts[1] || parts[0] || 0);
+            var bA = mapBulan[parts[0]] || 0;
+            if (yA > maxYA || (yA === maxYA && bA > maxBA)) {
+                maxYA = yA; maxBA = bA; maxTahun = t;
+            }
+        });
+    } else {
+        var maxNum = -Infinity;
+        dataRekap.forEach(function(r) {
+            var t = String(r.tahun || "").trim();
+            var n = parseInt(t, 10);
+            if (!isNaN(n)) {
+                if (n > maxNum) { maxNum = n; maxTahun = t; }
+            } else if (t && (!maxTahun || t.localeCompare(maxTahun) > 0)) {
+                maxTahun = t;
+            }
+        });
+    }
     if (!maxTahun) return dataRekap;
     return dataRekap.filter(function(r) { return String(r.tahun || "").trim() === maxTahun; });
 }
@@ -510,10 +555,11 @@ function efiledash_animateValue(id, end) {
 function efiledash_renderInsight(totAsn, totSudah, totBelum, metricsTahunLabel) {
     var insightHtml = '';
     if (metricsTahunLabel) {
+        var labelTitle = (EFILEDASH_JENIS_PERIODE === "PERIODE") ? "periode" : "tahun";
         insightHtml += `
             <div class="sultan-alert alert-soft-info mb-2">
                 <i class="fas fa-info-circle mr-3 mt-1" style="font-size: 18px;"></i>
-                <div class="small">Kartu ringkasan dihitung untuk <strong>tahun ${efiledash_escapeHtml(metricsTahunLabel)}</strong>. Tabel dan daftar mengikuti filter tahun yang dipilih.</div>
+                <div class="small">Kartu ringkasan dihitung untuk <strong>${labelTitle} ${efiledash_escapeHtml(metricsTahunLabel)}</strong>. Tabel dan daftar mengikuti filter periode yang dipilih.</div>
             </div>`;
     }
     var persenTotal = totAsn === 0 ? 0 : Math.round((totSudah / totAsn) * 100);
@@ -610,8 +656,9 @@ function efiledash_renderDashboard(dataRekap, dataBelum, fTahun) {
             </div>`;
         
         var showTahunSub = EFILEDASH_IS_ADMIN || fTahun === "SEMUA";
+        var subLabel = (EFILEDASH_JENIS_PERIODE === "PERIODE") ? "Periode" : "Tahun";
         var txtUnit = showTahunSub
-            ? `<div class="font-weight-bold text-dark text-wrap" style="font-size:13px;">${efiledash_escapeHtml(r.unit)}</div><div class="text-muted" style="font-size:13px;">Tahun ${efiledash_escapeHtml(r.tahun)}</div>`
+            ? `<div class="font-weight-bold text-dark text-wrap" style="font-size:13px;">${efiledash_escapeHtml(r.unit)}</div><div class="text-muted" style="font-size:13px;">${subLabel} ${efiledash_escapeHtml(r.tahun)}</div>`
             : `<div class="font-weight-bold text-dark text-wrap" style="font-size:13px;">${efiledash_escapeHtml(r.unit)}</div>`;
 
         dtArray.push([

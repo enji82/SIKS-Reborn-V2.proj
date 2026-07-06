@@ -593,13 +593,17 @@ function getEfileDashboardData(idKategori, namaKategori, forceRefresh) {
   try {
     var shKat = getSheet(KONFIG_EFILE.DB_KEY, "Master_Kategori_Efile");
     var dataKat = shKat ? shKat.getDataRange().getDisplayValues() : [];
-    var statusFilterList = [];
+    var jPeriode = "TAHUNAN";
     for (var i = 1; i < dataKat.length; i++) {
       if (String(dataKat[i][0]).trim() === String(idKategori).trim()) {
         var w = String(dataKat[i][5] || "").trim();
         if (w) {
           statusFilterList = w.split(",").map(function(s) { return s.trim().toLowerCase(); });
         }
+        var jpVal = String(dataKat[i][6] || "").toUpperCase();
+        if (jpVal.includes("PERMANEN")) jPeriode = "PERMANEN";
+        else if (jpVal.includes("PERIODE")) jPeriode = "PERIODE";
+        else if (jpVal.includes("TMT")) jPeriode = "TMT";
         break;
       }
     }
@@ -635,32 +639,76 @@ function getEfileDashboardData(idKategori, namaKategori, forceRefresh) {
     var dataEfile = shEfile ? shEfile.getDataRange().getDisplayValues() : [];
     
     var efileMap = {};
-    var yearsSet = new Set();
+    var periodsSet = new Set();
     
     var curYear = new Date().getFullYear();
-    yearsSet.add(String(curYear));
-    yearsSet.add(String(curYear - 1));
-    yearsSet.add(String(curYear - 2));
+    if (jPeriode === "PERIODE") {
+      // Buat periode bulan default untuk tahun berjalan
+      var bulans = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+      bulans.forEach(function(b) {
+        periodsSet.add(b + " " + curYear);
+        periodsSet.add(b + " " + (curYear - 1));
+      });
+    } else {
+      periodsSet.add(String(curYear));
+      periodsSet.add(String(curYear - 1));
+      periodsSet.add(String(curYear - 2));
+    }
     
     for (var k = 1; k < dataEfile.length; k++) {
       var ePtk = String(dataEfile[k][0]).trim();
       var eKat = String(dataEfile[k][2]).trim();
-      var eThn = String(dataEfile[k][4]).trim();
+      var eThn = String(dataEfile[k][4]).trim(); // Ini kolom Tahun
+      var ePeriode = String(dataEfile[k][14] || "").trim(); // NPSN, Periode (Kolom O)
       var eStatus = String(dataEfile[k][7]).trim();
       
-      if (eKat === String(idKategori).trim() && ePtk && eThn) {
-        yearsSet.add(eThn);
-        if (!efileMap[ePtk]) efileMap[ePtk] = {};
-        efileMap[ePtk][eThn] = eStatus;
+      if (eKat === String(idKategori).trim() && ePtk) {
+        if (jPeriode === "PERIODE") {
+          var targetPer = ePeriode || eThn; // Fallback jika kolom Periode kosong
+          if (targetPer && targetPer !== "-") {
+            periodsSet.add(targetPer);
+            if (!efileMap[ePtk]) efileMap[ePtk] = {};
+            efileMap[ePtk][targetPer] = eStatus;
+          }
+        } else if (jPeriode === "PERMANEN") {
+          // Permanen: kumpulkan status di satu key dummy "PERMANEN"
+          if (!efileMap[ePtk]) efileMap[ePtk] = {};
+          if (eStatus) {
+            efileMap[ePtk]["PERMANEN"] = eStatus;
+          }
+        } else {
+          // Tahunan / TMT
+          if (eThn) {
+            periodsSet.add(eThn);
+            if (!efileMap[ePtk]) efileMap[ePtk] = {};
+            efileMap[ePtk][eThn] = eStatus;
+          }
+        }
       }
     }
     
-    var sortedYears = Array.from(yearsSet).sort(function(a, b) { return parseInt(b) - parseInt(a); });
+    // Urutkan periode
+    var sortedPeriods = [];
+    if (jPeriode === "PERIODE") {
+      var mapBulan = {"Jan":1, "Feb":2, "Mar":3, "Apr":4, "Mei":5, "Jun":6, "Jul":7, "Agu":8, "Sep":9, "Okt":10, "Nov":11, "Des":12};
+      sortedPeriods = Array.from(periodsSet).sort(function(a, b) {
+        var partsA = a.split(" ");
+        var partsB = b.split(" ");
+        var yA = parseInt(partsA[1] || partsA[0] || 0);
+        var yB = parseInt(partsB[1] || partsB[0] || 0);
+        if (yA !== yB) return yB - yA;
+        var bA = mapBulan[partsA[0]] || 0;
+        var bB = mapBulan[partsB[0]] || 0;
+        return bB - bA;
+      });
+    } else {
+      sortedPeriods = Array.from(periodsSet).sort(function(a, b) { return parseInt(b) - parseInt(a); });
+    }
     
     var arrRekap = [];
     var arrBelum = [];
     
-    sortedYears.forEach(function(tahun) {
+    sortedPeriods.forEach(function(periodeKey) {
       var unitGroups = {};
       ptkList.forEach(function(ptk) {
         var u = ptk.unit || "Lainnya";
@@ -676,7 +724,13 @@ function getEfileDashboardData(idKategori, namaKategori, forceRefresh) {
         var belumUnit = 0;
         
         group.forEach(function(ptk) {
-          var status = efileMap[ptk.id] ? efileMap[ptk.id][tahun] : null;
+          var status = null;
+          if (jPeriode === "PERMANEN") {
+            status = efileMap[ptk.id] ? efileMap[ptk.id]["PERMANEN"] : null;
+          } else {
+            status = efileMap[ptk.id] ? efileMap[ptk.id][periodeKey] : null;
+          }
+          
           var isUploaded = false;
           if (status) {
             var stLower = status.toLowerCase();
@@ -693,7 +747,7 @@ function getEfileDashboardData(idKategori, namaKategori, forceRefresh) {
               nama: ptk.nama,
               nip: ptk.nip,
               unit: unitName,
-              tahun: tahun,
+              tahun: periodeKey, // Key tahun kita samakan ke key periode terpilih
               npsn: npsn
             });
           }
@@ -702,7 +756,7 @@ function getEfileDashboardData(idKategori, namaKategori, forceRefresh) {
         arrRekap.push({
           npsn: npsn,
           unit: unitName,
-          tahun: tahun,
+          tahun: periodeKey,
           jml: totalUnit,
           sudah: sudahUnit,
           belum: belumUnit
@@ -710,7 +764,7 @@ function getEfileDashboardData(idKategori, namaKategori, forceRefresh) {
       });
     });
     
-    return JSON.stringify({ success: true, rekap: arrRekap, belum: arrBelum });
+    return JSON.stringify({ success: true, rekap: arrRekap, belum: arrBelum, jenisPeriode: jPeriode });
   } catch(e) { return JSON.stringify({ success: false, message: e.message }); }
 }
 
