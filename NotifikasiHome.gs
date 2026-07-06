@@ -15,6 +15,31 @@ function getMissingDocumentsReport(username, role, unit) {
       return { show: false };
     }
     
+    // 2. Identifikasi jenjang dan status sekolah secara presisi dari database Data_Sekolah
+    var isSD = false;
+    var isPAUD = false;
+    var isSDNegeri = false;
+    
+    var infoSekolah = getSekolahByNPSN(uName);
+    if (infoSekolah && infoSekolah.found) {
+      var jenjang = String(infoSekolah.jenjang).toUpperCase().trim();
+      var status = String(infoSekolah.status_sekolah).toLowerCase().trim();
+      
+      if (jenjang.indexOf("SD") > -1) {
+        isSD = true;
+        if (status.indexOf("negeri") > -1) {
+          isSDNegeri = true;
+        }
+      } else {
+        isPAUD = true;
+      }
+    } else {
+      // Fallback jika tidak ditemukan di Data_Sekolah
+      isPAUD = (uRole.indexOf('paud') > -1 || uRole.indexOf('tk') > -1 || uUnit.toLowerCase().indexOf('paud') > -1 || uUnit.toLowerCase().indexOf('tk ') > -1);
+      isSD = (uRole.indexOf('sd') > -1 || uUnit.toLowerCase().indexOf('sd') > -1);
+      isSDNegeri = isSD && !isPAUD && (uUnit.toLowerCase().indexOf('sdn') > -1 || uUnit.toLowerCase().indexOf('negeri') > -1 || uName.toLowerCase().indexOf('sdn') > -1);
+    }
+    
     var missingLapbul = [];
     var missingSiaba = [];
     var missingSK = false;
@@ -32,7 +57,6 @@ function getMissingDocumentsReport(username, role, unit) {
     if (targetBulanLimit < 0) targetBulanLimit = 0;
     
     // A. CEK LAPORAN BULANAN (SD & PAUD)
-    var isPAUD = (uRole.indexOf('paud') > -1 || uRole.indexOf('tk') > -1 || uUnit.toLowerCase().indexOf('paud') > -1 || uUnit.toLowerCase().indexOf('tk ') > -1);
     var dbKeyLapbul = isPAUD ? "LAPBUL_PAUD_DB" : "LAPBUL_SD_DB";
     var sheetNameLapbul = isPAUD ? "Input PAUD" : "Input SD";
     
@@ -61,7 +85,7 @@ function getMissingDocumentsReport(username, role, unit) {
             var rowBulan = String(row[idxBulan]).trim();
             var rowStatus = idxStatus > -1 ? String(row[idxStatus]).toLowerCase() : "";
             
-            if (rowNpsn === uName && rowTahun === String(currentYear) && !rowStatus.includes("hapus") && !rowStatus.includes("delete")) {
+            if ((rowNpsn === uName || row.indexOf(uName) > -1) && rowTahun === String(currentYear) && !rowStatus.includes("hapus") && !rowStatus.includes("delete")) {
               uploadedMonthsLapbul.push(rowBulan.toLowerCase());
             }
           });
@@ -77,10 +101,9 @@ function getMissingDocumentsReport(username, role, unit) {
     }
     
     // B. CEK SK PEMBAGIAN TUGAS (Khusus SD)
-    var isSD = (uRole.indexOf('sd') > -1 || uUnit.toLowerCase().indexOf('sd') > -1);
     var skSemesterAktif = "";
     var skTahunAjaranAktif = "";
-    if (isSD && !isPAUD) {
+    if (isSD) {
       // Tentukan Semester & Tahun Ajaran Aktif
       // Juli - Desember: Ganjil (cth: 2026/2027)
       // Januari - Juni: Genap (cth: 2025/2026)
@@ -119,7 +142,9 @@ function getMissingDocumentsReport(username, role, unit) {
             var rowTahun = idxTahunSK > -1 ? String(row[idxTahunSK]).trim() : "";
             var rowStatus = idxStatusSK > -1 ? String(row[idxStatusSK]).toLowerCase() : "";
             
-            if (rowNpsn === uName && 
+            var npsnMengandung = (rowNpsn === uName) || (row.indexOf(uName) > -1);
+            
+            if (npsnMengandung && 
                 rowSemester.toLowerCase() === skSemesterAktif.toLowerCase() && 
                 rowTahun.replace(/\s+/g, '') === skTahunAjaranAktif.replace(/\s+/g, '') &&
                 !rowStatus.includes("hapus") && !rowStatus.includes("delete")) {
@@ -135,7 +160,6 @@ function getMissingDocumentsReport(username, role, unit) {
     }
     
     // C. CEK REKAP SIABA (Khusus SD Negeri)
-    var isSDNegeri = isSD && !isPAUD && (uUnit.toLowerCase().indexOf('sdn') > -1 || uUnit.toLowerCase().indexOf('negeri') > -1 || uName.toLowerCase().indexOf('sdn') > -1);
     if (isSDNegeri) {
       var sheetSiaba = null;
       try {
@@ -162,7 +186,11 @@ function getMissingDocumentsReport(username, role, unit) {
             var rowTahun = String(row[idxTahunSiaba]).trim();
             var rowBulan = String(row[idxBulanSiaba]).trim();
             
-            if ((rowIden === uName.toLowerCase() || rowIden === uUnit.toLowerCase()) && rowTahun === String(currentYear)) {
+            var matchesNpsnOrUnit = (rowIden === uName.toLowerCase()) || 
+                                    (rowIden === uUnit.toLowerCase()) || 
+                                    (row.indexOf(uName) > -1);
+            
+            if (matchesNpsnOrUnit && rowTahun === String(currentYear)) {
               uploadedMonthsSiaba.push(rowBulan.toLowerCase());
             }
           });
