@@ -36,6 +36,7 @@
 
         <div id="efilemaster_mainContent" style="display:none;">
 
+
           <div class="sultan-filter-pill-container shadow-sm mb-4">
             <div class="sultan-filter-item">
               <select id="efilemaster_filterAktif" class="form-control">
@@ -67,12 +68,7 @@
 
           <div class="card-sultan w-100 overflow-hidden">
             <div class="card-body p-3 w-100">
-              <div id="efilemaster_loadingState">
-                <div class="d-flex flex-column justify-content-center align-items-center" style="min-height: 40vh;">
-                  <i class="fas fa-spinner fa-spin fa-3x text-maroon mb-3"></i>
-                  <h6 class="text-muted font-weight-bold mt-3">Memuat Master Kategori...</h6>
-                </div>
-              </div>
+              <div id="efilemaster_loadingState"></div>
               <div id="efilemaster_tableState" style="display:none;">
                 <table id="efilemaster_tabel" class="table table-hover table-premium table-sultan-compact text-nowrap mb-0 w-100" style="font-size: 13px;">
                   <thead class="thead-sultan-premium text-uppercase font-weight-bold">
@@ -232,7 +228,7 @@ function efilemaster_tarikData() {
   btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin text-maroon"></i>');
   if (!$.fn.DataTable.isDataTable('#efilemaster_tabel')) {
     $('#efilemaster_tableState').hide();
-    $('#efilemaster_loadingState').show();
+    SultanUI.showLoading('#efilemaster_loadingState', "Memuat Master Kategori...");
   }
   google.script.run.withSuccessHandler(function(json) {
     btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
@@ -244,7 +240,7 @@ function efilemaster_tarikData() {
     EFILEMASTER_CACHE_DATA = res.data || [];
     if (!$.fn.DataTable.isDataTable('#efilemaster_tabel')) { efilemaster_initTable(); }
     efilemaster_terapkanFilter();
-    $('#efilemaster_loadingState').hide();
+    SultanUI.hideLoading('#efilemaster_loadingState');
     $('#efilemaster_tableState').show();
     if (EFILEMASTER_TABEL_INSTANCE) setTimeout(function() { EFILEMASTER_TABEL_INSTANCE.columns.adjust(); }, 150);
   }).withFailureHandler(function(err) {
@@ -300,16 +296,28 @@ function efilemaster_renderTabel(data) {
       : '<span class="badge badge-secondary"><i class="fas fa-pause-circle mr-1"></i>Nonaktif</span>';
 
     var jp = String(d.jenisPeriode || "").toUpperCase();
-    var badgePeriode = jp.includes("PERMANEN") ? '<span class="badge badge-sultan-disetujui">Permanen</span>'
-      : jp.includes("PERIODE") ? '<span class="badge badge-sultan-revisi">Per Periode</span>'
-      : jp.includes("TMT") ? '<span class="badge badge-info">Dgn TMT</span>'
-      : jp.includes("TAHUNAN") ? '<span class="badge badge-primary">Tahunan</span>'
-      : '<span class="badge badge-secondary">—</span>';
+    var badgePeriode = "";
+    if (jp.includes("PERMANEN")) {
+      badgePeriode = '<span class="font-weight-bold text-success"><i class="fas fa-infinity mr-1"></i>Permanen</span>';
+    } else if (jp.includes("PERIODE")) {
+      badgePeriode = '<span class="font-weight-bold text-primary"><i class="fas fa-calendar-alt mr-1"></i>Per Periode</span>';
+    } else if (jp.includes("TMT")) {
+      badgePeriode = '<span class="font-weight-bold text-info"><i class="fas fa-calendar-day mr-1"></i>Dgn TMT</span>';
+    } else if (jp.includes("TAHUNAN")) {
+      badgePeriode = '<span class="font-weight-bold text-secondary"><i class="fas fa-calendar-check mr-1"></i>Tahunan</span>';
+    } else {
+      badgePeriode = '<span class="text-muted">—</span>';
+    }
 
     var fmt = String(d.format || "PDF").toUpperCase();
-    var badgeFmt = (fmt.includes("IMG") || fmt.includes("JPG")) ? '<span class="badge badge-success">JPG/PNG</span>'
-      : (fmt.includes("ALL") || fmt.includes("BEBAS")) ? '<span class="badge badge-warning text-dark">PDF/JPG</span>'
-      : '<span class="badge badge-danger">PDF</span>';
+    var badgeFmt = "";
+    if (fmt.includes("IMG") || fmt.includes("JPG")) {
+      badgeFmt = '<span class="font-weight-bold text-success"><i class="fas fa-image mr-1"></i>JPG/PNG</span>';
+    } else if (fmt.includes("ALL") || fmt.includes("BEBAS")) {
+      badgeFmt = '<span class="font-weight-bold text-warning"><i class="fas fa-file-upload mr-1"></i>PDF/JPG</span>';
+    } else {
+      badgeFmt = '<span class="font-weight-bold text-danger"><i class="fas fa-file-pdf mr-1"></i>PDF</span>';
+    }
 
     var wajib = (d.statusPegawaiWajib && d.statusPegawaiWajib.trim()) ? efilemaster_esc(d.statusPegawaiWajib) : '<span class="text-muted">Semua</span>';
     var ket = d.keterangan ? '<span class="text-muted font-italic" style="font-size:12px;">' + efilemaster_esc(d.keterangan) + '</span>' : '<span class="text-muted">—</span>';
