@@ -111,7 +111,32 @@
       border-bottom: 1px solid rgba(255, 215, 0, 0.2) !important;
       padding-bottom: 15px;
       margin-bottom: 15px;
-    }
+  /* Keyframe Marquee Modern */
+  .sultan-marquee-container {
+    display: flex;
+    align-items: center;
+    width: 100%;
+  }
+  @keyframes sultan-marquee {
+    0% { transform: translate3d(100%, 0, 0); }
+    100% { transform: translate3d(-100%, 0, 0); }
+  }
+  .sultan-marquee-content {
+    display: inline-block;
+    white-space: nowrap;
+    animation: sultan-marquee 30s linear infinite;
+  }
+  .sultan-marquee-content:hover {
+    animation-play-state: paused;
+    cursor: pointer;
+  }
+  /* Style spesifik untuk marquee dark mode */
+  .dark-mode #sultan-running-text-row .card-sultan {
+    background-color: rgba(246, 194, 62, 0.04) !important;
+    border-color: rgba(246, 194, 62, 0.15) !important;
+  }
+  .dark-mode #sultan-running-text-content {
+    color: #f6c23e !important;
   }
 </style>
 
@@ -148,6 +173,26 @@
             </div>
         </div>
     </div>
+
+    <!-- Teks Berjalan Peringatan Dokumen -->
+    <div class="row mb-4" id="sultan-running-text-row" style="display: none;">
+        <div class="col-12">
+            <div class="card-sultan shadow-sm mb-0 p-2 d-flex align-items-center" 
+                 style="background: rgba(246, 194, 62, 0.06); border: 1px solid rgba(246, 194, 62, 0.2); border-left: 5px solid #f6c23e; border-radius: 12px; overflow: hidden; position: relative;">
+                <div class="d-flex align-items-center w-100">
+                    <span class="badge badge-warning px-2 py-1 mr-2 text-white font-weight-bold animate__animated animate__flash animate__infinite animate__slower" style="font-size: 0.8rem; background-color: #f6c23e; border-radius: 6px; z-index: 2; flex-shrink: 0;">
+                        <i class="fas fa-bullhorn mr-1"></i> INFO
+                    </span>
+                    <div class="sultan-marquee-container flex-grow-1" style="overflow: hidden; white-space: nowrap; position: relative;">
+                        <div class="sultan-marquee-content" id="sultan-running-text-content" style="font-size: 0.95rem; color: #d48000; font-weight: 500;">
+                            Memuat data laporan...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Pengumuman Statis -->
     <div class="row mb-4">
         <div class="col-12">
@@ -635,10 +680,63 @@
         // Kita kirim data yang kita punya di browser ke server untuk dicatat
         google.script.run.logUserVisit(u);
 
+        // E. CEK DOKUMEN BELUM DIUNGGAH (Teks Berjalan)
+        muatNotifikasiDokumenKurang(u);
+
     } catch (e) {
         console.log("Gagal memuat data user lokal di Home: " + e.message);
     }
   }
+
+  function muatNotifikasiDokumenKurang(u) {
+    try {
+      var username = u.username || "";
+      var role = u.role || "";
+      var unit = u.unit || "";
+      
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (res && res.show) {
+            if (res.hasWarning) {
+              $('#sultan-running-text-content').html(res.messageHtml);
+              // Sesuaikan kecepatan animasi berdasarkan panjang teks agar nyaman dibaca
+              var charCount = res.messageHtml.length;
+              var duration = Math.max(20, Math.floor(charCount * 0.15)); // 0.15 detik per karakter
+              $('#sultan-running-text-content').css('animation-duration', duration + 's');
+              $('#sultan-running-text-row').fadeIn(300);
+            } else {
+              // Jika tidak ada warning dan dia bukan admin, tampilkan pesan sukses/apresiasi
+              var successMsg = '<i class="fas fa-check-circle mr-1 text-success"></i> Semua dokumen sekolah Anda telah lengkap diunggah. Terima kasih!';
+              $('#sultan-running-text-content').html(successMsg).css({
+                'color': '#2d7a43',
+                'font-weight': 'bold',
+                'animation': 'none',
+                'padding-left': '0',
+                'transform': 'none'
+              });
+              $('#sultan-running-text-row .card-sultan').css({
+                'background': 'rgba(40, 167, 69, 0.06)',
+                'border-color': 'rgba(40, 167, 69, 0.2)',
+                'border-left-color': '#28a745'
+              });
+              // Sesuaikan badge ke ikon sukses
+              $('#sultan-running-text-row .badge').removeClass('badge-warning').addClass('badge-success').css('background-color', '#28a745').html('<i class="fas fa-check mr-1"></i> LENGKAP');
+              $('#sultan-running-text-row').fadeIn(300);
+            }
+          } else {
+            $('#sultan-running-text-row').hide();
+          }
+        })
+        .withFailureHandler(function(err) {
+          console.error("Gagal memuat notifikasi dokumen kurang:", err);
+          $('#sultan-running-text-row').hide();
+        })
+        .getMissingDocumentsReport(username, role, unit);
+    } catch(e) {
+      console.error("Error muatNotifikasiDokumenKurang:", e);
+    }
+  }
+
 
   // ============================================
   // DEBUG RAW DATA
