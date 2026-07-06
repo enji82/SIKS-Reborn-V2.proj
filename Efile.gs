@@ -649,6 +649,9 @@ function getEfileDashboardData(idKategori, namaKategori, forceRefresh) {
         periodsSet.add(b + " " + curYear);
         periodsSet.add(b + " " + (curYear - 1));
       });
+    } else if (jPeriode === "PERMANEN") {
+      // Permanen: Cukup satu entri data permanen
+      periodsSet.add("PERMANEN");
     } else {
       periodsSet.add(String(curYear));
       periodsSet.add(String(curYear - 1));
@@ -701,6 +704,8 @@ function getEfileDashboardData(idKategori, namaKategori, forceRefresh) {
         var bB = mapBulan[partsB[0]] || 0;
         return bB - bA;
       });
+    } else if (jPeriode === "PERMANEN") {
+      sortedPeriods = ["PERMANEN"];
     } else {
       sortedPeriods = Array.from(periodsSet).sort(function(a, b) { return parseInt(b) - parseInt(a); });
     }
