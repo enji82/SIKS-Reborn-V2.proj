@@ -221,7 +221,7 @@ function getMissingDocumentsReport(username, role, unit) {
       show: true,
       hasWarning: messages.length > 0,
       warnings: messages,
-      messageHtml: messages.join(" ")
+      messageHtml: messages.join(" | ")
     };
     
   } catch (e) {

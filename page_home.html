@@ -165,13 +165,17 @@
   .dark-mode .sultan-marquee-success-text {
     color: #28a745 !important;
   }
-  #sultan-running-text-row .badge-warning {
-    background-color: #f6c23e !important;
-    color: #fff !important;
+  #sultan-running-text-row .sultan-marquee-badge-warning {
+    color: #d48000 !important;
   }
-  #sultan-running-text-row .badge-success {
-    background-color: #28a745 !important;
-    color: #fff !important;
+  .dark-mode #sultan-running-text-row .sultan-marquee-badge-warning {
+    color: #f6c23e !important;
+  }
+  #sultan-running-text-row .sultan-marquee-badge-success {
+    color: #2b7a43 !important;
+  }
+  .dark-mode #sultan-running-text-row .sultan-marquee-badge-success {
+    color: #28a745 !important;
   }
 </style>
 
@@ -214,12 +218,12 @@
         <div class="col-12">
             <div class="alert sultan-marquee-alert shadow-sm mb-0 p-2 d-flex align-items-center" role="alert" style="overflow: hidden;">
                 <div class="d-flex align-items-center w-100">
-                    <span class="badge badge-warning px-2 py-1 mr-2 text-white font-weight-bold animate__animated animate__flash animate__infinite animate__slower" style="font-size: 0.8rem; background-color: #f6c23e; border-radius: 6px; z-index: 2; flex-shrink: 0;">
-                        <i class="fas fa-bullhorn mr-1"></i> INFO
+                    <span class="sultan-marquee-badge font-weight-bold mr-2 flex-shrink-0" id="sultan-running-text-badge" style="font-size: 0.95rem; z-index: 2;">
+                        <i class="fas fa-sync fa-spin mr-1"></i>
                     </span>
                     <div class="sultan-marquee-container flex-grow-1" style="overflow: hidden; white-space: nowrap; position: relative;">
-                        <div class="sultan-marquee-content sultan-marquee-text" id="sultan-running-text-content" style="font-size: 0.95rem; font-weight: 500;">
-                            Memuat data laporan...
+                        <div class="sultan-marquee-content sultan-marquee-text" id="sultan-running-text-content" style="font-size: 0.95rem; font-weight: 500; animation: none;">
+                            <span class="text-muted italic"><i class="fas fa-spinner fa-spin mr-1"></i> Memeriksa kelengkapan berkas sekolah...</span>
                         </div>
                     </div>
                 </div>
@@ -706,8 +710,11 @@
         if (roleUser.includes('admin')) {
             // Widget khusus admin di Home (jika ada)
             $('.widget-admin-only').show();
+            $('#sultan-running-text-row').hide();
         } else {
             $('.widget-admin-only').hide();
+            // Tampilkan card running text langsung (loading state) bagi user sekolah
+            $('#sultan-running-text-row').show();
         }
 
         // D. REKAM JEJAK DIGITAL (CCTV) - Tetap lapor ke server
@@ -733,13 +740,13 @@
           if (res && res.show) {
             var containerAlert = $('#sultan-running-text-row .alert');
             var textElement = $('#sultan-running-text-content');
-            var badgeElement = $('#sultan-running-text-row .badge');
+            var badgeElement = $('#sultan-running-text-badge');
             
             if (res.hasWarning) {
               // 1. Terapkan kelas & gaya peringatan
               containerAlert.removeClass('sultan-marquee-success').addClass('sultan-marquee-alert');
               textElement.removeClass('sultan-marquee-success-text').addClass('sultan-marquee-text');
-              badgeElement.removeClass('badge-success').addClass('badge-warning').css('background-color', '').html('<i class="fas fa-bullhorn mr-1"></i> INFO');
+              badgeElement.removeClass('sultan-marquee-badge-success').addClass('sultan-marquee-badge-warning').html('<i class="fas fa-bullhorn mr-1"></i>INFO');
               
               // 2. Set teks & hitung durasi
               textElement.html(res.messageHtml);
@@ -753,13 +760,11 @@
                 'padding-left': '',
                 'transform': ''
               });
-              
-              $('#sultan-running-text-row').fadeIn(300);
             } else {
               // Jika lengkap, tampilkan pesan sukses
               containerAlert.removeClass('sultan-marquee-alert').addClass('sultan-marquee-success');
               textElement.removeClass('sultan-marquee-text').addClass('sultan-marquee-success-text');
-              badgeElement.removeClass('badge-warning').addClass('badge-success').css('background-color', '').html('<i class="fas fa-check mr-1"></i> LENGKAP');
+              badgeElement.removeClass('sultan-marquee-badge-warning').addClass('sultan-marquee-badge-success').html('<i class="fas fa-check mr-1"></i>LENGKAP');
               
               var successMsg = '<i class="fas fa-check-circle mr-1"></i> Semua dokumen sekolah Anda telah lengkap diunggah. Terima kasih!';
               textElement.html(successMsg).css({
@@ -768,8 +773,6 @@
                 'padding-left': '0',
                 'transform': 'none'
               });
-              
-              $('#sultan-running-text-row').fadeIn(300);
             }
           } else {
             $('#sultan-running-text-row').hide();
@@ -777,6 +780,7 @@
         })
         .withFailureHandler(function(err) {
           console.error("Gagal memuat notifikasi dokumen kurang:", err);
+          // Hanya sembunyikan jika memang error total
           $('#sultan-running-text-row').hide();
         })
         .getMissingDocumentsReport(username, role, unit);
