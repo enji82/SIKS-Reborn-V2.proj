@@ -594,6 +594,7 @@ function getEfileDashboardData(idKategori, namaKategori, forceRefresh) {
     var shKat = getSheet(KONFIG_EFILE.DB_KEY, "Master_Kategori_Efile");
     var dataKat = shKat ? shKat.getDataRange().getDisplayValues() : [];
     var jPeriode = "TAHUNAN";
+    var statusFilterList = [];
     for (var i = 1; i < dataKat.length; i++) {
       if (String(dataKat[i][0]).trim() === String(idKategori).trim()) {
         var w = String(dataKat[i][5] || "").trim();
