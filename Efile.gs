@@ -564,11 +564,14 @@ function getEfileDashboardInit(npsnFilter) {
     var listKategori = [];
     for(var i=1; i<dataKat.length; i++) {
         if(String(dataKat[i][0]).trim() !== "") {
-            listKategori.push({
-                sheetRekap: dataKat[i][0],
-                sheetLapor: dataKat[i][1],
-                namaKategori: dataKat[i][1]
-            });
+            var showDash = String(dataKat[i][8] || "TRUE").trim().toUpperCase() !== "FALSE";
+            if (showDash) {
+                listKategori.push({
+                    sheetRekap: dataKat[i][0],
+                    sheetLapor: dataKat[i][1],
+                    namaKategori: dataKat[i][1]
+                });
+            }
         }
     }
     
@@ -601,7 +604,7 @@ function getEfileDashboardData(idKategori, namaKategori, forceRefresh) {
         if (w) {
           statusFilterList = w.split(",").map(function(s) { return s.trim().toLowerCase(); });
         }
-        var jpVal = String(dataKat[i][6] || "").toUpperCase();
+        var jpVal = String(dataKat[i][4] || "").toUpperCase();
         if (jpVal.includes("PERMANEN")) jPeriode = "PERMANEN";
         else if (jpVal.includes("PERIODE")) jPeriode = "PERIODE";
         else if (jpVal.includes("TMT")) jPeriode = "TMT";
@@ -854,7 +857,8 @@ function getEfileMasterKategoriAdmin() {
           jenisPeriode: dataKat[i][4] || "",
           statusPegawaiWajib: dataKat[i][5] || "",
           aktif: String(dataKat[i][6] || "TRUE").trim().toUpperCase() !== "FALSE",
-          keterangan: dataKat[i][7] || ""
+          keterangan: dataKat[i][7] || "",
+          dashboard: String(dataKat[i][8] || "TRUE").trim().toUpperCase() !== "FALSE"
         });
       }
     }
@@ -888,7 +892,8 @@ function simpanMasterKategori(payload) {
       String(payload.jenisPeriode       || "").trim().toUpperCase(),
       String(payload.statusPegawaiWajib || "").trim(),
       payload.aktif !== false ? "TRUE" : "FALSE",
-      String(payload.keterangan         || "").trim()
+      String(payload.keterangan         || "").trim(),
+      payload.dashboard !== false ? "TRUE" : "FALSE"
     ];
 
     if (payload.rowId) {
