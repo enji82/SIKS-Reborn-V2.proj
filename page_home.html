@@ -111,6 +111,9 @@
       border-bottom: 1px solid rgba(255, 215, 0, 0.2) !important;
       padding-bottom: 15px;
       margin-bottom: 15px;
+    }
+  }
+
   /* Keyframe Marquee Modern */
   .sultan-marquee-container {
     display: flex;
@@ -130,13 +133,37 @@
     animation-play-state: paused;
     cursor: pointer;
   }
-  /* Style spesifik untuk marquee dark mode */
-  .dark-mode #sultan-running-text-row .card-sultan {
-    background-color: rgba(246, 194, 62, 0.04) !important;
+  .sultan-marquee-alert {
+    background-color: rgba(246, 194, 62, 0.08) !important;
+    border: 1px solid rgba(246, 194, 62, 0.2) !important;
+    border-left: 5px solid #f6c23e !important;
+    border-radius: 12px;
+  }
+  .dark-mode .sultan-marquee-alert {
+    background-color: rgba(246, 194, 62, 0.05) !important;
     border-color: rgba(246, 194, 62, 0.15) !important;
   }
-  .dark-mode #sultan-running-text-content {
+  .sultan-marquee-text {
+    color: #d48000 !important;
+  }
+  .dark-mode .sultan-marquee-text {
     color: #f6c23e !important;
+  }
+  .sultan-marquee-success {
+    background-color: rgba(40, 167, 69, 0.08) !important;
+    border: 1px solid rgba(40, 167, 69, 0.2) !important;
+    border-left: 5px solid #28a745 !important;
+    border-radius: 12px;
+  }
+  .dark-mode .sultan-marquee-success {
+    background-color: rgba(40, 167, 69, 0.05) !important;
+    border-color: rgba(40, 167, 69, 0.15) !important;
+  }
+  .sultan-marquee-success-text {
+    color: #2b7a43 !important;
+  }
+  .dark-mode .sultan-marquee-success-text {
+    color: #28a745 !important;
   }
 </style>
 
@@ -177,14 +204,13 @@
     <!-- Teks Berjalan Peringatan Dokumen -->
     <div class="row mb-4" id="sultan-running-text-row" style="display: none;">
         <div class="col-12">
-            <div class="card-sultan shadow-sm mb-0 p-2 d-flex align-items-center" 
-                 style="background: rgba(246, 194, 62, 0.06); border: 1px solid rgba(246, 194, 62, 0.2); border-left: 5px solid #f6c23e; border-radius: 12px; overflow: hidden; position: relative;">
+            <div class="alert sultan-marquee-alert shadow-sm mb-0 p-2 d-flex align-items-center" role="alert" style="overflow: hidden;">
                 <div class="d-flex align-items-center w-100">
                     <span class="badge badge-warning px-2 py-1 mr-2 text-white font-weight-bold animate__animated animate__flash animate__infinite animate__slower" style="font-size: 0.8rem; background-color: #f6c23e; border-radius: 6px; z-index: 2; flex-shrink: 0;">
                         <i class="fas fa-bullhorn mr-1"></i> INFO
                     </span>
                     <div class="sultan-marquee-container flex-grow-1" style="overflow: hidden; white-space: nowrap; position: relative;">
-                        <div class="sultan-marquee-content" id="sultan-running-text-content" style="font-size: 0.95rem; color: #d48000; font-weight: 500;">
+                        <div class="sultan-marquee-content sultan-marquee-text" id="sultan-running-text-content" style="font-size: 0.95rem; font-weight: 500;">
                             Memuat data laporan...
                         </div>
                     </div>
@@ -697,30 +723,44 @@
       google.script.run
         .withSuccessHandler(function(res) {
           if (res && res.show) {
+            var containerAlert = $('#sultan-running-text-row .alert');
+            var textElement = $('#sultan-running-text-content');
+            var badgeElement = $('#sultan-running-text-row .badge');
+            
             if (res.hasWarning) {
-              $('#sultan-running-text-content').html(res.messageHtml);
-              // Sesuaikan kecepatan animasi berdasarkan panjang teks agar nyaman dibaca
+              // 1. Terapkan kelas & gaya peringatan
+              containerAlert.removeClass('sultan-marquee-success').addClass('sultan-marquee-alert');
+              textElement.removeClass('sultan-marquee-success-text').addClass('sultan-marquee-text');
+              badgeElement.removeClass('badge-success').addClass('badge-warning').css('background-color', '').html('<i class="fas fa-bullhorn mr-1"></i> INFO');
+              
+              // 2. Set teks & hitung durasi
+              textElement.html(res.messageHtml);
               var charCount = res.messageHtml.length;
               var duration = Math.max(20, Math.floor(charCount * 0.15)); // 0.15 detik per karakter
-              $('#sultan-running-text-content').css('animation-duration', duration + 's');
+              
+              // 3. Terapkan/aktifkan animasi
+              textElement.css({
+                'animation': 'sultan-marquee ' + duration + 's linear infinite',
+                'font-weight': '500',
+                'padding-left': '',
+                'transform': ''
+              });
+              
               $('#sultan-running-text-row').fadeIn(300);
             } else {
-              // Jika tidak ada warning dan dia bukan admin, tampilkan pesan sukses/apresiasi
-              var successMsg = '<i class="fas fa-check-circle mr-1 text-success"></i> Semua dokumen sekolah Anda telah lengkap diunggah. Terima kasih!';
-              $('#sultan-running-text-content').html(successMsg).css({
-                'color': '#2d7a43',
+              // Jika lengkap, tampilkan pesan sukses
+              containerAlert.removeClass('sultan-marquee-alert').addClass('sultan-marquee-success');
+              textElement.removeClass('sultan-marquee-text').addClass('sultan-marquee-success-text');
+              badgeElement.removeClass('badge-warning').addClass('badge-success').css('background-color', '').html('<i class="fas fa-check mr-1"></i> LENGKAP');
+              
+              var successMsg = '<i class="fas fa-check-circle mr-1"></i> Semua dokumen sekolah Anda telah lengkap diunggah. Terima kasih!';
+              textElement.html(successMsg).css({
                 'font-weight': 'bold',
                 'animation': 'none',
                 'padding-left': '0',
                 'transform': 'none'
               });
-              $('#sultan-running-text-row .card-sultan').css({
-                'background': 'rgba(40, 167, 69, 0.06)',
-                'border-color': 'rgba(40, 167, 69, 0.2)',
-                'border-left-color': '#28a745'
-              });
-              // Sesuaikan badge ke ikon sukses
-              $('#sultan-running-text-row .badge').removeClass('badge-warning').addClass('badge-success').css('background-color', '#28a745').html('<i class="fas fa-check mr-1"></i> LENGKAP');
+              
               $('#sultan-running-text-row').fadeIn(300);
             }
           } else {
