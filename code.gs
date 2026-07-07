@@ -1378,3 +1378,33 @@ function getPeraturanFiles() {
     return JSON.stringify({ status: 'error', message: e.message });
   }
 }
+
+// ==========================================
+// 9. MENU PERATURAN (TPG)
+// ==========================================
+function tpg_getPeraturanFiles() {
+  try {
+    var folderId = '1Omi82S1UHtzWOndDvAInD59R04CfqNnb';
+    var folder = DriveApp.getFolderById(folderId);
+    var files = folder.getFiles();
+    var fileList = [];
+    
+    while (files.hasNext()) {
+      var file = files.next();
+      fileList.push({
+        id: file.getId(),
+        name: file.getName(),
+        url: file.getUrl()
+      });
+    }
+    
+    // Sort files alphabetically by name
+    fileList.sort(function(a, b) {
+      return a.name.localeCompare(b.name);
+    });
+    
+    return JSON.stringify({ status: 'success', data: fileList });
+  } catch (e) {
+    return JSON.stringify({ status: 'error', message: e.message });
+  }
+}
