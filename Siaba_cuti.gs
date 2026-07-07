@@ -704,7 +704,7 @@ function getNotifikasiCuti(role, unit) {
     for (var i = 1; i < data.length; i++) {
         var row = data[i];
         var status = String(row[10] || "").trim(); 
-        var isDiproses = (status === "Diproses" || status === "");
+        var isDiproses = (status === "Diproses" || status === "" || status === "Usul Batal");
         var isTarget = isAdmin ? isDiproses : (String(row[1]).trim().toUpperCase() === String(unit).trim().toUpperCase() && !isDiproses);
         
         if (isTarget) {
@@ -851,7 +851,7 @@ function tandaiSemuaNotifCutiDibaca(role, unit) {
         for (var i = 1; i < data.length; i++) {
             var row = data[i];
             var status = String(row[10] || "").trim();
-            var isDiproses = (status === "Diproses" || status === "");
+            var isDiproses = (status === "Diproses" || status === "" || status === "Usul Batal");
             var isTarget = (role === "Admin") ? isDiproses : (String(row[1]).trim().toUpperCase() === String(unit).trim().toUpperCase() && !isDiproses);
             var cur = String(row[19] || "").trim();
             if (isTarget && cur.indexOf(mark) === -1) {
