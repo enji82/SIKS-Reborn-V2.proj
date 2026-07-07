@@ -914,3 +914,33 @@ function backfillTglUnggahCuti() {
   Logger.log("Errors: " + errors.length);
   if (errors.length > 0) Logger.log(errors.join("\n"));
 }
+
+// =================================================================
+// X. MENU PERATURAN (CUTI)
+// =================================================================
+function cuti_getPeraturanFiles() {
+  try {
+    var folderId = '1zdoOuQtxkgLFwADpRpfSE9xEiml4iQ66';
+    var folder = DriveApp.getFolderById(folderId);
+    var files = folder.getFiles();
+    var fileList = [];
+    
+    while (files.hasNext()) {
+      var file = files.next();
+      fileList.push({
+        id: file.getId(),
+        name: file.getName(),
+        url: file.getUrl()
+      });
+    }
+    
+    // Urutkan alfabet
+    fileList.sort(function(a, b) {
+      return a.name.localeCompare(b.name);
+    });
+    
+    return JSON.stringify({ status: 'success', data: fileList });
+  } catch (e) {
+    return JSON.stringify({ status: 'error', message: e.message });
+  }
+}
