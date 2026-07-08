@@ -1,0 +1,563 @@
+/* ======================================================================
+   MODUL: ADMINISTRASI SEKOLAH (ARSIP DIGITAL ELEKTRONIK SEKOLAH)
+   ====================================================================== */
+
+const KONFIG_ADM_SEKOLAH = {
+  DB_KEY: "ADM_SEKOLAH_DB",
+  get FOLDER_ID() { return FOLDER_CONFIG.ADM_SEKOLAH_DOCS; }
+};
+
+/* ----------------------------------------------------------------------
+   1. MASTER KATEGORI
+   ---------------------------------------------------------------------- */
+function getAdmSekolahMasterData(npsnFilter) {
+  try {
+    var shKat = getSheet(KONFIG_ADM_SEKOLAH.DB_KEY, "Master_Kategori");
+    var dataKat = shKat ? shKat.getDataRange().getDisplayValues() : [];
+    var resKat = [];
+    for(var i=1; i<dataKat.length; i++) {
+        if(String(dataKat[i][0]).trim() !== "") {
+            var isAktif = String(dataKat[i][6] || "TRUE").trim().toUpperCase() !== "FALSE";
+            if (!isAktif) continue;
+            resKat.push({ 
+                idKat: dataKat[i][0], 
+                namaKat: dataKat[i][1], 
+                format: dataKat[i][2] ? String(dataKat[i][2]).trim().toUpperCase() : "PDF",
+                ukuran: dataKat[i][3] ? String(dataKat[i][3]).trim() : "2",
+                jenisPeriode: dataKat[i][4] ? String(dataKat[i][4]).trim().toUpperCase() : "",
+                keterangan: dataKat[i][5] ? String(dataKat[i][5]).trim() : "",
+                integrasiDashboard: dataKat[i][7] ? String(dataKat[i][7]).trim().toUpperCase() : "TRUE"
+            });
+        }
+    }
+    
+    // Ambil Data Sekolah dari USER_DB -> Data_Sekolah (Sesuai kesepakatan menggunakan database sekolah Lapbul)
+    var shSekolah = getSheet("USER_DB", "Data_Sekolah");
+    var dataSekolah = shSekolah ? shSekolah.getDataRange().getDisplayValues() : [];
+    var resSekolah = [];
+    var targetNpsn = String(npsnFilter || "").trim().toUpperCase();
+    
+    // Kolom di Data_Sekolah biasanya: [0] NPSN, [1] Nama Sekolah, [2] Jenjang, [3] Status, [4] Kecamatan
+    for(var j=1; j<dataSekolah.length; j++) {
+        var rNpsn = String(dataSekolah[j][0]).trim().toUpperCase(); 
+        var rNama = String(dataSekolah[j][1]).trim().toUpperCase(); 
+        if (targetNpsn === "" || targetNpsn === "SEMUA" || rNpsn === targetNpsn || rNama === targetNpsn) {
+            if(rNpsn !== "") {
+                resSekolah.push({ 
+                    npsn: dataSekolah[j][0], 
+                    nama: dataSekolah[j][1], 
+                    jenjang: dataSekolah[j][2], 
+                    status: dataSekolah[j][3],
+                    kecamatan: dataSekolah[j][4]
+                });
+            }
+        }
+    }
+    return JSON.stringify({ success: true, kategori: resKat, sekolah: resSekolah });
+  } catch(e) { return JSON.stringify({ success: false, message: e.message }); }
+}
+
+function simpanAdmSekolahMaster(payload) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    var sheet = getSheet(KONFIG_ADM_SEKOLAH.DB_KEY, "Master_Kategori");
+    if (!sheet) {
+      // Jika belum ada, buat sheet
+      var ss = getDB(KONFIG_ADM_SEKOLAH.DB_KEY);
+      sheet = ss.insertSheet("Master_Kategori");
+      sheet.appendRow(["ID_Kategori", "Nama_Dokumen", "Format_File", "Ukuran_File", "Jenis_Periode", "Keterangan", "Status", "Integrasi_Dashboard"]);
+    }
+    
+    var data = sheet.getDataRange().getValues();
+    var idKategori = String(payload.idKat || "").trim();
+    if (!idKategori) return JSON.stringify({ success: false, message: "ID Kategori tidak boleh kosong." });
+    
+    var isUpdate = false;
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === idKategori) {
+        sheet.getRange(i + 1, 2).setValue(payload.namaKat);
+        sheet.getRange(i + 1, 3).setValue(payload.format);
+        sheet.getRange(i + 1, 4).setValue(payload.ukuran);
+        sheet.getRange(i + 1, 5).setValue(payload.jenisPeriode);
+        sheet.getRange(i + 1, 6).setValue(payload.keterangan);
+        sheet.getRange(i + 1, 7).setValue(payload.status);
+        sheet.getRange(i + 1, 8).setValue(payload.integrasi);
+        isUpdate = true;
+        break;
+      }
+    }
+    
+    if (!isUpdate) {
+      sheet.appendRow([
+        idKategori, 
+        payload.namaKat, 
+        payload.format, 
+        payload.ukuran, 
+        payload.jenisPeriode, 
+        payload.keterangan, 
+        payload.status,
+        payload.integrasi
+      ]);
+    }
+    
+    SpreadsheetApp.flush();
+    invalidateAdmSekolahDashboardCache();
+    return JSON.stringify({ success: true, message: "Kategori berhasil disimpan." });
+  } catch(e) { return JSON.stringify({ success: false, message: e.message }); } finally { lock.releaseLock(); }
+}
+
+function hapusAdmSekolahMaster(idKategori) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    var sheet = getSheet(KONFIG_ADM_SEKOLAH.DB_KEY, "Master_Kategori");
+    if(!sheet) return JSON.stringify({ success: false, message: "Sheet Master_Kategori tidak ditemukan." });
+    var data = sheet.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === String(idKategori).trim()) {
+        sheet.deleteRow(i + 1);
+        SpreadsheetApp.flush();
+        invalidateAdmSekolahDashboardCache();
+        return JSON.stringify({ success: true, message: "Kategori berhasil dihapus." });
+      }
+    }
+    return JSON.stringify({ success: false, message: "Kategori tidak ditemukan." });
+  } catch(e) { return JSON.stringify({ success: false, message: e.message }); } finally { lock.releaseLock(); }
+}
+
+
+/* ----------------------------------------------------------------------
+   2. KELOLA DOKUMEN (CRUD)
+   ---------------------------------------------------------------------- */
+function getAdmSekolahData(npsnFilter) {
+  try {
+    // 1. Load Data_Sekolah untuk lookup
+    var shSekolah = getSheet("USER_DB", "Data_Sekolah");
+    var dataSekolah = shSekolah ? shSekolah.getDataRange().getDisplayValues() : [];
+    var sekolahMap = {}; 
+    for(var j=1; j<dataSekolah.length; j++) {
+        var npsn = String(dataSekolah[j][0]).trim();
+        if(npsn) {
+            sekolahMap[npsn] = {
+                nama: dataSekolah[j][1],
+                jenjang: dataSekolah[j][2],
+                status: dataSekolah[j][3]
+            };
+        }
+    }
+    
+    // 2. Load Database_Dokumen
+    var sheet = getSheet(KONFIG_ADM_SEKOLAH.DB_KEY, "Database_Dokumen");
+    if(!sheet) return JSON.stringify({ success: false, message: "Sheet Database_Dokumen tidak ditemukan." });
+    
+    var data = sheet.getDataRange().getDisplayValues();
+    var result = [];
+    var targetNpsn = String(npsnFilter || "").trim().toUpperCase();
+    
+    // Asumsi header: [0] NPSN, [1] ID_Kategori, [2] Nama_Kategori, [3] Tahun, [4] File_Name, [5] URL, [6] Status, [7] Catatan, [8] Tgl_Upload, [9] Uploader, [10] Tgl_Verif, [11] Verifikator, [12] Periode
+    for(var i=1; i<data.length; i++) {
+        var rNpsn = String(data[i][0]).trim().toUpperCase();
+        var infoSekolah = sekolahMap[rNpsn] || { nama: "Unknown", jenjang: "-", status: "-" };
+        
+        if (targetNpsn === "" || targetNpsn === "SEMUA" || rNpsn === targetNpsn) {
+            result.push({
+                rowId: i + 1, 
+                npsn: rNpsn,
+                nama_sekolah: infoSekolah.nama,
+                id_kategori: data[i][1], 
+                nama_kategori: data[i][2],
+                tahun: data[i][3], 
+                file_name: data[i][4], 
+                url: data[i][5], 
+                status: data[i][6], 
+                catatan: data[i][7],
+                tgl_upload: data[i][8], 
+                uploader: data[i][9], 
+                tgl_verif: data[i][10] || "-", 
+                verifikator: data[i][11] || "-",
+                periode: data[i][12] || "-" 
+            });
+        }
+    }
+    result.sort(function(a,b) { return b.rowId - a.rowId; });
+    return JSON.stringify({ success: true, data: result });
+  } catch(e) { return JSON.stringify({ success: false, message: e.message }); }
+}
+
+function admSekolahCheckDuplikat(sheet, npsn, idKategori, tahun, periode) {
+  var data = sheet.getDataRange().getDisplayValues();
+  for (var i = 1; i < data.length; i++) {
+    var rNpsn = String(data[i][0]).trim();
+    var rKat = String(data[i][1]).trim();
+    var rTahun = String(data[i][3]).trim();
+    var rPeriode = String(data[i][12] || "-").trim();
+    
+    if (rNpsn === String(npsn).trim() && rKat === String(idKategori).trim() && rTahun === String(tahun).trim() && rPeriode === String(periode).trim()) {
+      return { ada: true, status: String(data[i][6]).trim() };
+    }
+  }
+  return { ada: false };
+}
+
+function simpanAdmSekolahBatch(batchData) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+    var ss = getDB(KONFIG_ADM_SEKOLAH.DB_KEY);
+    var sheet = ss.getSheetByName("Database_Dokumen");
+    if (!sheet) {
+      sheet = ss.insertSheet("Database_Dokumen");
+      sheet.appendRow(["NPSN", "ID_Kategori", "Nama_Kategori", "Tahun", "File_Name", "URL", "Status", "Catatan", "Tgl_Upload", "Uploader", "Tgl_Verif", "Verifikator", "Periode", "Tgl_Edit", "User_Edit"]);
+    }
+
+    var now = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
+    var pFolder = DriveApp.getFolderById(KONFIG_ADM_SEKOLAH.FOLDER_ID);
+    var rowsToAppend = [];
+    var laporan = [];
+    var berhasilCount = 0;
+    var skipCount = 0;
+
+    for (var i = 0; i < batchData.length; i++) {
+      var item = batchData[i];
+      var periodeItem = String(item.periode || "-").trim();
+
+      // PROTEKSI DUPLIKAT
+      var duplikat = admSekolahCheckDuplikat(sheet, item.npsn, item.id_kategori, item.tahun, periodeItem);
+      if (duplikat.ada) {
+        var alasan = (duplikat.status.toLowerCase().includes('setuju') || duplikat.status.toLowerCase().includes('ok'))
+          ? "Sudah Disetujui, tidak dapat diubah lagi."
+          : "Sudah ada dengan status '" + duplikat.status + "'. Gunakan tombol Edit (✏️).";
+        laporan.push({ nama_kategori: item.nama_kategori, tahun: item.tahun, periode: periodeItem, result: "SKIP", alasan: alasan });
+        skipCount++;
+        continue;
+      }
+
+      var fileUrl = "";
+      if (item.fileBase64) {
+        var folderKatName = (item.nama_kategori || "Dokumen") + " - " + (item.tahun || "Umum");
+        var idFolderKat = pFolder.getFoldersByName(folderKatName);
+        var fKat = idFolderKat.hasNext() ? idFolderKat.next() : pFolder.createFolder(folderKatName);
+        
+        var unitName = item.nama_sekolah || item.npsn;
+        var idFolderUnit = fKat.getFoldersByName(unitName);
+        var fUnit = idFolderUnit.hasNext() ? idFolderUnit.next() : fKat.createFolder(unitName);
+        
+        var blob = Utilities.newBlob(Utilities.base64Decode(item.fileBase64), item.mimeType, item.nama_file);
+        var file = fUnit.createFile(blob);
+        file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        fileUrl = file.getUrl();
+      } else {
+        laporan.push({ nama_kategori: item.nama_kategori, tahun: item.tahun, periode: periodeItem, result: "ERROR", alasan: "File tidak valid atau kosong." });
+        skipCount++;
+        continue;
+      }
+
+      rowsToAppend.push([
+        item.npsn, item.id_kategori, item.nama_kategori,
+        item.tahun, item.nama_file, fileUrl, "Diproses", "", "'" + now,
+        item.user_login, "", "", periodeItem, "", ""
+      ]);
+      laporan.push({ nama_kategori: item.nama_kategori, tahun: item.tahun, periode: periodeItem, result: "OK", alasan: "" });
+      berhasilCount++;
+    }
+
+    if (rowsToAppend.length > 0) {
+      sheet.getRange(sheet.getLastRow() + 1, 1, rowsToAppend.length, rowsToAppend[0].length).setValues(rowsToAppend);
+    }
+    SpreadsheetApp.flush();
+    invalidateAdmSekolahDashboardCache();
+
+    var msg;
+    if (berhasilCount > 0 && skipCount === 0) {
+      msg = berhasilCount + " dokumen berhasil diunggah.";
+    } else if (berhasilCount > 0 && skipCount > 0) {
+      msg = berhasilCount + " dokumen berhasil, " + skipCount + " dilewati.";
+    } else {
+      msg = "Tidak ada dokumen yang berhasil diunggah. " + skipCount + " dokumen dilewati.";
+    }
+
+    return JSON.stringify({
+      success: berhasilCount > 0,
+      message: msg,
+      berhasil: berhasilCount,
+      skip: skipCount,
+      laporan: laporan
+    });
+  } catch(e) {
+    return JSON.stringify({ success: false, message: e.message });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function perbaikiAdmSekolahData(payload, fileData) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(20000);
+    var sheet = getSheet(KONFIG_ADM_SEKOLAH.DB_KEY, "Database_Dokumen"); var r = parseInt(payload.rowId);
+    var oldUrl = sheet.getRange(r, 6).getValue(); var newFileUrl = oldUrl; 
+
+    // Jika user mengunggah file baru
+    if (fileData && fileData.data) {
+        if(oldUrl && oldUrl.includes('drive.google.com')) {
+            try { var match = oldUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) || oldUrl.match(/id=([a-zA-Z0-9_-]+)/); if(match && match[1]) DriveApp.getFileById(match[1]).setTrashed(true); } catch(ex){} 
+        }
+        var pFolder = DriveApp.getFolderById(KONFIG_ADM_SEKOLAH.FOLDER_ID);
+        var namaKategori = sheet.getRange(r, 3).getValue() || "Dokumen";
+        
+        var folderKatName = namaKategori + " - " + (payload.tahun || "Umum");
+        var idFolderKat = pFolder.getFoldersByName(folderKatName);
+        var fKat = idFolderKat.hasNext() ? idFolderKat.next() : pFolder.createFolder(folderKatName);
+        
+        var unitName = payload.nama_sekolah || payload.npsn;
+        var idFolderUnit = fKat.getFoldersByName(unitName);
+        var fUnit = idFolderUnit.hasNext() ? idFolderUnit.next() : fKat.createFolder(unitName);
+
+        var blob = Utilities.newBlob(Utilities.base64Decode(fileData.data), fileData.mimeType, payload.nama_file);
+        var file = fUnit.createFile(blob); file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        newFileUrl = file.getUrl();
+    }
+    
+    var now = "'" + Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
+
+    sheet.getRange(r, 4).setValue(payload.tahun);        // Tahun
+    sheet.getRange(r, 5).setValue(payload.nama_file);    // Nama File
+    sheet.getRange(r, 6).setValue(newFileUrl);           // URL
+    sheet.getRange(r, 7).setValue("Diproses");           // Status
+    sheet.getRange(r, 8).setValue("");                   // Catatan
+    sheet.getRange(r, 11).setValue("");                  // Tgl Verifikasi
+    sheet.getRange(r, 12).setValue("");                  // User Verifikasi
+    sheet.getRange(r, 13).setValue(payload.periode);     // Periode
+    sheet.getRange(r, 14).setValue(now);                 // Tgl_Edit
+    sheet.getRange(r, 15).setValue(payload.user_login);  // User_Edit
+
+    SpreadsheetApp.flush();
+    invalidateAdmSekolahDashboardCache();
+
+    return JSON.stringify({ success: true, message: "Perbaikan dokumen berhasil disimpan." });
+  } catch(e) { return JSON.stringify({ success: false, message: e.message }); } finally { lock.releaseLock(); }
+}
+
+function hapusAdmSekolahData(rowId, securityCode) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    var d = new Date(); var kd = d.getFullYear()+""+String(d.getMonth()+1).padStart(2,'0')+""+String(d.getDate()).padStart(2,'0');
+    if (String(securityCode).trim() !== kd) return JSON.stringify({ success: false, message: "Kode Keamanan Salah!" });
+    var sheet = getSheet(KONFIG_ADM_SEKOLAH.DB_KEY, "Database_Dokumen"); var r = parseInt(rowId);
+    var urlDrive = sheet.getRange(r, 6).getValue();
+    if(urlDrive && urlDrive.includes('drive.google.com')) {
+        try { var match = urlDrive.match(/\/d\/([a-zA-Z0-9_-]+)/) || urlDrive.match(/id=([a-zA-Z0-9_-]+)/); if(match && match[1]) DriveApp.getFileById(match[1]).setTrashed(true); } catch(ex){}
+    }
+    sheet.deleteRow(r); 
+    SpreadsheetApp.flush();
+    invalidateAdmSekolahDashboardCache();
+
+    return JSON.stringify({ success: true, message: "Dokumen berhasil dihapus permanen." });
+  } catch(e) { return JSON.stringify({ success: false, message: e.message }); } finally { lock.releaseLock(); }
+}
+
+function verifikasiAdmSekolahData(rowId, status, catatan, adminName) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    var sheet = getSheet(KONFIG_ADM_SEKOLAH.DB_KEY, "Database_Dokumen"); var r = parseInt(rowId);
+    var now = "'" + Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
+    sheet.getRange(r, 7).setValue(status); sheet.getRange(r, 8).setValue(catatan);
+    sheet.getRange(r, 11).setValue(now); sheet.getRange(r, 12).setValue(adminName); 
+    SpreadsheetApp.flush();
+    invalidateAdmSekolahDashboardCache();
+
+    return JSON.stringify({ success: true, message: "Dokumen berhasil di-" + status });
+  } catch(e) { return JSON.stringify({ success: false, message: e.message }); } finally { lock.releaseLock(); }
+}
+
+
+/* ----------------------------------------------------------------------
+   3. DASHBOARD ADMINISTRASI SEKOLAH
+   ---------------------------------------------------------------------- */
+function getAdmSekolahDashboardInit(npsnFilter) {
+  try {
+    var shKat = getSheet(KONFIG_ADM_SEKOLAH.DB_KEY, "Master_Kategori");
+    if(!shKat) return JSON.stringify({ success: false, message: "Sheet Master_Kategori tidak ditemukan." });
+    
+    var dataKat = shKat.getDataRange().getDisplayValues();
+    var listKategori = [];
+    for(var i=1; i<dataKat.length; i++) {
+        if(String(dataKat[i][0]).trim() !== "") {
+            var showDash = String(dataKat[i][7] || "TRUE").trim().toUpperCase() !== "FALSE";
+            if (showDash) {
+                listKategori.push({
+                    idKat: dataKat[i][0],
+                    namaKategori: dataKat[i][1]
+                });
+            }
+        }
+    }
+    
+    var shSekolah = getSheet("USER_DB", "Data_Sekolah");
+    var dataSekolah = shSekolah ? shSekolah.getDataRange().getDisplayValues() : [];
+    var myUnit = "";
+    
+    if (npsnFilter && npsnFilter !== "SEMUA") {
+        for(var j=1; j<dataSekolah.length; j++) {
+            var rNpsn = String(dataSekolah[j][0]).trim().toUpperCase(); 
+            if (rNpsn === String(npsnFilter).trim().toUpperCase()) { myUnit = dataSekolah[j][1]; break; }
+        }
+    }
+
+    return JSON.stringify({ success: true, kategori: listKategori, myUnit: myUnit });
+  } catch(e) { return JSON.stringify({ success: false, message: e.message }); }
+}
+
+function getAdmSekolahDashboardData(idKategori) {
+  try {
+    var cacheKey = "ADM_SEKOLAH_DASH_" + idKategori;
+    var cached = CacheService.getScriptCache().get(cacheKey);
+    if (cached) return cached;
+
+    var shKat = getSheet(KONFIG_ADM_SEKOLAH.DB_KEY, "Master_Kategori");
+    var dataKat = shKat ? shKat.getDataRange().getDisplayValues() : [];
+    var jPeriode = "TAHUNAN";
+    for (var i = 1; i < dataKat.length; i++) {
+      if (String(dataKat[i][0]).trim() === String(idKategori).trim()) {
+        var jpVal = String(dataKat[i][4] || "").toUpperCase();
+        if (jpVal.includes("PERMANEN")) jPeriode = "PERMANEN";
+        else if (jpVal.includes("PERIODE") || jpVal.includes("BULANAN")) jPeriode = "PERIODE";
+        else if (jpVal.includes("TMT")) jPeriode = "TMT";
+        break;
+      }
+    }
+    
+    var shSekolah = getSheet("USER_DB", "Data_Sekolah");
+    var dataSekolah = shSekolah ? shSekolah.getDataRange().getDisplayValues() : [];
+    var sekolahList = [];
+    
+    for (var j = 1; j < dataSekolah.length; j++) {
+      var npsn = String(dataSekolah[j][0]).trim();
+      var nama = String(dataSekolah[j][1]).trim();
+      if (!npsn || !nama) continue;
+      sekolahList.push({ npsn: npsn, nama: nama });
+    }
+    
+    var shDoc = getSheet(KONFIG_ADM_SEKOLAH.DB_KEY, "Database_Dokumen");
+    var dataDoc = shDoc ? shDoc.getDataRange().getDisplayValues() : [];
+    
+    var docMap = {};
+    var periodsSet = new Set();
+    
+    var curYear = new Date().getFullYear();
+    if (jPeriode === "PERIODE") {
+      var bulans = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+      bulans.forEach(function(b) {
+        periodsSet.add(b + " " + curYear);
+        periodsSet.add(b + " " + (curYear - 1));
+      });
+    } else if (jPeriode === "PERMANEN") {
+      periodsSet.add("PERMANEN");
+    } else {
+      periodsSet.add(String(curYear));
+      periodsSet.add(String(curYear - 1));
+      periodsSet.add(String(curYear - 2));
+    }
+    
+    for (var k = 1; k < dataDoc.length; k++) {
+      var eNpsn = String(dataDoc[k][0]).trim();
+      var eKat = String(dataDoc[k][1]).trim();
+      var eThn = String(dataDoc[k][3]).trim(); 
+      var ePeriode = String(dataDoc[k][12] || "").trim(); 
+      var eStatus = String(dataDoc[k][6]).trim();
+      
+      if (eKat === String(idKategori).trim() && eNpsn) {
+        if (jPeriode === "PERIODE") {
+          var targetPer = ePeriode || eThn;
+          if (targetPer && targetPer !== "-") {
+            periodsSet.add(targetPer);
+            if (!docMap[eNpsn]) docMap[eNpsn] = {};
+            docMap[eNpsn][targetPer] = eStatus;
+          }
+        } else if (jPeriode === "PERMANEN") {
+          if (!docMap[eNpsn]) docMap[eNpsn] = {};
+          if (eStatus) docMap[eNpsn]["PERMANEN"] = eStatus;
+        } else {
+          if (eThn) {
+            periodsSet.add(eThn);
+            if (!docMap[eNpsn]) docMap[eNpsn] = {};
+            docMap[eNpsn][eThn] = eStatus;
+          }
+        }
+      }
+    }
+    
+    var sortedPeriods = [];
+    if (jPeriode === "PERIODE") {
+      var mapBulan = {"Jan":1, "Feb":2, "Mar":3, "Apr":4, "Mei":5, "Jun":6, "Jul":7, "Agu":8, "Sep":9, "Okt":10, "Nov":11, "Des":12};
+      sortedPeriods = Array.from(periodsSet).sort(function(a, b) {
+        var partsA = a.split(" ");
+        var partsB = b.split(" ");
+        var yA = parseInt(partsA[1] || partsA[0] || 0);
+        var yB = parseInt(partsB[1] || partsB[0] || 0);
+        if (yA !== yB) return yB - yA;
+        var bA = mapBulan[partsA[0]] || 0;
+        var bB = mapBulan[partsB[0]] || 0;
+        return bB - bA;
+      });
+    } else if (jPeriode === "PERMANEN") {
+      sortedPeriods = ["PERMANEN"];
+    } else {
+      sortedPeriods = Array.from(periodsSet).sort(function(a, b) { return parseInt(b) - parseInt(a); });
+    }
+    
+    var arrRekap = [];
+    var arrBelum = [];
+    
+    sortedPeriods.forEach(function(periodeKey) {
+      sekolahList.forEach(function(sek) {
+        var npsn = sek.npsn;
+        var unitName = sek.nama;
+        
+        var status = null;
+        if (jPeriode === "PERMANEN") {
+          status = docMap[npsn] ? docMap[npsn]["PERMANEN"] : null;
+        } else {
+          status = docMap[npsn] ? docMap[npsn][periodeKey] : null;
+        }
+        
+        var isUploaded = false;
+        if (status) {
+          var stLower = status.toLowerCase();
+          if (stLower.includes("setuju") || stLower.includes("ok") || stLower.includes("proses") || stLower.includes("valid")) {
+            isUploaded = true;
+          }
+        }
+        
+        if (isUploaded) {
+          arrRekap.push({ npsn: npsn, unit: unitName, tahun: periodeKey, jml: 1, sudah: 1, belum: 0 });
+        } else {
+          arrRekap.push({ npsn: npsn, unit: unitName, tahun: periodeKey, jml: 1, sudah: 0, belum: 1 });
+          arrBelum.push({ npsn: npsn, unit: unitName, tahun: periodeKey });
+        }
+      });
+    });
+    
+    var responseString = JSON.stringify({ success: true, rekap: arrRekap, belum: arrBelum, jenisPeriode: jPeriode });
+    CacheService.getScriptCache().put(cacheKey, responseString, 1800);
+    return responseString;
+  } catch(e) { return JSON.stringify({ success: false, message: e.message }); }
+}
+
+function invalidateAdmSekolahDashboardCache() {
+  try {
+    var cache = CacheService.getScriptCache();
+    var shKat = getSheet(KONFIG_ADM_SEKOLAH.DB_KEY, "Master_Kategori");
+    if (shKat) {
+      var dataKat = shKat.getDataRange().getDisplayValues();
+      for(var i=1; i<dataKat.length; i++) {
+        if(String(dataKat[i][0]).trim() !== "") {
+          cache.remove("ADM_SEKOLAH_DASH_" + dataKat[i][0]);
+        }
+      }
+    }
+  } catch(e) {}
+}
