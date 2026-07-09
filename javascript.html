@@ -729,13 +729,18 @@
   function tampilkanMenuAdmin(user) {
     if (!user) return;
     var isAdmin = checkUserRoleIsAdmin();
-    // Tampilkan/sembunyikan menu khusus admin dari MENU_CONFIG
-    MENU_CONFIG.forEach(function (item) {
-      if (!item.adminOnly) return;
-      var el = $('[data-page="' + item.id + '"]').closest('.nav-item');
-      if (isAdmin) { el.removeClass('d-none').show(); }
-      else { el.addClass('d-none').hide(); }
-    });
+    // Tampilkan/sembunyikan menu khusus admin dari MENU_CONFIG (termasuk submenu)
+    function processAdminMenu(item) {
+      if (item.adminOnly && item.id) {
+        var el = $('[data-page="' + item.id + '"]').closest('.nav-item');
+        if (isAdmin) { el.removeClass('d-none').show(); }
+        else { el.addClass('d-none').hide(); }
+      }
+      if (item.children) {
+        item.children.forEach(processAdminMenu);
+      }
+    }
+    MENU_CONFIG.forEach(processAdminMenu);
     // Sembunyikan semua elemen dengan class hide-non-admin untuk non-admin
     $('.hide-non-admin').each(function() {
       if (isAdmin) { $(this).removeClass('d-none').show(); }

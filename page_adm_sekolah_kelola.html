@@ -493,15 +493,28 @@ function admsekolahkelola_bukaModalTambah() {
     $('#global_modalForm').modal('show');
     
     if(!ADMSEKOLAHKELOLA_IS_ADMIN && ADMSEKOLAHKELOLA_NPSN_TERKUNCI) {
-        var sek = ADMSEKOLAHKELOLA_MASTER_SEKOLAH.find(s => s.npsn === ADMSEKOLAHKELOLA_NPSN_TERKUNCI);
-        var nm = sek ? sek.nama : ADMSEKOLAHKELOLA_NPSN_TERKUNCI;
-        $('#admsekolahkelola_in_sekolah').val(ADMSEKOLAHKELOLA_NPSN_TERKUNCI);
-        $('#admsekolahkelola_in_sekolah_search').val(`${nm} [NPSN: ${ADMSEKOLAHKELOLA_NPSN_TERKUNCI}]`).attr('readonly', 'readonly').removeClass('border-maroon text-dark').addClass('border-success text-success bg-white');
-        ADMSEKOLAHKELOLA_SELECTED_SEKOLAH_FILES = ADMSEKOLAHKELOLA_CACHE_DATA.filter(r => String(r.npsn).trim() === String(ADMSEKOLAHKELOLA_NPSN_TERKUNCI).trim());
-        $('#admsekolahkelola_msgPilihSekolah').hide(); $('#admsekolahkelola_btnAddRow, #admsekolahkelola_btnSimpan').prop('disabled', false);
-        ADMSEKOLAHKELOLA_ROW_COUNT = 0; $('#admsekolahkelola_uploadContainer').empty(); admsekolahkelola_createUploadRowContext($('#admsekolahkelola_uploadContainer'));
+        // Sembunyikan container pilih sekolah untuk user biasa agar tidak membingungkan
+        $('#admsekolahkelola_pilih_sekolah_container').hide();
+
+        var sek = ADMSEKOLAHKELOLA_MASTER_SEKOLAH.find(s => String(s.npsn).trim() === String(ADMSEKOLAHKELOLA_NPSN_TERKUNCI).trim());
+        if (sek) {
+            var jjgRaw = String(sek.jenjang || "").toUpperCase();
+            var jjgVal = "SD";
+            if (jjgRaw === "TK" || jjgRaw === "KB" || jjgRaw === "SPS" || jjgRaw === "TPA" || jjgRaw.includes("PAUD")) {
+                jjgVal = "PAUD";
+            }
+            
+            // Set Jenjang secara otomatis
+            $('#admsekolahkelola_in_jenjang').val(jjgVal).trigger('change');
+            // Set Sekolah secara otomatis
+            $('#admsekolahkelola_in_sekolah').val(ADMSEKOLAHKELOLA_NPSN_TERKUNCI).trigger('change');
+        } else {
+            // Fallback jika tidak ditemukan di master data sekolah
+            $('#admsekolahkelola_in_sekolah').val(ADMSEKOLAHKELOLA_NPSN_TERKUNCI).trigger('change');
+        }
     } else {
-        setTimeout(function() { $('#admsekolahkelola_in_sekolah_search').focus(); }, 150);
+        // Tampilkan container pilih sekolah untuk admin
+        $('#admsekolahkelola_pilih_sekolah_container').show();
     }
 }
 

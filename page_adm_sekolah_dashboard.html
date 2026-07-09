@@ -262,13 +262,13 @@ $(document).ready(function() {
 });
 
 function admsekolahdash_initMasterAccess() {
-    var targetNpsn = ADMSEKOLAHDASH_IS_ADMIN ? "" : ADMSEKOLAHDASH_USER_NPSN;
+    var targetNpsn = ""; // Selalu ambil semua sekolah agar user biasa melihat dashboard penuh seperti admin
 
-    if (ADMSEKOLAHDASH_IS_ADMIN) {
-        $('#admsekolahdash_filterJenjangContainer').show();
-        $('#admsekolahdash_filterContainer').show();
-        $('#admsekolahdash_filterSekolah').empty().append('<option value="SEMUA">- Semua Sekolah -</option>').prop('disabled', false).removeClass('bg-light text-maroon font-weight-bold');
-    } else if (!ADMSEKOLAHDASH_USER_NPSN) {
+    $('#admsekolahdash_filterJenjangContainer').show();
+    $('#admsekolahdash_filterContainer').show();
+    $('#admsekolahdash_filterSekolah').empty().append('<option value="SEMUA">- Semua Sekolah -</option>').prop('disabled', false).removeClass('bg-light text-maroon font-weight-bold');
+
+    if (!ADMSEKOLAHDASH_IS_ADMIN && !ADMSEKOLAHDASH_USER_NPSN) {
         $('#admsekolahdash_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-ban mb-2"></i><br>Akses ditolak: Sesi login tidak valid.</span>'); return;
     }
 
@@ -276,23 +276,22 @@ function admsekolahdash_initMasterAccess() {
         var res = JSON.parse(json);
         if(!res.success) { $('#admsekolahdash_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>' + admsekolahdash_escapeHtml(res.message) + '</span>'); return; }
         
-        ADMSEKOLAHDASH_KATEGORI_MAP = res.kategori || [];
-        if (!ADMSEKOLAHDASH_IS_ADMIN) {
-            if (res.myUnit) {
-                ADMSEKOLAHDASH_UNIT_TERKUNCI = res.myUnit;
-                ADMSEKOLAHDASH_USE_NPSN_FILTER = false;
-                $('#admsekolahdash_filterContainer').show();
-                $('#admsekolahdash_filterSekolah').empty().append($('<option>', { value: ADMSEKOLAHDASH_USER_NPSN, text: ADMSEKOLAHDASH_UNIT_TERKUNCI })).prop('disabled', true);
-            } else {
-                ADMSEKOLAHDASH_USE_NPSN_FILTER = true;
-                ADMSEKOLAHDASH_UNIT_TERKUNCI = "";
-                $('#admsekolahdash_filterContainer').show();
-                $('#admsekolahdash_filterSekolah').empty().append($('<option>', {
-                    value: "SEMUA",
-                    text: '- Semua Unit Kerja Anda -'
-                })).prop('disabled', false);
-            }
-        }
+        // Ambil daftar kategori
+        ADMSEKOLAHDASH_KATEGORI_MAP = (res.kategori || []).map(function(k) {
+            return { idKat: k.idKat, namaKategori: k.namaKat };
+        }).filter(function(k) { return k.idKat; });
+
+        // Setup filter sekolah untuk semua user (admin atau non‑admin) menggunakan data sekolahan
+        $('#admsekolahdash_filterContainer').show();
+        var sel = $('#admsekolahdash_filterSekolah');
+        sel.empty().append('<option value="SEMUA">- Semua Sekolah -</option>');
+        var listSekolah = res.sekolah || [];
+        listSekolah.forEach(function(s){
+            sel.append($('<option>', { value: s.npsn, text: s.nama }));
+        });
+        sel.prop('disabled', false);
+        ADMSEKOLAHDASH_USE_NPSN_FILTER = false;
+
 
         if(ADMSEKOLAHDASH_KATEGORI_MAP.length === 0) {
             $('#admsekolahdash_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>Belum ada Kategori yang berintegrasi ke Dashboard.</span>'); return;
@@ -308,7 +307,7 @@ function admsekolahdash_initMasterAccess() {
 
     }).withFailureHandler(function(err){
         $('#admsekolahdash_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Terputus: ' + admsekolahdash_escapeHtml(err.message) + '</span>');
-    }).getAdmSekolahDashboardInit(targetNpsn);
+    }).getAdmSekolahMasterData(targetNpsn);
 }
 
 function admsekolahdash_loadDataKategori(idKategori, forceRefresh) {
@@ -399,13 +398,19 @@ function admsekolahdash_initDropdownUnit() {
     });
     var sorted = Array.from(unique).sort();
     var select = $('#admsekolahdash_filterSekolah'); var curVal = select.val();
-    var labelSemua = ADMSEKOLAHDASH_IS_ADMIN ? "- Semua Sekolah -" : "- Semua Sekolah Anda -";
-    select.empty().append(`<option value="SEMUA">${labelSemua}</option>`);
-    sorted.forEach(function(u) { select.append(`<option value="${admsekolahdash_escapeHtml(u)}">${admsekolahdash_escapeHtml(u)}</option>`); });
-    if (sorted.length === 1) {
-        select.val(sorted[0]);
-    } else if (curVal && unique.has(curVal)) {
-        select.val(curVal);
+    
+    if (!ADMSEKOLAHDASH_IS_ADMIN && ADMSEKOLAHDASH_UNIT_TERKUNCI) {
+        select.empty().append($('<option>', { value: ADMSEKOLAHDASH_USER_NPSN, text: ADMSEKOLAHDASH_UNIT_TERKUNCI }));
+        select.val(ADMSEKOLAHDASH_USER_NPSN);
+    } else {
+        var labelSemua = ADMSEKOLAHDASH_IS_ADMIN ? "- Semua Sekolah -" : "- Semua Sekolah Anda -";
+        select.empty().append(`<option value="SEMUA">${labelSemua}</option>`);
+        sorted.forEach(function(u) { select.append(`<option value="${admsekolahdash_escapeHtml(u)}">${admsekolahdash_escapeHtml(u)}</option>`); });
+        if (sorted.length === 1) {
+            select.val(sorted[0]);
+        } else if (curVal && unique.has(curVal)) {
+            select.val(curVal);
+        }
     }
 }
 
@@ -667,7 +672,7 @@ function admsekolahdash_updateLastUpdate() {
     $('#admsekolahdash_lastUpdate').hide();
 }
 
-function admsekolahdash_renderDashboard(dataRekap, fTahun, fPeriode) {
+function admsekolahdash_renderDashboard(dataRekap, dataBelum, fTahun, fPeriode) {
     fTahun = String(fTahun || $('#admsekolahdash_filterTahun').val() || "").trim().toUpperCase();
     fPeriode = String(fPeriode || $('#admsekolahdash_filterPeriode').val() || "").trim().toUpperCase();
     var rekapMetrics = admsekolahdash_getRekapForMetrics(dataRekap, fTahun, fPeriode);
