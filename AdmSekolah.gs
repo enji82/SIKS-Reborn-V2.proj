@@ -185,7 +185,9 @@ function getAdmSekolahData(npsnFilter) {
                 uploader: data[i][9], 
                 tgl_verif: data[i][10] || "-", 
                 verifikator: data[i][11] || "-",
-                periode: data[i][12] || "-" 
+                periode: data[i][12] || "-",
+                tgl_edit: data[i][13] || "-",
+                user_edit: data[i][14] || "-"
             });
         }
     }
@@ -434,13 +436,13 @@ function getAdmSekolahDashboardData(idKategori, forceRefresh) {
     for (var i = 1; i < dataKat.length; i++) {
       if (String(dataKat[i][0]).trim() === String(idKategori).trim()) {
         var jpVal = String(dataKat[i][4] || "").toUpperCase();
-        if (jpVal === "PERMANEN") jPeriode = "PERMANEN";
-        else if (jpVal === "BULANAN") jPeriode = "BULANAN";
-        else if (jpVal === "SEMESTER_TAPEL") jPeriode = "SEMESTER_TAPEL";
-        else if (jpVal === "SEMESTER_KALENDER" || jpVal === "SEMESTER") jPeriode = "SEMESTER_KALENDER";
-        else if (jpVal === "TRIWULAN") jPeriode = "TRIWULAN";
-        else if (jpVal === "PERIODE" || jpVal.includes("BEBAS")) jPeriode = "PERIODE";
-        else if (jpVal === "TMT" || jpVal.includes("TMT")) jPeriode = "TMT";
+        if (jpVal.includes("PERMANEN")) jPeriode = "PERMANEN";
+        else if (jpVal.includes("BULANAN")) jPeriode = "BULANAN";
+        else if (jpVal.includes("SEMESTER (TAHUN PELAJARAN)") || jpVal.includes("SEMESTER_TAPEL") || jpVal === "SEMESTER TAPEL") jPeriode = "SEMESTER_TAPEL";
+        else if (jpVal.includes("SEMESTER (TAHUN KALENDER)") || jpVal.includes("SEMESTER_KALENDER") || jpVal === "SEMESTER") jPeriode = "SEMESTER_KALENDER";
+        else if (jpVal.includes("TRIWULAN")) jPeriode = "TRIWULAN";
+        else if (jpVal.includes("PERIODE") || jpVal.includes("BEBAS")) jPeriode = "PERIODE";
+        else if (jpVal.includes("TMT")) jPeriode = "TMT";
         else jPeriode = "TAHUNAN";
         break;
       }
@@ -566,7 +568,7 @@ function getAdmSekolahDashboardData(idKategori, forceRefresh) {
     });
     
     var responseString = JSON.stringify({ success: true, rekap: arrRekap, belum: arrBelum, jenisPeriode: jPeriode });
-    CacheService.getScriptCache().put(cacheKey, responseString, 1800);
+    try { CacheService.getScriptCache().put(cacheKey, responseString, 1800); } catch(ce) { Logger.log("Cache error: " + ce.message); }
     return responseString;
   } catch(e) { return JSON.stringify({ success: false, message: e.message }); }
 }
@@ -584,4 +586,169 @@ function invalidateAdmSekolahDashboardCache() {
       }
     }
   } catch(e) {}
+}
+
+/**
+ * DEBUG: Jalankan fungsi ini dari Apps Script Editor untuk melihat 
+ * nilai aktual Jenis_Periode di spreadsheet dan membersihkan cache.
+ * Hasilnya akan muncul di Logs (Ctrl+Enter / View > Logs).
+ */
+function debugAdmSekolahKategori() {
+  try {
+    var cache = CacheService.getScriptCache();
+    var shKat = getOrCreateSheetAdmSekolah("Master_Kategori");
+    if (!shKat) { Logger.log("ERROR: Sheet Master_Kategori tidak ditemukan!"); return; }
+    
+    var dataKat = shKat.getDataRange().getDisplayValues();
+    Logger.log("=== DEBUG Master_Kategori ===");
+    Logger.log("Total baris (termasuk header): " + dataKat.length);
+    Logger.log("Header: " + JSON.stringify(dataKat[0]));
+    
+    for (var i = 1; i < dataKat.length; i++) {
+      var idKat    = String(dataKat[i][0]).trim();
+      var namaKat  = String(dataKat[i][1]).trim();
+      var jpRaw    = String(dataKat[i][4] || "").trim();
+      var jpUpper  = jpRaw.toUpperCase();
+      var cacheKey = "ADM_SEKOLAH_DASH_" + idKat;
+      var hasCached = cache.get(cacheKey) ? "YA (cache ada)" : "TIDAK (tidak ada cache)";
+      
+      // Parsing jenis periode
+      var jPeriode;
+      if (jpUpper.includes("PERMANEN")) jPeriode = "PERMANEN";
+      else if (jpUpper.includes("BULANAN")) jPeriode = "BULANAN";
+      else if (jpUpper.includes("SEMESTER (TAHUN PELAJARAN)") || jpUpper.includes("SEMESTER_TAPEL") || jpUpper === "SEMESTER TAPEL") jPeriode = "SEMESTER_TAPEL";
+      else if (jpUpper.includes("SEMESTER (TAHUN KALENDER)") || jpUpper.includes("SEMESTER_KALENDER") || jpUpper === "SEMESTER") jPeriode = "SEMESTER_KALENDER";
+      else if (jpUpper.includes("TRIWULAN")) jPeriode = "TRIWULAN";
+      else if (jpUpper.includes("PERIODE") || jpUpper.includes("BEBAS")) jPeriode = "PERIODE";
+      else if (jpUpper.includes("TMT")) jPeriode = "TMT";
+      else jPeriode = "TAHUNAN";
+      
+      Logger.log("Baris " + i + " | ID: " + idKat + " | Nama: " + namaKat + " | Jenis_Periode RAW: [" + jpRaw + "] | Parsed: " + jPeriode + " | Cache: " + hasCached);
+      
+      // Hapus cache agar bersih
+      if (idKat) cache.remove(cacheKey);
+    }
+    Logger.log("=== Semua cache sudah dihapus ===");
+    } catch(e) {
+    Logger.log("ERROR: " + e.message);
+  }
+}
+
+function getAdmSekolahViewerInit(npsnFilter) {
+  try {
+    var shKat = getOrCreateSheetAdmSekolah("Master_Kategori");
+    var dataKat = shKat ? shKat.getDataRange().getDisplayValues() : [];
+    var categories = [];
+    for(var i=1; i<dataKat.length; i++) {
+      if(String(dataKat[i][0]).trim() !== "") {
+        var isAktif = String(dataKat[i][6] || "TRUE").trim().toUpperCase() !== "FALSE";
+        if (!isAktif) continue;
+        categories.push({ 
+          idKat: dataKat[i][0], 
+          namaKat: dataKat[i][1],
+          jenisPeriode: dataKat[i][4] ? String(dataKat[i][4]).trim().toUpperCase() : ""
+        });
+      }
+    }
+    
+    var shSekolah = getSheet("USER_DB", "Data_Sekolah");
+    var dataSekolah = shSekolah ? shSekolah.getDataRange().getDisplayValues() : [];
+    var schools = [];
+    var targetNpsn = String(npsnFilter || "").trim().toUpperCase();
+    
+    for(var j=1; j<dataSekolah.length; j++) {
+      var rNpsn = String(dataSekolah[j][0]).trim().toUpperCase();
+      var rNama = String(dataSekolah[j][2]).trim();
+      var rJenjang = String(dataSekolah[j][1]).trim().toUpperCase();
+      if (rNpsn !== "") {
+        if (targetNpsn === "" || targetNpsn === "SEMUA" || rNpsn === targetNpsn) {
+          schools.push({ 
+            npsn: dataSekolah[j][0], 
+            nama: rNama, 
+            jenjang: rJenjang 
+          });
+        }
+      }
+    }
+    return JSON.stringify({ success: true, categories: categories, schools: schools });
+  } catch(e) { return JSON.stringify({ success: false, message: e.message }); }
+}
+
+function getAdmSekolahViewerData(npsn, npsnFilter) {
+  try {
+    var targetNpsn = String(npsn).trim().toUpperCase();
+    var cleanFilter = String(npsnFilter || "").trim().toUpperCase();
+    
+    // Keamanan Akses
+    if (cleanFilter && cleanFilter !== "SEMUA" && cleanFilter !== "" && targetNpsn !== cleanFilter) {
+      return JSON.stringify({ success: false, message: "Anda tidak memiliki akses ke data sekolah tersebut." });
+    }
+    
+    var shSekolah = getSheet("USER_DB", "Data_Sekolah");
+    var dataSekolah = shSekolah ? shSekolah.getDataRange().getDisplayValues() : [];
+    var schoolInfo = null;
+    for (var j = 1; j < dataSekolah.length; j++) {
+      if (String(dataSekolah[j][0]).trim().toUpperCase() === targetNpsn) {
+        schoolInfo = {
+          npsn: dataSekolah[j][0],
+          nama: dataSekolah[j][2],
+          jenjang: dataSekolah[j][1]
+        };
+        break;
+      }
+    }
+    if (!schoolInfo) return JSON.stringify({ success: false, message: "Sekolah dengan NPSN " + npsn + " tidak ditemukan." });
+
+    var shKat = getOrCreateSheetAdmSekolah("Master_Kategori");
+    var dataKat = shKat ? shKat.getDataRange().getDisplayValues() : [];
+    var categories = [];
+    for (var i = 1; i < dataKat.length; i++) {
+      if (String(dataKat[i][0]).trim() !== "") {
+        var isAktif = String(dataKat[i][6] || "TRUE").trim().toUpperCase() !== "FALSE";
+        if (!isAktif) continue;
+        categories.push({ 
+          idKat: dataKat[i][0], 
+          namaKat: dataKat[i][1],
+          jenisPeriode: dataKat[i][4] ? String(dataKat[i][4]).trim().toUpperCase() : ""
+        });
+      }
+    }
+
+    var shDoc = getOrCreateSheetAdmSekolah("Database_Dokumen");
+    var dataDoc = shDoc ? shDoc.getDataRange().getDisplayValues() : [];
+    var files = [];
+    
+    for (var f = 1; f < dataDoc.length; f++) {
+      var docNpsn = String(dataDoc[f][0]).trim().toUpperCase();
+      if (docNpsn === targetNpsn) {
+        var docName = dataDoc[f][4];
+        var docUrl = dataDoc[f][5];
+        var docStatus = dataDoc[f][6] || "-";
+        var docTahun = dataDoc[f][3] || "";
+        var docPeriode = dataDoc[f][12] || "";
+        
+        var displayLabel = docName;
+        if (docTahun) {
+          displayLabel += " (" + docTahun + (docPeriode && docPeriode !== "-" ? " " + docPeriode : "") + ")";
+        }
+        
+        files.push({
+          id_kategori: dataDoc[f][1],
+          tahun: docTahun,
+          periode: docPeriode,
+          file_name: displayLabel,
+          url: docUrl,
+          status: docStatus
+        });
+      }
+    }
+    
+    // Sort files by year descending, then period descending
+    files.sort(function(a, b) {
+      if (a.tahun !== b.tahun) return parseInt(b.tahun || 0) - parseInt(a.tahun || 0);
+      return String(b.periode).localeCompare(String(a.periode));
+    });
+
+    return JSON.stringify({ success: true, school: schoolInfo, categories: categories, files: files });
+  } catch(e) { return JSON.stringify({ success: false, message: e.message }); }
 }

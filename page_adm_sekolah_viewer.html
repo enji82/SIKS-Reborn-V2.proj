@@ -1,0 +1,385 @@
+<style>
+  .admsekolah-tree-title {
+    color: #1a1c1e;
+  }
+  .dark-mode .admsekolah-tree-title {
+    color: #f1f3f5 !important;
+  }
+  .dark-mode .tree-node {
+    border-bottom-color: #2d2d2d !important;
+  }
+  
+  /* Custom Badge Style to Avoid bootstrap .badge overrides */
+  .sultan-badge-count-success {
+    background-color: #28a745 !important;
+    color: #ffffff !important;
+    padding: 3px 8px !important;
+    border-radius: 10px !important;
+    font-weight: bold;
+  }
+  .sultan-badge-count-secondary {
+    background-color: #6c757d !important;
+    color: #ffffff !important;
+    padding: 3px 8px !important;
+    border-radius: 10px !important;
+    font-weight: bold;
+  }
+  .dark-mode .sultan-badge-count-secondary {
+    background-color: #3e444a !important;
+    color: #adb5bd !important;
+  }
+</style>
+
+<section class="content" id="admsekolahviewer_fullscreenArea">
+  <div class="container-fluid" style="font-size:13px;">
+    
+    <div class="position-relative">
+        <div class="sultan-filter-pill-container shadow-sm mb-4" style="overflow: visible !important;">
+            <!-- Filter Jenjang (Only for Admin) -->
+            <div class="sultan-filter-item mr-2" id="admsekolahviewer_filterJenjangContainer" style="display: none; width: auto;">
+                <select id="admsekolahviewer_filterJenjang" aria-label="Pilih Jenjang" style="padding-right: 25px !important;">
+                    <option value="SEMUA">- Semua Jenjang -</option>
+                    <option value="PAUD">PAUD</option>
+                    <option value="SD" selected>SD</option>
+                </select>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+
+            <!-- Filter Sekolah (Only for Admin) -->
+            <div class="sultan-filter-item mr-2" id="admsekolahviewer_filterSekolahContainer" style="display: none; width: auto; max-width: 100%;">
+                <select id="admsekolahviewer_filterSekolah" aria-label="Pilih Sekolah" style="width: auto; min-width: 200px; padding-right: 25px !important;">
+                    <option value="">- Memvalidasi Akses... -</option>
+                </select>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+
+            <div class="d-flex align-items-center" style="gap: 8px;">
+                <div class="divider-vertical d-none d-md-block mx-1"></div>
+                <button type="button" class="sultan-btn-refresh" id="admsekolahviewer_btnRefresh" title="Segarkan Data">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        
+        <div class="col-lg-4 col-md-5 mb-3">
+            <div class="card-sultan h-100 shadow-sm border-0 d-flex flex-column overflow-hidden">
+                <div class="card-header sultan-header-aksi-utama py-3">
+                    <h6 class="m-0 font-weight-bold text-uppercase" style="font-size:13px;"><i class="fas fa-list-ul mr-2"></i>Daftar Berkas Administrasi</h6>
+                </div>
+                
+                <div class="card-body p-0 flex-grow-1 position-relative sultan-scroll-premium" style="height: 65vh; overflow-y: auto; font-size:13px;">
+                    
+                    <div id="admsekolahviewer_treeInitial" class="d-flex h-100 flex-column justify-content-center align-items-center text-muted p-4 text-center position-absolute w-100" style="top:0; left:0;">
+                        <i class="fas fa-folder-open fa-4x mb-3 opacity-25"></i>
+                        <h6 class="font-weight-bold">Pilih Sekolah Terlebih Dahulu</h6>
+                        <p class="small">Pilih sekolah di atas untuk memuat riwayat dokumen administrasi.</p>
+                    </div>
+
+                    <div id="admsekolahviewer_treeLoading" class="d-none h-100 flex-column justify-content-center align-items-center text-maroon p-4 text-center position-absolute w-100" style="top:0; left:0; z-index: 5;">
+                        <i class="fas fa-circle-notch fa-spin fa-3x mb-3"></i>
+                        <h6 class="font-weight-bold">Membuka Dokumen Sekolah...</h6>
+                    </div>
+
+                    <div id="admsekolahviewer_treeContent" class="w-100 pb-3" style="position: relative; z-index: 2; font-size:13px;"></div>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8 col-md-7 mb-3">
+            <div class="card-sultan h-100 shadow-sm border-0 position-relative d-flex flex-column overflow-hidden">
+                <div class="card-header sultan-header-aksi-dark py-3 px-3 d-flex justify-content-between align-items-center bg-dark text-white">
+                    <span class="font-weight-bold text-uppercase small" id="admsekolahviewer_lblJudulFile" style="font-size:13px;">
+                        <i class="fas fa-eye mr-2 text-info"></i>Pratinjau Dokumen
+                    </span>
+                    
+                    <div class="d-flex align-items-center" style="gap: 8px;">
+                        <a href="#" id="admsekolahviewer_btnDownloadValid" target="_blank" class="sultan-btn sultan-btn-compact sultan-btn-aksi-preview d-none">
+                            <i class="fas fa-download mr-1"></i> UNDUH
+                        </a>
+                        <a href="#" id="admsekolahviewer_btnUnduhDirect" target="_blank" class="sultan-btn sultan-btn-compact sultan-btn-outline-white d-none">
+                            <i class="fas fa-external-link-alt mr-1"></i> TAB BARU
+                        </a>
+                    </div>
+                </div>
+
+                <div class="card-body p-0 flex-grow-1 position-relative bg-dark" style="height: 65vh;">
+                    <div id="admsekolahviewer_iframeLoading" class="d-none h-100 align-items-center justify-content-center text-white-50 position-absolute w-100" style="top:0; left:0; z-index:10; pointer-events:none;">
+                        <div class="text-center">
+                            <div class="sultan-spinner-icon mb-3"><i class="fas fa-circle-notch fa-spin"></i></div>
+                            <p class="font-weight-bold">Memuat dari Google Drive...</p>
+                        </div>
+                    </div>
+
+                    <div id="admsekolahviewer_iframeInitial" class="d-flex h-100 flex-column justify-content-center align-items-center text-white-50 p-4 text-center position-absolute w-100" style="top:0; left:0;">
+                        <i class="fas fa-file-invoice fa-5x mb-4 opacity-25"></i>
+                        <h6 class="font-weight-bold">Pilih dokumen dari daftar di sebelah kiri untuk melihat pratinjau.</h6>
+                    </div>
+
+                    <iframe id="admsekolahviewer_iframe" class="w-100 h-100 border-0 d-none" src="" style="background-color: #1a1c1e;"></iframe>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+  </div>
+</section>
+
+<script>
+// ======================================================================
+// ISOLASI VARIABEL GLOBAL
+// ======================================================================
+var ADMSEKOLAHVIEWER_USER_AKTIF = "";
+var ADMSEKOLAHVIEWER_IS_ADMIN = false;
+var ADMSEKOLAHVIEWER_NPSN_TERKUNCI = "";
+var ADMSEKOLAHVIEWER_MASTER_SCHOOLS = [];
+var ADMSEKOLAHVIEWER_CATEGORIES = [];
+
+$(document).ready(function() {
+    try {
+        var user = typeof getSesiUser === 'function' ? getSesiUser() : {};
+        ADMSEKOLAHVIEWER_USER_AKTIF = user.nama_lengkap || user.fullname || user.nama || user.username || "User Web";
+        var roleStr = String(user.role || "").toLowerCase();
+        ADMSEKOLAHVIEWER_IS_ADMIN = (typeof checkUserRoleIsAdmin === 'function' && checkUserRoleIsAdmin()) || roleStr.includes("admin") || roleStr.includes("verifikator");
+        ADMSEKOLAHVIEWER_NPSN_TERKUNCI = user.npsn || user.unit || user.username || ""; 
+    } catch(e) { ADMSEKOLAHVIEWER_NPSN_TERKUNCI = ""; ADMSEKOLAHVIEWER_IS_ADMIN = false; }
+
+    admsekolahviewer_init();
+
+    $(document).off('change', '#admsekolahviewer_filterJenjang').on('change', '#admsekolahviewer_filterJenjang', admsekolahviewer_populateSchools);
+    $(document).off('change', '#admsekolahviewer_filterSekolah').on('change', '#admsekolahviewer_filterSekolah', function() {
+        var npsn = $(this).val();
+        if (npsn) admsekolahviewer_loadSchoolData(npsn);
+    });
+
+    $(document).off('click', '#admsekolahviewer_btnRefresh').on('click', '#admsekolahviewer_btnRefresh', function() {
+        var npsn = ADMSEKOLAHVIEWER_IS_ADMIN ? $('#admsekolahviewer_filterSekolah').val() : ADMSEKOLAHVIEWER_NPSN_TERKUNCI;
+        if (npsn) admsekolahviewer_loadSchoolData(npsn);
+    });
+    
+    $(document).off('click', '.admsekolah-tree-folder').on('click', '.admsekolah-tree-folder', function() {
+        var isOpening = !$(this).hasClass('folder-open');
+        
+        $('.admsekolah-tree-folder').not(this).removeClass('folder-open');
+        $('.admsekolah-tree-folder').not(this).next('.admsekolah-tree-content').slideUp(200);
+        $('.admsekolah-tree-folder').not(this).find('.fa-folder, .fa-folder-open').removeClass('fa-folder-open').addClass('fa-folder text-warning');
+        
+        $(this).toggleClass('folder-open', isOpening);
+        $(this).next('.admsekolah-tree-content').slideToggle(200);
+        var icon = $(this).find('.fa-folder, .fa-folder-open');
+        if($(this).hasClass('folder-open')) { 
+            icon.removeClass('fa-folder').addClass('fa-folder-open text-warning'); 
+        } else { 
+            icon.removeClass('fa-folder-open').addClass('fa-folder text-warning'); 
+        }
+    });
+
+    $(document).off('click', '.admsekolah-tree-item-file').on('click', '.admsekolah-tree-item-file', function() {
+        $('.admsekolah-tree-item-file').removeClass('active-file');
+        $(this).addClass('active-file'); 
+        var url = $(this).attr('data-url');
+        var namaFile = $(this).attr('data-nama');
+        admsekolahviewer_loadIframe(url, namaFile);
+    });
+
+
+});
+
+function admsekolahviewer_init() {
+    var targetFilter = ADMSEKOLAHVIEWER_IS_ADMIN ? "" : ADMSEKOLAHVIEWER_NPSN_TERKUNCI;
+    
+    if (ADMSEKOLAHVIEWER_IS_ADMIN) {
+        $('#admsekolahviewer_filterJenjangContainer').show();
+        $('#admsekolahviewer_filterSekolahContainer').show();
+    }
+
+    google.script.run.withSuccessHandler(function(json) {
+        var res = JSON.parse(json);
+        if (res.success) {
+            ADMSEKOLAHVIEWER_CATEGORIES = res.categories || [];
+            ADMSEKOLAHVIEWER_MASTER_SCHOOLS = res.schools || [];
+            
+            if (ADMSEKOLAHVIEWER_IS_ADMIN) {
+                admsekolahviewer_populateSchools();
+            } else {
+                admsekolahviewer_loadSchoolData(ADMSEKOLAHVIEWER_NPSN_TERKUNCI);
+            }
+        }
+    }).getAdmSekolahViewerInit(targetFilter);
+}
+
+function admsekolahviewer_populateSchools() {
+    var fJenjang = $('#admsekolahviewer_filterJenjang').val();
+    var list = $('#admsekolahviewer_filterSekolah');
+    list.empty().append('<option value="">- Pilih Sekolah -</option>');
+    
+    var filtered = ADMSEKOLAHVIEWER_MASTER_SCHOOLS.filter(function(s) {
+        if (fJenjang === "SEMUA") return true;
+        if (fJenjang === "PAUD") {
+            return s.jenjang === "TK" || s.jenjang === "KB" || s.jenjang === "SPS" || s.jenjang === "TPA" || s.jenjang === "PAUD";
+        }
+        return s.jenjang === fJenjang;
+    });
+
+    filtered.forEach(function(s) {
+        list.append('<option value="' + s.npsn + '">' + admsekolahviewer_escapeHtml(s.nama) + '</option>');
+    });
+    list.prop('disabled', false);
+}
+
+function admsekolahviewer_loadSchoolData(npsn) {
+    $('#admsekolahviewer_treeInitial').removeClass('d-flex').addClass('d-none');
+    $('#admsekolahviewer_treeContent').empty();
+    $('#admsekolahviewer_treeLoading').removeClass('d-none').addClass('d-flex');
+    
+    $('#admsekolahviewer_iframeInitial').removeClass('d-none').addClass('d-flex');
+    $('#admsekolahviewer_iframe').addClass('d-none').attr('src', '');
+    $('#admsekolahviewer_lblJudulFile').html('<i class="fas fa-eye mr-2 text-info"></i>Pratinjau Dokumen');
+    
+    $('#admsekolahviewer_btnUnduhDirect').addClass('d-none');
+    $('#admsekolahviewer_btnDownloadValid').addClass('d-none');
+
+    var filter = ADMSEKOLAHVIEWER_IS_ADMIN ? "" : ADMSEKOLAHVIEWER_NPSN_TERKUNCI;
+
+    google.script.run.withSuccessHandler(function(json) {
+        $('#admsekolahviewer_treeLoading').removeClass('d-flex').addClass('d-none');
+        
+        var res = JSON.parse(json);
+        if(!res.success) {
+            $('#admsekolahviewer_treeInitial').removeClass('d-none').addClass('d-flex');
+            Sultan.alert('warning', 'Tidak Ditemukan', res.message);
+            return;
+        }
+
+        admsekolahviewer_buildTree(res.categories, res.files);
+
+    }).withFailureHandler(function(err){
+        $('#admsekolahviewer_treeLoading').removeClass('d-flex').addClass('d-none');
+        $('#admsekolahviewer_treeInitial').removeClass('d-none').addClass('d-flex');
+        Sultan.alert('error', 'Koneksi Terputus', err.message);
+    }).getAdmSekolahViewerData(npsn, filter);
+}
+
+function admsekolahviewer_buildTree(categories, files) {
+    var treeHtml = '';
+
+    categories.forEach(function(kat) {
+        var catFiles = files.filter(f => String(f.id_kategori).trim() === String(kat.idKat).trim());
+        var countAda = catFiles.length;
+
+        var badgeAdaClass = countAda > 0 ? 'sultan-badge-count-success' : 'sultan-badge-count-secondary';
+
+        treeHtml += `
+        <div class="tree-node" style="border-bottom: 1px solid var(--dm-border, rgba(0,0,0,0.05));">
+            <div class="admsekolah-tree-folder efile-tree-folder d-flex align-items-center py-2 px-3">
+                <i class="fas fa-chevron-right mr-3 text-maroon efile-icon-rotate" style="font-size: 0.9rem; width: 15px; text-align: center;"></i>
+                <span class="font-weight-bold admsekolah-tree-title" style="font-size: 13px;"><i class="fas fa-folder text-warning mr-2"></i> ${admsekolahviewer_escapeHtml(kat.namaKat)}</span>
+                <div class="ml-auto d-flex align-items-center">
+                    <span class="${badgeAdaClass} shadow-sm" style="font-size: 10px;" title="Jumlah Dokumen">${countAda}</span>
+                </div>
+            </div>
+            <div class="admsekolah-tree-content" style="display:none;">
+        `;
+
+        if(countAda > 0) {
+            catFiles.forEach(function(f) {
+                var ext = String(f.file_name).split('.').pop().toLowerCase();
+                var faIcon = "fa-file-pdf text-danger";
+                if (ext === 'jpg' || ext === 'jpeg' || ext === 'png') { faIcon = "fa-file-image text-success"; }
+
+                var displayNama = admsekolahviewer_escapeHtml(f.file_name);
+                var badgeStatus = admsekolahviewer_buildBadgeStatus(f.status);
+
+                treeHtml += `
+                <div class="efile-tree-item admsekolah-tree-item-file font-weight-bold d-flex justify-content-between align-items-center" data-url="${f.url}" data-nama="${displayNama}" style="font-size:13px;">
+                    <span><i class="fas ${faIcon} mr-2"></i> ${displayNama}</span>
+                    ${badgeStatus}
+                </div>`;
+            });
+        } else {
+            treeHtml += `
+            <div class="efile-tree-item admsekolah-tree-item-empty font-weight-bold" style="font-size:13px;">
+                <i class="fas fa-exclamation-triangle mr-2"></i> [!] Dokumen Kosong
+            </div>`;
+        }
+        
+        treeHtml += `</div></div>`;
+    });
+
+    $('#admsekolahviewer_treeContent').html(treeHtml);
+}
+
+function admsekolahviewer_loadIframe(url, namaFile) {
+    if (!url) return;
+    
+    $('#admsekolahviewer_iframeInitial').removeClass('d-flex').addClass('d-none');
+    $('#admsekolahviewer_iframe').addClass('d-none').attr('src', '');
+    $('#admsekolahviewer_iframeLoading').removeClass('d-none').addClass('d-flex');
+    
+    var ext = namaFile.split('.').pop().toLowerCase();
+    var faIcon = "fa-file-pdf text-danger";
+    if (ext === 'jpg' || ext === 'jpeg' || ext === 'png') { faIcon = "fa-file-image text-success"; }
+
+    $('#admsekolahviewer_lblJudulFile').html(`<i class="fas ${faIcon} mr-2"></i>${namaFile}`);
+
+    var previewUrl = url;
+    var directUrl = url;
+    if (url.includes('drive.google.com')) {
+        var match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
+        if (match && match[1]) {
+            previewUrl = 'https://drive.google.com/file/d/' + match[1] + '/preview';
+            directUrl = 'https://drive.google.com/uc?export=download&id=' + match[1];
+        } else {
+            previewUrl = url.replace(/\/view.*/, '/preview');
+        }
+    }
+    
+    $('#admsekolahviewer_btnUnduhDirect').attr('href', url).removeClass('d-none');
+    $('#admsekolahviewer_btnDownloadValid').attr('href', directUrl).removeClass('d-none');
+
+    setTimeout(function() {
+        $('#admsekolahviewer_iframe').attr('src', previewUrl);
+        
+        $('#admsekolahviewer_iframe').off('load').on('load', function() {
+            $('#admsekolahviewer_iframeLoading').removeClass('d-flex').addClass('d-none');
+            $(this).removeClass('d-none');
+        });
+
+        setTimeout(function() {
+            $('#admsekolahviewer_iframeLoading').removeClass('d-flex').addClass('d-none');
+            $('#admsekolahviewer_iframe').removeClass('d-none');
+        }, 3000);
+    }, 150);
+}
+
+function admsekolahviewer_escapeHtml(text) { 
+    if (!text) return ""; 
+    return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); 
+}
+
+function admsekolahviewer_buildBadgeStatus(st) {
+    if (!st || String(st).toLowerCase() === 'undefined' || String(st).trim() === "") return "";
+    var s = String(st).toLowerCase();
+    
+    // Status disetujui / valid / ok -> checkmark hijau
+    if (s.includes('setuju') || s.includes('ok') || s.includes('valid')) {
+        return `<i class="fas fa-check-circle text-success ml-2" style="font-size: 1.1rem;" title="Disetujui: ${admsekolahviewer_escapeHtml(st)}"></i>`;
+    }
+    // Status revisi -> warning icon kuning
+    else if (s.includes('revisi')) {
+        return `<i class="fas fa-exclamation-triangle text-warning ml-2" style="font-size: 1.1rem;" title="Revisi: ${admsekolahviewer_escapeHtml(st)}"></i>`;
+    }
+    // Status ditolak -> cross icon merah
+    else if (s.includes('tolak')) {
+        return `<i class="fas fa-times-circle text-danger ml-2" style="font-size: 1.1rem;" title="Ditolak: ${admsekolahviewer_escapeHtml(st)}"></i>`;
+    }
+    // Status diproses / tunggu -> spinner/jam pasir biru atau oranye
+    else {
+        return `<i class="fas fa-hourglass-half text-warning ml-2" style="font-size: 1.1rem;" title="Status: ${admsekolahviewer_escapeHtml(st)}"></i>`;
+    }
+}
+</script>

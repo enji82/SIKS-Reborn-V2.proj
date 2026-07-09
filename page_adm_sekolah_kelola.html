@@ -57,6 +57,7 @@
                         <th class="text-center align-middle" style="border-bottom: 3px solid #85144b !important;">PERIODE/TMT</th>
                         <th class="text-center align-middle" style="border-bottom: 3px solid #85144b !important;">DOKUMEN</th>
                         <th class="text-left align-middle" style="border-bottom: 3px solid #85144b !important;">WAKTU UPLOAD</th>
+                        <th class="text-left align-middle" style="border-bottom: 3px solid #85144b !important;">PERBAIKAN / EDIT</th>
                         <th class="text-left align-middle" style="border-bottom: 3px solid #85144b !important;">VERIFIKASI</th>
                       </tr>
                     </thead>
@@ -159,14 +160,20 @@
                     <div class="sultan-detail-value text-uppercase" id="admsekolahkelola_v_nama">-</div>
                 </div>
                 <div class="sultan-detail-item">
+                    <label class="sultan-detail-label">NPSN</label>
+                    <div class="sultan-detail-value font-weight-bold" id="admsekolahkelola_v_npsn">-</div>
+                </div>
+                <div class="sultan-detail-item">
                     <label class="sultan-detail-label">KATEGORI</label>
                     <div class="sultan-detail-value text-maroon" id="admsekolahkelola_v_kategori">-</div>
                 </div>
                 <div class="sultan-detail-item">
                     <label class="sultan-detail-label">TAHUN</label>
-                    <div class="sultan-detail-value">
-                        <span id="admsekolahkelola_v_tahun"></span> <span id="admsekolahkelola_v_periode" class="ml-2 badge badge-info"></span>
-                    </div>
+                    <div class="sultan-detail-value font-weight-bold" id="admsekolahkelola_v_tahun">-</div>
+                </div>
+                <div class="sultan-detail-item" id="admsekolahkelola_v_periode_wrapper">
+                    <label class="sultan-detail-label">PERIODE</label>
+                    <div class="sultan-detail-value font-weight-bold text-primary" id="admsekolahkelola_v_periode">-</div>
                 </div>
             </div>
 
@@ -306,7 +313,7 @@ $(document).ready(function() {
                     + '</div>'
                 );
                 pLabel.text("Periode (Bln)");
-            } else if(jPeriode === "SEMESTER_TAPEL" || jPeriode.includes("TAPEL")) {
+            } else if(jPeriode === "SEMESTER_TAPEL" || jPeriode.includes("TAPEL") || jPeriode.includes("PELAJARAN")) {
                 katWrapEl.removeClass('col-md-5').addClass('col-md-3');
                 pWrap.removeClass('col-md-2').addClass('col-md-3').show(); pLabel.text("Semester");
                 pInput.replaceWith('<select class="form-control form-control-sultan border-maroon admsekolahkelola-periode-input" required><option value="">- Pilih -</option><option value="Semester 1">Semester 1 (Ganjil)</option><option value="Semester 2">Semester 2 (Genap)</option></select>');
@@ -315,7 +322,7 @@ $(document).ready(function() {
                 thnWrapEl.find('.form-label-sultan').html('Thn Pelajaran <span class="text-danger">*</span>');
                 row.find('.admsekolahkelola-tahun-input').replaceWith('<input type="text" class="form-control form-control-sultan border-maroon admsekolahkelola-tahun-input" placeholder="Contoh: 2026/2027" required pattern="^[0-9]{4}/[0-9]{4}$" title="Format harus YYYY/YYYY">');
                 
-            } else if(jPeriode === "SEMESTER_KALENDER" || jPeriode.includes("KALENDER")) {
+            } else if(jPeriode === "SEMESTER_KALENDER" || jPeriode.includes("KALENDER") || (jPeriode.includes("SEMESTER") && !jPeriode.includes("PELAJARAN"))) {
                 katWrapEl.removeClass('col-md-5').addClass('col-md-3');
                 pWrap.removeClass('col-md-2').addClass('col-md-3').show(); pLabel.text("Semester");
                 pInput.replaceWith('<select class="form-control form-control-sultan border-maroon admsekolahkelola-periode-input" required><option value="">- Pilih -</option><option value="Semester 1">Semester 1 (Jan - Jun)</option><option value="Semester 2">Semester 2 (Jul - Des)</option></select>');
@@ -416,7 +423,7 @@ function admsekolahkelola_initDataTables() {
         "columnDefs": [
             { "targets": 0, "width": "1%", "className": "col-sticky-left bg-white align-middle text-center text-nowrap" },
             { "targets": 1, "width": "1%", "className": "text-center align-middle text-nowrap" },
-            { "targets": [2,3,7,8], "width": "auto", "className": "text-left align-middle" }, 
+            { "targets": [2,3,7,8,9], "width": "auto", "className": "text-left align-middle" }, 
             { "targets": [4,5,6], "width": "1%", "className": "text-center align-middle text-nowrap" }
         ],
         "language": { "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json", "emptyTable": "Belum ada data Administrasi yang diunggah." }
@@ -457,11 +464,12 @@ function admsekolahkelola_renderTabel(dataRows) {
 
         var badge = admsekolahkelola_buildBadgeStatus(r.status, r.catatan);
         var metaW = `<div style="line-height:1.2;font-size:13px;"><span class="d-block font-weight-bold text-dark">${r.tgl_upload}</span><span class="d-block text-muted">${admsekolahkelola_escapeHtml(r.uploader)}</span></div>`;
+        var metaE = `<div style="line-height:1.2;font-size:13px;"><span class="d-block font-weight-bold text-dark">${r.tgl_edit || "-"}</span><span class="d-block text-muted text-uppercase">${admsekolahkelola_escapeHtml(r.user_edit || "-")}</span></div>`;
         var metaV = `<div style="line-height:1.2;font-size:13px;"><span class="d-block font-weight-bold text-dark">${r.tgl_verif}</span><span class="d-block text-muted text-uppercase">${admsekolahkelola_escapeHtml(r.verifikator)}</span></div>`;
 
         var teksPeriode = r.periode || "-";
         if (teksPeriode.match(/^\d{4}-\d{2}-\d{2}$/)) { teksPeriode = Sultan.format.tanggal(teksPeriode); }
-        dtArray.push([ aksi, badge, txtPtk, txtKat, r.tahun, teksPeriode, btnFile, metaW, metaV ]);
+        dtArray.push([ aksi, badge, txtPtk, txtKat, r.tahun, teksPeriode, btnFile, metaW, metaE, metaV ]);
     });
     ADMSEKOLAHKELOLA_TABEL_INSTANCE.clear().rows.add(dtArray).draw(false);
 }
@@ -668,15 +676,18 @@ function admsekolahkelola_bukaModalPerbaiki(rowId) {
             pWrap.show(); $('#admsekolahkelola_p_periode_label').text("Periode"); 
             pIn.replaceWith('<input type="text" id="admsekolahkelola_p_periode_input" class="form-control form-control-sultan border-warning" required>'); 
             $('#admsekolahkelola_p_periode_input').val(data.periode || ""); 
-        } else if(jPeriode === "SEMESTER_TAPEL" || jPeriode.includes("TAPEL")) {
-            pWrap.show(); $('#admsekolahkelola_p_periode_label').text("Semester"); 
-            pIn.replaceWith('<select id="admsekolahkelola_p_periode_input" class="form-control form-control-sultan border-warning" required><option value="">- Pilih -</option><option value="Semester 1">Semester 1 (Ganjil)</option><option value="Semester 2">Semester 2 (Genap)</option></select>');
-            $('#admsekolahkelola_p_periode_input').val((data.periode || "").replace(" (Ganjil)", "").replace(" (Genap)", "")); 
+        } else if(jPeriode === "SEMESTER_TAPEL" || jPeriode.includes("TAPEL") || jPeriode.includes("PELAJARAN")) {
+            $('#admsekolahkelola_p_periode_wrap').show();
+            $('#admsekolahkelola_p_periode_label').text("Semester");
+            $('#admsekolahkelola_p_periode_input').replaceWith('<select id="admsekolahkelola_p_periode_input" class="form-control font-weight-bold form-control-sultan" required><option value="">- Pilih -</option><option value="Semester 1">Semester 1 (Ganjil)</option><option value="Semester 2">Semester 2 (Genap)</option></select>');
+            
+            // Text input untuk Tapel
             $('#admsekolahkelola_p_tahun_label').html('Thn Pelajaran <span class="text-danger">*</span>');
-            $('#admsekolahkelola_p_tahun_input').replaceWith('<input type="text" id="admsekolahkelola_p_tahun_input" class="form-control form-control-sultan border-warning" placeholder="Contoh: 2026/2027" required pattern="^[0-9]{4}/[0-9]{4}$" title="Format harus YYYY/YYYY">');
+            $('#admsekolahkelola_p_tahun_input').replaceWith('<input type="text" id="admsekolahkelola_p_tahun_input" class="form-control font-weight-bold form-control-sultan" placeholder="Contoh: 2026/2027" required pattern="^[0-9]{4}/[0-9]{4}$" title="Format harus YYYY/YYYY">');
             $('#admsekolahkelola_p_tahun_input').val(data.tahun);
-        } else if(jPeriode === "SEMESTER_KALENDER" || jPeriode.includes("KALENDER")) {
-            pWrap.show(); $('#admsekolahkelola_p_periode_label').text("Semester"); 
+            $('#admsekolahkelola_p_periode_input').val((data.periode || "").replace(" (Ganjil)", "").replace(" (Genap)", ""));
+        } else if(jPeriode === "SEMESTER_KALENDER" || jPeriode.includes("KALENDER") || (jPeriode.includes("SEMESTER") && !jPeriode.includes("PELAJARAN"))) {
+            $('#admsekolahkelola_p_periode_wrap').show(); pWrap.show(); $('#admsekolahkelola_p_periode_label').text("Semester"); 
             pIn.replaceWith('<select id="admsekolahkelola_p_periode_input" class="form-control form-control-sultan border-warning" required><option value="">- Pilih -</option><option value="Semester 1">Semester 1 (Jan - Jun)</option><option value="Semester 2">Semester 2 (Jul - Des)</option></select>');
             $('#admsekolahkelola_p_periode_input').val((data.periode || "").replace(" (Jan - Jun)", "").replace(" (Jul - Des)", "")); 
         } else if(jPeriode.includes("TRIWULAN")) {
@@ -734,13 +745,45 @@ function admsekolahkelola_submitPerbaiki(e) {
 }
 
 function admsekolahkelola_bukaModalHapus(rowId) {
-    Sultan.modal.konfirmasiHapus(function() {
-        var btn = $('#global_btnConfirmHapus'); btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i>MENGHAPUS...');
-        google.script.run.withSuccessHandler(function(json) {
-            $('#global_modalHapus').modal('hide'); var res = JSON.parse(json);
-            if(res.success) { Sultan.notif.crud.sukses("Data dihapus."); admsekolahkelola_tarikDataServer(); } else { Sultan.notif.crud.gagal(res.message); }
-        }).withFailureHandler(function(err){ $('#global_modalHapus').modal('hide'); Sultan.notif.crud.gagal(err.message); }).hapusAdmSekolah(rowId);
-    }, "Menghapus akan menghilangkan data dan file dokumen secara permanen.");
+    var data = ADMSEKOLAHKELOLA_CACHE_DATA.find(r => String(r.rowId) === String(rowId));
+    if(!data) return;
+
+    var dDate = new Date();
+    var kd = dDate.getFullYear() + "" + String(dDate.getMonth() + 1).padStart(2, '0') + "" + String(dDate.getDate()).padStart(2, '0');
+
+    var sek = ADMSEKOLAHKELOLA_MASTER_SEKOLAH.find(s => s.npsn === data.npsn);
+    var unitName = sek ? sek.nama : data.npsn;
+
+    Sultan.modal.konfirmasiHapus({
+        title: 'HAPUS DOKUMEN ADMINISTRASI SEKOLAH',
+        kode: kd,
+        detail: {
+            'NAMA SEKOLAH': unitName || '-',
+            'KATEGORI DOKUMEN': data.nama_kategori || '-',
+            'TAHUN': data.tahun || '-'
+        },
+        onConfirm: function() {
+            Sultan.notif.loading("Menghapus berkas...");
+            google.script.run.withSuccessHandler(function(json) {
+                Sultan.notif.tutup();
+                var res = JSON.parse(json);
+                if (res.success) { 
+                    // --- VAKSEN ZERO BLINK (HAPUS) ---
+                    var dIdx = ADMSEKOLAHKELOLA_CACHE_DATA.findIndex(function(r) { return String(r.rowId) === String(rowId); });
+                    if (dIdx !== -1) {
+                        ADMSEKOLAHKELOLA_CACHE_DATA.splice(dIdx, 1);
+                    }
+                    Sultan.notif.crud.hapus(); 
+                    admsekolahkelola_terapkanFilterLokal();
+                } else { 
+                    Sultan.notif.crud.gagal(res.message); 
+                }
+            }).withFailureHandler(function(err){ 
+                Sultan.notif.tutup();
+                Sultan.notif.crud.gagal(err.message); 
+            }).hapusAdmSekolah(rowId, kd);
+        }
+    });
 }
 
 function admsekolahkelola_bukaModalVerif(rowId) {
@@ -749,14 +792,52 @@ function admsekolahkelola_bukaModalVerif(rowId) {
     $('#admsekolahkelola_v_rowid').val(rowId);
     var sek = ADMSEKOLAHKELOLA_MASTER_SEKOLAH.find(s => s.npsn === data.npsn);
     $('#admsekolahkelola_v_nama').text(sek ? sek.nama : data.npsn);
+    $('#admsekolahkelola_v_npsn').text(data.npsn || "-");
     $('#admsekolahkelola_v_kategori').text(data.nama_kategori);
-    $('#admsekolahkelola_v_tahun').text(data.tahun); $('#admsekolahkelola_v_periode').text(data.periode || "").toggle(!!data.periode && data.periode !== "-");
-    var isNew = data.status === 'Diproses'; var stVal = isNew ? "" : data.status; $('#admsekolahkelola_v_status').val(stVal).trigger('change');
-    $('#admsekolahkelola_v_catatan').val(data.catatan || "");
+    $('#admsekolahkelola_v_tahun').text(data.tahun);
     
-    var hModal = Sultan.modal.bukaVerifikasi({ html: '<div id="admsekolahkelola_verif_ph"></div>', fileUrl: data.url }, "Verifikasi Dokumen");
-    $('#admsekolahkelola_formVerif').appendTo(hModal.find('#admsekolahkelola_verif_ph').parent());
-    hModal.off('hidden.bs.modal.admsekolahverif').on('hidden.bs.modal.admsekolahverif', function() { $('#admsekolahkelola_formVerif').appendTo('#admsekolahkelola_templates'); });
+    if (data.periode && data.periode !== "-") {
+        $('#admsekolahkelola_v_periode').text(data.periode);
+        $('#admsekolahkelola_v_periode_wrapper').show();
+    } else {
+        $('#admsekolahkelola_v_periode_wrapper').hide();
+    }
+    
+    var st = String(data.status || "").toLowerCase();
+    $('#admsekolahkelola_v_status').val('');
+    $('#admsekolahkelola_v_catatan').val(data.catatan || "");
+    $('#admsekolahkelola_reqCatatan').hide();
+    
+    if (st.includes('setuju') || st.includes('ok') || st.includes('valid')) {
+        $('#admsekolahkelola_v_status').val('Disetujui');
+    } else if (st.includes('revisi')) {
+        $('#admsekolahkelola_v_status').val('Revisi');
+    } else if (st.includes('tolak')) {
+        $('#admsekolahkelola_v_status').val('Ditolak');
+    }
+    
+    if ($('#admsekolahkelola_v_status').val() === 'Revisi' || $('#admsekolahkelola_v_status').val() === 'Ditolak') {
+        $('#admsekolahkelola_reqCatatan').show();
+        $('#admsekolahkelola_v_catatan').prop('required', true);
+    }
+    
+    var url = data.url || "";
+
+    Sultan.modal.verifikasi({
+        title: 'VERIFIKASI BERKAS ADMINISTRASI SEKOLAH',
+        url: url,
+        isImage: url.toLowerCase().endsWith('.jpg') || url.toLowerCase().endsWith('.png') || url.toLowerCase().endsWith('.jpeg')
+    });
+
+    $('#admsekolahkelola_formVerif').appendTo('#global_verifikasiFormArea');
+    $('#admsekolahkelola_verifFooter').appendTo('#global_verifikasiFooterArea');
+    $('#global_verifikasiFooterArea').show();
+
+    $('#global_modalVerifikasi').off('hidden.bs.modal').on('hidden.bs.modal.admsekolahverif', function() {
+        $('#admsekolahkelola_verifFooter').appendTo('#admsekolahkelola_formVerif');
+        $('#admsekolahkelola_formVerif').appendTo('#admsekolahkelola_templates');
+        $('#global_verifikasiFooterArea').hide().empty();
+    });
 }
 
 function admsekolahkelola_submitVerif(e) {
@@ -770,12 +851,35 @@ function admsekolahkelola_submitVerif(e) {
 }
 
 function admsekolahkelola_lihatCatatan(pesan) { Sultan.alert('info', 'Catatan Admin', '<div class="alert alert-warning text-dark"><i class="fas fa-exclamation-circle mr-2"></i>' + admsekolahkelola_escapeHtml(pesan) + '</div>'); }
-function admsekolahkelola_bukaPreview(url) { if(url) Sultan.modal.bukaPreviewFile(url, "Preview Dokumen"); else Sultan.notif.info("URL tidak tersedia."); }
+function admsekolahkelola_bukaPreview(url) {
+    if (!url) { Sultan.notif.info("URL tidak tersedia."); return; }
+    var finalUrl = url;
+    var downloadUrl = "";
+    var isGoogleDrive = url.indexOf('drive.google.com') > -1;
+    var isImage = url.toLowerCase().endsWith('.jpg') || url.toLowerCase().endsWith('.png') || url.toLowerCase().endsWith('.jpeg');
+    
+    if (isGoogleDrive) {
+        var match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+        if (match && match[1]) {
+            finalUrl = 'https://drive.google.com/file/d/' + match[1] + '/preview';
+            downloadUrl = 'https://drive.google.com/uc?export=download&id=' + match[1];
+        }
+    } else {
+        downloadUrl = url;
+    }
+
+    Sultan.modal.preview({
+        url: finalUrl,
+        title: 'Pratinjau Dokumen Administrasi Sekolah',
+        downloadUrl: downloadUrl,
+        isImage: isImage
+    });
+}
 function admsekolahkelola_buildBadgeStatus(status, catatan) {
     var s = String(status || "").toLowerCase(); var c = 'badge-sultan-diproses'; var i = 'clock'; var l = status || 'Diproses';
-    if (s.includes('setuju') || s.includes('ok')) { c = 'badge-sultan-disetujui'; i = 'check-circle'; l = 'DISETUJUI'; } 
-    else if (s.includes('revisi')) { c = 'badge-sultan-revisi'; i = 'sync-alt'; l = 'REVISI'; } 
-    else if (s.includes('tolak')) { c = 'badge-sultan-ditolak'; i = 'times-circle'; l = 'DITOLAK'; }
+    if (s.includes('setuju') || s.includes('ok') || s.includes('valid')) { c = 'badge-sultan-disetujui'; i = 'check-circle'; l = 'Disetujui'; } 
+    else if (s.includes('revisi')) { c = 'badge-sultan-revisi'; i = 'sync-alt'; l = 'Revisi'; } 
+    else if (s.includes('tolak')) { c = 'badge-sultan-ditolak'; i = 'times-circle'; l = 'Ditolak'; }
     var b = `<span class="badge ${c}"><i class="fas fa-${i} mr-1"></i>${admsekolahkelola_escapeHtml(l)}</span>`;
     if (catatan && catatan.trim().length > 2) return b + `<div class="mt-2"><button type="button" class="sultan-btn-note admsekolahkelola-btn-catatan" data-pesan="${admsekolahkelola_escapeHtml(catatan)}"><i class="fas fa-comment-dots mr-1"></i> BACA CATATAN</button></div>`;
     return b;

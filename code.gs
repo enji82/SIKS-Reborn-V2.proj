@@ -1410,3 +1410,19 @@ function tpg_getPeraturanFiles() {
     return JSON.stringify({ status: 'error', message: e.message });
   }
 }
+
+function verifikasiAdmSekolah(payload) {
+  try {
+    return verifikasiAdmSekolahData(payload.rowId, payload.status, payload.catatan, payload.verifikator);
+  } catch(e) {
+    return JSON.stringify({ success: false, message: e.message });
+  }
+}
+
+function hapusAdmSekolah(rowId, securityCode) {
+  try {
+    return hapusAdmSekolahData(rowId, securityCode);
+  } catch(e) {
+    return JSON.stringify({ success: false, message: e.message });
+  }
+}
