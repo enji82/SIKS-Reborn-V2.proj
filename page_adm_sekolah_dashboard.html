@@ -63,6 +63,22 @@
                 <i class="fas fa-chevron-down"></i>
             </div>
 
+            <div class="sultan-filter-item" id="admsekolahdash_filterPeriodeContainer" style="display: none;">
+                <select id="admsekolahdash_filterPeriode" class="form-control" aria-label="Pilih Periode">
+                    <option value="SEMUA">- Semua Periode -</option>
+                </select>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+
+            <div class="sultan-filter-item" id="admsekolahdash_filterJenjangContainer" style="display: none;">
+                <select id="admsekolahdash_filterJenjang" class="form-control" aria-label="Pilih Jenjang">
+                    <option value="SEMUA">- Semua Jenjang -</option>
+                    <option value="PAUD">PAUD</option>
+                    <option value="SD">SD</option>
+                </select>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+
             <div class="sultan-filter-item" id="admsekolahdash_filterContainer" style="display: none;">
                 <select id="admsekolahdash_filterSekolah" class="form-control" disabled aria-label="Pilih Sekolah">
                     <option value="">- Memvalidasi Akses... -</option>
@@ -131,14 +147,14 @@
                 <div class="col-12 mb-4">
                     <div class="card-sultan d-flex flex-column">
                         <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
-                            <h6 class="m-0 font-weight-bold text-maroon"><i class="fas fa-building mr-2"></i>Rekapitulasi per Kecamatan</h6>
+                            <h6 class="m-0 font-weight-bold text-maroon"><i class="fas fa-school mr-2"></i>Rekapitulasi per Sekolah</h6>
                             <span class="badge badge-primary px-3 py-1" id="admsekolahdash_lblTableKategori" style="font-size: 14px;">Loading...</span>
                         </div>
                         <div class="card-body p-3 flex-grow-1" style="font-size: 13px;">
                             <table id="admsekolahdash_tabelRekap" class="table table-bordered table-hover table-premium table-sultan-compact mb-0 w-100" style="font-size: 13px;">
                                 <thead class="bg-light text-maroon text-uppercase font-weight-bold" style="font-size: 13px;">
                                     <tr>
-                                        <th class="col-sticky-left border-right align-middle text-left" style="z-index: 5; min-width: 200px; border-bottom: 3px solid #85144b !important;">KECAMATAN / UNIT</th>
+                                        <th class="col-sticky-left border-right align-middle text-left" style="z-index: 5; min-width: 200px; border-bottom: 3px solid #85144b !important;">NAMA SEKOLAH</th>
                                         <th class="align-middle text-center" style="border-bottom: 3px solid #85144b !important;">JML SEKOLAH</th>
                                         <th class="align-middle text-center" style="border-bottom: 3px solid #85144b !important;">SUDAH UNGGAH</th>
                                         <th class="align-middle text-center text-danger" style="border-bottom: 3px solid #85144b !important;">BELUM UNGGAH</th>
@@ -218,7 +234,11 @@ $(document).ready(function() {
         var k = $(this).val(); if(k) admsekolahdash_loadDataKategori(k);
     });
 
-    $(document).off('change', '#admsekolahdash_filterSekolah, #admsekolahdash_filterTahun').on('change', '#admsekolahdash_filterSekolah, #admsekolahdash_filterTahun', admsekolahdash_terapkanFilterLokal);
+    $(document).off('change', '#admsekolahdash_filterSekolah, #admsekolahdash_filterTahun, #admsekolahdash_filterPeriode').on('change', '#admsekolahdash_filterSekolah, #admsekolahdash_filterTahun, #admsekolahdash_filterPeriode', admsekolahdash_terapkanFilterLokal);
+    $(document).off('change', '#admsekolahdash_filterJenjang').on('change', '#admsekolahdash_filterJenjang', function() {
+        admsekolahdash_initDropdownUnit();
+        admsekolahdash_terapkanFilterLokal();
+    });
     $(document).off('click', '#admsekolahdash_btnSalinWa').on('click', '#admsekolahdash_btnSalinWa', admsekolahdash_salinKeWA);
 
     $(document).off('keyup', '#admsekolahdash_inputCariBelum').on('keyup', '#admsekolahdash_inputCariBelum', function() {
@@ -233,6 +253,7 @@ function admsekolahdash_initMasterAccess() {
     var targetNpsn = ADMSEKOLAHDASH_IS_ADMIN ? "" : ADMSEKOLAHDASH_USER_NPSN;
 
     if (ADMSEKOLAHDASH_IS_ADMIN) {
+        $('#admsekolahdash_filterJenjangContainer').show();
         $('#admsekolahdash_filterContainer').show();
         $('#admsekolahdash_filterSekolah').empty().append('<option value="SEMUA">- Semua Sekolah -</option>').prop('disabled', false).removeClass('bg-light text-maroon font-weight-bold');
     } else if (!ADMSEKOLAHDASH_USER_NPSN) {
@@ -288,7 +309,7 @@ function admsekolahdash_loadDataKategori(idKategori, forceRefresh) {
 
     var btn = $('#admsekolahdash_btnRefresh');
     btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin text-maroon"></i>');
-    $('#admsekolahdash_filterKategori, #admsekolahdash_filterTahun, #admsekolahdash_filterSekolah').prop('disabled', true);
+    $('#admsekolahdash_filterKategori, #admsekolahdash_filterTahun, #admsekolahdash_filterPeriode, #admsekolahdash_filterSekolah').prop('disabled', true);
 
     $('#admsekolahdash_lblTableKategori').text(mapData.namaKategori);
 
@@ -300,7 +321,7 @@ function admsekolahdash_loadDataKategori(idKategori, forceRefresh) {
     google.script.run.withSuccessHandler(function(jsonStr) {
         ADMSEKOLAHDASH_PENDING_REQ = 0;
         btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
-        $('#admsekolahdash_filterKategori, #admsekolahdash_filterTahun').prop('disabled', false);
+        $('#admsekolahdash_filterKategori, #admsekolahdash_filterTahun, #admsekolahdash_filterPeriode').prop('disabled', false);
         if(ADMSEKOLAHDASH_IS_ADMIN || ADMSEKOLAHDASH_USE_NPSN_FILTER) $('#admsekolahdash_filterSekolah').prop('disabled', false);
         
         var data = JSON.parse(jsonStr);
@@ -339,15 +360,28 @@ function admsekolahdash_loadDataKategori(idKategori, forceRefresh) {
         ADMSEKOLAHDASH_PENDING_REQ = 0; btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
         $('#admsekolahdash_filterKategori').prop('disabled', false);
         $('#admsekolahdash_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Terputus: ' + admsekolahdash_escapeHtml(err.message) + '</span>');
-    }).getAdmSekolahDashboardData(idKategori); 
+    }).getAdmSekolahDashboardData(idKategori, forceRefresh); 
 }
 
 function admsekolahdash_initDropdownUnit() {
     var unique = new Set();
     var npsnUser = String(ADMSEKOLAHDASH_USER_NPSN || "").trim().toUpperCase();
+    var filterJenjang = $('#admsekolahdash_filterJenjang').val() || "SEMUA";
+    
     ADMSEKOLAHDASH_CACHE_REKAP.forEach(function(r) {
         var unit = String(r.unit || "").trim();
-        if (unit) {
+        var jenjang = String(r.jenjang || "").toUpperCase();
+        var includeData = true;
+        
+        if (filterJenjang !== "SEMUA") {
+            if (filterJenjang === "PAUD") {
+                if (jenjang !== "TK" && jenjang !== "KB" && jenjang !== "SPS" && jenjang !== "TPA" && jenjang !== "PAUD") includeData = false;
+            } else if (filterJenjang === "SD") {
+                if (jenjang !== "SD") includeData = false;
+            }
+        }
+        
+        if (unit && includeData) {
             if (ADMSEKOLAHDASH_IS_ADMIN) {
                 unique.add(unit);
             } else if (ADMSEKOLAHDASH_USE_NPSN_FILTER && String(r.npsn || "").trim().toUpperCase() === npsnUser) {
@@ -357,7 +391,7 @@ function admsekolahdash_initDropdownUnit() {
     });
     var sorted = Array.from(unique).sort();
     var select = $('#admsekolahdash_filterSekolah'); var curVal = select.val();
-    var labelSemua = ADMSEKOLAHDASH_IS_ADMIN ? "- Semua Kecamatan -" : "- Semua Unit Kerja Anda -";
+    var labelSemua = ADMSEKOLAHDASH_IS_ADMIN ? "- Semua Sekolah -" : "- Semua Sekolah Anda -";
     select.empty().append(`<option value="SEMUA">${labelSemua}</option>`);
     sorted.forEach(function(u) { select.append(`<option value="${admsekolahdash_escapeHtml(u)}">${admsekolahdash_escapeHtml(u)}</option>`); });
     if (sorted.length === 1) {
@@ -370,47 +404,80 @@ function admsekolahdash_initDropdownUnit() {
 var ADMSEKOLAHDASH_JENIS_PERIODE = "TAHUNAN";
 
 function admsekolahdash_initDropdownTahun() {
-    var unique = new Set();
-    ADMSEKOLAHDASH_CACHE_REKAP.forEach(function(r) { var thn = String(r.tahun || "").trim(); if(thn) unique.add(thn); });
+    var uniqueTahun = new Set();
+    var uniquePeriode = new Set();
     
-    var select = $('#admsekolahdash_filterTahun');
-    var curVal = select.val();
+    ADMSEKOLAHDASH_CACHE_REKAP.forEach(function(r) { 
+        var thn = String(r.tahun || "").trim(); if(thn && thn !== "-") uniqueTahun.add(thn); 
+        var per = String(r.periode || "").trim(); if(per && per !== "-") uniquePeriode.add(per); 
+    });
+    ADMSEKOLAHDASH_CACHE_BELUM.forEach(function(r) { 
+        var thn = String(r.tahun || "").trim(); if(thn && thn !== "-") uniqueTahun.add(thn); 
+        var per = String(r.periode || "").trim(); if(per && per !== "-") uniquePeriode.add(per); 
+    });
     
-    if (ADMSEKOLAHDASH_JENIS_PERIODE === "PERIODE") {
-        select.empty().append('<option value="SEMUA">- Semua Bulan/Tahun -</option>');
-    } else if (ADMSEKOLAHDASH_JENIS_PERIODE === "PERMANEN") {
-        select.empty().append('<option value="SEMUA">- Permanen (Semua Waktu) -</option>');
-    } else {
-        select.empty().append('<option value="SEMUA">- Semua Tahun -</option>');
+    var selTahun = $('#admsekolahdash_filterTahun');
+    var curTahun = selTahun.val();
+    selTahun.empty().append('<option value="SEMUA">- Semua Tahun -</option>');
+    
+    var selPeriode = $('#admsekolahdash_filterPeriode');
+    var curPeriode = selPeriode.val();
+    selPeriode.empty().append('<option value="SEMUA">- Semua Periode -</option>');
+    
+    // Sort and populate Tahun
+    var sortedTahun = Array.from(uniqueTahun);
+    sortedTahun.sort(function(a, b) {
+        var na = parseInt(a, 10), nb = parseInt(b, 10);
+        if (!isNaN(na) && !isNaN(nb)) {
+            if (na !== nb) return nb - na;
+            return String(b).localeCompare(String(a));
+        }
+        return String(b).localeCompare(String(a));
+    });
+    
+    sortedTahun.forEach(function(t) { selTahun.append(`<option value="${admsekolahdash_escapeHtml(t)}">${admsekolahdash_escapeHtml(t)}</option>`); });
+    if (!ADMSEKOLAHDASH_TAHUN_DEFAULTED && sortedTahun.length > 0) {
+        selTahun.val(sortedTahun[0]);
+        ADMSEKOLAHDASH_TAHUN_DEFAULTED = true;
+    } else if (curTahun && (curTahun === "SEMUA" || uniqueTahun.has(curTahun))) {
+        selTahun.val(curTahun);
     }
     
-    var sorted = Array.from(unique);
-    if (ADMSEKOLAHDASH_JENIS_PERIODE === "PERIODE") {
+    // Sort and populate Periode
+    var sortedPeriode = Array.from(uniquePeriode);
+    if (ADMSEKOLAHDASH_JENIS_PERIODE === "BULANAN" || ADMSEKOLAHDASH_JENIS_PERIODE === "PERIODE") {
         var mapBulan = {"Jan":1, "Feb":2, "Mar":3, "Apr":4, "Mei":5, "Jun":6, "Jul":7, "Agu":8, "Sep":9, "Okt":10, "Nov":11, "Des":12};
-        sorted.sort(function(a, b) {
-            var partsA = a.split(" ");
-            var partsB = b.split(" ");
-            var yA = parseInt(partsA[1] || partsA[0] || 0);
-            var yB = parseInt(partsB[1] || partsB[0] || 0);
-            if (yA !== yB) return yB - yA;
-            var bA = mapBulan[partsA[0]] || 0;
-            var bB = mapBulan[partsB[0]] || 0;
-            return bB - bA;
-        });
-    } else {
-        sorted.sort(function(a, b) {
-            var na = parseInt(a, 10), nb = parseInt(b, 10);
-            if (!isNaN(na) && !isNaN(nb)) return nb - na;
+        sortedPeriode.sort(function(a, b) {
+            var bA = mapBulan[a] || 0;
+            var bB = mapBulan[b] || 0;
+            if (bA && bB) return bB - bA;
             return String(b).localeCompare(String(a));
         });
+    } else {
+        sortedPeriode.sort(function(a, b) { return String(b).localeCompare(String(a)); });
     }
     
-    sorted.forEach(function(t) { select.append(`<option value="${admsekolahdash_escapeHtml(t)}">${admsekolahdash_escapeHtml(t)}</option>`); });
-    if (!ADMSEKOLAHDASH_TAHUN_DEFAULTED && sorted.length > 0) {
-        select.val(sorted[0]);
-        ADMSEKOLAHDASH_TAHUN_DEFAULTED = true;
-    } else if (curVal && (curVal === "SEMUA" || unique.has(curVal))) {
-        select.val(curVal);
+    sortedPeriode.forEach(function(p) { selPeriode.append(`<option value="${admsekolahdash_escapeHtml(p)}">${admsekolahdash_escapeHtml(p)}</option>`); });
+    
+    // Auto-select behavior for Periode based on rules
+    if (ADMSEKOLAHDASH_JENIS_PERIODE === "SEMESTER_TAPEL" || ADMSEKOLAHDASH_JENIS_PERIODE === "SEMESTER_KALENDER" || ADMSEKOLAHDASH_JENIS_PERIODE === "TRIWULAN") {
+        // If the user previously selected something valid, keep it. Else pick the first one (most recent).
+        if (curPeriode && curPeriode !== "SEMUA" && uniquePeriode.has(curPeriode)) {
+            selPeriode.val(curPeriode);
+        } else if (sortedPeriode.length > 0) {
+            selPeriode.val(sortedPeriode[0]);
+        }
+    } else {
+        // For others, keep SEMUA or whatever was selected
+        if (curPeriode && uniquePeriode.has(curPeriode)) selPeriode.val(curPeriode);
+        else selPeriode.val("SEMUA");
+    }
+    
+    var jPeriode = ADMSEKOLAHDASH_JENIS_PERIODE;
+    if(jPeriode === "TAHUNAN" || jPeriode === "PERMANEN" || jPeriode === "TMT") {
+        $('#admsekolahdash_filterPeriodeContainer').hide();
+    } else {
+        $('#admsekolahdash_filterPeriodeContainer').show();
     }
 }
 
@@ -427,6 +494,16 @@ function admsekolahdash_getUnitSetByNpsn() {
 }
 
 function admsekolahdash_rowMatchesUnit(r, fUnitAdmin) {
+    var filterJenjang = $('#admsekolahdash_filterJenjang').val() || "SEMUA";
+    var jenjang = String(r.jenjang || "").toUpperCase();
+    if (filterJenjang !== "SEMUA") {
+        if (filterJenjang === "PAUD") {
+            if (jenjang !== "TK" && jenjang !== "KB" && jenjang !== "SPS" && jenjang !== "TPA" && !jenjang.includes("PAUD")) return false;
+        } else if (filterJenjang === "SD") {
+            if (jenjang !== "SD") return false;
+        }
+    }
+
     if (fUnitAdmin === "SEMUA" || fUnitAdmin === "") {
         if (ADMSEKOLAHDASH_USE_NPSN_FILTER && !ADMSEKOLAHDASH_IS_ADMIN) {
             var npsnUser = String(ADMSEKOLAHDASH_USER_NPSN || "").trim().toUpperCase();
@@ -445,35 +522,41 @@ function admsekolahdash_rowMatchesUnit(r, fUnitAdmin) {
     return String(r.unit || "").trim().toUpperCase() === fUnitAdmin;
 }
 
-function admsekolahdash_getRekapForMetrics(dataRekap, fTahun) {
-    if (fTahun !== "SEMUA" && fTahun !== "") return dataRekap;
-    var maxTahun = "";
-    if (ADMSEKOLAHDASH_JENIS_PERIODE === "PERIODE") {
-        var mapBulan = {"Jan":1, "Feb":2, "Mar":3, "Apr":4, "Mei":5, "Jun":6, "Jul":7, "Agu":8, "Sep":9, "Okt":10, "Nov":11, "Des":12};
-        var maxYA = 0, maxBA = 0;
-        dataRekap.forEach(function(r) {
-            var t = String(r.tahun || "").trim();
-            var parts = t.split(" ");
-            var yA = parseInt(parts[1] || parts[0] || 0);
-            var bA = mapBulan[parts[0]] || 0;
-            if (yA > maxYA || (yA === maxYA && bA > maxBA)) {
-                maxYA = yA; maxBA = bA; maxTahun = t;
-            }
-        });
-    } else {
-        var maxNum = -Infinity;
-        dataRekap.forEach(function(r) {
-            var t = String(r.tahun || "").trim();
-            var n = parseInt(t, 10);
-            if (!isNaN(n)) {
-                if (n > maxNum) { maxNum = n; maxTahun = t; }
-            } else if (t && (!maxTahun || t.localeCompare(maxTahun) > 0)) {
-                maxTahun = t;
-            }
-        });
-    }
-    if (!maxTahun) return dataRekap;
-    return dataRekap.filter(function(r) { return String(r.tahun || "").trim() === maxTahun; });
+function admsekolahdash_getRekapForMetrics(dataRekap, fTahun, fPeriode) {
+    if (fTahun !== "SEMUA" && fTahun !== "" && fPeriode !== "SEMUA" && fPeriode !== "") return dataRekap;
+    
+    // Sort all records to find the most recent
+    var sorted = dataRekap.slice();
+    var mapBulan = {"Jan":1, "Feb":2, "Mar":3, "Apr":4, "Mei":5, "Jun":6, "Jul":7, "Agu":8, "Sep":9, "Okt":10, "Nov":11, "Des":12};
+    
+    sorted.sort(function(a, b) {
+        var ta = String(a.tahun || "").trim();
+        var tb = String(b.tahun || "").trim();
+        var pa = String(a.periode || "").trim();
+        var pb = String(b.periode || "").trim();
+        
+        if (ta !== tb) {
+            var na = parseInt(ta, 10), nb = parseInt(tb, 10);
+            if (!isNaN(na) && !isNaN(nb)) return nb - na;
+            return tb.localeCompare(ta);
+        }
+        
+        if (ADMSEKOLAHDASH_JENIS_PERIODE === "BULANAN" || ADMSEKOLAHDASH_JENIS_PERIODE === "PERIODE") {
+            var bA = mapBulan[pa] || 0;
+            var bB = mapBulan[pb] || 0;
+            if (bA && bB) return bB - bA;
+        }
+        
+        return pb.localeCompare(pa);
+    });
+    
+    if (sorted.length === 0) return dataRekap;
+    var maxTahun = sorted[0].tahun;
+    var maxPeriode = sorted[0].periode;
+    
+    return dataRekap.filter(function(r) { 
+        return String(r.tahun || "").trim() === maxTahun && String(r.periode || "").trim() === maxPeriode; 
+    });
 }
 
 function admsekolahdash_terapkanFilterLokal() {
@@ -486,20 +569,23 @@ function admsekolahdash_terapkanFilterLokal() {
         fUnit = String(ADMSEKOLAHDASH_UNIT_TERKUNCI || "").trim().toUpperCase();
     }
     var fTahun = String($('#admsekolahdash_filterTahun').val() || "").trim().toUpperCase();
+    var fPeriode = String($('#admsekolahdash_filterPeriode').val() || "").trim().toUpperCase();
     
     var filterRekap = ADMSEKOLAHDASH_CACHE_REKAP.filter(function(r) {
         if (!admsekolahdash_rowMatchesUnit(r, fUnit)) return false;
         if (fTahun !== "SEMUA" && fTahun !== "" && String(r.tahun || "").trim().toUpperCase() !== fTahun) return false;
+        if (fPeriode !== "SEMUA" && fPeriode !== "" && String(r.periode || "").trim().toUpperCase() !== fPeriode) return false;
         return true;
     });
 
     var filterBelum = ADMSEKOLAHDASH_CACHE_BELUM.filter(function(r) {
         if (!admsekolahdash_rowMatchesUnit(r, fUnit)) return false;
         if (fTahun !== "SEMUA" && fTahun !== "" && String(r.tahun || "").trim().toUpperCase() !== fTahun) return false;
+        if (fPeriode !== "SEMUA" && fPeriode !== "" && String(r.periode || "").trim().toUpperCase() !== fPeriode) return false;
         return true;
     });
 
-    admsekolahdash_renderDashboard(filterRekap, filterBelum, fTahun);
+    admsekolahdash_renderDashboard(filterRekap, filterBelum, fTahun, fPeriode);
 }
 
 function admsekolahdash_animateValue(id, end) {
@@ -577,12 +663,15 @@ function admsekolahdash_updateLastUpdate() {
     $('#admsekolahdash_lastUpdate').hide();
 }
 
-function admsekolahdash_renderDashboard(dataRekap, dataBelum, fTahun) {
+function admsekolahdash_renderDashboard(dataRekap, dataBelum, fTahun, fPeriode) {
     fTahun = String(fTahun || $('#admsekolahdash_filterTahun').val() || "").trim().toUpperCase();
-    var rekapMetrics = admsekolahdash_getRekapForMetrics(dataRekap, fTahun);
+    fPeriode = String(fPeriode || $('#admsekolahdash_filterPeriode').val() || "").trim().toUpperCase();
+    var rekapMetrics = admsekolahdash_getRekapForMetrics(dataRekap, fTahun, fPeriode);
     var metricsTahunLabel = "";
     if (fTahun === "SEMUA" && rekapMetrics.length && dataRekap.length > rekapMetrics.length) {
         metricsTahunLabel = String(rekapMetrics[0].tahun || "").trim();
+        var per = String(rekapMetrics[0].periode || "").trim();
+        if (per && per !== "-") metricsTahunLabel += " (" + per + ")";
     }
 
     var totAsn = 0, totSudah = 0, totBelum = 0;
@@ -610,10 +699,13 @@ function admsekolahdash_renderDashboard(dataRekap, dataBelum, fTahun) {
                 </div>
             </div>`;
         
-        var showTahunSub = ADMSEKOLAHDASH_IS_ADMIN || fTahun === "SEMUA";
-        var subLabel = (ADMSEKOLAHDASH_JENIS_PERIODE === "PERIODE") ? "Periode" : "Tahun";
+        var showTahunSub = ADMSEKOLAHDASH_IS_ADMIN || fTahun === "SEMUA" || fPeriode === "SEMUA";
+        var subLabel = "";
+        if (r.tahun && r.tahun !== "-") subLabel += r.tahun;
+        if (r.periode && r.periode !== "-") subLabel += " " + r.periode;
+        
         var txtUnit = showTahunSub
-            ? `<div class="font-weight-bold text-dark text-wrap" style="font-size:13px;">${admsekolahdash_escapeHtml(r.unit)}</div><div class="text-muted" style="font-size:13px;">${subLabel} ${admsekolahdash_escapeHtml(r.tahun)}</div>`
+            ? `<div class="font-weight-bold text-dark text-wrap" style="font-size:13px;">${admsekolahdash_escapeHtml(r.unit)}</div><div class="text-muted" style="font-size:13px;">${admsekolahdash_escapeHtml(subLabel.trim())}</div>`
             : `<div class="font-weight-bold text-dark text-wrap" style="font-size:13px;">${admsekolahdash_escapeHtml(r.unit)}</div>`;
 
         dtArray.push([
@@ -647,9 +739,9 @@ function admsekolahdash_renderDashboard(dataRekap, dataBelum, fTahun) {
             <li class="list-group-item admsekolahdash-item-belum py-2 px-3 hover-sultan" data-unit="${admsekolahdash_escapeHtml(b.unit)}">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <div class="nama-asn font-weight-bold text-dark text-uppercase mb-0" style="font-size: 13px; line-height: 1.2;">${admsekolahdash_escapeHtml(b.nama)}</div>
+                        <div class="nama-asn font-weight-bold text-dark text-uppercase mb-0" style="font-size: 13px; line-height: 1.2;">${admsekolahdash_escapeHtml(b.nama || b.unit)}</div>
                         <div class="text-muted" style="font-size: 11px; line-height: 1.2;">NPSN: ${admsekolahdash_escapeHtml(b.npsn)}</div>
-                        <div class="unit-asn text-danger font-weight-bold mt-1 text-uppercase" style="font-size: 11px; line-height: 1.2;">KEC. ${admsekolahdash_escapeHtml(b.unit)} <span class="text-muted" style="font-size: 11px;">(${b.tahun})</span></div>
+                        <div class="unit-asn text-danger font-weight-bold mt-1 text-uppercase" style="font-size: 11px; line-height: 1.2;">KEC. ${admsekolahdash_escapeHtml(b.unit)} <span class="text-muted" style="font-size: 11px;">(${admsekolahdash_escapeHtml(b.tahun)}${b.periode && b.periode !== "-" ? " " + admsekolahdash_escapeHtml(b.periode) : ""})</span></div>
                     </div>
                     <span class="badge badge-danger ml-2 px-2 py-1"><i class="fas fa-exclamation-circle"></i></span>
                 </div>
@@ -666,7 +758,7 @@ function admsekolahdash_salinKeWA() {
     var selNamaKat = $('#admsekolahdash_filterKategori option:selected').text();
     var selTahun = $('#admsekolahdash_filterTahun').val() === "SEMUA" ? "Semua Tahun" : $('#admsekolahdash_filterTahun').val();
     var selUnitFilter = (ADMSEKOLAHDASH_IS_ADMIN || ADMSEKOLAHDASH_USE_NPSN_FILTER) ? $('#admsekolahdash_filterSekolah').val() : ADMSEKOLAHDASH_UNIT_TERKUNCI;
-    var namaUnitDisplay = (selUnitFilter === "SEMUA" || selUnitFilter === "") ? "Seluruh Kecamatan" : selUnitFilter;
+    var namaUnitDisplay = (selUnitFilter === "SEMUA" || selUnitFilter === "") ? "Seluruh Sekolah" : selUnitFilter;
     
     var teks = `🚨 *DAFTAR SEKOLAH BELUM UNGGAH* 🚨\n`;
     teks += `Kategori: ${selNamaKat}\n`;

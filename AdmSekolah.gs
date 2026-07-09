@@ -7,12 +7,27 @@ const KONFIG_ADM_SEKOLAH = {
   get FOLDER_ID() { return FOLDER_CONFIG.ADM_SEKOLAH_DOCS; }
 };
 
+function getOrCreateSheetAdmSekolah(sheetName) {
+  var ss = getDB(KONFIG_ADM_SEKOLAH.DB_KEY);
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet) {
+    sheet = ss.insertSheet(sheetName);
+    if (sheetName === "Master_Kategori") {
+      sheet.appendRow(["ID_Kategori", "Nama_Dokumen", "Format_File", "Ukuran_File", "Jenis_Periode", "Keterangan", "Status", "Integrasi_Dashboard"]);
+    } else if (sheetName === "Database_Dokumen") {
+      sheet.appendRow(["ID_Dokumen", "Timestamp", "ID_Kategori", "Bulan", "Tahun", "TMT", "Nama_File", "URL_File", "ID_File", "Uploader", "Status_Verifikasi", "Catatan"]);
+    }
+  }
+  return sheet;
+}
+
+
 /* ----------------------------------------------------------------------
    1. MASTER KATEGORI
    ---------------------------------------------------------------------- */
 function getAdmSekolahMasterData(npsnFilter) {
   try {
-    var shKat = getSheet(KONFIG_ADM_SEKOLAH.DB_KEY, "Master_Kategori");
+    var shKat = getOrCreateSheetAdmSekolah("Master_Kategori");
     var dataKat = shKat ? shKat.getDataRange().getDisplayValues() : [];
     var resKat = [];
     for(var i=1; i<dataKat.length; i++) {
@@ -37,16 +52,16 @@ function getAdmSekolahMasterData(npsnFilter) {
     var resSekolah = [];
     var targetNpsn = String(npsnFilter || "").trim().toUpperCase();
     
-    // Kolom di Data_Sekolah biasanya: [0] NPSN, [1] Nama Sekolah, [2] Jenjang, [3] Status, [4] Kecamatan
+    // Kolom di Data_Sekolah: [0] NPSN, [1] Jenjang, [2] Nama Sekolah, [3] Status, [4] Kecamatan
     for(var j=1; j<dataSekolah.length; j++) {
         var rNpsn = String(dataSekolah[j][0]).trim().toUpperCase(); 
-        var rNama = String(dataSekolah[j][1]).trim().toUpperCase(); 
+        var rNama = String(dataSekolah[j][2]).trim().toUpperCase(); 
         if (targetNpsn === "" || targetNpsn === "SEMUA" || rNpsn === targetNpsn || rNama === targetNpsn) {
             if(rNpsn !== "") {
                 resSekolah.push({ 
                     npsn: dataSekolah[j][0], 
-                    nama: dataSekolah[j][1], 
-                    jenjang: dataSekolah[j][2], 
+                    nama: dataSekolah[j][2], 
+                    jenjang: dataSekolah[j][1], 
                     status: dataSekolah[j][3],
                     kecamatan: dataSekolah[j][4]
                 });
@@ -61,13 +76,7 @@ function simpanAdmSekolahMaster(payload) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
-    var sheet = getSheet(KONFIG_ADM_SEKOLAH.DB_KEY, "Master_Kategori");
-    if (!sheet) {
-      // Jika belum ada, buat sheet
-      var ss = getDB(KONFIG_ADM_SEKOLAH.DB_KEY);
-      sheet = ss.insertSheet("Master_Kategori");
-      sheet.appendRow(["ID_Kategori", "Nama_Dokumen", "Format_File", "Ukuran_File", "Jenis_Periode", "Keterangan", "Status", "Integrasi_Dashboard"]);
-    }
+    var sheet = getOrCreateSheetAdmSekolah("Master_Kategori");
     
     var data = sheet.getDataRange().getValues();
     var idKategori = String(payload.idKat || "").trim();
@@ -111,7 +120,7 @@ function hapusAdmSekolahMaster(idKategori) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
-    var sheet = getSheet(KONFIG_ADM_SEKOLAH.DB_KEY, "Master_Kategori");
+    var sheet = getOrCreateSheetAdmSekolah("Master_Kategori");
     if(!sheet) return JSON.stringify({ success: false, message: "Sheet Master_Kategori tidak ditemukan." });
     var data = sheet.getDataRange().getValues();
     for (var i = 1; i < data.length; i++) {
@@ -148,7 +157,7 @@ function getAdmSekolahData(npsnFilter) {
     }
     
     // 2. Load Database_Dokumen
-    var sheet = getSheet(KONFIG_ADM_SEKOLAH.DB_KEY, "Database_Dokumen");
+    var sheet = getOrCreateSheetAdmSekolah("Database_Dokumen");
     if(!sheet) return JSON.stringify({ success: false, message: "Sheet Database_Dokumen tidak ditemukan." });
     
     var data = sheet.getDataRange().getDisplayValues();
@@ -295,7 +304,7 @@ function perbaikiAdmSekolahData(payload, fileData) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(20000);
-    var sheet = getSheet(KONFIG_ADM_SEKOLAH.DB_KEY, "Database_Dokumen"); var r = parseInt(payload.rowId);
+    var sheet = getOrCreateSheetAdmSekolah("Database_Dokumen"); var r = parseInt(payload.rowId);
     var oldUrl = sheet.getRange(r, 6).getValue(); var newFileUrl = oldUrl; 
 
     // Jika user mengunggah file baru
@@ -345,7 +354,7 @@ function hapusAdmSekolahData(rowId, securityCode) {
     lock.waitLock(10000);
     var d = new Date(); var kd = d.getFullYear()+""+String(d.getMonth()+1).padStart(2,'0')+""+String(d.getDate()).padStart(2,'0');
     if (String(securityCode).trim() !== kd) return JSON.stringify({ success: false, message: "Kode Keamanan Salah!" });
-    var sheet = getSheet(KONFIG_ADM_SEKOLAH.DB_KEY, "Database_Dokumen"); var r = parseInt(rowId);
+    var sheet = getOrCreateSheetAdmSekolah("Database_Dokumen"); var r = parseInt(rowId);
     var urlDrive = sheet.getRange(r, 6).getValue();
     if(urlDrive && urlDrive.includes('drive.google.com')) {
         try { var match = urlDrive.match(/\/d\/([a-zA-Z0-9_-]+)/) || urlDrive.match(/id=([a-zA-Z0-9_-]+)/); if(match && match[1]) DriveApp.getFileById(match[1]).setTrashed(true); } catch(ex){}
@@ -362,7 +371,7 @@ function verifikasiAdmSekolahData(rowId, status, catatan, adminName) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
-    var sheet = getSheet(KONFIG_ADM_SEKOLAH.DB_KEY, "Database_Dokumen"); var r = parseInt(rowId);
+    var sheet = getOrCreateSheetAdmSekolah("Database_Dokumen"); var r = parseInt(rowId);
     var now = "'" + Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
     sheet.getRange(r, 7).setValue(status); sheet.getRange(r, 8).setValue(catatan);
     sheet.getRange(r, 11).setValue(now); sheet.getRange(r, 12).setValue(adminName); 
@@ -379,7 +388,7 @@ function verifikasiAdmSekolahData(rowId, status, catatan, adminName) {
    ---------------------------------------------------------------------- */
 function getAdmSekolahDashboardInit(npsnFilter) {
   try {
-    var shKat = getSheet(KONFIG_ADM_SEKOLAH.DB_KEY, "Master_Kategori");
+    var shKat = getOrCreateSheetAdmSekolah("Master_Kategori");
     if(!shKat) return JSON.stringify({ success: false, message: "Sheet Master_Kategori tidak ditemukan." });
     
     var dataKat = shKat.getDataRange().getDisplayValues();
@@ -411,21 +420,28 @@ function getAdmSekolahDashboardInit(npsnFilter) {
   } catch(e) { return JSON.stringify({ success: false, message: e.message }); }
 }
 
-function getAdmSekolahDashboardData(idKategori) {
+function getAdmSekolahDashboardData(idKategori, forceRefresh) {
   try {
     var cacheKey = "ADM_SEKOLAH_DASH_" + idKategori;
-    var cached = CacheService.getScriptCache().get(cacheKey);
-    if (cached) return cached;
+    if (!forceRefresh) {
+        var cached = CacheService.getScriptCache().get(cacheKey);
+        if (cached) return cached;
+    }
 
-    var shKat = getSheet(KONFIG_ADM_SEKOLAH.DB_KEY, "Master_Kategori");
+    var shKat = getOrCreateSheetAdmSekolah("Master_Kategori");
     var dataKat = shKat ? shKat.getDataRange().getDisplayValues() : [];
     var jPeriode = "TAHUNAN";
     for (var i = 1; i < dataKat.length; i++) {
       if (String(dataKat[i][0]).trim() === String(idKategori).trim()) {
         var jpVal = String(dataKat[i][4] || "").toUpperCase();
-        if (jpVal.includes("PERMANEN")) jPeriode = "PERMANEN";
-        else if (jpVal.includes("PERIODE") || jpVal.includes("BULANAN")) jPeriode = "PERIODE";
-        else if (jpVal.includes("TMT")) jPeriode = "TMT";
+        if (jpVal === "PERMANEN") jPeriode = "PERMANEN";
+        else if (jpVal === "BULANAN") jPeriode = "BULANAN";
+        else if (jpVal === "SEMESTER_TAPEL") jPeriode = "SEMESTER_TAPEL";
+        else if (jpVal === "SEMESTER_KALENDER" || jpVal === "SEMESTER") jPeriode = "SEMESTER_KALENDER";
+        else if (jpVal === "TRIWULAN") jPeriode = "TRIWULAN";
+        else if (jpVal === "PERIODE" || jpVal.includes("BEBAS")) jPeriode = "PERIODE";
+        else if (jpVal === "TMT" || jpVal.includes("TMT")) jPeriode = "TMT";
+        else jPeriode = "TAHUNAN";
         break;
       }
     }
@@ -436,30 +452,50 @@ function getAdmSekolahDashboardData(idKategori) {
     
     for (var j = 1; j < dataSekolah.length; j++) {
       var npsn = String(dataSekolah[j][0]).trim();
-      var nama = String(dataSekolah[j][1]).trim();
+      var jenjang = String(dataSekolah[j][1]).trim();
+      var nama = String(dataSekolah[j][2]).trim();
       if (!npsn || !nama) continue;
-      sekolahList.push({ npsn: npsn, nama: nama });
+      sekolahList.push({ npsn: npsn, nama: nama, jenjang: jenjang });
     }
     
-    var shDoc = getSheet(KONFIG_ADM_SEKOLAH.DB_KEY, "Database_Dokumen");
+    var shDoc = getOrCreateSheetAdmSekolah("Database_Dokumen");
     var dataDoc = shDoc ? shDoc.getDataRange().getDisplayValues() : [];
     
     var docMap = {};
     var periodsSet = new Set();
     
     var curYear = new Date().getFullYear();
-    if (jPeriode === "PERIODE") {
+    var curTapel = curYear + "/" + (curYear + 1);
+    var prevTapel = (curYear - 1) + "/" + curYear;
+    
+    // We will store stringified JSON objects in periodsSet to keep tahun and periode separated
+    if (jPeriode === "BULANAN") {
       var bulans = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
       bulans.forEach(function(b) {
-        periodsSet.add(b + " " + curYear);
-        periodsSet.add(b + " " + (curYear - 1));
+        periodsSet.add(JSON.stringify({tahun: String(curYear), periode: b}));
+        periodsSet.add(JSON.stringify({tahun: String(curYear - 1), periode: b}));
+      });
+    } else if (jPeriode === "SEMESTER_TAPEL") {
+      periodsSet.add(JSON.stringify({tahun: curTapel, periode: "Semester 1"}));
+      periodsSet.add(JSON.stringify({tahun: curTapel, periode: "Semester 2"}));
+      periodsSet.add(JSON.stringify({tahun: prevTapel, periode: "Semester 1"}));
+      periodsSet.add(JSON.stringify({tahun: prevTapel, periode: "Semester 2"}));
+    } else if (jPeriode === "SEMESTER_KALENDER") {
+      periodsSet.add(JSON.stringify({tahun: String(curYear), periode: "Semester 1"}));
+      periodsSet.add(JSON.stringify({tahun: String(curYear), periode: "Semester 2"}));
+      periodsSet.add(JSON.stringify({tahun: String(curYear - 1), periode: "Semester 1"}));
+      periodsSet.add(JSON.stringify({tahun: String(curYear - 1), periode: "Semester 2"}));
+    } else if (jPeriode === "TRIWULAN") {
+      [1, 2, 3, 4].forEach(function(t) {
+        periodsSet.add(JSON.stringify({tahun: String(curYear), periode: "Triwulan " + t}));
+        periodsSet.add(JSON.stringify({tahun: String(curYear - 1), periode: "Triwulan " + t}));
       });
     } else if (jPeriode === "PERMANEN") {
-      periodsSet.add("PERMANEN");
+      periodsSet.add(JSON.stringify({tahun: String(curYear), periode: "-"}));
     } else {
-      periodsSet.add(String(curYear));
-      periodsSet.add(String(curYear - 1));
-      periodsSet.add(String(curYear - 2));
+      periodsSet.add(JSON.stringify({tahun: String(curYear), periode: "-"}));
+      periodsSet.add(JSON.stringify({tahun: String(curYear - 1), periode: "-"}));
+      periodsSet.add(JSON.stringify({tahun: String(curYear - 2), periode: "-"}));
     }
     
     for (var k = 1; k < dataDoc.length; k++) {
@@ -470,59 +506,47 @@ function getAdmSekolahDashboardData(idKategori) {
       var eStatus = String(dataDoc[k][6]).trim();
       
       if (eKat === String(idKategori).trim() && eNpsn) {
-        if (jPeriode === "PERIODE") {
-          var targetPer = ePeriode || eThn;
-          if (targetPer && targetPer !== "-") {
-            periodsSet.add(targetPer);
-            if (!docMap[eNpsn]) docMap[eNpsn] = {};
-            docMap[eNpsn][targetPer] = eStatus;
-          }
-        } else if (jPeriode === "PERMANEN") {
+        var targetTahun = eThn;
+        var targetPeriode = ePeriode && ePeriode !== "-" ? ePeriode : "-";
+        
+        if (jPeriode === "PERMANEN" || jPeriode === "TAHUNAN" || jPeriode === "TMT") {
+          targetPeriode = "-";
+        }
+        
+        if (targetTahun) {
+          var pKey = JSON.stringify({tahun: targetTahun, periode: targetPeriode});
+          periodsSet.add(pKey);
           if (!docMap[eNpsn]) docMap[eNpsn] = {};
-          if (eStatus) docMap[eNpsn]["PERMANEN"] = eStatus;
-        } else {
-          if (eThn) {
-            periodsSet.add(eThn);
-            if (!docMap[eNpsn]) docMap[eNpsn] = {};
-            docMap[eNpsn][eThn] = eStatus;
-          }
+          docMap[eNpsn][pKey] = eStatus;
         }
       }
     }
     
-    var sortedPeriods = [];
-    if (jPeriode === "PERIODE") {
-      var mapBulan = {"Jan":1, "Feb":2, "Mar":3, "Apr":4, "Mei":5, "Jun":6, "Jul":7, "Agu":8, "Sep":9, "Okt":10, "Nov":11, "Des":12};
-      sortedPeriods = Array.from(periodsSet).sort(function(a, b) {
-        var partsA = a.split(" ");
-        var partsB = b.split(" ");
-        var yA = parseInt(partsA[1] || partsA[0] || 0);
-        var yB = parseInt(partsB[1] || partsB[0] || 0);
-        if (yA !== yB) return yB - yA;
-        var bA = mapBulan[partsA[0]] || 0;
-        var bB = mapBulan[partsB[0]] || 0;
-        return bB - bA;
-      });
-    } else if (jPeriode === "PERMANEN") {
-      sortedPeriods = ["PERMANEN"];
-    } else {
-      sortedPeriods = Array.from(periodsSet).sort(function(a, b) { return parseInt(b) - parseInt(a); });
-    }
+    var sortedPeriods = Array.from(periodsSet).map(function(s) { return JSON.parse(s); });
+    
+    // Sort primarily by tahun, then by periode
+    var mapBulan = {"Jan":1, "Feb":2, "Mar":3, "Apr":4, "Mei":5, "Jun":6, "Jul":7, "Agu":8, "Sep":9, "Okt":10, "Nov":11, "Des":12};
+    sortedPeriods.sort(function(a, b) {
+      var ta = String(a.tahun), tb = String(b.tahun);
+      var pa = String(a.periode), pb = String(b.periode);
+      if (ta !== tb) return tb.localeCompare(ta); // descending year
+      
+      if (mapBulan[pa] && mapBulan[pb]) {
+        return mapBulan[pb] - mapBulan[pa]; // descending month
+      }
+      return pb.localeCompare(pa); // descending period (e.g. Semester 2 before Semester 1)
+    });
     
     var arrRekap = [];
     var arrBelum = [];
     
-    sortedPeriods.forEach(function(periodeKey) {
+    sortedPeriods.forEach(function(pObj) {
+      var pKey = JSON.stringify(pObj);
       sekolahList.forEach(function(sek) {
         var npsn = sek.npsn;
         var unitName = sek.nama;
         
-        var status = null;
-        if (jPeriode === "PERMANEN") {
-          status = docMap[npsn] ? docMap[npsn]["PERMANEN"] : null;
-        } else {
-          status = docMap[npsn] ? docMap[npsn][periodeKey] : null;
-        }
+        var status = docMap[npsn] ? docMap[npsn][pKey] : null;
         
         var isUploaded = false;
         if (status) {
@@ -533,10 +557,10 @@ function getAdmSekolahDashboardData(idKategori) {
         }
         
         if (isUploaded) {
-          arrRekap.push({ npsn: npsn, unit: unitName, tahun: periodeKey, jml: 1, sudah: 1, belum: 0 });
+          arrRekap.push({ npsn: npsn, unit: unitName, tahun: pObj.tahun, periode: pObj.periode, jml: 1, sudah: 1, belum: 0, jenjang: sek.jenjang });
         } else {
-          arrRekap.push({ npsn: npsn, unit: unitName, tahun: periodeKey, jml: 1, sudah: 0, belum: 1 });
-          arrBelum.push({ npsn: npsn, unit: unitName, tahun: periodeKey });
+          arrRekap.push({ npsn: npsn, unit: unitName, tahun: pObj.tahun, periode: pObj.periode, jml: 1, sudah: 0, belum: 1, jenjang: sek.jenjang });
+          arrBelum.push({ npsn: npsn, unit: unitName, tahun: pObj.tahun, periode: pObj.periode, jenjang: sek.jenjang });
         }
       });
     });
@@ -550,7 +574,7 @@ function getAdmSekolahDashboardData(idKategori) {
 function invalidateAdmSekolahDashboardCache() {
   try {
     var cache = CacheService.getScriptCache();
-    var shKat = getSheet(KONFIG_ADM_SEKOLAH.DB_KEY, "Master_Kategori");
+    var shKat = getOrCreateSheetAdmSekolah("Master_Kategori");
     if (shKat) {
       var dataKat = shKat.getDataRange().getDisplayValues();
       for(var i=1; i<dataKat.length; i++) {
