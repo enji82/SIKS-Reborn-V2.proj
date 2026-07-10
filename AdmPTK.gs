@@ -145,7 +145,24 @@ function getAdmPtkMasterData(npsnFilter) {
     // Ambil daftar PTK sesuai NPSN filter
     var resPtk = admPtk_getDaftarPtk(npsnFilter);
 
-    return JSON.stringify({ success: true, kategori: resKat, ptk: resPtk });
+    // Ambil daftar sekolah jika diakses oleh admin
+    var resSekolah = [];
+    var isNpsnEmpty = !npsnFilter || String(npsnFilter).trim() === "" || String(npsnFilter).trim().toUpperCase() === "SEMUA";
+    if (isNpsnEmpty) {
+      var shSekolah = getSheet("USER_DB", "Data_Sekolah");
+      var dataSekolah = shSekolah ? shSekolah.getDataRange().getDisplayValues() : [];
+      for (var j = 1; j < dataSekolah.length; j++) {
+        var rNpsn = String(dataSekolah[j][0]).trim();
+        var rNama = String(dataSekolah[j][2]).trim();
+        if (rNpsn !== "") {
+          resSekolah.push({ npsn: rNpsn, nama: rNama });
+        }
+      }
+      // Sort sekolah secara alfabetis
+      resSekolah.sort(function(a, b) { return a.nama.localeCompare(b.nama); });
+    }
+
+    return JSON.stringify({ success: true, kategori: resKat, ptk: resPtk, sekolah: resSekolah });
   } catch(e) { return JSON.stringify({ success: false, message: e.message }); }
 }
 

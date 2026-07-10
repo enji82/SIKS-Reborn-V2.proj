@@ -175,6 +175,7 @@
 <script>
 var ADMPTK_KELOLA_CACHE_DATA = [], ADMPTK_KELOLA_MASTER_PTK = [], ADMPTK_KELOLA_MASTER_KAT = [], ADMPTK_KELOLA_TABEL_INSTANCE = null;
 var ADMPTK_KELOLA_USER_AKTIF = "", ADMPTK_KELOLA_IS_ADMIN = false, ADMPTK_KELOLA_NPSN_TERKUNCI = "", ADMPTK_KELOLA_SELECTED_PTK_FILES = [];
+window.ADMPTK_KELOLA_MASTER_SEK = [];
 
 $(document).ready(function() {
     $('#admptk_kelola_tableState').hide(); SultanUI.showLoading('#admptk_kelola_loadingState');
@@ -448,13 +449,84 @@ function admptk_kelola_bukaModalTambah() {
         }
     } else {
         $('#admptk_kelola_pilih_ptk_container').show();
-        // Selalu kembalikan/pastikan dropdown jenjang muncul jika yang login adalah admin
-        var selectHtml = '<select id="admptk_kelola_in_jenjang" class="form-control form-control-sultan border-maroon font-weight-bold text-dark">' +
-                         '<option value="">- Pilih Jenjang -</option>' +
-                         '<option value="PAUD">PAUD</option>' +
-                         '<option value="SD">SD</option>' +
+        // Ganti kolom jenjang di kiri menjadi pilihan Nama Sekolah untuk Admin
+        var selectHtml = '<select id="admptk_kelola_in_sekolah" class="form-control form-control-sultan border-maroon font-weight-bold text-dark" required>' +
+                         '<option value="">- Pilih Sekolah -</option>' +
                          '</select>';
         $('#admptk_kelola_jenjang_container').html(selectHtml);
+        
+        // Populasi list sekolah dari database master yang tersimpan di ADMPTK_KELOLA_MASTER_SEK
+        var $sek = $('#admptk_kelola_in_sekolah');
+        $sek.empty().append('<option value="">- Pilih Sekolah -</option>');
+        if (window.ADMPTK_KELOLA_MASTER_SEK && window.ADMPTK_KELOLA_MASTER_SEK.length > 0) {
+            window.ADMPTK_KELOLA_MASTER_SEK.forEach(function(s) {
+                $sek.append($('<option>', { value: s.npsn, text: s.nama }));
+            });
+        } else {
+            // Jika cache sekolah kosong, panggil getAdmPtkMasterData dinamis
+            google.script.run.withSuccessHandler(function(json) {
+                var res = JSON.parse(json);
+                if (res.success && res.sekolah) {
+                    window.ADMPTK_KELOLA_MASTER_SEK = res.sekolah;
+                    ADMPTK_KELOLA_MASTER_PTK = res.ptk || [];
+                    $sek.empty().append('<option value="">- Pilih Sekolah -</option>');
+                    window.ADMPTK_KELOLA_MASTER_SEK.forEach(function(s) {
+                        $sek.append($('<option>', { value: s.npsn, text: s.nama }));
+                    });
+                }
+            }).getAdmPtkMasterData("");
+        }
+
+        // Listener ketika Admin mengubah pilihan sekolah di modal tambah
+        $(document).off('change', '#admptk_kelola_in_sekolah').on('change', '#admptk_kelola_in_sekolah', function() {
+            var npsn = $(this).val(); var $ptk = $('#admptk_kelola_in_ptk');
+            $ptk.empty().append('<option value="">- Pilih PTK -</option>');
+            if (npsn) {
+                var filtered = ADMPTK_KELOLA_MASTER_PTK.filter(p => String(p.npsn).trim() === String(npsn).trim());
+                if (filtered.length > 0) {
+                    filtered.forEach(function(p) {
+                        $ptk.append($('<option>', { 
+                            value: p.id, 
+                            text: p.nama + (p.nip ? ' (' + p.nip + ')' : ''), 
+                            'data-nip': p.nip, 
+                            'data-npsn': p.npsn, 
+                            'data-folderkey': p.folderKey 
+                        }));
+                    });
+                    $ptk.prop('disabled', false);
+                } else {
+                    // Jika data guru untuk sekolah terpilih belum termuat, reload dari server
+                    $ptk.prop('disabled', true);
+                    google.script.run.withSuccessHandler(function(json) {
+                        var res = JSON.parse(json);
+                        if (res.success && res.ptk) {
+                            // Gabungkan data ptk baru ke cache
+                            res.ptk.forEach(function(np) {
+                                if (!ADMPTK_KELOLA_MASTER_PTK.find(xp => xp.id === np.id)) {
+                                    ADMPTK_KELOLA_MASTER_PTK.push(np);
+                                }
+                            });
+                            var filteredReload = ADMPTK_KELOLA_MASTER_PTK.filter(p => String(p.npsn).trim() === String(npsn).trim());
+                            $ptk.empty().append('<option value="">- Pilih PTK -</option>');
+                            filteredReload.forEach(function(p) {
+                                $ptk.append($('<option>', { 
+                                    value: p.id, 
+                                    text: p.nama + (p.nip ? ' (' + p.nip + ')' : ''), 
+                                    'data-nip': p.nip, 
+                                    'data-npsn': p.npsn, 
+                                    'data-folderkey': p.folderKey 
+                                }));
+                            });
+                            $ptk.prop('disabled', false);
+                        }
+                    }).getAdmPtkMasterData(npsn);
+                }
+            } else {
+                $ptk.prop('disabled', true);
+            }
+            $('#admptk_kelola_uploadContainer').html('<div class="text-center text-muted p-3" id="admptk_kelola_msgPilihPtk"><i class="fas fa-info-circle mr-1"></i> Pilih PTK terlebih dahulu.</div>');
+            $('#admptk_kelola_btnAddRow, #admptk_kelola_btnSimpan').prop('disabled', true);
+        });
     }
 }
 
