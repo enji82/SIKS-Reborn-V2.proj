@@ -39,6 +39,7 @@ const SPREADSHEET_IDS = {
   TATA_NASKAH_DINAS_DB: "1yvRXr-tyWv42nJfJLedELp-_R_WEo5gDxwCRIQTUVtk",
   TPG_PERBAIKAN_DB: "1ABwt8Uy5ghb8y5FaZREQFVgWEjqpUK5Nz4UqAuJCVW8",
   ADM_SEKOLAH_DB: "1Qdrk7-FLCz7VSHMF08Lw4CynqeGbrAHJkCT9iAZ0PJY",
+  ADM_PTK_DB: "1upUTFyD97ylynU1ekUQ9VVJphTrh-kfSvu89dwqEPUw",
 };
 
 // 2. FOLDER CONFIG (Digunakan oleh semua file .gs lainnya)
@@ -60,6 +61,7 @@ const FOLDER_CONFIG = {
   EFILE_DOCS: "1BUHkoCanHu24ApTnfwhbBCgOEFxBAmAo", // Folder E-File Documents
   TPG_PERBAIKAN_DOCS: "1BEcqcHJ9Vp3u3OfbFsxSebFzgO6BZKh1",
   ADM_SEKOLAH_DOCS: "1BgEoySj3Y52BReV8LMi6T58A9SkE8jBE",
+  ADM_PTK_DOCS: "1oAHVo-cX9SyglDZtF2fiQWArBZr-PygB",
 };
 
 // ==========================================
@@ -1241,13 +1243,14 @@ function getUserProfileByName(username) {
     for (var i = 1; i < data.length; i++) {
       if (String(data[i][0]).trim().toLowerCase() === String(username).trim().toLowerCase()) {
         // Asumsi Struktur Kolom Database User:
-        // A=Username, B=Password, C=Nama Lengkap, D=Role, E=Unit/Foto
+        // A=Username, B=Password, C=Nama Lengkap, D=Role, E=Foto, F=Unit
         return {
           found: true,
           username: data[i][0],
           nama_lengkap: data[i][2], // Kolom C
           role: data[i][3],         // Kolom D
-          unit: data[i][4]          // Kolom E
+          photo: data[i][4] || "",  // Kolom E
+          unit: data[i][5] || ""    // Kolom F
         };
       }
     }

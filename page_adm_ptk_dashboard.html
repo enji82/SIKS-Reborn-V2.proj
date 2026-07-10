@@ -1,0 +1,447 @@
+<style>
+  #admptk_dash_tabelRekap_wrapper,
+  #admptk_dash_tabelRekap_wrapper .dataTables_length,
+  #admptk_dash_tabelRekap_wrapper .dataTables_length select,
+  #admptk_dash_tabelRekap_wrapper .dataTables_filter,
+  #admptk_dash_tabelRekap_wrapper .dataTables_filter input,
+  #admptk_dash_tabelRekap_wrapper .dataTables_info,
+  #admptk_dash_tabelRekap_wrapper .dataTables_paginate,
+  #admptk_dash_tabelRekap_wrapper .pagination,
+  #admptk_dash_tabelRekap_wrapper .page-item,
+  #admptk_dash_tabelRekap_wrapper .page-link,
+  #admptk_dash_tabelRekap_wrapper table,
+  #admptk_dash_tabelRekap_wrapper table th,
+  #admptk_dash_tabelRekap_wrapper table td,
+  #admptk_dash_tabelRekap_wrapper table tr { font-size: 13px !important; }
+  .card-header.d-flex::after { display: none !important; }
+  .hover-sultan { transition: all 0.25s ease-in-out !important; }
+  body:not(.dark-mode) .hover-sultan:hover { background-color: rgba(128, 0, 0, 0.04) !important; transform: translateX(4px); }
+  body.dark-mode .hover-sultan:hover { background-color: rgba(255, 255, 255, 0.05) !important; transform: translateX(4px); }
+</style>
+
+<section class="content">
+  <div class="container-fluid">
+    <div class="row justify-content-center">
+      <div class="col-12">
+
+        <div class="sultan-filter-pill-container shadow-sm mb-4 sultan-page-transition">
+          <!-- Filter Kategori -->
+          <div class="sultan-filter-item">
+            <select id="admptk_dash_filterKategori" class="form-control" aria-label="Pilih Kategori Dokumen">
+              <option value="">- Memuat Kategori... -</option>
+            </select>
+            <i class="fas fa-chevron-down"></i>
+          </div>
+          <!-- Filter Tahun -->
+          <div class="sultan-filter-item">
+            <select id="admptk_dash_filterTahun" class="form-control" aria-label="Pilih Tahun">
+              <option value="SEMUA">- Semua Tahun -</option>
+            </select>
+            <i class="fas fa-chevron-down"></i>
+          </div>
+          <!-- Filter Periode -->
+          <div class="sultan-filter-item" id="admptk_dash_filterPeriodeContainer" style="display: none;">
+            <select id="admptk_dash_filterPeriode" class="form-control" aria-label="Pilih Periode">
+              <option value="SEMUA">- Semua Periode -</option>
+            </select>
+            <i class="fas fa-chevron-down"></i>
+          </div>
+          <!-- Filter Jenjang -->
+          <div class="sultan-filter-item" id="admptk_dash_filterJenjangContainer" style="display: none;">
+            <select id="admptk_dash_filterJenjang" class="form-control" aria-label="Pilih Jenjang">
+              <option value="SEMUA">- Semua Jenjang -</option>
+              <option value="PAUD">PAUD</option>
+              <option value="SD" selected>SD</option>
+            </select>
+            <i class="fas fa-chevron-down"></i>
+          </div>
+          <!-- Filter Sekolah (untuk filter PTK dari sekolah yang sama) -->
+          <div class="sultan-filter-item" id="admptk_dash_filterContainer" style="display: none;">
+            <select id="admptk_dash_filterSekolah" class="form-control" disabled aria-label="Pilih Sekolah">
+              <option value="">- Memvalidasi Akses... -</option>
+            </select>
+            <i class="fas fa-chevron-down"></i>
+          </div>
+          <div class="divider-vertical d-none d-md-block mx-2"></div>
+          <button type="button" id="admptk_dash_btnRefresh" class="sultan-btn-refresh" title="Segarkan Data">
+            <i class="fas fa-sync-alt"></i>
+          </button>
+        </div>
+
+        <div id="admptk_dash_loadingState"></div>
+
+        <div id="admptk_dash_dashboardState" style="display: none;">
+
+          <!-- Metric Cards -->
+          <div class="row mb-2">
+            <div class="col-md-4 col-sm-12 mb-3 mb-md-0">
+              <div class="sultan-metric-card metric-info">
+                <div class="inner">
+                  <h3 id="admptk_dash_cardTotalPtk">0</h3>
+                  <p>Target Sasaran PTK</p>
+                </div>
+                <div class="icon"><i class="fas fa-user-tie"></i></div>
+              </div>
+            </div>
+            <div class="col-md-4 col-sm-12 mb-3 mb-md-0">
+              <div class="sultan-metric-card metric-success">
+                <div class="inner">
+                  <h3 id="admptk_dash_cardSudah">0</h3>
+                  <p>Sudah Unggah Dokumen</p>
+                </div>
+                <div class="icon"><i class="fas fa-check-circle"></i></div>
+              </div>
+            </div>
+            <div class="col-md-4 col-sm-12">
+              <div class="sultan-metric-card metric-maroon">
+                <div class="inner">
+                  <h3 id="admptk_dash_cardBelum">0</h3>
+                  <p>Belum Unggah Dokumen</p>
+                </div>
+                <div class="icon"><i class="fas fa-times-circle"></i></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Progress Bar -->
+          <div class="row mb-3">
+            <div class="col-12">
+              <div class="progress" style="height: 10px; border-radius: 5px; background-color: #fce4e4;">
+                <div id="admptk_dash_progressBar" class="progress-bar" role="progressbar" style="width: 0%; background-color: #d11a2a;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+              </div>
+              <div class="d-flex justify-content-between mt-1">
+                <small class="text-muted font-weight-bold" id="admptk_dash_progressText">0% Selesai</small>
+                <small class="text-muted" id="admptk_dash_lastUpdate"><i class="far fa-clock mr-1"></i>-</small>
+              </div>
+            </div>
+          </div>
+
+          <!-- Insight Alerts -->
+          <div class="row mb-4">
+            <div class="col-12">
+              <div id="admptk_dash_insightAlerts"></div>
+            </div>
+          </div>
+
+          <!-- Sudah Unggah / Belum Unggah Lists -->
+          <div class="row">
+            <div class="row w-100 m-0">
+              <!-- Sudah Unggah -->
+              <div class="col-md-6 mb-4 px-2 d-flex flex-column">
+                <div class="card-sultan flex-fill d-flex flex-column border-success" style="border-width: 2px;">
+                  <div class="card-header card-header-sultan-adaptive py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-success" style="font-size: 15px;"><i class="fas fa-check-circle mr-2"></i>Sudah Unggah</h6>
+                    <span class="badge badge-success px-3 py-1 shadow-sm" id="admptk_dash_badgeSudah" style="font-size: 13px;">0</span>
+                  </div>
+                  <div class="p-2 bg-light border-bottom">
+                    <div class="input-group input-group-sm">
+                      <div class="input-group-prepend"><span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span></div>
+                      <input type="text" id="admptk_dash_inputCariSudah" class="form-control border-left-0" placeholder="Cari nama atau NIP PTK...">
+                    </div>
+                  </div>
+                  <div class="card-body p-0" style="height: 450px; overflow-y: auto;">
+                    <ul class="list-group list-group-flush" id="admptk_dash_listSudah">
+                      <li class="list-group-item text-center text-muted py-4"><i class="fas fa-spinner fa-spin mr-2"></i> Memuat daftar...</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Belum Unggah -->
+              <div class="col-md-6 mb-4 px-2 d-flex flex-column">
+                <div class="card-sultan flex-fill d-flex flex-column border-danger" style="border-width: 2px;">
+                  <div class="card-header card-header-sultan-adaptive py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-danger" style="font-size: 15px;"><i class="fas fa-times-circle mr-2"></i>Belum Unggah</h6>
+                    <span class="badge badge-danger px-3 py-1 shadow-sm" id="admptk_dash_badgeBelum" style="font-size: 13px;">0</span>
+                  </div>
+                  <div class="p-2 bg-light border-bottom">
+                    <div class="input-group input-group-sm">
+                      <div class="input-group-prepend"><span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span></div>
+                      <input type="text" id="admptk_dash_inputCariBelum" class="form-control border-left-0" placeholder="Cari nama atau NIP PTK...">
+                      <div class="input-group-append">
+                        <button type="button" id="admptk_dash_btnSalinWa" class="btn btn-success px-3" title="Salin Daftar ke WhatsApp" style="border-top-right-radius: 4px; border-bottom-right-radius: 4px;">
+                          <i class="fab fa-whatsapp"></i> Salin
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="card-body p-0" style="height: 450px; overflow-y: auto;">
+                    <ul class="list-group list-group-flush" id="admptk_dash_listBelum">
+                      <li class="list-group-item text-center text-muted py-4"><i class="fas fa-spinner fa-spin mr-2"></i> Memuat daftar...</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /dashboardState -->
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+var ADMPTK_DASH_CACHE_REKAP = [];
+var ADMPTK_DASH_CACHE_BELUM = [];
+var ADMPTK_DASH_KATEGORI_MAP = [];
+var ADMPTK_DASH_PENDING_REQ = 0;
+var ADMPTK_DASH_IS_ADMIN = false;
+var ADMPTK_DASH_USER_NPSN = "";
+var ADMPTK_DASH_TAHUN_DEFAULTED = false;
+var ADMPTK_DASH_JENIS_PERIODE = "TAHUNAN";
+
+$(document).ready(function() {
+    $('#admptk_dash_dashboardState').hide();
+    SultanUI.showLoading('#admptk_dash_loadingState');
+    $('#admptk_dash_filterContainer').hide();
+
+    try {
+        var user = typeof getSesiUser === 'function' ? getSesiUser() : {};
+        var rStr = String(user.role || "").toLowerCase();
+        ADMPTK_DASH_IS_ADMIN = (typeof checkUserRoleIsAdmin === 'function' && checkUserRoleIsAdmin()) || rStr.includes("admin") || rStr.includes("verifikator");
+        ADMPTK_DASH_USER_NPSN = user.npsn || user.unit || user.username || "";
+    } catch(e) { ADMPTK_DASH_USER_NPSN = ""; ADMPTK_DASH_IS_ADMIN = false; }
+
+    $(document).off('click', '#admptk_dash_btnRefresh').on('click', '#admptk_dash_btnRefresh', function() {
+        var k = $('#admptk_dash_filterKategori').val();
+        if (k !== "" && k != null) admptk_dash_loadDataKategori(k, true);
+    });
+    $(document).off('change', '#admptk_dash_filterKategori').on('change', '#admptk_dash_filterKategori', function() { var k = $(this).val(); if (k) admptk_dash_loadDataKategori(k); });
+    $(document).off('change', '#admptk_dash_filterSekolah, #admptk_dash_filterTahun, #admptk_dash_filterPeriode').on('change', '#admptk_dash_filterSekolah, #admptk_dash_filterTahun, #admptk_dash_filterPeriode', admptk_dash_terapkanFilterLokal);
+    $(document).off('change', '#admptk_dash_filterJenjang').on('change', '#admptk_dash_filterJenjang', function() { admptk_dash_initDropdownUnit(); admptk_dash_terapkanFilterLokal(); });
+    $(document).off('click', '#admptk_dash_btnSalinWa').on('click', '#admptk_dash_btnSalinWa', admptk_dash_salinKeWA);
+    $(document).off('keyup', '#admptk_dash_inputCariSudah').on('keyup', '#admptk_dash_inputCariSudah', function() { var val = $(this).val().toLowerCase(); $('.admptk-dash-item-sudah').filter(function() { $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1); }); });
+    $(document).off('keyup', '#admptk_dash_inputCariBelum').on('keyup', '#admptk_dash_inputCariBelum', function() { var val = $(this).val().toLowerCase(); $('.admptk-dash-item-belum').filter(function() { $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1); }); });
+
+    admptk_dash_initMasterAccess();
+});
+
+function admptk_dash_initMasterAccess() {
+    if (!ADMPTK_DASH_IS_ADMIN && !ADMPTK_DASH_USER_NPSN) {
+        $('#admptk_dash_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-ban mb-2"></i><br>Akses ditolak: Sesi login tidak valid.</span>'); return;
+    }
+
+    // Selalu tampilkan filter jenjang (baik admin maupun user biasa)
+    $('#admptk_dash_filterJenjangContainer').show();
+    // Default jenjang: SD
+    $('#admptk_dash_filterJenjang').val('SD');
+
+    google.script.run.withSuccessHandler(function(json) {
+        var res = JSON.parse(json);
+        if (!res.success) { $('#admptk_dash_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>' + admptk_dash_esc(res.message) + '</span>'); return; }
+
+        ADMPTK_DASH_KATEGORI_MAP = (res.kategori || []).filter(function(k) { return k.idKat; });
+        if (ADMPTK_DASH_KATEGORI_MAP.length === 0) { $('#admptk_dash_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>Belum ada Kategori yang berintegrasi ke Dashboard.</span>'); return; }
+
+        var selectKat = $('#admptk_dash_filterKategori');
+        selectKat.empty();
+        ADMPTK_DASH_KATEGORI_MAP.forEach(function(k) { selectKat.append($('<option>', { value: k.idKat, text: k.namaKategori })); });
+        admptk_dash_loadDataKategori($('#admptk_dash_filterKategori').val());
+
+    }).withFailureHandler(function(err) {
+        $('#admptk_dash_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Terputus: ' + admptk_dash_esc(err.message) + '</span>');
+    }).getAdmPtkDashboardInit(ADMPTK_DASH_IS_ADMIN ? "" : ADMPTK_DASH_USER_NPSN);
+}
+
+function admptk_dash_loadDataKategori(idKategori, forceRefresh) {
+    if (ADMPTK_DASH_PENDING_REQ > 0) return;
+    ADMPTK_DASH_PENDING_REQ = 1;
+    forceRefresh = !!forceRefresh;
+
+    var mapData = ADMPTK_DASH_KATEGORI_MAP.find(k => k.idKat === idKategori);
+    if (!mapData) { ADMPTK_DASH_PENDING_REQ = 0; return; }
+
+    var btn = $('#admptk_dash_btnRefresh'); btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin text-maroon"></i>');
+    $('#admptk_dash_filterKategori, #admptk_dash_filterTahun, #admptk_dash_filterPeriode').prop('disabled', true);
+
+    var isDashVisible = $('#admptk_dash_dashboardState').is(':visible');
+    if (!isDashVisible) { $('#admptk_dash_dashboardState').hide(); SultanUI.showLoading('#admptk_dash_loadingState', 'Menyinkronkan data dasbor ' + mapData.namaKategori + '...'); }
+    else { var ov = '<div class="card-loading-overlay d-flex align-items-center justify-content-center" style="position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,0.7);z-index:10;border-radius:16px;"><i class="fas fa-spinner fa-spin fa-2x text-maroon"></i></div>'; $('.card-sultan').css('position','relative').append(ov); }
+
+    var jenjang = $('#admptk_dash_filterJenjang').val() || "SD";
+    var npsnFilter = ADMPTK_DASH_IS_ADMIN ? "" : ADMPTK_DASH_USER_NPSN;
+
+    google.script.run.withSuccessHandler(function(jsonStr) {
+        ADMPTK_DASH_PENDING_REQ = 0;
+        btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
+        $('#admptk_dash_filterKategori, #admptk_dash_filterTahun, #admptk_dash_filterPeriode').prop('disabled', false);
+        if (ADMPTK_DASH_IS_ADMIN) $('#admptk_dash_filterSekolah').prop('disabled', false);
+        $('.card-loading-overlay').remove();
+
+        var data = JSON.parse(jsonStr);
+        if (!data.success) { $('#admptk_dash_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>' + admptk_dash_esc(data.message) + '</span>'); return; }
+
+        ADMPTK_DASH_JENIS_PERIODE = data.jenisPeriode || "TAHUNAN";
+        ADMPTK_DASH_CACHE_REKAP = data.rekap || [];
+        ADMPTK_DASH_CACHE_BELUM = data.belum || [];
+
+        admptk_dash_initDropdownUnit();
+        admptk_dash_initDropdownTahun();
+        admptk_dash_terapkanFilterLokal();
+
+        SultanUI.hideLoading('#admptk_dash_loadingState');
+        $('#admptk_dash_dashboardState').show();
+
+    }).withFailureHandler(function(err) {
+        ADMPTK_DASH_PENDING_REQ = 0; btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
+        $('#admptk_dash_filterKategori').prop('disabled', false); $('.card-loading-overlay').remove();
+        $('#admptk_dash_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Terputus: ' + admptk_dash_esc(err.message) + '</span>');
+    }).getAdmPtkDashboardData(idKategori, npsnFilter, jenjang, forceRefresh);
+}
+
+function admptk_dash_initDropdownUnit() {
+    var unique = {}; var filterJenjang = $('#admptk_dash_filterJenjang').val() || "SEMUA";
+    ADMPTK_DASH_CACHE_REKAP.forEach(function(r) {
+        var jj = String(r.jenjang || "").toUpperCase(); var pass = true;
+        if (filterJenjang !== "SEMUA") {
+            if (filterJenjang === "PAUD") pass = (jj === "TK" || jj === "KB" || jj === "SPS" || jj === "TPA" || jj.includes("PAUD"));
+            else if (filterJenjang === "SD") pass = (jj === "SD");
+        }
+        if (pass && r.unit) unique[r.unit] = true;
+    });
+    var sorted = Object.keys(unique).sort();
+    var select = $('#admptk_dash_filterSekolah'); var curVal = select.val();
+    select.empty().append('<option value="SEMUA">- Semua PTK -</option>');
+    sorted.forEach(function(u) { select.append('<option value="' + admptk_dash_esc(u) + '">' + admptk_dash_esc(u) + '</option>'); });
+    if (sorted.length === 1) select.val(sorted[0]);
+    else if (curVal && unique[curVal]) select.val(curVal);
+}
+
+function admptk_dash_initDropdownTahun() {
+    var uniqueTahun = new Set(); var uniquePeriode = new Set();
+    ADMPTK_DASH_CACHE_REKAP.concat(ADMPTK_DASH_CACHE_BELUM).forEach(function(r) {
+        var thn = String(r.tahun || "").trim(); if (thn && thn !== "-") uniqueTahun.add(thn);
+        var per = String(r.periode || "").trim(); if (per && per !== "-") uniquePeriode.add(per);
+    });
+    var selTahun = $('#admptk_dash_filterTahun'); var curTahun = selTahun.val();
+    selTahun.empty().append('<option value="SEMUA">- Semua Tahun -</option>');
+    var selPeriode = $('#admptk_dash_filterPeriode'); var curPeriode = selPeriode.val();
+    selPeriode.empty().append('<option value="SEMUA">- Semua Periode -</option>');
+    var sortedTahun = Array.from(uniqueTahun).sort(function(a, b) { var na = parseInt(a, 10), nb = parseInt(b, 10); return !isNaN(na) && !isNaN(nb) ? nb - na : String(b).localeCompare(String(a)); });
+    sortedTahun.forEach(function(t) { selTahun.append('<option value="' + admptk_dash_esc(t) + '">' + admptk_dash_esc(t) + '</option>'); });
+    if (!ADMPTK_DASH_TAHUN_DEFAULTED && sortedTahun.length > 0) { selTahun.val(sortedTahun[0]); ADMPTK_DASH_TAHUN_DEFAULTED = true; }
+    else if (curTahun && (curTahun === "SEMUA" || uniqueTahun.has(curTahun))) selTahun.val(curTahun);
+    var sortedPeriode = Array.from(uniquePeriode).sort(function(a, b) { return String(b).localeCompare(String(a)); });
+    sortedPeriode.forEach(function(p) { selPeriode.append('<option value="' + admptk_dash_esc(p) + '">' + admptk_dash_esc(p) + '</option>'); });
+    var jP = ADMPTK_DASH_JENIS_PERIODE;
+    if (jP === "TAHUNAN" || jP === "PERMANEN" || jP === "TMT") { $('#admptk_dash_filterPeriodeContainer').hide(); }
+    else { $('#admptk_dash_filterPeriodeContainer').show(); if (sortedPeriode.length > 0 && (curPeriode === "SEMUA" || !uniquePeriode.has(curPeriode))) selPeriode.val(sortedPeriode[0]); }
+}
+
+function admptk_dash_terapkanFilterLokal() {
+    var fUnit = ADMPTK_DASH_IS_ADMIN ? String($('#admptk_dash_filterSekolah').val() || "").trim().toUpperCase() : "SEMUA";
+    var fTahun = String($('#admptk_dash_filterTahun').val() || "").trim().toUpperCase();
+    var fPeriode = String($('#admptk_dash_filterPeriode').val() || "").trim().toUpperCase();
+    var filterJenjang = $('#admptk_dash_filterJenjang').val() || "SEMUA";
+
+    function passFilt(r) {
+        var jj = String(r.jenjang || "").toUpperCase();
+        if (filterJenjang !== "SEMUA") {
+            if (filterJenjang === "PAUD" && !(jj === "TK" || jj === "KB" || jj === "SPS" || jj === "TPA" || jj.includes("PAUD"))) return false;
+            if (filterJenjang === "SD" && jj !== "SD") return false;
+        }
+        if (fUnit !== "SEMUA" && fUnit !== "" && String(r.unit || "").trim().toUpperCase() !== fUnit) return false;
+        if (fTahun !== "SEMUA" && fTahun !== "" && String(r.tahun || "").trim().toUpperCase() !== fTahun) return false;
+        if (fPeriode !== "SEMUA" && fPeriode !== "" && String(r.periode || "").trim().toUpperCase() !== fPeriode) return false;
+        return true;
+    }
+
+    var filterRekap = ADMPTK_DASH_CACHE_REKAP.filter(passFilt);
+    var filterBelum = ADMPTK_DASH_CACHE_BELUM.filter(passFilt);
+
+    // Tampilkan filter sekolah HANYA untuk admin (karena sudah mewakili filter PTK unit)
+    if (ADMPTK_DASH_IS_ADMIN) { $('#admptk_dash_filterContainer').show(); }
+
+    admptk_dash_renderDashboard(filterRekap, filterBelum, fTahun, fPeriode);
+}
+
+function admptk_dash_renderDashboard(dataRekap, dataBelum, fTahun, fPeriode) {
+    var totPtk = 0, totSudah = 0, totBelum = 0; var listSudah = []; var listBelum = [];
+    dataRekap.forEach(function(r) {
+        totPtk += parseInt(r.jml) || 0;
+        totSudah += parseInt(r.sudah) || 0;
+        totBelum += parseInt(r.belum) || 0;
+        if ((parseInt(r.sudah) || 0) > 0) listSudah.push(r);
+        else if ((parseInt(r.belum) || 0) > 0) listBelum.push(r);
+    });
+    admptk_dash_animateValue('admptk_dash_cardTotalPtk', totPtk);
+    admptk_dash_animateValue('admptk_dash_cardSudah', totSudah);
+    admptk_dash_animateValue('admptk_dash_cardBelum', totBelum);
+    var pct = totPtk > 0 ? Math.round((totSudah / totPtk) * 100) : 0;
+    var pBar = $('#admptk_dash_progressBar');
+    pBar.css('width', pct + '%').attr('aria-valuenow', pct);
+    $('#admptk_dash_progressText').text(pct + '% Selesai');
+    if (pct < 30) pBar.css('background-color', '#d11a2a'); else if (pct < 70) pBar.css('background-color', '#ffc107'); else pBar.css('background-color', '#28a745');
+    $('#admptk_dash_badgeSudah').text(totSudah);
+    $('#admptk_dash_badgeBelum').text(totBelum);
+
+    // Insight
+    var inHtml = '';
+    if (pct >= 90) inHtml = '<div class="sultan-alert alert-soft-success"><i class="fas fa-trophy mr-3 mt-1" style="font-size:20px;"></i><div><div class="font-weight-bold mb-1">Luar Biasa! 🎉</div><div class="small">Capaian unggah berkas sudah mencapai <strong>' + pct + '%</strong>. Pertahankan prestasi ini!</div></div></div>';
+    else if (pct >= 70) inHtml = '<div class="sultan-alert alert-soft-info"><i class="fas fa-chart-line mr-3 mt-1" style="font-size:20px;"></i><div><div class="font-weight-bold mb-1">Bagus! 👍</div><div class="small">Capaian unggah berkas mencapai <strong>' + pct + '%</strong>. Tetap semangat untuk mencapai target!</div></div></div>';
+    else if (pct >= 50) inHtml = '<div class="sultan-alert alert-soft-warning"><i class="fas fa-exclamation-circle mr-3 mt-1" style="font-size:20px;"></i><div><div class="font-weight-bold mb-1">Perlu Perhatian ⚠️</div><div class="small">Capaian unggah berkas baru <strong>' + pct + '%</strong>. Segera koordinasikan dengan PTK!</div></div></div>';
+    $('#admptk_dash_insightAlerts').html(inHtml);
+
+    // List Sudah Unggah
+    var uiSudah = '';
+    if (listSudah.length === 0) { uiSudah = '<li class="list-group-item text-center py-5"><i class="fas fa-exclamation-triangle fa-3x text-warning mb-3 opacity-50"></i><br><div class="font-weight-bold text-dark mb-1" style="font-size:13px;">Belum Ada Data</div><div class="text-muted" style="font-size:12px;">Belum ada PTK yang mengunggah dokumen.</div></li>'; }
+    else {
+        listSudah.forEach(function(b) {
+            uiSudah += '<li class="list-group-item admptk-dash-item-sudah py-2 px-3 hover-sultan">' +
+                '<div class="d-flex justify-content-between align-items-center">' +
+                '<div><div class="font-weight-bold text-dark text-uppercase mb-0" style="font-size:13px;line-height:1.2;">' + admptk_dash_esc(b.unit) + '</div>' +
+                '<div class="text-muted" style="font-size:11px;line-height:1.2;">NIP: ' + admptk_dash_esc(b.nip || '-') + '</div>' +
+                '<div class="text-success font-weight-bold mt-1 text-uppercase" style="font-size:11px;line-height:1.2;">(' + admptk_dash_esc(b.tahun) + (b.periode && b.periode !== '-' ? ' ' + admptk_dash_esc(b.periode) : '') + ')</div></div>' +
+                '<span class="badge badge-success ml-2 px-2 py-1"><i class="fas fa-check"></i></span></div></li>';
+        });
+    }
+    $('#admptk_dash_listSudah').html(uiSudah); $('#admptk_dash_inputCariSudah').val('');
+
+    // List Belum Unggah
+    var uiBelum = '';
+    if (listBelum.length === 0) { uiBelum = '<li class="list-group-item text-center py-5"><i class="fas fa-check-circle fa-3x text-success mb-3 opacity-50"></i><br><div class="font-weight-bold text-dark mb-1" style="font-size:13px;">Luar Biasa!</div><div class="text-muted" style="font-size:12px;">Tidak ada PTK yang belum unggah.</div></li>'; }
+    else {
+        listBelum.forEach(function(b) {
+            uiBelum += '<li class="list-group-item admptk-dash-item-belum py-2 px-3 hover-sultan">' +
+                '<div class="d-flex justify-content-between align-items-center">' +
+                '<div><div class="font-weight-bold text-dark text-uppercase mb-0" style="font-size:13px;line-height:1.2;">' + admptk_dash_esc(b.unit) + '</div>' +
+                '<div class="text-muted" style="font-size:11px;line-height:1.2;">NIP: ' + admptk_dash_esc(b.nip || '-') + '</div>' +
+                '<div class="text-danger font-weight-bold mt-1 text-uppercase" style="font-size:11px;line-height:1.2;">(' + admptk_dash_esc(b.tahun) + (b.periode && b.periode !== '-' ? ' ' + admptk_dash_esc(b.periode) : '') + ')</div></div>' +
+                '<span class="badge badge-danger ml-2 px-2 py-1"><i class="fas fa-exclamation-circle"></i></span></div></li>';
+        });
+    }
+    $('#admptk_dash_listBelum').html(uiBelum); $('#admptk_dash_inputCariBelum').val('');
+}
+
+function admptk_dash_animateValue(id, end) {
+    var obj = document.getElementById(id); if (!obj) return;
+    if (obj.dataset.admPtkDashAnimId) cancelAnimationFrame(parseInt(obj.dataset.admPtkDashAnimId, 10));
+    var startTime = null;
+    function step(timestamp) {
+        if (!startTime) startTime = timestamp;
+        var progress = Math.min((timestamp - startTime) / 1000, 1);
+        obj.innerHTML = Math.floor(progress * end).toLocaleString('id-ID');
+        if (progress < 1) { obj.dataset.admPtkDashAnimId = window.requestAnimationFrame(step); } else { obj.dataset.admPtkDashAnimId = ""; }
+    }
+    obj.dataset.admPtkDashAnimId = window.requestAnimationFrame(step);
+}
+
+function admptk_dash_salinKeWA() {
+    var listEl = $('.admptk-dash-item-belum:visible');
+    if (listEl.length === 0) { Sultan.notif.info('Tidak ada data pada daftar belum unggah untuk disalin.'); return; }
+    var selNamaKat = $('#admptk_dash_filterKategori option:selected').text();
+    var selTahun = $('#admptk_dash_filterTahun').val() === "SEMUA" ? "Semua Tahun" : $('#admptk_dash_filterTahun').val();
+    var teks = "🚨 *DAFTAR PTK BELUM UNGGAH* 🚨\n";
+    teks += "Kategori: " + selNamaKat + "\n";
+    teks += "Tahun: " + selTahun + "\n";
+    teks += "Total Belum Unggah: " + listEl.length + " PTK\n\n";
+    var no = 1;
+    listEl.each(function() { teks += no++ + ". " + $(this).find('.font-weight-bold.text-uppercase').first().text().trim() + "\n"; });
+    teks += "\nMohon segera mengunggah dokumen elektronik melalui sistem SIKS. Terima kasih. 🙏";
+    navigator.clipboard.writeText(teks).then(function() { Sultan.notif.sukses('Daftar berhasil disalin ke Clipboard (Siap Paste di WhatsApp).'); }).catch(function() { Sultan.alert('error','Gagal Menyalin','Browser Anda tidak mendukung Clipboard API.'); });
+}
+
+function admptk_dash_esc(text) { return text ? String(text).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;") : ""; }
+</script>
