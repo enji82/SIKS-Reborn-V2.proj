@@ -41,49 +41,65 @@ function getOrCreateSheetAdmPtk(sheetName) {
    Filter: berdasarkan NPSN jika user bukan admin
    ----------------------------------------------------------------------- */
 function admPtk_getDaftarPtk(npsnFilter) {
-  try {
-    var sheets = [
-      { sheetName: "Master Data GTK", jenjang: "SD" },
-      { sheetName: "Master Data GTK PAUD", jenjang: "PAUD" },
-      { sheetName: "Master Data GTK SDS", jenjang: "SDS" }
-    ];
-    var result = [];
-    var targetNpsn = String(npsnFilter || "").trim().toUpperCase();
-
-    sheets.forEach(function(s) {
-      var sheet = getSheet("PTK_DB", s.sheetName);
+  /* Mapping DB key yang benar per jenjang:
+     - SD & SDS  → PTK_DB      (1t0-Lmy0YD_GxHzimFWJGh5R5x6RhGL13uqKeVwWoCYE)
+     - PAUD      → PTK_PAUD_DB (1XetGkBymmN2NZQlXpzZ2MQyG0nhhZ0sXEPcNsLffhEU)
+     Kolom berbeda antar jenjang:
+     - SD/SDS : A=ID(0) B=NPSN(1) C=Unit(2) G=NamaLengkap(6) H=NIP(7)  T=StatusPeg(19) Z=Tugas(25)
+     - PAUD   : A=ID(0) B=NPSN(1) C=Unit(2) H=NamaLengkap(7) I=NIY(8)  U=StatusPeg(20)
+     CATATAN: filter bisa berupa NPSN angka ATAU nama unit/sekolah (dari user.unit sesi login).
+     Gunakan try/catch per-sheet agar error satu jenjang tidak mempengaruhi lainnya. */
+  var sheets = [
+    { dbKey: "PTK_DB",      sheetName: "Master Data GTK",      jenjang: "SD",   namaCol: 6,  nipCol: 7,  statusCol: 19, tugasCol: 25, colCount: 26 },
+    { dbKey: "PTK_PAUD_DB", sheetName: "Master Data GTK PAUD", jenjang: "PAUD", namaCol: 7,  nipCol: 8,  statusCol: 20, tugasCol: -1, colCount: 26 },
+    { dbKey: "PTK_DB",      sheetName: "Master Data GTK SDS",  jenjang: "SDS",  namaCol: 6,  nipCol: 7,  statusCol: 19, tugasCol: 20, colCount: 26 }
+  ];
+  var result = [];
+  var targetNpsn = String(npsnFilter || "").trim().toUpperCase();
+  // Cek apakah filter berupa angka NPSN murni atau nama sekolah
+  var filterIsNpsn = /^[0-9]+$/.test(targetNpsn);
+ 
+  sheets.forEach(function(s) {
+    try {
+      var sheet = getSheet(s.dbKey, s.sheetName);
       if (!sheet) return;
       var lastRow = sheet.getLastRow();
       if (lastRow < 2) return;
-      // Kolom: A=ID, B=NPSN, C=Unit, G=NamaLengkap, H=NIP, T=StatusPeg, Z=Tugas
-      var data = sheet.getRange(2, 1, lastRow - 1, 26).getValues();
+      var maxCol = sheet.getLastColumn();
+      var readCol = Math.min(maxCol, s.colCount);
+      var data = sheet.getRange(2, 1, lastRow - 1, readCol).getDisplayValues();
       data.forEach(function(row) {
         if (!row[0]) return;
         var rNpsn = String(row[1] || "").trim().toUpperCase();
-        if (targetNpsn && targetNpsn !== "SEMUA" && rNpsn !== targetNpsn) return;
-        var nama = String(row[6] || "").trim();
-        var nip  = String(row[7] || "").trim();
+        var rUnit = String(row[2] || "").trim().toUpperCase();
+        if (targetNpsn && targetNpsn !== "SEMUA") {
+          // Cocokkan dengan NPSN (kolom B) ATAU dengan nama unit (kolom C)
+          var matchNpsn = (rNpsn === targetNpsn);
+          var matchUnit = (!filterIsNpsn && rUnit === targetNpsn);
+          if (!matchNpsn && !matchUnit) return;
+        }
+        var nama = String(row[s.namaCol] || "").trim();
+        var nip  = String(row[s.nipCol]  || "").trim();
         if (!nama) return;
         result.push({
-          id:     String(row[0]).trim(),
-          npsn:   rNpsn,
-          unit:   String(row[2] || "").trim(),
-          nama:   nama,
-          nip:    nip,
-          jenjang: s.jenjang,
-          status_peg: String(row[19] || "").trim(),
-          tugas:      String(row[25] || "").trim(),
-          folderKey: nip ? (nama + " - " + nip) : nama
+          id:         String(row[0]).trim(),
+          npsn:       rNpsn,
+          unit:       String(row[2] || "").trim(),
+          nama:       nama,
+          nip:        nip,
+          jenjang:    s.jenjang,
+          status_peg: String(row[s.statusCol] || "").trim(),
+          tugas:      (s.tugasCol !== -1 && s.tugasCol < readCol) ? String(row[s.tugasCol] || "").trim() : "",
+          folderKey:  nip ? (nama + " - " + nip) : nama
         });
       });
-    });
+    } catch(sheetErr) {
+      Logger.log("admPtk_getDaftarPtk skip sheet [" + s.sheetName + "]: " + sheetErr.message);
+    }
+  });
 
-    // Urutkan berdasarkan nama
-    result.sort(function(a, b) { return a.nama.localeCompare(b.nama); });
-    return result;
-  } catch(e) {
-    return [];
-  }
+  result.sort(function(a, b) { return a.nama.localeCompare(b.nama); });
+  return result;
 }
 
 /* Helper filter kecocokan PTK terhadap Rule Klasifikasi Kategori */
@@ -142,13 +158,18 @@ function getAdmPtkMasterData(npsnFilter) {
       }
     }
 
-    // Ambil daftar PTK sesuai NPSN filter
-    var resPtk = admPtk_getDaftarPtk(npsnFilter);
+    var isAdminInit = !npsnFilter || String(npsnFilter).trim() === "" || String(npsnFilter).trim().toUpperCase() === "SEMUA";
+
+    // Untuk admin init (SEMUA): hanya kembalikan kategori + daftar sekolah, TANPA PTK
+    // PTK akan dimuat terpisah saat admin memilih sekolah tertentu
+    var resPtk = [];
+    if (!isAdminInit) {
+      resPtk = admPtk_getDaftarPtk(npsnFilter);
+    }
 
     // Ambil daftar sekolah jika diakses oleh admin
     var resSekolah = [];
-    var isNpsnEmpty = !npsnFilter || String(npsnFilter).trim() === "" || String(npsnFilter).trim().toUpperCase() === "SEMUA";
-    if (isNpsnEmpty) {
+    if (isAdminInit) {
       var shSekolah = getSheet("USER_DB", "Data_Sekolah");
       var dataSekolah = shSekolah ? shSekolah.getDataRange().getDisplayValues() : [];
       for (var j = 1; j < dataSekolah.length; j++) {
@@ -158,7 +179,6 @@ function getAdmPtkMasterData(npsnFilter) {
           resSekolah.push({ npsn: rNpsn, nama: rNama });
         }
       }
-      // Sort sekolah secara alfabetis
       resSekolah.sort(function(a, b) { return a.nama.localeCompare(b.nama); });
     }
 
@@ -519,22 +539,28 @@ function getAdmPtkDashboardData(idKategori, npsnFilter, jenjangFilter, forceRefr
 
     // Ambil daftar PTK (filter by NPSN)
     var ptkList = admPtk_getDaftarPtk(npsnFilter);
+    var rawCount = ptkList.length;
+    var sdsRawCount = ptkList.filter(function(p){ return p.jenjang === "SDS"; }).length;
 
     // Filter list PTK berdasarkan target rule klasifikasi Master Kategori
     ptkList = ptkList.filter(function(p) {
       return admPtk_apakahPtkCocokKlasifikasi(p, rJenjang, rKepegawaian, rTugas);
     });
+    var postKlasifikasiCount = ptkList.length;
+    var sdsPostKlasifikasiCount = ptkList.filter(function(p){ return p.jenjang === "SDS"; }).length;
 
     // Filter tambahan by jenjang aktif dari dashboard UI
     if (jenjangFilter && jenjangFilter !== "SEMUA") {
       ptkList = ptkList.filter(function(p) {
         var jj = String(p.jenjang || "").toUpperCase();
         if (jenjangFilter === "PAUD") return jj === "PAUD" || jj === "TK" || jj === "KB" || jj === "SPS" || jj === "TPA";
-        if (jenjangFilter === "SD") return jj === "SD";
+        if (jenjangFilter === "SD") return jj === "SD" || jj === "SDS";
         if (jenjangFilter === "SDS") return jj === "SDS";
         return true;
       });
     }
+    var postJenjangFilterCount = ptkList.length;
+    var sdsPostJenjangFilterCount = ptkList.filter(function(p){ return p.jenjang === "SDS"; }).length;
 
     // Data dokumen
     var shDoc = getOrCreateSheetAdmPtk("Database_Dokumen");
@@ -619,15 +645,24 @@ function getAdmPtkDashboardData(idKategori, npsnFilter, jenjangFilter, forceRefr
           }
         }
         if (isUploaded) {
-          arrRekap.push({ id: p.id, unit: p.nama, nip: p.nip, npsn: p.npsn, jenjang: p.jenjang, status_peg: p.status_peg, tugas: p.tugas, tahun: pObj.tahun, periode: pObj.periode, jml: 1, sudah: 1, belum: 0 });
+          arrRekap.push({ id: p.id, unit: p.nama, nip: p.nip, npsn: p.npsn, jenjang: p.jenjang, status_peg: p.status_peg, tugas: p.tugas, tahun: pObj.tahun, periode: pObj.periode, jml: 1, sudah: 1, belum: 0, sekolah: p.unit });
         } else {
-          arrRekap.push({ id: p.id, unit: p.nama, nip: p.nip, npsn: p.npsn, jenjang: p.jenjang, status_peg: p.status_peg, tugas: p.tugas, tahun: pObj.tahun, periode: pObj.periode, jml: 1, sudah: 0, belum: 1 });
-          arrBelum.push({ id: p.id, unit: p.nama, nip: p.nip, npsn: p.npsn, jenjang: p.jenjang, status_peg: p.status_peg, tugas: p.tugas, tahun: pObj.tahun, periode: pObj.periode });
+          arrRekap.push({ id: p.id, unit: p.nama, nip: p.nip, npsn: p.npsn, jenjang: p.jenjang, status_peg: p.status_peg, tugas: p.tugas, tahun: pObj.tahun, periode: pObj.periode, jml: 1, sudah: 0, belum: 1, sekolah: p.unit });
+          arrBelum.push({ id: p.id, unit: p.nama, nip: p.nip, npsn: p.npsn, jenjang: p.jenjang, status_peg: p.status_peg, tugas: p.tugas, tahun: pObj.tahun, periode: pObj.periode, sekolah: p.unit });
         }
       });
     });
 
-    var responseString = JSON.stringify({ success: true, rekap: arrRekap, belum: arrBelum, jenisPeriode: jPeriode });
+    var debugInfo = {
+      rawCount: rawCount,
+      sdsRawCount: sdsRawCount,
+      postKlasifikasiCount: postKlasifikasiCount,
+      sdsPostKlasifikasiCount: sdsPostKlasifikasiCount,
+      postJenjangFilterCount: postJenjangFilterCount,
+      sdsPostJenjangFilterCount: sdsPostJenjangFilterCount,
+      rules: { rJenjang: rJenjang, rKepegawaian: rKepegawaian, rTugas: rTugas }
+    };
+    var responseString = JSON.stringify({ success: true, rekap: arrRekap, belum: arrBelum, jenisPeriode: jPeriode, debugInfo: debugInfo });
     try { CacheService.getScriptCache().put(cacheKey, responseString, 1800); } catch(ce) {}
     return responseString;
   } catch(e) { return JSON.stringify({ success: false, message: e.message }); }
@@ -752,4 +787,50 @@ function getAdmPtkViewerData(idPtk, npsnFilter) {
 
     return JSON.stringify({ success: true, ptk: ptkInfo, categories: categories, files: files });
   } catch(e) { return JSON.stringify({ success: false, message: e.message }); }
+}
+
+/* Debug: Cek apakah data SDS berhasil dibaca dari sheet */
+function admPtk_debugSdsCheck() {
+  var results = [];
+  var sdsSamples = [];
+  var sheetsToCheck = [
+    { dbKey: "PTK_DB", sheetName: "Master Data GTK" },
+    { dbKey: "PTK_DB", sheetName: "Master Data GTK SDS" },
+  ];
+  sheetsToCheck.forEach(function(s) {
+    try {
+      var ss = getDB(s.dbKey);
+      var sheet = ss.getSheetByName(s.sheetName);
+      if (!sheet) { results.push({ sheet: s.sheetName, status: "NOT FOUND" }); return; }
+      results.push({ sheet: s.sheetName, status: "OK", rows: sheet.getLastRow(), cols: sheet.getLastColumn() });
+      
+      if (s.sheetName === "Master Data GTK SDS") {
+        var lastRow = sheet.getLastRow();
+        var readRows = Math.min(lastRow - 1, 5);
+        if (readRows > 0) {
+          var data = sheet.getRange(2, 1, readRows, sheet.getLastColumn()).getValues();
+          data.forEach(function(row) {
+            sdsSamples.push({
+              nama: row[6],
+              npsn: row[1],
+              unit: row[2],
+              status_peg: row[19],
+              tugas: row[25],
+              tugas_col_25_raw: row[25]
+            });
+          });
+        }
+      }
+    } catch(e) { results.push({ sheet: s.sheetName, status: "ERROR: " + e.message }); }
+  });
+
+  var shKat = getOrCreateSheetAdmPtk("Master_Kategori");
+  var katInfo = [];
+  if (shKat) {
+    var dk = shKat.getDataRange().getDisplayValues();
+    for (var i = 1; i < dk.length; i++) {
+      if (String(dk[i][0]).trim()) katInfo.push({ id: dk[i][0], nama: dk[i][1], ruleJenjang: dk[i][8] || "(kosong)", ruleKepegawaian: dk[i][9] || "(kosong)", ruleTugas: dk[i][10] || "(kosong)" });
+    }
+  }
+  return JSON.stringify({ sheets: results, sdsSamples: sdsSamples, kategori: katInfo });
 }

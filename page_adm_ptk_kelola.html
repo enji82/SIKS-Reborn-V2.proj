@@ -79,15 +79,15 @@
     <div class="modal-body modal-body-sultan p-4">
       <div class="form-group mb-4 position-relative" id="admptk_kelola_pilih_ptk_container">
         <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Pilih PTK <span class="text-danger">*</span></label>
-        <div class="row">
-          <div class="col-md-4" id="admptk_kelola_jenjang_container">
+        <div class="d-flex flex-wrap gap-2 align-items-center" style="gap:8px;">
+          <div style="min-width:160px; flex:0 0 auto;" id="admptk_kelola_jenjang_container">
             <select id="admptk_kelola_in_jenjang" class="form-control form-control-sultan border-maroon font-weight-bold text-dark">
               <option value="">- Pilih Jenjang -</option>
               <option value="PAUD">PAUD</option>
               <option value="SD">SD</option>
             </select>
           </div>
-          <div class="col-md-8">
+          <div style="flex:1 1 auto; min-width:200px;">
             <select id="admptk_kelola_in_ptk" class="form-control form-control-sultan border-maroon font-weight-bold text-dark" required disabled>
               <option value="">- Pilih PTK -</option>
             </select>
@@ -186,8 +186,8 @@ $(document).ready(function() {
         // Memakai checkUserRoleIsAdmin() global secara ketat
         ADMPTK_KELOLA_IS_ADMIN = (typeof checkUserRoleIsAdmin === 'function' && checkUserRoleIsAdmin());
         
-        // NPSN terkunci: jika admin biarkan kosong agar bisa melihat semua sekolah, jika user sekolah ambil dari user.unit / user.username / user.npsn
-        ADMPTK_KELOLA_NPSN_TERKUNCI = ADMPTK_KELOLA_IS_ADMIN ? "" : (user.npsn || user.unit || user.username || "");
+        // NPSN terkunci: jika admin biarkan kosong agar bisa melihat semua sekolah, jika user sekolah ambil dari user.username (NPSN) / user.unit
+        ADMPTK_KELOLA_NPSN_TERKUNCI = ADMPTK_KELOLA_IS_ADMIN ? "" : (user.npsn || user.username || user.unit || "");
     } catch(e) { ADMPTK_KELOLA_NPSN_TERKUNCI = ""; ADMPTK_KELOLA_IS_ADMIN = false; }
 
     $(document).off('click', '#admptk_kelola_btnRefresh').on('click', '#admptk_kelola_btnRefresh', admptk_kelola_tarikDataServer);
@@ -246,30 +246,45 @@ $(document).ready(function() {
             else { fileIn.attr('accept','application/pdf'); fText.text('PDF (Maks '+ukuran+'MB)'); fIcon.removeClass('fa-file-image fa-file-upload fa-file-excel').addClass('fa-file-pdf'); }
             fileIn.attr('data-max-size', ukuran * 1024 * 1024);
             var jPeriode = String(katData.jenisPeriode).toUpperCase();
-            thnWrapEl.find('.form-label-sultan').html('Tahun <span class="text-danger">*</span>');
-            thnInput.replaceWith('<input type="number" class="form-control form-control-sultan border-maroon admptk_kelola-tahun-input" placeholder="202X" min="1980" max="2050" required>');
+            var isTapel = jPeriode.includes("TAHUN PELAJARAN") || jPeriode.includes("TAPEL");
             var bulanOpts = '<option value="">-</option><option>Jan</option><option>Feb</option><option>Mar</option><option>Apr</option><option>Mei</option><option>Jun</option><option>Jul</option><option>Agu</option><option>Sep</option><option>Okt</option><option>Nov</option><option>Des</option>';
+
+            // 1. Tentukan Input Tahun (Tahun Kalender / Tahun Pelajaran)
+            if (isTapel) {
+                thnWrapEl.find('.form-label-sultan').html('Thn Pelajaran <span class="text-danger">*</span>');
+                row.find('.admptk_kelola-tahun-input').replaceWith('<select class="form-control form-control-sultan border-maroon admptk_kelola-tahun-input" required>' + admptk_kelola_generateTapelOptions() + '</select>');
+            } else {
+                thnWrapEl.find('.form-label-sultan').html('Tahun <span class="text-danger">*</span>');
+                row.find('.admptk_kelola-tahun-input').replaceWith('<select class="form-control form-control-sultan border-maroon admptk_kelola-tahun-input" required>' + admptk_kelola_generateTahunKalenderOptions() + '</select>');
+            }
+
+            // 2. Tentukan Tampilan Periode
             if (jPeriode.includes("TMT")) {
                 katWrapEl.removeClass('col-md-5').addClass('col-md-3'); pWrap.show(); pLabel.text("TMT");
                 pInput.replaceWith('<input type="date" class="form-control form-control-sultan border-maroon admptk_kelola-periode-input" required>');
                 row.find('.admptk_kelola-periode-input').prop("required",true).val("");
-            } else if (jPeriode.includes("PERIODE") || jPeriode.includes("BULANAN")) {
+            } else if (jPeriode === "BULANAN") {
+                katWrapEl.removeClass('col-md-5').addClass('col-md-3');
+                pWrap.show(); pLabel.text("Bulan");
+                pInput.replaceWith('<select class="form-control form-control-sultan border-maroon admptk_kelola-periode-input" required>' + bulanOpts.replace('<option value="">-</option>', '<option value="">- Pilih Bulan -</option>') + '</select>');
+            } else if (jPeriode.includes("PERIODE")) {
                 katWrapEl.removeClass('col-md-5').addClass('col-md-3');
                 pWrap.show(); pLabel.text("Periode (Bln)");
                 pInput.replaceWith('<div class="d-flex align-items-center admptk_kelola-periode-input" style="gap:4px;"><select class="form-control form-control-sultan border-maroon admptk_kelola-periode-mulai" required style="min-width:65px;padding:2px 4px;height:31px;font-size:12px;">'+bulanOpts+'</select><span class="font-weight-bold text-muted px-1" style="font-size:12px;">&ndash;</span><select class="form-control form-control-sultan border-maroon admptk_kelola-periode-akhir" required style="min-width:65px;padding:2px 4px;height:31px;font-size:12px;">'+bulanOpts+'</select></div>');
-            } else if (jPeriode === "SEMESTER (TAHUN PELAJARAN)" || jPeriode.includes("TAPEL") || jPeriode.includes("TAPEL")) {
-                katWrapEl.removeClass('col-md-5').addClass('col-md-3'); pWrap.show(); pLabel.text("Semester");
-                pInput.replaceWith('<select class="form-control form-control-sultan border-maroon admptk_kelola-periode-input" required><option value="">- Pilih -</option><option value="Semester 1">Semester 1 (Ganjil)</option><option value="Semester 2">Semester 2 (Genap)</option></select>');
-                thnWrapEl.find('.form-label-sultan').html('Thn Pelajaran <span class="text-danger">*</span>');
-                row.find('.admptk_kelola-tahun-input').replaceWith('<input type="text" class="form-control form-control-sultan border-maroon admptk_kelola-tahun-input" placeholder="Contoh: 2026/2027" required pattern="^[0-9]{4}/[0-9]{4}$" title="Format harus YYYY/YYYY">');
             } else if (jPeriode.includes("SEMESTER")) {
                 katWrapEl.removeClass('col-md-5').addClass('col-md-3'); pWrap.show(); pLabel.text("Semester");
-                pInput.replaceWith('<select class="form-control form-control-sultan border-maroon admptk_kelola-periode-input" required><option value="">- Pilih -</option><option value="Semester 1">Semester 1 (Jan - Jun)</option><option value="Semester 2">Semester 2 (Jul - Des)</option></select>');
+                if (isTapel) {
+                    pInput.replaceWith('<select class="form-control form-control-sultan border-maroon admptk_kelola-periode-input" required><option value="">- Pilih -</option><option value="Semester 1">Semester 1 (Ganjil)</option><option value="Semester 2">Semester 2 (Genap)</option></select>');
+                } else {
+                    pInput.replaceWith('<select class="form-control form-control-sultan border-maroon admptk_kelola-periode-input" required><option value="">- Pilih -</option><option value="Semester 1">Semester 1 (Jan - Jun)</option><option value="Semester 2">Semester 2 (Jul - Des)</option></select>');
+                }
             } else if (jPeriode.includes("TRIWULAN")) {
                 katWrapEl.removeClass('col-md-5').addClass('col-md-3'); pWrap.show(); pLabel.text("Triwulan");
                 pInput.replaceWith('<select class="form-control form-control-sultan border-maroon admptk_kelola-periode-input" required><option value="">- Pilih -</option><option value="Triwulan 1">Triwulan 1</option><option value="Triwulan 2">Triwulan 2</option><option value="Triwulan 3">Triwulan 3</option><option value="Triwulan 4">Triwulan 4</option></select>');
             } else {
-                katWrapEl.removeClass('col-md-3').addClass('col-md-5'); pWrap.hide(); pInput.prop("required", false).val("-");
+                // TAHUNAN (TAHUN PELAJARAN), TAHUNAN (TAHUN KALENDER), PERMANEN
+                katWrapEl.removeClass('col-md-3').addClass('col-md-5'); pWrap.hide();
+                row.find('.admptk_kelola-periode-input, .admptk_kelola-periode-mulai, .admptk_kelola-periode-akhir').prop("required", false).val("-");
             }
             var keterBx = row.find('.admptk_kelola-kat-keterangan');
             if (katData.keterangan && katData.keterangan.trim()) { keterBx.html('<i class="fas fa-info-circle mr-1"></i>' + $('<span>').text(katData.keterangan).html()).show(); } else { keterBx.hide().html(''); }
@@ -314,10 +329,24 @@ function admptk_kelola_initMasterData() {
     google.script.run.withSuccessHandler(function(json) {
         var res = JSON.parse(json); if (!res.success) { $('#admptk_kelola_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>' + admptk_kelola_esc(res.message) + '</span>'); return; }
         ADMPTK_KELOLA_MASTER_KAT = res.kategori || []; ADMPTK_KELOLA_MASTER_PTK = res.ptk || [];
+        // Cache daftar sekolah untuk Admin dan populate dropdown filter
+        if (ADMPTK_KELOLA_IS_ADMIN && res.sekolah) { 
+            window.ADMPTK_KELOLA_MASTER_SEK = res.sekolah; 
+            var $fSek = $('#admptk_kelola_filterSekolah');
+            $fSek.empty().append('<option value="SEMUA">- Semua Sekolah -</option>');
+            res.sekolah.forEach(function(s) {
+                $fSek.append($('<option>', {value: s.npsn, text: s.nama}));
+            });
+        }
+        // Koreksi NPSN_TERKUNCI dari data PTK yang dikembalikan server (untuk user yang unit-nya berupa nama, bukan NPSN)
+        if (!ADMPTK_KELOLA_IS_ADMIN && ADMPTK_KELOLA_MASTER_PTK.length > 0 && ADMPTK_KELOLA_MASTER_PTK[0].npsn) {
+            ADMPTK_KELOLA_NPSN_TERKUNCI = ADMPTK_KELOLA_MASTER_PTK[0].npsn;
+        }
+        console.log('ADMPTK initMasterData OK: PTK=' + ADMPTK_KELOLA_MASTER_PTK.length + ', SEK=' + (window.ADMPTK_KELOLA_MASTER_SEK||[]).length + ', NPSN=' + ADMPTK_KELOLA_NPSN_TERKUNCI);
         if (!ADMPTK_KELOLA_IS_ADMIN && ADMPTK_KELOLA_MASTER_PTK.length > 0) { $('#admptk_kelola_filterContainer').show(); var unitName = ADMPTK_KELOLA_MASTER_PTK[0] ? ADMPTK_KELOLA_MASTER_PTK[0].unit : ADMPTK_KELOLA_NPSN_TERKUNCI; $('#admptk_kelola_filterSekolah').empty().append($('<option>', {value: ADMPTK_KELOLA_NPSN_TERKUNCI, text: unitName})).prop('disabled', true); }
         var hk = '<option value="SEMUA">- Semua Kategori -</option>'; ADMPTK_KELOLA_MASTER_KAT.forEach(function(k) { hk += '<option value="' + k.idKat + '">' + k.namaKat + '</option>'; }); $('#admptk_kelola_filterKategori').html(hk);
         $('#admptk_kelola_btnTambah').prop('disabled', false); admptk_kelola_tarikDataServer();
-    }).withFailureHandler(function(){ $('#admptk_kelola_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Terputus.</span>'); }).getAdmPtkMasterData(ADMPTK_KELOLA_IS_ADMIN ? "" : ADMPTK_KELOLA_NPSN_TERKUNCI);
+    }).withFailureHandler(function(){ $('#admptk_kelola_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Terputus.</span>'); }).getAdmPtkMasterData(ADMPTK_KELOLA_IS_ADMIN ? "SEMUA" : ADMPTK_KELOLA_NPSN_TERKUNCI);
 }
 
 function admptk_kelola_tarikDataServer() {
@@ -455,7 +484,7 @@ function admptk_kelola_bukaModalTambah() {
                          '</select>';
         $('#admptk_kelola_jenjang_container').html(selectHtml);
         
-        // Populasi list sekolah dari database master yang tersimpan di ADMPTK_KELOLA_MASTER_SEK
+        // Populasi list sekolah dari cache (sudah diisi oleh initMasterData)
         var $sek = $('#admptk_kelola_in_sekolah');
         $sek.empty().append('<option value="">- Pilih Sekolah -</option>');
         if (window.ADMPTK_KELOLA_MASTER_SEK && window.ADMPTK_KELOLA_MASTER_SEK.length > 0) {
@@ -463,69 +492,64 @@ function admptk_kelola_bukaModalTambah() {
                 $sek.append($('<option>', { value: s.npsn, text: s.nama }));
             });
         } else {
-            // Jika cache sekolah kosong, panggil getAdmPtkMasterData dinamis
+            // Fallback: jika initMasterData belum selesai, panggil ulang
             google.script.run.withSuccessHandler(function(json) {
                 var res = JSON.parse(json);
-                if (res.success && res.sekolah) {
-                    window.ADMPTK_KELOLA_MASTER_SEK = res.sekolah;
-                    ADMPTK_KELOLA_MASTER_PTK = res.ptk || [];
+                if (res.success) {
+                    if (res.sekolah) window.ADMPTK_KELOLA_MASTER_SEK = res.sekolah;
+                    if (res.ptk) ADMPTK_KELOLA_MASTER_PTK = res.ptk;
                     $sek.empty().append('<option value="">- Pilih Sekolah -</option>');
-                    window.ADMPTK_KELOLA_MASTER_SEK.forEach(function(s) {
+                    (window.ADMPTK_KELOLA_MASTER_SEK || []).forEach(function(s) {
                         $sek.append($('<option>', { value: s.npsn, text: s.nama }));
                     });
                 }
-            }).getAdmPtkMasterData("");
+            }).getAdmPtkMasterData("SEMUA");
         }
 
         // Listener ketika Admin mengubah pilihan sekolah di modal tambah
+        // Strategi: SELALU panggil server per-NPSN agar data PTK pasti termuat
         $(document).off('change', '#admptk_kelola_in_sekolah').on('change', '#admptk_kelola_in_sekolah', function() {
             var npsn = $(this).val(); var $ptk = $('#admptk_kelola_in_ptk');
             $ptk.empty().append('<option value="">- Pilih PTK -</option>');
-            if (npsn) {
-                var filtered = ADMPTK_KELOLA_MASTER_PTK.filter(p => String(p.npsn).trim() === String(npsn).trim());
-                if (filtered.length > 0) {
-                    filtered.forEach(function(p) {
-                        $ptk.append($('<option>', { 
-                            value: p.id, 
-                            text: p.nama + (p.nip ? ' (' + p.nip + ')' : ''), 
-                            'data-nip': p.nip, 
-                            'data-npsn': p.npsn, 
-                            'data-folderkey': p.folderKey 
-                        }));
-                    });
-                    $ptk.prop('disabled', false);
-                } else {
-                    // Jika data guru untuk sekolah terpilih belum termuat, reload dari server
-                    $ptk.prop('disabled', true);
-                    google.script.run.withSuccessHandler(function(json) {
-                        var res = JSON.parse(json);
-                        if (res.success && res.ptk) {
-                            // Gabungkan data ptk baru ke cache
-                            res.ptk.forEach(function(np) {
-                                if (!ADMPTK_KELOLA_MASTER_PTK.find(xp => xp.id === np.id)) {
-                                    ADMPTK_KELOLA_MASTER_PTK.push(np);
-                                }
-                            });
-                            var filteredReload = ADMPTK_KELOLA_MASTER_PTK.filter(p => String(p.npsn).trim() === String(npsn).trim());
-                            $ptk.empty().append('<option value="">- Pilih PTK -</option>');
-                            filteredReload.forEach(function(p) {
-                                $ptk.append($('<option>', { 
-                                    value: p.id, 
-                                    text: p.nama + (p.nip ? ' (' + p.nip + ')' : ''), 
-                                    'data-nip': p.nip, 
-                                    'data-npsn': p.npsn, 
-                                    'data-folderkey': p.folderKey 
-                                }));
-                            });
-                            $ptk.prop('disabled', false);
-                        }
-                    }).getAdmPtkMasterData(npsn);
-                }
-            } else {
-                $ptk.prop('disabled', true);
-            }
             $('#admptk_kelola_uploadContainer').html('<div class="text-center text-muted p-3" id="admptk_kelola_msgPilihPtk"><i class="fas fa-info-circle mr-1"></i> Pilih PTK terlebih dahulu.</div>');
             $('#admptk_kelola_btnAddRow, #admptk_kelola_btnSimpan').prop('disabled', true);
+            if (!npsn) { $ptk.prop('disabled', true); return; }
+
+            // Cek cache lokal dulu
+            var cached = ADMPTK_KELOLA_MASTER_PTK.filter(function(p) { return String(p.npsn).trim().toUpperCase() === String(npsn).trim().toUpperCase(); });
+            console.log('ADMPTK pilih sekolah NPSN=' + npsn + ', cached PTK match=' + cached.length + ', total PTK cache=' + ADMPTK_KELOLA_MASTER_PTK.length);
+            if (cached.length > 0) {
+                cached.forEach(function(p) {
+                    $ptk.append($('<option>', { value: p.id, text: p.nama + (p.nip ? ' (' + p.nip + ')' : ''), 'data-nip': p.nip, 'data-npsn': p.npsn, 'data-folderkey': p.folderKey }));
+                });
+                $ptk.prop('disabled', false);
+            } else {
+                // Tidak ada di cache → panggil server khusus NPSN ini
+                $ptk.prop('disabled', true);
+                $ptk.empty().append('<option value="">Memuat data guru...</option>');
+                google.script.run.withSuccessHandler(function(json) {
+                    var res = JSON.parse(json);
+                    console.log('ADMPTK reload PTK NPSN=' + npsn + ', result ptk count=' + (res.ptk ? res.ptk.length : 0));
+                    if (res.success && res.ptk && res.ptk.length > 0) {
+                        // Tambahkan ke cache global
+                        res.ptk.forEach(function(np) {
+                            if (!ADMPTK_KELOLA_MASTER_PTK.find(function(xp) { return xp.id === np.id; })) {
+                                ADMPTK_KELOLA_MASTER_PTK.push(np);
+                            }
+                        });
+                        $ptk.empty().append('<option value="">- Pilih PTK -</option>');
+                        res.ptk.forEach(function(p) {
+                            $ptk.append($('<option>', { value: p.id, text: p.nama + (p.nip ? ' (' + p.nip + ')' : ''), 'data-nip': p.nip, 'data-npsn': p.npsn, 'data-folderkey': p.folderKey }));
+                        });
+                        $ptk.prop('disabled', false);
+                    } else {
+                        $ptk.empty().append('<option value="">- Tidak ada data PTK -</option>');
+                    }
+                }).withFailureHandler(function(e) {
+                    console.error('ADMPTK reload PTK error:', e);
+                    $ptk.empty().append('<option value="">- Gagal memuat -</option>');
+                }).getAdmPtkMasterData(npsn);
+            }
         });
     }
 }
@@ -577,8 +601,8 @@ function admptk_kelola_createUploadRowContext($c) {
     var htmlKat = '<option value="">- Pilih Kategori -</option>'; 
     filteredKat.forEach(k => htmlKat += '<option value="' + k.idKat + '">' + k.namaKat + '</option>');
     
-    var delBtn = ADMPTK_KELOLA_ROW_COUNT > 1 ? '<button type="button" class="btn btn-sm btn-danger px-3 admptk_kelola-btn-del-row"><i class="fas fa-trash"></i></button>' : '<div style="width:42px;"></div>';
-    var htmlRow = '<div class="admptk_kelola-upload-row bg-white border p-3 mb-3 rounded shadow-sm position-relative" id="' + rId + '" style="display:none;"><span class="position-absolute badge badge-maroon shadow-sm" style="top:-10px;left:15px;font-size:12px;">Dokumen #' + ($c.find('.admptk_kelola-upload-row').length + 1) + '</span><div class="row align-items-end"><div class="col-md-5 mb-2 mb-md-0 admptk_kelola-kat-wrapper"><label class="form-label-sultan small text-muted text-uppercase mb-1">Kategori <span class="text-danger">*</span></label><select class="form-control form-control-sultan border-maroon admptk_kelola-kategori-select" required>' + htmlKat + '</select><div class="admptk_kelola-kat-keterangan alert-soft-info rounded small px-2 py-1 mt-1" style="display:none;font-size:11px;"></div></div><div class="col-md-2 mb-2 mb-md-0 admptk_kelola-tahun-wrapper"><label class="form-label-sultan small text-muted text-uppercase mb-1">Tahun <span class="text-danger">*</span></label><input type="number" class="form-control form-control-sultan border-maroon admptk_kelola-tahun-input" placeholder="202X" min="1980" max="2050" required></div><div class="col-md-2 mb-2 mb-md-0 admptk_kelola-periode-wrapper" style="display:none;"><label class="form-label-sultan small text-muted text-uppercase mb-1"><span class="admptk_kelola-periode-label">Periode</span> <span class="text-danger">*</span></label><input type="text" class="form-control form-control-sultan border-maroon admptk_kelola-periode-input"></div><div class="col-md-4 mb-2 mb-md-0 admptk_kelola-file-wrapper"><label class="form-label-sultan small text-muted text-uppercase mb-1"><i class="fas fa-file-pdf text-danger mr-1 admptk_kelola-format-icon"></i> <span class="admptk_kelola-format-text">File PDF (2MB)</span> <span class="text-danger">*</span></label><div class="custom-file"><input type="file" class="custom-file-input border-maroon admptk_kelola-file-input" accept="application/pdf" required><label class="custom-file-label text-truncate">Pilih file...</label></div></div><div class="col-md-1 text-right">' + delBtn + '</div></div></div>';
+    var delBtn = ADMPTK_KELOLA_ROW_COUNT > 1 ? '<button type="button" class="btn btn-sm btn-danger px-3 admptk_kelola-btn-del-row" style="height:38px;"><i class="fas fa-trash"></i></button>' : '<div style="width:42px;"></div>';
+    var htmlRow = '<div class="admptk_kelola-upload-row bg-white border p-3 mb-3 rounded shadow-sm position-relative" id="' + rId + '" style="display:none;"><span class="position-absolute badge badge-maroon shadow-sm" style="top:-10px;left:15px;font-size:12px;">Dokumen #' + ($c.find('.admptk_kelola-upload-row').length + 1) + '</span><div class="row align-items-end"><div class="col-md-5 mb-2 mb-md-0 admptk_kelola-kat-wrapper"><label class="form-label-sultan small text-muted text-uppercase mb-1">Kategori <span class="text-danger">*</span></label><select class="form-control form-control-sultan border-maroon admptk_kelola-kategori-select" required>' + htmlKat + '</select></div><div class="col-md-2 mb-2 mb-md-0 admptk_kelola-tahun-wrapper"><label class="form-label-sultan small text-muted text-uppercase mb-1">Tahun <span class="text-danger">*</span></label><select class="form-control form-control-sultan border-maroon admptk_kelola-tahun-input" required>' + admptk_kelola_generateTahunKalenderOptions() + '</select></div><div class="col-md-2 mb-2 mb-md-0 admptk_kelola-periode-wrapper" style="display:none;"><label class="form-label-sultan small text-muted text-uppercase mb-1"><span class="admptk_kelola-periode-label">Periode</span> <span class="text-danger">*</span></label><input type="text" class="form-control form-control-sultan border-maroon admptk_kelola-periode-input"></div><div class="col-md-4 mb-2 mb-md-0 admptk_kelola-file-wrapper"><label class="form-label-sultan small text-muted text-uppercase mb-1"><i class="fas fa-file-pdf text-danger mr-1 admptk_kelola-format-icon"></i> <span class="admptk_kelola-format-text">File PDF (2MB)</span> <span class="text-danger">*</span></label><div class="custom-file"><input type="file" class="custom-file-input border-maroon admptk_kelola-file-input" accept="application/pdf" required><label class="custom-file-label text-truncate">Pilih file...</label></div></div><div class="col-md-1 text-right d-flex justify-content-end">' + delBtn + '</div></div><div class="admptk_kelola-kat-keterangan alert-soft-info rounded small px-2 py-1 mt-2 mb-0" style="display:none;font-size:11px;"></div></div>';
     $c.append(htmlRow); $c.find('#' + rId).slideDown(200);
 }
 function admptk_kelola_createUploadRow() { admptk_kelola_createUploadRowContext($('#admptk_kelola_uploadContainer')); }
@@ -752,4 +776,37 @@ function admptk_kelola_buildBadgeStatus(status, catatan) {
     return b;
 }
 function admptk_kelola_esc(t) { return t ? String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;') : ''; }
+
+function admptk_kelola_generateTapelOptions() {
+    var now = new Date();
+    var currentYear = now.getFullYear();
+    var currentMonth = now.getMonth(); // 0-11
+    
+    // Tahun Pelajaran baru biasanya dimulai bulan Juli (index 6)
+    var startYear = (currentMonth >= 6) ? currentYear : currentYear - 1;
+    
+    var options = '';
+    // Pilihan dari 2 tahun pelajaran ke belakang sampai 1 tahun pelajaran ke depan
+    for (var i = -2; i <= 1; i++) {
+        var y1 = startYear + i;
+        var y2 = y1 + 1;
+        var val = y1 + '/' + y2;
+        var selected = (i === 0) ? ' selected' : '';
+        options += '<option value="' + val + '"' + selected + '>' + val + '</option>';
+    }
+    return options;
+}
+
+function admptk_kelola_generateTahunKalenderOptions() {
+    var now = new Date();
+    var currentYear = now.getFullYear();
+    var options = '';
+    // Pilihan dari 2 tahun ke belakang sampai 1 tahun ke depan
+    for (var i = -2; i <= 1; i++) {
+        var y = currentYear + i;
+        var selected = (i === 0) ? ' selected' : '';
+        options += '<option value="' + y + '"' + selected + '>' + y + '</option>';
+    }
+    return options;
+}
 </script>

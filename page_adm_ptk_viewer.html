@@ -23,10 +23,18 @@
           <i class="fas fa-chevron-down"></i>
         </div>
 
+        <!-- Filter Nama Sekolah (Hanya Admin) -->
+        <div class="sultan-filter-item mr-2" id="admptk_viewer_filterNamaSekolahContainer" style="display: none; width: auto;">
+          <select id="admptk_viewer_filterNamaSekolah" aria-label="Pilih Sekolah" style="width: auto; min-width: 200px; padding-right: 25px !important;">
+            <option value="SEMUA">- Semua Sekolah -</option>
+          </select>
+          <i class="fas fa-chevron-down"></i>
+        </div>
+
         <!-- Filter PTK -->
         <div class="sultan-filter-item mr-2" id="admptk_viewer_filterPtkContainer" style="display: none; width: auto; max-width: 100%;">
           <select id="admptk_viewer_filterPtk" aria-label="Pilih PTK" style="width: auto; min-width: 220px; padding-right: 25px !important;">
-            <option value="">- Memvalidasi Akses... -</option>
+            <option value="SEMUA">- Pilih PTK -</option>
           </select>
           <i class="fas fa-chevron-down"></i>
         </div>
@@ -112,15 +120,19 @@ $(document).ready(function() {
 
     admptk_viewer_init();
 
-    $(document).off('change', '#admptk_viewer_filterJenjang').on('change', '#admptk_viewer_filterJenjang', admptk_viewer_populatePtk);
+    $(document).off('change', '#admptk_viewer_filterJenjang').on('change', '#admptk_viewer_filterJenjang', function() {
+        admptk_viewer_populateSekolah();
+        admptk_viewer_populatePtk();
+    });
+    $(document).off('change', '#admptk_viewer_filterNamaSekolah').on('change', '#admptk_viewer_filterNamaSekolah', admptk_viewer_populatePtk);
     $(document).off('change', '#admptk_viewer_filterPtk').on('change', '#admptk_viewer_filterPtk', function() {
         var idPtk = $(this).val();
         if (idPtk) admptk_viewer_loadPtkData(idPtk);
     });
     $(document).off('click', '#admptk_viewer_btnRefresh').on('click', '#admptk_viewer_btnRefresh', function() {
-        var idPtk = ADMPTK_VIEWER_IS_ADMIN ? $('#admptk_viewer_filterPtk').val() : null;
-        if (ADMPTK_VIEWER_IS_ADMIN && idPtk) admptk_viewer_loadPtkData(idPtk);
-        else if (!ADMPTK_VIEWER_IS_ADMIN) admptk_viewer_init();
+        var idPtk = $('#admptk_viewer_filterPtk').val();
+        if (idPtk) admptk_viewer_loadPtkData(idPtk);
+        else admptk_viewer_init();
     });
     $(document).off('click', '.admptk-tree-folder').on('click', '.admptk-tree-folder', function() {
         var isOpening = !$(this).hasClass('folder-open');
@@ -143,6 +155,7 @@ function admptk_viewer_init() {
     var npsnFilter = ADMPTK_VIEWER_IS_ADMIN ? "" : ADMPTK_VIEWER_NPSN_TERKUNCI;
     if (ADMPTK_VIEWER_IS_ADMIN) {
         $('#admptk_viewer_filterJenjangContainer').show();
+        $('#admptk_viewer_filterNamaSekolahContainer').show();
         $('#admptk_viewer_filterPtkContainer').show();
     }
     google.script.run.withSuccessHandler(function(json) {
@@ -153,6 +166,7 @@ function admptk_viewer_init() {
             if (ADMPTK_VIEWER_IS_ADMIN) {
                 // Set default jenjang SD lalu populate
                 $('#admptk_viewer_filterJenjang').val('SD');
+                admptk_viewer_populateSekolah();
                 admptk_viewer_populatePtk();
             } else {
                 // User biasa: pilih PTK dari sekolahnya sendiri
@@ -168,21 +182,54 @@ function admptk_viewer_init() {
     }).getAdmPtkViewerInit(npsnFilter);
 }
 
+function admptk_viewer_populateSekolah() {
+    var fJ = $('#admptk_viewer_filterJenjang').val();
+    var $selSek = $('#admptk_viewer_filterNamaSekolah');
+    $selSek.empty().append('<option value="SEMUA">- Semua Sekolah -</option>');
+    
+    var uniqueSek = {};
+    ADMPTK_VIEWER_MASTER_PTK.forEach(function(p) {
+        var jj = String(p.jenjang || "").toUpperCase();
+        var pass = false;
+        if (fJ === "SEMUA") pass = true;
+        else if (fJ === "PAUD") pass = (jj === "PAUD" || jj === "TK" || jj === "KB" || jj === "SPS" || jj === "TPA");
+        else if (fJ === "SD") pass = (jj === "SD" || jj === "SDS");
+        
+        if (pass && p.unit) uniqueSek[p.unit] = true;
+    });
+    
+    var sortedSek = Object.keys(uniqueSek).sort();
+    sortedSek.forEach(function(s) {
+        $selSek.append('<option value="' + admptk_viewer_esc(s) + '">' + admptk_viewer_esc(s) + '</option>');
+    });
+    $selSek.prop('disabled', false);
+}
+
 function admptk_viewer_populatePtk() {
     var fJ = $('#admptk_viewer_filterJenjang').val();
+    var fS = $('#admptk_viewer_filterNamaSekolah').val() || "SEMUA";
     var $sel = $('#admptk_viewer_filterPtk');
     $sel.empty().append('<option value="">- Pilih PTK -</option>');
+    
     var filtered = ADMPTK_VIEWER_MASTER_PTK.filter(function(p) {
-        if (fJ === "SEMUA") return true;
+        // 1. Filter Jenjang
         var jj = String(p.jenjang || "").toUpperCase();
-        if (fJ === "PAUD") return jj === "PAUD" || jj === "TK" || jj === "KB" || jj === "SPS" || jj === "TPA";
-        if (fJ === "SD") return jj === "SD";
+        if (fJ !== "SEMUA") {
+            if (fJ === "PAUD" && !(jj === "PAUD" || jj === "TK" || jj === "KB" || jj === "SPS" || jj === "TPA")) return false;
+            if (fJ === "SD" && !(jj === "SD" || jj === "SDS")) return false;
+        }
+        // 2. Filter Sekolah
+        if (fS !== "SEMUA" && fS !== "") {
+            if (String(p.unit || "").trim().toUpperCase() !== fS.trim().toUpperCase()) return false;
+        }
         return true;
     });
+    
     filtered.forEach(function(p) {
         $sel.append('<option value="' + p.id + '">' + admptk_viewer_esc(p.nama) + (p.nip ? ' - ' + p.nip : '') + '</option>');
     });
     $sel.prop('disabled', false);
+    
     // Reset viewer
     $('#admptk_viewer_treeContent').empty();
     $('#admptk_viewer_treeInitial').removeClass('d-none').addClass('d-flex');
