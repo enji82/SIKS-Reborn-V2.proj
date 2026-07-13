@@ -277,3 +277,34 @@ function getDashboardMuridData(tahunFilter, bulanFilter) {
 
   return JSON.stringify(result);
 }
+
+// ==========================================
+// DATA PERATURAN MURID (JUMLAH ROMBEL & MURID)
+// Folder Google Drive: https://drive.google.com/drive/u/0/folders/1YiBlALry5bcZ9Ne-7GJHiaDANqv_POnN
+// ==========================================
+function murid_getPeraturanFiles() {
+  try {
+    var folderId = '1YiBlALry5bcZ9Ne-7GJHiaDANqv_POnN';
+    var folder = DriveApp.getFolderById(folderId);
+    var files = folder.getFiles();
+    var fileList = [];
+    
+    while (files.hasNext()) {
+      var file = files.next();
+      fileList.push({
+        id: file.getId(),
+        name: file.getName(),
+        url: file.getUrl()
+      });
+    }
+    
+    // Sort files alphabetically by name
+    fileList.sort(function(a, b) {
+      return a.name.localeCompare(b.name);
+    });
+    
+    return JSON.stringify({ status: 'success', data: fileList });
+  } catch (e) {
+    return JSON.stringify({ status: 'error', message: e.message });
+  }
+}
