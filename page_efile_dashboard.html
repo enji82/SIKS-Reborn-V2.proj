@@ -56,6 +56,18 @@
             </select>
             <i class="fas fa-chevron-down"></i>
           </div>
+          <!-- Filter Kategori SKP (hanya muncul untuk jenis SKP) -->
+          <div class="sultan-filter-item" id="efiledash_filterKategoriSkpContainer" style="display: none;">
+            <select id="efiledash_filterKategoriSkp" class="form-control" aria-label="Pilih Kategori SKP">
+              <option value="SEMUA">- Semua Kategori -</option>
+              <option value="Triwulan 1">Triwulan 1</option>
+              <option value="Triwulan 2">Triwulan 2</option>
+              <option value="Triwulan 3">Triwulan 3</option>
+              <option value="Triwulan 4">Triwulan 4</option>
+              <option value="Tahunan">Tahunan</option>
+            </select>
+            <i class="fas fa-chevron-down"></i>
+          </div>
           <!-- Filter Unit / Sekolah -->
           <div class="sultan-filter-item" id="efiledash_filterUnitContainer" style="display: none;">
             <select id="efiledash_filterUnit" class="form-control" aria-label="Pilih Unit Kerja">
@@ -225,6 +237,7 @@ var EFILEDASH_USER_NPSN = "";
 var EFILEDASH_UNIT_TERKUNCI = "";
 var EFILEDASH_USE_NPSN_FILTER = false;
 var EFILEDASH_TAHUN_DEFAULTED = false;
+var EFILEDASH_SKP_TAHUN_DEFAULTED = false;
 var EFILEDASH_JENIS_PERIODE = "TAHUNAN";
 
 $(document).ready(function() {
@@ -244,7 +257,7 @@ $(document).ready(function() {
         if (k !== "" && k != null) efiledash_loadDataKategori(k, true);
     });
     $(document).off('change', '#efiledash_filterKategori').on('change', '#efiledash_filterKategori', function() { var k = $(this).val(); if (k) efiledash_loadDataKategori(k); });
-    $(document).off('change', '#efiledash_filterTahun, #efiledash_filterUnit').on('change', '#efiledash_filterTahun, #efiledash_filterUnit', efiledash_terapkanFilterLokal);
+    $(document).off('change', '#efiledash_filterTahun, #efiledash_filterUnit, #efiledash_filterKategoriSkp').on('change', '#efiledash_filterTahun, #efiledash_filterUnit, #efiledash_filterKategoriSkp', efiledash_terapkanFilterLokal);
     $(document).off('click', '#efiledash_btnSalinWa').on('click', '#efiledash_btnSalinWa', efiledash_salinKeWA);
     $(document).off('keyup', '#efiledash_inputCariSudah').on('keyup', '#efiledash_inputCariSudah', function() { var val = $(this).val().toLowerCase(); $('.efiledash-dash-item-sudah').filter(function() { $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1); }); });
     $(document).off('keyup', '#efiledash_inputCariBelum').on('keyup', '#efiledash_inputCariBelum', function() { var val = $(this).val().toLowerCase(); $('.efiledash-dash-item-belum').filter(function() { $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1); }); });
@@ -310,6 +323,11 @@ function efiledash_loadDataKategori(idKategori, forceRefresh) {
         EFILEDASH_CACHE_SUDAH = cached.sudah || [];
         EFILEDASH_CACHE_BELUM = cached.belum || [];
 
+        // Reset flag default tahun & kategori SKP saat pindah kategori
+        EFILEDASH_TAHUN_DEFAULTED = false;
+        EFILEDASH_SKP_TAHUN_DEFAULTED = false;
+        $('#efiledash_filterKategoriSkp').val('SEMUA');
+
         if (EFILEDASH_IS_ADMIN || EFILEDASH_USE_NPSN_FILTER) efiledash_initDropdownUnit();
         efiledash_initDropdownTahun();
         efiledash_terapkanFilterLokal();
@@ -347,6 +365,11 @@ function efiledash_loadDataKategori(idKategori, forceRefresh) {
         EFILEDASH_CACHE_SUDAH = data.sudah || [];
         EFILEDASH_CACHE_BELUM = data.belum || [];
 
+        // Reset flag default tahun & kategori SKP saat fresh load
+        EFILEDASH_TAHUN_DEFAULTED = false;
+        EFILEDASH_SKP_TAHUN_DEFAULTED = false;
+        $('#efiledash_filterKategoriSkp').val('SEMUA');
+
         if (EFILEDASH_IS_ADMIN || EFILEDASH_USE_NPSN_FILTER) efiledash_initDropdownUnit();
         efiledash_initDropdownTahun();
         efiledash_terapkanFilterLokal();
@@ -381,16 +404,61 @@ function efiledash_initDropdownUnit() {
 
 function efiledash_initDropdownTahun() {
     var uniqueTahun = new Set();
+    
+    // Untuk SKP: hanya ambil nilai TAHUN dari period key (format "Kategori YYYY")
+    if (EFILEDASH_JENIS_PERIODE === "SKP") {
+        var validSkpParts = ["Triwulan 1", "Triwulan 2", "Triwulan 3", "Triwulan 4", "Tahunan"];
+        EFILEDASH_CACHE_REKAP.concat(EFILEDASH_CACHE_BELUM).forEach(function(r) {
+            var thn = String(r.tahun || "").trim();
+            // Format valid: "Triwulan X YYYY" atau "Tahunan YYYY"
+            var parts = thn.split(" ");
+            var year = parseInt(parts[parts.length - 1]);
+            var kategori = parts.slice(0, parts.length - 1).join(" ");
+            if (year > 2000 && validSkpParts.indexOf(kategori) !== -1) {
+                uniqueTahun.add(String(year));
+            }
+        });
+        
+        var selectSkp = $('#efiledash_filterTahun');
+        var curValSkp = selectSkp.val();
+        selectSkp.empty().append('<option value="SEMUA">- Semua Tahun -</option>');
+        
+        var sortedSkp = Array.from(uniqueTahun).sort(function(a, b) { return parseInt(b) - parseInt(a); });
+        sortedSkp.forEach(function(t) { selectSkp.append('<option value="' + efiledash_esc(t) + '">' + efiledash_esc(t) + '</option>'); });
+        if (!EFILEDASH_SKP_TAHUN_DEFAULTED && sortedSkp.length > 0) {
+            selectSkp.val(sortedSkp[0]);
+            EFILEDASH_SKP_TAHUN_DEFAULTED = true;
+        } else if (curValSkp && (curValSkp === "SEMUA" || uniqueTahun.has(curValSkp))) {
+            selectSkp.val(curValSkp);
+        }
+        
+        // Tampilkan filter Kategori SKP
+        $('#efiledash_filterKategoriSkpContainer').show();
+        return;
+    }
+    
+    // Sembunyikan filter kategori SKP jika bukan SKP
+    $('#efiledash_filterKategoriSkpContainer').hide();
+    $('#efiledash_filterKategoriSkp').val('SEMUA');
+    
     EFILEDASH_CACHE_REKAP.concat(EFILEDASH_CACHE_BELUM).forEach(function(r) {
         var thn = String(r.tahun || "").trim(); if (thn && thn !== "-") uniqueTahun.add(thn);
     });
     var select = $('#efiledash_filterTahun'); var curVal = select.val();
     
+    // Sesuaikan Label Option Default (SEMUA) berdasarkan Jenis Periode
+    var labelSemua = "- Semua Tahun -";
     if (EFILEDASH_JENIS_PERIODE === "PERMANEN") {
-        select.empty().append('<option value="SEMUA">- Permanen (Semua Waktu) -</option>');
-    } else {
-        select.empty().append('<option value="SEMUA">- Semua Tahun -</option>');
+        labelSemua = "- Permanen (Semua Waktu) -";
+    } else if (EFILEDASH_JENIS_PERIODE === "SK_KP") {
+        labelSemua = "- Semua Pangkat -";
+    } else if (EFILEDASH_JENIS_PERIODE === "SK_JF") {
+        labelSemua = "- Semua Jenjang -";
+    } else if (EFILEDASH_JENIS_PERIODE === "IJAZAH") {
+        labelSemua = "- Semua Pendidikan -";
     }
+    
+    select.empty().append('<option value="SEMUA">' + labelSemua + '</option>');
     
     var sorted = Array.from(uniqueTahun);
     sorted.sort(function(a, b) {
@@ -446,8 +514,38 @@ function efiledash_initDropdownTahun() {
     });
     
     sorted.forEach(function(t) { select.append('<option value="' + efiledash_esc(t) + '">' + efiledash_esc(t) + '</option>'); });
+    
+    // Terapkan default value pintar saat pertamakali dimuat (EFILEDASH_TAHUN_DEFAULTED === false)
     if (!EFILEDASH_TAHUN_DEFAULTED && sorted.length > 0) {
-        select.val(sorted[0]);
+        var defaultVal = "SEMUA";
+        var namaKategoriUpper = String($('#efiledash_filterKategori option:selected').text() || "").toUpperCase();
+        var currentYearStr = String(new Date().getFullYear());
+        var lastYearStr = String(new Date().getFullYear() - 1);
+        
+        // Aturan 1: Default TAHUN INI untuk SKP Awal Tahun, KP4, KGB, Mutasi, Plt KS, Surat Tugas
+        if (namaKategoriUpper.includes("SKP AWAL") || 
+            namaKategoriUpper.includes("KP4") || 
+            namaKategoriUpper.includes("KGB") || 
+            namaKategoriUpper.includes("MUTASI") || 
+            namaKategoriUpper.includes("PLT") || 
+            namaKategoriUpper.includes("TUGAS RANGKAP")) {
+            
+            // Cari tahun saat ini di dropdown
+            var yearFound = sorted.find(function(t) { return String(t).includes(currentYearStr); });
+            if (yearFound) defaultVal = yearFound;
+        }
+        
+        // Aturan 2: Default TAHUN LALU untuk PAK dan Bukti Penerimaan Elektronik (BPE)
+        else if (namaKategoriUpper.includes("PAK") || 
+                 namaKategoriUpper.includes("BUKTI PENERIMAAN") || 
+                 namaKategoriUpper.includes("RECEIPT") || 
+                 namaKategoriUpper.includes("BPE")) {
+            
+            var lastYearFound = sorted.find(function(t) { return String(t).includes(lastYearStr); });
+            if (lastYearFound) defaultVal = lastYearFound;
+        }
+        
+        select.val(defaultVal);
         EFILEDASH_TAHUN_DEFAULTED = true;
     } else if (curVal && (curVal === "SEMUA" || uniqueTahun.has(curVal))) {
         select.val(curVal);
@@ -542,11 +640,45 @@ function efiledash_getRekapForMetrics(dataRekap, fTahun) {
 
 function efiledash_terapkanFilterLokal() {
     var fUnit = String($('#efiledash_filterUnit').val() || "SEMUA").trim().toUpperCase();
-    var fTahun = String($('#efiledash_filterTahun').val() || "").trim().toUpperCase();
+    var fTahun = String($('#efiledash_filterTahun').val() || "").trim();
+    var fTahunUp = fTahun.toUpperCase();
+    
+    // Untuk SKP: filter menggunakan kombinasi Tahun + Kategori SKP
+    if (EFILEDASH_JENIS_PERIODE === "SKP") {
+        var fKatSkp = String($('#efiledash_filterKategoriSkp').val() || "SEMUA").trim();
+        var validSkpParts = ["Triwulan 1", "Triwulan 2", "Triwulan 3", "Triwulan 4", "Tahunan"];
+        
+        function passFiltSkp(r) {
+            if (!efiledash_rowMatchesUnit(r, fUnit)) return false;
+            var thn = String(r.tahun || "").trim();
+            var parts = thn.split(" ");
+            var year = String(parseInt(parts[parts.length - 1]) || 0);
+            var kategori = parts.slice(0, parts.length - 1).join(" ");
+            // Hanya proses data dengan format SKP yang valid
+            if (validSkpParts.indexOf(kategori) === -1) return false;
+            // Filter tahun
+            if (fTahunUp !== "SEMUA" && fTahunUp !== "" && year !== fTahun) return false;
+            // Filter kategori
+            if (fKatSkp !== "SEMUA" && fKatSkp !== "" && kategori !== fKatSkp) return false;
+            return true;
+        }
+        
+        var filterRekap = EFILEDASH_CACHE_REKAP.filter(passFiltSkp);
+        var filterSudah = EFILEDASH_CACHE_SUDAH.filter(passFiltSkp);
+        var filterBelum = EFILEDASH_CACHE_BELUM.filter(passFiltSkp);
+        
+        if (EFILEDASH_IS_ADMIN) { $('#efiledash_filterUnitContainer').show(); } else { $('#efiledash_filterUnitContainer').hide(); }
+        $('#efiledash_filterTahun').closest('.sultan-filter-item').show();
+        
+        // Tentukan key periode untuk getRekapForMetrics
+        var fPeriodeSkp = fTahunUp === "SEMUA" ? "SEMUA" : fTahun;
+        efiledash_renderDashboard(filterRekap, filterSudah, filterBelum, fPeriodeSkp);
+        return;
+    }
     
     function passFilt(r) {
         if (!efiledash_rowMatchesUnit(r, fUnit)) return false;
-        if (fTahun !== "SEMUA" && fTahun !== "" && String(r.tahun || "").trim().toUpperCase() !== fTahun) return false;
+        if (fTahunUp !== "SEMUA" && fTahunUp !== "" && String(r.tahun || "").trim().toUpperCase() !== fTahunUp) return false;
         return true;
     }
 
@@ -567,7 +699,7 @@ function efiledash_terapkanFilterLokal() {
         $('#efiledash_filterTahun').closest('.sultan-filter-item').show();
     }
 
-    efiledash_renderDashboard(filterRekap, filterSudah, filterBelum, fTahun);
+    efiledash_renderDashboard(filterRekap, filterSudah, filterBelum, fTahunUp);
 }
 
 function efiledash_renderDashboard(dataRekap, dataSudah, dataBelum, fTahun) {
@@ -576,9 +708,10 @@ function efiledash_renderDashboard(dataRekap, dataSudah, dataBelum, fTahun) {
         var mapUnit = {};
         dataRekap.forEach(function(r) {
             var uni = r.unit || "Lainnya";
-            if (!mapUnit[uni]) { mapUnit[uni] = { ptkList: new Set(), sudahList: new Set() }; }
-            mapUnit[uni].ptkList.add(r.id);
-            if (parseInt(r.sudah) > 0) { mapUnit[uni].sudahList.add(r.id); }
+            if (!mapUnit[uni]) { mapUnit[uni] = { jml: 0, sudah: 0, belum: 0 }; }
+            mapUnit[uni].jml += parseInt(r.jml) || 0;
+            mapUnit[uni].sudah += parseInt(r.sudah) || 0;
+            mapUnit[uni].belum += parseInt(r.belum) || 0;
         });
 
         if ($.fn.DataTable.isDataTable('#efiledash_tabelRekap')) {
@@ -588,9 +721,9 @@ function efiledash_renderDashboard(dataRekap, dataSudah, dataBelum, fTahun) {
         var tbodyHtml = '';
         var listSortedUnit = Object.keys(mapUnit).sort();
         listSortedUnit.forEach(function(uni) {
-            var jmlPtk = mapUnit[uni].ptkList.size;
-            var unggah = mapUnit[uni].sudahList.size;
-            var belum = jmlPtk - unggah;
+            var jmlPtk = mapUnit[uni].jml;
+            var unggah = mapUnit[uni].sudah;
+            var belum = mapUnit[uni].belum;
             var capaian = jmlPtk > 0 ? Math.round((unggah / jmlPtk) * 100) : 0;
             
             var dispJml = jmlPtk === 0 ? "-" : jmlPtk;

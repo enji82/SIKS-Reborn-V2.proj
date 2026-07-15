@@ -12,12 +12,9 @@
                 <button type="button" class="sultan-btn sultan-btn-compact sultan-btn-aksi-batal" id="efileviewer_btnResetPtk" style="display:none;">
                     <i class="fas fa-times mr-1"></i> BATAL
                 </button>
+                <div class="divider-vertical d-none d-md-block mx-1"></div>
                 <button type="button" class="sultan-btn-refresh" id="efileviewer_btnRefresh" title="Segarkan Data">
                     <i class="fas fa-sync-alt"></i>
-                </button>
-                <div class="divider-vertical d-none d-md-block mx-1"></div>
-                <button type="button" class="sultan-btn sultan-btn-compact sultan-btn-outline-maroon d-none d-md-flex" id="efileviewer_btnFullscreen">
-                    <i class="fas fa-expand mr-1"></i> FULLSCREEN
                 </button>
             </div>
         </div>
@@ -155,12 +152,7 @@ $(document).ready(function() {
         efileviewer_loadIframe(url, namaFile);
     });
 
-    $(document).off('click', '#efileviewer_btnFullscreen').on('click', '#efileviewer_btnFullscreen', function() {
-        $('body').toggleClass('efile-fullscreen-mode');
-        var isFS = $('body').hasClass('efile-fullscreen-mode');
-        if(isFS) { $(this).html('<i class="fas fa-compress mr-1"></i> Tutup Layar'); $('#efileviewer_treeArea, #efileviewer_iframe').closest('.flex-grow-1').css('height', '85vh'); }
-        else { $(this).html('<i class="fas fa-expand mr-1"></i> Full Screen'); $('#efileviewer_treeArea, #efileviewer_iframe').closest('.flex-grow-1').css('height', '65vh'); }
-    });
+
 });
 
 // =================================================================
@@ -273,7 +265,7 @@ function efileviewer_loadPtkData(id_ptk) {
             return;
         }
 
-        efileviewer_buildTree(res.categories, res.files, res.ptk.status);
+        efileviewer_buildTree(res.categories, res.files, res.ptk);
 
     }).withFailureHandler(function(err){
         $('#efileviewer_treeLoading').removeClass('d-flex').addClass('d-none');
@@ -285,18 +277,37 @@ function efileviewer_loadPtkData(id_ptk) {
 // =================================================================
 // 4. TREE BUILDER ALGORITHM (PERBAIKAN NAMA FILE DITAMPILKAN)
 // =================================================================
-function efileviewer_buildTree(categories, files, statusPegawai) {
+function efileviewer_buildTree(categories, files, ptkObj) {
     var treeHtml = '';
+    
+    var pJenjang = String(ptkObj.jenjang || "").toUpperCase();
+    var pKepeg = String(ptkObj.status || "").toUpperCase();
+    var pTugas = String(ptkObj.tugas || "").toUpperCase();
 
     categories.forEach(function(kat) {
-        // Filter kategori berdasarkan status pegawai
-        var isRelevant = true;
-        if(kat.statusPegawaiWajib && kat.statusPegawaiWajib.trim() !== "") {
-            var statusList = kat.statusPegawaiWajib.split(',').map(function(s) { return s.trim().toLowerCase(); });
-            isRelevant = statusList.includes(statusPegawai.toLowerCase());
+        // 1. Evaluasi Filter Klasifikasi Target Jenjang
+        if (kat.klasifikasi_jenjang && kat.klasifikasi_jenjang.trim() !== "" && kat.klasifikasi_jenjang.toUpperCase() !== "ALL") {
+            var jgList = kat.klasifikasi_jenjang.split(',').map(function(s) { return s.trim().toUpperCase(); });
+            if (jgList.indexOf(pJenjang) === -1) return; // Skip jika tidak cocok
         }
         
-        if(!isRelevant) return; // Skip kategori yang tidak relevan
+        // 2. Evaluasi Filter Klasifikasi Kepegawaian
+        if (kat.klasifikasi_kepeg && kat.klasifikasi_kepeg.trim() !== "" && kat.klasifikasi_kepeg.toUpperCase() !== "ALL") {
+            var kpList = kat.klasifikasi_kepeg.split(',').map(function(s) { return s.trim().toUpperCase(); });
+            if (kpList.indexOf(pKepeg) === -1) return; // Skip jika tidak cocok
+        }
+        
+        // 3. Evaluasi Filter Klasifikasi Tugas / Jabatan
+        if (kat.klasifikasi_tugas && kat.klasifikasi_tugas.trim() !== "" && kat.klasifikasi_tugas.toUpperCase() !== "ALL") {
+            var tgList = kat.klasifikasi_tugas.split(',').map(function(s) { return s.trim().toUpperCase(); });
+            if (tgList.indexOf(pTugas) === -1) return; // Skip jika tidak cocok
+        }
+        
+        // Evaluasi filter legacy statusPegawaiWajib
+        if(kat.statusPegawaiWajib && kat.statusPegawaiWajib.trim() !== "") {
+            var statusList = kat.statusPegawaiWajib.split(',').map(function(s) { return s.trim().toLowerCase(); });
+            if (statusList.indexOf(pKepeg.toLowerCase()) === -1) return;
+        }
         
         var catFiles = files.filter(f => String(f.id_kategori).trim() === String(kat.idKat).trim());
         var countAda = catFiles.length;
@@ -324,11 +335,14 @@ function efileviewer_buildTree(categories, files, statusPegawai) {
                 // VAKSIN UI: Menampilkan nama file asli hasil Auto-Rename (Tanpa "Dokumen" kaku)
                 var displayNama = efileviewer_escapeHtml(f.file_name);
                 var badgeStatus = efileviewer_buildBadgeStatus(f.status);
+                var labelPeriode = f.tahun ? ('<span class="text-muted ml-1" style="font-size:11px;font-weight:normal;">(' + efileviewer_escapeHtml(f.tahun) + (f.periode && f.periode !== '-' ? ' · ' + efileviewer_escapeHtml(f.periode) : '') + ')</span>') : '';
 
                 treeHtml += `
-                <div class="efile-tree-item efile-tree-item-file font-weight-bold d-flex justify-content-between align-items-center" data-url="${f.url}" data-nama="${displayNama}" style="font-size:13px;">
-                    <span><i class="fas ${faIcon} mr-2"></i> ${displayNama}</span>
-                    ${badgeStatus}
+                <div class="efile-tree-item efile-tree-item-file font-weight-bold d-flex flex-column" data-url="${f.url}" data-nama="${displayNama}" style="font-size:13px; cursor:pointer;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span><i class="fas ${faIcon} mr-2"></i> ${displayNama} ${labelPeriode}</span>
+                        ${badgeStatus}
+                    </div>
                 </div>`;
             });
         } else {
@@ -399,10 +413,16 @@ function efileviewer_escapeHtml(text) {
 function efileviewer_buildBadgeStatus(st) {
     if (!st || String(st).toLowerCase() === 'undefined' || String(st).trim() === "") return "";
     var s = String(st).toLowerCase();
-    var c = 'badge-sultan-diproses';
-    if (s.includes('setuju') || s.includes('ok')) c = 'badge-sultan-disetujui';
-    else if (s.includes('revisi')) c = 'badge-sultan-revisi';
-    else if (s.includes('tolak')) c = 'badge-sultan-ditolak';
-    return `<span class="badge ${c} ml-2" style="font-size: 13px; text-transform: uppercase;">${st}</span>`;
+    var icon, color, title;
+    if (s.includes('setuju') || s.includes('ok')) {
+        icon = 'fa-check-circle'; color = '#28a745'; title = 'Disetujui';
+    } else if (s.includes('revisi')) {
+        icon = 'fa-exclamation-triangle'; color = '#fd7e14'; title = 'Perlu Revisi';
+    } else if (s.includes('tolak')) {
+        icon = 'fa-times-circle'; color = '#dc3545'; title = 'Ditolak';
+    } else {
+        icon = 'fa-clock'; color = '#007bff'; title = 'Diproses';
+    }
+    return `<i class="fas ${icon} ml-2 flex-shrink-0" style="color:${color}; font-size:14px;" title="${title}"></i>`;
 }
 </script>

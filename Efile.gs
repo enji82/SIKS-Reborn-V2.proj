@@ -249,11 +249,25 @@ function getEfileData(npsnFilter) {
         var idPtkEfile = String(data[i][0]).trim();
         var ptkInfo = ptkMap[idPtkEfile];
         
-        // Filter NPSN
+        // Filter NPSN dengan fallback komprehensif
         var rNpsn = ptkInfo ? String(ptkInfo.npsn || "").trim().toUpperCase() : "";
+        var rUnit = ptkInfo ? String(ptkInfo.unit || "").trim().toUpperCase() : "";
         
-        // Jika target filter cocok atau filter kosong
-        if (targetNpsn === "" || targetNpsn === "SEMUA" || rNpsn === targetNpsn) {
+        // Ambil data NPSN langsung dari Database_Efile kolom L (index 11) sebagai fallback
+        var dbNpsn = String(data[i][11] || "").trim().toUpperCase();
+        
+        // Pencocokan:
+        var matchesFilter = false;
+        if (targetNpsn === "" || targetNpsn === "SEMUA") {
+            matchesFilter = true;
+        } else {
+            // Cek apakah target filter cocok dengan NPSN (master GTK), Unit (master GTK), atau NPSN/Unit yang tertulis di Database_Efile
+            if (rNpsn === targetNpsn || rUnit === targetNpsn || dbNpsn === targetNpsn) {
+                matchesFilter = true;
+            }
+        }
+        
+        if (matchesFilter) {
             result.push({
                 rowId: i + 1, 
                 id_ptk: idPtkEfile, 
@@ -275,11 +289,43 @@ function getEfileData(npsnFilter) {
                 verifikator: data[i][13] || "-",
                 periode: data[i][14] || "-",
                 tgl_edit: data[i][15] || "-",
-                user_edit: data[i][16] || "-"
             });
         }
     }
-    result.sort(function(a,b) { return b.rowId - a.rowId; });
+    // Pengurutan berbasis Last Activity (Tanggal Unggah, Verifikasi, atau Edit yang paling baru)
+    result.sort(function(a, b) {
+      function parseDateTime(dStr) {
+        if (!dStr || dStr === "-" || String(dStr).trim() === "") return 0;
+        try {
+          // Format standar aplikasi: "dd-MM-yyyy HH:mm:ss"
+          var p = dStr.split(" ");
+          var dateParts = p[0].split("-");
+          var timeParts = p[1] ? p[1].split(":") : ["00", "00", "00"];
+          // Date constructor: (year, monthIndex, day, hours, minutes, seconds)
+          var d = new Date(
+            parseInt(dateParts[2]), 
+            parseInt(dateParts[1]) - 1, 
+            parseInt(dateParts[0]), 
+            parseInt(timeParts[0] || 0), 
+            parseInt(timeParts[1] || 0), 
+            parseInt(timeParts[2] || 0)
+          );
+          return d.getTime() || 0;
+        } catch(e) {
+          return 0;
+        }
+      }
+
+      var actA = Math.max(parseDateTime(a.tgl_upload), parseDateTime(a.tgl_edit), parseDateTime(a.tgl_verif));
+      var actB = Math.max(parseDateTime(b.tgl_upload), parseDateTime(b.tgl_edit), parseDateTime(b.tgl_verif));
+      
+      // Jika timestamp aktivitas sama, gunakan fallback ke rowId (baris fisik)
+      if (actB === actA) {
+        return b.rowId - a.rowId;
+      }
+      return actB - actA;
+    });
+
     return JSON.stringify({ success: true, data: result });
   } catch(e) { return JSON.stringify({ success: false, message: e.message }); }
 }
@@ -549,36 +595,46 @@ function getUnitNameByPtkId(idPtk) {
 
 function getEfileViewerData(keyword, npsnFilter) {
   try {
-    var searchKey = String(keyword).trim().toLowerCase();
+    var searchKey = String(keyword).trim();
+    var searchKeyLower = searchKey.toLowerCase();
     
-    // VAKSIN ANTI CASE-SENSITIVE: Bersihkan dan besarkan huruf dari frontend
-    var cleanFilter = String(npsnFilter || "").trim().toUpperCase();
- 
-    var shPtk = getSheet(KONFIG_EFILE.DB_KEY, "Database_PTK"); 
-    var dataPtk = shPtk.getDataRange().getDisplayValues(); 
+    // Gunakan sumber data yang sama dengan getEfileMasterData (efileGetSharedDaftarPtk)
+    // agar id_ptk yang dikirim frontend selalu cocok dengan yang dicari di backend
+    var cleanFilter = String(npsnFilter || "").trim();
+    var targetFilter = (cleanFilter && cleanFilter.toUpperCase() !== "SEMUA") ? cleanFilter : "";
+    
+    var daftarPtk = efileGetSharedDaftarPtk(targetFilter || "SEMUA");
     var ptkFound = null;
-
-    for(var i=1; i<dataPtk.length; i++) {
-        var rNpsn = String(dataPtk[i][4]).trim().toUpperCase(); 
-        var rUnit = String(dataPtk[i][5]).trim().toUpperCase(); 
-        var rId   = String(dataPtk[i][0]).toLowerCase(); 
-        var rNama = String(dataPtk[i][1]).toLowerCase();
-        
-        // Cek Keamanan Akses menggunakan cleanFilter
-        if(cleanFilter && cleanFilter !== "SEMUA" && cleanFilter !== "" && rNpsn !== cleanFilter && rUnit !== cleanFilter) continue;
-        
-        // Pencarian Nama / ID
-        if(rId === searchKey || rNama.includes(searchKey)) { 
-            ptkFound = { 
-                id_ptk: dataPtk[i][0], 
-                nama: dataPtk[i][1], 
-                nip: dataPtk[i][3], 
-                npsn: dataPtk[i][4], 
-                unit: dataPtk[i][5],
-                status: dataPtk[i][2] // Tambahkan status pegawai
-            }; 
-            break; 
-        }
+    
+    for (var i = 0; i < daftarPtk.length; i++) {
+      var p = daftarPtk[i];
+      var rId   = String(p.id_ptk || "").trim();
+      var rNama = String(p.nama   || "").trim().toLowerCase();
+      var rNip  = String(p.nip   || "").trim().toLowerCase();
+      
+      // Cek filter NPSN jika ada (keamanan akses sekolah)
+      if (targetFilter) {
+        var rNpsn = String(p.npsn || "").trim().toUpperCase();
+        var rUnit = String(p.unit || "").trim().toUpperCase();
+        var fUp   = targetFilter.toUpperCase();
+        if (rNpsn !== fUp && rUnit !== fUp) continue;
+      }
+      
+      // Cocokkan berdasarkan id_ptk (exact) atau nama / NIP (contains)
+      if (rId === searchKey || rId === searchKeyLower ||
+          rNama.includes(searchKeyLower) || rNip.includes(searchKeyLower)) {
+        ptkFound = {
+          id_ptk: p.id_ptk,
+          nama:   p.nama,
+          nip:    p.nip,
+          npsn:   p.npsn,
+          unit:   p.unit,
+          status: p.status,
+          jenjang: p.jenjang,
+          tugas:  p.tugas
+        };
+        break;
+      }
     }
 
     if(!ptkFound) return JSON.stringify({ success: false, message: "PTK tidak ditemukan atau Anda tidak memiliki akses ke data tersebut." });
@@ -592,7 +648,10 @@ function getEfileViewerData(keyword, npsnFilter) {
                 idKat: dataKat[k][0], 
                 namaKat: dataKat[k][1], 
                 parent: dataKat[k][2],
-                statusPegawaiWajib: dataKat[k][5] ? String(dataKat[k][5]).trim() : ""
+                statusPegawaiWajib: dataKat[k][5] ? String(dataKat[k][5]).trim() : "",
+                klasifikasi_jenjang: dataKat[k][10] || "",
+                klasifikasi_kepeg: dataKat[k][11] || "",
+                klasifikasi_tugas: dataKat[k][12] || ""
             }); 
         }
     }
@@ -600,11 +659,31 @@ function getEfileViewerData(keyword, npsnFilter) {
     var shFile = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile"); 
     var dataFile = shFile.getDataRange().getDisplayValues(); 
     var files = [];
+    
+    // Buat set ID dan NIP untuk fallback matching data lama
+    var targetId  = String(ptkFound.id_ptk).trim();
+    var targetNip = String(ptkFound.nip || "").trim();
+    var targetNama = String(ptkFound.nama || "").trim().toUpperCase();
+    
     for(var f = 1; f < dataFile.length; f++) {
-        var st = String(dataFile[f][7]).toLowerCase();
-        // Hanya tampilkan file yang Disetujui/Ok
-        if(String(dataFile[f][0]) === ptkFound.id_ptk && (st.includes('setuju') || st.includes('ok'))) { 
-            files.push({ id_kategori: dataFile[f][2], tahun: dataFile[f][4], file_name: dataFile[f][5], url: dataFile[f][6] }); 
+        var fIdPtk = String(dataFile[f][0]).trim();
+        var fNamaPtk = String(dataFile[f][1] || "").trim().toUpperCase();
+        
+        // Pencocokan: ID exact, atau NIP (jika ada), atau nama (fallback terakhir)
+        var isMatch = (fIdPtk === targetId);
+        if (!isMatch && targetNip && fIdPtk === targetNip) isMatch = true;
+        if (!isMatch && targetNama && fNamaPtk === targetNama) isMatch = true;
+        
+        if (isMatch) { 
+            // Tampilkan SEMUA status berkas (Diproses, Disetujui, Revisi, Ditolak)
+            files.push({ 
+              id_kategori: dataFile[f][2], 
+              tahun: dataFile[f][4], 
+              file_name: dataFile[f][5], 
+              url: dataFile[f][6],
+              status: dataFile[f][7],
+              periode: dataFile[f][14] || ""
+            }); 
         }
     }
     
@@ -670,6 +749,7 @@ function getEfileDashboardData(idKategori, namaKategori, forceRefresh) {
         if (jpVal.includes("PERMANEN")) jPeriode = "PERMANEN";
         else if (jpVal.includes("PERIODE")) jPeriode = "PERIODE";
         else if (jpVal.includes("TMT")) jPeriode = "TMT";
+        else if (jpVal.includes("TRIWULAN")) jPeriode = "TRIWULAN";
         else if (jpVal.includes("SKP")) jPeriode = "SKP";
         else if (jpVal.includes("SK_PPPK")) jPeriode = "SK_PPPK";
         else if (jpVal.includes("SK_KP")) jPeriode = "SK_KP";
@@ -731,14 +811,30 @@ function getEfileDashboardData(idKategori, namaKategori, forceRefresh) {
         periodsSet.add(b + " " + (curYear - 1));
       });
     } else if (jPeriode === "TRIWULAN") {
-      // Triwulan default
       var tws = ["Triwulan 1", "Triwulan 2", "Triwulan 3", "Triwulan 4"];
       tws.forEach(function(t) {
         periodsSet.add(t + " " + curYear);
         periodsSet.add(t + " " + (curYear - 1));
       });
+    } else if (jPeriode === "SKP") {
+      var skps = ["Triwulan 1", "Triwulan 2", "Triwulan 3", "Triwulan 4", "Tahunan"];
+      skps.forEach(function(s) {
+        periodsSet.add(s + " " + curYear);
+        periodsSet.add(s + " " + (curYear - 1));
+      });
+    } else if (jPeriode === "SK_PPPK") {
+      var skppk = ["SK Pertama", "SK Kedua", "SK Ketiga", "SK Keempat", "SK Kelima"];
+      skppk.forEach(function(s) { periodsSet.add(s); });
+    } else if (jPeriode === "SK_KP") {
+      var skkp = ["II/a", "II/b", "II/c", "II/d", "III/a", "III/b", "III/c", "III/d", "IV/a", "IV/b", "IV/c", "IV/d"];
+      skkp.forEach(function(s) { periodsSet.add(s); });
+    } else if (jPeriode === "SK_JF") {
+      var skjf = ["Guru Ahli Pertama", "Guru Ahli Muda", "Guru Ahli Madya"];
+      skjf.forEach(function(s) { periodsSet.add(s); });
+    } else if (jPeriode === "IJAZAH") {
+      var ijazahs = ["SD", "SMP", "SMA", "D2", "D3", "D4", "S1", "S2", "S3"];
+      ijazahs.forEach(function(s) { periodsSet.add(s); });
     } else if (jPeriode === "PERMANEN") {
-      // Permanen: Cukup satu entri data permanen
       periodsSet.add("PERMANEN");
     } else {
       periodsSet.add(String(curYear));
@@ -749,35 +845,39 @@ function getEfileDashboardData(idKategori, namaKategori, forceRefresh) {
     for (var k = 1; k < dataEfile.length; k++) {
       var ePtk = String(dataEfile[k][0]).trim();
       var eKat = String(dataEfile[k][2]).trim();
-      var eThn = String(dataEfile[k][4]).trim(); // Ini kolom Tahun
-      var ePeriode = String(dataEfile[k][14] || "").trim(); // NPSN, Periode (Kolom O)
+      var eThn = String(dataEfile[k][4]).trim();
+      var ePeriode = String(dataEfile[k][14] || "").trim();
       var eStatus = String(dataEfile[k][7]).trim();
       
       if (eKat === String(idKategori).trim() && ePtk) {
         if (jPeriode === "PERIODE") {
-          var targetPer = ePeriode || eThn; // Fallback jika kolom Periode kosong
+          var targetPer = ePeriode || eThn;
           if (targetPer && targetPer !== "-") {
             periodsSet.add(targetPer);
             if (!efileMap[ePtk]) efileMap[ePtk] = {};
             efileMap[ePtk][targetPer] = eStatus;
           }
-        } else if (jPeriode === "TRIWULAN") {
+        } else if (jPeriode === "TRIWULAN" || jPeriode === "SKP") {
           var targetTw = ePeriode;
           if (targetTw && targetTw !== "-") {
-            // ePeriode bernilai "Triwulan X"
             var combinedTw = targetTw + " " + eThn;
             periodsSet.add(combinedTw);
             if (!efileMap[ePtk]) efileMap[ePtk] = {};
             efileMap[ePtk][combinedTw] = eStatus;
           }
+        } else if (jPeriode === "SK_PPPK" || jPeriode === "SK_KP" || jPeriode === "SK_JF" || jPeriode === "IJAZAH") {
+          var targetKarakteristik = ePeriode;
+          if (targetKarakteristik && targetKarakteristik !== "-") {
+            periodsSet.add(targetKarakteristik);
+            if (!efileMap[ePtk]) efileMap[ePtk] = {};
+            efileMap[ePtk][targetKarakteristik] = eStatus;
+          }
         } else if (jPeriode === "PERMANEN") {
-          // Permanen: kumpulkan status di satu key dummy "PERMANEN"
           if (!efileMap[ePtk]) efileMap[ePtk] = {};
           if (eStatus) {
             efileMap[ePtk]["PERMANEN"] = eStatus;
           }
         } else {
-          // Tahunan / TMT
           if (eThn) {
             periodsSet.add(eThn);
             if (!efileMap[ePtk]) efileMap[ePtk] = {};
@@ -806,7 +906,6 @@ function getEfileDashboardData(idKategori, namaKategori, forceRefresh) {
       sortedPeriods = Array.from(periodsSet).sort(function(a, b) {
         var partsA = a.split(" ");
         var partsB = b.split(" ");
-        // format: "Triwulan X YYYY" -> partsA[0] = "Triwulan", partsA[1] = "X", partsA[2] = "YYYY"
         var yA = parseInt(partsA[2] || 0);
         var yB = parseInt(partsB[2] || 0);
         if (yA !== yB) return yB - yA;
@@ -816,6 +915,33 @@ function getEfileDashboardData(idKategori, namaKategori, forceRefresh) {
         var twB = mapTw[twBStr] || 0;
         return twB - twA;
       });
+    } else if (jPeriode === "SKP") {
+      var mapSkp = {"Triwulan 1":1, "Triwulan 2":2, "Triwulan 3":3, "Triwulan 4":4, "Tahunan":5};
+      sortedPeriods = Array.from(periodsSet).sort(function(a, b) {
+        var partsA = a.split(" ");
+        var partsB = b.split(" ");
+        var yA = parseInt(partsA[partsA.length - 1] || 0);
+        var yB = parseInt(partsB[partsB.length - 1] || 0);
+        if (yA !== yB) return yB - yA;
+        
+        var skpAStr = partsA.slice(0, partsA.length - 1).join(" ");
+        var skpBStr = partsB.slice(0, partsB.length - 1).join(" ");
+        var skpA = mapSkp[skpAStr] || 0;
+        var skpB = mapSkp[skpBStr] || 0;
+        return skpB - skpA;
+      });
+    } else if (jPeriode === "SK_PPPK") {
+      var orderPppk = ["SK Pertama", "SK Kedua", "SK Ketiga", "SK Keempat", "SK Kelima"];
+      sortedPeriods = Array.from(periodsSet).sort(function(a, b) { return orderPppk.indexOf(a) - orderPppk.indexOf(b); });
+    } else if (jPeriode === "SK_KP") {
+      var orderKp = ["II/a", "II/b", "II/c", "II/d", "III/a", "III/b", "III/c", "III/d", "IV/a", "IV/b", "IV/c", "IV/d"];
+      sortedPeriods = Array.from(periodsSet).sort(function(a, b) { return orderKp.indexOf(a) - orderKp.indexOf(b); });
+    } else if (jPeriode === "SK_JF") {
+      var orderJf = ["Guru Ahli Pertama", "Guru Ahli Muda", "Guru Ahli Madya"];
+      sortedPeriods = Array.from(periodsSet).sort(function(a, b) { return orderJf.indexOf(a) - orderJf.indexOf(b); });
+    } else if (jPeriode === "IJAZAH") {
+      var orderEdu = ["SD", "SMP", "SMA", "D2", "D3", "D4", "S1", "S2", "S3"];
+      sortedPeriods = Array.from(periodsSet).sort(function(a, b) { return orderEdu.indexOf(a) - orderEdu.indexOf(b); });
     } else if (jPeriode === "PERMANEN") {
       sortedPeriods = ["PERMANEN"];
     } else {
