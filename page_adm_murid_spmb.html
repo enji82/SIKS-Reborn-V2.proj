@@ -308,7 +308,7 @@
     });
 
     function loadSpmbData() {
-      $('#admmuridspmb_loadingState').show();
+      SultanUI.showLoading('#admmuridspmb_loadingState', 'Memuat Data Laporan SPMB...');
       $('#admmuridspmb_tableState').hide();
 
       var filter = (userLogin.role !== "Admin") ? userLogin.npsn : "SEMUA";
@@ -318,7 +318,7 @@
         var res = JSON.parse(resRaw);
         if (res.success) {
           renderTable(res.data, targetTahun);
-          $('#admmuridspmb_loadingState').hide();
+          SultanUI.hideLoading('#admmuridspmb_loadingState');
           $('#admmuridspmb_tableState').show();
         } else {
           Sultan.notif.gagal(res.message);
@@ -480,23 +480,26 @@
     });
 
     function sendPayload(payload) {
-      Swal.fire({
-        title: 'Menyimpan data...',
-        text: 'Silakan tunggu sebentar.',
-        allowOutsideClick: false,
-        didOpen: () => { Swal.showLoading(); }
-      });
+      var isEdit = !!payload.rowId;
+      var btn = $('#admmuridspmb_form button[type="submit"]');
+      var txt = btn.html();
+      btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i> MENYIMPAN...');
 
       google.script.run.withSuccessHandler(function (resRaw) {
-        Swal.close();
+        btn.prop('disabled', false).html(txt);
         var res = JSON.parse(resRaw);
         if (res.success) {
-          Sultan.notif.sukses(res.message);
           $('#admmuridspmb_modalForm').modal('hide');
-          loadSpmbData();
+          setTimeout(function() {
+            Sultan.notif.crud.simpan(isEdit);
+            loadSpmbData();
+          }, 400);
         } else {
-          Sultan.notif.gagal(res.message);
+          Sultan.notif.crud.gagal(res.message);
         }
+      }).withFailureHandler(function(err) {
+        btn.prop('disabled', false).html(txt);
+        Sultan.notif.crud.gagal(err.message);
       }).admMurid_simpanSpmb(payload);
     }
 

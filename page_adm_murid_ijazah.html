@@ -263,7 +263,7 @@
     });
 
     function loadIjazahData() {
-      $('#admmuridijazah_loadingState').show();
+      SultanUI.showLoading('#admmuridijazah_loadingState', 'Memuat Data Laporan Ijazah...');
       $('#admmuridijazah_tableState').hide();
 
       var filter = (userLogin.role !== "Admin") ? userLogin.npsn : "SEMUA";
@@ -273,7 +273,7 @@
         var res = JSON.parse(resRaw);
         if (res.success) {
           renderTable(res.data, targetTahun);
-          $('#admmuridijazah_loadingState').hide();
+          SultanUI.hideLoading('#admmuridijazah_loadingState');
           $('#admmuridijazah_tableState').show();
         } else {
           Sultan.notif.gagal(res.message);
@@ -350,6 +350,16 @@
           "url": "https://cdn.datatables.net/plug-ins/1.10.24/i18n/Indonesian.json"
         }
       });
+    }
+
+    function getBadge(status) {
+      status = String(status || "").trim();
+      var badgeClass = "badge-secondary";
+      if (status.toLowerCase() === "disetujui") badgeClass = "badge-success";
+      else if (status.toLowerCase() === "diproses") badgeClass = "badge-warning";
+      else if (status.toLowerCase() === "revisi") badgeClass = "badge-info";
+      else if (status.toLowerCase() === "ditolak") badgeClass = "badge-danger";
+      return '<span class="badge ' + badgeClass + '">' + status + '</span>';
     }
 
     // Aksi Tambah Dokumen
@@ -443,23 +453,26 @@
     });
 
     function sendPayload(payload) {
-      Swal.fire({
-        title: 'Menyimpan data...',
-        text: 'Sedang memproses berkas, silakan tunggu.',
-        allowOutsideClick: false,
-        didOpen: () => { Swal.showLoading(); }
-      });
+      var isEdit = !!payload.rowId;
+      var btn = $('#admmuridijazah_form button[type="submit"]');
+      var txt = btn.html();
+      btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i> MENYIMPAN...');
 
       google.script.run.withSuccessHandler(function (resRaw) {
-        Swal.close();
+        btn.prop('disabled', false).html(txt);
         var res = JSON.parse(resRaw);
         if (res.success) {
-          Sultan.notif.sukses(res.message);
           $('#admmuridijazah_modalForm').modal('hide');
-          loadIjazahData();
+          setTimeout(function() {
+            Sultan.notif.crud.simpan(isEdit);
+            loadIjazahData();
+          }, 400);
         } else {
-          Sultan.notif.gagal(res.message);
+          Sultan.notif.crud.gagal(res.message);
         }
+      }).withFailureHandler(function(err) {
+        btn.prop('disabled', false).html(txt);
+        Sultan.notif.crud.gagal(err.message);
       }).admMurid_simpanIjazah(payload);
     }
 
