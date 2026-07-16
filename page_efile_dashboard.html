@@ -60,6 +60,7 @@
           <div class="sultan-filter-item" id="efiledash_filterKategoriSkpContainer" style="display: none;">
             <select id="efiledash_filterKategoriSkp" class="form-control" aria-label="Pilih Kategori SKP">
               <option value="SEMUA">- Semua Kategori -</option>
+              <option value="Sasaran">Sasaran</option>
               <option value="Triwulan 1">Triwulan 1</option>
               <option value="Triwulan 2">Triwulan 2</option>
               <option value="Triwulan 3">Triwulan 3</option>
@@ -565,7 +566,7 @@ function efiledash_rowMatchesUnit(r, fUnitAdmin) {
 }
 
 function efiledash_getRekapForMetrics(dataRekap, fTahun) {
-    if (fTahun !== "SEMUA" && fTahun !== "") return dataRekap;
+    if (fTahun === "SEMUA" || fTahun === "") return dataRekap;
     var maxTahun = "";
     
     if (EFILEDASH_JENIS_PERIODE === "PERIODE") {
@@ -585,12 +586,12 @@ function efiledash_getRekapForMetrics(dataRekap, fTahun) {
             if (yA > maxYA || (yA === maxYA && twVal > maxTWA)) { maxYA = yA; maxTWA = twVal; maxTahun = t; }
         });
     } else if (EFILEDASH_JENIS_PERIODE === "SKP") {
-        var mapSkp = {"Triwulan 1":1, "Triwulan 2":2, "Triwulan 3":3, "Triwulan 4":4, "Tahunan":5};
+        var mapSkp = {"Sasaran":1, "Triwulan 1":2, "Triwulan 2":3, "Triwulan 3":4, "Triwulan 4":5, "Tahunan":6};
         var maxYA = 0, maxSKPA = 0;
         dataRekap.forEach(function(r) {
             var t = String(r.tahun || "").trim(); var parts = t.split(" ");
             var yA = parseInt(parts[2] || parts[1] || 0);
-            var skpStr = parts[0] === "Tahunan" ? "Tahunan" : (parts[0] + " " + parts[1]);
+            var skpStr = parts[0] === "Tahunan" || parts[0] === "Sasaran" ? parts[0] : (parts[0] + " " + parts[1]);
             var skpVal = mapSkp[skpStr] || 0;
             if (yA > maxYA || (yA === maxYA && skpVal > maxSKPA)) { maxYA = yA; maxSKPA = skpVal; maxTahun = t; }
         });
@@ -637,27 +638,32 @@ function efiledash_getRekapForMetrics(dataRekap, fTahun) {
     if (!maxTahun) return dataRekap;
     return dataRekap.filter(function(r) { return String(r.tahun || "").trim() === maxTahun; });
 }
-
 function efiledash_terapkanFilterLokal() {
     var fUnit = String($('#efiledash_filterUnit').val() || "SEMUA").trim().toUpperCase();
     var fTahun = String($('#efiledash_filterTahun').val() || "").trim();
     var fTahunUp = fTahun.toUpperCase();
+
+    var resolvedTahun = fTahunUp;
     
     // Untuk SKP: filter menggunakan kombinasi Tahun + Kategori SKP
     if (EFILEDASH_JENIS_PERIODE === "SKP") {
         var fKatSkp = String($('#efiledash_filterKategoriSkp').val() || "SEMUA").trim();
-        var validSkpParts = ["Triwulan 1", "Triwulan 2", "Triwulan 3", "Triwulan 4", "Tahunan"];
+        var validSkpParts = ["Sasaran", "Triwulan 1", "Triwulan 2", "Triwulan 3", "Triwulan 4", "Tahunan"];
+        
+        // Selesaikan resolvedTahun untuk SKP jika SEMUA
+        var resolvedTahunSkp = fTahunUp;
         
         function passFiltSkp(r) {
             if (!efiledash_rowMatchesUnit(r, fUnit)) return false;
             var thn = String(r.tahun || "").trim();
             var parts = thn.split(" ");
             var year = String(parseInt(parts[parts.length - 1]) || 0);
-            var kategori = parts.slice(0, parts.length - 1).join(" ");
+            var kategori = parts[0] === "Tahunan" || parts[0] === "Sasaran" ? parts[0] : parts.slice(0, parts.length - 1).join(" ");
             // Hanya proses data dengan format SKP yang valid
             if (validSkpParts.indexOf(kategori) === -1) return false;
-            // Filter tahun
-            if (fTahunUp !== "SEMUA" && fTahunUp !== "" && year !== fTahun) return false;
+            
+            // Gunakan resolvedTahunSkp
+            if (resolvedTahunSkp !== "SEMUA" && resolvedTahunSkp !== "" && year !== resolvedTahunSkp) return false;
             // Filter kategori
             if (fKatSkp !== "SEMUA" && fKatSkp !== "" && kategori !== fKatSkp) return false;
             return true;
@@ -670,15 +676,13 @@ function efiledash_terapkanFilterLokal() {
         if (EFILEDASH_IS_ADMIN) { $('#efiledash_filterUnitContainer').show(); } else { $('#efiledash_filterUnitContainer').hide(); }
         $('#efiledash_filterTahun').closest('.sultan-filter-item').show();
         
-        // Tentukan key periode untuk getRekapForMetrics
-        var fPeriodeSkp = fTahunUp === "SEMUA" ? "SEMUA" : fTahun;
-        efiledash_renderDashboard(filterRekap, filterSudah, filterBelum, fPeriodeSkp);
+        efiledash_renderDashboard(filterRekap, filterSudah, filterBelum, resolvedTahunSkp);
         return;
     }
     
     function passFilt(r) {
         if (!efiledash_rowMatchesUnit(r, fUnit)) return false;
-        if (fTahunUp !== "SEMUA" && fTahunUp !== "" && String(r.tahun || "").trim().toUpperCase() !== fTahunUp) return false;
+        if (resolvedTahun !== "SEMUA" && resolvedTahun !== "" && String(r.tahun || "").trim().toUpperCase() !== resolvedTahun) return false;
         return true;
     }
 
@@ -699,20 +703,81 @@ function efiledash_terapkanFilterLokal() {
         $('#efiledash_filterTahun').closest('.sultan-filter-item').show();
     }
 
-    efiledash_renderDashboard(filterRekap, filterSudah, filterBelum, fTahunUp);
+    efiledash_renderDashboard(filterRekap, filterSudah, filterBelum, resolvedTahun);
 }
 
 function efiledash_renderDashboard(dataRekap, dataSudah, dataBelum, fTahun) {
+    // Jika fTahun === "SEMUA", lakukan distinct grouping akumulatif agar data tidak melipat ganda dan total sinkron
+    if (fTahun === "SEMUA") {
+        var mapPtkSudah = {};
+        var mapPtkBelum = {};
+        
+        // Catat semua berkas yang sudah diunggah di periode mana pun secara unik
+        dataSudah.forEach(function(s) {
+            var key = String(s.nip || s.nama).trim().toUpperCase();
+            if (!mapPtkSudah[key]) {
+                mapPtkSudah[key] = {
+                    nama: s.nama,
+                    nip: s.nip,
+                    unit: s.unit,
+                    tahun: "Semua Periode",
+                    npsn: s.npsn
+                };
+            }
+        });
+        
+        // Catat data pegawai yang belum unggah berkas
+        dataBelum.forEach(function(b) {
+            var key = String(b.nip || b.nama).trim().toUpperCase();
+            // Pegawai dimasukkan ke daftar Belum HANYA jika ia tidak pernah unggah berkas sama sekali di periode mana pun
+            if (!mapPtkSudah[key] && !mapPtkBelum[key]) {
+                mapPtkBelum[key] = {
+                    nama: b.nama,
+                    nip: b.nip,
+                    unit: b.unit,
+                    tahun: "Semua Periode",
+                    npsn: b.npsn
+                };
+            }
+        });
+        
+        // Override array dataSudah dan dataBelum dengan hasil distinct
+        dataSudah = Object.values(mapPtkSudah);
+        dataBelum = Object.values(mapPtkBelum);
+    }
+
+    var rekapMetrics = efiledash_getRekapForMetrics(dataRekap, fTahun);
+    
     if (EFILEDASH_IS_ADMIN) {
         $('#efiledash_containerTabelUnit').show();
         var mapUnit = {};
-        dataRekap.forEach(function(r) {
-            var uni = r.unit || "Lainnya";
-            if (!mapUnit[uni]) { mapUnit[uni] = { jml: 0, sudah: 0, belum: 0 }; }
-            mapUnit[uni].jml += parseInt(r.jml) || 0;
-            mapUnit[uni].sudah += parseInt(r.sudah) || 0;
-            mapUnit[uni].belum += parseInt(r.belum) || 0;
-        });
+        
+        if (fTahun === "SEMUA") {
+            // Jika Semua Tahun, bangun rekap unit dari dataSudah dan dataBelum distinct agar akurat
+            // Loop dataSudah distinct
+            dataSudah.forEach(function(s) {
+                var uni = s.unit || "Lainnya";
+                if (!mapUnit[uni]) { mapUnit[uni] = { jml: 0, sudah: 0, belum: 0 }; }
+                mapUnit[uni].sudah++;
+                mapUnit[uni].jml++;
+            });
+            // Loop dataBelum distinct
+            dataBelum.forEach(function(b) {
+                var uni = b.unit || "Lainnya";
+                if (!mapUnit[uni]) { mapUnit[uni] = { jml: 0, sudah: 0, belum: 0 }; }
+                mapUnit[uni].belum++;
+                mapUnit[uni].jml++;
+            });
+        } else {
+            // Jika periode tertentu dipilih, gunakan rekapMetrics bawaan
+            rekapMetrics.forEach(function(r) {
+                var uni = r.unit || "Lainnya";
+                if (!mapUnit[uni]) { mapUnit[uni] = { jml: 0, sudah: 0, belum: 0 }; }
+                mapUnit[uni].jml += parseInt(r.jml) || 0;
+                mapUnit[uni].sudah += parseInt(r.sudah) || 0;
+                mapUnit[uni].belum += parseInt(r.belum) || 0;
+            });
+        }
 
         if ($.fn.DataTable.isDataTable('#efiledash_tabelRekap')) {
             $('#efiledash_tabelRekap').DataTable().destroy();
@@ -763,14 +828,20 @@ function efiledash_renderDashboard(dataRekap, dataSudah, dataBelum, fTahun) {
         $('#efiledash_containerTabelUnit').hide();
     }
 
-    var rekapMetrics = efiledash_getRekapForMetrics(dataRekap, fTahun);
     var totAsn = 0, totSudah = 0, totBelum = 0;
-    
-    rekapMetrics.forEach(function(r) {
-        totAsn += parseInt(r.jml) || 0;
-        totSudah += parseInt(r.sudah) || 0;
-        totBelum += parseInt(r.belum) || 0;
-    });
+    if (fTahun === "SEMUA") {
+        // Jika Semua Tahun, hitung metric card langsung dari list distinct
+        totSudah = dataSudah.length;
+        totBelum = dataBelum.length;
+        totAsn = totSudah + totBelum;
+    } else {
+        rekapMetrics = efiledash_getRekapForMetrics(dataRekap, fTahun);
+        rekapMetrics.forEach(function(r) {
+            totAsn += parseInt(r.jml) || 0;
+            totSudah += parseInt(r.sudah) || 0;
+            totBelum += parseInt(r.belum) || 0;
+        });
+    }
 
     efiledash_animateValue('efiledash_cardTotalAsn', totAsn);
     efiledash_animateValue('efiledash_cardSudah', totSudah);

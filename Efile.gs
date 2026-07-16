@@ -755,6 +755,7 @@ function getEfileDashboardData(idKategori, namaKategori, forceRefresh) {
         else if (jpVal.includes("SK_KP")) jPeriode = "SK_KP";
         else if (jpVal.includes("SK_JF")) jPeriode = "SK_JF";
         else if (jpVal.includes("IJAZAH")) jPeriode = "IJAZAH";
+        else if (jpVal.includes("DIKLAT")) jPeriode = "DIKLAT";
 
         // Ambil filter klasifikasi
         var jg = String(dataKat[i][10] || "").trim();
@@ -796,6 +797,59 @@ function getEfileDashboardData(idKategori, namaKategori, forceRefresh) {
       }
     });
     
+    // Bangun peta lookup PTK: ID lama/NIP/Nama → canonical id_ptk dari master GTK
+    var ptkLookupMap = {};
+    var ptkByNip = {};
+    var ptkByNama = {};
+    
+    ptkList.forEach(function(ptk) {
+      // Key 1: id_ptk itu sendiri (kolom A master GTK)
+      ptkLookupMap[String(ptk.id).trim()] = ptk.id;
+      
+      // Key 2: NIP (kolom H master GTK) jika ada
+      if (ptk.nip && String(ptk.nip).trim() !== "" && String(ptk.nip).trim() !== "-") {
+        ptkLookupMap[String(ptk.nip).trim()] = ptk.id;
+        ptkByNip[String(ptk.nip).trim()] = ptk.id;
+      }
+      
+      // Key 3: Nama (uppercase) jika ada
+      if (ptk.nama) {
+        var cleanNama = String(ptk.nama).trim().toUpperCase();
+        ptkLookupMap[cleanNama] = ptk.id;
+        ptkByNama[cleanNama] = ptk.id;
+      }
+    });
+
+    // Fallback pemetaan ID lama (seperti NIK 16 digit) dari Database_PTK lama ke canonical ID master GTK baru
+    try {
+      var shPtkLama = getSheet(KONFIG_EFILE.DB_KEY, "Database_PTK");
+      if (shPtkLama) {
+        var dataPtkLama = shPtkLama.getDataRange().getDisplayValues();
+        for (var j = 1; j < dataPtkLama.length; j++) {
+          var idLama = String(dataPtkLama[j][0]).trim();
+          var namaLama = String(dataPtkLama[j][1]).trim().toUpperCase();
+          var nipLama = String(dataPtkLama[j][3]).trim();
+          
+          if (idLama && !ptkLookupMap[idLama]) {
+            // Cari canonical ID di master GTK yang NIP atau Nama-nya cocok
+            var matchedCanonicalId = null;
+            if (nipLama && nipLama !== "" && nipLama !== "-") {
+              matchedCanonicalId = ptkByNip[nipLama];
+            }
+            if (!matchedCanonicalId && namaLama) {
+              matchedCanonicalId = ptkByNama[namaLama];
+            }
+            // Jika ketemu, hubungkan ID lama (misal NIK) ke ID canonical baru (misal NIP 18-digit)
+            if (matchedCanonicalId) {
+              ptkLookupMap[idLama] = matchedCanonicalId;
+            }
+          }
+        }
+      }
+    } catch(e) {
+      Logger.log("Gagal memetakan Database_PTK lama di dashboard: " + e.message);
+    }
+    
     var shEfile = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile");
     var dataEfile = shEfile ? shEfile.getDataRange().getDisplayValues() : [];
     
@@ -817,7 +871,7 @@ function getEfileDashboardData(idKategori, namaKategori, forceRefresh) {
         periodsSet.add(t + " " + (curYear - 1));
       });
     } else if (jPeriode === "SKP") {
-      var skps = ["Triwulan 1", "Triwulan 2", "Triwulan 3", "Triwulan 4", "Tahunan"];
+      var skps = ["Sasaran", "Triwulan 1", "Triwulan 2", "Triwulan 3", "Triwulan 4", "Tahunan"];
       skps.forEach(function(s) {
         periodsSet.add(s + " " + curYear);
         periodsSet.add(s + " " + (curYear - 1));
@@ -845,43 +899,55 @@ function getEfileDashboardData(idKategori, namaKategori, forceRefresh) {
     for (var k = 1; k < dataEfile.length; k++) {
       var ePtk = String(dataEfile[k][0]).trim();
       var eKat = String(dataEfile[k][2]).trim();
+      var eKatNama = String(dataEfile[k][3]).trim();
       var eThn = String(dataEfile[k][4]).trim();
       var ePeriode = String(dataEfile[k][14] || "").trim();
       var eStatus = String(dataEfile[k][7]).trim();
       
-      if (eKat === String(idKategori).trim() && ePtk) {
+      var isKategoriCocok = (eKat === String(idKategori).trim()) || (eKatNama.toLowerCase() === String(namaKategori || "").trim().toLowerCase()) || (eKat.toLowerCase() === String(namaKategori || "").trim().toLowerCase());
+      if (isKategoriCocok && ePtk) {
+        // Resolve ePtk (dari Database_Efile) ke canonical id_ptk dari master GTK
+        var ePtkNamaDb = String(dataEfile[k][1] || "").trim().toUpperCase();
+        var resolvedPtkId = ptkLookupMap[ePtk] || ptkLookupMap[ePtkNamaDb] || ePtk;
+        
+        // Simpan data status ke efileMap menggunakan canonical id_ptk
         if (jPeriode === "PERIODE") {
           var targetPer = ePeriode || eThn;
           if (targetPer && targetPer !== "-") {
             periodsSet.add(targetPer);
-            if (!efileMap[ePtk]) efileMap[ePtk] = {};
-            efileMap[ePtk][targetPer] = eStatus;
+            if (!efileMap[resolvedPtkId]) efileMap[resolvedPtkId] = {};
+            efileMap[resolvedPtkId][targetPer] = eStatus;
           }
         } else if (jPeriode === "TRIWULAN" || jPeriode === "SKP") {
           var targetTw = ePeriode;
           if (targetTw && targetTw !== "-") {
             var combinedTw = targetTw + " " + eThn;
             periodsSet.add(combinedTw);
-            if (!efileMap[ePtk]) efileMap[ePtk] = {};
-            efileMap[ePtk][combinedTw] = eStatus;
+            if (!efileMap[resolvedPtkId]) efileMap[resolvedPtkId] = {};
+            efileMap[resolvedPtkId][combinedTw] = eStatus;
           }
         } else if (jPeriode === "SK_PPPK" || jPeriode === "SK_KP" || jPeriode === "SK_JF" || jPeriode === "IJAZAH") {
           var targetKarakteristik = ePeriode;
           if (targetKarakteristik && targetKarakteristik !== "-") {
             periodsSet.add(targetKarakteristik);
-            if (!efileMap[ePtk]) efileMap[ePtk] = {};
-            efileMap[ePtk][targetKarakteristik] = eStatus;
+            if (!efileMap[resolvedPtkId]) efileMap[resolvedPtkId] = {};
+            efileMap[resolvedPtkId][targetKarakteristik] = eStatus;
+          }
+        } else if (jPeriode === "DIKLAT") {
+          var targetDiklatTgl = ePeriode && ePeriode.includes('|') ? String(ePeriode.split('|')[0]).trim() : ePeriode;
+          if (targetDiklatTgl && targetDiklatTgl !== "-") {
+            periodsSet.add(targetDiklatTgl);
+            if (!efileMap[resolvedPtkId]) efileMap[resolvedPtkId] = {};
+            efileMap[resolvedPtkId][targetDiklatTgl] = eStatus;
           }
         } else if (jPeriode === "PERMANEN") {
-          if (!efileMap[ePtk]) efileMap[ePtk] = {};
-          if (eStatus) {
-            efileMap[ePtk]["PERMANEN"] = eStatus;
-          }
+          if (!efileMap[resolvedPtkId]) efileMap[resolvedPtkId] = {};
+          efileMap[resolvedPtkId]["PERMANEN"] = eStatus;
         } else {
           if (eThn) {
             periodsSet.add(eThn);
-            if (!efileMap[ePtk]) efileMap[ePtk] = {};
-            efileMap[ePtk][eThn] = eStatus;
+            if (!efileMap[resolvedPtkId]) efileMap[resolvedPtkId] = {};
+            efileMap[resolvedPtkId][eThn] = eStatus;
           }
         }
       }
@@ -916,7 +982,7 @@ function getEfileDashboardData(idKategori, namaKategori, forceRefresh) {
         return twB - twA;
       });
     } else if (jPeriode === "SKP") {
-      var mapSkp = {"Triwulan 1":1, "Triwulan 2":2, "Triwulan 3":3, "Triwulan 4":4, "Tahunan":5};
+      var mapSkp = {"Sasaran":1, "Triwulan 1":2, "Triwulan 2":3, "Triwulan 3":4, "Triwulan 4":5, "Tahunan":6};
       sortedPeriods = Array.from(periodsSet).sort(function(a, b) {
         var partsA = a.split(" ");
         var partsB = b.split(" ");
@@ -969,10 +1035,13 @@ function getEfileDashboardData(idKategori, namaKategori, forceRefresh) {
         
         group.forEach(function(ptk) {
           var status = null;
+          var ptkId = String(ptk.id || "").trim();
+          
+          // efileMap kini diindeks dengan canonical id_ptk dari master GTK
           if (jPeriode === "PERMANEN") {
-            status = efileMap[ptk.id] ? efileMap[ptk.id]["PERMANEN"] : null;
+            status = efileMap[ptkId] ? efileMap[ptkId]["PERMANEN"] : null;
           } else {
-            status = efileMap[ptk.id] ? efileMap[ptk.id][periodeKey] : null;
+            status = efileMap[ptkId] ? efileMap[ptkId][periodeKey] : null;
           }
           
           var isUploaded = false;

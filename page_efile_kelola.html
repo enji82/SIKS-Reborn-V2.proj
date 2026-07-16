@@ -112,11 +112,18 @@
     <form id="efilekelola_formPerbaiki" novalidate>
         <div class="modal-body modal-body-sultan p-4">
             <input type="hidden" id="efilekelola_p_rowid"><input type="hidden" id="efilekelola_p_idptk">
-            <table class="table table-sm table-borderless text-sm mb-3">
+            <table class="table table-sm table-borderless text-sm mb-2">
                 <tr><td class="font-weight-bold text-muted w-25">Pegawai</td><td class="font-weight-bold text-dark text-uppercase" id="efilekelola_p_nama">-</td></tr>
                 <tr><td class="font-weight-bold text-muted">Kategori</td><td class="font-weight-bold text-primary" id="efilekelola_p_kategori">-</td></tr>
                 <tr><td class="font-weight-bold text-muted">Catatan Admin</td><td class="font-weight-bold text-danger bg-white p-2 rounded border border-danger" id="efilekelola_p_catatan">-</td></tr>
             </table>
+
+            <!-- Keterangan Kategori Modal Edit (Lebar penuh, 13px) -->
+            <div class="row mb-3" id="efilekelola_p_keterangan_row" style="display:none;">
+                <div class="col-12">
+                    <div class="alert alert-soft-info rounded px-3 py-2 m-0" id="efilekelola_p_keterangan" style="font-size:13px; line-height:1.5;"></div>
+                </div>
+            </div>
             
             <div class="row mb-3">
                 <div class="col-md-6">
@@ -261,11 +268,10 @@ $(document).ready(function() {
     $(document).off('click', '.efilekelola-btn-del-row').on('click', '.efilekelola-btn-del-row', function() { $(this).closest('.efilekelola-upload-row').slideUp(200, function(){ $(this).remove(); }); });
 
     $(document).off('change', '.efilekelola-kategori-select').on('change', '.efilekelola-kategori-select', function() {
-        var val = String($(this).val() || "").trim(); var katData = EFILEKELOLA_MASTER_KAT.find(k => String(k.idKat).trim() === val);
-        var row = $(this).closest('.efilekelola-upload-row'); 
+        var val = String($(this).val() || "").trim(); var katData = EFILEKELOLA_MASTER_KAT.find(function(k) { return String(k.idKat).trim() === val; });
+        var row = $(this).closest('.efilekelola-upload-row');
         var fileIn = row.find('.efilekelola-file-input'); var fText = row.find('.efilekelola-format-text'); var fIcon = row.find('.efilekelola-format-icon');
         var pWrap = row.find('.efilekelola-periode-wrapper'); var pLabel = row.find('.efilekelola-periode-label'); var pInput = row.find('.efilekelola-periode-input');
-        var katWrap = row.find('.efilekelola-kat-wrapper');
 
         fileIn.val('').next('.custom-file-label').html('Pilih file...').removeClass('text-success font-weight-bold');
 
@@ -274,121 +280,138 @@ $(document).ready(function() {
             fileIn.attr('data-max-mb', maxMb);
 
             var fmt = String(katData.format).toUpperCase();
-            if (fmt.includes('IMG') || fmt.includes('JPG') || fmt.includes('PNG') || fmt.includes('FOTO')) { 
-                fileIn.attr('accept', 'image/jpeg, image/png, image/jpg'); fText.text('JPG/PNG (Maks ' + maxMb + 'MB)'); fIcon.removeClass('fa-file-pdf fa-file-upload').addClass('fa-file-image'); 
-            } else if (fmt.includes('ALL') || fmt.includes('BEBAS') || fmt.includes('ANY')) { 
-                fileIn.attr('accept', 'application/pdf, image/jpeg, image/png, image/jpg'); fText.text('PDF/JPG/PNG (Maks ' + maxMb + 'MB)'); fIcon.removeClass('fa-file-pdf fa-file-image').addClass('fa-file-upload'); 
-            } else { 
-                fileIn.attr('accept', 'application/pdf'); fText.text('PDF (Maks ' + maxMb + 'MB)'); fIcon.removeClass('fa-file-image fa-file-upload').addClass('fa-file-pdf'); 
+            if (fmt.includes('IMG') || fmt.includes('JPG') || fmt.includes('PNG') || fmt.includes('FOTO')) {
+                fileIn.attr('accept', 'image/jpeg, image/png, image/jpg'); fText.text('JPG/PNG (Maks ' + maxMb + 'MB)'); fIcon.removeClass('fa-file-pdf fa-file-upload').addClass('fa-file-image');
+            } else if (fmt.includes('ALL') || fmt.includes('BEBAS') || fmt.includes('ANY')) {
+                fileIn.attr('accept', 'application/pdf, image/jpeg, image/png, image/jpg'); fText.text('PDF/JPG/PNG (Maks ' + maxMb + 'MB)'); fIcon.removeClass('fa-file-pdf fa-file-image').addClass('fa-file-upload');
+            } else {
+                fileIn.attr('accept', 'application/pdf'); fText.text('PDF (Maks ' + maxMb + 'MB)'); fIcon.removeClass('fa-file-image fa-file-upload').addClass('fa-file-pdf');
             }
-            
-            var jPeriode = String(katData.jenisPeriode).toUpperCase();
+
+            var jPeriode = String(katData.jenisPeriode || 'TAHUNAN').toUpperCase();
             var katWrapEl = row.find('.efilekelola-kat-wrapper');
             var fileWrapEl = row.find('.efilekelola-file-wrapper');
-            
-            if(jPeriode.includes("TMT")) {
-                katWrapEl.removeClass('col-md-6 col-12').addClass('col-md-4 col-12');
-                fileWrapEl.removeClass('col-md-3 col-9').addClass('col-md-3 col-9');
-                pWrap.removeClass('col-md-3 col-6').addClass('col-md-2 col-6').show(); pLabel.text("TMT");
+            var thnWrapEl = row.find('.efilekelola-tahun-wrapper');
+            var thnInput = thnWrapEl.find('.efilekelola-tahun-input');
+            var tahunSkrg = new Date().getFullYear();
+
+            // Reset semua kelas kolom
+            katWrapEl.removeClass('col-md-4 col-md-5 col-md-6 col-md-7 col-md-8 col-12');
+            thnWrapEl.removeClass('col-md-2 col-md-3 col-6');
+            pWrap.removeClass('col-md-2 col-md-3 col-md-4 col-6');
+            fileWrapEl.removeClass('col-md-3 col-md-4 col-9');
+
+            if (jPeriode.includes('TMT') || jPeriode === 'PERMANEN_TMT') {
+                // TMT atau PERMANEN_TMT: sembunyikan tahun, gunakan date picker lebih lebar
+                katWrapEl.addClass('col-md-4 col-12');
+                thnWrapEl.addClass('col-md-2 col-6').hide(); thnInput.prop('required', false).val('');
+                pWrap.addClass('col-md-4 col-6').show(); pLabel.text('TMT (Tanggal Mulai)');
+                fileWrapEl.addClass('col-md-3 col-9');
                 pInput.replaceWith('<input type="date" class="form-control form-control-sultan border-maroon efilekelola-periode-input" required>');
-                row.find('.efilekelola-periode-input').prop("required", true).val("");
-            } else if(jPeriode.includes("PERIODE")) {
-                katWrapEl.removeClass('col-md-6 col-12').addClass('col-md-4 col-12');
-                fileWrapEl.removeClass('col-md-3 col-9').addClass('col-md-3 col-9');
+                row.find('.efilekelola-periode-input').prop('required', true).val('');
+            } else if (jPeriode.includes('PERIODE')) {
+                // Per Bulan: tampilkan tahun + rentang bulan
+                katWrapEl.addClass('col-md-4 col-12');
+                thnWrapEl.addClass('col-md-2 col-6').show(); thnInput.prop('required', true);
+                if (!thnInput.val()) thnInput.val(tahunSkrg);
                 var bulanOpts = '<option value="">-</option><option>Jan</option><option>Feb</option><option>Mar</option><option>Apr</option><option>Mei</option><option>Jun</option><option>Jul</option><option>Agu</option><option>Sep</option><option>Okt</option><option>Nov</option><option>Des</option>';
-                pWrap.removeClass('col-md-3 col-6').addClass('col-md-2 col-6').show();
+                pWrap.addClass('col-md-2 col-6').show();
+                fileWrapEl.addClass('col-md-3 col-9');
                 pInput.replaceWith(
                     '<div class="d-flex align-items-center efilekelola-periode-input" style="gap:4px;">'
-                    + '<select class="form-control form-control-sultan border-maroon efilekelola-periode-mulai" required style="min-width:65px; padding:2px 4px; height:31px; font-size:12px;">'+bulanOpts+'</select>'
+                    + '<select class="form-control form-control-sultan border-maroon efilekelola-periode-mulai" required style="min-width:65px; padding:2px 4px; height:31px; font-size:12px;">' + bulanOpts + '</select>'
                     + '<span class="font-weight-bold text-muted px-1" style="font-size:12px;">&ndash;</span>'
-                    + '<select class="form-control form-control-sultan border-maroon efilekelola-periode-akhir" required style="min-width:65px; padding:2px 4px; height:31px; font-size:12px;">'+bulanOpts+'</select>'
+                    + '<select class="form-control form-control-sultan border-maroon efilekelola-periode-akhir" required style="min-width:65px; padding:2px 4px; height:31px; font-size:12px;">' + bulanOpts + '</select>'
                     + '</div>'
                 );
-                pLabel.text("Periode (Bln)");
-            } else if(jPeriode === "TRIWULAN") {
-                katWrapEl.removeClass('col-md-6 col-12').addClass('col-md-4 col-12');
-                fileWrapEl.removeClass('col-md-3 col-9').addClass('col-md-3 col-9');
-                var triwulanOpts = '<option value="">-</option><option value="Triwulan 1">Triwulan 1</option><option value="Triwulan 2">Triwulan 2</option><option value="Triwulan 3">Triwulan 3</option><option value="Triwulan 4">Triwulan 4</option>';
-                pWrap.removeClass('col-md-3 col-6').addClass('col-md-2 col-6').show();
+                pLabel.text('Periode (Bln)');
+            } else if (jPeriode === 'TRIWULAN') {
+                katWrapEl.addClass('col-md-4 col-12');
+                thnWrapEl.addClass('col-md-2 col-6').show(); thnInput.prop('required', true);
+                if (!thnInput.val()) thnInput.val(tahunSkrg);
+                pWrap.addClass('col-md-2 col-6').show();
+                fileWrapEl.addClass('col-md-3 col-9');
+                pInput.replaceWith('<select class="form-control form-control-sultan border-maroon efilekelola-periode-input" required><option value="">-</option><option value="Triwulan 1">Triwulan 1</option><option value="Triwulan 2">Triwulan 2</option><option value="Triwulan 3">Triwulan 3</option><option value="Triwulan 4">Triwulan 4</option></select>');
+                pLabel.text('Triwulan');
+            } else if (jPeriode === 'SKP') {
+                katWrapEl.addClass('col-md-4 col-12');
+                thnWrapEl.addClass('col-md-2 col-6').show(); thnInput.prop('required', true);
+                if (!thnInput.val()) thnInput.val(tahunSkrg);
+                pWrap.addClass('col-md-2 col-6').show();
+                fileWrapEl.addClass('col-md-3 col-9');
+                pInput.replaceWith('<select class="form-control form-control-sultan border-maroon efilekelola-periode-input" required><option value="">-</option><option value="Sasaran">Sasaran</option><option value="Triwulan 1">Triwulan 1</option><option value="Triwulan 2">Triwulan 2</option><option value="Triwulan 3">Triwulan 3</option><option value="Triwulan 4">Triwulan 4</option><option value="Tahunan">Tahunan</option></select>');
+                pLabel.text('Periode SKP');
+            } else if (jPeriode === 'SK_PPPK') {
+                // SK PPPK: sembunyikan tahun, dropdown SK lebih lebar
+                katWrapEl.addClass('col-md-4 col-12');
+                thnWrapEl.addClass('col-md-2 col-6').hide(); thnInput.prop('required', false).val('');
+                pWrap.addClass('col-md-4 col-6').show();
+                fileWrapEl.addClass('col-md-3 col-9');
+                pInput.replaceWith('<select class="form-control form-control-sultan border-maroon efilekelola-periode-input" required><option value="">- Pilih SK -</option><option value="SK Pertama">SK Pertama</option><option value="SK Kedua">SK Kedua</option><option value="SK Ketiga">SK Ketiga</option><option value="SK Keempat">SK Keempat</option><option value="SK Kelima">SK Kelima</option></select>');
+                pLabel.text('Pilihan SK');
+            } else if (jPeriode === 'SK_KP') {
+                // SK KP: sembunyikan tahun, dropdown golongan lebih lebar
+                katWrapEl.addClass('col-md-4 col-12');
+                thnWrapEl.addClass('col-md-2 col-6').hide(); thnInput.prop('required', false).val('');
+                pWrap.addClass('col-md-4 col-6').show();
+                fileWrapEl.addClass('col-md-3 col-9');
+                pInput.replaceWith('<select class="form-control form-control-sultan border-maroon efilekelola-periode-input" required><option value="">- Pilih Golongan -</option><option value="II/a">II/a</option><option value="II/b">II/b</option><option value="II/c">II/c</option><option value="II/d">II/d</option><option value="III/a">III/a</option><option value="III/b">III/b</option><option value="III/c">III/c</option><option value="III/d">III/d</option><option value="IV/a">IV/a</option><option value="IV/b">IV/b</option><option value="IV/c">IV/c</option><option value="IV/d">IV/d</option></select>');
+                pLabel.text('Golongan KP');
+            } else if (jPeriode === 'SK_JF') {
+                // SK JF: sembunyikan tahun, dropdown jenjang lebih lebar
+                katWrapEl.addClass('col-md-4 col-12');
+                thnWrapEl.addClass('col-md-2 col-6').hide(); thnInput.prop('required', false).val('');
+                pWrap.addClass('col-md-4 col-6').show();
+                fileWrapEl.addClass('col-md-3 col-9');
+                pInput.replaceWith('<select class="form-control form-control-sultan border-maroon efilekelola-periode-input" required><option value="">- Pilih Jenjang -</option><option value="Guru Ahli Pertama">Guru Ahli Pertama</option><option value="Guru Ahli Muda">Guru Ahli Muda</option><option value="Guru Ahli Madya">Guru Ahli Madya</option></select>');
+                pLabel.text('Jenjang Jabatan');
+            } else if (jPeriode === 'IJAZAH') {
+                // Ijazah: sembunyikan tahun, dropdown pendidikan lebih lebar
+                katWrapEl.addClass('col-md-4 col-12');
+                thnWrapEl.addClass('col-md-2 col-6').hide(); thnInput.prop('required', false).val('');
+                pWrap.addClass('col-md-4 col-6').show();
+                fileWrapEl.addClass('col-md-3 col-9');
+                pInput.replaceWith('<select class="form-control form-control-sultan border-maroon efilekelola-periode-input" required><option value="">- Pilih Pendidikan -</option><option value="SD">SD</option><option value="SMP">SMP</option><option value="SMA">SMA</option><option value="D2">D2</option><option value="D3">D3</option><option value="D4">D4</option><option value="S1">S1</option><option value="S2">S2</option><option value="S3">S3</option></select>');
+                pLabel.text('Tingkat Pend.');
+            } else if (jPeriode === 'DIKLAT') {
+                // DIKLAT: sembunyikan tahun, gunakan panel periode lebar untuk Tanggal Sertifikat & Nama Diklat
+                katWrapEl.addClass('col-md-3 col-12');
+                thnWrapEl.addClass('col-md-2 col-6').hide(); thnInput.prop('required', false).val('');
+                pWrap.addClass('col-md-6 col-12').show();
+                fileWrapEl.addClass('col-md-2 col-9');
                 pInput.replaceWith(
-                    '<select class="form-control form-control-sultan border-maroon efilekelola-periode-input" required>'
-                    + triwulanOpts +
-                    '</select>'
+                    '<div class="d-flex align-items-center efilekelola-periode-input" style="gap:6px;">'
+                    + '<input type="date" class="form-control form-control-sultan border-maroon efilekelola-periode-diklat-tgl" required style="width:30%; padding:2px 4px; height:31px; font-size:12px;" title="Tanggal Sertifikat">'
+                    + '<input type="text" class="form-control form-control-sultan border-maroon efilekelola-periode-diklat-nama" placeholder="Nama Diklat..." required style="width:70%; padding:2px 6px; height:31px; font-size:12px;" title="Nama Diklat">'
+                    + '</div>'
                 );
-                pLabel.text("Triwulan");
-            } else if(jPeriode === "SKP") {
-                katWrapEl.removeClass('col-md-6 col-12').addClass('col-md-4 col-12');
-                fileWrapEl.removeClass('col-md-3 col-9').addClass('col-md-3 col-9');
-                var skpOpts = '<option value="">-</option><option value="Triwulan 1">Triwulan 1</option><option value="Triwulan 2">Triwulan 2</option><option value="Triwulan 3">Triwulan 3</option><option value="Triwulan 4">Triwulan 4</option><option value="Tahunan">Tahunan</option>';
-                pWrap.removeClass('col-md-3 col-6').addClass('col-md-2 col-6').show();
-                pInput.replaceWith(
-                    '<select class="form-control form-control-sultan border-maroon efilekelola-periode-input" required>'
-                    + skpOpts +
-                    '</select>'
-                );
-                pLabel.text("Periode SKP");
-            } else if(jPeriode === "SK_PPPK") {
-                katWrapEl.removeClass('col-md-6 col-12').addClass('col-md-4 col-12');
-                fileWrapEl.removeClass('col-md-3 col-9').addClass('col-md-3 col-9');
-                var pppkOpts = '<option value="">-</option><option value="SK Pertama">SK Pertama</option><option value="SK Kedua">SK Kedua</option><option value="SK Ketiga">SK Ketiga</option><option value="SK Keempat">SK Keempat</option><option value="SK Kelima">SK Kelima</option>';
-                pWrap.removeClass('col-md-3 col-6').addClass('col-md-2 col-6').show();
-                pInput.replaceWith(
-                    '<select class="form-control form-control-sultan border-maroon efilekelola-periode-input" required>'
-                    + pppkOpts +
-                    '</select>'
-                );
-                pLabel.text("Pilihan SK");
-            } else if(jPeriode === "SK_KP") {
-                katWrapEl.removeClass('col-md-6 col-12').addClass('col-md-4 col-12');
-                fileWrapEl.removeClass('col-md-3 col-9').addClass('col-md-3 col-9');
-                var kpOpts = '<option value="">-</option><option value="II/a">II/a</option><option value="II/b">II/b</option><option value="II/c">II/c</option><option value="II/d">II/d</option><option value="III/a">III/a</option><option value="III/b">III/b</option><option value="III/c">III/c</option><option value="III/d">III/d</option><option value="IV/a">IV/a</option><option value="IV/b">IV/b</option><option value="IV/c">IV/c</option><option value="IV/d">IV/d</option>';
-                pWrap.removeClass('col-md-3 col-6').addClass('col-md-2 col-6').show();
-                pInput.replaceWith(
-                    '<select class="form-control form-control-sultan border-maroon efilekelola-periode-input" required>'
-                    + kpOpts +
-                    '</select>'
-                );
-                pLabel.text("Golongan KP");
-            } else if(jPeriode === "SK_JF") {
-                katWrapEl.removeClass('col-md-6 col-12').addClass('col-md-4 col-12');
-                fileWrapEl.removeClass('col-md-3 col-9').addClass('col-md-3 col-9');
-                var jfOpts = '<option value="">-</option><option value="Guru Ahli Pertama">Guru Ahli Pertama</option><option value="Guru Ahli Muda">Guru Ahli Muda</option><option value="Guru Ahli Madya">Guru Ahli Madya</option>';
-                pWrap.removeClass('col-md-3 col-6').addClass('col-md-2 col-6').show();
-                pInput.replaceWith(
-                    '<select class="form-control form-control-sultan border-maroon efilekelola-periode-input" required>'
-                    + jfOpts +
-                    '</select>'
-                );
-                pLabel.text("Jenjang Jabatan");
-            } else if(jPeriode === "IJAZAH") {
-                katWrapEl.removeClass('col-md-6 col-12').addClass('col-md-4 col-12');
-                fileWrapEl.removeClass('col-md-3 col-9').addClass('col-md-3 col-9');
-                var eduOpts = '<option value="">-</option><option value="SD">SD</option><option value="SMP">SMP</option><option value="SMA">SMA</option><option value="D2">D2</option><option value="D3">D3</option><option value="D4">D4</option><option value="S1">S1</option><option value="S2">S2</option><option value="S3">S3</option>';
-                pWrap.removeClass('col-md-3 col-6').addClass('col-md-2 col-6').show();
-                pInput.replaceWith(
-                    '<select class="form-control form-control-sultan border-maroon efilekelola-periode-input" required>'
-                    + eduOpts +
-                    '</select>'
-                );
-                pLabel.text("Tingkat Pend.");
-            } else if(jPeriode.includes("PERMANEN")) {
-                katWrapEl.removeClass('col-md-4 col-12').addClass('col-md-6 col-12');
-                fileWrapEl.removeClass('col-md-3 col-9').addClass('col-md-3 col-9');
-                pWrap.removeClass('col-md-2 col-6').addClass('col-md-3 col-6').hide();
+                pLabel.html('Tgl &amp; Nama Diklat <span class="text-danger">*</span>');
+            } else if (jPeriode.includes('PERMANEN')) {
+                // Permanen: sembunyikan keduanya, upload sekali
+                katWrapEl.addClass('col-md-8 col-12');
+                thnWrapEl.addClass('col-md-2 col-6').hide(); thnInput.prop('required', false).val('');
+                pWrap.addClass('col-md-2 col-6').hide();
+                fileWrapEl.addClass('col-md-3 col-9');
                 pInput.replaceWith('<input type="text" class="form-control form-control-sultan border-maroon efilekelola-periode-input" value="PERMANEN" readonly>');
             } else {
-                katWrapEl.removeClass('col-md-4 col-12').addClass('col-md-6 col-12');
-                fileWrapEl.removeClass('col-md-3 col-9').addClass('col-md-3 col-9');
-                pWrap.removeClass('col-md-2 col-6').addClass('col-md-3 col-6').hide();
+                // TAHUNAN (default): hanya tahun
+                katWrapEl.addClass('col-md-6 col-12');
+                thnWrapEl.addClass('col-md-2 col-6').show(); thnInput.prop('required', true);
+                if (!thnInput.val()) thnInput.val(tahunSkrg);
+                pWrap.addClass('col-md-2 col-6').hide();
+                fileWrapEl.addClass('col-md-3 col-9');
                 pInput.replaceWith('<input type="text" class="form-control form-control-sultan border-maroon efilekelola-periode-input" value="-" readonly>');
             }
 
             // Tampilkan keterangan kategori jika ada
             var keterBx = row.find('.efilekelola-kat-keterangan');
-            if (katData.keterangan && katData.keterangan.trim() !== "") {
-                keterBx.html('<i class="fas fa-info-circle mr-1"></i>' + $('<span>').text(katData.keterangan).html()).show();
+            var keterRow = row.find('.efilekelola-kat-keterangan-row');
+            if (katData.keterangan && katData.keterangan.trim() !== '') {
+                keterBx.html('<i class="fas fa-info-circle mr-1"></i>' + $('<span>').text(katData.keterangan).html());
+                keterRow.show();
             } else {
-                keterBx.hide().html('');
+                keterRow.hide();
+                keterBx.html('');
             }
         }
     });
@@ -521,7 +544,13 @@ function efilekelola_renderTabel(dataRows) {
         if (teksPeriode.match(/^\d{4}-\d{2}-\d{2}$/)) {
             teksPeriode = Sultan.format.tanggal(teksPeriode);
         }
-        dtArray.push([ aksi, badge, txtPtk, txtKat, r.tahun, teksPeriode, btnFile, metaW, metaE, metaV ]);
+        // Label kecil konteks tipe periode
+        var katItemTbl = EFILEKELOLA_MASTER_KAT.find(function(k) { return String(k.idKat).trim() === String(r.id_kategori).trim(); });
+        var periodeLabelMap = { 'TAHUNAN': 'Tahunan', 'SKP': 'Periode SKP', 'TRIWULAN': 'Triwulan', 'PERIODE': 'Per Periode', 'TMT': 'Tgl Mulai', 'PERMANEN': 'Permanen', 'SK_PPPK': 'Pilihan SK', 'SK_KP': 'Golongan KP', 'SK_JF': 'Jenjang JF', 'IJAZAH': 'Tingkat Pend.', 'PERMANEN_TMT': 'Permanen TMT' };
+        var jpTbl = katItemTbl ? String(katItemTbl.jenisPeriode || '').toUpperCase() : '';
+        var labelTbl = jpTbl && periodeLabelMap[jpTbl] ? '<div class="text-muted" style="font-size:10px; margin-top:2px;">' + periodeLabelMap[jpTbl] + '</div>' : '';
+        var periodeDisplay = teksPeriode !== '-' ? '<div>' + efilekelola_escapeHtml(teksPeriode) + '</div>' + labelTbl : '-';
+        dtArray.push([ aksi, badge, txtPtk, txtKat, r.tahun, periodeDisplay, btnFile, metaW, metaE, metaV ]);
     });
     EFILEKELOLA_TABEL_INSTANCE.clear().rows.add(dtArray).draw(false);
 }
@@ -632,9 +661,8 @@ function efilekelola_createUploadRowContext($c) {
             <div class="col-md-4 col-12 mb-3 mb-md-0 efilekelola-kat-wrapper">
                 <label class="form-label-sultan small text-muted text-uppercase mb-1">Kategori Berkas <span class="text-danger">*</span></label>
                 <select class="form-control form-control-sultan border-maroon efilekelola-kategori-select" required>${htmlKat}</select>
-                <div class="efilekelola-kat-keterangan alert-soft-info rounded small px-2 py-1 mt-2" style="display:none; font-size:11px; line-height:1.4;"></div>
             </div>
-            <div class="col-md-2 col-6 mb-3 mb-md-0">
+            <div class="col-md-2 col-6 mb-3 mb-md-0 efilekelola-tahun-wrapper">
                 <label class="form-label-sultan small text-muted text-uppercase mb-1">Tahun <span class="text-danger">*</span></label>
                 <input type="number" class="form-control form-control-sultan border-maroon efilekelola-tahun-input" placeholder="202X" min="1980" max="2050" required>
             </div>
@@ -644,13 +672,19 @@ function efilekelola_createUploadRowContext($c) {
             </div>
             <div class="col-md-3 col-9 mb-3 mb-md-0 efilekelola-file-wrapper">
                 <label class="form-label-sultan small text-muted text-uppercase mb-1 text-nowrap d-block">
-                    <i class="fas fa-file-pdf text-danger mr-1 efilekelola-format-icon"></i> <span class="efilekelola-format-text">File PDF (1MB)</span> <span class="text-danger">*</span>
+                     <i class="fas fa-file-pdf text-danger mr-1 efilekelola-format-icon"></i> <span class="efilekelola-format-text">File PDF (1MB)</span> <span class="text-danger">*</span>
                 </label>
                 <div class="custom-file"><input type="file" class="custom-file-input border-maroon efilekelola-file-input" accept="application/pdf" required><label class="custom-file-label text-truncate" style="padding-top:5px; padding-bottom:5px; height:31px; font-size:12px;">Pilih file...</label></div>
             </div>
             <div class="col-md-1 col-3 mb-3 mb-md-0 text-right">
                 <label class="form-label-sultan small text-muted text-uppercase mb-1 d-none d-md-block" style="visibility:hidden;">Aksi</label>
                 <div class="pt-md-0 pt-4 mt-md-0 mt-1">${delBtn}</div>
+            </div>
+        </div>
+        <!-- Keterangan diletakkan di bawah input, membentang penuh dengan font lebih besar -->
+        <div class="row mt-2 efilekelola-kat-keterangan-row" style="display:none;">
+            <div class="col-12">
+                <div class="efilekelola-kat-keterangan alert-soft-info rounded px-3 py-2" style="font-size:13px; line-height:1.5;"></div>
             </div>
         </div>
     </div>`;
@@ -669,27 +703,50 @@ function efilekelola_submitBatchUpload(e) {
 
     rowEls.each(function() {
         if(hasDup) return;
-        var idKat = String($(this).find('.efilekelola-kategori-select').val() || "").trim();
-        var thn = String($(this).find('.efilekelola-tahun-input').val() || "").trim();
+        var idKat = String($(this).find('.efilekelola-kategori-select').val() || '').trim();
+        var thn = String($(this).find('.efilekelola-tahun-input').val() || '').trim();
+        var katItemRow = EFILEKELOLA_MASTER_KAT.find(function(k) { return String(k.idKat).trim() === idKat; });
+        var jpRow = katItemRow ? String(katItemRow.jenisPeriode || '').toUpperCase() : '';
+
+        var per = '-';
         var pWrap = $(this).find('.efilekelola-periode-wrapper');
-        var per = "-";
         if (pWrap.is(':visible')) {
-            var pMulai = $(this).find('.efilekelola-periode-mulai');
-            var pAkhir = $(this).find('.efilekelola-periode-akhir');
-            if (pMulai.length > 0) {
-                // 2-dropdown bulan (jenis PERIODE)
-                var bMulai = pMulai.val() || ""; var bAkhir = pAkhir.val() || "";
-                per = (bMulai && bAkhir) ? (bMulai + " - " + bAkhir + " " + thn) : "";
+            if (jpRow === 'DIKLAT') {
+                var tglD = String($(this).find('.efilekelola-periode-diklat-tgl').val() || '').trim();
+                var namaD = String($(this).find('.efilekelola-periode-diklat-nama').val() || '').trim();
+                per = (tglD && namaD) ? (tglD + ' | ' + namaD) : '';
             } else {
-                // Input tunggal (jenis TMT)
-                per = String($(this).find('.efilekelola-periode-input').val() || "").trim();
+                var pMulai = $(this).find('.efilekelola-periode-mulai');
+                var pAkhir = $(this).find('.efilekelola-periode-akhir');
+                if (pMulai.length > 0) {
+                    var bMulai = pMulai.val() || ''; var bAkhir = pAkhir.val() || '';
+                    per = (bMulai && bAkhir) ? (bMulai + ' - ' + bAkhir + ' ' + thn) : '';
+                } else {
+                    per = String($(this).find('.efilekelola-periode-input').val() || '').trim();
+                }
             }
         }
+
+        if (jpRow === 'DIKLAT' && per && per !== '-') {
+            var parts = per.split(' | ');
+            thn = parts[0] ? parts[0].substring(0, 4) : String(new Date().getFullYear());
+        } else if ((jpRow === 'TMT' || jpRow === 'PERMANEN_TMT') && per && per !== '-') {
+            thn = String(per).substring(0, 4) || String(new Date().getFullYear());
+        } else if (jpRow === 'PERMANEN') {
+            thn = String(new Date().getFullYear()); per = 'PERMANEN';
+        } else {
+            // Untuk tipe berkas SK CPNS, SK PNS, SK PPPK, SK PPPK PW, SK GTY/PTY, SK GTT/PTT, Serdik, dll.
+            // yang di-hide tahunnya dari UI tapi memiliki periode (misalnya SK Pertama/Kedua, dsb),
+            // pastikan jika input tahun kosong, diautofill tahun saat ini atau tahun berjalan.
+            if (!thn || thn === '') {
+                thn = String(new Date().getFullYear());
+            }
+        }
+
         var fIn = $(this).find('.efilekelola-file-input')[0];
-        
-        if(!idKat || !thn || fIn.files.length === 0) return;
-        var katData = EFILEKELOLA_MASTER_KAT.find(k => String(k.idKat).trim() === idKat) || { namaKat: "Berkas" };
-        var uni = idKat + "_" + thn + "_" + per.toLowerCase();
+        if (!idKat || !thn || fIn.files.length === 0) return;
+        var katData = katItemRow || { namaKat: 'Berkas' };
+        var uni = idKat + '_' + thn + '_' + per.toLowerCase();
         
         if (tracker[uni]) { hasDup = true; dupMsg = `Anda mengunggah <b>${katData.namaKat}</b> periode <b>${thn} ${per}</b> lebih dari satu kali!`; return; }
         tracker[uni] = true;
@@ -759,20 +816,107 @@ function efilekelola_bukaModalPerbaiki(rowId) {
     $('#efilekelola_p_catatan').text(data.catatan || "Tidak ada catatan.");
     $('#efilekelola_p_tahun_input').val(data.tahun);
 
-    var kData = EFILEKELOLA_MASTER_KAT.find(k => String(k.idKat).trim() === String(data.id_kategori).trim());
+    var kData = EFILEKELOLA_MASTER_KAT.find(function(k) { return String(k.idKat).trim() === String(data.id_kategori).trim(); });
     var fIn = $('#efilekelola_p_file'); var lFmt = $('#efilekelola_p_lblFormat'); var iFmt = $('#efilekelola_p_iconFormat');
-    var pWrap = $('#efilekelola_p_periode_wrapper'); var pLbl = $('#efilekelola_p_periode_label'); var pIn = $('#efilekelola_p_periode_input');
+    var pWrap = $('#efilekelola_p_periode_wrapper'); var pLbl = $('#efilekelola_p_periode_label');
+    var thnInput = $('#efilekelola_p_tahun_input');
+    var thnCol = thnInput.closest('.col-md-6, .col-md-12, [class*="col-"]');
+
+    // Reset periodo input ke text sebelum dikonfigurasi ulang
+    var $pIn = $('#efilekelola_p_periode_input');
+    if ($pIn.length && $pIn[0].tagName === 'SELECT') {
+        $pIn.replaceWith('<input type="text" id="efilekelola_p_periode_input" class="form-control form-control-sultan border-warning">');
+    }
+    $pIn = $('#efilekelola_p_periode_input');
 
     if (kData) {
+        // Toggle keterangan di modal edit
+        if (kData.keterangan && kData.keterangan.trim() !== '') {
+            $('#efilekelola_p_keterangan').html('<i class="fas fa-info-circle mr-1"></i>' + $('<span>').text(kData.keterangan).html());
+            $('#efilekelola_p_keterangan_row').show();
+        } else {
+            $('#efilekelola_p_keterangan_row').hide();
+            $('#efilekelola_p_keterangan').html('');
+        }
+
         var fmt = String(kData.format).toUpperCase();
-        if (fmt.includes('IMG') || fmt.includes('JPG') || fmt.includes('PNG') || fmt.includes('FOTO')) { fIn.attr('accept', 'image/jpeg, image/png, image/jpg'); lFmt.text('Upload JPG/PNG (1MB)'); iFmt.removeClass('fa-file-pdf fa-file-upload').addClass('fa-file-image'); } 
-        else if (fmt.includes('ALL') || fmt.includes('BEBAS') || fmt.includes('ANY')) { fIn.attr('accept', 'application/pdf, image/jpeg, image/png, image/jpg'); lFmt.text('Upload PDF/JPG/PNG (1MB)'); iFmt.removeClass('fa-file-pdf fa-file-image').addClass('fa-file-upload'); } 
+        if (fmt.includes('IMG') || fmt.includes('JPG') || fmt.includes('PNG') || fmt.includes('FOTO')) { fIn.attr('accept', 'image/jpeg, image/png, image/jpg'); lFmt.text('Upload JPG/PNG (1MB)'); iFmt.removeClass('fa-file-pdf fa-file-upload').addClass('fa-file-image'); }
+        else if (fmt.includes('ALL') || fmt.includes('BEBAS') || fmt.includes('ANY')) { fIn.attr('accept', 'application/pdf, image/jpeg, image/png, image/jpg'); lFmt.text('Upload PDF/JPG/PNG (1MB)'); iFmt.removeClass('fa-file-pdf fa-file-image').addClass('fa-file-upload'); }
         else { fIn.attr('accept', 'application/pdf'); lFmt.text('Upload PDF Revisi (1MB)'); iFmt.removeClass('fa-file-image fa-file-upload').addClass('fa-file-pdf'); }
-        
-        var jp = String(kData.jenisPeriode).toUpperCase();
-        if(jp.includes("TMT")) { pWrap.show(); pLbl.text("TMT"); pIn.attr("type", "date").prop("required", true).val(data.periode && data.periode !== "-" ? data.periode : ""); }
-        else if(jp.includes("PERIODE")) { pWrap.show(); pLbl.text("Periode"); pIn.attr("type", "text").prop("required", true).val(data.periode && data.periode !== "-" ? data.periode : ""); }
-        else { pWrap.hide(); pIn.prop("required", false).val(""); }
+
+        var jp = String(kData.jenisPeriode || 'TAHUNAN').toUpperCase();
+
+        // Reset layout
+        thnCol.show().removeClass('col-md-12').addClass('col-md-6');
+        thnInput.prop('required', true);
+        pWrap.hide().removeClass('col-md-12').addClass('col-md-6');
+        $pIn.prop('required', false).val('');
+
+        if (jp === 'TMT' || jp === 'PERMANEN_TMT') {
+            thnCol.hide(); thnInput.prop('required', false);
+            pWrap.removeClass('col-md-6').addClass('col-md-12').show();
+            pLbl.text('TMT (Tanggal Mulai)');
+            $pIn.replaceWith('<input type="date" id="efilekelola_p_periode_input" class="form-control form-control-sultan border-warning" required>');
+            $('#efilekelola_p_periode_input').val(data.periode && data.periode !== '-' ? data.periode : '');
+        } else if (jp === 'PERIODE') {
+            thnInput.val(data.tahun);
+            pWrap.show(); pLbl.text('Periode');
+            $pIn.attr('type', 'text').prop('required', true).val(data.periode && data.periode !== '-' ? data.periode : '');
+        } else if (jp === 'TRIWULAN') {
+            thnInput.val(data.tahun);
+            pWrap.show(); pLbl.text('Triwulan');
+            $pIn.replaceWith('<select id="efilekelola_p_periode_input" class="form-control form-control-sultan border-warning" required><option value="">-</option><option>Triwulan 1</option><option>Triwulan 2</option><option>Triwulan 3</option><option>Triwulan 4</option></select>');
+            $('#efilekelola_p_periode_input').val(data.periode);
+        } else if (jp === 'SKP') {
+            thnInput.val(data.tahun);
+            pWrap.show(); pLbl.text('Periode SKP');
+            $pIn.replaceWith('<select id="efilekelola_p_periode_input" class="form-control form-control-sultan border-warning" required><option value="">-</option><option>Sasaran</option><option>Triwulan 1</option><option>Triwulan 2</option><option>Triwulan 3</option><option>Triwulan 4</option><option>Tahunan</option></select>');
+            $('#efilekelola_p_periode_input').val(data.periode);
+        } else if (jp === 'SK_PPPK') {
+            thnCol.hide(); thnInput.prop('required', false);
+            pWrap.removeClass('col-md-6').addClass('col-md-12').show(); pLbl.text('Pilihan SK');
+            $pIn.replaceWith('<select id="efilekelola_p_periode_input" class="form-control form-control-sultan border-warning" required><option value="">- Pilih SK -</option><option>SK Pertama</option><option>SK Kedua</option><option>SK Ketiga</option><option>SK Keempat</option><option>SK Kelima</option></select>');
+            $('#efilekelola_p_periode_input').val(data.periode);
+        } else if (jp === 'SK_KP') {
+            thnCol.hide(); thnInput.prop('required', false);
+            pWrap.removeClass('col-md-6').addClass('col-md-12').show(); pLbl.text('Golongan KP');
+            $pIn.replaceWith('<select id="efilekelola_p_periode_input" class="form-control form-control-sultan border-warning" required><option value="">- Pilih Golongan -</option><option>II/a</option><option>II/b</option><option>II/c</option><option>II/d</option><option>III/a</option><option>III/b</option><option>III/c</option><option>III/d</option><option>IV/a</option><option>IV/b</option><option>IV/c</option><option>IV/d</option></select>');
+            $('#efilekelola_p_periode_input').val(data.periode);
+        } else if (jp === 'SK_JF') {
+            thnCol.hide(); thnInput.prop('required', false);
+            pWrap.removeClass('col-md-6').addClass('col-md-12').show(); pLbl.text('Jenjang Jabatan');
+            $pIn.replaceWith('<select id="efilekelola_p_periode_input" class="form-control form-control-sultan border-warning" required><option value="">- Pilih Jenjang -</option><option>Guru Ahli Pertama</option><option>Guru Ahli Muda</option><option>Guru Ahli Madya</option></select>');
+            $('#efilekelola_p_periode_input').val(data.periode);
+        } else if (jp === 'IJAZAH') {
+            thnCol.hide(); thnInput.prop('required', false);
+            pWrap.removeClass('col-md-6').addClass('col-md-12').show(); pLbl.text('Tingkat Pendidikan');
+            $pIn.replaceWith('<select id="efilekelola_p_periode_input" class="form-control form-control-sultan border-warning" required><option value="">- Pilih Pendidikan -</option><option>SD</option><option>SMP</option><option>SMA</option><option>D2</option><option>D3</option><option>D4</option><option>S1</option><option>S2</option><option>S3</option></select>');
+            $('#efilekelola_p_periode_input').val(data.periode);
+        } else if (jp === 'DIKLAT') {
+            thnCol.hide(); thnInput.prop('required', false);
+            pWrap.removeClass('col-md-6').addClass('col-md-12').show();
+            pLbl.html('Tgl &amp; Nama Diklat <span class="text-danger">*</span>');
+            
+            // Buat d-flex input untuk edit diklat
+            $pIn.replaceWith(
+                '<div class="d-flex align-items-center efilekelola_p_periode_diklat_wrap" style="gap:6px;">'
+                + '<input type="date" id="efilekelola_p_periode_diklat_tgl" class="form-control form-control-sultan border-warning" required style="width:30%;" title="Tanggal Sertifikat">'
+                + '<input type="text" id="efilekelola_p_periode_diklat_nama" class="form-control form-control-sultan border-warning" placeholder="Nama Diklat..." required style="width:70%;" title="Nama Diklat">'
+                + '</div>'
+            );
+            
+            var rawPeriode = data.periode && data.periode !== '-' ? data.periode : '';
+            var pParts = rawPeriode.split(' | ');
+            $('#efilekelola_p_periode_diklat_tgl').val(pParts[0] || '');
+            $('#efilekelola_p_periode_diklat_nama').val(pParts[1] || '');
+        } else if (jp === 'PERMANEN') {
+            thnCol.hide(); thnInput.prop('required', false);
+            pWrap.hide();
+        } else {
+            // TAHUNAN (default)
+            thnInput.val(data.tahun);
+            pWrap.hide();
+        }
     }
 
     $('#global_modalFormSize').removeClass('modal-xl modal-lg').addClass('modal-md');
@@ -847,9 +991,33 @@ function efilekelola_submitPerbaiki(e) {
     var rId = $('#efilekelola_p_rowid').val(); 
     var dLama = EFILEKELOLA_CACHE_DATA.find(r => String(r.rowId) === String(rId));
     
+    var kData = EFILEKELOLA_MASTER_KAT.find(function(k) { return String(k.idKat).trim() === String(dLama.id_kategori).trim(); });
+    var jp = kData ? String(kData.jenisPeriode || 'TAHUNAN').toUpperCase() : '';
+
     var thn = String($('#efilekelola_p_tahun_input').val()).trim();
     var pIn = $('#efilekelola_p_periode_input');
-    var per = pIn.is(':visible') ? String(pIn.val()).trim() : "-";
+    var per = '-';
+    
+    if (jp === 'DIKLAT') {
+        var tglD = String($('#efilekelola_p_periode_diklat_tgl').val() || '').trim();
+        var namaD = String($('#efilekelola_p_periode_diklat_nama').val() || '').trim();
+        per = (tglD && namaD) ? (tglD + ' | ' + namaD) : '';
+    } else {
+        per = pIn.is(':visible') ? String(pIn.val()).trim() : "-";
+    }
+
+    if (jp === 'DIKLAT' && per && per !== '-') {
+        var parts = per.split(' | ');
+        thn = parts[0] ? parts[0].substring(0, 4) : String(new Date().getFullYear());
+    } else if ((jp === 'TMT' || jp === 'PERMANEN_TMT') && per && per !== '-') {
+        thn = String(per).substring(0, 4) || String(new Date().getFullYear());
+    } else if (jp === 'PERMANEN') {
+        thn = String(new Date().getFullYear()); per = 'PERMANEN';
+    } else {
+        if (!thn || thn === '') {
+            thn = String(new Date().getFullYear());
+        }
+    }
     
     if (thn !== String(dLama.tahun) || per.toLowerCase() !== String(dLama.periode || "-").toLowerCase()) {
         var inDb = EFILEKELOLA_CACHE_DATA.find(f => String(f.id_ptk) === String(dLama.id_ptk) && String(f.id_kategori) === String(dLama.id_kategori) && String(f.tahun) === thn && String(f.periode || "-").toLowerCase() === per.toLowerCase() && String(f.rowId) !== String(rId));
