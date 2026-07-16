@@ -260,22 +260,26 @@
 
     // Ambil Data dari Backend dan render ke DataTable
     function muatDataAduan() {
-        $('#aduan_loadingState').removeClass('d-none');
-        $('#aduan_tableState').addClass('d-none');
+        if (!$.fn.DataTable.isDataTable('#aduan_tabelUtama')) {
+            $('#aduan_tableState').hide();
+            SultanUI.showLoading('#aduan_loadingState', 'Mempersiapkan Database Pengaduan...');
+        }
 
         var tahun = $('#aduan_filterTahun').val();
         var bulan = $('#aduan_filterBulan').val();
         var filterStatus = $('#aduan_filterStatus').val();
 
+        var btn = $('#aduan_btnRefresh');
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin text-maroon"></i>');
+
         google.script.run
             .withSuccessHandler(function(resJson) {
-                $('#aduan_loadingState').addClass('d-none');
-                $('#aduan_tableState').removeClass('d-none');
+                btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
                 
                 var data = [];
                 try { data = JSON.parse(resJson); } catch(e) { console.error("Parse error:", e); }
                 if (data.error) {
-                    NotifSultan.alert("error", "Error Server", data.error);
+                    SultanUI.showLoading('#aduan_loadingState', '<span class="text-danger">' + escapeHtml(data.error) + '</span>');
                     return;
                 }
 
@@ -287,20 +291,17 @@
                 }
 
                 renderTable(data);
+                SultanUI.hideLoading('#aduan_loadingState');
+                $('#aduan_tableState').show();
             })
             .withFailureHandler(function(err) {
-                $('#aduan_loadingState').addClass('d-none');
-                $('#aduan_tableState').removeClass('d-none');
-                NotifSultan.alert("error", "Koneksi Gagal", err.message);
+                btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
+                SultanUI.showLoading('#aduan_loadingState', '<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Server Terputus: ' + escapeHtml(err.message) + '</span>');
             })
             .getDaftarAduan(tahun, bulan);
     }
 
     function renderTable(dataList) {
-        if (dataAduanTable) {
-            dataAduanTable.clear().destroy();
-        }
-
         var isUserAdmin = (userLogin && (userLogin.role === 'admin' || userLogin.isAdmin === true));
 
         // Format baris tabel
@@ -316,58 +317,76 @@
             
             // Render Status Badge
             var st = row.status || 'Diproses';
-            if (st === 'Diproses') statusBadge = '<span class="badge badge-info">Diproses</span>';
-            else if (st === 'Ditinjau') statusBadge = '<span class="badge badge-warning">Ditinjau</span>';
-            else if (st === 'Selesai') statusBadge = '<span class="badge badge-success">Selesai</span>';
-            else if (st === 'Ditolak') statusBadge = '<span class="badge badge-danger">Ditolak</span>';
+            if (st === 'Diproses') statusBadge = '<span class="badge badge-info shadow-sm px-2 py-1">Diproses</span>';
+            else if (st === 'Ditinjau') statusBadge = '<span class="badge badge-warning text-dark shadow-sm px-2 py-1">Ditinjau</span>';
+            else if (st === 'Selesai') statusBadge = '<span class="badge badge-success shadow-sm px-2 py-1">Selesai</span>';
+            else if (st === 'Ditolak') statusBadge = '<span class="badge badge-danger shadow-sm px-2 py-1">Ditolak</span>';
 
             // Render Aksi
             if (isUserAdmin) {
-                btnAksi = '<button class="btn btn-warning btn-xs font-weight-bold btn-verif" data-id="' + row.rowBaris + '" data-status="' + row.status + '" data-tindak="' + escapeHtml(row.tindakLanjut || '') + '"><i class="fas fa-user-shield"></i> Tanggapi</button>';
+                btnAksi = '<button class="sultan-btn sultan-btn-aksi-warning px-2 py-1 btn-verif" data-id="' + row.rowBaris + '" data-status="' + row.status + '" data-tindak="' + escapeHtml(row.tindakLanjut || '') + '"><i class="fas fa-user-shield mr-1"></i> Tanggapi</button>';
             } else {
                 if (st === 'Diproses') {
-                    btnAksi = '<button class="btn btn-primary btn-xs mr-1 btn-edit" data-id="' + row.rowBaris + '" data-kategori="' + row.kategori + '" data-detail="' + escapeHtml(row.detail) + '" data-file="' + (row.fileUrl || '') + '"><i class="fas fa-edit"></i></button>';
-                    btnAksi += '<button class="btn btn-danger btn-xs btn-hapus" data-id="' + row.rowBaris + '"><i class="fas fa-trash"></i></button>';
+                    btnAksi = '<button class="sultan-btn sultan-btn-aksi-utama px-2 py-1 mr-1 btn-edit" data-id="' + row.rowBaris + '" data-kategori="' + row.kategori + '" data-detail="' + escapeHtml(row.detail) + '" data-file="' + (row.fileUrl || '') + '"><i class="fas fa-edit"></i></button>';
+                    btnAksi += '<button class="sultan-btn sultan-btn-aksi-batal px-2 py-1 btn-hapus" data-id="' + row.rowBaris + '"><i class="fas fa-trash"></i></button>';
                 } else {
-                    btnAksi = '<span class="text-muted small">No Action</span>';
+                    btnAksi = '<span class="text-muted small font-italic"><i class="fas fa-lock mr-1"></i>Terkunci</span>';
                 }
             }
 
             // Render Link File
-            var linkFile = '-';
+            var linkFile = '<span class="text-muted small">-</span>';
             if (row.fileUrl) {
-                linkFile = '<a href="' + row.fileUrl + '" target="_blank" class="btn btn-default btn-xs text-maroon font-weight-bold"><i class="fas fa-paperclip mr-1"></i>Lihat Bukti</a>';
+                linkFile = '<a href="' + row.fileUrl + '" target="_blank" class="sultan-btn sultan-btn-aksi-info px-2 py-1 font-weight-bold text-nowrap"><i class="fas fa-paperclip mr-1"></i>Lihat Bukti</a>';
             }
 
             rowsHtml += '<tr>' +
-                '<td class="text-center">' + btnAksi + '</td>' +
+                '<td class="text-center sultan-sticky-col">' + btnAksi + '</td>' +
                 '<td class="text-center">' + statusBadge + '</td>' +
-                '<td class="font-weight-bold">' + row.kategori + '</td>' +
-                '<td>' + row.nama + '<br><span class="text-muted small">' + row.nip + '</span></td>' +
+                '<td class="font-weight-bold text-dark">' + row.kategori + '</td>' +
+                '<td><div class="sultan-table-primary font-weight-bold">' + row.nama + '</div><div class="sultan-table-secondary">' + row.nip + '</div></td>' +
                 '<td>' + row.unit + '</td>' +
                 '<td class="text-center">' + row.tglKirim + '</td>' +
                 '<td class="text-wrap" style="max-width:300px; white-space:normal;">' + escapeHtml(row.detail) + '</td>' +
                 '<td class="text-center">' + linkFile + '</td>' +
                 '<td class="text-wrap text-success" style="max-width:250px; white-space:normal;">' + 
-                    (row.tindakLanjut ? '<strong>' + row.adminVerif + ':</strong> ' + escapeHtml(row.tindakLanjut) + '<br><span class="text-muted small">' + row.tglVerif + '</span>' : '<span class="text-muted">-</span>') + 
+                    (row.tindakLanjut ? '<div class="font-weight-bold text-dark small">Verifikator: ' + row.adminVerif + '</div><div class="small text-muted font-italic">"' + escapeHtml(row.tindakLanjut) + '"</div><div class="sultan-table-secondary text-right mt-1">' + row.tglVerif + '</div>' : '<span class="text-muted">-</span>') + 
                 '</td>' +
             '</tr>';
         });
 
         $('#aduan_tabelUtama tbody').html(rowsHtml);
 
-        // Inisialisasi DataTables Premium
-        dataAduanTable = $('#aduan_tabelUtama').DataTable({
-            destroy: true,
-            responsive: true,
-            lengthChange: true,
-            autoWidth: false,
-            pageLength: 10,
-            order: [[5, "desc"]], // Urutkan tanggal kirim descending
-            language: {
-                url: 'https://cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json'
+        // Inisialisasi DataTables Premium Terpusat (Anti-Blink Sultan)
+        dataAduanTable = SultanTable.init('#aduan_tabelUtama', {
+            "destroy": true, 
+            "ordering": false, 
+            "pageLength": 10, 
+            "autoWidth": false,
+            "deferRender": true,
+            "dom": "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
+                   "<'row'<'col-sm-12'<'table-responsive sultan-scroll'tr>>>" +
+                   "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+            "columnDefs": [
+                { "targets": 0, "width": "auto", "className": "text-center align-middle text-nowrap sultan-sticky-col" },
+                { "targets": 1, "width": "auto", "className": "text-center align-middle text-nowrap" },
+                { "targets": 2, "width": "auto", "className": "text-left align-middle font-weight-bold" },
+                { "targets": 3, "width": "auto", "className": "text-left align-middle" },
+                { "targets": 4, "width": "auto", "className": "text-left align-middle" },
+                { "targets": 5, "width": "auto", "className": "text-center align-middle text-nowrap" },
+                { "targets": 6, "width": "auto", "className": "text-left align-middle" },
+                { "targets": 7, "width": "auto", "className": "text-center align-middle" },
+                { "targets": 8, "width": "auto", "className": "text-left align-middle" }
+            ],
+            "language": {
+                "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json",
+                "emptyTable": "Tidak ada riwayat pengaduan yang ditemukan."
             }
         });
+
+        if (dataAduanTable) {
+            setTimeout(function () { dataAduanTable.columns.adjust(); }, 100);
+        }
     }
 
     // Helper escape html
