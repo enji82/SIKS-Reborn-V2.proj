@@ -271,7 +271,7 @@
                 var data = [];
                 try { data = JSON.parse(resJson); } catch(e) { console.error("Parse error:", e); }
                 if (data.error) {
-                    Swal.fire("Error Server", data.error, "error");
+                    NotifSultan.alert("error", "Error Server", data.error);
                     return;
                 }
 
@@ -287,7 +287,7 @@
             .withFailureHandler(function(err) {
                 $('#aduan_loadingState').addClass('d-none');
                 $('#aduan_tableState').removeClass('d-none');
-                Swal.fire("Koneksi Gagal", err.message, "error");
+                NotifSultan.alert("error", "Koneksi Gagal", err.message);
             })
             .getDaftarAduan(tahun, bulan);
     }
@@ -386,7 +386,7 @@
         }
 
         if (file.size > 5 * 1024 * 1024) {
-            Swal.fire("Ukuran Berlebih", "Maksimal ukuran file adalah 5MB.", "warning");
+            NotifSultan.alert("warning", "Ukuran Berlebih", "Maksimal ukuran file adalah 5MB.");
             resetFileRaw();
             return;
         }
@@ -420,7 +420,7 @@
         var detail = $('#aduan_detail').val();
 
         if (!kategori || !detail) {
-            Swal.fire("Validasi Gagal", "Harap isi kategori dan detail permasalahan.", "warning");
+            NotifSultan.alert("warning", "Validasi Gagal", "Harap isi kategori dan detail permasalahan.");
             return;
         }
 
@@ -456,16 +456,16 @@
 
                     if (msg.indexOf("Sukses") > -1) {
                         $('#aduan_modalForm').modal('hide');
-                        Swal.fire("Berhasil", msg, "success");
+                        Sultan.notif.sukses(msg);
                         muatDataAduan();
                     } else {
-                        Swal.fire("Gagal", msg, "error");
+                        Sultan.notif.gagal(msg);
                     }
                 })
                 .withFailureHandler(function(err) {
                     $('#aduan_btnSimpan').prop('disabled', false);
                     $('#aduan_btnSpinner').addClass('d-none');
-                    Swal.fire("Gagal Koneksi", err.message, "error");
+                    NotifSultan.alert("error", "Gagal Koneksi", err.message);
                 })
                 .updateAduan(dataKirim, fileObj);
         } else {
@@ -478,10 +478,10 @@
 
                     if (msg.indexOf("Sukses") > -1) {
                         $('#aduan_modalForm').modal('hide');
-                        Swal.fire("Berhasil", msg, "success");
+                        Sultan.notif.sukses(msg);
                         muatDataAduan();
                     } else {
-                        Swal.fire("Gagal", msg, "error");
+                        Sultan.notif.gagal(msg);
                     }
                 })
                 .withFailureHandler(function(err) {
@@ -523,14 +523,22 @@
     $(document).on('click', '.btn-hapus', function() {
         var id = $(this).data('id');
 
+        // MENGGUNAKAN CUSTOM DIALOG SULTAN UNTUK KONFIRMASI
         Swal.fire({
-            title: "Hapus Pengaduan?",
-            text: "Apakah Anda yakin ingin membatalkan dan menghapus aduan ini?",
+            title: `<h5 class="font-weight-bold" style="margin-top:10px; color:#800000">Hapus Pengaduan?</h5>`,
+            html: `<div class="text-muted">Apakah Anda yakin ingin membatalkan dan menghapus aduan ini?</div>`,
             icon: "warning",
             showCancelButton: true,
-            confirmButtonColor: "#dc3545",
             confirmButtonText: "Ya, Hapus!",
-            cancelButtonText: "Batal"
+            cancelButtonText: "Batal",
+            background: $('body').hasClass('dark-mode') ? '#1a1c1e' : '#fff',
+            color: $('body').hasClass('dark-mode') ? '#f1f3f5' : '#343a40',
+            customClass: {
+                popup: 'card-sultan',
+                confirmButton: 'sultan-btn sultan-btn-aksi-utama px-4',
+                cancelButton: 'sultan-btn sultan-btn-aksi-batal px-4'
+            },
+            buttonsStyling: false
         }).then(function(result) {
             if (result.isConfirmed) {
                 var payload = {
@@ -542,14 +550,14 @@
                 google.script.run
                     .withSuccessHandler(function(msg) {
                         if (msg.indexOf("Sukses") > -1) {
-                            Swal.fire("Berhasil", msg, "success");
+                            Sultan.notif.sukses(msg);
                             muatDataAduan();
                         } else {
-                            Swal.fire("Gagal", msg, "error");
+                            Sultan.notif.gagal(msg);
                         }
                     })
                     .withFailureHandler(function(err) {
-                        Swal.fire("Gagal Koneksi", err.message, "error");
+                        NotifSultan.alert("error", "Gagal Koneksi", err.message);
                     })
                     .hapusAduan(payload);
             }
@@ -569,7 +577,7 @@
     });
 
     // Submit Respon Admin
-    $('#aduan_formTindakLanjut').on('submit', function(e) {
+    $(document).on('submit', '#aduan_formTindakLanjut', function(e) {
         e.preventDefault();
 
         var recId = $('#aduan_verifRecId').val();
@@ -593,16 +601,16 @@
                 
                 if (msg.indexOf("Sukses") > -1) {
                     $('#aduan_modalTindakLanjut').modal('hide');
-                    Swal.fire("Berhasil", msg, "success");
+                    Sultan.notif.sukses(msg);
                     muatDataAduan();
                 } else {
-                    Swal.fire("Gagal", msg, "error");
+                    Sultan.notif.gagal(msg);
                 }
             })
             .withFailureHandler(function(err) {
                 $('#aduan_btnVerifSimpan').prop('disabled', false);
                 $('#aduan_verifSpinner').addClass('d-none');
-                Swal.fire("Gagal Koneksi", err.message, "error");
+                NotifSultan.alert("error", "Gagal Koneksi", err.message);
             })
             .verifikasiAduan(payload);
     });
