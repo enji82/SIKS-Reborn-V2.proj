@@ -95,7 +95,8 @@
                                         <th>TANGGAL KIRIM</th>
                                         <th>DETAIL MASALAH</th>
                                         <th>LAMPIRAN</th>
-                                        <th>TINDAK LANJUT ADMIN</th>
+                                        <th>TINDAK LANJUT</th>
+                                        <th>VERIFIKASI</th>
                                     </tr>
                                 </thead>
                                 <tbody></tbody>
@@ -364,6 +365,13 @@
         }
         var userNpsnActive = userLogin ? (userLogin.npsn || userLogin.username || "") : "";
 
+        // PENGURUTAN LAST ACTIVITY: tglVerif (jika ada) > tglKirim (fallback)
+        dataList.sort(function(a, b) {
+            var timeA = Math.max(parseSiabaDateTime(a.tglVerif), parseSiabaDateTime(a.tglKirim));
+            var timeB = Math.max(parseSiabaDateTime(b.tglVerif), parseSiabaDateTime(b.tglKirim));
+            return timeB - timeA;
+        });
+
         // Format baris tabel
         var rowsHtml = '';
         dataList.forEach(function(row) {
@@ -406,6 +414,32 @@
                 linkFile = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-primary btn-lihat-berkas" data-url="' + row.fileUrl + '" data-kategori="' + row.kategori + '" title="Lihat Bukti"><i class="fas fa-paperclip"></i></button>';
             }
 
+            // Render DETAIL MASALAH dengan style bubble (identik dengan kolom Tindak Lanjut)
+            var detailBubble = '';
+            if (row.detail) {
+                detailBubble = '<div class="small font-italic text-wrap" style="white-space:normal; max-width:280px;">"' + escapeHtml(row.detail) + '"</div>' +
+                               '<div class="sultan-table-secondary text-right mt-1">' + (row.nama || '') + '</div>';
+            } else {
+                detailBubble = '<span class="text-muted">-</span>';
+            }
+
+            // Render TINDAK LANJUT (catatan admin, tanpa verifikator/tanggal)
+            var tindakBubble = '';
+            if (row.tindakLanjut) {
+                tindakBubble = '<div class="small text-muted font-italic" style="white-space:normal; max-width:220px;">"' + escapeHtml(row.tindakLanjut) + '"</div>';
+            } else {
+                tindakBubble = '<span class="text-muted">-</span>';
+            }
+
+            // Render VERIFIKASI (verifikator + tanggal verif)
+            var verifBubble = '';
+            if (row.adminVerif || row.tglVerif) {
+                verifBubble = (row.adminVerif ? '<div class="sultan-table-primary font-weight-bold">' + row.adminVerif + '</div>' : '') +
+                              (row.tglVerif  ? '<div class="sultan-table-secondary">' + row.tglVerif + '</div>' : '');
+            } else {
+                verifBubble = '<span class="text-muted">-</span>';
+            }
+
             rowsHtml += '<tr>' +
                 '<td class="text-center sultan-sticky-col">' +
                     '<div class="d-flex justify-content-center" style="gap:2px;">' + btnAksi + '</div>' +
@@ -415,11 +449,10 @@
                 '<td><div class="sultan-table-primary font-weight-bold">' + row.nama + '</div><div class="sultan-table-secondary">' + row.nip + '</div></td>' +
                 '<td>' + row.unit + '</td>' +
                 '<td class="text-center">' + row.tglKirim + '</td>' +
-                '<td class="text-wrap" style="max-width:300px; white-space:normal;">' + escapeHtml(row.detail) + '</td>' +
+                '<td>' + detailBubble + '</td>' +
                 '<td class="text-center">' + linkFile + '</td>' +
-                '<td class="text-wrap text-success" style="max-width:250px; white-space:normal;">' + 
-                    (row.tindakLanjut ? '<div class="font-weight-bold text-dark small">Verifikator: ' + row.adminVerif + '</div><div class="small text-muted font-italic">"' + escapeHtml(row.tindakLanjut) + '"</div><div class="sultan-table-secondary text-right mt-1">' + row.tglVerif + '</div>' : '<span class="text-muted">-</span>') + 
-                '</td>' +
+                '<td>' + tindakBubble + '</td>' +
+                '<td class="text-nowrap">' + verifBubble + '</td>' +
             '</tr>';
         });
 
@@ -444,7 +477,8 @@
                 { "targets": 5, "width": "auto", "className": "text-center align-middle text-nowrap" },
                 { "targets": 6, "width": "auto", "className": "text-left align-middle" },
                 { "targets": 7, "width": "auto", "className": "text-center align-middle" },
-                { "targets": 8, "width": "auto", "className": "text-left align-middle" }
+                { "targets": 8, "width": "auto", "className": "text-left align-middle" },
+                { "targets": 9, "width": "auto", "className": "text-left align-middle text-nowrap" }
             ],
             "language": {
                 "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json",
@@ -817,5 +851,24 @@
             muatDataAduan();
         }, 150);
     });
+    // Helper: parse berbagai format tanggal SIKS-REBORN menjadi timestamp (ms)
+    function parseSiabaDateTime(val) {
+        if (!val) return 0;
+        if (val instanceof Date) return val.getTime();
+        var s = String(val).replace(/'/g, "").trim();
+        if (s === "") return 0;
+        var iso = s.split("-");
+        if (iso.length === 3 && iso[0].length === 4) return new Date(s).getTime();
+        var parts = s.split(" ");
+        var sep = parts[0].indexOf("-") > -1 ? "-" : "/";
+        var dP = parts[0].split(sep);
+        if (dP.length !== 3) return 0;
+        var tP = (parts[1] || "00:00:00").split(":");
+        return new Date(
+            parseInt(dP[2], 10), parseInt(dP[1], 10) - 1, parseInt(dP[0], 10),
+            parseInt(tP[0] || 0, 10), parseInt(tP[1] || 0, 10), parseInt(tP[2] || 0, 10)
+        ).getTime();
+    }
+
 })();
 </script>
