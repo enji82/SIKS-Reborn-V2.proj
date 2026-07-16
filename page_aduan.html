@@ -223,6 +223,11 @@
     var rawFileName = null;
     var rawFileMime = null;
 
+    // SISTEM SMART CACHE (ZERO-BLINK SULTAN BLUEPRINT)
+    var ADUAN_CACHE_DATA = [];
+    var ADUAN_CACHE_THN = "";
+    var ADUAN_CACHE_BLN = "";
+
     // Inisialisasi Filter Tahun secara dinamis
     function initFilters() {
         var tahunSekarang = new Date().getFullYear();
@@ -242,6 +247,8 @@
         if (userLocal) {
             try {
                 userLogin = JSON.parse(userLocal);
+                // VAKSIN DESERIALISASI DUA KALI
+                if (typeof userLogin === 'string') userLogin = JSON.parse(userLogin);
                 
                 // Fallback NPSN jika tidak ada properti npsn (biasanya login non-admin/sekolah menggunakan username sebagai NPSN)
                 var userNpsnVal = userLogin.npsn || userLogin.username || "";
@@ -260,14 +267,26 @@
 
     // Ambil Data dari Backend dan render ke DataTable
     function muatDataAduan() {
+        var tahun = $('#aduan_filterTahun').val();
+        var bulan = $('#aduan_filterBulan').val();
+        var filterStatus = $('#aduan_filterStatus').val();
+
+        // 1. EVALUASI SMART CACHE (ZERO-BLINK)
+        if (tahun === ADUAN_CACHE_THN && bulan === ADUAN_CACHE_BLN && ADUAN_CACHE_DATA.length > 0) {
+            var dataFiltered = ADUAN_CACHE_DATA;
+            if (filterStatus) {
+                dataFiltered = ADUAN_CACHE_DATA.filter(function(item) {
+                    return item.status === filterStatus;
+                });
+            }
+            renderTable(dataFiltered);
+            return;
+        }
+
         if (!$.fn.DataTable.isDataTable('#aduan_tabelUtama')) {
             $('#aduan_tableState').hide();
             SultanUI.showLoading('#aduan_loadingState', 'Mempersiapkan Database Pengaduan...');
         }
-
-        var tahun = $('#aduan_filterTahun').val();
-        var bulan = $('#aduan_filterBulan').val();
-        var filterStatus = $('#aduan_filterStatus').val();
 
         var btn = $('#aduan_btnRefresh');
         btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin text-maroon"></i>');
@@ -283,14 +302,20 @@
                     return;
                 }
 
+                // Simpan ke Cache Lokal (Zero-Blink)
+                ADUAN_CACHE_DATA = data;
+                ADUAN_CACHE_THN = tahun;
+                ADUAN_CACHE_BLN = bulan;
+
+                var dataFiltered = data;
                 // Filter status di client side jika dipilih
                 if (filterStatus) {
-                    data = data.filter(function(item) {
+                    dataFiltered = data.filter(function(item) {
                         return item.status === filterStatus;
                     });
                 }
 
-                renderTable(data);
+                renderTable(dataFiltered);
                 SultanUI.hideLoading('#aduan_loadingState');
                 $('#aduan_tableState').show();
             })
@@ -506,6 +531,8 @@
                     if (msg.indexOf("Sukses") > -1) {
                         $('#aduan_modalForm').modal('hide');
                         Sultan.notif.sukses(msg);
+                        // Reset cache agar pembaruan data ter-fetch kembali dari server
+                        ADUAN_CACHE_DATA = [];
                         muatDataAduan();
                     } else {
                         Sultan.notif.gagal(msg);
@@ -528,6 +555,8 @@
                     if (msg.indexOf("Sukses") > -1) {
                         $('#aduan_modalForm').modal('hide');
                         Sultan.notif.sukses(msg);
+                        // Reset cache agar data baru ter-fetch kembali dari server
+                        ADUAN_CACHE_DATA = [];
                         muatDataAduan();
                     } else {
                         Sultan.notif.gagal(msg);
@@ -603,6 +632,8 @@
                     .withSuccessHandler(function(msg) {
                         if (msg.indexOf("Sukses") > -1) {
                             Sultan.notif.sukses(msg);
+                            // Reset cache agar data ter-fetch kembali dari server
+                            ADUAN_CACHE_DATA = [];
                             muatDataAduan();
                         } else {
                             Sultan.notif.gagal(msg);
@@ -654,6 +685,8 @@
                 if (msg.indexOf("Sukses") > -1) {
                     $('#aduan_modalTindakLanjut').modal('hide');
                     Sultan.notif.sukses(msg);
+                    // Reset cache agar data ter-fetch kembali dari server
+                    ADUAN_CACHE_DATA = [];
                     muatDataAduan();
                 } else {
                     Sultan.notif.gagal(msg);
@@ -681,6 +714,10 @@
     });
 
     $(document).off('click', '#aduan_btnRefresh').on('click', '#aduan_btnRefresh', function() {
+        // Reset Cache agar refresh benar-benar mengambil data terbaru dari server
+        ADUAN_CACHE_DATA = [];
+        ADUAN_CACHE_THN = "";
+        ADUAN_CACHE_BLN = "";
         muatDataAduan();
     });
 
