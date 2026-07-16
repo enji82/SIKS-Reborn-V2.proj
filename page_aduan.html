@@ -62,6 +62,14 @@
                         <i class="fas fa-chevron-down"></i>
                     </div>
 
+                    <!-- Filter Unit Kerja: hanya tampil untuk admin, user langsung terkunci -->
+                    <div class="sultan-filter-item" id="aduan_filterUnitWrap">
+                        <select id="aduan_filterUnit" class="form-control">
+                            <option value="">- Semua Unit Kerja -</option>
+                        </select>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+
                     <div class="divider-vertical d-none d-md-block"></div>
 
                     <button type="button" id="aduan_btnRefresh" class="sultan-btn-refresh" title="Segarkan Data">
@@ -91,7 +99,6 @@
                                         <th>STATUS</th>
                                         <th>KATEGORI</th>
                                         <th>NAMA PENGAJU</th>
-                                        <th>UNIT KERJA</th>
                                         <th>TANGGAL KIRIM</th>
                                         <th>DETAIL MASALAH</th>
                                         <th>LAMPIRAN</th>
@@ -248,7 +255,7 @@
     var ADUAN_CACHE_THN = "";
     var ADUAN_CACHE_BLN = "";
 
-    // Inisialisasi Filter Tahun secara dinamis
+    // Inisialisasi Filter Tahun dan Unit Kerja secara dinamis
     function initFilters() {
         var tahunSekarang = new Date().getFullYear();
         var $selectTahun = $('#aduan_filterTahun');
@@ -259,6 +266,27 @@
         var bulanSekarang = new Date().getMonth();
         var namaBulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
         $('#aduan_filterBulan').val(namaBulan[bulanSekarang]);
+
+        // Setup filter Unit Kerja berdasarkan role
+        var userLocal = localStorage.getItem("siksUser");
+        var userTemp = null;
+        try { userTemp = JSON.parse(userLocal); if (typeof userTemp === 'string') userTemp = JSON.parse(userTemp); } catch(e) {}
+
+        var isAdmin = userTemp && (String(userTemp.role).toLowerCase().includes('admin') || userTemp.isAdmin === true);
+        var $filterUnit = $('#aduan_filterUnit');
+        var $filterUnitWrap = $('#aduan_filterUnitWrap');
+
+        if (isAdmin) {
+            // Admin: dropdown tampil, akan diisi dinamis saat data tiba
+            $filterUnitWrap.show();
+            $filterUnit.prop('disabled', false);
+        } else {
+            // User biasa: tampilkan nama unit kerja mereka sebagai info (readonly)
+            var unitUser = userTemp ? (userTemp.unit || '') : '';
+            $filterUnit.empty().append('<option value="' + unitUser + '">' + (unitUser || '-') + '</option>');
+            $filterUnit.val(unitUser).prop('disabled', true);
+            $filterUnitWrap.show();
+        }
     }
 
     // Inisialisasi Data User & Form Default
@@ -290,14 +318,16 @@
         var tahun = $('#aduan_filterTahun').val();
         var bulan = $('#aduan_filterBulan').val();
         var filterStatus = $('#aduan_filterStatus').val();
+        var filterUnit = String($('#aduan_filterUnit').val() || '').trim();
 
         // 1. EVALUASI SMART CACHE (ZERO-BLINK)
         if (tahun === ADUAN_CACHE_THN && bulan === ADUAN_CACHE_BLN && ADUAN_CACHE_DATA.length > 0) {
             var dataFiltered = ADUAN_CACHE_DATA;
             if (filterStatus) {
-                dataFiltered = ADUAN_CACHE_DATA.filter(function(item) {
-                    return item.status === filterStatus;
-                });
+                dataFiltered = dataFiltered.filter(function(item) { return item.status === filterStatus; });
+            }
+            if (filterUnit) {
+                dataFiltered = dataFiltered.filter(function(item) { return String(item.unit || '').trim() === filterUnit; });
             }
             renderTable(dataFiltered);
             return;
@@ -327,12 +357,26 @@
                 ADUAN_CACHE_THN = tahun;
                 ADUAN_CACHE_BLN = bulan;
 
-                var dataFiltered = data;
-                // Filter status di client side jika dipilih
-                if (filterStatus) {
-                    dataFiltered = data.filter(function(item) {
-                        return item.status === filterStatus;
+                // Isi dropdown Unit Kerja untuk admin secara dinamis dari data yang masuk
+                var isAdminCheck = (userLogin && (String(userLogin.role).toLowerCase().includes('admin') || userLogin.isAdmin === true));
+                if (isAdminCheck) {
+                    var unitSet = {};
+                    data.forEach(function(item) { if (item.unit) unitSet[item.unit] = true; });
+                    var $fu = $('#aduan_filterUnit');
+                    var curVal = $fu.val();
+                    $fu.empty().append('<option value="">- Semua Unit Kerja -</option>');
+                    Object.keys(unitSet).sort().forEach(function(u) {
+                        $fu.append('<option value="' + u + '">' + u + '</option>');
                     });
+                    if (curVal) $fu.val(curVal);
+                }
+
+                var dataFiltered = data;
+                if (filterStatus) {
+                    dataFiltered = dataFiltered.filter(function(item) { return item.status === filterStatus; });
+                }
+                if (filterUnit) {
+                    dataFiltered = dataFiltered.filter(function(item) { return String(item.unit || '').trim() === filterUnit; });
                 }
 
                 renderTable(dataFiltered);
@@ -447,7 +491,6 @@
                 '<td class="text-center">' + statusBadge + '</td>' +
                 '<td class="font-weight-bold text-dark">' + row.kategori + '</td>' +
                 '<td><div class="sultan-table-primary font-weight-bold">' + row.nama + '</div><div class="sultan-table-secondary">' + row.nip + '</div></td>' +
-                '<td>' + row.unit + '</td>' +
                 '<td class="text-center">' + row.tglKirim + '</td>' +
                 '<td>' + detailBubble + '</td>' +
                 '<td class="text-center">' + linkFile + '</td>' +
@@ -473,12 +516,11 @@
                 { "targets": 1, "width": "auto", "className": "text-center align-middle text-nowrap" },
                 { "targets": 2, "width": "auto", "className": "text-left align-middle font-weight-bold" },
                 { "targets": 3, "width": "auto", "className": "text-left align-middle" },
-                { "targets": 4, "width": "auto", "className": "text-left align-middle" },
-                { "targets": 5, "width": "auto", "className": "text-center align-middle text-nowrap" },
-                { "targets": 6, "width": "auto", "className": "text-left align-middle" },
-                { "targets": 7, "width": "auto", "className": "text-center align-middle" },
-                { "targets": 8, "width": "auto", "className": "text-left align-middle" },
-                { "targets": 9, "width": "auto", "className": "text-left align-middle text-nowrap" }
+                { "targets": 4, "width": "auto", "className": "text-center align-middle text-nowrap" },
+                { "targets": 5, "width": "auto", "className": "text-left align-middle" },
+                { "targets": 6, "width": "auto", "className": "text-center align-middle" },
+                { "targets": 7, "width": "auto", "className": "text-left align-middle" },
+                { "targets": 8, "width": "auto", "className": "text-left align-middle text-nowrap" }
             ],
             "language": {
                 "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json",
@@ -839,7 +881,7 @@
         muatDataAduan();
     });
 
-    $(document).off('change', '#aduan_filterTahun, #aduan_filterBulan, #aduan_filterStatus').on('change', '#aduan_filterTahun, #aduan_filterBulan, #aduan_filterStatus', function() {
+    $(document).off('change', '#aduan_filterTahun, #aduan_filterBulan, #aduan_filterStatus, #aduan_filterUnit').on('change', '#aduan_filterTahun, #aduan_filterBulan, #aduan_filterStatus, #aduan_filterUnit', function() {
         muatDataAduan();
     });
 
