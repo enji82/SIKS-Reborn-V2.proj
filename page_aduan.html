@@ -319,9 +319,19 @@
                 return;
             }
 
-            var btnAksi = '';
-            var statusBadge = getBadgeSultan(row.status || 'Diproses');
-            
+            // Render Status Badge menggunakan standardisasi badge visualisasi Sultan Global
+            var statusBadge = '';
+            var s = String(row.status || 'Diproses').toLowerCase();
+            var style = 'badge-sultan-diproses';
+            var icon = 'clock';
+            var labelStatus = row.status ? row.status : 'Diproses';
+
+            if (s.includes('ok') || s.includes('setuju') || s.includes('selesai')) { style = 'badge-sultan-disetujui'; icon = 'check-circle'; }
+            else if (s.includes('revisi') || s.includes('tinjau')) { style = 'badge-sultan-revisi'; icon = 'sync-alt'; }
+            else if (s.includes('tolak')) { style = 'badge-sultan-ditolak'; icon = 'times-circle'; }
+
+            statusBadge = '<span class="' + style + '"><i class="fas fa-' + icon + ' mr-1"></i>' + labelStatus + '</span>';
+
             // Render Aksi
             if (isUserAdmin) {
                 btnAksi = '<button class="sultan-btn-aksi sultan-btn-aksi-primary btn-verif" data-id="' + row.rowBaris + '" data-status="' + row.status + '" data-tindak="' + escapeHtml(row.tindakLanjut || '') + '" title="Tanggapi"><i class="fas fa-clipboard-check"></i></button>';
@@ -335,10 +345,10 @@
                 }
             }
 
-            // Render Link File
+            // Render Link File dengan Sultan Modal Preview (Tanpa Blink / Anti Tab Baru)
             var linkFile = '<span class="text-muted small">-</span>';
             if (row.fileUrl) {
-                linkFile = '<a href="' + row.fileUrl + '" target="_blank" class="sultan-btn-aksi sultan-btn-aksi-primary" title="Lihat Bukti"><i class="fas fa-paperclip"></i></a>';
+                linkFile = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-primary btn-lihat-berkas" data-url="' + row.fileUrl + '" data-kategori="' + row.kategori + '" title="Lihat Bukti"><i class="fas fa-paperclip"></i></button>';
             }
 
             rowsHtml += '<tr>' +
@@ -649,6 +659,18 @@
     });
 
     // UI Bindings (Delegated dengan off)
+    $(document).off('click', '.btn-lihat-berkas').on('click', '.btn-lihat-berkas', function() {
+        var url = $(this).data('url');
+        var kategori = $(this).data('kategori');
+        if (url) {
+            Sultan.modal.preview({
+                url: url,
+                title: "Pratinjau Bukti: " + kategori,
+                downloadUrl: url
+            });
+        }
+    });
+
     $(document).off('click', '#aduan_btnRefresh').on('click', '#aduan_btnRefresh', function() {
         muatDataAduan();
     });
