@@ -226,10 +226,11 @@ function hapusAduan(dataKirim) {
     var range = sheet.getRange(baris, 1, 1, 15);
     var values = range.getValues()[0];
 
-    var status = String(values[10]).trim();
-    if (status.toLowerCase() !== "diproses") {
-      return "Gagal: Pengaduan sudah ditindaklanjuti admin dan tidak dapat dihapus.";
-    }
+    // Logika status dibebaskan: semua kondisi status bisa dihapus datanya
+    // var status = String(values[10]).trim();
+    // if (status.toLowerCase() !== "diproses") {
+    //   return "Gagal: Pengaduan sudah ditindaklanjuti admin dan tidak dapat dihapus.";
+    // }
 
     // Validasi Keamanan NPSN
     var isAdmin = dataKirim.isAdmin === true || dataKirim.role === 'admin';
