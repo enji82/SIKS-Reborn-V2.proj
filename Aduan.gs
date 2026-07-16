@@ -25,12 +25,19 @@ function getDaftarAduan(tahun, bulan) {
       var row = data[i];
       if (!row[1] && !row[2]) continue; // Skip jika baris kosong
 
-      var txtTgl = String(row[8]).replace(/'/g, "").trim(); // Index 8: Tanggal Kirim
+      var txtTgl = String(row[8]).replace(/'/g, "").trim(); // Index 8: Tanggal Kirim (Format: dd-MM-yyyy HH:mm:ss)
       if (fTahun !== "") {
+        // Cocokkan tahun di bagian akhir tanggal sebelum spasi jam
         if (txtTgl.indexOf(fTahun) === -1) continue;
       }
       if (fBulanAngka !== "") {
-        if (txtTgl.indexOf("-" + fBulanAngka + "-") === -1 && txtTgl.indexOf("/" + fBulanAngka + "/") === -1) continue;
+        // Tanggal bertipe dd-MM-yyyy, jadi bulan diapit oleh '-' (misal -07-) atau '/' (misal /07/)
+        if (txtTgl.indexOf("-" + fBulanAngka + "-") === -1 && txtTgl.indexOf("/" + fBulanAngka + "/") === -1) {
+          // Fallback pencocokan jika format tanggal berurutan terbalik yyyy-MM-dd
+          if (txtTgl.indexOf("-" + fBulanAngka + "-") === -1) {
+            continue;
+          }
+        }
       }
 
       result.push({
