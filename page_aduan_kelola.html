@@ -425,22 +425,6 @@
             SultanUI.hideLoading('#aduan_loadingState');
             $('#aduan_tableState').show();
 
-            // Hancurkan DataTable secara aman: gunakan instance global terlebih dahulu,
-            // kemudian fallback ke fnDestroy untuk membersihkan orphan state SPA
-            if (dataAduanTable) {
-                try {
-                    dataAduanTable.destroy();
-                } catch (e) {
-                    console.warn("Gagal men-destroy DataTable via instance:", e);
-                }
-                dataAduanTable = null;
-            }
-            // Fallback: bersihkan orphan state jika masih teregistrasi di jQuery plugin
-            if ($.fn.DataTable.isDataTable('#aduan_tabelUtama')) {
-                try { $('#aduan_tabelUtama').DataTable().destroy(); } catch (e) { }
-            }
-            $('#aduan_tabelUtama tbody').empty();
-
             var isUserAdmin = false;
             try {
                 if (typeof checkUserRoleIsAdmin === 'function') {
@@ -529,55 +513,64 @@
                     verifBubble = '<span class="text-muted">-</span>';
                 }
 
-                rowsHtml += '<tr>' +
-                    '<td class="text-center sultan-sticky-col">' +
-                    '<div class="d-flex justify-content-center" style="gap:2px;">' + btnAksi + '</div>' +
-                    '</td>' +
-                    '<td class="text-center">' + statusBadge + '</td>' +
-                    '<td class="font-weight-bold text-dark">' + row.kategori + '</td>' +
-                    '<td><div class="sultan-table-primary font-weight-bold">' + row.nama + '</div><div class="sultan-table-secondary">' + row.nip + '</div></td>' +
-                    '<td class="text-center">' + row.tglKirim + '</td>' +
-                    '<td>' + detailBubble + '</td>' +
-                    '<td class="text-center">' + linkFile + '</td>' +
-                    '<td>' + tindakBubble + '</td>' +
-                    '<td class="text-nowrap">' + verifBubble + '</td>' +
-                    '</tr>';
+                // Masukkan data row ke dalam format array untuk DataTables API
+                dtArray.push([
+                    '<div class="d-flex justify-content-center" style="gap:2px;">' + btnAksi + '</div>',
+                    statusBadge,
+                    row.kategori,
+                    '<div class="sultan-table-primary font-weight-bold">' + row.nama + '</div><div class="sultan-table-secondary">' + row.nip + '</div>',
+                    row.tglKirim,
+                    detailBubble,
+                    linkFile,
+                    tindakBubble,
+                    verifBubble
+                ]);
             });
 
-            $('#aduan_tabelUtama tbody').html(rowsHtml);
-
-            // Inisialisasi DataTables Premium Terpusat (Anti-Blink Sultan)
-            dataAduanTable = SultanTable.init('#aduan_tabelUtama', {
-                "destroy": true,
-                "ordering": false,
-                "pageLength": 10,
-                "autoWidth": false,
-                "deferRender": true,
-                "dom": "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
-                    "<'row'<'col-sm-12'<'table-responsive sultan-scroll'tr>>>" +
-                    "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
-                "columnDefs": [
-                    { "targets": 0, "width": "auto", "className": "text-center align-middle text-nowrap sultan-sticky-col" },
-                    { "targets": 1, "width": "auto", "className": "text-center align-middle text-nowrap" },
-                    { "targets": 2, "width": "auto", "className": "text-left align-middle font-weight-bold text-nowrap" },
-                    { "targets": 3, "width": "auto", "className": "text-left align-middle text-nowrap" },
-                    { "targets": 4, "width": "auto", "className": "text-center align-middle text-nowrap" },
-                    { "targets": 5, "width": "360px", "className": "text-left align-middle" },
-                    { "targets": 6, "width": "auto", "className": "text-center align-middle text-nowrap" },
-                    { "targets": 7, "width": "300px", "className": "text-left align-middle" },
-                    { "targets": 8, "width": "auto", "className": "text-left align-middle text-nowrap" }
-                ],
-                "language": {
-                    "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json",
-                    "emptyTable": "Tidak ada riwayat pengaduan yang ditemukan."
-                },
-                "initComplete": function() {
-                    var api = this.api();
-                    if (api && $.contains(document, $('#aduan_tabelUtama')[0])) {
-                        try { api.columns.adjust(); } catch(e) {}
+            // Inisialisasi DataTable SATU KALI jika belum ada (Persisten di SPA)
+            if (!dataAduanTable || !$.fn.DataTable.isDataTable('#aduan_tabelUtama')) {
+                dataAduanTable = SultanTable.init('#aduan_tabelUtama', {
+                    "destroy": true,
+                    "ordering": false,
+                    "pageLength": 10,
+                    "autoWidth": false,
+                    "deferRender": true,
+                    "dom": "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
+                        "<'row'<'col-sm-12'<'table-responsive sultan-scroll'tr>>>" +
+                        "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+                    "columnDefs": [
+                        { "targets": 0, "width": "auto", "className": "text-center align-middle text-nowrap sultan-sticky-col" },
+                        { "targets": 1, "width": "auto", "className": "text-center align-middle text-nowrap" },
+                        { "targets": 2, "width": "auto", "className": "text-left align-middle font-weight-bold text-nowrap" },
+                        { "targets": 3, "width": "auto", "className": "text-left align-middle text-nowrap" },
+                        { "targets": 4, "width": "auto", "className": "text-center align-middle text-nowrap" },
+                        { "targets": 5, "width": "360px", "className": "text-left align-middle" },
+                        { "targets": 6, "width": "auto", "className": "text-center align-middle text-nowrap" },
+                        { "targets": 7, "width": "300px", "className": "text-left align-middle" },
+                        { "targets": 8, "width": "auto", "className": "text-left align-middle text-nowrap" }
+                    ],
+                    "language": {
+                        "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json",
+                        "emptyTable": "Tidak ada riwayat pengaduan yang ditemukan."
+                    },
+                    "initComplete": function() {
+                        var api = this.api();
+                        if (api && $.contains(document, $('#aduan_tabelUtama')[0])) {
+                            try { api.columns.adjust(); } catch(e) {}
+                        }
                     }
-                }
-            });
+                });
+            }
+
+            // Gunakan API DataTable .clear().rows.add().draw() yang stabil dan bebas error DOM
+            if (dataAduanTable) {
+                dataAduanTable.clear().rows.add(dtArray).draw(false);
+                setTimeout(function() {
+                    if ($.contains(document, $('#aduan_tabelUtama')[0])) {
+                        try { dataAduanTable.columns.adjust(); } catch(e) {}
+                    }
+                }, 150);
+            }
         }
 
         // Helper escape html
