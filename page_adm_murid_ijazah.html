@@ -56,10 +56,10 @@
                             <th class="text-center align-middle" style="border-bottom: 3px solid #85144b !important;">JUMLAH SISWA L</th>
                             <th class="text-center align-middle" style="border-bottom: 3px solid #85144b !important;">JUMLAH SISWA P</th>
                             <th class="text-center align-middle" style="border-bottom: 3px solid #85144b !important;">TOTAL SISWA</th>
-                            <th class="text-center align-middle" style="border-bottom: 3px solid #85144b !important;">DOKUMEN</th>
+                            <th class="text-center align-middle" style="border-bottom: 3px solid #85144b !important;">BERKAS DOKUMEN</th>
                             <th class="text-left align-middle" style="border-bottom: 3px solid #85144b !important;">DIUNGGAH</th>
                             <th class="text-left align-middle" style="border-bottom: 3px solid #85144b !important;">DIUBAH</th>
-                            <th class="text-left align-middle" style="border-bottom: 3px solid #85144b !important;">VERIFIKASI</th>
+                            <th class="text-left align-middle" style="border-bottom: 3px solid #85144b !important;">VERIFIKASI / DIBACA</th>
                           </tr>
                         </thead>
                         <tbody></tbody>
@@ -79,7 +79,7 @@
   <div class="modal-dialog" role="document">
     <div class="modal-content">
       <div class="modal-header bg-maroon text-white">
-        <h5 class="modal-title font-weight-bold" id="admmuridijazah_modalTitle">Unggah Dokumen Permohonan Ijazah</h5>
+        <h5 class="modal-title font-weight-bold" id="admmuridijazah_modalTitle">Unggah Dokumen Permohonan Ijazah & Transkrip</h5>
         <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
           <span aria-hidden="true">&times;</span>
         </button>
@@ -87,8 +87,10 @@
       <form id="admmuridijazah_form" novalidate>
         <div class="modal-body p-4">
             <input type="hidden" id="admmuridijazah_rowId">
-            <input type="hidden" id="admmuridijazah_urlFile">
-            <input type="hidden" id="admmuridijazah_idFile">
+            <input type="hidden" id="admmuridijazah_urlFileIjazah">
+            <input type="hidden" id="admmuridijazah_idFileIjazah">
+            <input type="hidden" id="admmuridijazah_urlFileTranskrip">
+            <input type="hidden" id="admmuridijazah_idFileTranskrip">
 
             <div class="form-group mb-3">
                 <label class="font-weight-bold small text-muted text-uppercase">Pilih Sekolah <span class="text-danger">*</span></label>
@@ -125,13 +127,24 @@
                 </div>
             </div>
 
+            <!-- UNGGAH DOKUMEN IJAZAH -->
             <div class="form-group border p-3 bg-white rounded shadow-sm mt-3">
-                <label class="font-weight-bold small text-muted text-uppercase"><i class="fas fa-file-pdf text-danger mr-1"></i> Unggah PDF Permohonan Cetak Ijazah (Max 2MB)</label>
+                <label class="font-weight-bold small text-muted text-uppercase"><i class="fas fa-file-pdf text-danger mr-1"></i> 1. Unggah PDF Permohonan Cetak Ijazah (Max 2MB)</label>
                 <div class="custom-file">
-                    <input type="file" class="custom-file-input" id="admmuridijazah_file" accept=".pdf">
-                    <label class="custom-file-label" for="admmuridijazah_file">Pilih file PDF...</label>
+                    <input type="file" class="custom-file-input file-ijazah-input" id="admmuridijazah_file_ijazah" accept=".pdf">
+                    <label class="custom-file-label" for="admmuridijazah_file_ijazah">Pilih file PDF Ijazah...</label>
                 </div>
-                <div class="small text-muted font-italic mt-2" id="admmuridijazah_file_hint">Biarkan kosong jika tidak ingin merubah berkas yang sudah diunggah.</div>
+                <div class="small text-muted font-italic mt-2 file-hint-edit" style="display:none;">Biarkan kosong jika tidak ingin merubah berkas Ijazah.</div>
+            </div>
+
+            <!-- UNGGAH DOKUMEN TRANSKRIP -->
+            <div class="form-group border p-3 bg-white rounded shadow-sm mt-3">
+                <label class="font-weight-bold small text-muted text-uppercase"><i class="fas fa-file-pdf text-primary mr-1"></i> 2. Unggah PDF Transkrip (Max 2MB)</label>
+                <div class="custom-file">
+                    <input type="file" class="custom-file-input file-transkrip-input" id="admmuridijazah_file_transkrip" accept=".pdf">
+                    <label class="custom-file-label" for="admmuridijazah_file_transkrip">Pilih file PDF Transkrip...</label>
+                </div>
+                <div class="small text-muted font-italic mt-2 file-hint-edit" style="display:none;">Biarkan kosong jika tidak ingin merubah berkas Transkrip.</div>
             </div>
         </div>
         <div class="modal-footer justify-content-between">
@@ -229,8 +242,12 @@
     }
 
     // Custom File Label
-    $('#admmuridijazah_file').change(function (e) {
-      var filename = e.target.files[0] ? e.target.files[0].name : "Pilih file PDF...";
+    $('#admmuridijazah_file_ijazah').change(function (e) {
+      var filename = e.target.files[0] ? e.target.files[0].name : "Pilih file PDF Ijazah...";
+      $(this).next('.custom-file-label').html(filename);
+    });
+    $('#admmuridijazah_file_transkrip').change(function (e) {
+      var filename = e.target.files[0] ? e.target.files[0].name : "Pilih file PDF Transkrip...";
       $(this).next('.custom-file-label').html(filename);
     });
 
@@ -294,10 +311,15 @@
           btnAksi += '<span class="text-muted small font-italic"><i class="fas fa-lock"></i> Terkunci</span>';
         }
 
-        var docLink = row.url_file ? '<a href="' + row.url_file + '" target="_blank" class="btn btn-xs btn-outline-danger font-weight-bold rounded-pill"><i class="fas fa-file-pdf"></i> Lihat PDF</a>' : '<span class="text-muted">-</span>';
+        var docIjazahLink = row.url_file_ijazah ? '<a href="' + row.url_file_ijazah + '" target="_blank" class="btn btn-xs btn-outline-danger font-weight-bold rounded-pill mr-1 mb-1 d-inline-block"><i class="fas fa-file-pdf"></i> Ijazah</a>' : '<span class="text-muted small">-</span>';
+        var docTranskripLink = row.url_file_transkrip ? '<a href="' + row.url_file_transkrip + '" target="_blank" class="btn btn-xs btn-outline-primary font-weight-bold rounded-pill mb-1 d-inline-block"><i class="fas fa-file-pdf"></i> Transkrip</a>' : '<span class="text-muted small">-</span>';
+        var docLinks = '<div class="d-flex flex-column">' + docIjazahLink + docTranskripLink + '</div>';
+
         var uploadBy = row.uploader ? '<div class="small text-muted font-weight-bold">' + row.uploader + '</div><div style="font-size:10px;" class="text-muted">' + row.tgl_upload + '</div>' : '-';
         var editBy = row.user_edit ? '<div class="small text-muted font-weight-bold">' + row.user_edit + '</div><div style="font-size:10px;" class="text-muted">' + row.tgl_edit + '</div>' : '-';
-        var verifBy = row.verifikator ? '<div class="small text-muted font-weight-bold">' + row.verifikator + '</div><div style="font-size:10px;" class="text-muted">' + row.tgl_verif + '</div>' : '-';
+        
+        var readBadge = row.read_by ? '<div class="mt-1 small"><span class="badge badge-light text-muted border"><i class="fas fa-eye"></i> Dibaca: ' + row.read_by + '</span></div>' : '';
+        var verifBy = row.verifikator ? '<div class="small text-muted font-weight-bold">' + row.verifikator + '</div><div style="font-size:10px;" class="text-muted">' + row.tgl_verif + '</div>' + readBadge : readBadge || '-';
 
         var html = '<tr class="hover-sultan">' +
           '<td class="text-center">' + btnAksi + '</td>' +
@@ -307,7 +329,7 @@
           '<td class="text-center">' + row.jumlah_murid_l + '</td>' +
           '<td class="text-center">' + row.jumlah_murid_p + '</td>' +
           '<td class="text-center font-weight-bold bg-light text-maroon">' + row.jumlah_total + '</td>' +
-          '<td class="text-center">' + docLink + '</td>' +
+          '<td class="text-center">' + docLinks + '</td>' +
           '<td class="text-left">' + uploadBy + '</td>' +
           '<td class="text-left">' + editBy + '</td>' +
           '<td class="text-left">' + verifBy + '</td>' +
@@ -330,26 +352,19 @@
       });
     }
 
-    function getBadge(status) {
-      status = String(status || "").trim();
-      var badgeClass = "badge-secondary";
-      if (status.toLowerCase() === "disetujui") badgeClass = "badge-success";
-      else if (status.toLowerCase() === "diproses") badgeClass = "badge-warning";
-      else if (status.toLowerCase() === "revisi") badgeClass = "badge-info";
-      else if (status.toLowerCase() === "ditolak") badgeClass = "badge-danger";
-      return '<span class="badge ' + badgeClass + '">' + status + '</span>';
-    }
-
     // Aksi Tambah Dokumen
     $('#admmuridijazah_btnTambah').click(function () {
       $('#admmuridijazah_form')[0].reset();
       $('#admmuridijazah_rowId').val('');
-      $('#admmuridijazah_urlFile').val('');
-      $('#admmuridijazah_idFile').val('');
+      $('#admmuridijazah_urlFileIjazah').val('');
+      $('#admmuridijazah_idFileIjazah').val('');
+      $('#admmuridijazah_urlFileTranskrip').val('');
+      $('#admmuridijazah_idFileTranskrip').val('');
       $('#admmuridijazah_lbl_total').text('0');
-      $('#admmuridijazah_modalTitle').text('Unggah Permohonan Cetak Ijazah');
-      $('#admmuridijazah_file_hint').hide();
-      $('#admmuridijazah_file').prop('required', true);
+      $('#admmuridijazah_modalTitle').text('Unggah Permohonan Cetak Ijazah & Transkrip');
+      $('.file-hint-edit').hide();
+      $('#admmuridijazah_file_ijazah').prop('required', true);
+      $('#admmuridijazah_file_transkrip').prop('required', true);
       $('#admmuridijazah_modalForm').modal('show');
     });
 
@@ -357,12 +372,16 @@
     $('#admmuridijazah_form').submit(function (e) {
       e.preventDefault();
       
-      var fileInput = $('#admmuridijazah_file')[0];
-      var fileObj = fileInput.files[0];
+      var fileInputIjazah = $('#admmuridijazah_file_ijazah')[0];
+      var fileObjIjazah = fileInputIjazah.files[0];
+      
+      var fileInputTranskrip = $('#admmuridijazah_file_transkrip')[0];
+      var fileObjTranskrip = fileInputTranskrip.files[0];
+      
       var rowId = $('#admmuridijazah_rowId').val();
 
-      if (!rowId && !fileObj) {
-        Sultan.notif.gagal("Silakan pilih berkas dokumen PDF.");
+      if (!rowId && (!fileObjIjazah || !fileObjTranskrip)) {
+        Sultan.notif.gagal("Silakan pilih berkas PDF Ijazah dan Transkrip terlebih dahulu.");
         return;
       }
 
@@ -373,27 +392,53 @@
         tahun_ajaran: $('#admmuridijazah_in_tahun').val(),
         jumlah_murid_l: $('#admmuridijazah_in_l').val(),
         jumlah_murid_p: $('#admmuridijazah_in_p').val(),
-        url_file: $('#admmuridijazah_urlFile').val(),
-        id_file: $('#admmuridijazah_idFile').val(),
+        url_file_ijazah: $('#admmuridijazah_urlFileIjazah').val(),
+        id_file_ijazah: $('#admmuridijazah_idFileIjazah').val(),
+        url_file_transkrip: $('#admmuridijazah_urlFileTranskrip').val(),
+        id_file_transkrip: $('#admmuridijazah_idFileTranskrip').val(),
         user_login: userLogin.nama_lengkap || userLogin.username || "Guest"
       };
 
-      if (fileObj) {
-        if (fileObj.size > 2 * 1024 * 1024) {
-          Sultan.notif.gagal("Ukuran dokumen PDF tidak boleh lebih dari 2MB.");
+      var filesLoaded = 0;
+      var totalFilesToLoad = 0;
+      if (fileObjIjazah) totalFilesToLoad++;
+      if (fileObjTranskrip) totalFilesToLoad++;
+
+      if (totalFilesToLoad === 0) {
+        sendPayload(payload);
+        return;
+      }
+
+      if (fileObjIjazah) {
+        if (fileObjIjazah.size > 2 * 1024 * 1024) {
+          Sultan.notif.gagal("Ukuran dokumen PDF Ijazah tidak boleh lebih dari 2MB.");
           return;
         }
-
-        var reader = new FileReader();
-        reader.onload = function (evt) {
-          payload.fileBase64 = evt.target.result.split(',')[1];
-          payload.mimeType = fileObj.type;
-          payload.nama_file = "Permohonan_Ijazah_" + payload.nama_sekolah.replace(/\s+/g, '_') + "_" + payload.tahun_ajaran.replace(/\//g, '-') + ".pdf";
-          sendPayload(payload);
+        var readerIjazah = new FileReader();
+        readerIjazah.onload = function (evt) {
+          payload.fileBase64_ijazah = evt.target.result.split(',')[1];
+          payload.mimeType_ijazah = fileObjIjazah.type;
+          payload.nama_file_ijazah = "Permohonan_Ijazah_" + payload.nama_sekolah.replace(/\s+/g, '_') + "_" + payload.tahun_ajaran.replace(/\//g, '-') + ".pdf";
+          filesLoaded++;
+          if (filesLoaded === totalFilesToLoad) sendPayload(payload);
         };
-        reader.readAsDataURL(fileObj);
-      } else {
-        sendPayload(payload);
+        readerIjazah.readAsDataURL(fileObjIjazah);
+      }
+
+      if (fileObjTranskrip) {
+        if (fileObjTranskrip.size > 2 * 1024 * 1024) {
+          Sultan.notif.gagal("Ukuran dokumen PDF Transkrip tidak boleh lebih dari 2MB.");
+          return;
+        }
+        var readerTranskrip = new FileReader();
+        readerTranskrip.onload = function (evt) {
+          payload.fileBase64_transkrip = evt.target.result.split(',')[1];
+          payload.mimeType_transkrip = fileObjTranskrip.type;
+          payload.nama_file_transkrip = "Transkrip_" + payload.nama_sekolah.replace(/\s+/g, '_') + "_" + payload.tahun_ajaran.replace(/\//g, '-') + ".pdf";
+          filesLoaded++;
+          if (filesLoaded === totalFilesToLoad) sendPayload(payload);
+        };
+        readerTranskrip.readAsDataURL(fileObjTranskrip);
       }
     });
 
@@ -426,14 +471,17 @@
       $('#admmuridijazah_in_tahun').val(raw.tahun_ajaran);
       $('#admmuridijazah_in_l').val(raw.jumlah_murid_l);
       $('#admmuridijazah_in_p').val(raw.jumlah_murid_p);
-      $('#admmuridijazah_urlFile').val(raw.url_file);
-      $('#admmuridijazah_idFile').val(raw.id_file);
+      $('#admmuridijazah_urlFileIjazah').val(raw.url_file_ijazah);
+      $('#admmuridijazah_idFileIjazah').val(raw.id_file_ijazah);
+      $('#admmuridijazah_urlFileTranskrip').val(raw.url_file_transkrip);
+      $('#admmuridijazah_idFileTranskrip').val(raw.id_file_transkrip);
       
       hitungTotalMurid();
 
-      $('#admmuridijazah_modalTitle').text('Edit Permohonan Ijazah');
-      $('#admmuridijazah_file_hint').show();
-      $('#admmuridijazah_file').prop('required', false);
+      $('#admmuridijazah_modalTitle').text('Edit Permohonan Ijazah & Transkrip');
+      $('.file-hint-edit').show();
+      $('#admmuridijazah_file_ijazah').prop('required', false);
+      $('#admmuridijazah_file_transkrip').prop('required', false);
       $('#admmuridijazah_modalForm').modal('show');
     });
 
@@ -442,7 +490,7 @@
       var rowId = $(this).data('id');
       Swal.fire({
         title: 'Hapus Permohonan?',
-        text: "Data dokumen yang dihapus tidak dapat dipulihkan!",
+        text: "Semua berkas Ijazah dan Transkrip yang dihapus tidak dapat dipulihkan!",
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',

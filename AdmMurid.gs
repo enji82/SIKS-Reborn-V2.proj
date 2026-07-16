@@ -21,14 +21,15 @@ function getOrCreateSheetAdmMurid(sheetName) {
         "SPMB_Offline_L", "SPMB_Offline_P", "Tinggal_Kelas_1_L", "Tinggal_Kelas_1_P", 
         "Jumlah_Murid_L", "Jumlah_Murid_P", "Jumlah_Total", 
         "Nama_File", "URL_File", "ID_File", "Status", "Catatan", 
-        "Tgl_Upload", "Uploader", "Tgl_Edit", "User_Edit", "Tgl_Verif", "Verifikator"
+        "Tgl_Upload", "Uploader", "Tgl_Edit", "User_Edit", "Tgl_Verif", "Verifikator", "Read_by"
       ]);
     } else if (sheetName === "Database_Ijazah") {
       sheet.appendRow([
         "NPSN", "Nama_Sekolah", "Tahun_Ajaran", 
         "Jumlah_Murid_L", "Jumlah_Murid_P", "Jumlah_Total", 
-        "Nama_File", "URL_File", "ID_File", "Status", "Catatan", 
-        "Tgl_Upload", "Uploader", "Tgl_Edit", "User_Edit", "Tgl_Verif", "Verifikator"
+        "Nama_File_Ijazah", "URL_File_Ijazah", "ID_File_Ijazah", 
+        "Nama_File_Transkrip", "URL_File_Transkrip", "ID_File_Transkrip", 
+        "Status", "Catatan", "Tgl_Upload", "Uploader", "Tgl_Edit", "User_Edit", "Tgl_Verif", "Verifikator", "Read_by"
       ]);
     }
   }
@@ -79,7 +80,8 @@ function admMurid_getSpmbData(npsnFilter) {
           tgl_edit: values[i][22],
           user_edit: values[i][23],
           tgl_verif: values[i][24],
-          verifikator: values[i][25]
+          verifikator: values[i][25],
+          read_by: values[i][26] || ""
         });
       }
     }
@@ -171,7 +173,7 @@ function admMurid_simpanSpmb(payload) {
         jmlL, jmlP, jmlTotal,
         payload.nama_file, fileUrl, fileId,
         "Diproses", "",
-        now, payload.user_login, "", "", "", ""
+        now, payload.user_login, "", "", "", "", ""
       ]);
     }
 
@@ -212,6 +214,9 @@ function admMurid_verifikasiSpmb(rowId, status, catatan, verifikator) {
 
     sheet.getRange(row, 19, 1, 2).setValues([[status, catatan]]);
     sheet.getRange(row, 25, 1, 2).setValues([[now, verifikator]]);
+    
+    // Set read_by dinas/admin
+    sheet.getRange(row, 27).setValue(verifikator);
 
     return JSON.stringify({ success: true, message: "Verifikasi SPMB berhasil disimpan." });
   } catch (e) {
@@ -244,17 +249,21 @@ function admMurid_getIjazahData(npsnFilter) {
           jumlah_murid_l: values[i][3],
           jumlah_murid_p: values[i][4],
           jumlah_total: values[i][5],
-          nama_file: values[i][6],
-          url_file: values[i][7],
-          id_file: values[i][8],
-          status: values[i][9],
-          catatan: values[i][10],
-          tgl_upload: values[i][11],
-          uploader: values[i][12],
-          tgl_edit: values[i][13],
-          user_edit: values[i][14],
-          tgl_verif: values[i][15],
-          verifikator: values[i][16]
+          nama_file_ijazah: values[i][6],
+          url_file_ijazah: values[i][7],
+          id_file_ijazah: values[i][8],
+          nama_file_transkrip: values[i][9],
+          url_file_transkrip: values[i][10],
+          id_file_transkrip: values[i][11],
+          status: values[i][12],
+          catatan: values[i][13],
+          tgl_upload: values[i][14],
+          uploader: values[i][15],
+          tgl_edit: values[i][16],
+          user_edit: values[i][17],
+          tgl_verif: values[i][18],
+          verifikator: values[i][19],
+          read_by: values[i][20] || ""
         });
       }
     }
@@ -272,36 +281,50 @@ function admMurid_simpanIjazah(payload) {
     var now = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
 
     var isEdit = payload.rowId ? true : false;
-    var fileUrl = payload.url_file || "";
-    var fileId = payload.id_file || "";
+    var urlIjazah = payload.url_file_ijazah || "";
+    var idIjazah = payload.id_file_ijazah || "";
+    var urlTranskrip = payload.url_file_transkrip || "";
+    var idTranskrip = payload.id_file_transkrip || "";
 
-    if (payload.fileBase64) {
-      if (isEdit && fileId) {
-        try { DriveApp.getFileById(fileId).setTrashed(true); } catch(err) {}
+    var pFolder = DriveApp.getFolderById(KONFIG_ADM_MURID.FOLDER_ID);
+    var subFolder;
+    var subFolders = pFolder.getFoldersByName("Dokumen Ijazah");
+    if (subFolders.hasNext()) {
+      subFolder = subFolders.next();
+    } else {
+      subFolder = pFolder.createFolder("Dokumen Ijazah");
+    }
+
+    var schoolFolder;
+    var schoolFolders = subFolder.getFoldersByName(payload.nama_sekolah);
+    if (schoolFolders.hasNext()) {
+      schoolFolder = schoolFolders.next();
+    } else {
+      schoolFolder = subFolder.createFolder(payload.nama_sekolah);
+    }
+
+    // Unggah PDF Ijazah
+    if (payload.fileBase64_ijazah) {
+      if (isEdit && idIjazah) {
+        try { DriveApp.getFileById(idIjazah).setTrashed(true); } catch(err) {}
       }
+      var blobIjazah = Utilities.newBlob(Utilities.base64Decode(payload.fileBase64_ijazah), payload.mimeType_ijazah, payload.nama_file_ijazah);
+      var fileIjazah = schoolFolder.createFile(blobIjazah);
+      fileIjazah.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      urlIjazah = fileIjazah.getUrl();
+      idIjazah = fileIjazah.getId();
+    }
 
-      var pFolder = DriveApp.getFolderById(KONFIG_ADM_MURID.FOLDER_ID);
-      var subFolder;
-      var subFolders = pFolder.getFoldersByName("Dokumen Ijazah");
-      if (subFolders.hasNext()) {
-        subFolder = subFolders.next();
-      } else {
-        subFolder = pFolder.createFolder("Dokumen Ijazah");
+    // Unggah PDF Transkrip
+    if (payload.fileBase64_transkrip) {
+      if (isEdit && idTranskrip) {
+        try { DriveApp.getFileById(idTranskrip).setTrashed(true); } catch(err) {}
       }
-
-      var schoolFolder;
-      var schoolFolders = subFolder.getFoldersByName(payload.nama_sekolah);
-      if (schoolFolders.hasNext()) {
-        schoolFolder = schoolFolders.next();
-      } else {
-        schoolFolder = subFolder.createFolder(payload.nama_sekolah);
-      }
-
-      var blob = Utilities.newBlob(Utilities.base64Decode(payload.fileBase64), payload.mimeType, payload.nama_file);
-      var file = schoolFolder.createFile(blob);
-      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-      fileUrl = file.getUrl();
-      fileId = file.getId();
+      var blobTranskrip = Utilities.newBlob(Utilities.base64Decode(payload.fileBase64_transkrip), payload.mimeType_transkrip, payload.nama_file_transkrip);
+      var fileTranskrip = schoolFolder.createFile(blobTranskrip);
+      fileTranskrip.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      urlTranskrip = fileTranskrip.getUrl();
+      idTranskrip = fileTranskrip.getId();
     }
 
     var jmlL = parseInt(payload.jumlah_murid_l || 0);
@@ -310,15 +333,18 @@ function admMurid_simpanIjazah(payload) {
 
     if (isEdit) {
       var row = parseInt(payload.rowId);
-      var currentStatus = String(sheet.getRange(row, 10).getValue()).trim();
+      var currentStatus = String(sheet.getRange(row, 13).getValue()).trim();
       if (currentStatus.toLowerCase() === "disetujui" && payload.user_login !== "admin") {
         return JSON.stringify({ success: false, message: "Dokumen yang telah disetujui tidak dapat diedit." });
       }
 
       sheet.getRange(row, 3, 1, 4).setValues([[payload.tahun_ajaran, jmlL, jmlP, jmlTotal]]);
-      sheet.getRange(row, 7, 1, 3).setValues([[payload.nama_file, fileUrl, fileId]]);
-      sheet.getRange(row, 10).setValue("Diproses");
-      sheet.getRange(row, 14, 1, 2).setValues([[now, payload.user_login]]);
+      sheet.getRange(row, 7, 1, 6).setValues([[
+        payload.nama_file_ijazah || "", urlIjazah, idIjazah,
+        payload.nama_file_transkrip || "", urlTranskrip, idTranskrip
+      ]]);
+      sheet.getRange(row, 13).setValue("Diproses");
+      sheet.getRange(row, 17, 1, 2).setValues([[now, payload.user_login]]);
     } else {
       var existingData = sheet.getDataRange().getDisplayValues();
       for (var i = 1; i < existingData.length; i++) {
@@ -330,9 +356,10 @@ function admMurid_simpanIjazah(payload) {
       sheet.appendRow([
         payload.npsn, payload.nama_sekolah, payload.tahun_ajaran,
         jmlL, jmlP, jmlTotal,
-        payload.nama_file, fileUrl, fileId,
+        payload.nama_file_ijazah || "", urlIjazah, idIjazah,
+        payload.nama_file_transkrip || "", urlTranskrip, idTranskrip,
         "Diproses", "",
-        now, payload.user_login, "", "", "", ""
+        now, payload.user_login, "", "", "", "", ""
       ]);
     }
 
@@ -350,10 +377,15 @@ function admMurid_hapusIjazah(rowId) {
     lock.waitLock(30000);
     var sheet = getOrCreateSheetAdmMurid("Database_Ijazah");
     var row = parseInt(rowId);
-    var fileId = sheet.getRange(row, 9).getValue();
+    
+    var fileIdIjazah = sheet.getRange(row, 9).getValue();
+    var fileIdTranskrip = sheet.getRange(row, 12).getValue();
 
-    if (fileId) {
-      try { DriveApp.getFileById(fileId).setTrashed(true); } catch(err) {}
+    if (fileIdIjazah) {
+      try { DriveApp.getFileById(fileIdIjazah).setTrashed(true); } catch(err) {}
+    }
+    if (fileIdTranskrip) {
+      try { DriveApp.getFileById(fileIdTranskrip).setTrashed(true); } catch(err) {}
     }
 
     sheet.deleteRow(row);
@@ -371,8 +403,11 @@ function admMurid_verifikasiIjazah(rowId, status, catatan, verifikator) {
     var row = parseInt(rowId);
     var now = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
 
-    sheet.getRange(row, 10, 1, 2).setValues([[status, catatan]]);
-    sheet.getRange(row, 16, 1, 2).setValues([[now, verifikator]]);
+    sheet.getRange(row, 13, 1, 2).setValues([[status, catatan]]);
+    sheet.getRange(row, 19, 1, 2).setValues([[now, verifikator]]);
+    
+    // Set read_by
+    sheet.getRange(row, 21).setValue(verifikator);
 
     return JSON.stringify({ success: true, message: "Verifikasi Cetak Ijazah berhasil disimpan." });
   } catch (e) {
@@ -469,15 +504,16 @@ function admMurid_getDashboardData(npsnFilter, tahunFilter) {
     for (var i = 1; i < ijazahData.length; i++) {
       var npsn = ijazahData[i][0];
       var thn = ijazahData[i][2];
-      var status = ijazahData[i][9];
+      var status = ijazahData[i][12];
       
       if (targetTahun && targetTahun !== "SEMUA" && thn !== targetTahun) continue;
       
       if (schoolStatusMap[npsn]) {
         schoolStatusMap[npsn].ijazah = {
           status: status,
-          fileUrl: ijazahData[i][7],
-          tglUpload: ijazahData[i][11],
+          fileUrl: ijazahData[i][7], // Link Ijazah
+          fileUrlTranskrip: ijazahData[i][10], // Link Transkrip
+          tglUpload: ijazahData[i][14],
           detail: {
             muridL: ijazahData[i][3],
             muridP: ijazahData[i][4],
