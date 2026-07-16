@@ -622,25 +622,26 @@
     // Delete Button Clicked (Delegated dengan off)
     $(document).off('click', '.btn-hapus').on('click', '.btn-hapus', function() {
         var id = $(this).data('id');
+        
+        var rowData = ADUAN_CACHE_DATA.find(function(item) {
+            return String(item.rowBaris) === String(id);
+        });
+        if (!rowData) return;
 
-        // MENGGUNAKAN CUSTOM DIALOG SULTAN UNTUK KONFIRMASI
-        Swal.fire({
-            title: `<h5 class="font-weight-bold" style="margin-top:10px; color:#800000">Hapus Pengaduan?</h5>`,
-            html: `<div class="text-muted">Apakah Anda yakin ingin membatalkan dan menghapus aduan ini?</div>`,
-            icon: "warning",
-            showCancelButton: true,
-            confirmButtonText: "Ya, Hapus!",
-            cancelButtonText: "Batal",
-            background: $('body').hasClass('dark-mode') ? '#1a1c1e' : '#fff',
-            color: $('body').hasClass('dark-mode') ? '#f1f3f5' : '#343a40',
-            customClass: {
-                popup: 'card-sultan',
-                confirmButton: 'sultan-btn sultan-btn-aksi-utama px-4',
-                cancelButton: 'sultan-btn sultan-btn-aksi-batal px-4'
+        // Kode pengaman berupa tanggal hari ini (YYYYMMDD) sesuai standardisasi Sultan Blueprint
+        var dDate = new Date();
+        var kd = dDate.getFullYear() + "" + String(dDate.getMonth() + 1).padStart(2, '0') + "" + String(dDate.getDate()).padStart(2, '0');
+
+        Sultan.modal.konfirmasiHapus({
+            title: 'Hapus Layanan Pengaduan',
+            kode: kd,
+            detail: {
+                'PENGADU': rowData.nama || '-',
+                'KATEGORI': rowData.kategori || '-',
+                'TGL KIRIM': rowData.tglKirim || '-'
             },
-            buttonsStyling: false
-        }).then(function(result) {
-            if (result.isConfirmed) {
+            onConfirm: function () {
+                Sultan.notif.loading("Menghapus aduan...");
                 var payload = {
                     recId: id,
                     npsn: userLogin ? userLogin.npsn : '',
@@ -649,16 +650,18 @@
 
                 google.script.run
                     .withSuccessHandler(function(msg) {
+                        Sultan.notif.tutup();
                         if (msg.indexOf("Sukses") > -1) {
-                            Sultan.notif.sukses(msg);
+                            Sultan.notif.crud.hapus();
                             // Reset cache agar data ter-fetch kembali dari server
                             ADUAN_CACHE_DATA = [];
                             muatDataAduan();
                         } else {
-                            Sultan.notif.gagal(msg);
+                            Sultan.notif.crud.gagal(msg);
                         }
                     })
                     .withFailureHandler(function(err) {
+                        Sultan.notif.tutup();
                         NotifSultan.alert("error", "Gagal Koneksi", err.message);
                     })
                     .hapusAduan(payload);
