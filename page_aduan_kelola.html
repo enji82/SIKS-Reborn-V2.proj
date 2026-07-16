@@ -254,6 +254,7 @@
     var ADUAN_CACHE_DATA = [];
     var ADUAN_CACHE_THN = "";
     var ADUAN_CACHE_BLN = "";
+    var ADUAN_IS_INIT = true; // FLAG UNTUK MENCEGAH DOUBLE LOAD SAAT STARTUP
 
     // Inisialisasi Filter Tahun dan Unit Kerja secara dinamis
     function initFilters() {
@@ -314,7 +315,12 @@
     }
 
     // Ambil Data dari Backend dan render ke DataTable
-    function muatDataAduan() {
+    function muatDataAduan(isForceLoad) {
+        // ANTI-DOUBLE-LOAD SULTAN: Tolak panggilan dari event change saat startup
+        if (ADUAN_IS_INIT && isForceLoad !== 'INIT_START') {
+            return;
+        }
+
         var tahun = $('#aduan_filterTahun').val();
         var bulan = $('#aduan_filterBulan').val();
         var filterStatus = $('#aduan_filterStatus').val();
@@ -329,9 +335,7 @@
             if (filterUnit) {
                 dataFiltered = dataFiltered.filter(function(item) { return String(item.unit || '').trim() === filterUnit; });
             }
-            // Sembunyikan loading state & pastikan tabel tampil saat render cache
-            SultanUI.hideLoading('#aduan_loadingState');
-            $('#aduan_tableState').show();
+            // Langsung render dari cache (renderTable akan menangani show/hide state)
             renderTable(dataFiltered);
             return;
         }
@@ -384,8 +388,6 @@
                 }
 
                 renderTable(dataFiltered);
-                SultanUI.hideLoading('#aduan_loadingState');
-                $('#aduan_tableState').show();
             })
             .withFailureHandler(function(err) {
                 btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
@@ -395,14 +397,23 @@
     }
 
     function renderTable(dataList) {
-        // Hancurkan DataTable secara aman menggunakan instance global untuk mencegah parentNode null error
+        // ANTI-BLINK: Pastikan tabel visible, loading tersembunyi sebelum render
+        SultanUI.hideLoading('#aduan_loadingState');
+        $('#aduan_tableState').show();
+
+        // Hancurkan DataTable secara aman: gunakan instance global terlebih dahulu,
+        // kemudian fallback ke fnDestroy untuk membersihkan orphan state SPA
         if (dataAduanTable) {
             try {
                 dataAduanTable.destroy();
-                dataAduanTable = null;
             } catch(e) {
-                console.warn("Gagal men-destroy DataTable secara aman:", e);
+                console.warn("Gagal men-destroy DataTable via instance:", e);
             }
+            dataAduanTable = null;
+        }
+        // Fallback: bersihkan orphan state jika masih teregistrasi di jQuery plugin
+        if ($.fn.DataTable.isDataTable('#aduan_tabelUtama')) {
+            try { $('#aduan_tabelUtama').DataTable().destroy(); } catch(e) {}
         }
         $('#aduan_tabelUtama tbody').empty();
 
@@ -898,7 +909,8 @@
         setTimeout(function() {
             initFilters();
             initUserSession();
-            muatDataAduan();
+            ADUAN_IS_INIT = false; // Buka kunci setelah filter & sesi siap
+            muatDataAduan('INIT_START');
         }, 150);
     });
     // Helper: parse berbagai format tanggal SIKS-REBORN menjadi timestamp (ms)
