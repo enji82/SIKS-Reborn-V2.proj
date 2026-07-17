@@ -56,7 +56,7 @@ function admMurid_getSpmbData(npsnFilter) {
       var rNama = String(values[i][1]).trim();
       if (!rNpsn) continue;
 
-      if (!targetNpsn || targetNpsn === "SEMUA" || rNpsn === targetNpsn || rNama.toUpperCase() === targetNpsn) {
+      if (!targetNpsn || targetNpsn === "SEMUA" || String(rNpsn).trim() === targetNpsn || rNama.toUpperCase() === targetNpsn) {
         result.push({
           rowId: i + 1,
           npsn: values[i][0],
@@ -242,7 +242,7 @@ function admMurid_getIjazahData(npsnFilter) {
       var rNama = String(values[i][1]).trim();
       if (!rNpsn) continue;
 
-      if (!targetNpsn || targetNpsn === "SEMUA" || rNpsn === targetNpsn || rNama.toUpperCase() === targetNpsn) {
+      if (!targetNpsn || targetNpsn === "SEMUA" || String(rNpsn).trim() === targetNpsn || rNama.toUpperCase() === targetNpsn) {
         result.push({
           rowId: i + 1,
           npsn: values[i][0],
