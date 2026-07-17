@@ -41,7 +41,7 @@ const SPREADSHEET_IDS = {
   ADM_SEKOLAH_DB: "1Qdrk7-FLCz7VSHMF08Lw4CynqeGbrAHJkCT9iAZ0PJY",
   ADM_PTK_DB: "1upUTFyD97ylynU1ekUQ9VVJphTrh-kfSvu89dwqEPUw",
   ADUAN_DB: "1P9ZMeR5J2X7HWty9uli0htnh957Rq-aqlM8_KywEH00",
-  ADM_MURID_DB: "1upUTFyD97ylynU1ekUQ9VVJphTrh-kfSvu89dwqEPUw", // Default to same as ADM_PTK_DB or separate
+  ADM_MURID_DB: "1gmH7vZ27eIO4XovlkPFpAKTsCQWcRYGAzW_89-6UO8w",
 };
 
 // 2. FOLDER CONFIG (Digunakan oleh semua file .gs lainnya)
@@ -65,7 +65,9 @@ const FOLDER_CONFIG = {
   ADM_SEKOLAH_DOCS: "1BgEoySj3Y52BReV8LMi6T58A9SkE8jBE",
   ADM_PTK_DOCS: "1oAHVo-cX9SyglDZtF2fiQWArBZr-PygB",
   ADUAN_DOCS: "1NaSpDrIl9dgG0pJrcPYL-50QQ9RGqkSz",
-  ADM_MURID_DOCS: "1oAHVo-cX9SyglDZtF2fiQWArBZr-PygB", // Default to same as ADM_PTK_DOCS or separate
+  ADM_MURID_SPMB_DOCS: "1l3ZGP4_uXoSB040kxBYdpPQLBuP8HjDj",
+  ADM_MURID_IJAZAH_DOCS: "1MZNgZ3rS_c70z0H0eFbyuLEsbxtVZTsO",
+  ADM_MURID_TRANSKRIP_DOCS: "1Pc-CiwiA3itXhujCIpivkb4xL6gO_anc",
 };
 
 // ==========================================

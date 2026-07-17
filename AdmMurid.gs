@@ -107,21 +107,13 @@ function admMurid_simpanSpmb(payload) {
         try { DriveApp.getFileById(fileId).setTrashed(true); } catch(err) {}
       }
 
-      var pFolder = DriveApp.getFolderById(KONFIG_ADM_MURID.FOLDER_ID);
-      var subFolder;
-      var subFolders = pFolder.getFoldersByName("Dokumen SPMB");
-      if (subFolders.hasNext()) {
-        subFolder = subFolders.next();
-      } else {
-        subFolder = pFolder.createFolder("Dokumen SPMB");
-      }
-
+      var pFolder = DriveApp.getFolderById(FOLDER_CONFIG.ADM_MURID_SPMB_DOCS);
       var schoolFolder;
-      var schoolFolders = subFolder.getFoldersByName(payload.nama_sekolah);
+      var schoolFolders = pFolder.getFoldersByName(payload.nama_sekolah);
       if (schoolFolders.hasNext()) {
         schoolFolder = schoolFolders.next();
       } else {
-        schoolFolder = subFolder.createFolder(payload.nama_sekolah);
+        schoolFolder = pFolder.createFolder(payload.nama_sekolah);
       }
 
       var blob = Utilities.newBlob(Utilities.base64Decode(payload.fileBase64), payload.mimeType, payload.nama_file);
@@ -286,30 +278,21 @@ function admMurid_simpanIjazah(payload) {
     var urlTranskrip = payload.url_file_transkrip || "";
     var idTranskrip = payload.id_file_transkrip || "";
 
-    var pFolder = DriveApp.getFolderById(KONFIG_ADM_MURID.FOLDER_ID);
-    var subFolder;
-    var subFolders = pFolder.getFoldersByName("Dokumen Ijazah");
-    if (subFolders.hasNext()) {
-      subFolder = subFolders.next();
-    } else {
-      subFolder = pFolder.createFolder("Dokumen Ijazah");
-    }
-
-    var schoolFolder;
-    var schoolFolders = subFolder.getFoldersByName(payload.nama_sekolah);
-    if (schoolFolders.hasNext()) {
-      schoolFolder = schoolFolders.next();
-    } else {
-      schoolFolder = subFolder.createFolder(payload.nama_sekolah);
-    }
-
     // Unggah PDF Ijazah
     if (payload.fileBase64_ijazah) {
       if (isEdit && idIjazah) {
         try { DriveApp.getFileById(idIjazah).setTrashed(true); } catch(err) {}
       }
+      var pFolderIjazah = DriveApp.getFolderById(FOLDER_CONFIG.ADM_MURID_IJAZAH_DOCS);
+      var schoolFolderIjazah;
+      var schoolFoldersIjazah = pFolderIjazah.getFoldersByName(payload.nama_sekolah);
+      if (schoolFoldersIjazah.hasNext()) {
+        schoolFolderIjazah = schoolFoldersIjazah.next();
+      } else {
+        schoolFolderIjazah = pFolderIjazah.createFolder(payload.nama_sekolah);
+      }
       var blobIjazah = Utilities.newBlob(Utilities.base64Decode(payload.fileBase64_ijazah), payload.mimeType_ijazah, payload.nama_file_ijazah);
-      var fileIjazah = schoolFolder.createFile(blobIjazah);
+      var fileIjazah = schoolFolderIjazah.createFile(blobIjazah);
       fileIjazah.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
       urlIjazah = fileIjazah.getUrl();
       idIjazah = fileIjazah.getId();
@@ -320,8 +303,16 @@ function admMurid_simpanIjazah(payload) {
       if (isEdit && idTranskrip) {
         try { DriveApp.getFileById(idTranskrip).setTrashed(true); } catch(err) {}
       }
+      var pFolderTranskrip = DriveApp.getFolderById(FOLDER_CONFIG.ADM_MURID_TRANSKRIP_DOCS);
+      var schoolFolderTranskrip;
+      var schoolFoldersTranskrip = pFolderTranskrip.getFoldersByName(payload.nama_sekolah);
+      if (schoolFoldersTranskrip.hasNext()) {
+        schoolFolderTranskrip = schoolFoldersTranskrip.next();
+      } else {
+        schoolFolderTranskrip = pFolderTranskrip.createFolder(payload.nama_sekolah);
+      }
       var blobTranskrip = Utilities.newBlob(Utilities.base64Decode(payload.fileBase64_transkrip), payload.mimeType_transkrip, payload.nama_file_transkrip);
-      var fileTranskrip = schoolFolder.createFile(blobTranskrip);
+      var fileTranskrip = schoolFolderTranskrip.createFile(blobTranskrip);
       fileTranskrip.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
       urlTranskrip = fileTranskrip.getUrl();
       idTranskrip = fileTranskrip.getId();
