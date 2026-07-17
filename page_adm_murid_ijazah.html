@@ -204,10 +204,9 @@
     if (userLogin.role !== "Admin") {
       $('#admmuridijazah_filterContainer').show();
       $('#admmuridijazah_filterSekolah').html('<option value="' + userLogin.unit + '">' + userLogin.unit + '</option>').prop('disabled', true);
-      $('#admmuridijazah_btnTambah').show();
-    } else {
-      $('#admmuridijazah_btnTambah').hide();
     }
+    // Selalu tampilkan tombol tambah agar Admin juga bisa melakukan entri/unggah data
+    $('#admmuridijazah_btnTambah').show();
 
     // Ambil daftar sekolah
     google.script.run.withSuccessHandler(function (resRaw) {
@@ -222,6 +221,7 @@
           res.sekolah.forEach(function (s) {
             inSekolah.append('<option value="' + s.npsn + '" data-nama="' + s.nama + '">' + s.nama + ' (' + s.npsn + ')</option>');
           });
+          inSekolah.prop('disabled', false);
         } else {
           res.sekolah.forEach(function (s) {
             if (s.npsn === userLogin.npsn) {
@@ -379,6 +379,20 @@
       $('.file-hint-edit').hide();
       $('#admmuridijazah_file_ijazah').prop('required', true);
       $('#admmuridijazah_file_transkrip').prop('required', true);
+
+      // Hitung tahun ajaran saat ini secara dinamis (Juli - Desember = Tahun/Tahun+1, Januari - Juni = Tahun-1/Tahun)
+      var cDate = new Date();
+      var cYear = cDate.getFullYear();
+      var cMonth = cDate.getMonth() + 1; // 1-12
+      var defaultTahun = (cMonth >= 7) ? cYear + "/" + (cYear + 1) : (cYear - 1) + "/" + cYear;
+      $('#admmuridijazah_in_tahun').val(defaultTahun);
+
+      if (userLogin.role === "Admin") {
+        $('#admmuridijazah_in_sekolah').prop('disabled', false).val('');
+      } else {
+        $('#admmuridijazah_in_sekolah').val(userLogin.npsn).prop('disabled', true);
+      }
+
       $('#admmuridijazah_modalForm').modal('show');
     });
 
@@ -484,7 +498,7 @@
     $(document).on('click', '.btn-edit', function () {
       var raw = $(this).data('raw');
       $('#admmuridijazah_rowId').val(raw.rowId);
-      $('#admmuridijazah_in_sekolah').val(raw.npsn);
+      $('#admmuridijazah_in_sekolah').val(raw.npsn).prop('disabled', true);
       $('#admmuridijazah_in_tahun').val(raw.tahun_ajaran);
       $('#admmuridijazah_in_l').val(raw.jumlah_murid_l);
       $('#admmuridijazah_in_p').val(raw.jumlah_murid_p);
