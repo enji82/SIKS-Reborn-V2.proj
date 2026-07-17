@@ -393,23 +393,29 @@
 
       filtered.forEach(function (row) {
         var btnAksi = "";
-        var badgeStatus = getBadge(row.status);
+        var badgeStatus = getBadge(row.status, row.catatan);
 
         var isDinas = (userLogin.role === "Admin");
         var isEditable = (row.status.toLowerCase() !== "disetujui" || isDinas);
 
+        var btnV = ""; 
         if (isDinas) {
-          btnAksi = '<button class="btn btn-xs btn-warning btn-verif font-weight-bold rounded shadow-sm mr-1" data-id="' + row.rowId + '" data-status="' + row.status + '" data-catatan="' + row.catatan + '"><i class="fas fa-check-double"></i> Verif</button>';
+          btnV = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-primary btn-verif" data-id="' + row.rowId + '" data-status="' + row.status + '" data-catatan="' + (row.catatan || '') + '" title="Verifikasi"><i class="fas fa-clipboard-check"></i></button>';
         }
 
+        var btnP = "";
+        var btnH = "";
         if (isEditable) {
-          btnAksi += '<button class="btn btn-xs btn-primary btn-edit font-weight-bold rounded shadow-sm mr-1" data-id="' + row.rowId + '" data-raw=\'' + JSON.stringify(row) + '\'><i class="fas fa-edit"></i> Edit</button>';
-          btnAksi += '<button class="btn btn-xs btn-danger btn-delete font-weight-bold rounded shadow-sm" data-id="' + row.rowId + '"><i class="fas fa-trash"></i> Hapus</button>';
+          btnP = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning btn-edit" data-id="' + row.rowId + '" data-raw=\'' + JSON.stringify(row) + '\' title="Edit Berkas"><i class="fas fa-edit"></i></button>';
+          btnH = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon btn-delete" data-id="' + row.rowId + '" title="Hapus Berkas"><i class="fas fa-trash-alt"></i></button>';
         } else {
-          btnAksi += '<span class="text-muted small font-italic"><i class="fas fa-lock"></i> Terkunci</span>';
+          btnP = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning" disabled style="opacity:0.5;" title="Terkunci (Status Disetujui)"><i class="fas fa-edit"></i></button>';
+          btnH = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon" disabled style="opacity:0.5;" title="Terkunci (Status Disetujui)"><i class="fas fa-trash-alt"></i></button>';
         }
 
-        var docLink = row.url_file ? '<a href="' + row.url_file + '" target="_blank" class="btn btn-xs btn-outline-danger font-weight-bold rounded-pill"><i class="fas fa-file-pdf"></i> Lihat PDF</a>' : '<span class="text-muted">-</span>';
+        btnAksi = '<div class="d-flex flex-nowrap justify-content-center" style="gap:5px;">' + btnV + btnP + btnH + '</div>';
+
+        var docLink = row.url_file ? '<button type="button" class="sultan-btn-pdf btn-preview" data-url="' + row.url_file + '" style="font-size:12px;"><i class="fas fa-file-pdf mr-1"></i> LIHAT</button>' : '<span class="text-muted">-</span>';
         var uploadBy = row.uploader ? '<div class="small text-muted font-weight-bold">' + row.uploader + '</div><div style="font-size:10px;" class="text-muted">' + row.tgl_upload + '</div>' : '-';
         var editBy = row.user_edit ? '<div class="small text-muted font-weight-bold">' + row.user_edit + '</div><div style="font-size:10px;" class="text-muted">' + row.tgl_edit + '</div>' : '-';
         var readBadge = row.read_by ? '<div class="mt-1 small"><span class="badge badge-light text-muted border"><i class="fas fa-eye"></i> Dibaca: ' + row.read_by + '</span></div>' : '';
@@ -456,15 +462,42 @@
       });
     }
 
-    function getBadge(status) {
-      status = String(status || "").trim();
-      var badgeClass = "badge-secondary";
-      if (status.toLowerCase() === "disetujui") badgeClass = "badge-success";
-      else if (status.toLowerCase() === "diproses") badgeClass = "badge-warning";
-      else if (status.toLowerCase() === "revisi") badgeClass = "badge-info";
-      else if (status.toLowerCase() === "ditolak") badgeClass = "badge-danger";
-      return '<span class="badge ' + badgeClass + '">' + status + '</span>';
+    function getBadge(status, catatan) {
+      var s = String(status || "").toLowerCase();
+      var c = 'badge-sultan-diproses';
+      var i = 'clock';
+      var l = status || 'Diproses';
+      if (s.includes('setuju') || s.includes('ok') || s.includes('valid')) { c = 'badge-sultan-disetujui'; i = 'check-circle'; l = 'Disetujui'; }
+      else if (s.includes('revisi')) { c = 'badge-sultan-revisi'; i = 'sync-alt'; l = 'Revisi'; }
+      else if (s.includes('tolak')) { c = 'badge-sultan-ditolak'; i = 'times-circle'; l = 'Ditolak'; }
+      var b = '<span class="badge ' + c + '"><i class="fas fa-' + i + ' mr-1"></i>' + l + '</span>';
+      if (catatan && catatan.trim().length > 2) {
+        return b + '<div class="mt-2"><button type="button" class="sultan-btn-note btn-catatan" data-pesan="' + catatan.replace(/"/g, '&quot;') + '"><i class="fas fa-comment-dots mr-1"></i> BACA CATATAN</button></div>';
+      }
+      return b;
     }
+
+    // Registrasi klik preview & catatan
+    $(document).on('click', '.btn-preview', function () {
+      var url = $(this).attr('data-url');
+      if (!url) { Sultan.notif.info("URL tidak tersedia."); return; }
+      var finalUrl = url; var downloadUrl = ""; var isGoogleDrive = url.indexOf('drive.google.com') > -1;
+      var isImage = url.toLowerCase().endsWith('.jpg') || url.toLowerCase().endsWith('.png') || url.toLowerCase().endsWith('.jpeg');
+      if (isGoogleDrive) { var match = url.match(/\/d\/([a-zA-Z0-9_-]+)/); if (match && match[1]) { finalUrl = 'https://drive.google.com/file/d/' + match[1] + '/preview'; downloadUrl = 'https://drive.google.com/uc?export=download&id=' + match[1]; } } else { downloadUrl = url; }
+      Sultan.modal.preview({ url: finalUrl, title: 'Pratinjau Laporan SPMB', downloadUrl: downloadUrl, isImage: isImage });
+    });
+
+    $(document).on('click', '.btn-catatan', function () {
+      var pesan = $(this).attr('data-pesan');
+      if (pesan) {
+        Swal.fire({
+          title: 'Catatan Verifikasi',
+          html: pesan,
+          icon: 'info',
+          confirmButtonColor: '#800000'
+        });
+      }
+    });
 
     // Aksi Tambah Dokumen
     $('#admmuridspmb_btnTambah').click(function () {

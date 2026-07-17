@@ -298,24 +298,30 @@
 
       filtered.forEach(function (row) {
         var btnAksi = "";
-        var badgeStatus = getBadge(row.status);
+        var badgeStatus = getBadge(row.status, row.catatan);
 
         var isDinas = (userLogin.role === "Admin");
         var isEditable = (row.status.toLowerCase() !== "disetujui" || isDinas);
 
+        var btnV = ""; 
         if (isDinas) {
-          btnAksi = '<button class="btn btn-xs btn-warning btn-verif font-weight-bold rounded shadow-sm mr-1" data-id="' + row.rowId + '" data-status="' + row.status + '" data-catatan="' + row.catatan + '"><i class="fas fa-check-double"></i> Verif</button>';
+          btnV = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-primary btn-verif" data-id="' + row.rowId + '" data-status="' + row.status + '" data-catatan="' + (row.catatan || '') + '" title="Verifikasi"><i class="fas fa-clipboard-check"></i></button>';
         }
 
+        var btnP = "";
+        var btnH = "";
         if (isEditable) {
-          btnAksi += '<button class="btn btn-xs btn-primary btn-edit font-weight-bold rounded shadow-sm mr-1" data-id="' + row.rowId + '" data-raw=\'' + JSON.stringify(row) + '\'><i class="fas fa-edit"></i> Edit</button>';
-          btnAksi += '<button class="btn btn-xs btn-danger btn-delete font-weight-bold rounded shadow-sm" data-id="' + row.rowId + '"><i class="fas fa-trash"></i> Hapus</button>';
+          btnP = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning btn-edit" data-id="' + row.rowId + '" data-raw=\'' + JSON.stringify(row) + '\' title="Edit Berkas"><i class="fas fa-edit"></i></button>';
+          btnH = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon btn-delete" data-id="' + row.rowId + '" title="Hapus Berkas"><i class="fas fa-trash-alt"></i></button>';
         } else {
-          btnAksi += '<span class="text-muted small font-italic"><i class="fas fa-lock"></i> Terkunci</span>';
+          btnP = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning" disabled style="opacity:0.5;" title="Terkunci (Status Disetujui)"><i class="fas fa-edit"></i></button>';
+          btnH = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon" disabled style="opacity:0.5;" title="Terkunci (Status Disetujui)"><i class="fas fa-trash-alt"></i></button>';
         }
 
-        var docIjazahLink = row.url_file_ijazah ? '<a href="' + row.url_file_ijazah + '" target="_blank" class="btn btn-xs btn-outline-danger font-weight-bold rounded-pill mr-1 mb-1 d-inline-block"><i class="fas fa-file-pdf"></i> Ijazah</a>' : '<span class="text-muted small">-</span>';
-        var docTranskripLink = row.url_file_transkrip ? '<a href="' + row.url_file_transkrip + '" target="_blank" class="btn btn-xs btn-outline-primary font-weight-bold rounded-pill mb-1 d-inline-block"><i class="fas fa-file-pdf"></i> Transkrip</a>' : '<span class="text-muted small">-</span>';
+        btnAksi = '<div class="d-flex flex-nowrap justify-content-center" style="gap:5px;">' + btnV + btnP + btnH + '</div>';
+
+        var docIjazahLink = row.url_file_ijazah ? '<button type="button" class="sultan-btn-pdf btn-preview mr-1 mb-1 d-inline-block" data-url="' + row.url_file_ijazah + '" data-title="Pratinjau Ijazah" style="font-size:11px;"><i class="fas fa-file-pdf mr-1 text-danger"></i> IJAZAH</button>' : '<span class="text-muted small">-</span>';
+        var docTranskripLink = row.url_file_transkrip ? '<button type="button" class="sultan-btn-pdf btn-preview mb-1 d-inline-block" data-url="' + row.url_file_transkrip + '" data-title="Pratinjau Transkrip" style="font-size:11px;"><i class="fas fa-file-pdf mr-1 text-primary"></i> TRANSKRIP</button>' : '<span class="text-muted small">-</span>';
         var docLinks = '<div class="d-flex flex-column">' + docIjazahLink + docTranskripLink + '</div>';
 
         var uploadBy = row.uploader ? '<div class="small text-muted font-weight-bold">' + row.uploader + '</div><div style="font-size:10px;" class="text-muted">' + row.tgl_upload + '</div>' : '-';
@@ -355,14 +361,43 @@
       });
     }
 
-    function getBadge(status) {
-      status = String(status || "").trim();
-      var badgeClass = "badge-secondary";
-      if (status.toLowerCase() === "disetujui") badgeClass = "badge-success";
-      else if (status.toLowerCase() === "diproses") badgeClass = "badge-warning";
-      else if (status.toLowerCase() === "revisi") badgeClass = "badge-info";
-      else if (status.toLowerCase() === "ditolak") badgeClass = "badge-danger";
-      return '<span class="badge ' + badgeClass + '">' + status + '</span>';
+    function getBadge(status, catatan) {
+      var s = String(status || "").toLowerCase();
+      var c = 'badge-sultan-diproses';
+      var i = 'clock';
+      var l = status || 'Diproses';
+      if (s.includes('setuju') || s.includes('ok') || s.includes('valid')) { c = 'badge-sultan-disetujui'; i = 'check-circle'; l = 'Disetujui'; }
+      else if (s.includes('revisi')) { c = 'badge-sultan-revisi'; i = 'sync-alt'; l = 'Revisi'; }
+      else if (s.includes('tolak')) { c = 'badge-sultan-ditolak'; i = 'times-circle'; l = 'Ditolak'; }
+      var b = '<span class="badge ' + c + '"><i class="fas fa-' + i + ' mr-1"></i>' + l + '</span>';
+      if (catatan && catatan.trim().length > 2) {
+        return b + '<div class="mt-2"><button type="button" class="sultan-btn-note btn-catatan" data-pesan="' + catatan.replace(/"/g, '&quot;') + '"><i class="fas fa-comment-dots mr-1"></i> BACA CATATAN</button></div>';
+      }
+      return b;
+    }
+
+    // Registrasi klik preview & catatan
+    $(document).on('click', '.btn-preview', function () {
+      var url = $(this).attr('data-url');
+      var title = $(this).attr('data-title') || 'Pratinjau Dokumen';
+      if (!url) { Sultan.notif.info("URL tidak tersedia."); return; }
+      var finalUrl = url; var downloadUrl = ""; var isGoogleDrive = url.indexOf('drive.google.com') > -1;
+      var isImage = url.toLowerCase().endsWith('.jpg') || url.toLowerCase().endsWith('.png') || url.toLowerCase().endsWith('.jpeg');
+      if (isGoogleDrive) { var match = url.match(/\/d\/([a-zA-Z0-9_-]+)/); if (match && match[1]) { finalUrl = 'https://drive.google.com/file/d/' + match[1] + '/preview'; downloadUrl = 'https://drive.google.com/uc?export=download&id=' + match[1]; } } else { downloadUrl = url; }
+      Sultan.modal.preview({ url: finalUrl, title: title, downloadUrl: downloadUrl, isImage: isImage });
+    });
+
+    $(document).on('click', '.btn-catatan', function () {
+      var pesan = $(this).attr('data-pesan');
+      if (pesan) {
+        Swal.fire({
+          title: 'Catatan Verification',
+          html: pesan,
+          icon: 'info',
+          confirmButtonColor: '#800000'
+        });
+      }
+    });
     }
 
     // Aksi Tambah Dokumen
