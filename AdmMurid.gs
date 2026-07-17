@@ -14,23 +14,27 @@ function getOrCreateSheetAdmMurid(sheetName) {
   var sheet = ss.getSheetByName(sheetName);
   if (!sheet) {
     sheet = ss.insertSheet(sheetName);
+  }
+  
+  // Proteksi pemulihan header otomatis jika baris 1 kosong
+  if (sheet.getLastRow() === 0 || sheet.getRange(1, 1).getValue() === "") {
     if (sheetName === "Database_SPMB") {
-      sheet.appendRow([
+      sheet.getRange(1, 1, 1, 27).setValues([[
         "NPSN", "Nama_Sekolah", "Tahun_Ajaran", "Jumlah_Rombel", 
         "SPMB_T1_Online_L", "SPMB_T1_Online_P", "SPMB_T2_Online_L", "SPMB_T2_Online_P", 
         "SPMB_Offline_L", "SPMB_Offline_P", "Tinggal_Kelas_1_L", "Tinggal_Kelas_1_P", 
         "Jumlah_Murid_L", "Jumlah_Murid_P", "Jumlah_Total", 
         "Nama_File", "URL_File", "ID_File", "Status", "Catatan", 
         "Tgl_Upload", "Uploader", "Tgl_Edit", "User_Edit", "Tgl_Verif", "Verifikator", "Read_by"
-      ]);
+      ]]);
     } else if (sheetName === "Database_Ijazah") {
-      sheet.appendRow([
+      sheet.getRange(1, 1, 1, 21).setValues([[
         "NPSN", "Nama_Sekolah", "Tahun_Ajaran", 
         "Jumlah_Murid_L", "Jumlah_Murid_P", "Jumlah_Total", 
         "Nama_File_Ijazah", "URL_File_Ijazah", "ID_File_Ijazah", 
         "Nama_File_Transkrip", "URL_File_Transkrip", "ID_File_Transkrip", 
         "Status", "Catatan", "Tgl_Upload", "Uploader", "Tgl_Edit", "User_Edit", "Tgl_Verif", "Verifikator", "Read_by"
-      ]);
+      ]]);
     }
   }
   return sheet;
