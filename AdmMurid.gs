@@ -153,8 +153,14 @@ function admMurid_simpanSpmb(payload) {
       sheet.getRange(row, 23, 1, 2).setValues([[now, payload.user_login]]);
     } else {
       var existingData = sheet.getDataRange().getDisplayValues();
+      var targetNpsn = String(payload.npsn || "").trim();
+      var targetTa = String(payload.tahun_ajaran || "").trim();
+      
       for (var i = 1; i < existingData.length; i++) {
-        if (existingData[i][0] === payload.npsn && existingData[i][2] === payload.tahun_ajaran) {
+        var rowNpsn = String(existingData[i][0] || "").trim();
+        var rowTa = String(existingData[i][2] || "").trim();
+        if (!rowNpsn || !rowTa) continue; // Abaikan baris kosong
+        if (rowNpsn === targetNpsn && rowTa === targetTa) {
           return JSON.stringify({ success: false, message: "Laporan SPMB untuk Tahun Ajaran " + payload.tahun_ajaran + " sudah ada." });
         }
       }
@@ -336,10 +342,15 @@ function admMurid_simpanIjazah(payload) {
       ]]);
       sheet.getRange(row, 13).setValue("Diproses");
       sheet.getRange(row, 17, 1, 2).setValues([[now, payload.user_login]]);
-    } else {
       var existingData = sheet.getDataRange().getDisplayValues();
+      var targetNpsn = String(payload.npsn || "").trim();
+      var targetTa = String(payload.tahun_ajaran || "").trim();
+      
       for (var i = 1; i < existingData.length; i++) {
-        if (existingData[i][0] === payload.npsn && existingData[i][2] === payload.tahun_ajaran) {
+        var rowNpsn = String(existingData[i][0] || "").trim();
+        var rowTa = String(existingData[i][2] || "").trim();
+        if (!rowNpsn || !rowTa) continue; // Abaikan baris kosong
+        if (rowNpsn === targetNpsn && rowTa === targetTa) {
           return JSON.stringify({ success: false, message: "Permohonan Cetak Ijazah untuk Tahun Ajaran " + payload.tahun_ajaran + " sudah ada." });
         }
       }
