@@ -111,8 +111,12 @@
 
             <div class="row mb-3">
                 <div class="col-md-6 col-sm-12">
-                    <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Pilih Sekolah <span class="text-danger">*</span></label>
-                    <select id="admmuridspmb_in_sekolah" class="form-control form-control-sultan border-maroon font-weight-bold" required></select>
+                    <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Sekolah <span class="text-danger">*</span></label>
+                    <!-- Tampil untuk Admin -->
+                    <select id="admmuridspmb_in_sekolah" class="form-control form-control-sultan border-maroon font-weight-bold d-none" required></select>
+                    <!-- Tampil untuk Sekolah (Readonly) -->
+                    <input type="text" id="admmuridspmb_in_sekolah_display" class="form-control form-control-sultan border-maroon font-weight-bold d-none" readonly>
+                    <input type="hidden" id="admmuridspmb_in_sekolah_hidden">
                 </div>
                 <div class="col-md-3 col-sm-6">
                     <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Tahun Ajaran <span class="text-danger">*</span></label>
@@ -350,16 +354,15 @@
             inSekolah.append('<option value="' + s.npsn + '" data-nama="' + s.nama + '">' + s.nama + ' (' + s.npsn + ')</option>');
           });
           filterSekolah.prop('disabled', false);
-          inSekolah.prop('disabled', false);
+          inSekolah.removeClass('d-none').prop('disabled', false);
+          $('#admmuridspmb_in_sekolah_display').addClass('d-none');
         } else {
           filterSekolah.append('<option value="' + userLogin.npsn + '">' + userLogin.unit + '</option>');
           filterSekolah.prop('disabled', true);
-          res.sekolah.forEach(function (s) {
-            if (s.npsn === userLogin.npsn) {
-              inSekolah.append('<option value="' + s.npsn + '" data-nama="' + s.nama + '" selected>' + s.nama + '</option>');
-            }
-          });
-          inSekolah.prop('disabled', true);
+          
+          inSekolah.addClass('d-none');
+          $('#admmuridspmb_in_sekolah_display').removeClass('d-none').val(userLogin.unit || userLogin.nama || '-');
+          $('#admmuridspmb_in_sekolah_hidden').val(userLogin.npsn);
         }
         $('#admmuridspmb_btnTambah').prop('disabled', false);
         loadSpmbData();
@@ -573,20 +576,18 @@
     // LOGIKA MODAL FORM DENGAN GLOBAL MODAL
     // ==========================================
     function admmuridspmb_repopulateSekolah() {
-      // form.reset() menghapus semua option dinamis — wajib diisi ulang
       var inSekolah = $('#admmuridspmb_in_sekolah');
-      inSekolah.empty();
       if (ADMMURIDSPMB_IS_ADMIN) {
+        inSekolah.empty();
         inSekolah.append('<option value="">- Pilih Sekolah -</option>');
         listMasterSekolah.forEach(function (s) {
           inSekolah.append('<option value="' + s.npsn + '" data-nama="' + s.nama + '">' + s.nama + ' (' + s.npsn + ')</option>');
         });
-        inSekolah.prop('disabled', false).val('');
+        inSekolah.val('');
       } else {
-        // Langsung gunakan objek userLogin agar 100% instan dan tidak bergantung pada loop data server
         var namaSekolah = userLogin.unit || userLogin.nama || '-';
-        inSekolah.append('<option value="' + userLogin.npsn + '" data-nama="' + namaSekolah + '" selected>' + namaSekolah + '</option>');
-        inSekolah.prop('disabled', true).val(userLogin.npsn);
+        $('#admmuridspmb_in_sekolah_display').val(namaSekolah);
+        $('#admmuridspmb_in_sekolah_hidden').val(userLogin.npsn);
       }
     }
 
@@ -650,10 +651,13 @@
         return;
       }
 
+      var finalNpsn = ADMMURIDSPMB_IS_ADMIN ? $('#admmuridspmb_in_sekolah').val() : $('#admmuridspmb_in_sekolah_hidden').val();
+      var finalNama = ADMMURIDSPMB_IS_ADMIN ? ($('#admmuridspmb_in_sekolah option:selected').data('nama') || "") : $('#admmuridspmb_in_sekolah_display').val();
+
       var payload = {
         rowId: rowId,
-        npsn: $('#admmuridspmb_in_sekolah').val(),
-        nama_sekolah: $('#admmuridspmb_in_sekolah option:selected').data('nama') || userLogin.unit,
+        npsn: finalNpsn,
+        nama_sekolah: finalNama,
         tahun_ajaran: $('#admmuridspmb_in_tahun').val(),
         jumlah_rombel: $('#admmuridspmb_in_rombel').val(),
         spmb_t1_online_l: $('#admmuridspmb_in_t1l').val(),
@@ -719,7 +723,12 @@
       if (!raw) return;
 
       $('#admmuridspmb_rowId').val(raw.rowId);
-      $('#admmuridspmb_in_sekolah').val(raw.npsn).prop('disabled', true);
+      if (ADMMURIDSPMB_IS_ADMIN) {
+        $('#admmuridspmb_in_sekolah').val(raw.npsn).prop('disabled', true);
+      } else {
+        $('#admmuridspmb_in_sekolah_display').val(raw.nama_sekolah || '-');
+        $('#admmuridspmb_in_sekolah_hidden').val(raw.npsn);
+      }
       $('#admmuridspmb_in_tahun').val(raw.tahun_ajaran);
       $('#admmuridspmb_in_rombel').val(raw.jumlah_rombel);
       $('#admmuridspmb_in_t1l').val(raw.spmb_t1_online_l || "");

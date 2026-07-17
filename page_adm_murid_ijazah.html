@@ -99,8 +99,12 @@
             </div>
 
             <div class="form-group mb-3">
-                <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Pilih Sekolah <span class="text-danger">*</span></label>
-                <select id="admmuridijazah_in_sekolah" class="form-control form-control-sultan border-maroon font-weight-bold" required></select>
+                <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Sekolah <span class="text-danger">*</span></label>
+                <!-- Tampil untuk Admin -->
+                <select id="admmuridijazah_in_sekolah" class="form-control form-control-sultan border-maroon font-weight-bold d-none" required></select>
+                <!-- Tampil untuk Sekolah (Readonly) -->
+                <input type="text" id="admmuridijazah_in_sekolah_display" class="form-control form-control-sultan border-maroon font-weight-bold d-none" readonly>
+                <input type="hidden" id="admmuridijazah_in_sekolah_hidden">
             </div>
 
             <div class="row mb-3">
@@ -280,16 +284,15 @@
             inSekolah.append('<option value="' + s.npsn + '" data-nama="' + s.nama + '">' + s.nama + ' (' + s.npsn + ')</option>');
           });
           filterSekolah.prop('disabled', false);
-          inSekolah.prop('disabled', false);
+          inSekolah.removeClass('d-none').prop('disabled', false);
+          $('#admmuridijazah_in_sekolah_display').addClass('d-none');
         } else {
           filterSekolah.append('<option value="' + userLogin.npsn + '">' + userLogin.unit + '</option>');
           filterSekolah.prop('disabled', true);
-          res.sekolah.forEach(function (s) {
-            if (s.npsn === userLogin.npsn) {
-              inSekolah.append('<option value="' + s.npsn + '" data-nama="' + s.nama + '" selected>' + s.nama + '</option>');
-            }
-          });
-          inSekolah.prop('disabled', true);
+          
+          inSekolah.addClass('d-none');
+          $('#admmuridijazah_in_sekolah_display').removeClass('d-none').val(userLogin.unit || userLogin.nama || '-');
+          $('#admmuridijazah_in_sekolah_hidden').val(userLogin.npsn);
         }
         $('#admmuridijazah_btnTambah').prop('disabled', false);
         loadIjazahData();
@@ -487,20 +490,18 @@
     });
 
     function admmuridijazah_repopulateSekolah() {
-      // form.reset() menghapus semua option dinamis — wajib diisi ulang
       var inSekolah = $('#admmuridijazah_in_sekolah');
-      inSekolah.empty();
       if (ADMMURIDIJAZAH_IS_ADMIN) {
+        inSekolah.empty();
         inSekolah.append('<option value="">- Pilih Sekolah -</option>');
         listMasterSekolah.forEach(function (s) {
           inSekolah.append('<option value="' + s.npsn + '" data-nama="' + s.nama + '">' + s.nama + ' (' + s.npsn + ')</option>');
         });
-        inSekolah.prop('disabled', false).val('');
+        inSekolah.val('');
       } else {
-        // Langsung gunakan objek userLogin agar 100% instan dan tidak bergantung pada loop data server
         var namaSekolah = userLogin.unit || userLogin.nama || '-';
-        inSekolah.append('<option value="' + userLogin.npsn + '" data-nama="' + namaSekolah + '" selected>' + namaSekolah + '</option>');
-        inSekolah.prop('disabled', true).val(userLogin.npsn);
+        $('#admmuridijazah_in_sekolah_display').val(namaSekolah);
+        $('#admmuridijazah_in_sekolah_hidden').val(userLogin.npsn);
       }
     }
 
@@ -567,10 +568,13 @@
         return;
       }
 
+      var finalNpsn = ADMMURIDIJAZAH_IS_ADMIN ? $('#admmuridijazah_in_sekolah').val() : $('#admmuridijazah_in_sekolah_hidden').val();
+      var finalNama = ADMMURIDIJAZAH_IS_ADMIN ? ($('#admmuridijazah_in_sekolah option:selected').data('nama') || "") : $('#admmuridijazah_in_sekolah_display').val();
+
       var payload = {
         rowId: rowId,
-        npsn: $('#admmuridijazah_in_sekolah').val(),
-        nama_sekolah: $('#admmuridijazah_in_sekolah option:selected').data('nama') || userLogin.unit,
+        npsn: finalNpsn,
+        nama_sekolah: finalNama,
         tahun_ajaran: $('#admmuridijazah_in_tahun').val(),
         jumlah_murid_l: $('#admmuridijazah_in_l').val(),
         jumlah_murid_p: $('#admmuridijazah_in_p').val(),
@@ -649,7 +653,12 @@
       if (!raw) return;
 
       $('#admmuridijazah_rowId').val(raw.rowId);
-      $('#admmuridijazah_in_sekolah').val(raw.npsn).prop('disabled', true);
+      if (ADMMURIDIJAZAH_IS_ADMIN) {
+        $('#admmuridijazah_in_sekolah').val(raw.npsn).prop('disabled', true);
+      } else {
+        $('#admmuridijazah_in_sekolah_display').val(raw.nama_sekolah || '-');
+        $('#admmuridijazah_in_sekolah_hidden').val(raw.npsn);
+      }
       $('#admmuridijazah_in_tahun').val(raw.tahun_ajaran);
       $('#admmuridijazah_in_l').val(raw.jumlah_murid_l);
       $('#admmuridijazah_in_p').val(raw.jumlah_murid_p);
