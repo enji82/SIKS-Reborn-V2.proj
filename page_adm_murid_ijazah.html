@@ -332,9 +332,7 @@
       admmuridijazah_bukaModalTambah();
     });
 
-    $(document).on('change', '#admmuridijazah_in_sekolah, #admmuridijazah_in_tahun', function () {
-      admmuridijazah_cekKetersediaanData();
-    });
+
 
     function loadIjazahData() {
       var btn = $('#admmuridijazah_btnRefresh');
@@ -520,9 +518,9 @@
         .removeClass('modal-btn-perbarui')
         .addClass('modal-btn-simpan')
         .html('<i class="fas fa-cloud-upload-alt mr-2"></i>SIMPAN & UNGGAH')
-        .hide();
+        .show();
 
-      $('#admmuridijazah_areaTerkunci').prop('disabled', true).css('opacity', '0.5');
+      $('#admmuridijazah_areaTerkunci').prop('disabled', false).css('opacity', '1');
       $('#admmuridijazah_alertInfo').removeClass('sultan-alert-danger sultan-alert-success sultan-alert-warning').addClass('sultan-alert-info').html('<i class="fas fa-info-circle mr-3 fa-lg"></i><span>Isikan data di bawah ini sesuai dengan dokumen asli yang akan diunggah untuk validasi sistem.</span>');
       $('#admmuridijazah_labelIjazah').html('<i class="fas fa-file-pdf mr-1" style="color: var(--sultan-aksi-danger);"></i> 1. Unggah PDF Permohonan Cetak Ijazah (Max 1MB) <span class="text-danger">*</span>');
       $('#admmuridijazah_labelTranskrip').html('<i class="fas fa-file-pdf mr-1" style="color: var(--sultan-aksi-danger);"></i> 2. Unggah PDF Transkrip (Max 1MB) <span class="text-danger">*</span>');
@@ -554,58 +552,6 @@
       });
 
       $('#global_modalForm').modal('show');
-      admmuridijazah_cekKetersediaanData();
-    }
-
-    function admmuridijazah_cekKetersediaanData() {
-      var vSd = $('#admmuridijazah_in_sekolah').val();
-      var vTh = $('#admmuridijazah_in_tahun').val();
-
-      if (!vSd || !vTh) {
-        $('#admmuridijazah_areaTerkunci').prop('disabled', true).css('opacity', '0.5');
-        $('#admmuridijazah_btnSimpanForm').hide();
-        $('#admmuridijazah_alertInfo').removeClass('sultan-alert-danger sultan-alert-success').addClass('sultan-alert-info').html('<i class="fas fa-info-circle mr-1"></i> Harap pilih sekolah dan tahun ajaran untuk melanjutkan.');
-        return;
-      }
-
-      $('#admmuridijazah_alertInfo').removeClass('sultan-alert-danger sultan-alert-success').addClass('sultan-alert-info').html('<i class="fas fa-spinner fa-spin mr-1"></i> Memvalidasi ketersediaan data di server...');
-
-      var filter = vSd;
-      google.script.run.withSuccessHandler(function (resRaw) {
-        var res = JSON.parse(resRaw);
-        var currentId = $('#admmuridijazah_rowId').val();
-        var found = false;
-        var matchedRow = null;
-
-        if (res.success && res.data) {
-          for (var i = 0; i < res.data.length; i++) {
-            if (res.data[i].npsn === vSd && res.data[i].tahun_ajaran === vTh) {
-              found = true;
-              matchedRow = res.data[i];
-              break;
-            }
-          }
-        }
-
-        if (found) {
-          if (currentId && String(matchedRow.rowId) === String(currentId)) {
-            $('#admmuridijazah_areaTerkunci').prop('disabled', false).css('opacity', '1');
-            $('#admmuridijazah_btnSimpanForm').show().prop('disabled', false)
-              .removeClass('modal-btn-simpan')
-              .addClass('modal-btn-perbarui')
-              .html('<i class="fas fa-edit mr-2"></i>PERBARUI');
-            $('#admmuridijazah_alertInfo').removeClass('sultan-alert-info sultan-alert-danger').addClass('sultan-alert-success').html('<i class="fas fa-check-circle mr-1"></i> Mode Edit aktif.');
-          } else {
-            $('#admmuridijazah_areaTerkunci').prop('disabled', true).css('opacity', '0.5');
-            $('#admmuridijazah_btnSimpanForm').hide().prop('disabled', true);
-            $('#admmuridijazah_alertInfo').removeClass('sultan-alert-info sultan-alert-success').addClass('sultan-alert-danger').html('<i class="fas fa-times-circle mr-2"></i> <span class="font-weight-bold">DATA SUDAH ADA:</span> Permohonan Ijazah sekolah ini untuk TA ' + vTh + ' sudah terunggah.');
-          }
-        } else {
-          $('#admmuridijazah_areaTerkunci').prop('disabled', false).css('opacity', '1');
-          $('#admmuridijazah_btnSimpanForm').show().prop('disabled', false);
-          $('#admmuridijazah_alertInfo').removeClass('sultan-alert-danger sultan-alert-success').addClass('sultan-alert-info').html('<i class="fas fa-info-circle mr-1"></i> Data tersedia. Silakan lengkapi data murid kelas 6 di bawah.');
-        }
-      }).admMurid_getIjazahData(filter);
     }
 
     // Submit Form
@@ -735,8 +681,13 @@
         $('#global_modalFormBody, #global_modalFormFooter').show();
       });
 
+      $('#admmuridijazah_btnSimpanForm')
+        .removeClass('modal-btn-simpan')
+        .addClass('modal-btn-perbarui')
+        .html('<i class="fas fa-edit mr-2"></i>PERBARUI')
+        .show();
+
       $('#global_modalForm').modal('show');
-      admmuridijazah_cekKetersediaanData();
     });
 
     // Aksi Hapus Click

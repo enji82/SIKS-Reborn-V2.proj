@@ -409,9 +409,7 @@
       admmuridspmb_bukaModalTambah();
     });
 
-    $(document).on('change', '#admmuridspmb_in_sekolah, #admmuridspmb_in_tahun', function () {
-      admmuridspmb_cekKetersediaanData();
-    });
+
 
     function loadSpmbData() {
       var btn = $('#admmuridspmb_btnRefresh');
@@ -606,9 +604,9 @@
         .removeClass('modal-btn-perbarui')
         .addClass('modal-btn-simpan')
         .html('<i class="fas fa-cloud-upload-alt mr-2"></i>SIMPAN & UNGGAH')
-        .hide();
+        .show();
 
-      $('#admmuridspmb_areaTerkunci').prop('disabled', true).css('opacity', '0.5');
+      $('#admmuridspmb_areaTerkunci').prop('disabled', false).css('opacity', '1');
       $('#admmuridspmb_alertInfo').removeClass('sultan-alert-danger sultan-alert-success sultan-alert-warning').addClass('sultan-alert-info').html('<i class="fas fa-info-circle mr-3 fa-lg"></i><span>Isikan data di bawah ini sesuai dengan dokumen asli yang akan diunggah untuk validasi sistem.</span>');
       $('#admmuridspmb_labelFile').html('<i class="fas fa-file-pdf mr-1" style="color: var(--sultan-aksi-danger);"></i> Unggah PDF Hasil SPMB (Max 1MB) <span class="text-danger">*</span>');
       $('#admmuridspmb_form .custom-file-label').removeClass("selected font-weight-bold").css('color', '').text('Pilih file PDF...');
@@ -637,58 +635,6 @@
       });
 
       $('#global_modalForm').modal('show');
-      admmuridspmb_cekKetersediaanData();
-    }
-
-    function admmuridspmb_cekKetersediaanData() {
-      var vSd = $('#admmuridspmb_in_sekolah').val();
-      var vTh = $('#admmuridspmb_in_tahun').val();
-
-      if (!vSd || !vTh) {
-        $('#admmuridspmb_areaTerkunci').prop('disabled', true).css('opacity', '0.5');
-        $('#admmuridspmb_btnSimpanForm').hide();
-        $('#admmuridspmb_alertInfo').removeClass('sultan-alert-danger sultan-alert-success').addClass('sultan-alert-info').html('<i class="fas fa-info-circle mr-1"></i> Harap pilih sekolah dan tahun ajaran untuk melanjutkan.');
-        return;
-      }
-
-      $('#admmuridspmb_alertInfo').removeClass('sultan-alert-danger sultan-alert-success').addClass('sultan-alert-info').html('<i class="fas fa-spinner fa-spin mr-1"></i> Memvalidasi ketersediaan data di server...');
-
-      var filter = vSd;
-      google.script.run.withSuccessHandler(function (resRaw) {
-        var res = JSON.parse(resRaw);
-        var currentId = $('#admmuridspmb_rowId').val();
-        var found = false;
-        var matchedRow = null;
-
-        if (res.success && res.data) {
-          for (var i = 0; i < res.data.length; i++) {
-            if (res.data[i].npsn === vSd && res.data[i].tahun_ajaran === vTh) {
-              found = true;
-              matchedRow = res.data[i];
-              break;
-            }
-          }
-        }
-
-        if (found) {
-          if (currentId && String(matchedRow.rowId) === String(currentId)) {
-            $('#admmuridspmb_areaTerkunci').prop('disabled', false).css('opacity', '1');
-            $('#admmuridspmb_btnSimpanForm').show().prop('disabled', false)
-              .removeClass('modal-btn-simpan')
-              .addClass('modal-btn-perbarui')
-              .html('<i class="fas fa-edit mr-2"></i>PERBARUI');
-            $('#admmuridspmb_alertInfo').removeClass('sultan-alert-info sultan-alert-danger').addClass('sultan-alert-success').html('<i class="fas fa-check-circle mr-1"></i> Mode Edit aktif.');
-          } else {
-            $('#admmuridspmb_areaTerkunci').prop('disabled', true).css('opacity', '0.5');
-            $('#admmuridspmb_btnSimpanForm').hide().prop('disabled', true);
-            $('#admmuridspmb_alertInfo').removeClass('sultan-alert-info sultan-alert-success').addClass('sultan-alert-danger').html('<i class="fas fa-times-circle mr-2"></i> <span class="font-weight-bold">DATA SUDAH ADA:</span> Laporan SPMB sekolah ini untuk TA ' + vTh + ' sudah terunggah.');
-          }
-        } else {
-          $('#admmuridspmb_areaTerkunci').prop('disabled', false).css('opacity', '1');
-          $('#admmuridspmb_btnSimpanForm').show().prop('disabled', false);
-          $('#admmuridspmb_alertInfo').removeClass('sultan-alert-danger sultan-alert-success').addClass('sultan-alert-info').html('<i class="fas fa-info-circle mr-1"></i> Data tersedia. Silakan lengkapi rincian murid di bawah.');
-        }
-      }).admMurid_getSpmbData(filter);
     }
 
     // Submit Form
@@ -806,8 +752,13 @@
         $('#global_modalFormBody, #global_modalFormFooter').show();
       });
 
+      $('#admmuridspmb_btnSimpanForm')
+        .removeClass('modal-btn-simpan')
+        .addClass('modal-btn-perbarui')
+        .html('<i class="fas fa-edit mr-2"></i>PERBARUI')
+        .show();
+
       $('#global_modalForm').modal('show');
-      admmuridspmb_cekKetersediaanData();
     });
 
     // Aksi Hapus Click
