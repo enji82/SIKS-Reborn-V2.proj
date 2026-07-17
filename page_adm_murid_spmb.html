@@ -775,22 +775,23 @@
         return; 
       }
 
-      Swal.fire({
-        title: 'Menyimpan verifikasi...',
-        allowOutsideClick: false,
-        didOpen: () => { Swal.showLoading(); }
-      });
+      var btn = $('#admmuridspmb_btnSimpanVerif');
+      var txt = btn.html();
+      btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i> Eksekusi...');
 
       google.script.run.withSuccessHandler(function (resRaw) {
-        Swal.close();
+        btn.prop('disabled', false).html(txt);
         var res = JSON.parse(resRaw);
         if (res.success) {
           Sultan.modal.tutupVerifikasi();
-          Sultan.notif.sukses(res.message);
+          Sultan.notif.crud.sukses('Keputusan ' + status + ' tersimpan!');
           loadSpmbData();
         } else {
-          Sultan.notif.gagal(res.message);
+          Sultan.notif.crud.gagal(res.message);
         }
+      }).withFailureHandler(function(err) {
+        btn.prop('disabled', false).html(txt);
+        Sultan.notif.crud.gagal(err.message);
       }).admMurid_verifikasiSpmb(rowId, status, catatan, verifikator);
     });
   });
