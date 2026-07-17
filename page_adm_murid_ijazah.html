@@ -735,28 +735,33 @@
       var raw = ADMMURIDIJAZAH_CACHE_DATA.find(function(item) { return item.rowId == rowId; });
       if (!raw) return;
 
-      Sultan.konfirmasi({
-        judul: 'Hapus Laporan Permohonan?',
-        icon: 'warning',
-        btnYa: 'Ya, Hapus!',
-        btnBatal: 'Batal'
-      }, function() {
-        Swal.fire({
-          title: 'Menghapus data...',
-          allowOutsideClick: false,
-          didOpen: () => { Swal.showLoading(); }
-        });
+      var dDate = new Date();
+      var kd = dDate.getFullYear() + "" + String(dDate.getMonth() + 1).padStart(2, '0') + "" + String(dDate.getDate()).padStart(2, '0');
 
-        google.script.run.withSuccessHandler(function (resRaw) {
-          Swal.close();
-          var res = JSON.parse(resRaw);
-          if (res.success) {
-            Sultan.notif.crud.hapus();
-            loadIjazahData();
-          } else {
-            Sultan.notif.crud.gagal(res.message);
-          }
-        }).admMurid_hapusIjazah(rowId);
+      Sultan.modal.konfirmasiHapus({
+        title: 'Hapus Laporan Permohonan Ijazah',
+        kode: kd,
+        detail: {
+          'NAMA SEKOLAH': raw.nama_sekolah || '-',
+          'TAHUN AJARAN': raw.tahun_ajaran || '-',
+          'JUMLAH MURID': raw.jumlah_total || '0'
+        },
+        onConfirm: function () {
+          Sultan.notif.loading("Menghapus data...");
+          google.script.run.withSuccessHandler(function (resRaw) {
+            Sultan.notif.tutup();
+            var res = JSON.parse(resRaw);
+            if (res.success) {
+              Sultan.notif.crud.hapus();
+              loadIjazahData();
+            } else {
+              Sultan.notif.crud.gagal(res.message);
+            }
+          }).withFailureHandler(function (err) {
+            Sultan.notif.tutup();
+            Sultan.notif.crud.gagal(err.message);
+          }).admMurid_hapusIjazah(rowId);
+        }
       });
     });
 
