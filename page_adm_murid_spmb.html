@@ -355,117 +355,125 @@
     });
 
     $('#admmuridspmb_filterTahun, #admmuridspmb_filterSekolah').change(function () {
-      loadSpmbData();
+      terapkanFilterLokalSpmb();
     });
 
+
+    var ADMMURIDSPMB_TABEL_INSTANCE = null;
+    var ADMMURIDSPMB_CACHE_DATA = [];
+
     function loadSpmbData() {
-      SultanUI.showLoading('#admmuridspmb_loadingState', 'Memuat Data Laporan SPMB...');
-      $('#admmuridspmb_tableState').hide();
+      var btn = $('#admmuridspmb_btnRefresh');
+      btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin" style="color: var(--sultan-aksi-utama);"></i>');
+
+      if (!$.fn.DataTable.isDataTable('#admmuridspmb_tabelUtama')) {
+        SultanUI.showLoading('#admmuridspmb_loadingState', 'Memuat Data Laporan SPMB...');
+        $('#admmuridspmb_tableState').hide();
+      }
 
       var filter = (userLogin.role !== "Admin") ? userLogin.npsn : "SEMUA";
 
       google.script.run.withSuccessHandler(function (resRaw) {
+        btn.prop('disabled', false).html('<i class="fas fa-sync-alt" style="color: var(--sultan-aksi-utama);"></i>');
         var res = JSON.parse(resRaw);
         if (res.success) {
-          renderTable(res.data);
+          ADMMURIDSPMB_CACHE_DATA = res.data || [];
+
+          // Inisialisasi DataTables hanya sekali
+          if (!$.fn.DataTable.isDataTable('#admmuridspmb_tabelUtama')) {
+            ADMMURIDSPMB_TABEL_INSTANCE = SultanTable.init('#admmuridspmb_tabelUtama', {
+              destroy: true, ordering: false, pageLength: 10, autoWidth: false, deferRender: true,
+              dom: "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
+                   "<'row'<'col-sm-12'<'table-responsive sultan-scroll'tr>>>" +
+                   "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+              columnDefs: [
+                { targets: 0, width: "1%", className: "col-sticky-left align-middle text-center text-nowrap" },
+                { targets: 1, width: "1%", className: "text-center align-middle" },
+                { targets: [2], width: "auto", className: "text-left align-middle" },
+                { targets: [3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19], width: "1%", className: "text-center align-middle text-nowrap" }
+              ],
+              language: { url: "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json", emptyTable: "Belum ada laporan SPMB yang diunggah." }
+            });
+          }
+
+          terapkanFilterLokalSpmb();
           SultanUI.hideLoading('#admmuridspmb_loadingState');
           $('#admmuridspmb_tableState').show();
+          if (ADMMURIDSPMB_TABEL_INSTANCE) {
+            setTimeout(function () { ADMMURIDSPMB_TABEL_INSTANCE.columns.adjust(); }, 50);
+          }
         } else {
           Sultan.notif.gagal(res.message);
         }
+      }).withFailureHandler(function (err) {
+        btn.prop('disabled', false).html('<i class="fas fa-sync-alt" style="color: var(--sultan-aksi-utama);"></i>');
+        Sultan.notif.gagal('Gagal memuat data: ' + err.message);
       }).admMurid_getSpmbData(filter);
     }
 
-    var ADMMURIDSPMB_TABEL_INSTANCE = null;
-
-    function renderTable(data) {
-      if (ADMMURIDSPMB_TABEL_INSTANCE) {
-        ADMMURIDSPMB_TABEL_INSTANCE.destroy();
-        ADMMURIDSPMB_TABEL_INSTANCE = null;
-      }
-
-      var tbody = $('#admmuridspmb_tabelUtama tbody');
-      tbody.empty();
-
+    function terapkanFilterLokalSpmb() {
+      if (!ADMMURIDSPMB_TABEL_INSTANCE) return;
       var targetTahun = $('#admmuridspmb_filterTahun').val();
-      var targetSekolah = $('#admmuridspmb_filterSekolah').val();
+      var targetSekolah = ($('#admmuridspmb_filterSekolah').length) ? $('#admmuridspmb_filterSekolah').val() : '';
 
-      var filtered = data.filter(function (d) {
-        var matchTahun = (targetTahun === "SEMUA" || d.tahun_ajaran === targetTahun);
+      var filtered = ADMMURIDSPMB_CACHE_DATA.filter(function (d) {
+        var matchTahun = (!targetTahun || targetTahun === "SEMUA" || d.tahun_ajaran === targetTahun);
         var matchSekolah = (!targetSekolah || targetSekolah === "SEMUA" || d.npsn === targetSekolah);
         return matchTahun && matchSekolah;
       });
 
-      filtered.forEach(function (row) {
-        var btnAksi = "";
-        var badgeStatus = getBadge(row.status, row.catatan);
+      renderTableSpmb(filtered);
+    }
 
+    function renderTableSpmb(data) {
+      var dtArray = [];
+      data.forEach(function (row) {
+        var badgeStatus = getBadge(row.status, row.catatan);
         var isDinas = (userLogin.role === "Admin");
         var isEditable = (row.status.toLowerCase() !== "disetujui" || isDinas);
 
-        var btnV = ""; 
+        var btnV = "";
         if (isDinas) {
           btnV = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-primary btn-verif" data-id="' + row.rowId + '" data-status="' + row.status + '" data-catatan="' + (row.catatan || '') + '" title="Verifikasi"><i class="fas fa-clipboard-check"></i></button>';
         }
-
-        var btnP = "";
-        var btnH = "";
-        if (isEditable) {
-          btnP = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning btn-edit" data-id="' + row.rowId + '" data-raw=\'' + JSON.stringify(row) + '\' title="Edit Berkas"><i class="fas fa-edit"></i></button>';
-          btnH = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon btn-delete" data-id="' + row.rowId + '" title="Hapus Berkas"><i class="fas fa-trash-alt"></i></button>';
-        } else {
-          btnP = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning" disabled style="opacity:0.5;" title="Terkunci (Status Disetujui)"><i class="fas fa-edit"></i></button>';
-          btnH = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon" disabled style="opacity:0.5;" title="Terkunci (Status Disetujui)"><i class="fas fa-trash-alt"></i></button>';
-        }
-
-        btnAksi = '<div class="d-flex flex-nowrap justify-content-center" style="gap:5px;">' + btnV + btnP + btnH + '</div>';
+        var btnP = isEditable
+          ? '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning btn-edit" data-id="' + row.rowId + '" data-raw=\'' + JSON.stringify(row) + '\' title="Edit Berkas"><i class="fas fa-edit"></i></button>'
+          : '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning" disabled style="opacity:0.5;" title="Terkunci"><i class="fas fa-edit"></i></button>';
+        var btnH = isEditable
+          ? '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon btn-delete" data-id="' + row.rowId + '" title="Hapus Berkas"><i class="fas fa-trash-alt"></i></button>'
+          : '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon" disabled style="opacity:0.5;" title="Terkunci"><i class="fas fa-trash-alt"></i></button>';
+        var btnAksi = '<div class="d-flex flex-nowrap justify-content-center" style="gap:5px;">' + btnV + btnP + btnH + '</div>';
 
         var docLink = row.url_file ? '<button type="button" class="sultan-btn-pdf btn-preview" data-url="' + row.url_file + '" style="font-size:12px;"><i class="fas fa-file-pdf mr-1"></i> LIHAT</button>' : '<span class="text-muted">-</span>';
-        var uploadBy = row.uploader ? '<div class="small text-muted font-weight-bold">' + row.uploader + '</div><div style="font-size:10px;" class="text-muted">' + row.tgl_upload + '</div>' : '-';
-        var editBy = row.user_edit ? '<div class="small text-muted font-weight-bold">' + row.user_edit + '</div><div style="font-size:10px;" class="text-muted">' + row.tgl_edit + '</div>' : '-';
+        var uploadBy = row.uploader ? '<div class="small font-weight-bold">' + row.uploader + '</div><div style="font-size:10px;" class="text-muted">' + row.tgl_upload + '</div>' : '-';
+        var editBy = row.user_edit ? '<div class="small font-weight-bold">' + row.user_edit + '</div><div style="font-size:10px;" class="text-muted">' + row.tgl_edit + '</div>' : '-';
         var readBadge = row.read_by ? '<div class="mt-1 small"><span class="badge badge-light text-muted border"><i class="fas fa-eye"></i> Dibaca: ' + row.read_by + '</span></div>' : '';
-        var verifBy = row.verifikator ? '<div class="small text-muted font-weight-bold">' + row.verifikator + '</div><div style="font-size:10px;" class="text-muted">' + row.tgl_verif + '</div>' + readBadge : readBadge || '-';
+        var verifBy = row.verifikator ? '<div class="small font-weight-bold">' + row.verifikator + '</div><div style="font-size:10px;" class="text-muted">' + row.tgl_verif + '</div>' + readBadge : readBadge || '-';
 
-        var html = '<tr class="hover-sultan">' +
-          '<td class="col-sticky-left text-center">' + btnAksi + '</td>' +
-          '<td class="text-center">' + badgeStatus + '</td>' +
-          '<td class="text-left font-weight-bold text-dark text-wrap">' + row.nama_sekolah + '</td>' +
-          '<td class="text-center font-weight-bold">' + row.tahun_ajaran + '</td>' +
-          '<td class="text-center font-weight-bold">' + row.jumlah_rombel + '</td>' +
-          '<td class="text-center">' + row.spmb_t1_online_l + '</td>' +
-          '<td class="text-center">' + row.spmb_t1_online_p + '</td>' +
-          '<td class="text-center">' + row.spmb_t2_online_l + '</td>' +
-          '<td class="text-center">' + row.spmb_t2_online_p + '</td>' +
-          '<td class="text-center">' + row.spmb_offline_l + '</td>' +
-          '<td class="text-center">' + row.spmb_offline_p + '</td>' +
-          '<td class="text-center">' + row.tinggal_kelas_1_l + '</td>' +
-          '<td class="text-center">' + row.tinggal_kelas_1_p + '</td>' +
-          '<td class="text-center font-weight-bold text-primary">' + row.jumlah_murid_l + '</td>' +
-          '<td class="text-center font-weight-bold text-primary">' + row.jumlah_murid_p + '</td>' +
-          '<td class="text-center font-weight-bold bg-light text-maroon">' + row.jumlah_total + '</td>' +
-          '<td class="text-center">' + docLink + '</td>' +
-          '<td class="text-left">' + uploadBy + '</td>' +
-          '<td class="text-left">' + editBy + '</td>' +
-          '<td class="text-left">' + verifBy + '</td>' +
-          '</tr>';
-        
-        tbody.append(html);
+        dtArray.push([
+          btnAksi,
+          badgeStatus,
+          row.nama_sekolah || '-',
+          row.tahun_ajaran || '-',
+          row.jumlah_rombel || '0',
+          row.spmb_t1_online_l || '0',
+          row.spmb_t1_online_p || '0',
+          row.spmb_t2_online_l || '0',
+          row.spmb_t2_online_p || '0',
+          row.spmb_offline_l || '0',
+          row.spmb_offline_p || '0',
+          row.tinggal_kelas_1_l || '0',
+          row.tinggal_kelas_1_p || '0',
+          '<span class="font-weight-bold text-primary">' + (row.jumlah_murid_l || '0') + '</span>',
+          '<span class="font-weight-bold text-primary">' + (row.jumlah_murid_p || '0') + '</span>',
+          '<span class="font-weight-bold text-maroon">' + (row.jumlah_total || '0') + '</span>',
+          docLink,
+          uploadBy,
+          editBy,
+          verifBy
+        ]);
       });
-
-      ADMMURIDSPMB_TABEL_INSTANCE = SultanTable.init('#admmuridspmb_tabelUtama', {
-        destroy: true, ordering: false, pageLength: 10, autoWidth: false, deferRender: true,
-        dom: "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
-             "<'row'<'col-sm-12'<'table-responsive sultan-scroll'tr>>>" +
-             "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
-        columnDefs: [
-          { targets: 0, width: "1%", className: "col-sticky-left bg-white align-middle text-center text-nowrap" },
-          { targets: 1, width: "1%", className: "text-center align-middle" },
-          { targets: [2], width: "auto", className: "text-left align-middle" },
-          { targets: [3,4], width: "1%", className: "text-center align-middle text-nowrap" },
-          { targets: [5,6,7,8,9,10,11,12,13,14,15,16,17,18,19], width: "1%", className: "text-center align-middle text-nowrap" }
-        ],
-        language: { url: "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json", emptyTable: "Belum ada laporan SPMB yang diunggah." }
-      });
+      ADMMURIDSPMB_TABEL_INSTANCE.clear().rows.add(dtArray).draw(false);
     }
 
     function getBadge(status, catatan) {

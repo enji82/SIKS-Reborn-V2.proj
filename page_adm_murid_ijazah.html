@@ -264,107 +264,114 @@
     });
 
     $('#admmuridijazah_filterTahun').change(function () {
-      loadIjazahData();
+      terapkanFilterLokalIjazah();
     });
 
+    var ADMMURIDIJAZAH_TABEL_INSTANCE = null;
+    var ADMMURIDIJAZAH_CACHE_DATA = [];
+
     function loadIjazahData() {
-      SultanUI.showLoading('#admmuridijazah_loadingState', 'Memuat Data Laporan Ijazah...');
-      $('#admmuridijazah_tableState').hide();
+      var btn = $('#admmuridijazah_btnRefresh');
+      btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin" style="color: var(--sultan-aksi-utama);"></i>');
+
+      if (!$.fn.DataTable.isDataTable('#admmuridijazah_tabelUtama')) {
+        SultanUI.showLoading('#admmuridijazah_loadingState', 'Memuat Data Laporan Ijazah...');
+        $('#admmuridijazah_tableState').hide();
+      }
 
       var filter = (userLogin.role !== "Admin") ? userLogin.npsn : "SEMUA";
-      var targetTahun = $('#admmuridijazah_filterTahun').val();
 
       google.script.run.withSuccessHandler(function (resRaw) {
+        btn.prop('disabled', false).html('<i class="fas fa-sync-alt" style="color: var(--sultan-aksi-utama);"></i>');
         var res = JSON.parse(resRaw);
         if (res.success) {
-          renderTable(res.data, targetTahun);
+          ADMMURIDIJAZAH_CACHE_DATA = res.data || [];
+
+          // Inisialisasi DataTables hanya sekali
+          if (!$.fn.DataTable.isDataTable('#admmuridijazah_tabelUtama')) {
+            ADMMURIDIJAZAH_TABEL_INSTANCE = SultanTable.init('#admmuridijazah_tabelUtama', {
+              destroy: true, ordering: false, pageLength: 10, autoWidth: false, deferRender: true,
+              dom: "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
+                   "<'row'<'col-sm-12'<'table-responsive sultan-scroll'tr>>>" +
+                   "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+              columnDefs: [
+                { targets: 0, width: "1%", className: "col-sticky-left align-middle text-center text-nowrap" },
+                { targets: 1, width: "1%", className: "text-center align-middle" },
+                { targets: [2], width: "auto", className: "text-left align-middle" },
+                { targets: [3,4,5,6,7,8,9,10], width: "1%", className: "text-center align-middle text-nowrap" }
+              ],
+              language: { url: "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json", emptyTable: "Belum ada laporan Ijazah yang diunggah." }
+            });
+          }
+
+          terapkanFilterLokalIjazah();
           SultanUI.hideLoading('#admmuridijazah_loadingState');
           $('#admmuridijazah_tableState').show();
+          if (ADMMURIDIJAZAH_TABEL_INSTANCE) {
+            setTimeout(function () { ADMMURIDIJAZAH_TABEL_INSTANCE.columns.adjust(); }, 50);
+          }
         } else {
           Sultan.notif.gagal(res.message);
         }
+      }).withFailureHandler(function (err) {
+        btn.prop('disabled', false).html('<i class="fas fa-sync-alt" style="color: var(--sultan-aksi-utama);"></i>');
+        Sultan.notif.gagal('Gagal memuat data: ' + err.message);
       }).admMurid_getIjazahData(filter);
     }
 
-    var ADMMURIDIJAZAH_TABEL_INSTANCE = null;
+    function terapkanFilterLokalIjazah() {
+      if (!ADMMURIDIJAZAH_TABEL_INSTANCE) return;
+      var targetTahun = $('#admmuridijazah_filterTahun').val();
 
-    function renderTable(data, targetTahun) {
-      if (ADMMURIDIJAZAH_TABEL_INSTANCE) {
-        ADMMURIDIJAZAH_TABEL_INSTANCE.destroy();
-        ADMMURIDIJAZAH_TABEL_INSTANCE = null;
-      }
-
-      var tbody = $('#admmuridijazah_tabelUtama tbody');
-      tbody.empty();
-
-      var filtered = data.filter(function (d) {
-        return targetTahun === "SEMUA" || d.tahun_ajaran === targetTahun;
+      var filtered = ADMMURIDIJAZAH_CACHE_DATA.filter(function (d) {
+        return (!targetTahun || targetTahun === "SEMUA" || d.tahun_ajaran === targetTahun);
       });
+      renderTableIjazah(filtered);
+    }
 
-      filtered.forEach(function (row) {
-        var btnAksi = "";
+    function renderTableIjazah(data) {
+      var dtArray = [];
+      data.forEach(function (row) {
         var badgeStatus = getBadge(row.status, row.catatan);
-
         var isDinas = (userLogin.role === "Admin");
         var isEditable = (row.status.toLowerCase() !== "disetujui" || isDinas);
 
-        var btnV = ""; 
+        var btnV = "";
         if (isDinas) {
           btnV = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-primary btn-verif" data-id="' + row.rowId + '" data-status="' + row.status + '" data-catatan="' + (row.catatan || '') + '" title="Verifikasi"><i class="fas fa-clipboard-check"></i></button>';
         }
-
-        var btnP = "";
-        var btnH = "";
-        if (isEditable) {
-          btnP = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning btn-edit" data-id="' + row.rowId + '" data-raw=\'' + JSON.stringify(row) + '\' title="Edit Berkas"><i class="fas fa-edit"></i></button>';
-          btnH = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon btn-delete" data-id="' + row.rowId + '" title="Hapus Berkas"><i class="fas fa-trash-alt"></i></button>';
-        } else {
-          btnP = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning" disabled style="opacity:0.5;" title="Terkunci (Status Disetujui)"><i class="fas fa-edit"></i></button>';
-          btnH = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon" disabled style="opacity:0.5;" title="Terkunci (Status Disetujui)"><i class="fas fa-trash-alt"></i></button>';
-        }
-
-        btnAksi = '<div class="d-flex flex-nowrap justify-content-center" style="gap:5px;">' + btnV + btnP + btnH + '</div>';
+        var btnP = isEditable
+          ? '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning btn-edit" data-id="' + row.rowId + '" data-raw=\'' + JSON.stringify(row) + '\' title="Edit Berkas"><i class="fas fa-edit"></i></button>'
+          : '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning" disabled style="opacity:0.5;" title="Terkunci"><i class="fas fa-edit"></i></button>';
+        var btnH = isEditable
+          ? '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon btn-delete" data-id="' + row.rowId + '" title="Hapus Berkas"><i class="fas fa-trash-alt"></i></button>'
+          : '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon" disabled style="opacity:0.5;" title="Terkunci"><i class="fas fa-trash-alt"></i></button>';
+        var btnAksi = '<div class="d-flex flex-nowrap justify-content-center" style="gap:5px;">' + btnV + btnP + btnH + '</div>';
 
         var docIjazahLink = row.url_file_ijazah ? '<button type="button" class="sultan-btn-pdf btn-preview mr-1 mb-1 d-inline-block" data-url="' + row.url_file_ijazah + '" data-title="Pratinjau Ijazah" style="font-size:11px;"><i class="fas fa-file-pdf mr-1 text-danger"></i> IJAZAH</button>' : '<span class="text-muted small">-</span>';
         var docTranskripLink = row.url_file_transkrip ? '<button type="button" class="sultan-btn-pdf btn-preview mb-1 d-inline-block" data-url="' + row.url_file_transkrip + '" data-title="Pratinjau Transkrip" style="font-size:11px;"><i class="fas fa-file-pdf mr-1 text-primary"></i> TRANSKRIP</button>' : '<span class="text-muted small">-</span>';
         var docLinks = '<div class="d-flex flex-column">' + docIjazahLink + docTranskripLink + '</div>';
 
-        var uploadBy = row.uploader ? '<div class="small text-muted font-weight-bold">' + row.uploader + '</div><div style="font-size:10px;" class="text-muted">' + row.tgl_upload + '</div>' : '-';
-        var editBy = row.user_edit ? '<div class="small text-muted font-weight-bold">' + row.user_edit + '</div><div style="font-size:10px;" class="text-muted">' + row.tgl_edit + '</div>' : '-';
-        
+        var uploadBy = row.uploader ? '<div class="small font-weight-bold">' + row.uploader + '</div><div style="font-size:10px;" class="text-muted">' + row.tgl_upload + '</div>' : '-';
+        var editBy = row.user_edit ? '<div class="small font-weight-bold">' + row.user_edit + '</div><div style="font-size:10px;" class="text-muted">' + row.tgl_edit + '</div>' : '-';
         var readBadge = row.read_by ? '<div class="mt-1 small"><span class="badge badge-light text-muted border"><i class="fas fa-eye"></i> Dibaca: ' + row.read_by + '</span></div>' : '';
-        var verifBy = row.verifikator ? '<div class="small text-muted font-weight-bold">' + row.verifikator + '</div><div style="font-size:10px;" class="text-muted">' + row.tgl_verif + '</div>' + readBadge : readBadge || '-';
+        var verifBy = row.verifikator ? '<div class="small font-weight-bold">' + row.verifikator + '</div><div style="font-size:10px;" class="text-muted">' + row.tgl_verif + '</div>' + readBadge : readBadge || '-';
 
-        var html = '<tr class="hover-sultan">' +
-          '<td class="col-sticky-left text-center">' + btnAksi + '</td>' +
-          '<td class="text-center">' + badgeStatus + '</td>' +
-          '<td class="text-left font-weight-bold text-dark text-wrap">' + row.nama_sekolah + '</td>' +
-          '<td class="text-center font-weight-bold">' + row.tahun_ajaran + '</td>' +
-          '<td class="text-center">' + row.jumlah_murid_l + '</td>' +
-          '<td class="text-center">' + row.jumlah_murid_p + '</td>' +
-          '<td class="text-center font-weight-bold bg-light text-maroon">' + row.jumlah_total + '</td>' +
-          '<td class="text-center">' + docLinks + '</td>' +
-          '<td class="text-left">' + uploadBy + '</td>' +
-          '<td class="text-left">' + editBy + '</td>' +
-          '<td class="text-left">' + verifBy + '</td>' +
-          '</tr>';
-        
-        tbody.append(html);
+        dtArray.push([
+          btnAksi,
+          badgeStatus,
+          row.nama_sekolah || '-',
+          row.tahun_ajaran || '-',
+          row.jumlah_murid_l || '0',
+          row.jumlah_murid_p || '0',
+          '<span class="font-weight-bold text-maroon">' + (row.jumlah_total || '0') + '</span>',
+          docLinks,
+          uploadBy,
+          editBy,
+          verifBy
+        ]);
       });
-
-      ADMMURIDIJAZAH_TABEL_INSTANCE = SultanTable.init('#admmuridijazah_tabelUtama', {
-        destroy: true, ordering: false, pageLength: 10, autoWidth: false, deferRender: true,
-        dom: "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
-             "<'row'<'col-sm-12'<'table-responsive sultan-scroll'tr>>>" +
-             "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
-        columnDefs: [
-          { targets: 0, width: "1%", className: "col-sticky-left bg-white align-middle text-center text-nowrap" },
-          { targets: 1, width: "1%", className: "text-center align-middle" },
-          { targets: [2], width: "auto", className: "text-left align-middle" },
-          { targets: [3,4,5,6,7,8,9,10], width: "1%", className: "text-center align-middle text-nowrap" }
-        ],
-        language: { url: "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json", emptyTable: "Belum ada laporan Ijazah yang diunggah." }
-      });
+      ADMMURIDIJAZAH_TABEL_INSTANCE.clear().rows.add(dtArray).draw(false);
     }
 
     function getBadge(status, catatan) {
