@@ -162,39 +162,53 @@
   </div>
 </div>
 
-<!-- MODAL VERIFIKASI -->
-<div class="modal fade" id="admmuridijazah_modalVerif" tabindex="-1" role="dialog" aria-hidden="true">
-  <div class="modal-dialog" role="document">
-    <div class="modal-content">
-      <div class="modal-header bg-warning text-dark">
-        <h5 class="modal-title font-weight-bold"><i class="fas fa-check-double mr-1"></i> Verifikasi Permohonan Ijazah</h5>
-        <button type="button" class="close text-dark" data-dismiss="modal" aria-label="Close">
-          <span aria-hidden="true">&times;</span>
-        </button>
-      </div>
-      <form id="admmuridijazah_formVerif">
-        <div class="modal-body p-4">
+<!-- Form Verifikasi (Dipindahkan secara dinamis ke Global Split Modal) -->
+<div id="admmuridijazah_templates" style="display: none;">
+    <form id="admmuridijazah_formVerif" class="d-flex flex-column flex-grow-1 overflow-hidden m-0 p-0">
+        <div class="px-4 pb-4 flex-grow-1 overflow-auto" style="padding-top: 15px !important;">
             <input type="hidden" id="admmuridijazah_verif_rowId">
+            
+            <h6 class="modal-verifikasi-section-title"><i class="fas fa-list-alt mr-2"></i> DETAIL DATA</h6>
+            
+            <div class="sultan-detail-container mb-4">
+                <div class="sultan-detail-item">
+                    <label class="sultan-detail-label">NAMA SEKOLAH</label>
+                    <div class="sultan-detail-value text-uppercase" id="admmuridijazah_vNamaSd">-</div>
+                </div>
+                <div class="sultan-detail-item">
+                    <label class="sultan-detail-label">TAHUN AJARAN</label>
+                    <div class="sultan-detail-value font-weight-bold" id="admmuridijazah_vTahun">-</div>
+                </div>
+                <div class="sultan-detail-item">
+                    <label class="sultan-detail-label">TOTAL PENGAJU IJAZAH</label>
+                    <div class="sultan-detail-value text-maroon font-weight-bold" id="admmuridijazah_vTotalMurid">-</div>
+                </div>
+            </div>
+
+            <h6 class="modal-verifikasi-section-title"><i class="fas fa-check-circle mr-2"></i> VERIFIKASI</h6>
+
             <div class="form-group mb-3">
-                <label class="font-weight-bold text-muted small text-uppercase">Pilih Status Verifikasi</label>
-                <select id="admmuridijazah_verif_status" class="form-control" required>
+                <label class="modal-verifikasi-form-label">Keputusan Verifikasi <span class="text-danger">*</span></label>
+                <select class="modal-verifikasi-select font-weight-bold" id="admmuridijazah_verif_status" required>
+                    <option value="">-- Pilih Keputusan --</option>
                     <option value="Disetujui">Disetujui</option>
-                    <option value="Revisi">Minta Revisi</option>
+                    <option value="Revisi">Revisi</option>
                     <option value="Ditolak">Ditolak</option>
                 </select>
             </div>
-            <div class="form-group">
-                <label class="font-weight-bold text-muted small text-uppercase">Catatan / Alasan</label>
-                <textarea id="admmuridijazah_verif_catatan" class="form-control" rows="3" placeholder="Masukkan catatan verifikasi..."></textarea>
+
+            <div class="form-group mb-0">
+                <label class="modal-verifikasi-form-label">Catatan Admin <span id="admmuridijazah_verifWajibCatatan" class="text-danger d-none">*</span></label>
+                <textarea class="modal-verifikasi-textarea" id="admmuridijazah_verif_catatan" rows="3" placeholder="Wajib diisi jika ditolak / direvisi..."></textarea>
             </div>
         </div>
-        <div class="modal-footer justify-content-between">
-            <button type="button" class="btn btn-outline-secondary font-weight-bold rounded-pill px-4 shadow-sm" data-dismiss="modal">BATAL</button>
-            <button type="submit" class="btn btn-warning font-weight-bold text-dark rounded-pill px-4 shadow-sm">SIMPAN VERIFIKASI</button>
+        <div class="modal-verifikasi-footer" id="admmuridijazah_verifFooter">
+            <button type="button" class="modal-btn-batal" data-dismiss="modal">
+                <i class="fas fa-times mr-2"></i>BATAL</button>
+            <button type="submit" id="admmuridijazah_btnSimpanVerif" class="modal-verifikasi-btn-verifikasi" form="admmuridijazah_formVerif">
+                <i class="fas fa-check mr-2"></i>VERIFIKASI</button>
         </div>
-      </form>
-    </div>
-  </div>
+    </form>
 </div>
 
 <script>
@@ -600,25 +614,73 @@
       });
     });
 
-    // Aksi Verifikasi
+    // Aksi Verifikasi (Admin)
     $(document).on('click', '.btn-verif', function () {
       var rowId = $(this).data('id');
-      var status = $(this).data('status');
-      var catatan = $(this).data('catatan');
+      var row = ADMMURIDIJAZAH_CACHE_DATA.find(function(item) { return item.rowId == rowId; });
+      if (!row) return;
 
       $('#admmuridijazah_verif_rowId').val(rowId);
-      $('#admmuridijazah_verif_status').val(status);
-      $('#admmuridijazah_verif_catatan').val(catatan);
-      $('#admmuridijazah_modalVerif').modal('show');
+      $('#admmuridijazah_vNamaSd').text(row.nama_sekolah || '-');
+      $('#admmuridijazah_vTahun').text(row.tahun_ajaran || '-');
+      $('#admmuridijazah_vTotalMurid').text(row.jumlah_total || '0');
+      
+      $('#admmuridijazah_verif_status').val(row.status || '');
+      $('#admmuridijazah_verif_catatan').val(row.catatan !== "-" ? (row.catatan || '') : '');
+      
+      // Update warning status
+      admmuridijazah_cekStatusVerif(row.status);
+
+      // Gunakan berkas Ijazah sebagai default preview jika ada, jika tidak transkrip
+      var url = row.url_file_ijazah || row.url_file_transkrip || '';
+
+      // Panggil Global Verifikasi
+      Sultan.modal.verifikasi({
+        title: 'VERIFIKASI PERMOHONAN IJAZAH & TRANSKRIP',
+        url: url,
+        isImage: false
+      });
+
+      // Pindahkan form & footer ke area global modal
+      $('#admmuridijazah_formVerif').appendTo('#global_verifikasiFormArea');
+      $('#admmuridijazah_verifFooter').appendTo('#global_verifikasiFooterArea');
+      $('#global_verifikasiFooterArea').show();
+
+      // Kembalikan form saat modal ditutup
+      $('#global_modalVerifikasi').off('hidden.bs.modal').on('hidden.bs.modal', function() {
+        $('#admmuridijazah_verifFooter').appendTo('#admmuridijazah_formVerif');
+        $('#admmuridijazah_formVerif').appendTo('#admmuridijazah_templates');
+        $('#global_verifikasiFooterArea').hide().empty();
+      });
     });
+
+    $(document).on('change', '#admmuridijazah_verif_status', function () {
+      admmuridijazah_cekStatusVerif($(this).val());
+    });
+
+    function admmuridijazah_cekStatusVerif(val) {
+      if (val === 'Revisi' || val === 'Ditolak') {
+        $('#admmuridijazah_verif_catatan').attr('placeholder', 'Jelaskan alasan revisi/penolakan kepada user...').focus();
+        $('#admmuridijazah_verifWajibCatatan').removeClass('d-none');
+      } else {
+        $('#admmuridijazah_verif_catatan').attr('placeholder', 'Catatan opsional (misal: Data sudah sesuai).');
+        $('#admmuridijazah_verifWajibCatatan').addClass('d-none');
+      }
+    }
 
     // Submit Verifikasi
     $('#admmuridijazah_formVerif').submit(function (e) {
       e.preventDefault();
       var rowId = $('#admmuridijazah_verif_rowId').val();
       var status = $('#admmuridijazah_verif_status').val();
-      var catatan = $('#admmuridijazah_verif_catatan').val();
+      var catatan = $('#admmuridijazah_verif_catatan').val().trim();
       var verifikator = userLogin.nama_lengkap || userLogin.username || "Dinas Pendidikan";
+
+      if (!status) { Sultan.alert('warning', 'Pilih Status', 'Tentukan status verifikasi.'); return; }
+      if ((status === 'Revisi' || status === 'Ditolak') && catatan === "") { 
+        Sultan.alert('warning', 'Catatan Wajib', 'Mohon tulis alasan revisi/penolakan agar user mengerti.'); 
+        return; 
+      }
 
       Swal.fire({
         title: 'Menyimpan verifikasi...',
@@ -630,8 +692,8 @@
         Swal.close();
         var res = JSON.parse(resRaw);
         if (res.success) {
+          Sultan.modal.tutupVerifikasi();
           Sultan.notif.sukses(res.message);
-          $('#admmuridijazah_modalVerif').modal('hide');
           loadIjazahData();
         } else {
           Sultan.notif.gagal(res.message);
