@@ -549,19 +549,20 @@ function getAdmSekolahDashboardData(idKategori, forceRefresh) {
         var unitName = sek.nama;
         
         var status = docMap[npsn] ? docMap[npsn][pKey] : null;
+        var statusVal = status ? String(status).trim() : "";
         
         var isUploaded = false;
-        if (status) {
-          var stLower = status.toLowerCase();
+        if (statusVal) {
+          var stLower = statusVal.toLowerCase();
           if (stLower.includes("setuju") || stLower.includes("ok") || stLower.includes("proses") || stLower.includes("valid")) {
             isUploaded = true;
           }
         }
         
         if (isUploaded) {
-          arrRekap.push({ npsn: npsn, unit: unitName, tahun: pObj.tahun, periode: pObj.periode, jml: 1, sudah: 1, belum: 0, jenjang: sek.jenjang });
+          arrRekap.push({ npsn: npsn, unit: unitName, tahun: pObj.tahun, periode: pObj.periode, jml: 1, sudah: 1, belum: 0, jenjang: sek.jenjang, status: statusVal });
         } else {
-          arrRekap.push({ npsn: npsn, unit: unitName, tahun: pObj.tahun, periode: pObj.periode, jml: 1, sudah: 0, belum: 1, jenjang: sek.jenjang });
+          arrRekap.push({ npsn: npsn, unit: unitName, tahun: pObj.tahun, periode: pObj.periode, jml: 1, sudah: 0, belum: 1, jenjang: sek.jenjang, status: statusVal });
           arrBelum.push({ npsn: npsn, unit: unitName, tahun: pObj.tahun, periode: pObj.periode, jenjang: sek.jenjang });
         }
       });

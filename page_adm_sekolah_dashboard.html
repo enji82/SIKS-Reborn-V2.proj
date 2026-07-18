@@ -41,6 +41,40 @@
     background-color: rgba(255, 255, 255, 0.05) !important;
     transform: translateX(4px);
   }
+
+  /* Metric Danger Style */
+  .metric-danger {
+    border-top: 4px solid #dc3545 !important;
+    background: linear-gradient(to bottom, rgba(220,53,69,0.02), #ffffff) !important;
+    color: #dc3545 !important;
+  }
+  .dark-mode .metric-danger {
+    background: linear-gradient(to bottom, rgba(220,53,69,0.1), #1a1c1e) !important;
+    color: #ff8080 !important;
+  }
+  .metric-danger .inner h3, .metric-danger .inner p {
+    color: #dc3545 !important;
+  }
+  .dark-mode .metric-danger .inner h3, .dark-mode .metric-danger .inner p {
+    color: #ff8080 !important;
+  }
+
+  /* Metric Warning Style */
+  .metric-warning {
+    border-top: 4px solid #ffc107 !important;
+    background: linear-gradient(to bottom, rgba(255,193,7,0.04), #ffffff) !important;
+    color: #856404 !important;
+  }
+  .dark-mode .metric-warning {
+    background: linear-gradient(to bottom, rgba(255,193,7,0.1), #1a1c1e) !important;
+    color: #ffdf60 !important;
+  }
+  .metric-warning .inner h3, .metric-warning .inner p {
+    color: #856404 !important;
+  }
+  .dark-mode .metric-warning .inner h3, .dark-mode .metric-warning .inner p {
+    color: #ffdf60 !important;
+  }
 </style>
 
 <section class="content">
@@ -136,6 +170,46 @@
                     <div class="d-flex justify-content-between mt-1">
                         <small class="text-muted font-weight-bold" id="admsekolahdash_progressText">0% Selesai</small>
                         <small class="text-muted" id="admsekolahdash_lastUpdate"><i class="far fa-clock mr-1"></i>Terakhir diperbarui: -</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Row 2: Status Detil (Diproses, Disetujui, Revisi, Ditolak) -->
+            <div class="row mb-3">
+                <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
+                    <div class="sultan-metric-card metric-warning">
+                        <div class="inner">
+                            <h3 id="admsekolahdash_cardDiproses">0</h3>
+                            <p>Dokumen Diproses</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-spinner fa-spin"></i></div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
+                    <div class="sultan-metric-card metric-success">
+                        <div class="inner">
+                            <h3 id="admsekolahdash_cardDisetujui">0</h3>
+                            <p>Dokumen Disetujui</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-check-double"></i></div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6 mb-3 mb-sm-0">
+                    <div class="sultan-metric-card metric-info">
+                        <div class="inner">
+                            <h3 id="admsekolahdash_cardRevisi">0</h3>
+                            <p>Perlu Revisi</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-edit"></i></div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <div class="sultan-metric-card metric-danger">
+                        <div class="inner">
+                            <h3 id="admsekolahdash_cardDitolak">0</h3>
+                            <p>Dokumen Ditolak</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-times"></i></div>
                     </div>
                 </div>
             </div>
@@ -684,6 +758,7 @@ function admsekolahdash_renderDashboard(dataRekap, dataBelum, fTahun, fPeriode) 
     }
 
     var totAsn = 0, totSudah = 0, totBelum = 0;
+    var totDiproses = 0, totDisetujui = 0, totRevisi = 0, totDitolak = 0;
     var dataSudah = [];
     var dataBelum = [];
 
@@ -695,6 +770,20 @@ function admsekolahdash_renderDashboard(dataRekap, dataBelum, fTahun, fPeriode) 
         totAsn += cAsn;
         totSudah += cSudah;
         totBelum += cBelum;
+
+        // Hitung status detil dari field status
+        var st = String(r.status || "").toLowerCase();
+        if (st) {
+            if (st.includes("disetujui") || st.includes("setuju") || st.includes("ok") || st.includes("valid")) {
+                totDisetujui++;
+            } else if (st.includes("proses") || st.includes("pending") || st.includes("menunggu")) {
+                totDiproses++;
+            } else if (st.includes("revisi")) {
+                totRevisi++;
+            } else if (st.includes("tolak") || st.includes("ditolak")) {
+                totDitolak++;
+            }
+        }
         
         if (cSudah > 0) {
             dataSudah.push(r);
@@ -706,6 +795,10 @@ function admsekolahdash_renderDashboard(dataRekap, dataBelum, fTahun, fPeriode) 
     admsekolahdash_animateValue('admsekolahdash_cardTotalSekolah', totAsn);
     admsekolahdash_animateValue('admsekolahdash_cardSudah', totSudah);
     admsekolahdash_animateValue('admsekolahdash_cardBelum', totBelum);
+    admsekolahdash_animateValue('admsekolahdash_cardDiproses', totDiproses);
+    admsekolahdash_animateValue('admsekolahdash_cardDisetujui', totDisetujui);
+    admsekolahdash_animateValue('admsekolahdash_cardRevisi', totRevisi);
+    admsekolahdash_animateValue('admsekolahdash_cardDitolak', totDitolak);
     
     var percentage = totAsn > 0 ? Math.round((totSudah / totAsn) * 100) : 0;
     var pBar = $('#admsekolahdash_progressBar');
