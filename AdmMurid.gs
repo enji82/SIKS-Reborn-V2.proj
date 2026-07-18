@@ -477,9 +477,9 @@ function admMurid_getDashboardData(npsnFilter, tahunFilter) {
     });
     
     for (var i = 1; i < spmbData.length; i++) {
-      var npsn = spmbData[i][0];
-      var thn = spmbData[i][2];
-      var status = spmbData[i][18] || "Diproses";
+      var npsn = String(spmbData[i][0] || "").trim();
+      var thn = String(spmbData[i][2] || "").trim();
+      var status = String(spmbData[i][18] || "Diproses").trim();
       
       if (targetTahun && targetTahun !== "SEMUA" && thn !== targetTahun) continue;
       
@@ -499,9 +499,9 @@ function admMurid_getDashboardData(npsnFilter, tahunFilter) {
     }
     
     for (var i = 1; i < ijazahData.length; i++) {
-      var npsn = ijazahData[i][0];
-      var thn = ijazahData[i][2];
-      var status = ijazahData[i][12] || "Diproses";
+      var npsn = String(ijazahData[i][0] || "").trim();
+      var thn = String(ijazahData[i][2] || "").trim();
+      var status = String(ijazahData[i][12] || "Diproses").trim();
       
       if (targetTahun && targetTahun !== "SEMUA" && thn !== targetTahun) continue;
       
