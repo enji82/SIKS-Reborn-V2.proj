@@ -322,7 +322,8 @@
     // Inisialisasi Filter Bar
     var filtersConfig = [
         { id: 'admmuridspmb_filterSekolah', placeholder: '- Memvalidasi Akses... -', disabled: true },
-        { id: 'admmuridspmb_filterTahun', placeholder: '- Memuat TA... -', disabled: true }
+        { id: 'admmuridspmb_filterTahun', placeholder: '- Memuat TA... -', disabled: true },
+        { id: 'admmuridspmb_filterStatus', placeholder: '- Pilih Status... -', disabled: false }
     ];
     var extraButtons = `
         <div class="divider-vertical d-none d-md-block mx-2"></div>
@@ -336,6 +337,16 @@
     `;
     $('#admmuridspmb_filterBarArea').html(SultanUI.renderFilterBar(filtersConfig, extraButtons));
     $('#admmuridspmb_filterSekolah_container').addClass('sultan-filter-unit-width');
+
+    // Inisialisasi Dropdown Status
+    var htmlStatus = `
+      <option value="SEMUA">- Semua Status -</option>
+      <option value="DIPROSES">Diproses</option>
+      <option value="DISETUJUI">Disetujui</option>
+      <option value="REVISI">Revisi</option>
+      <option value="DITOLAK">Ditolak</option>
+    `;
+    $('#admmuridspmb_filterStatus').html(htmlStatus).val('SEMUA');
 
     // Inisialisasi Filter Tahun Ajaran
     var now = new Date(); var curYear = now.getFullYear(); var curMonth = now.getMonth();
@@ -417,7 +428,7 @@
     });
 
     // Event Filter Handlers
-    $(document).on('change', '#admmuridspmb_filterTahun, #admmuridspmb_filterSekolah', function () {
+    $(document).on('change', '#admmuridspmb_filterTahun, #admmuridspmb_filterSekolah, #admmuridspmb_filterStatus', function () {
       terapkanFilterLokalSpmb();
     });
 
@@ -484,11 +495,16 @@
       if (!ADMMURIDSPMB_TABEL_INSTANCE) return;
       var targetTahun = $('#admmuridspmb_filterTahun').val();
       var targetSekolah = $('#admmuridspmb_filterSekolah').val();
+      var targetStatus = $('#admmuridspmb_filterStatus').val();
 
       var filtered = ADMMURIDSPMB_CACHE_DATA.filter(function (d) {
         var matchTahun = (targetTahun === "SEMUA" || d.tahun_ajaran === targetTahun);
         var matchSekolah = (!targetSekolah || targetSekolah === "SEMUA" || String(d.npsn).trim() === String(targetSekolah).trim());
-        return matchTahun && matchSekolah;
+        
+        var dStatus = String(d.status || "DIPROSES").toUpperCase();
+        var matchStatus = (targetStatus === "SEMUA" || dStatus.includes(targetStatus) || (targetStatus === "DIPROSES" && dStatus === ""));
+        
+        return matchTahun && matchSekolah && matchStatus;
       });
 
       renderTableSpmb(filtered);

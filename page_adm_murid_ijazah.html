@@ -233,7 +233,8 @@
     // Inisialisasi Filter Bar
     var filtersConfig = [
         { id: 'admmuridijazah_filterSekolah', placeholder: '- Memvalidasi Akses... -', disabled: true },
-        { id: 'admmuridijazah_filterTahun', placeholder: '- Memuat TA... -', disabled: true }
+        { id: 'admmuridijazah_filterTahun', placeholder: '- Memuat TA... -', disabled: true },
+        { id: 'admmuridijazah_filterStatus', placeholder: '- Pilih Status... -', disabled: false }
     ];
     var extraButtons = `
         <div class="divider-vertical d-none d-md-block mx-2"></div>
@@ -247,6 +248,16 @@
     `;
     $('#admmuridijazah_filterBarArea').html(SultanUI.renderFilterBar(filtersConfig, extraButtons));
     $('#admmuridijazah_filterSekolah_container').addClass('sultan-filter-unit-width');
+
+    // Inisialisasi Dropdown Status
+    var htmlStatus = `
+      <option value="SEMUA">- Semua Status -</option>
+      <option value="DIPROSES">Diproses</option>
+      <option value="DISETUJUI">Disetujui</option>
+      <option value="REVISI">Revisi</option>
+      <option value="DITOLAK">Ditolak</option>
+    `;
+    $('#admmuridijazah_filterStatus').html(htmlStatus).val('SEMUA');
 
     // Inisialisasi Filter Tahun Ajaran
     var now = new Date(); var curYear = now.getFullYear(); var curMonth = now.getMonth();
@@ -321,7 +332,7 @@
     });
 
     // Event Filter Handlers
-    $(document).on('change', '#admmuridijazah_filterTahun, #admmuridijazah_filterSekolah', function () {
+    $(document).on('change', '#admmuridijazah_filterTahun, #admmuridijazah_filterSekolah, #admmuridijazah_filterStatus', function () {
       terapkanFilterLokalIjazah();
     });
 
@@ -387,11 +398,16 @@
       if (!ADMMURIDIJAZAH_TABEL_INSTANCE) return;
       var targetTahun = $('#admmuridijazah_filterTahun').val();
       var targetSekolah = $('#admmuridijazah_filterSekolah').val();
+      var targetStatus = $('#admmuridijazah_filterStatus').val();
 
       var filtered = ADMMURIDIJAZAH_CACHE_DATA.filter(function (d) {
         var matchTahun = (targetTahun === "SEMUA" || d.tahun_ajaran === targetTahun);
         var matchSekolah = (!targetSekolah || targetSekolah === "SEMUA" || String(d.npsn).trim() === String(targetSekolah).trim());
-        return matchTahun && matchSekolah;
+        
+        var dStatus = String(d.status || "DIPROSES").toUpperCase();
+        var matchStatus = (targetStatus === "SEMUA" || dStatus.includes(targetStatus) || (targetStatus === "DIPROSES" && dStatus === ""));
+        
+        return matchTahun && matchSekolah && matchStatus;
       });
 
       renderTableIjazah(filtered);
