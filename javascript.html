@@ -351,6 +351,42 @@
         $('#global_modalVerifikasiTitle').html('<i class="fas fa-clipboard-check mr-2"></i>' + (opsi.title || 'Verifikasi Berkas'));
         $('#global_verifikasiFormArea').html(opsi.formHtml || '');
 
+        // --- Multi-doc switcher ---
+        var $switcher = $('#global_verifikasiDocSwitcher');
+        $switcher.hide().empty();
+
+        if (opsi.docs && opsi.docs.length > 1) {
+          // Build toggle button group
+          var $btnGroup = $('<div class="btn-group btn-group-sm w-100" role="group"></div>');
+          $.each(opsi.docs, function (i, doc) {
+            var isActive = i === 0;
+            var icon = doc.icon || (i === 0 ? 'fa-file-alt' : 'fa-file');
+            var $btn = $('<button type="button" class="btn ' + (isActive ? 'btn-primary' : 'btn-outline-light') + ' flex-fill text-truncate"></button>');
+            $btn.html('<i class="fas ' + icon + ' mr-1"></i>' + doc.label);
+            $btn.on('click', function () {
+              // Update active button style
+              $btnGroup.find('button').removeClass('btn-primary').addClass('btn-outline-light');
+              $(this).removeClass('btn-outline-light').addClass('btn-primary');
+              // Load document
+              $('#global_verifikasiIframe').hide().attr('src', '');
+              $('#global_verifikasiLoading').show();
+              var url = doc.url || '';
+              if (url.indexOf('drive.google.com') > -1 && url.indexOf('view') > -1 && url.indexOf('preview') === -1) {
+                url = url.replace(/\/view\b/g, '/preview');
+              }
+              $('#global_verifikasiIframe').attr('src', url).off('load').on('load', function () {
+                $('#global_verifikasiLoading').hide();
+                $(this).fadeIn();
+              });
+            });
+            $btnGroup.append($btn);
+          });
+          $switcher.append($btnGroup).show();
+          // Use first doc url as default
+          opsi.url = opsi.docs[0].url || '';
+        }
+        // --- End multi-doc switcher ---
+
         $('#global_modalVerifikasi').off('shown.bs.modal');
         if (opsi.onShown) {
           $('#global_modalVerifikasi').on('shown.bs.modal', function () {
@@ -367,7 +403,7 @@
           });
         } else {
           var finalUrl = opsi.url;
-          if (opsi.url.indexOf('drive.google.com') > -1 && opsi.url.indexOf('view') > -1 && opsi.url.indexOf('preview') === -1) {
+          if (opsi.url && opsi.url.indexOf('drive.google.com') > -1 && opsi.url.indexOf('view') > -1 && opsi.url.indexOf('preview') === -1) {
             finalUrl = opsi.url.replace(/\/view\b/g, '/preview');
           }
           $('#global_verifikasiIframe').attr('src', finalUrl).off('load').on('load', function () {
