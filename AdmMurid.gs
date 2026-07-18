@@ -289,7 +289,8 @@ function admMurid_simpanIjazah(payload) {
     var idTranskrip = payload.id_file_transkrip || "";
 
     // Unggah PDF Ijazah
-    if (payload.fileBase64_ijazah) {
+    if (payload.fileIjazahBase64 || payload.fileBase64_ijazah) {
+      var base64Ijazah = payload.fileIjazahBase64 || payload.fileBase64_ijazah;
       if (isEdit && idIjazah) {
         try { DriveApp.getFileById(idIjazah).setTrashed(true); } catch(err) {}
       }
@@ -301,7 +302,7 @@ function admMurid_simpanIjazah(payload) {
       } else {
         schoolFolderIjazah = pFolderIjazah.createFolder(payload.nama_sekolah);
       }
-      var blobIjazah = Utilities.newBlob(Utilities.base64Decode(payload.fileBase64_ijazah), payload.mimeType_ijazah, payload.nama_file_ijazah);
+      var blobIjazah = Utilities.newBlob(Utilities.base64Decode(base64Ijazah), payload.mimeType_ijazah || "application/pdf", payload.nama_file_ijazah);
       var fileIjazah = schoolFolderIjazah.createFile(blobIjazah);
       fileIjazah.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
       urlIjazah = fileIjazah.getUrl();
@@ -309,7 +310,8 @@ function admMurid_simpanIjazah(payload) {
     }
 
     // Unggah PDF Transkrip
-    if (payload.fileBase64_transkrip) {
+    if (payload.fileTranskripBase64 || payload.fileBase64_transkrip) {
+      var base64Transkrip = payload.fileTranskripBase64 || payload.fileBase64_transkrip;
       if (isEdit && idTranskrip) {
         try { DriveApp.getFileById(idTranskrip).setTrashed(true); } catch(err) {}
       }
@@ -321,7 +323,7 @@ function admMurid_simpanIjazah(payload) {
       } else {
         schoolFolderTranskrip = pFolderTranskrip.createFolder(payload.nama_sekolah);
       }
-      var blobTranskrip = Utilities.newBlob(Utilities.base64Decode(payload.fileBase64_transkrip), payload.mimeType_transkrip, payload.nama_file_transkrip);
+      var blobTranskrip = Utilities.newBlob(Utilities.base64Decode(base64Transkrip), payload.mimeType_transkrip || "application/pdf", payload.nama_file_transkrip);
       var fileTranskrip = schoolFolderTranskrip.createFile(blobTranskrip);
       fileTranskrip.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
       urlTranskrip = fileTranskrip.getUrl();
@@ -346,6 +348,7 @@ function admMurid_simpanIjazah(payload) {
       ]]);
       sheet.getRange(row, 13).setValue("Diproses");
       sheet.getRange(row, 17, 1, 2).setValues([[now, payload.user_login]]);
+    } else {
       var existingData = sheet.getDataRange().getDisplayValues();
       var targetNpsn = String(payload.npsn || "").trim();
       var targetTa = String(payload.tahun_ajaran || "").trim();
