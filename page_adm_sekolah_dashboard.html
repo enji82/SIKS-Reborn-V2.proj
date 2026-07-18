@@ -90,7 +90,7 @@
                 <i class="fas fa-chevron-down"></i>
             </div>
 
-            <div class="sultan-filter-item">
+            <div id="admsekolahdash_filterTahunContainer" class="sultan-filter-item">
                 <select id="admsekolahdash_filterTahun" class="form-control" aria-label="Pilih Tahun">
                     <option value="SEMUA">- Semua Tahun -</option>
                 </select>
@@ -129,6 +129,11 @@
 
         <div id="admsekolahdash_loadingState">
             <!-- Spinner Otomatis via SultanUI.showLoading -->
+        </div>
+
+        <!-- Badge Jenis Periode -->
+        <div id="admsekolahdash_jenisPeriodeBadge" class="mb-3" style="display:none;">
+            <span id="admsekolahdash_jenisPeriodeLabel" class="badge px-3 py-2" style="font-size: 12px; border-radius: 20px;"></span>
         </div>
 
         <div id="admsekolahdash_dashboardState" style="display: none;">
@@ -488,20 +493,53 @@ function admsekolahdash_initDropdownUnit() {
     }
 }
 
-var ADMSEKOLAHDASH_JENIS_PERIODE = "TAHUNAN";
+var ADMSEKOLAHDASH_JENIS_PERIODE = "TAHUNAN_TAPEL";
+
+function admsekolahdash_updateJenisPeriodeBadge() {
+    var jp = ADMSEKOLAHDASH_JENIS_PERIODE;
+    var badgeMap = {
+        "PERMANEN":        { label: "📌 Permanen",                  cls: "badge-secondary" },
+        "TMT":             { label: "📌 Berlaku TMT",                cls: "badge-secondary" },
+        "TAHUNAN_TAPEL":   { label: "📅 Tahunan (Tahun Pelajaran)",  cls: "badge-info" },
+        "TAHUNAN_KALENDER":{ label: "📅 Tahunan (Tahun Kalender)",   cls: "badge-info" },
+        "SEMESTER_TAPEL":  { label: "📆 Semester (Tahun Pelajaran)", cls: "badge-primary" },
+        "SEMESTER_KALENDER":{ label: "📆 Semester (Tahun Kalender)",  cls: "badge-primary" },
+        "BULANAN":         { label: "🗓️ Bulanan",                    cls: "badge-warning" },
+        "TRIWULAN":        { label: "🗓️ Triwulan",                   cls: "badge-warning" },
+        "PERIODE":         { label: "🗓️ Per Periode",                cls: "badge-warning" }
+    };
+    var info = badgeMap[jp] || { label: jp, cls: "badge-secondary" };
+    $('#admsekolahdash_jenisPeriodeLabel').attr('class', 'badge px-3 py-2 ' + info.cls).text(info.label);
+    $('#admsekolahdash_jenisPeriodeBadge').show();
+}
 
 function admsekolahdash_initDropdownTahun() {
     var uniqueTahun = new Set();
     var uniquePeriode = new Set();
+    var isPermanen = (ADMSEKOLAHDASH_JENIS_PERIODE === "PERMANEN" || ADMSEKOLAHDASH_JENIS_PERIODE === "TMT");
     
     ADMSEKOLAHDASH_CACHE_REKAP.forEach(function(r) { 
-        var thn = String(r.tahun || "").trim(); if(thn && thn !== "-") uniqueTahun.add(thn); 
+        var thn = String(r.tahun || "").trim();
+        // Skip kunci internal PERMANEN dari dropdown
+        if(thn && thn !== "-" && thn !== "PERMANEN") uniqueTahun.add(thn); 
         var per = String(r.periode || "").trim(); if(per && per !== "-") uniquePeriode.add(per); 
     });
     ADMSEKOLAHDASH_CACHE_BELUM.forEach(function(r) { 
-        var thn = String(r.tahun || "").trim(); if(thn && thn !== "-") uniqueTahun.add(thn); 
+        var thn = String(r.tahun || "").trim();
+        if(thn && thn !== "-" && thn !== "PERMANEN") uniqueTahun.add(thn); 
         var per = String(r.periode || "").trim(); if(per && per !== "-") uniquePeriode.add(per); 
     });
+    
+    // Tampilkan/sembunyikan filter Tahun berdasarkan jenis periode
+    if (isPermanen) {
+        $('#admsekolahdash_filterTahunContainer').hide();
+        $('#admsekolahdash_filterTahun').val("SEMUA");
+    } else {
+        $('#admsekolahdash_filterTahunContainer').show();
+    }
+    
+    // Tampilkan badge jenis periode
+    admsekolahdash_updateJenisPeriodeBadge();
     
     var selTahun = $('#admsekolahdash_filterTahun');
     var curTahun = selTahun.val();
@@ -514,16 +552,20 @@ function admsekolahdash_initDropdownTahun() {
     // Sort and populate Tahun
     var sortedTahun = Array.from(uniqueTahun);
     sortedTahun.sort(function(a, b) {
-        var na = parseInt(a, 10), nb = parseInt(b, 10);
-        if (!isNaN(na) && !isNaN(nb)) {
-            if (na !== nb) return nb - na;
-            return String(b).localeCompare(String(a));
-        }
+        // Tahun Pelajaran (2024/2025) — sort by first year descending
+        var splitA = a.split("/"), splitB = b.split("/");
+        var na = parseInt(splitA[0], 10), nb = parseInt(splitB[0], 10);
+        if (!isNaN(na) && !isNaN(nb)) return nb - na;
         return String(b).localeCompare(String(a));
     });
     
     sortedTahun.forEach(function(t) { selTahun.append(`<option value="${admsekolahdash_escapeHtml(t)}">${admsekolahdash_escapeHtml(t)}</option>`); });
-    if (!ADMSEKOLAHDASH_TAHUN_DEFAULTED && sortedTahun.length > 0) {
+    
+    if (isPermanen) {
+        // PERMANEN/TMT: selalu SEMUA (tidak relevan filter tahun)
+        selTahun.val("SEMUA");
+        ADMSEKOLAHDASH_TAHUN_DEFAULTED = true;
+    } else if (!ADMSEKOLAHDASH_TAHUN_DEFAULTED && sortedTahun.length > 0) {
         selTahun.val(sortedTahun[0]);
         ADMSEKOLAHDASH_TAHUN_DEFAULTED = true;
     } else if (curTahun && (curTahun === "SEMUA" || uniqueTahun.has(curTahun))) {
@@ -548,20 +590,18 @@ function admsekolahdash_initDropdownTahun() {
     
     // Auto-select behavior for Periode based on rules
     if (ADMSEKOLAHDASH_JENIS_PERIODE === "SEMESTER_TAPEL" || ADMSEKOLAHDASH_JENIS_PERIODE === "SEMESTER_KALENDER" || ADMSEKOLAHDASH_JENIS_PERIODE === "TRIWULAN") {
-        // If the user previously selected something valid, keep it. Else pick the first one (most recent).
         if (curPeriode && curPeriode !== "SEMUA" && uniquePeriode.has(curPeriode)) {
             selPeriode.val(curPeriode);
         } else if (sortedPeriode.length > 0) {
             selPeriode.val(sortedPeriode[0]);
         }
     } else {
-        // For others, keep SEMUA or whatever was selected
         if (curPeriode && uniquePeriode.has(curPeriode)) selPeriode.val(curPeriode);
         else selPeriode.val("SEMUA");
     }
     
     var jPeriode = ADMSEKOLAHDASH_JENIS_PERIODE;
-    if(jPeriode === "TAHUNAN" || jPeriode === "PERMANEN" || jPeriode === "TMT") {
+    if(jPeriode === "TAHUNAN_TAPEL" || jPeriode === "TAHUNAN_KALENDER" || jPeriode === "PERMANEN" || jPeriode === "TMT") {
         $('#admsekolahdash_filterPeriodeContainer').hide();
     } else {
         $('#admsekolahdash_filterPeriodeContainer').show();
@@ -610,6 +650,11 @@ function admsekolahdash_rowMatchesUnit(r, fUnitAdmin) {
 }
 
 function admsekolahdash_getRekapForMetrics(dataRekap, fTahun, fPeriode) {
+    // PERMANEN/TMT: satu periode universal, kembalikan semua data langsung
+    if (ADMSEKOLAHDASH_JENIS_PERIODE === "PERMANEN" || ADMSEKOLAHDASH_JENIS_PERIODE === "TMT") {
+        return dataRekap;
+    }
+    
     if (fTahun !== "SEMUA" && fTahun !== "" && fPeriode !== "SEMUA" && fPeriode !== "") return dataRekap;
     
     // Sort all records to find the most recent
@@ -623,7 +668,9 @@ function admsekolahdash_getRekapForMetrics(dataRekap, fTahun, fPeriode) {
         var pb = String(b.periode || "").trim();
         
         if (ta !== tb) {
-            var na = parseInt(ta, 10), nb = parseInt(tb, 10);
+            // Handle Tapel format (2024/2025) — sort by first year
+            var splitA = ta.split("/"), splitB = tb.split("/");
+            var na = parseInt(splitA[0], 10), nb = parseInt(splitB[0], 10);
             if (!isNaN(na) && !isNaN(nb)) return nb - na;
             return tb.localeCompare(ta);
         }
@@ -655,19 +702,25 @@ function admsekolahdash_terapkanFilterLokal() {
     } else {
         fUnit = String(ADMSEKOLAHDASH_UNIT_TERKUNCI || "").trim().toUpperCase();
     }
-    var fTahun = String($('#admsekolahdash_filterTahun').val() || "").trim().toUpperCase();
+    
+    // PERMANEN/TMT: filter tahun tidak relevan, paksa SEMUA
+    var isPermanen = (ADMSEKOLAHDASH_JENIS_PERIODE === "PERMANEN" || ADMSEKOLAHDASH_JENIS_PERIODE === "TMT");
+    var fTahun = isPermanen ? "SEMUA" : String($('#admsekolahdash_filterTahun').val() || "").trim().toUpperCase();
     var fPeriode = String($('#admsekolahdash_filterPeriode').val() || "").trim().toUpperCase();
     
     var filterRekap = ADMSEKOLAHDASH_CACHE_REKAP.filter(function(r) {
         if (!admsekolahdash_rowMatchesUnit(r, fUnit)) return false;
-        if (fTahun !== "SEMUA" && fTahun !== "" && String(r.tahun || "").trim().toUpperCase() !== fTahun) return false;
+        // Skip internal PERMANEN key when comparing filter
+        var rTahun = String(r.tahun || "").trim().toUpperCase();
+        if (!isPermanen && fTahun !== "SEMUA" && fTahun !== "" && rTahun !== fTahun) return false;
         if (fPeriode !== "SEMUA" && fPeriode !== "" && String(r.periode || "").trim().toUpperCase() !== fPeriode) return false;
         return true;
     });
 
     var filterBelum = ADMSEKOLAHDASH_CACHE_BELUM.filter(function(r) {
         if (!admsekolahdash_rowMatchesUnit(r, fUnit)) return false;
-        if (fTahun !== "SEMUA" && fTahun !== "" && String(r.tahun || "").trim().toUpperCase() !== fTahun) return false;
+        var rTahun = String(r.tahun || "").trim().toUpperCase();
+        if (!isPermanen && fTahun !== "SEMUA" && fTahun !== "" && rTahun !== fTahun) return false;
         if (fPeriode !== "SEMUA" && fPeriode !== "" && String(r.periode || "").trim().toUpperCase() !== fPeriode) return false;
         return true;
     });
@@ -823,13 +876,21 @@ function admsekolahdash_renderDashboard(dataRekap, dataBelum, fTahun, fPeriode) 
                   '<div class="text-muted" style="font-size: 12px;">Belum ada sekolah yang mengunggah dokumen.</div>' +
                   '</li>';
     } else {
+        var isPermanenView = (ADMSEKOLAHDASH_JENIS_PERIODE === "PERMANEN" || ADMSEKOLAHDASH_JENIS_PERIODE === "TMT");
         dataSudah.forEach(function(b) {
+            var subInfo = "";
+            if (isPermanenView) {
+                subInfo = b.thnUpload ? '<span class="badge badge-light border ml-1" style="font-size:10px;">Upload: ' + admsekolahdash_escapeHtml(b.thnUpload) + '</span>' : '';
+            } else {
+                var tahunTeks = admsekolahdash_escapeHtml(b.tahun) + (b.periode && b.periode !== "-" ? " " + admsekolahdash_escapeHtml(b.periode) : "");
+                subInfo = '<div class="unit-asn text-success font-weight-bold mt-1 text-uppercase" style="font-size: 11px; line-height: 1.2;">(' + tahunTeks + ')</div>';
+            }
             uiSudah += '<li class="list-group-item admsekolahdash-item-sudah py-2 px-3 hover-sultan" data-unit="' + admsekolahdash_escapeHtml(b.unit) + '">' +
                        '<div class="d-flex justify-content-between align-items-center">' +
                        '<div>' +
                        '<div class="nama-asn font-weight-bold text-dark text-uppercase mb-0" style="font-size: 13px; line-height: 1.2;">' + admsekolahdash_escapeHtml(b.unit) + '</div>' +
-                       '<div class="text-muted" style="font-size: 11px; line-height: 1.2;">NPSN: ' + admsekolahdash_escapeHtml(b.npsn) + '</div>' +
-                       '<div class="unit-asn text-success font-weight-bold mt-1 text-uppercase" style="font-size: 11px; line-height: 1.2;">(' + admsekolahdash_escapeHtml(b.tahun) + (b.periode && b.periode !== "-" ? " " + admsekolahdash_escapeHtml(b.periode) : "") + ')</div>' +
+                       '<div class="text-muted" style="font-size: 11px; line-height: 1.2;">NPSN: ' + admsekolahdash_escapeHtml(b.npsn) + (isPermanenView ? ' ' + subInfo : '') + '</div>' +
+                       (isPermanenView ? '' : subInfo) +
                        '</div>' +
                        '<span class="badge badge-success ml-2 px-2 py-1"><i class="fas fa-check"></i></span>' +
                        '</div>' +

@@ -432,18 +432,21 @@ function getAdmSekolahDashboardData(idKategori, forceRefresh) {
 
     var shKat = getOrCreateSheetAdmSekolah("Master_Kategori");
     var dataKat = shKat ? shKat.getDataRange().getDisplayValues() : [];
-    var jPeriode = "TAHUNAN";
+    var jPeriode = "TAHUNAN_TAPEL"; // default: tahunan tahun pelajaran
     for (var i = 1; i < dataKat.length; i++) {
       if (String(dataKat[i][0]).trim() === String(idKategori).trim()) {
-        var jpVal = String(dataKat[i][4] || "").toUpperCase();
+        var jpVal = String(dataKat[i][4] || "").toUpperCase().trim();
         if (jpVal.includes("PERMANEN")) jPeriode = "PERMANEN";
+        else if (jpVal.includes("TMT")) jPeriode = "TMT";
         else if (jpVal.includes("BULANAN")) jPeriode = "BULANAN";
-        else if (jpVal.includes("SEMESTER (TAHUN PELAJARAN)") || jpVal.includes("SEMESTER_TAPEL") || jpVal === "SEMESTER TAPEL") jPeriode = "SEMESTER_TAPEL";
-        else if (jpVal.includes("SEMESTER (TAHUN KALENDER)") || jpVal.includes("SEMESTER_KALENDER") || jpVal === "SEMESTER") jPeriode = "SEMESTER_KALENDER";
+        else if (jpVal.includes("SEMESTER") && (jpVal.includes("PELAJARAN") || jpVal.includes("TAPEL"))) jPeriode = "SEMESTER_TAPEL";
+        else if (jpVal.includes("SEMESTER") && jpVal.includes("KALENDER")) jPeriode = "SEMESTER_KALENDER";
+        else if (jpVal.includes("SEMESTER")) jPeriode = "SEMESTER_TAPEL"; // default semester → tapel
         else if (jpVal.includes("TRIWULAN")) jPeriode = "TRIWULAN";
         else if (jpVal.includes("PERIODE") || jpVal.includes("BEBAS")) jPeriode = "PERIODE";
-        else if (jpVal.includes("TMT")) jPeriode = "TMT";
-        else jPeriode = "TAHUNAN";
+        else if (jpVal.includes("TAHUNAN") && jpVal.includes("KALENDER")) jPeriode = "TAHUNAN_KALENDER";
+        else if (jpVal.includes("TAHUNAN") || jpVal === "TAHUNAN_TAPEL") jPeriode = "TAHUNAN_TAPEL";
+        else jPeriode = "TAHUNAN_TAPEL"; // fallback: tapel
         break;
       }
     }
@@ -469,8 +472,12 @@ function getAdmSekolahDashboardData(idKategori, forceRefresh) {
     var curYear = new Date().getFullYear();
     var curTapel = curYear + "/" + (curYear + 1);
     var prevTapel = (curYear - 1) + "/" + curYear;
+    var prevPrevTapel = (curYear - 2) + "/" + (curYear - 1);
     
-    // We will store stringified JSON objects in periodsSet to keep tahun and periode separated
+    // Kunci universal untuk PERMANEN & TMT (dokumen berlaku lintas tahun)
+    var PKEY_PERMANEN = JSON.stringify({tahun: "PERMANEN", periode: "-"});
+    
+    // Pre-fill periods scaffold berdasarkan jenis periode
     if (jPeriode === "BULANAN") {
       var bulans = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
       bulans.forEach(function(b) {
@@ -492,13 +499,26 @@ function getAdmSekolahDashboardData(idKategori, forceRefresh) {
         periodsSet.add(JSON.stringify({tahun: String(curYear), periode: "Triwulan " + t}));
         periodsSet.add(JSON.stringify({tahun: String(curYear - 1), periode: "Triwulan " + t}));
       });
-    } else if (jPeriode === "PERMANEN") {
+    } else if (jPeriode === "PERMANEN" || jPeriode === "TMT") {
+      // Dokumen berlaku lintas tahun — satu kunci universal untuk semua sekolah
+      periodsSet.add(PKEY_PERMANEN);
+    } else if (jPeriode === "TAHUNAN_TAPEL") {
+      periodsSet.add(JSON.stringify({tahun: curTapel, periode: "-"}));
+      periodsSet.add(JSON.stringify({tahun: prevTapel, periode: "-"}));
+      periodsSet.add(JSON.stringify({tahun: prevPrevTapel, periode: "-"}));
+    } else if (jPeriode === "TAHUNAN_KALENDER") {
       periodsSet.add(JSON.stringify({tahun: String(curYear), periode: "-"}));
+      periodsSet.add(JSON.stringify({tahun: String(curYear - 1), periode: "-"}));
+      periodsSet.add(JSON.stringify({tahun: String(curYear - 2), periode: "-"}));
     } else {
+      // Fallback: tahunan kalender
       periodsSet.add(JSON.stringify({tahun: String(curYear), periode: "-"}));
       periodsSet.add(JSON.stringify({tahun: String(curYear - 1), periode: "-"}));
       periodsSet.add(JSON.stringify({tahun: String(curYear - 2), periode: "-"}));
     }
+    
+    // docMapMeta: untuk PERMANEN/TMT menyimpan tahun upload terakhir per NPSN
+    var docMapMeta = {};
     
     for (var k = 1; k < dataDoc.length; k++) {
       var eNpsn = String(dataDoc[k][0]).trim();
@@ -508,18 +528,31 @@ function getAdmSekolahDashboardData(idKategori, forceRefresh) {
       var eStatus = String(dataDoc[k][6]).trim();
       
       if (eKat === String(idKategori).trim() && eNpsn) {
-        var targetTahun = eThn;
-        var targetPeriode = ePeriode && ePeriode !== "-" ? ePeriode : "-";
-        
-        if (jPeriode === "PERMANEN" || jPeriode === "TAHUNAN" || jPeriode === "TMT") {
-          targetPeriode = "-";
-        }
-        
-        if (targetTahun) {
-          var pKey = JSON.stringify({tahun: targetTahun, periode: targetPeriode});
-          periodsSet.add(pKey);
+        if (jPeriode === "PERMANEN" || jPeriode === "TMT") {
+          // Semua upload apapun tahunnya → kunci universal
+          periodsSet.add(PKEY_PERMANEN);
           if (!docMap[eNpsn]) docMap[eNpsn] = {};
-          docMap[eNpsn][pKey] = eStatus;
+          // Simpan status terbaik (prioritas: Disetujui > Diproses > lainnya)
+          var existSt = String(docMap[eNpsn][PKEY_PERMANEN] || "").toLowerCase();
+          var newSt = String(eStatus).toLowerCase();
+          var existGood = existSt.includes("setuju") || existSt.includes("valid");
+          var newGood = newSt.includes("setuju") || newSt.includes("valid");
+          if (!docMap[eNpsn][PKEY_PERMANEN] || newGood || (!existGood && newSt.includes("proses"))) {
+            docMap[eNpsn][PKEY_PERMANEN] = eStatus;
+            docMapMeta[eNpsn] = { thnUpload: eThn };
+          }
+        } else {
+          var targetTahun = eThn;
+          var targetPeriode = ePeriode && ePeriode !== "-" ? ePeriode : "-";
+          if (jPeriode === "TAHUNAN_TAPEL" || jPeriode === "TAHUNAN_KALENDER") {
+            targetPeriode = "-";
+          }
+          if (targetTahun) {
+            var pKey = JSON.stringify({tahun: targetTahun, periode: targetPeriode});
+            periodsSet.add(pKey);
+            if (!docMap[eNpsn]) docMap[eNpsn] = {};
+            docMap[eNpsn][pKey] = eStatus;
+          }
         }
       }
     }
@@ -550,6 +583,8 @@ function getAdmSekolahDashboardData(idKategori, forceRefresh) {
         
         var status = docMap[npsn] ? docMap[npsn][pKey] : null;
         var statusVal = status ? String(status).trim() : "";
+        // Tahun upload asli untuk PERMANEN/TMT (Option B)
+        var thnUpload = (jPeriode === "PERMANEN" || jPeriode === "TMT") && docMapMeta[npsn] ? docMapMeta[npsn].thnUpload : "";
         
         var isUploaded = false;
         if (statusVal) {
@@ -560,9 +595,9 @@ function getAdmSekolahDashboardData(idKategori, forceRefresh) {
         }
         
         if (isUploaded) {
-          arrRekap.push({ npsn: npsn, unit: unitName, tahun: pObj.tahun, periode: pObj.periode, jml: 1, sudah: 1, belum: 0, jenjang: sek.jenjang, status: statusVal });
+          arrRekap.push({ npsn: npsn, unit: unitName, tahun: pObj.tahun, periode: pObj.periode, jml: 1, sudah: 1, belum: 0, jenjang: sek.jenjang, status: statusVal, thnUpload: thnUpload });
         } else {
-          arrRekap.push({ npsn: npsn, unit: unitName, tahun: pObj.tahun, periode: pObj.periode, jml: 1, sudah: 0, belum: 1, jenjang: sek.jenjang, status: statusVal });
+          arrRekap.push({ npsn: npsn, unit: unitName, tahun: pObj.tahun, periode: pObj.periode, jml: 1, sudah: 0, belum: 1, jenjang: sek.jenjang, status: statusVal, thnUpload: thnUpload });
           arrBelum.push({ npsn: npsn, unit: unitName, tahun: pObj.tahun, periode: pObj.periode, jenjang: sek.jenjang });
         }
       });
