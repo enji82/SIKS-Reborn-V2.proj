@@ -479,7 +479,7 @@ function admMurid_getDashboardData(npsnFilter, tahunFilter) {
     for (var i = 1; i < spmbData.length; i++) {
       var npsn = spmbData[i][0];
       var thn = spmbData[i][2];
-      var status = spmbData[i][18];
+      var status = spmbData[i][18] || "Diproses";
       
       if (targetTahun && targetTahun !== "SEMUA" && thn !== targetTahun) continue;
       
@@ -490,59 +490,80 @@ function admMurid_getDashboardData(npsnFilter, tahunFilter) {
           tglUpload: spmbData[i][20],
           detail: {
             rombel: spmbData[i][3],
-            muridL: spmbData[i][12],
-            muridP: spmbData[i][13],
-            total: spmbData[i][14]
+            muridL: parseInt(spmbData[i][12] || 0),
+            muridP: parseInt(spmbData[i][13] || 0),
+            total: parseInt(spmbData[i][14] || 0)
           }
         };
-        
-        spmbStats.total++;
-        var statKey = status.toLowerCase();
-        if (statKey === "disetujui") {
-          spmbStats.disetujui++;
-          spmbStats.muridL += parseInt(spmbData[i][12] || 0);
-          spmbStats.muridP += parseInt(spmbData[i][13] || 0);
-          spmbStats.totalMurid += parseInt(spmbData[i][14] || 0);
-        }
-        else if (statKey === "diproses") spmbStats.diproses++;
-        else if (statKey === "revisi") spmbStats.revisi++;
-        else if (statKey === "ditolak") spmbStats.ditolak++;
       }
     }
     
     for (var i = 1; i < ijazahData.length; i++) {
       var npsn = ijazahData[i][0];
       var thn = ijazahData[i][2];
-      var status = ijazahData[i][12];
+      var status = ijazahData[i][12] || "Diproses";
       
       if (targetTahun && targetTahun !== "SEMUA" && thn !== targetTahun) continue;
       
       if (schoolStatusMap[npsn]) {
         schoolStatusMap[npsn].ijazah = {
           status: status,
-          fileUrl: ijazahData[i][7], // Link Ijazah
-          fileUrlTranskrip: ijazahData[i][10], // Link Transkrip
+          fileUrl: ijazahData[i][7],
+          fileUrlTranskrip: ijazahData[i][10],
           tglUpload: ijazahData[i][14],
           detail: {
-            muridL: ijazahData[i][3],
-            muridP: ijazahData[i][4],
-            total: ijazahData[i][5]
+            muridL: parseInt(ijazahData[i][3] || 0),
+            muridP: parseInt(ijazahData[i][4] || 0),
+            total: parseInt(ijazahData[i][5] || 0)
           }
         };
+      }
+    }
+    
+    var spmbStats = { jumlahSekolah: listSekolah.length, sudahUnggah: 0, belumUnggah: 0, diproses: 0, disetujui: 0, revisi: 0, ditolak: 0, muridL: 0, muridP: 0, totalMurid: 0 };
+    var ijazahStats = { jumlahSekolah: listSekolah.length, sudahUnggah: 0, belumUnggah: 0, diproses: 0, disetujui: 0, revisi: 0, ditolak: 0, muridL: 0, muridP: 0, totalMurid: 0 };
+    
+    Object.keys(schoolStatusMap).forEach(function(npsn) {
+      var school = schoolStatusMap[npsn];
+      
+      // SPMB Stats
+      var spmb = school.spmb;
+      if (spmb.status === "Belum Unggah") {
+        spmbStats.belumUnggah++;
+      } else {
+        spmbStats.sudahUnggah++;
+        var statKey = spmb.status.toLowerCase();
+        if (statKey === "disetujui") spmbStats.disetujui++;
+        else if (statKey === "diproses") spmbStats.diproses++;
+        else if (statKey === "revisi") spmbStats.revisi++;
+        else if (statKey === "ditolak") spmbStats.ditolak++;
         
-        ijazahStats.total++;
-        var statKey = status.toLowerCase();
-        if (statKey === "disetujui") {
-          ijazahStats.disetujui++;
-          ijazahStats.muridL += parseInt(ijazahData[i][3] || 0);
-          ijazahStats.muridP += parseInt(ijazahData[i][4] || 0);
-          ijazahStats.totalMurid += parseInt(ijazahData[i][5] || 0);
+        if (spmb.detail) {
+          spmbStats.muridL += spmb.detail.muridL;
+          spmbStats.muridP += spmb.detail.muridP;
+          spmbStats.totalMurid += spmb.detail.total;
         }
+      }
+      
+      // Ijazah Stats
+      var ijazah = school.ijazah;
+      if (ijazah.status === "Belum Unggah") {
+        ijazahStats.belumUnggah++;
+      } else {
+        ijazahStats.sudahUnggah++;
+        var statKey = ijazah.status.toLowerCase();
+        if (statKey === "disetujui") ijazahStats.disetujui++;
         else if (statKey === "diproses") ijazahStats.diproses++;
         else if (statKey === "revisi") ijazahStats.revisi++;
         else if (statKey === "ditolak") ijazahStats.ditolak++;
+        
+        if (ijazah.detail) {
+          ijazahStats.muridL += ijazah.detail.muridL;
+          ijazahStats.muridP += ijazah.detail.muridP;
+          ijazahStats.totalMurid += ijazah.detail.total;
+        }
       }
-    }
+    });
     
     var finalSchoolList = Object.keys(schoolStatusMap).map(function(k) { return schoolStatusMap[k]; });
     
