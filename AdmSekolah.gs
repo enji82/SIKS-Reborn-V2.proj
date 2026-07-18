@@ -149,8 +149,8 @@ function getAdmSekolahData(npsnFilter) {
         var npsn = String(dataSekolah[j][0]).trim();
         if(npsn) {
             sekolahMap[npsn] = {
-                nama: dataSekolah[j][1],
-                jenjang: dataSekolah[j][2],
+                nama: dataSekolah[j][2],
+                jenjang: dataSekolah[j][1],
                 status: dataSekolah[j][3]
             };
         }
