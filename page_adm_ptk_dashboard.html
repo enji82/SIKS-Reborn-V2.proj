@@ -87,7 +87,7 @@
 
         <div id="admptk_dash_loadingState"></div>
 
-        <div id="admptk_dash_dashboardState" style="display: none;">
+        <div id="admptk_dash_dashboardState">
 
           <!-- Metric Cards Baris 1: Sasaran & Unggah -->
           <div class="row mb-3">
@@ -299,17 +299,18 @@ var ADMPTK_DASH_PERIODE_DEFAULTED = false;
 var ADMPTK_DASH_JENIS_PERIODE = "TAHUNAN";
 
 $(document).ready(function() {
-    $('#admptk_dash_dashboardState').hide();
-    SultanUI.showLoading('#admptk_dash_loadingState');
+    $('#admptk_dash_dashboardState').show();
+    var initialOv = '<div class="card-loading-overlay d-flex align-items-center justify-content-center" style="position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,0.6);z-index:10;border-radius:16px;"><i class="fas fa-spinner fa-spin fa-2x text-maroon"></i></div>';
+    $('.card-sultan, .sultan-metric-card').css('position','relative').append(initialOv);
     $('#admptk_dash_filterContainer').hide();
-
+ 
     try {
         var user = typeof getSesiUser === 'function' ? getSesiUser() : {};
         var rStr = String(user.role || "").toLowerCase();
         ADMPTK_DASH_IS_ADMIN = (typeof checkUserRoleIsAdmin === 'function' && checkUserRoleIsAdmin()) || rStr.includes("admin") || rStr.includes("verifikator");
         ADMPTK_DASH_USER_NPSN = user.npsn || user.unit || user.username || "";
     } catch(e) { ADMPTK_DASH_USER_NPSN = ""; ADMPTK_DASH_IS_ADMIN = false; }
-
+ 
     $(document).off('click', '#admptk_dash_btnRefresh').on('click', '#admptk_dash_btnRefresh', function() {
         var k = $('#admptk_dash_filterKategori').val();
         if (k !== "" && k != null) admptk_dash_loadDataKategori(k, true);
@@ -365,9 +366,11 @@ function admptk_dash_loadDataKategori(idKategori, forceRefresh) {
     var btn = $('#admptk_dash_btnRefresh'); btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin text-maroon"></i>');
     $('#admptk_dash_filterKategori, #admptk_dash_filterTahun, #admptk_dash_filterPeriode').prop('disabled', true);
 
-    var isDashVisible = $('#admptk_dash_dashboardState').is(':visible');
-    if (!isDashVisible) { $('#admptk_dash_dashboardState').hide(); SultanUI.showLoading('#admptk_dash_loadingState', 'Menyinkronkan data dasbor ' + mapData.namaKategori + '...'); }
-    else { var ov = '<div class="card-loading-overlay d-flex align-items-center justify-content-center" style="position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,0.7);z-index:10;border-radius:16px;"><i class="fas fa-spinner fa-spin fa-2x text-maroon"></i></div>'; $('.card-sultan').css('position','relative').append(ov); }
+    // Selalu tampilkan overlay di atas card tanpa menyembunyikan dashboard
+    $('#admptk_dash_dashboardState').show();
+    $('.card-loading-overlay').remove(); // bersihkan overlay yang lama
+    var ov = '<div class="card-loading-overlay d-flex align-items-center justify-content-center" style="position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,0.6);z-index:10;border-radius:16px;"><i class="fas fa-spinner fa-spin fa-2x text-maroon"></i></div>';
+    $('.card-sultan, .sultan-metric-card').css('position','relative').append(ov);
 
     var jenjang = $('#admptk_dash_filterJenjang').val() || "SD";
     var npsnFilter = ADMPTK_DASH_IS_ADMIN ? "" : ADMPTK_DASH_USER_NPSN;
