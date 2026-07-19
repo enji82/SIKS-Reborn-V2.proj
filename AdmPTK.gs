@@ -645,9 +645,9 @@ function getAdmPtkDashboardData(idKategori, npsnFilter, jenjangFilter, forceRefr
           }
         }
         if (isUploaded) {
-          arrRekap.push({ id: p.id, unit: p.nama, nip: p.nip, npsn: p.npsn, jenjang: p.jenjang, status_peg: p.status_peg, tugas: p.tugas, tahun: pObj.tahun, periode: pObj.periode, jml: 1, sudah: 1, belum: 0, sekolah: p.unit });
+          arrRekap.push({ id: p.id, unit: p.nama, nip: p.nip, npsn: p.npsn, jenjang: p.jenjang, status_peg: p.status_peg, tugas: p.tugas, tahun: pObj.tahun, periode: pObj.periode, jml: 1, sudah: 1, belum: 0, sekolah: p.unit, status_dokumen: status || "" });
         } else {
-          arrRekap.push({ id: p.id, unit: p.nama, nip: p.nip, npsn: p.npsn, jenjang: p.jenjang, status_peg: p.status_peg, tugas: p.tugas, tahun: pObj.tahun, periode: pObj.periode, jml: 1, sudah: 0, belum: 1, sekolah: p.unit });
+          arrRekap.push({ id: p.id, unit: p.nama, nip: p.nip, npsn: p.npsn, jenjang: p.jenjang, status_peg: p.status_peg, tugas: p.tugas, tahun: pObj.tahun, periode: pObj.periode, jml: 1, sudah: 0, belum: 1, sekolah: p.unit, status_dokumen: "" });
           arrBelum.push({ id: p.id, unit: p.nama, nip: p.nip, npsn: p.npsn, jenjang: p.jenjang, status_peg: p.status_peg, tugas: p.tugas, tahun: pObj.tahun, periode: pObj.periode, sekolah: p.unit });
         }
       });
