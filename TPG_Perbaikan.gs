@@ -298,6 +298,9 @@ function tpg_updatePerbaikan(formData) {
     
     // Status kembali ke diproses jika diedit user
     sheet.getRange(rowIndex, 14).setValue("Diproses");
+    sheet.getRange(rowIndex, 15).setValue(""); // clear verifikator
+    sheet.getRange(rowIndex, 16).setValue(""); // clear waktu verif
+    sheet.getRange(rowIndex, 17).setValue(""); // clear keterangan
     sheet.getRange(rowIndex, 20).setValue(currentUser); // edit oleh
     sheet.getRange(rowIndex, 21).setValue(now); // waktu edit
     
@@ -317,9 +320,9 @@ function tpg_updatePerbaikan(formData) {
       nilaiSalur: formData.nilaiSalur,
       dokumenUrl: docUrl,
       status: "Diproses",
-      verifikasiOleh: data[rowIndex - 1][14],
-      waktuVerifikasi: data[rowIndex - 1][15] ? Utilities.formatDate(new Date(data[rowIndex - 1][15]), tz, "yyyy-MM-dd'T'HH:mm:ss") : "",
-      keterangan: data[rowIndex - 1][16],
+      verifikasiOleh: "",
+      waktuVerifikasi: "",
+      keterangan: "",
       uploadOleh: data[rowIndex - 1][17],
       waktuUpload: data[rowIndex - 1][18] ? Utilities.formatDate(new Date(data[rowIndex - 1][18]), tz, "yyyy-MM-dd'T'HH:mm:ss") : "",
       editOleh: currentUser,
