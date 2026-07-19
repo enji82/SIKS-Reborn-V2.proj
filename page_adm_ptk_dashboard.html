@@ -353,6 +353,7 @@ function admptk_dash_initMasterAccess() {
 
 function admptk_dash_loadDataKategori(idKategori, forceRefresh) {
     if (ADMPTK_DASH_PENDING_REQ > 0) return;
+    ADMPTK_DASH_TAHUN_DEFAULTED = false;
     ADMPTK_DASH_PENDING_REQ = 1;
     forceRefresh = !!forceRefresh;
 
@@ -420,6 +421,14 @@ function admptk_dash_initDropdownSekolah() {
     if (curVal && unique[curVal]) select.val(curVal);
 }
 
+function admptk_dash_getTahunAjaranSaatIni() {
+    var now = new Date();
+    var currentYear = now.getFullYear();
+    var currentMonth = now.getMonth(); // 0-11
+    var startYear = (currentMonth >= 6) ? currentYear : currentYear - 1;
+    return startYear + '/' + (startYear + 1);
+}
+
 function admptk_dash_initDropdownTahun() {
     var uniqueTahun = new Set(); var uniquePeriode = new Set();
     ADMPTK_DASH_CACHE_REKAP.concat(ADMPTK_DASH_CACHE_BELUM).forEach(function(r) {
@@ -432,8 +441,20 @@ function admptk_dash_initDropdownTahun() {
     selPeriode.empty().append('<option value="SEMUA">- Semua Periode -</option>');
     var sortedTahun = Array.from(uniqueTahun).sort(function(a, b) { var na = parseInt(a, 10), nb = parseInt(b, 10); return !isNaN(na) && !isNaN(nb) ? nb - na : String(b).localeCompare(String(a)); });
     sortedTahun.forEach(function(t) { selTahun.append('<option value="' + admptk_dash_esc(t) + '">' + admptk_dash_esc(t) + '</option>'); });
-    if (!ADMPTK_DASH_TAHUN_DEFAULTED && sortedTahun.length > 0) { selTahun.val(sortedTahun[0]); ADMPTK_DASH_TAHUN_DEFAULTED = true; }
-    else if (curTahun && (curTahun === "SEMUA" || uniqueTahun.has(curTahun))) selTahun.val(curTahun);
+    
+    var tapelSaatIni = admptk_dash_getTahunAjaranSaatIni();
+    if (!ADMPTK_DASH_TAHUN_DEFAULTED) {
+        if (uniqueTahun.has(tapelSaatIni)) {
+            selTahun.val(tapelSaatIni);
+        } else if (sortedTahun.length > 0) {
+            selTahun.val(sortedTahun[0]);
+        }
+        ADMPTK_DASH_TAHUN_DEFAULTED = true;
+    }
+    else if (curTahun && (curTahun === "SEMUA" || uniqueTahun.has(curTahun))) {
+        selTahun.val(curTahun);
+    }
+    
     var sortedPeriode = Array.from(uniquePeriode).sort(function(a, b) { return String(b).localeCompare(String(a)); });
     sortedPeriode.forEach(function(p) { selPeriode.append('<option value="' + admptk_dash_esc(p) + '">' + admptk_dash_esc(p) + '</option>'); });
     var jP = ADMPTK_DASH_JENIS_PERIODE;

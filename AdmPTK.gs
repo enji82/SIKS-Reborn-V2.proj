@@ -567,38 +567,38 @@ function getAdmPtkDashboardData(idKategori, npsnFilter, jenjangFilter, forceRefr
     var dataDoc = shDoc ? shDoc.getDataRange().getDisplayValues() : [];
 
     // Bangun set periode
-    var curYear = new Date().getFullYear();
-    var curTapel = curYear + "/" + (curYear + 1);
-    var prevTapel = (curYear - 1) + "/" + curYear;
+    // Dapatkan Tahun Pelajaran saat ini secara dinamis berdasarkan bulan
+    var curDate = new Date();
+    var curMonth = curDate.getMonth(); // 0 = Jan, 6 = Jul
+    var baseYear = curDate.getFullYear();
+    var curYearVal = (curMonth >= 6) ? baseYear : (baseYear - 1);
+    
+    // Tapel berjalan
+    var tapel0 = curYearVal + "/" + (curYearVal + 1);      // misal 2026/2027
+    var tapel1 = (curYearVal - 1) + "/" + curYearVal;      // misal 2025/2026
+    var tapel2 = (curYearVal - 2) + "/" + (curYearVal - 1);  // misal 2024/2025
     var periodsSet = new Set();
 
     if (jPeriode === "BULANAN") {
       var bulans = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
       bulans.forEach(function(b) {
-        periodsSet.add(JSON.stringify({tahun: String(curYear), periode: b}));
-        periodsSet.add(JSON.stringify({tahun: String(curYear - 1), periode: b}));
+        periodsSet.add(JSON.stringify({tahun: tapel0, periode: b}));
+        periodsSet.add(JSON.stringify({tahun: tapel1, periode: b}));
       });
-    } else if (jPeriode === "SEMESTER_TAPEL") {
-      periodsSet.add(JSON.stringify({tahun: curTapel, periode: "Semester 1"}));
-      periodsSet.add(JSON.stringify({tahun: curTapel, periode: "Semester 2"}));
-      periodsSet.add(JSON.stringify({tahun: prevTapel, periode: "Semester 1"}));
-      periodsSet.add(JSON.stringify({tahun: prevTapel, periode: "Semester 2"}));
-    } else if (jPeriode === "SEMESTER_KALENDER") {
-      periodsSet.add(JSON.stringify({tahun: String(curYear), periode: "Semester 1"}));
-      periodsSet.add(JSON.stringify({tahun: String(curYear), periode: "Semester 2"}));
-      periodsSet.add(JSON.stringify({tahun: String(curYear - 1), periode: "Semester 1"}));
-      periodsSet.add(JSON.stringify({tahun: String(curYear - 1), periode: "Semester 2"}));
+    } else if (jPeriode === "SEMESTER_TAPEL" || jPeriode === "SEMESTER_KALENDER" || jPeriode === "SEMESTER") {
+      periodsSet.add(JSON.stringify({tahun: tapel0, periode: "Semester 1"}));
+      periodsSet.add(JSON.stringify({tahun: tapel0, periode: "Semester 2"}));
+      periodsSet.add(JSON.stringify({tahun: tapel1, periode: "Semester 1"}));
+      periodsSet.add(JSON.stringify({tahun: tapel1, periode: "Semester 2"}));
     } else if (jPeriode === "TRIWULAN") {
       [1,2,3,4].forEach(function(t) {
-        periodsSet.add(JSON.stringify({tahun: String(curYear), periode: "Triwulan " + t}));
-        periodsSet.add(JSON.stringify({tahun: String(curYear - 1), periode: "Triwulan " + t}));
+        periodsSet.add(JSON.stringify({tahun: tapel0, periode: "Triwulan " + t}));
+        periodsSet.add(JSON.stringify({tahun: tapel1, periode: "Triwulan " + t}));
       });
-    } else if (jPeriode === "PERMANEN") {
-      periodsSet.add(JSON.stringify({tahun: String(curYear), periode: "-"}));
     } else {
-      periodsSet.add(JSON.stringify({tahun: String(curYear), periode: "-"}));
-      periodsSet.add(JSON.stringify({tahun: String(curYear - 1), periode: "-"}));
-      periodsSet.add(JSON.stringify({tahun: String(curYear - 2), periode: "-"}));
+      periodsSet.add(JSON.stringify({tahun: tapel0, periode: "-"}));
+      periodsSet.add(JSON.stringify({tahun: tapel1, periode: "-"}));
+      periodsSet.add(JSON.stringify({tahun: tapel2, periode: "-"}));
     }
 
     // Map dokumen per PTK per periode
