@@ -295,6 +295,7 @@ var ADMPTK_DASH_PENDING_REQ = 0;
 var ADMPTK_DASH_IS_ADMIN = false;
 var ADMPTK_DASH_USER_NPSN = "";
 var ADMPTK_DASH_TAHUN_DEFAULTED = false;
+var ADMPTK_DASH_PERIODE_DEFAULTED = false;
 var ADMPTK_DASH_JENIS_PERIODE = "TAHUNAN";
 
 $(document).ready(function() {
@@ -354,6 +355,7 @@ function admptk_dash_initMasterAccess() {
 function admptk_dash_loadDataKategori(idKategori, forceRefresh) {
     if (ADMPTK_DASH_PENDING_REQ > 0) return;
     ADMPTK_DASH_TAHUN_DEFAULTED = false;
+    ADMPTK_DASH_PERIODE_DEFAULTED = false;
     ADMPTK_DASH_PENDING_REQ = 1;
     forceRefresh = !!forceRefresh;
 
@@ -429,6 +431,27 @@ function admptk_dash_getTahunAjaranSaatIni() {
     return startYear + '/' + (startYear + 1);
 }
 
+function admptk_dash_getDefaultPeriodeSaatIni(jenisPeriode) {
+    var now = new Date();
+    var month = now.getMonth(); // 0 = Jan, 6 = Jul, 11 = Des
+    var jP = String(jenisPeriode).toUpperCase();
+    
+    if (jP.includes("BULANAN") || jP === "BULAN") {
+        var bulans = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+        return bulans[month];
+    }
+    if (jP.includes("SEMESTER")) {
+        // Juli (6) sampai Desember (11) adalah Semester 1
+        // Januari (0) sampai Juni (5) adalah Semester 2
+        return (month >= 6) ? "Semester 1" : "Semester 2";
+    }
+    if (jP.includes("TRIWULAN")) {
+        var triwulan = Math.floor(month / 3) + 1;
+        return "Triwulan " + triwulan;
+    }
+    return "SEMUA";
+}
+
 function admptk_dash_initDropdownTahun() {
     var uniqueTahun = new Set(); var uniquePeriode = new Set();
     ADMPTK_DASH_CACHE_REKAP.concat(ADMPTK_DASH_CACHE_BELUM).forEach(function(r) {
@@ -458,8 +481,23 @@ function admptk_dash_initDropdownTahun() {
     var sortedPeriode = Array.from(uniquePeriode).sort(function(a, b) { return String(b).localeCompare(String(a)); });
     sortedPeriode.forEach(function(p) { selPeriode.append('<option value="' + admptk_dash_esc(p) + '">' + admptk_dash_esc(p) + '</option>'); });
     var jP = ADMPTK_DASH_JENIS_PERIODE;
-    if (jP === "TAHUNAN" || jP === "PERMANEN" || jP === "TMT") { $('#admptk_dash_filterPeriodeContainer').hide(); }
-    else { $('#admptk_dash_filterPeriodeContainer').show(); if (sortedPeriode.length > 0 && (curPeriode === "SEMUA" || !uniquePeriode.has(curPeriode))) selPeriode.val(sortedPeriode[0]); }
+    if (jP === "TAHUNAN" || jP === "PERMANEN" || jP === "TMT") { 
+        $('#admptk_dash_filterPeriodeContainer').hide(); 
+    } else { 
+        $('#admptk_dash_filterPeriodeContainer').show(); 
+        var defaultPeriode = admptk_dash_getDefaultPeriodeSaatIni(jP);
+        if (!ADMPTK_DASH_PERIODE_DEFAULTED) {
+            if (uniquePeriode.has(defaultPeriode)) {
+                selPeriode.val(defaultPeriode);
+            } else if (sortedPeriode.length > 0) {
+                selPeriode.val(sortedPeriode[0]);
+            }
+            ADMPTK_DASH_PERIODE_DEFAULTED = true;
+        }
+        else if (curPeriode && (curPeriode === "SEMUA" || uniquePeriode.has(curPeriode))) {
+            selPeriode.val(curPeriode);
+        }
+    }
 }
 
 function admptk_dash_terapkanFilterLokal() {
