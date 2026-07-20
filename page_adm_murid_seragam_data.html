@@ -1,3 +1,28 @@
+<style>
+  .badge-ukuran {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: bold;
+    font-size: 11px;
+    display: inline-block;
+  }
+  /* Light Mode Styles */
+  .badge-ukuran-s { background-color: #d1e7dd; color: #0f5132; }
+  .badge-ukuran-m { background-color: #cff4fc; color: #055160; }
+  .badge-ukuran-l { background-color: #fff3cd; color: #664d03; }
+  .badge-ukuran-xl { background-color: #f8d7da; color: #842029; }
+  .badge-ukuran-xxl { background-color: #e2e3e5; color: #41464b; }
+  .badge-ukuran-default { background-color: #f8f9fa; color: #6c757d; }
+
+  /* Dark Mode Styles */
+  .dark-mode .badge-ukuran-s { background-color: #0f5132; color: #4ade80; }
+  .dark-mode .badge-ukuran-m { background-color: #055160; color: #38bdf8; }
+  .dark-mode .badge-ukuran-l { background-color: #664d03; color: #fbbf24; }
+  .dark-mode .badge-ukuran-xl { background-color: #842029; color: #f87171; }
+  .dark-mode .badge-ukuran-xxl { background-color: #212529; color: #adb5bd; }
+  .dark-mode .badge-ukuran-default { background-color: #343a40; color: #6b7280; }
+</style>
+
 <section class="content sultan-page-transition">
   <div class="container-fluid">
     <div class="row justify-content-center">
@@ -43,7 +68,7 @@
                     <tr>
                       <th class="text-center align-middle">NO</th>
                       <th class="text-left align-middle" style="min-width: 250px;">NAMA SEKOLAH</th>
-                      <th class="text-left align-middle" style="min-width: 200px;">NAMA MURID</th>
+                      <th class="text-left align-middle" style="min-width: 250px;">NAMA MURID</th>
                       <th class="text-center align-middle">GENDER</th>
                       <th class="text-center align-middle">UKURAN</th>
                       <th class="text-left align-middle" style="min-width: 320px; white-space: normal;">ALAMAT</th>
@@ -67,6 +92,8 @@
     var IS_ADMIN = false;
     var listSekolah = [];
     var availableYears = [];
+    var SERAGAMDATA_TABEL_INSTANCE = null;
+    var SERAGAMDATA_CACHE_DATA = [];
 
     $(document).ready(function() {
       // Deteksi Hak Akses
@@ -120,8 +147,6 @@
       if (IS_ADMIN) {
         $('#seragamdata_filterSekolah').html('<option value="SEMUA">- Semua Sekolah -</option>');
       }
-
-      var SERAGAMDATA_CACHE_DATA = [];
 
       // Bind Listeners
       $('#seragamdata_filterTahun, #seragamdata_filterTahap').on('change', fetchTableData);
@@ -199,43 +224,65 @@
 
     function getUkuranBadgeClass(sz) {
       var s = String(sz || "").toUpperCase().trim();
-      if (s === 'S') return 'badge-success';
-      if (s === 'M') return 'badge-info';
-      if (s === 'L') return 'badge-warning text-dark';
-      if (s === 'XL') return 'badge-danger';
-      if (s === 'XXL' || s === '3XL' || s === 'XXXL') return 'badge-dark';
-      return 'badge-secondary';
+      if (s === 'S') return 'badge-ukuran-s';
+      if (s === 'M') return 'badge-ukuran-m';
+      if (s === 'L') return 'badge-ukuran-l';
+      if (s === 'XL') return 'badge-ukuran-xl';
+      if (s === 'XXL' || s === '3XL' || s === 'XXXL') return 'badge-ukuran-xxl';
+      return 'badge-ukuran-default';
     }
 
     function renderTable(data) {
-      var tbody = $('#seragamdata_tabelUtama tbody');
-      tbody.empty();
-
-      if (data.length === 0) {
-        tbody.append(`<tr><td colspan="7" class="text-center text-muted p-4">Tidak ada data penerima seragam gratis pada tahun/tahap ini.</td></tr>`);
-        return;
+      if (!SERAGAMDATA_TABEL_INSTANCE) {
+        SERAGAMDATA_TABEL_INSTANCE = SultanTable.init('#seragamdata_tabelUtama', {
+          destroy: true,
+          ordering: false,
+          pageLength: 10,
+          autoWidth: false,
+          deferRender: true,
+          responsive: false,
+          dom: "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
+               "<'row'<'col-sm-12'<'table-responsive sultan-scroll'tr>>>" +
+               "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+          columnDefs: [
+            { targets: 0, width: "1%", className: "text-center align-middle font-weight-bold" },
+            { targets: [1, 2], className: "text-left align-middle text-wrap" },
+            { targets: 3, className: "text-center align-middle font-weight-bold text-uppercase" },
+            { targets: 4, className: "text-center align-middle" },
+            { targets: [5, 6], className: "text-left align-middle text-wrap" }
+          ],
+          language: {
+            url: "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json",
+            emptyTable: "Tidak ada data penerima seragam gratis pada tahun/tahap ini."
+          }
+        });
       }
 
+      var dtArray = [];
       data.forEach(function(row, idx) {
         var sizeClass = getUkuranBadgeClass(row.ukuran_seragam);
-        tbody.append(`
-          <tr>
-            <td class="text-center align-middle font-weight-bold">${idx + 1}</td>
-            <td class="text-left align-middle text-wrap">
-              <div class="font-weight-bold text-maroon" style="font-size: 13px; line-height: 1.2;">${row.nama_sekolah}</div>
-              <div class="text-muted small font-weight-normal">${row.npsn}</div>
-            </td>
-            <td class="text-left align-middle text-wrap">
-              <div class="font-weight-bold text-dark text-uppercase" style="font-size: 13px; line-height: 1.2;">${row.nama_murid}</div>
-              <div class="text-muted small font-weight-normal">${row.nisn || '-'}</div>
-            </td>
-            <td class="text-center align-middle font-weight-bold text-uppercase">${row.jenis_kelamin}</td>
-            <td class="text-center align-middle"><span class="badge ${sizeClass} px-2 py-1 font-weight-bold" style="font-size: 12px;">${row.ukuran_seragam}</span></td>
-            <td class="text-left align-middle text-wrap font-weight-normal" style="max-width: 320px; white-space: normal;">${row.alamat}</td>
-            <td class="text-left align-middle text-uppercase text-wrap font-weight-bold" style="max-width: 240px; white-space: normal;">${row.nama_wali}</td>
-          </tr>
-        `);
+        var sekolahCell = `
+          <div class="font-weight-bold text-maroon" style="font-size: 13px; line-height: 1.2;">${row.nama_sekolah}</div>
+          <div class="text-muted small font-weight-normal">${row.npsn}</div>
+        `;
+        var muridCell = `
+          <div class="font-weight-bold text-dark text-uppercase" style="font-size: 13px; line-height: 1.2;">${row.nama_murid}</div>
+          <div class="text-muted small font-weight-normal">${row.nisn || '-'}</div>
+        `;
+        var sizeCell = `<span class="badge-ukuran ${sizeClass}">${row.ukuran_seragam}</span>`;
+        
+        dtArray.push([
+          idx + 1,
+          sekolahCell,
+          muridCell,
+          row.jenis_kelamin,
+          sizeCell,
+          row.alamat,
+          row.nama_wali
+        ]);
       });
+
+      SERAGAMDATA_TABEL_INSTANCE.clear().rows.add(dtArray).draw(false);
     }
 
   })();
