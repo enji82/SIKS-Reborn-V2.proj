@@ -355,15 +355,8 @@
         // VAKSIN KLIK CATATAN: Decode Base64 Data Pesan
         $(document).off('click', '.lupa-btn-catatan').on('click', '.lupa-btn-catatan', function () {
             var encodedMsg = $(this).attr('data-pesan');
-            if (encodedMsg) {
-                try {
-                    lupa_lihatCatatanSultan(atob(encodedMsg));
-                } catch (e) {
-                    lupa_lihatCatatanSultan(encodedMsg);
-                }
-            } else {
-                lupa_lihatCatatanSultan("Tidak ada catatan.");
-            }
+            var decoded = lupa_safelyDecode(encodedMsg);
+            lupa_lihatCatatanSultan(decoded || "Tidak ada catatan.");
         });
 
         var thn = new Date().getFullYear();
@@ -1069,6 +1062,29 @@
 
     function lupa_lihatCatatanSultan(pesan) {
         Sultan.alert('info', 'Catatan Verifikasi', pesan);
+    }
+
+    function lupa_safelyDecode(str) {
+        if (!str) return "";
+        var current = String(str).trim();
+        for (var i = 0; i < 2; i++) {
+            var cleaned = current.replace(/\s/g, "");
+            if (cleaned.length >= 4 && cleaned.length % 4 === 0 && /^[A-Za-z0-9+/=]+$/.test(cleaned)) {
+                try {
+                    var decoded = atob(cleaned);
+                    if (/^[\x20-\x7E\r\n\t]*$/.test(decoded)) {
+                        current = decoded;
+                    } else {
+                        break;
+                    }
+                } catch (e) {
+                    break;
+                }
+            } else {
+                break;
+            }
+        }
+        return current;
     }
 
     function lupa_toProperCase(str) {
