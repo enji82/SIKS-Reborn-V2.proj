@@ -54,6 +54,8 @@
                       <th class="text-center align-middle">AKSI</th>
                       <th class="text-center align-middle">TAHUN</th>
                       <th class="text-left align-middle" style="min-width: 250px;">NAMA SEKOLAH</th>
+                      <th class="text-center align-middle">TAHAP</th>
+                      <th class="text-left align-middle">JENIS SERAGAM</th>
                       <th class="text-center align-middle" style="min-width: 150px;">SURAT PERNYATAAN (PDF)</th>
                       <th class="text-center align-middle" style="min-width: 150px;">DOKUMENTASI (FOTO)</th>
                       <th class="text-left align-middle">WAKTU UNGGAH</th>
@@ -82,16 +84,48 @@
     <input type="hidden" id="seragamlapor_url_file_dok" name="url_file_dok">
     
     <div class="modal-body modal-body-sultan p-4">
+      <!-- BARIS 1: Sekolah dan Tahun Laporan -->
       <div class="row">
-        <div class="col-12 mb-3" id="seragamlapor_groupSekolah">
+        <div class="col-md-8 col-12 mb-3" id="seragamlapor_groupSekolah">
           <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Sekolah <span class="text-danger">*</span></label>
           <select class="form-control form-control-sultan border-maroon font-weight-bold" id="seragamlapor_in_sekolah" required></select>
           <input type="hidden" id="seragamlapor_in_sekolah_hidden">
         </div>
-        <div class="col-12 mb-3">
+        <div class="col-md-4 col-12 mb-3" id="seragamlapor_groupTahun">
           <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Tahun Laporan <span class="text-danger">*</span></label>
           <select class="form-control form-control-sultan border-maroon font-weight-bold" id="seragamlapor_in_tahun" required></select>
         </div>
+      </div>
+
+      <!-- BARIS 2: Tahap Laporan dan Jenis Seragam -->
+      <div class="row">
+        <div class="col-md-6 col-12 mb-3">
+          <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Tahap Laporan <span class="text-danger">*</span></label>
+          <select class="form-control form-control-sultan border-maroon font-weight-bold" id="seragamlapor_in_tahap" required>
+            <option value="Tahap 1">Tahap 1</option>
+            <option value="Tahap 2">Tahap 2</option>
+            <option value="Tahap 3">Tahap 3</option>
+            <option value="Tahap 4">Tahap 4</option>
+            <option value="Tahap 5">Tahap 5</option>
+          </select>
+        </div>
+        <div class="col-md-6 col-12 mb-3">
+          <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Jenis Seragam <span class="text-danger">*</span></label>
+          <div class="mt-2">
+            <div class="custom-control custom-checkbox custom-control-inline">
+              <input type="checkbox" class="custom-control-input" id="seragamlapor_cb_merah" value="Merah Putih">
+              <label class="custom-control-label font-weight-bold text-dark" for="seragamlapor_cb_merah">Merah Putih</label>
+            </div>
+            <div class="custom-control custom-checkbox custom-control-inline">
+              <input type="checkbox" class="custom-control-input" id="seragamlapor_cb_pramuka" value="Pramuka">
+              <label class="custom-control-label font-weight-bold text-dark" for="seragamlapor_cb_pramuka">Pramuka</label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BARIS 3: Berkas-Berkas -->
+      <div class="row">
         <div class="col-12 mb-3">
           <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Berkas Surat Pernyataan (PDF, Max 1MB) <span class="text-danger">*</span></label>
           <div class="custom-file">
@@ -110,6 +144,7 @@
         </div>
       </div>
     </div>
+    
     <div class="modal-footer modal-footer-tambah-edit justify-content-between">
       <button type="button" class="modal-btn-batal" data-dismiss="modal">
         <i class="fas fa-times mr-2"></i>BATAL
@@ -236,20 +271,23 @@
         .withSuccessHandler(function(schoolRes) {
           listSekolah = schoolRes || [];
           
-          // Populate form sekolah list
+          // Populate form sekolah list (Without NPSN in display text)
           var inSekolahOpts = '<option value="">- Pilih Sekolah -</option>';
           listSekolah.forEach(function(s) {
             if (s.jenjang === "SD") {
-              inSekolahOpts += `<option value="${s.npsn}" data-nama="${s.nama}">${s.nama} (${s.npsn})</option>`;
+              inSekolahOpts += `<option value="${s.npsn}" data-nama="${s.nama}">${s.nama}</option>`;
             }
           });
           
           if (IS_ADMIN) {
             $('#seragamlapor_in_sekolah').html(inSekolahOpts);
+            $('#seragamlapor_groupSekolah').show();
+            $('#seragamlapor_groupTahun').removeClass('col-12').addClass('col-md-4');
           } else {
             var userNpsn = userLogin.npsn || userLogin.username || "";
             $('#seragamlapor_in_sekolah_hidden').val(userNpsn);
             $('#seragamlapor_groupSekolah').hide();
+            $('#seragamlapor_groupTahun').removeClass('col-md-4').addClass('col-12');
           }
 
           // Enable upload and refresh button
@@ -263,7 +301,7 @@
 
     function fetchLaporanData() {
       var tahun = $('#seragamlapor_filterTahun').val();
-      if (!tahun) return; // Wait until populated
+      if (!tahun) return;
       
       var npsnQuery = IS_ADMIN ? "SEMUA" : (userLogin.npsn || userLogin.username || "");
 
@@ -344,8 +382,10 @@
             { targets: 0, width: "1%", className: "text-center align-middle" },
             { targets: 1, width: "1%", className: "text-center align-middle font-weight-bold" },
             { targets: 2, className: "text-left align-middle text-wrap" },
-            { targets: [3, 4], width: "1%", className: "text-center align-middle text-nowrap" },
-            { targets: [5, 6], className: "text-left align-middle text-wrap" }
+            { targets: 3, width: "1%", className: "text-center align-middle font-weight-bold" },
+            { targets: 4, className: "text-left align-middle text-wrap font-weight-normal" },
+            { targets: [5, 6], width: "1%", className: "text-center align-middle text-nowrap" },
+            { targets: [7, 8], className: "text-left align-middle text-wrap" }
           ],
           language: {
             url: "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json",
@@ -382,6 +422,8 @@
           btnAksi,
           row.tahun,
           sekolahCell,
+          row.tahap || "Tahap 1",
+          row.jenis_seragam || "Merah Putih",
           linkSp,
           linkDok,
           row.tgl_upload,
@@ -403,6 +445,11 @@
       $('#seragamlapor_lbl_sp').text('');
       $('#seragamlapor_lbl_dok').text('');
       
+      // Reset checkboxes & select
+      $('#seragamlapor_in_tahap').val('Tahap 1');
+      $('#seragamlapor_cb_merah').prop('checked', false);
+      $('#seragamlapor_cb_pramuka').prop('checked', false);
+      
       // Reset custom label values
       $('#seragamlapor_formLaporan .custom-file-label').removeClass("selected font-weight-bold").css('color', '').text('Pilih berkas...');
       
@@ -412,7 +459,7 @@
       // Inject to global modal
       $('#global_modalFormSize').removeClass('modal-xl modal-md').addClass('modal-lg');
       $('#global_modalFormHeader').removeClass('modal-header-sultan-primary modal-header-sultan-warning modal-header-sultan-danger modal-header-sultan-success modal-header-sultan-info modal-header-sultan-dark modal-header-edit modal-header-tambah-edit modal-header-hapus').addClass('modal-header-tambah-edit');
-      $('#global_modalFormTitle').html('<i class="fas fa-plus-circle mr-3 shadow-sm"></i> UNGGAH LAPORAN PENERIMAAAN');
+      $('#global_modalFormTitle').html('<i class="fas fa-plus-circle mr-3 shadow-sm"></i> UNGGAH LAPORAN PENERIMAAN');
       $('#global_modalFormBody, #global_modalFormFooter').hide();
       
       // Append form
@@ -437,6 +484,12 @@
       $('#seragamlapor_in_sekolah').val(row.npsn).prop('disabled', true);
       $('#seragamlapor_in_tahun').val(row.tahun).prop('disabled', true);
       
+      // Populate new inputs
+      $('#seragamlapor_in_tahap').val(row.tahap || 'Tahap 1');
+      var jenis = row.jenis_seragam || "";
+      $('#seragamlapor_cb_merah').prop('checked', jenis.includes("Merah Putih"));
+      $('#seragamlapor_cb_pramuka').prop('checked', jenis.includes("Pramuka"));
+      
       $('#seragamlapor_lbl_sp').html(row.nama_file_sp ? `<i class="fas fa-file-pdf text-danger mr-1"></i> ${row.nama_file_sp}` : '');
       $('#seragamlapor_lbl_dok').html(row.nama_file_dok ? `<i class="fas fa-image text-info mr-1"></i> ${row.nama_file_dok}` : '');
       
@@ -445,7 +498,7 @@
       // Inject to global modal
       $('#global_modalFormSize').removeClass('modal-xl modal-md').addClass('modal-lg');
       $('#global_modalFormHeader').removeClass('modal-header-sultan-primary modal-header-sultan-warning modal-header-sultan-danger modal-header-sultan-success modal-header-sultan-info modal-header-sultan-dark modal-header-edit modal-header-tambah-edit modal-header-hapus').addClass('modal-header-tambah-edit');
-      $('#global_modalFormTitle').html('<i class="fas fa-edit mr-3 shadow-sm"></i> EDIT LAPORAN PENERIMAAAN');
+      $('#global_modalFormTitle').html('<i class="fas fa-edit mr-3 shadow-sm"></i> EDIT LAPORAN PENERIMAAN');
       $('#global_modalFormBody, #global_modalFormFooter').hide();
       
       // Append form
@@ -472,11 +525,22 @@
         if (!fileDok) { Sultan.notif.peringatan('Foto Dokumentasi wajib diunggah.'); return; }
       }
 
+      var selectedJenis = [];
+      if ($('#seragamlapor_cb_merah').is(':checked')) selectedJenis.push("Merah Putih");
+      if ($('#seragamlapor_cb_pramuka').is(':checked')) selectedJenis.push("Pramuka");
+      
+      if (selectedJenis.length === 0) {
+        Sultan.notif.peringatan('Jenis Seragam wajib dipilih minimal satu.');
+        return;
+      }
+
       var payload = {
         rowId: rowId,
         npsn: IS_ADMIN ? $('#seragamlapor_in_sekolah').val() : $('#seragamlapor_in_sekolah_hidden').val(),
         nama_sekolah: IS_ADMIN ? $('#seragamlapor_in_sekolah option:selected').attr('data-nama') : (userLogin.unit || "Sekolah"),
         tahun: $('#seragamlapor_in_tahun').val(),
+        tahap: $('#seragamlapor_in_tahap').val(),
+        jenis_seragam: selectedJenis.join(', '),
         id_file_sp: $('#seragamlapor_id_file_sp').val(),
         url_file_sp: $('#seragamlapor_url_file_sp').val(),
         id_file_dok: $('#seragamlapor_id_file_dok').val(),

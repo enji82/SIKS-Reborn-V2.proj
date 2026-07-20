@@ -297,7 +297,9 @@ function seragam_getLaporan(tahun, npsnFilter) {
           url_file_dok: values[i][7],
           id_file_dok: values[i][8],
           tgl_upload: values[i][9],
-          uploader: values[i][10]
+          uploader: values[i][10],
+          tahap: values[i][11] || "Tahap 1",
+          jenis_seragam: values[i][12] || "Merah Putih"
         });
       }
     }
@@ -346,18 +348,20 @@ function seragam_saveLaporan(payload) {
 
     if (isEdit) {
       var row = parseInt(payload.rowId);
-      sheet.getRange(row, 1, 1, 11).setValues([[
+      sheet.getRange(row, 1, 1, 13).setValues([[
         payload.npsn, payload.nama_sekolah, payload.tahun,
         payload.nama_file_sp, fileUrlSp, fileIdSp,
         payload.nama_file_dok, fileUrlDok, fileIdDok,
-        now, payload.user_login
+        now, payload.user_login,
+        payload.tahap, payload.jenis_seragam
       ]]);
     } else {
       sheet.appendRow([
         payload.npsn, payload.nama_sekolah, payload.tahun,
         payload.nama_file_sp, fileUrlSp, fileIdSp,
         payload.nama_file_dok, fileUrlDok, fileIdDok,
-        now, payload.user_login
+        now, payload.user_login,
+        payload.tahap, payload.jenis_seragam
       ]);
     }
 
