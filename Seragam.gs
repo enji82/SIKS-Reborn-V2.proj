@@ -509,3 +509,29 @@ function seragam_deleteBeritaAcara(rowId) {
     lock.releaseLock();
   }
 }
+
+/**
+ * Fetch schools list directly from Data_Sekolah sheet in USER_DB
+ */
+function seragam_getSekolahList() {
+  try {
+    var shSekolah = getSheet("USER_DB", "Data_Sekolah");
+    var sekolahData = shSekolah ? shSekolah.getDataRange().getDisplayValues() : [];
+    var schools = [];
+    for (var j = 1; j < sekolahData.length; j++) {
+      var rNpsn = String(sekolahData[j][0]).trim();
+      var rNama = String(sekolahData[j][2]).trim();
+      var rJenjang = String(sekolahData[j][1]).trim().toUpperCase();
+      if (rNpsn !== "") {
+        schools.push({ 
+          npsn: rNpsn, 
+          nama: rNama, 
+          jenjang: rJenjang 
+        });
+      }
+    }
+    return schools;
+  } catch (e) {
+    return [];
+  }
+}
