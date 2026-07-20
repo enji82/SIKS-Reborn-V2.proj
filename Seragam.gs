@@ -190,34 +190,20 @@ function seragam_deleteRecipient(tahun, tahap, rowId) {
 /**
  * Recipient aggregation per size and gender
  */
-function seragam_getRekap(tahun) {
+function seragam_getRekap(tahun, tahap) {
   try {
     var shSekolah = getSheet("USER_DB", "Data_Sekolah");
     var sekolahData = shSekolah ? shSekolah.getDataRange().getDisplayValues() : [];
     
-    var schools = [];
     var schoolMap = {};
     for (var j = 1; j < sekolahData.length; j++) {
-      var rNpsn = String(sekolahData[j][0]).trim();
-      var rJenjang = String(sekolahData[j][1]).trim().toUpperCase();
-      var rNama = String(sekolahData[j][2]).trim();
-      if (rJenjang === "SD") {
-        schools.push({ npsn: rNpsn, nama: rNama });
-        schoolMap[rNpsn] = rNama;
-      }
+      schoolMap[String(sekolahData[j][0]).trim()] = String(sekolahData[j][2]).trim();
     }
 
     var targetSizes = ["S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"];
     var matrix = {};
-    schools.forEach(function(s) {
-      matrix[s.npsn] = {};
-      targetSizes.forEach(function(sz) {
-        matrix[s.npsn][sz] = { L: 0, P: 0, JML: 0 };
-      });
-      matrix[s.npsn]["TOTAL"] = { L: 0, P: 0, JML: 0 };
-    });
 
-    var stages = ["Tahap 1", "Tahap 2", "Tambahan"];
+    var stages = (!tahap || tahap === "SEMUA") ? ["Tahap 1", "Tahap 2", "Tambahan"] : [tahap];
     stages.forEach(function(stg) {
       try {
         var sheetName = tahun + " " + stg;
@@ -227,6 +213,8 @@ function seragam_getRekap(tahun) {
         var values = sheet.getDataRange().getDisplayValues();
         for (var i = 1; i < values.length; i++) {
           var npsn = String(values[i][0]).trim();
+          if (!npsn) continue;
+          
           var jk = String(values[i][3]).trim().toUpperCase();
           var size = String(values[i][4]).trim().toUpperCase();
           
@@ -236,7 +224,6 @@ function seragam_getRekap(tahun) {
               matrix[npsn][sz] = { L: 0, P: 0, JML: 0 };
             });
             matrix[npsn]["TOTAL"] = { L: 0, P: 0, JML: 0 };
-            schoolMap[npsn] = npsn;
           }
 
           var genderKey = (jk === "L" || jk === "LAKI-LAKI" || jk === "LAKI - LAKI") ? "L" : "P";

@@ -1,3 +1,31 @@
+<style>
+  /* Custom table styling for Rekap */
+  .table-rekap-total-col {
+    background-color: rgba(128, 0, 0, 0.05) !important;
+    color: #800000 !important;
+  }
+  .dark-mode .table-rekap-total-col {
+    background-color: rgba(255, 138, 138, 0.05) !important;
+    color: #ff8a8a !important;
+  }
+  
+  .table-rekap-grand-total {
+    background-color: #800000 !important;
+    color: #ffffff !important;
+  }
+  .dark-mode .table-rekap-grand-total {
+    background-color: #ff8a8a !important;
+    color: #1e1e1e !important;
+  }
+
+  .table-rekap-total-cell {
+    background-color: rgba(0, 0, 0, 0.02) !important;
+  }
+  .dark-mode .table-rekap-total-cell {
+    background-color: rgba(255, 255, 255, 0.02) !important;
+  }
+</style>
+
 <section class="content sultan-page-transition">
   <div class="container-fluid">
     <div class="row justify-content-center">
@@ -16,7 +44,7 @@
               <div class="info-body">
                 <ul class="mb-0 pl-3 text-dark mt-2 sultan-list-info">
                   <li>Halaman ini menampilkan rekapitulasi penerimaan seragam gratis per sekolah berdasarkan ukuran dan jenis kelamin.</li>
-                  <li>Saringan berdasarkan **Tahun** akan menggabungkan data dari Tahap 1, Tahap 2, dan Tambahan secara otomatis.</li>
+                  <li>Data dihitung secara dinamis hanya untuk sekolah-sekolah yang terdaftar memiliki data penerima.</li>
                 </ul>
               </div>
             </div>
@@ -31,16 +59,16 @@
             <div id="seragamrekap_loadingState">
               <div class="sultan-loading-box">
                 <div class="sultan-spinner-icon"><i class="fas fa-circle-notch fa-spin"></i></div>
-                <h6 class="text-dark font-weight-bold mb-0">Menghubungkan ke Server...</h6>
+                <h6 class="text-dark font-weight-bold mb-0">Mengagregasikan rekapitulasi seragam...</h6>
               </div>
             </div>
 
             <div id="seragamrekap_tableState" style="display: none;">
               <div class="table-responsive sultan-scroll">
-                <table id="seragamrekap_tabelUtama" class="table table-bordered table-hover table-premium text-nowrap mb-0 w-100" style="font-size: 11px;">
+                <table id="seragamrekap_tabelUtama" class="table table-bordered table-hover table-premium table-sultan-compact text-nowrap mb-0 w-100">
                   <thead class="thead-sultan-premium text-uppercase font-weight-bold text-center">
                     <tr>
-                      <th rowspan="2" class="align-middle text-left" style="min-width: 180px;">NAMA SEKOLAH</th>
+                      <th rowspan="2" class="align-middle text-left col-sticky-left" style="min-width: 250px;">NAMA SEKOLAH</th>
                       <th colspan="3" class="align-middle">S</th>
                       <th colspan="3" class="align-middle">M</th>
                       <th colspan="3" class="align-middle">L</th>
@@ -49,22 +77,24 @@
                       <th colspan="3" class="align-middle">3XL</th>
                       <th colspan="3" class="align-middle">4XL</th>
                       <th colspan="3" class="align-middle">5XL</th>
-                      <th colspan="3" class="align-middle bg-light text-maroon">TOTAL</th>
+                      <th colspan="3" class="align-middle table-rekap-total-col">TOTAL</th>
                     </tr>
                     <tr>
-                      <th>L</th><th>P</th><th class="bg-light">JML</th>
-                      <th>L</th><th>P</th><th class="bg-light">JML</th>
-                      <th>L</th><th>P</th><th class="bg-light">JML</th>
-                      <th>L</th><th>P</th><th class="bg-light">JML</th>
-                      <th>L</th><th>P</th><th class="bg-light">JML</th>
-                      <th>L</th><th>P</th><th class="bg-light">JML</th>
-                      <th>L</th><th>P</th><th class="bg-light">JML</th>
-                      <th>L</th><th>P</th><th class="bg-light">JML</th>
-                      <th class="text-maroon">L</th><th class="text-maroon">P</th><th class="bg-maroon text-white">JML</th>
+                      <th>L</th><th>P</th><th class="table-rekap-total-cell">JML</th>
+                      <th>L</th><th>P</th><th class="table-rekap-total-cell">JML</th>
+                      <th>L</th><th>P</th><th class="table-rekap-total-cell">JML</th>
+                      <th>L</th><th>P</th><th class="table-rekap-total-cell">JML</th>
+                      <th>L</th><th>P</th><th class="table-rekap-total-cell">JML</th>
+                      <th>L</th><th>P</th><th class="table-rekap-total-cell">JML</th>
+                      <th>L</th><th>P</th><th class="table-rekap-total-cell">JML</th>
+                      <th>L</th><th>P</th><th class="table-rekap-total-cell">JML</th>
+                      <th class="font-weight-bold table-rekap-total-col">L</th>
+                      <th class="font-weight-bold table-rekap-total-col">P</th>
+                      <th class="font-weight-bold table-rekap-total-col">JML</th>
                     </tr>
                   </thead>
                   <tbody class="text-dark font-weight-bold text-center"></tbody>
-                  <tfoot class="bg-light font-weight-bold text-center text-maroon" style="font-size: 12px;"></tfoot>
+                  <tfoot class="font-weight-bold text-center text-maroon" style="font-size: 12px;"></tfoot>
                 </table>
               </div>
             </div>
@@ -79,6 +109,8 @@
 <script>
   (function() {
     var availableYears = [];
+    var SERAGAMREKAP_TABEL_INSTANCE = null;
+    var userLogin = typeof getSesiUser === 'function' ? getSesiUser() : {};
 
     $(document).ready(function() {
       // Load Years
@@ -102,20 +134,36 @@
 
     function renderFilterBar() {
       var filterTahunOpts = availableYears.map(function(y) { return `<option value="${y}">${y}</option>`; }).join('');
+      
       var filtersConfig = [
-        { id: "seragamrekap_filterTahun", value: availableYears[0], text: availableYears[0] }
+        { id: "seragamrekap_filterTahun", value: availableYears[0], text: availableYears[0] },
+        { id: "seragamrekap_filterTahap", value: "SEMUA", text: "Semua Tahap" }
       ];
 
       var extraButtons = `
         <div class="divider-vertical d-none d-md-block mx-2"></div>
-        <button class="sultan-btn-filter-action bg-success text-white font-weight-bold rounded-pill px-3 shadow-sm border-0" id="seragamrekap_btnExcel" type="button"><i class="fas fa-file-excel mr-1"></i> Ekspor Excel</button>
+        <button type="button" id="seragamrekap_btnSync" class="sultan-btn-refresh" title="Segarkan Data dari Server">
+          <i class="fas fa-sync-alt"></i>
+        </button>
+        <button class="sultan-btn-filter-action bg-success text-white ml-auto rounded-pill px-3 shadow-sm border-0" id="seragamrekap_btnExcel" type="button" title="Ekspor Excel">
+          <i class="fas fa-file-excel"></i>
+        </button>
       `;
 
       $('#seragamrekap_filterBarArea').html(SultanUI.renderFilterBar(filtersConfig, extraButtons));
+      
+      // Inject options
       $('#seragamrekap_filterTahun').html(filterTahunOpts);
+      $('#seragamrekap_filterTahap').html(`
+        <option value="SEMUA">- Semua Tahap -</option>
+        <option value="Tahap 1">Tahap 1</option>
+        <option value="Tahap 2">Tahap 2</option>
+        <option value="Tambahan">Tambahan</option>
+      `);
 
       // Listeners
-      $('#seragamrekap_filterTahun').on('change', fetchRekapData);
+      $('#seragamrekap_filterTahun, #seragamrekap_filterTahap').on('change', fetchRekapData);
+      $('#seragamrekap_btnSync').on('click', fetchRekapData);
       $('#seragamrekap_btnExcel').on('click', exportToExcel);
 
       // Fetch first time
@@ -124,6 +172,7 @@
 
     function fetchRekapData() {
       var tahun = $('#seragamrekap_filterTahun').val();
+      var tahap = $('#seragamrekap_filterTahap').val();
       SultanUI.showLoading('#seragamrekap_loadingState', 'Mengagregasikan rekapitulasi seragam...');
       $('#seragamrekap_tableState').hide();
 
@@ -138,20 +187,11 @@
             Sultan.notif.gagal('Gagal memuat rekap: ' + res.message);
           }
         })
-        .seragam_getRekap(tahun);
+        .seragam_getRekap(tahun, tahap);
     }
 
     function renderTable(data) {
-      var tbody = $('#seragamrekap_tabelUtama tbody');
-      var tfoot = $('#seragamrekap_tabelUtama tfoot');
-      tbody.empty();
-      tfoot.empty();
-
-      if (data.length === 0) {
-        tbody.append(`<tr><td colspan="28" class="text-center text-muted p-4">Tidak ada data untuk dihitung.</td></tr>`);
-        return;
-      }
-
+      var dtArray = [];
       var sizes = ["S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL", "TOTAL"];
       
       // Track column totals
@@ -161,8 +201,13 @@
       });
 
       data.forEach(function(row) {
-        var tr = $('<tr></tr>');
-        tr.append(`<td class="text-left font-weight-bold" style="white-space: normal;">${row.nama_sekolah}</td>`);
+        var rowData = [];
+        
+        var sekolahCell = `
+          <div class="font-weight-bold text-maroon text-left text-wrap" style="font-size: 13px; line-height: 1.2;">${row.nama_sekolah}</div>
+          <div class="text-muted text-left small font-weight-normal">${row.npsn}</div>
+        `;
+        rowData.push(sekolahCell);
 
         sizes.forEach(function(sz) {
           var vals = row.sizes[sz] || { L: 0, P: 0, JML: 0 };
@@ -177,18 +222,50 @@
           var tdJml = vals.JML > 0 ? vals.JML : '-';
 
           if (sz === "TOTAL") {
-            tr.append(`<td class="text-maroon">${tdL}</td><td class="text-maroon">${tdP}</td><td class="bg-maroon text-white">${tdJml}</td>`);
+            rowData.push(`<span class="text-maroon">${tdL}</span>`);
+            rowData.push(`<span class="text-maroon">${tdP}</span>`);
+            rowData.push(`<span class="badge badge-maroon text-white font-weight-bold px-2 py-1" style="font-size:12px;">${tdJml}</span>`);
           } else {
-            tr.append(`<td>${tdL}</td><td>${tdP}</td><td class="bg-light font-weight-bold">${tdJml}</td>`);
+            rowData.push(tdL);
+            rowData.push(tdP);
+            rowData.push(`<span class="font-weight-bold text-dark">${tdJml}</span>`);
           }
         });
 
-        tbody.append(tr);
+        dtArray.push(rowData);
       });
 
+      // Initialize DataTable if not exists
+      if (!SERAGAMREKAP_TABEL_INSTANCE) {
+        SERAGAMREKAP_TABEL_INSTANCE = SultanTable.init('#seragamrekap_tabelUtama', {
+          destroy: true,
+          ordering: false,
+          pageLength: 10,
+          autoWidth: false,
+          deferRender: true,
+          responsive: false,
+          dom: "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
+               "<'row'<'col-sm-12'<'table-responsive sultan-scroll'tr>>>" +
+               "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+          columnDefs: [
+            { targets: 0, className: "col-sticky-left align-middle text-left font-weight-bold" },
+            { targets: '_all', className: "text-center align-middle" }
+          ],
+          language: {
+            url: "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json",
+            emptyTable: "Tidak ada data rekapitulasi penerima seragam."
+          }
+        });
+      }
+
+      SERAGAMREKAP_TABEL_INSTANCE.clear().rows.add(dtArray).draw(false);
+
       // Render Footer (Grand Totals)
+      var tfoot = $('#seragamrekap_tabelUtama tfoot');
+      tfoot.empty();
+
       var tfootRow = $('<tr></tr>');
-      tfootRow.append(`<td class="text-left font-weight-bold text-maroon">JUMLAH TOTAL</td>`);
+      tfootRow.append(`<td class="text-left font-weight-bold text-maroon col-sticky-left">JUMLAH TOTAL</td>`);
 
       sizes.forEach(function(sz) {
         var tot = colTotals[sz];
@@ -197,7 +274,7 @@
         var JmlVal = tot.JML > 0 ? tot.JML : '0';
 
         if (sz === "TOTAL") {
-          tfootRow.append(`<td class="font-weight-bold">${LVal}</td><td class="font-weight-bold">${PVal}</td><td class="bg-maroon text-white font-weight-bold">${JmlVal}</td>`);
+          tfootRow.append(`<td class="font-weight-bold text-maroon">${LVal}</td><td class="font-weight-bold text-maroon">${PVal}</td><td class="table-rekap-grand-total font-weight-bold">${JmlVal}</td>`);
         } else {
           tfootRow.append(`<td>${LVal}</td><td>${PVal}</td><td class="bg-warning text-dark font-weight-bold">${JmlVal}</td>`);
         }
@@ -207,13 +284,13 @@
 
     function exportToExcel() {
       var tahun = $('#seragamrekap_filterTahun').val();
+      var tahap = $('#seragamrekap_filterTahap').val();
       var table = document.getElementById("seragamrekap_tabelUtama");
       var html = table.outerHTML;
 
-      // Simple Excel Export URI
       var url = 'data:application/vnd.ms-excel,' + encodeURIComponent(html);
       var link = document.createElement("a");
-      link.download = "Rekap_Penerima_Seragam_Gratis_" + tahun + ".xls";
+      link.download = "Rekap_Penerima_Seragam_" + tahun + "_" + tahap + ".xls";
       link.href = url;
       document.body.appendChild(link);
       link.click();
