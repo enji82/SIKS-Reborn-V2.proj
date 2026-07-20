@@ -352,11 +352,10 @@
             lupa_cekStatusVerif($(this).val());
         });
 
-        // VAKSIN KLIK CATATAN: Decode Base64 Data Pesan
+        // KLIK CATATAN: Tampilkan teks catatan langsung dari atribut data
         $(document).off('click', '.lupa-btn-catatan').on('click', '.lupa-btn-catatan', function () {
-            var encodedMsg = $(this).attr('data-pesan');
-            var decoded = lupa_safelyDecode(encodedMsg);
-            lupa_lihatCatatanSultan(decoded || "Tidak ada catatan.");
+            var pesan = $(this).attr('data-pesan') || 'Tidak ada catatan.';
+            lupa_lihatCatatanSultan(pesan);
         });
 
         var thn = new Date().getFullYear();
@@ -1067,24 +1066,21 @@
     function lupa_safelyDecode(str) {
         if (!str) return "";
         var current = String(str).trim();
-        for (var i = 0; i < 2; i++) {
+        try {
             var cleaned = current.replace(/\s/g, "");
-            if (cleaned.length >= 4 && cleaned.length % 4 === 0 && /^[A-Za-z0-9+/=]+$/.test(cleaned)) {
-                try {
-                    var decoded = atob(cleaned);
-                    if (/^[\x20-\x7E\r\n\t]*$/.test(decoded)) {
-                        current = decoded;
-                    } else {
-                        break;
-                    }
-                } catch (e) {
-                    break;
+            var decoded = atob(cleaned);
+            // Coba decode kedua kalinya jika ternyata double-encoded
+            try {
+                var cleaned2 = decoded.trim().replace(/\s/g, "");
+                var decoded2 = atob(cleaned2);
+                if (/^[\x20-\x7E\r\n\t]*$/.test(decoded2)) {
+                    return decoded2;
                 }
-            } else {
-                break;
-            }
+            } catch (e2) {}
+            return decoded;
+        } catch (e) {
+            return current;
         }
-        return current;
     }
 
     function lupa_toProperCase(str) {
@@ -1108,7 +1104,7 @@
         var badgeHtml = '<span class="' + style + '"><i class="fas fa-' + icon + ' mr-1"></i>' + lupa_escapeHtml(labelStatus) + '</span>';
 
         if (ket && String(ket).trim().length > 2) {
-            var safeKet = btoa(lupa_escapeHtml(String(ket).trim())); // Enkripsi Base64
+            var safeKet = lupa_escapeHtml(String(ket).trim()); // Simpan teks langsung, tanpa Base64
             var btnCatatan = '<div class="mt-2"><button type="button" class="sultan-btn-note lupa-btn-catatan" data-pesan="' + safeKet + '"><i class="fas fa-comment-dots mr-1"></i> Baca Catatan</button></div>';
             return badgeHtml + btnCatatan;
         }
