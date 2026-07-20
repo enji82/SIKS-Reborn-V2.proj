@@ -79,14 +79,14 @@
     });
 
     function initData() {
-      SultanUI.showLoading('#seragamdata_loadingState', 'Memuat daftar tahun & sekolah...');
+      SultanUI.showLoading('#seragamdata_loadingState', 'Memuat daftar tahun...');
       
       google.script.run
         .withSuccessHandler(function(response) {
           var res = JSON.parse(response);
           if (res.success) {
             availableYears = res.data;
-            loadSekolahList();
+            renderFilterBar();
           } else {
             Sultan.notif.gagal('Gagal memuat tahun: ' + res.message);
           }
@@ -94,25 +94,9 @@
         .seragam_getAvailableYears();
     }
 
-    function loadSekolahList() {
-      google.script.run
-        .withSuccessHandler(function(schoolRes) {
-          listSekolah = schoolRes || [];
-          renderFilterBar();
-        })
-        .seragam_getSekolahList();
-    }
-
     function renderFilterBar() {
       var filterTahunOpts = availableYears.map(function(y) { return `<option value="${y}">${y}</option>`; }).join('');
-      var filterSekolahOpts = '<option value="SEMUA">- Semua Sekolah -</option>';
       
-      listSekolah.forEach(function(s) {
-        if (s.jenjang === "SD") {
-          filterSekolahOpts += `<option value="${s.npsn}">${s.nama} (${s.npsn})</option>`;
-        }
-      });
-
       var filtersConfig = [
         { id: "seragamdata_filterTahun", value: availableYears[0], text: availableYears[0] },
         { id: "seragamdata_filterTahap", value: "Tahap 1", text: "Tahap 1" },
@@ -136,48 +120,75 @@
         <option value="Tambahan">Tambahan</option>
       `);
       if (IS_ADMIN) {
-        $('#seragamdata_filterSekolah').html(filterSekolahOpts);
+        $('#seragamdata_filterSekolah').html('<option value="SEMUA">- Semua Sekolah -</option>');
       }
 
-    var SERAGAMDATA_CACHE_DATA = [];
+      var SERAGAMDATA_CACHE_DATA = [];
 
-    // Bind Listeners
-    $('#seragamdata_filterTahun, #seragamdata_filterTahap').on('change', fetchTableData);
-    $('#seragamdata_filterSekolah').on('change', applyLocalFilter);
-    $('#seragamdata_btnSync').on('click', fetchTableData);
+      // Bind Listeners
+      $('#seragamdata_filterTahun, #seragamdata_filterTahap').on('change', fetchTableData);
+      $('#seragamdata_filterSekolah').on('change', applyLocalFilter);
+      $('#seragamdata_btnSync').on('click', fetchTableData);
 
-    // Fetch first time
-    fetchTableData();
-  }
+      // Fetch first time
+      fetchTableData();
+    }
 
-  function fetchTableData() {
-    var tahun = $('#seragamdata_filterTahun').val();
-    var tahap = $('#seragamdata_filterTahap').val();
-    // Always fetch everything ("SEMUA") for admin to allow local filtering, or user's npsn if not admin
-    var npsnQuery = IS_ADMIN ? "SEMUA" : (userLogin.npsn || userLogin.username || "");
+    function fetchTableData() {
+      var tahun = $('#seragamdata_filterTahun').val();
+      var tahap = $('#seragamdata_filterTahap').val();
+      var npsnQuery = IS_ADMIN ? "SEMUA" : (userLogin.npsn || userLogin.username || "");
 
-    SultanUI.showLoading('#seragamdata_loadingState', 'Mengambil data penerima...');
-    $('#seragamdata_tableState').hide();
+      SultanUI.showLoading('#seragamdata_loadingState', 'Mengambil data penerima...');
+      $('#seragamdata_tableState').hide();
 
-    google.script.run
-      .withSuccessHandler(function(response) {
-        var res = JSON.parse(response);
-        SultanUI.hideLoading('#seragamdata_loadingState');
-        $('#seragamdata_tableState').show();
-        
-        if (res.success) {
-          SERAGAMDATA_CACHE_DATA = res.data || [];
-          applyLocalFilter();
-        } else {
-          Sultan.notif.gagal('Gagal memuat data: ' + res.message);
+      google.script.run
+        .withSuccessHandler(function(response) {
+          var res = JSON.parse(response);
+          SultanUI.hideLoading('#seragamdata_loadingState');
+          $('#seragamdata_tableState').show();
+          
+          if (res.success) {
+            SERAGAMDATA_CACHE_DATA = res.data || [];
+            updateSekolahFilterDropdown();
+            applyLocalFilter();
+          } else {
+            Sultan.notif.gagal('Gagal memuat data: ' + res.message);
+          }
+        })
+        .seragam_getDataPenerima(tahun, tahap, npsnQuery);
+    }
+
+    function updateSekolahFilterDropdown() {
+      if (!IS_ADMIN) return;
+      
+      var currentSelection = $('#seragamdata_filterSekolah').val() || "SEMUA";
+      var uniqueSchools = {};
+      SERAGAMDATA_CACHE_DATA.forEach(function(row) {
+        if (row.npsn) {
+          uniqueSchools[row.npsn] = row.nama_sekolah || row.npsn;
         }
-      })
-      .seragam_getDataPenerima(tahun, tahap, npsnQuery);
-  }
+      });
 
-  function applyLocalFilter() {
-    var targetSekolah = IS_ADMIN ? $('#seragamdata_filterSekolah').val() : (userLogin.npsn || userLogin.username || "");
-    var filtered = SERAGAMDATA_CACHE_DATA;
+      var $dropdown = $('#seragamdata_filterSekolah');
+      $dropdown.empty().append('<option value="SEMUA">- Semua Sekolah -</option>');
+      
+      Object.keys(uniqueSchools).sort(function(a, b) {
+        return uniqueSchools[a].localeCompare(uniqueSchools[b]);
+      }).forEach(function(npsn) {
+        $dropdown.append(`<option value="${npsn}">${uniqueSchools[npsn]} (${npsn})</option>`);
+      });
+
+      if (uniqueSchools[currentSelection] || currentSelection === "SEMUA") {
+        $dropdown.val(currentSelection);
+      } else {
+        $dropdown.val("SEMUA");
+      }
+    }
+
+    function applyLocalFilter() {
+      var targetSekolah = IS_ADMIN ? $('#seragamdata_filterSekolah').val() : (userLogin.npsn || userLogin.username || "");
+      var filtered = SERAGAMDATA_CACHE_DATA;
     
     if (targetSekolah && targetSekolah !== "SEMUA") {
       filtered = SERAGAMDATA_CACHE_DATA.filter(function(row) {
