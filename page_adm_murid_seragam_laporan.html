@@ -131,6 +131,7 @@
     var listSekolah = [];
     var availableYears = [];
     var SERAGAMLAPOR_TABEL_INSTANCE = null;
+    var SERAGAMLAPOR_CACHE_DATA = [];
     var userLogin = typeof getSesiUser === 'function' ? getSesiUser() : {};
 
     $(document).ready(function() {
@@ -206,12 +207,10 @@
 
     function renderFilterBar() {
       var filterTahunOpts = availableYears.map(function(y) { return `<option value="${y}">${y}</option>`; }).join('');
-      var filterSekolahOpts = '<option value="SEMUA">- Semua Sekolah -</option>';
       var inSekolahOpts = '<option value="">- Pilih Sekolah -</option>';
       
       listSekolah.forEach(function(s) {
         if (s.jenjang === "SD") {
-          filterSekolahOpts += `<option value="${s.npsn}">${s.nama} (${s.npsn})</option>`;
           inSekolahOpts += `<option value="${s.npsn}" data-nama="${s.nama}">${s.nama} (${s.npsn})</option>`;
         }
       });
@@ -232,7 +231,7 @@
       $('#seragamlapor_filterTahun').html(filterTahunOpts);
       $('#seragamlapor_in_tahun').html(filterTahunOpts);
       if (IS_ADMIN) {
-        $('#seragamlapor_filterSekolah').html(filterSekolahOpts);
+        $('#seragamlapor_filterSekolah').html('<option value="SEMUA">- Semua Sekolah -</option>');
         $('#seragamlapor_in_sekolah').html(inSekolahOpts);
       } else {
         var userNpsn = userLogin.npsn || userLogin.username || "";
@@ -241,7 +240,8 @@
       }
 
       // Bind Listeners
-      $('#seragamlapor_filterTahun, #seragamlapor_filterSekolah').on('change', fetchLaporanData);
+      $('#seragamlapor_filterTahun').on('change', fetchLaporanData);
+      $('#seragamlapor_filterSekolah').on('change', applyLocalFilter);
       $('#seragamlapor_btnUnggah').on('click', showUploadModal);
       $('#seragamlapor_formLaporan').on('submit', handleUploadLaporan);
 
@@ -250,7 +250,7 @@
 
     function fetchLaporanData() {
       var tahun = $('#seragamlapor_filterTahun').val();
-      var npsn = IS_ADMIN ? $('#seragamlapor_filterSekolah').val() : (userLogin.npsn || userLogin.username || "");
+      var npsnQuery = IS_ADMIN ? "SEMUA" : (userLogin.npsn || userLogin.username || "");
 
       SultanUI.showLoading('#seragamlapor_loadingState', 'Mengambil dokumen laporan...');
       $('#seragamlapor_tableState').hide();
@@ -261,12 +261,54 @@
           SultanUI.hideLoading('#seragamlapor_loadingState');
           $('#seragamlapor_tableState').show();
           if (res.success) {
-            renderTable(res.data);
+            SERAGAMLAPOR_CACHE_DATA = res.data || [];
+            updateSekolahFilterDropdown();
+            applyLocalFilter();
           } else {
             Sultan.notif.gagal('Gagal memuat data: ' + res.message);
           }
         })
-        .seragam_getLaporan(tahun, npsn);
+        .seragam_getLaporan(tahun, npsnQuery);
+    }
+
+    function updateSekolahFilterDropdown() {
+      if (!IS_ADMIN) return;
+      
+      var currentSelection = $('#seragamlapor_filterSekolah').val() || "SEMUA";
+      var uniqueSchools = {};
+      SERAGAMLAPOR_CACHE_DATA.forEach(function(row) {
+        if (row.npsn) {
+          uniqueSchools[row.npsn] = row.nama_sekolah || row.npsn;
+        }
+      });
+
+      var $dropdown = $('#seragamlapor_filterSekolah');
+      $dropdown.empty().append('<option value="SEMUA">- Semua Sekolah -</option>');
+      
+      Object.keys(uniqueSchools).sort(function(a, b) {
+        return uniqueSchools[a].localeCompare(uniqueSchools[b]);
+      }).forEach(function(npsn) {
+        $dropdown.append(`<option value="${npsn}">${uniqueSchools[npsn]}</option>`);
+      });
+
+      if (uniqueSchools[currentSelection] || currentSelection === "SEMUA") {
+        $dropdown.val(currentSelection);
+      } else {
+        $dropdown.val("SEMUA");
+      }
+    }
+
+    function applyLocalFilter() {
+      var targetSekolah = IS_ADMIN ? $('#seragamlapor_filterSekolah').val() : (userLogin.npsn || userLogin.username || "");
+      var filtered = SERAGAMLAPOR_CACHE_DATA;
+      
+      if (targetSekolah && targetSekolah !== "SEMUA") {
+        filtered = SERAGAMLAPOR_CACHE_DATA.filter(function(row) {
+          return String(row.npsn).trim() === String(targetSekolah).trim();
+        });
+      }
+      
+      renderTable(filtered);
     }
 
     function renderTable(data) {
