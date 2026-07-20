@@ -869,21 +869,25 @@
         
         id_file_sp: $('#seragamlapor_id_file_sp').val(),
         url_file_sp: $('#seragamlapor_url_file_sp').val(),
+        nama_file_sp: fileSp ? customNamaSp : $('#seragamlapor_lbl_sp').text().replace(' ', '').trim(),
         
         id_file_dok: $('#seragamlapor_id_file_dok').val(),
         url_file_dok: $('#seragamlapor_url_file_dok').val(),
+        nama_file_dok: $('#seragamlapor_id_file_dok').val() ? (SERAGAMLAPOR_CACHE_DATA.find(function(item) { return item.rowId == rowId; }) || {}).nama_file_dok : '',
 
         id_file_video: $('#seragamlapor_id_file_video').val(),
         url_file_video: $('#seragamlapor_url_file_video').val(),
+        nama_file_video: fileVideo ? customNamaVideo : ($('#seragamlapor_id_file_video').val() ? (SERAGAMLAPOR_CACHE_DATA.find(function(item) { return item.rowId == rowId; }) || {}).nama_file_video : ''),
         
         user_login: userLogin.username || "user",
-        nama_file_sp: customNamaSp,
-        mimeTypeSp: fileSp ? fileSp.type : '',
         
-        photos: [], // Array of {base64, mimeType, name}
-        videoBase64: null,
-        nama_file_video: customNamaVideo,
-        mimeTypeVideo: fileVideo ? fileVideo.type : ''
+        newSpUploaded: false,
+        newDokUploaded: false,
+        newVideoUploaded: false,
+        
+        oldIdSp: $('#seragamlapor_id_file_sp').val(),
+        oldIdsDok: $('#seragamlapor_id_file_dok').val(),
+        oldIdVideo: $('#seragamlapor_id_file_video').val()
       };
 
       if (!payload.npsn) {
@@ -891,7 +895,7 @@
         return;
       }
 
-      btnSubmit.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i>MENGUNGGAH...');
+      btnSubmit.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i>MEMULAI UNGGAH...');
 
       // Conversion promises helper
       var readAsBase64 = function(file, callback) {
@@ -900,7 +904,114 @@
         reader.readAsDataURL(file);
       };
 
-      var startUpload = function() {
+      var uploadStep1 = function() {
+        if (fileSp) {
+          btnSubmit.html('<i class="fas fa-spinner fa-spin mr-2"></i>UNGGAH SP...');
+          readAsBase64(fileSp, function(base64) {
+            google.script.run
+              .withSuccessHandler(function(response) {
+                var res = JSON.parse(response);
+                if (res.success) {
+                  payload.url_file_sp = res.url;
+                  payload.id_file_sp = res.id;
+                  payload.newSpUploaded = true;
+                  uploadStep2();
+                } else {
+                  Sultan.notif.gagal('Gagal mengunggah Surat Pernyataan: ' + res.message);
+                  btnSubmit.prop('disabled', false).html(originalText);
+                }
+              })
+              .withFailureHandler(function(err) {
+                Sultan.notif.gagal('Koneksi terputus saat mengunggah Surat Pernyataan: ' + err.message);
+                btnSubmit.prop('disabled', false).html(originalText);
+              })
+              .seragam_uploadSingleFile(base64, fileSp.type, customNamaSp, "sp");
+          });
+        } else {
+          uploadStep2();
+        }
+      };
+
+      var uploadStep2 = function() {
+        if (filesFoto.length > 0) {
+          var uploadedNames = [];
+          var uploadedUrls = [];
+          var uploadedIds = [];
+          
+          var uploadPhotoIndex = function(idx) {
+            if (idx >= filesFoto.length) {
+              payload.nama_file_dok = uploadedNames.join(', ');
+              payload.url_file_dok = uploadedUrls.join(', ');
+              payload.id_file_dok = uploadedIds.join(', ');
+              payload.newDokUploaded = true;
+              uploadStep3();
+              return;
+            }
+            
+            var file = filesFoto[idx];
+            btnSubmit.html('<i class="fas fa-spinner fa-spin mr-2"></i>FOTO ' + (idx + 1) + '/' + filesFoto.length + '...');
+            
+            var extFoto = file.name.split('.').pop();
+            var photoName = 'Dokumentasi ' + namaSekolah + ' ' + tahapLapor + ' - ' + (idx + 1) + '.' + extFoto;
+            
+            readAsBase64(file, function(base64) {
+              google.script.run
+                .withSuccessHandler(function(response) {
+                  var res = JSON.parse(response);
+                  if (res.success) {
+                    uploadedNames.push(photoName);
+                    uploadedUrls.push(res.url);
+                    uploadedIds.push(res.id);
+                    uploadPhotoIndex(idx + 1);
+                  } else {
+                    Sultan.notif.gagal('Gagal mengunggah Foto ' + (idx + 1) + ': ' + res.message);
+                    btnSubmit.prop('disabled', false).html(originalText);
+                  }
+                })
+                .withFailureHandler(function(err) {
+                  Sultan.notif.gagal('Koneksi terputus saat mengunggah Foto ' + (idx + 1) + ': ' + err.message);
+                  btnSubmit.prop('disabled', false).html(originalText);
+                })
+                .seragam_uploadSingleFile(base64, file.type, photoName, "dok");
+            });
+          };
+          
+          uploadPhotoIndex(0);
+        } else {
+          uploadStep3();
+        }
+      };
+
+      var uploadStep3 = function() {
+        if (fileVideo) {
+          btnSubmit.html('<i class="fas fa-spinner fa-spin mr-2"></i>UNGGAH VIDEO...');
+          readAsBase64(fileVideo, function(base64) {
+            google.script.run
+              .withSuccessHandler(function(response) {
+                var res = JSON.parse(response);
+                if (res.success) {
+                  payload.url_file_video = res.url;
+                  payload.id_file_video = res.id;
+                  payload.newVideoUploaded = true;
+                  saveMetadata();
+                } else {
+                  Sultan.notif.gagal('Gagal mengunggah Video: ' + res.message);
+                  btnSubmit.prop('disabled', false).html(originalText);
+                }
+              })
+              .withFailureHandler(function(err) {
+                Sultan.notif.gagal('Koneksi terputus saat mengunggah Video: ' + err.message);
+                btnSubmit.prop('disabled', false).html(originalText);
+              })
+              .seragam_uploadSingleFile(base64, fileVideo.type, customNamaVideo, "dok");
+          });
+        } else {
+          saveMetadata();
+        }
+      };
+
+      var saveMetadata = function() {
+        btnSubmit.html('<i class="fas fa-spinner fa-spin mr-2"></i>MENYIMPAN DATA...');
         google.script.run
           .withSuccessHandler(function(response) {
             var res = JSON.parse(response);
@@ -913,58 +1024,14 @@
               Sultan.notif.gagal('Gagal menyimpan laporan: ' + res.message);
             }
           })
+          .withFailureHandler(function(err) {
+            Sultan.notif.gagal('Koneksi terputus saat menyimpan data: ' + err.message);
+            btnSubmit.prop('disabled', false).html(originalText);
+          })
           .seragam_saveLaporan(payload);
       };
 
-      // Flow: SP -> Photos -> Video -> Submit
-      var step4_upload = function() {
-        if (fileVideo) {
-          readAsBase64(fileVideo, function(base64) {
-            payload.videoBase64 = base64;
-            startUpload();
-          });
-        } else {
-          startUpload();
-        }
-      };
-
-      var step3_photos = function() {
-        if (filesFoto.length > 0) {
-          var filesProcessed = 0;
-          for (var i = 0; i < filesFoto.length; i++) {
-            (function(file, idx) {
-              readAsBase64(file, function(base64) {
-                var extFoto = file.name.split('.').pop();
-                var photoName = 'Dokumentasi ' + namaSekolah + ' ' + tahapLapor + ' - ' + (idx + 1) + '.' + extFoto;
-                payload.photos.push({
-                  base64: base64,
-                  mimeType: file.type,
-                  name: photoName
-                });
-                filesProcessed++;
-                if (filesProcessed === filesFoto.length) {
-                  step4_upload();
-                }
-              });
-            })(filesFoto[i], i);
-          }
-        } else {
-          step4_upload();
-        }
-      };
-
-      var step2_sp = function() {
-        if (fileSp) {
-          readAsBase64(fileSp, function(base64) {
-            payload.fileSpBase64 = base64;
-            step3_photos();
-          });
-        } else {
-          step3_photos();
-        }
-      };
-
-      step2_sp();
+      uploadStep1();
     }
 
     function handleDeleteLaporan(row) {

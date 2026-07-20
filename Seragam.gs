@@ -340,61 +340,24 @@ function seragam_saveLaporan(payload) {
     var fileUrlVideo = payload.url_file_video || "";
     var fileIdVideo = payload.id_file_video || "";
 
-    // 1. Upload Surat Pernyataan (PDF)
-    if (payload.fileSpBase64) {
-      if (isEdit && fileIdSp) {
-        try { DriveApp.getFileById(fileIdSp).setTrashed(true); } catch(err) {}
-      }
-      var folderSp = DriveApp.getFolderById(FOLDER_CONFIG.SERAGAM_LAPORAN_DOCS);
-      var blob = Utilities.newBlob(Utilities.base64Decode(payload.fileSpBase64), payload.mimeTypeSp, payload.nama_file_sp);
-      var file = folderSp.createFile(blob);
-      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-      fileUrlSp = file.getUrl();
-      fileIdSp = file.getId();
+    // If new SP file was uploaded, trash the old one
+    if (isEdit && payload.newSpUploaded && payload.oldIdSp) {
+      try { DriveApp.getFileById(payload.oldIdSp).setTrashed(true); } catch(err) {}
     }
 
-    // 2. Upload Photos (Multiple, up to 5)
-    if (payload.photos && payload.photos.length > 0) {
-      if (isEdit && fileIdsDok) {
-        var oldIds = String(fileIdsDok).split(', ');
-        oldIds.forEach(function(oid) {
-          if (oid) {
-            try { DriveApp.getFileById(oid.trim()).setTrashed(true); } catch(err) {}
-          }
-        });
-      }
-      
-      var folderDok = DriveApp.getFolderById(FOLDER_CONFIG.SERAGAM_DOKUMENTASI_DOCS);
-      var uploadedNames = [];
-      var uploadedUrls = [];
-      var uploadedIds = [];
-      
-      payload.photos.forEach(function(photo) {
-        var blob = Utilities.newBlob(Utilities.base64Decode(photo.base64), photo.mimeType, photo.name);
-        var file = folderDok.createFile(blob);
-        file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-        uploadedNames.push(photo.name);
-        uploadedUrls.push(file.getUrl());
-        uploadedIds.push(file.getId());
+    // If new Dok photos were uploaded, trash the old ones
+    if (isEdit && payload.newDokUploaded && payload.oldIdsDok) {
+      var oldIds = String(payload.oldIdsDok).split(', ');
+      oldIds.forEach(function(oid) {
+        if (oid) {
+          try { DriveApp.getFileById(oid.trim()).setTrashed(true); } catch(err) {}
+        }
       });
-      
-      fileNamesDok = uploadedNames.join(', ');
-      fileUrlsDok = uploadedUrls.join(', ');
-      fileIdsDok = uploadedIds.join(', ');
     }
 
-    // 3. Upload Video
-    if (payload.videoBase64) {
-      if (isEdit && fileIdVideo) {
-        try { DriveApp.getFileById(fileIdVideo).setTrashed(true); } catch(err) {}
-      }
-      var folderDok = DriveApp.getFolderById(FOLDER_CONFIG.SERAGAM_DOKUMENTASI_DOCS);
-      var blob = Utilities.newBlob(Utilities.base64Decode(payload.videoBase64), payload.mimeTypeVideo, payload.nama_file_video);
-      var file = folderDok.createFile(blob);
-      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-      fileUrlVideo = file.getUrl();
-      fileIdVideo = file.getId();
-      fileNameVideo = payload.nama_file_video;
+    // If new Video was uploaded, trash the old one
+    if (isEdit && payload.newVideoUploaded && payload.oldIdVideo) {
+      try { DriveApp.getFileById(payload.oldIdVideo).setTrashed(true); } catch(err) {}
     }
 
     if (isEdit) {
@@ -431,6 +394,14 @@ function seragam_saveLaporan(payload) {
         "DIPROSES", "", "", "" // status, catatan, user_verif, tgl_verif
       ]);
     }
+
+    return JSON.stringify({ success: true, message: "Laporan Penerimaan berhasil disimpan." });
+  } catch(e) {
+    return JSON.stringify({ success: false, message: e.message });
+  } finally {
+    lock.releaseLock();
+  }
+}
 
     return JSON.stringify({ success: true, message: "Laporan Penerimaan berhasil disimpan." });
   } catch(e) {
@@ -622,5 +593,22 @@ function seragam_getSekolahList() {
     return schools;
   } catch (e) {
     return [];
+  }
+}
+
+function seragam_uploadSingleFile(base64Data, mimeType, fileName, fileType) {
+  try {
+    var folderId = (fileType === "sp") ? FOLDER_CONFIG.SERAGAM_LAPORAN_DOCS : FOLDER_CONFIG.SERAGAM_DOKUMENTASI_DOCS;
+    var folder = DriveApp.getFolderById(folderId);
+    var blob = Utilities.newBlob(Utilities.base64Decode(base64Data), mimeType, fileName);
+    var file = folder.createFile(blob);
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    return JSON.stringify({
+      success: true,
+      id: file.getId(),
+      url: file.getUrl()
+    });
+  } catch(e) {
+    return JSON.stringify({ success: false, message: e.message });
   }
 }
