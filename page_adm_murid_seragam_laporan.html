@@ -1,3 +1,13 @@
+<style>
+  /* Adaptive Maroon text color */
+  .text-brand-maroon {
+    color: #800000 !important;
+  }
+  .dark-mode .text-brand-maroon {
+    color: #ff8a8a !important;
+  }
+</style>
+
 <section class="content sultan-page-transition">
   <div class="container-fluid">
     <div class="row justify-content-center">
@@ -43,15 +53,14 @@
                     <tr>
                       <th class="text-center align-middle">AKSI</th>
                       <th class="text-center align-middle">TAHUN</th>
-                      <th class="text-center align-middle">NPSN</th>
-                      <th class="text-left align-middle" style="min-width: 180px;">NAMA SEKOLAH</th>
-                      <th class="text-left align-middle" style="min-width: 150px;">SURAT PERNYATAAN (PDF)</th>
-                      <th class="text-left align-middle" style="min-width: 150px;">DOKUMENTASI (FOTO)</th>
+                      <th class="text-left align-middle" style="min-width: 250px;">NAMA SEKOLAH</th>
+                      <th class="text-center align-middle" style="min-width: 150px;">SURAT PERNYATAAN (PDF)</th>
+                      <th class="text-center align-middle" style="min-width: 150px;">DOKUMENTASI (FOTO)</th>
                       <th class="text-left align-middle">WAKTU UNGGAH</th>
                       <th class="text-left align-middle">PENGUNGGAH</th>
                     </tr>
                   </thead>
-                  <tbody class="text-dark font-weight-bold"></tbody>
+                  <tbody class="text-dark"></tbody>
                 </table>
               </div>
             </div>
@@ -121,6 +130,7 @@
     var IS_ADMIN = false;
     var listSekolah = [];
     var availableYears = [];
+    var SERAGAMLAPOR_TABEL_INSTANCE = null;
     var userLogin = typeof getSesiUser === 'function' ? getSesiUser() : {};
 
     $(document).ready(function() {
@@ -134,6 +144,39 @@
       $('.custom-file-input').on('change', function() {
         var fileName = $(this).val().split('\\').pop();
         $(this).next('.custom-file-label').addClass("selected").html(fileName || "Pilih berkas...");
+      });
+      
+      // Event delegation click handlers for table
+      $('#seragamlapor_tabelUtama').off('click', '.btn-edit').on('click', '.btn-edit', function() {
+        var payload = JSON.parse($(this).attr('data-payload'));
+        showEditModal(payload);
+      });
+      
+      $('#seragamlapor_tabelUtama').off('click', '.btn-delete').on('click', '.btn-delete', function() {
+        var payload = JSON.parse($(this).attr('data-payload'));
+        handleDeleteLaporan(payload);
+      });
+      
+      $('#seragamlapor_tabelUtama').off('click', '.btn-preview-pdf').on('click', '.btn-preview-pdf', function(e) {
+        e.preventDefault();
+        var url = $(this).attr('data-url');
+        var nama = $(this).attr('data-nama');
+        if (typeof SultanUI.viewPDF === 'function') {
+          SultanUI.viewPDF(url, nama);
+        } else {
+          window.open(url, '_blank');
+        }
+      });
+
+      $('#seragamlapor_tabelUtama').off('click', '.btn-preview-img').on('click', '.btn-preview-img', function(e) {
+        e.preventDefault();
+        var url = $(this).attr('data-url');
+        var nama = $(this).attr('data-nama');
+        if (typeof SultanUI.viewImage === 'function') {
+          SultanUI.viewImage(url, nama);
+        } else {
+          window.open(url, '_blank');
+        }
       });
     });
 
@@ -227,74 +270,67 @@
     }
 
     function renderTable(data) {
-      var tbody = $('#seragamlapor_tabelUtama tbody');
-      tbody.empty();
-
-      if (data.length === 0) {
-        tbody.append(`<tr><td colspan="8" class="text-center text-muted p-4">Belum ada file dokumen penerimaan seragam yang diunggah.</td></tr>`);
-        return;
+      if (!SERAGAMLAPOR_TABEL_INSTANCE) {
+        SERAGAMLAPOR_TABEL_INSTANCE = SultanTable.init('#seragamlapor_tabelUtama', {
+          destroy: true,
+          ordering: false,
+          pageLength: 10,
+          autoWidth: false,
+          deferRender: true,
+          responsive: false,
+          dom: "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
+               "<'row'<'col-sm-12'<'table-responsive sultan-scroll'tr>>>" +
+               "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+          columnDefs: [
+            { targets: 0, width: "1%", className: "text-center align-middle" },
+            { targets: 1, width: "1%", className: "text-center align-middle font-weight-bold" },
+            { targets: 2, className: "text-left align-middle text-wrap" },
+            { targets: [3, 4], width: "1%", className: "text-center align-middle text-nowrap" },
+            { targets: [5, 6], className: "text-left align-middle text-wrap" }
+          ],
+          language: {
+            url: "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json",
+            emptyTable: "Belum ada berkas dokumen laporan penerimaan yang diunggah."
+          }
+        });
       }
 
+      var dtArray = [];
       data.forEach(function(row) {
-        var actions = `
-          <div class="d-flex justify-content-center">
-            <button class="btn btn-xs btn-outline-primary mr-1 btn-edit" data-row-id="${row.rowId}" title="Unggah Ulang"><i class="fas fa-edit"></i></button>
-            <button class="btn btn-xs btn-outline-danger btn-delete" data-row-id="${row.rowId}" title="Hapus"><i class="fas fa-trash"></i></button>
-          </div>
-        `;
-
         var isOwner = IS_ADMIN || String(row.npsn).trim() === String(userLogin.npsn || userLogin.username).trim();
-        if (!isOwner) {
-          actions = `<span class="text-muted small">No Access</span>`;
+        
+        var btnAksi = '';
+        if (isOwner) {
+          btnAksi = `
+            <div class="d-flex flex-nowrap justify-content-center" style="gap:5px;">
+              <button class="sultan-btn-aksi sultan-btn-aksi-warning btn-edit" data-payload='${JSON.stringify(row)}' title="Unggah Ulang"><i class="fas fa-edit"></i></button>
+              <button class="sultan-btn-aksi sultan-btn-aksi-maroon btn-delete" data-payload='${JSON.stringify(row)}' title="Hapus"><i class="fas fa-trash-alt"></i></button>
+            </div>
+          `;
+        } else {
+          btnAksi = `<span class="text-muted small">No Access</span>`;
         }
 
-        var linkSp = row.url_file_sp ? `<a href="#" class="btn-preview-pdf text-maroon font-weight-bold" data-url="${row.url_file_sp}" data-nama="SP-${row.nama_sekolah}"><i class="fas fa-file-pdf mr-1 text-danger"></i>${row.nama_file_sp}</a>` : '<span class="text-muted">-</span>';
-        var linkDok = row.url_file_dok ? `<a href="#" class="btn-preview-img text-primary font-weight-bold" data-url="${row.url_file_dok}" data-nama="Foto-${row.nama_sekolah}"><i class="fas fa-image mr-1 text-info"></i>${row.nama_file_dok}</a>` : '<span class="text-muted">-</span>';
+        var linkSp = row.url_file_sp ? `<button type="button" class="sultan-btn-pdf btn-preview-pdf" data-url="${row.url_file_sp}" data-nama="SP-${row.nama_sekolah}"><i class="fas fa-file-pdf mr-1"></i> LIHAT</button>` : '<span class="text-muted">-</span>';
+        var linkDok = row.url_file_dok ? `<button type="button" class="sultan-btn-pdf btn-preview-img" data-url="${row.url_file_dok}" data-nama="Foto-${row.nama_sekolah}"><i class="fas fa-image mr-1 text-info"></i> LIHAT</button>` : '<span class="text-muted">-</span>';
 
-        tbody.append(`
-          <tr data-payload='${JSON.stringify(row)}'>
-            <td class="text-center align-middle">${actions}</td>
-            <td class="text-center align-middle">${row.tahun}</td>
-            <td class="text-center align-middle">${row.npsn}</td>
-            <td class="text-left align-middle text-truncate" style="max-width: 180px;">${row.nama_sekolah}</td>
-            <td class="text-left align-middle text-truncate" style="max-width: 150px;">${linkSp}</td>
-            <td class="text-left align-middle text-truncate" style="max-width: 150px;">${linkDok}</td>
-            <td class="text-left align-middle">${row.tgl_upload}</td>
-            <td class="text-left align-middle">${row.uploader}</td>
-          </tr>
-        `);
+        var sekolahCell = `
+          <div class="font-weight-bold text-brand-maroon text-left text-wrap" style="font-size: 13px; line-height: 1.2;">${row.nama_sekolah}</div>
+          <div class="text-muted text-left small font-weight-normal">${row.npsn}</div>
+        `;
+
+        dtArray.push([
+          btnAksi,
+          row.tahun,
+          sekolahCell,
+          linkSp,
+          linkDok,
+          row.tgl_upload,
+          row.uploader
+        ]);
       });
 
-      // Bind actions
-      tbody.find('.btn-edit').on('click', function() {
-        var payload = JSON.parse($(this).closest('tr').attr('data-payload'));
-        showEditModal(payload);
-      });
-
-      tbody.find('.btn-delete').on('click', function() {
-        var payload = JSON.parse($(this).closest('tr').attr('data-payload'));
-        handleDeleteLaporan(payload);
-      });
-
-      tbody.find('.btn-preview-pdf').on('click', function(e) {
-        e.preventDefault();
-        Sultan.preview({
-          url: $(this).attr('data-url'),
-          title: 'Pratinjau Surat Pernyataan: ' + $(this).attr('data-nama'),
-          isImage: false,
-          downloadUrl: $(this).attr('data-url')
-        });
-      });
-
-      tbody.find('.btn-preview-img').on('click', function(e) {
-        e.preventDefault();
-        Sultan.preview({
-          url: $(this).attr('data-url'),
-          title: 'Pratinjau Dokumentasi: ' + $(this).attr('data-nama'),
-          isImage: true,
-          downloadUrl: $(this).attr('data-url')
-        });
-      });
+      SERAGAMLAPOR_TABEL_INSTANCE.clear().rows.add(dtArray).draw(false);
     }
 
     function showUploadModal() {
@@ -307,142 +343,124 @@
       
       $('#seragamlapor_lbl_sp').text('');
       $('#seragamlapor_lbl_dok').text('');
-      $('#seragamlapor_file_sp').next('.custom-file-label').removeClass("selected").html("Pilih berkas PDF...");
-      $('#seragamlapor_file_dok').next('.custom-file-label').removeClass("selected").html("Pilih foto...");
-
-      $('#seragamlapor_modalTitle').text('Unggah Laporan Penerimaan');
+      $('.custom-file-label').html('Pilih berkas...');
       
-      if (IS_ADMIN) {
-        $('#seragamlapor_in_sekolah').prop('disabled', false).val('');
-      }
+      $('#seragamlapor_modalTitle').text('Unggah Laporan Penerimaan');
+      $('#seragamlapor_in_sekolah').prop('disabled', false);
+      $('#seragamlapor_in_tahun').prop('disabled', false);
       
       $('#seragamlapor_modalForm').modal('show');
     }
 
     function showEditModal(row) {
-      showUploadModal();
+      $('#seragamlapor_formLaporan')[0].reset();
       $('#seragamlapor_rowId').val(row.rowId);
       $('#seragamlapor_id_file_sp').val(row.id_file_sp);
       $('#seragamlapor_url_file_sp').val(row.url_file_sp);
       $('#seragamlapor_id_file_dok').val(row.id_file_dok);
       $('#seragamlapor_url_file_dok').val(row.url_file_dok);
-
-      $('#seragamlapor_in_tahun').val(row.tahun);
+      
+      $('#seragamlapor_in_sekolah').val(row.npsn).prop('disabled', true);
+      $('#seragamlapor_in_tahun').val(row.tahun).prop('disabled', true);
+      
+      $('#seragamlapor_lbl_sp').html(row.nama_file_sp ? `<i class="fas fa-file-pdf text-danger mr-1"></i> ${row.nama_file_sp}` : '');
+      $('#seragamlapor_lbl_dok').html(row.nama_file_dok ? `<i class="fas fa-image text-info mr-1"></i> ${row.nama_file_dok}` : '');
+      $('.custom-file-label').html('Ganti berkas (opsional)...');
+      
       $('#seragamlapor_modalTitle').text('Edit Laporan Penerimaan');
-
-      if (row.nama_file_sp) $('#seragamlapor_lbl_sp').text('Berkas saat ini: ' + row.nama_file_sp);
-      if (row.nama_file_dok) $('#seragamlapor_lbl_dok').text('Berkas saat ini: ' + row.nama_file_dok);
-
-      if (IS_ADMIN) {
-        $('#seragamlapor_in_sekolah').val(row.npsn).prop('disabled', true);
-      } else {
-        $('#seragamlapor_in_sekolah_hidden').val(row.npsn);
-      }
-
       $('#seragamlapor_modalForm').modal('show');
     }
 
     function handleUploadLaporan(e) {
       e.preventDefault();
-      var btn = $('#seragamlapor_formLaporan button[type="submit"]');
-      var originalText = btn.text();
       
       var fileSp = $('#seragamlapor_file_sp')[0].files[0];
       var fileDok = $('#seragamlapor_file_dok')[0].files[0];
+      var rowId = $('#seragamlapor_rowId').val();
 
-      // Validasi file baru jika tambah baru
-      var isEdit = $('#seragamlapor_rowId').val() !== '';
-      if (!isEdit && !fileSp) { Sultan.notif.gagal('Surat Pernyataan (PDF) wajib diunggah.'); return; }
-      if (!isEdit && !fileDok) { Sultan.notif.gagal('Foto Dokumentasi wajib diunggah.'); return; }
-
-      btn.html('<i class="fas fa-spinner fa-spin mr-1"></i> Memproses berkas...').prop('disabled', true);
+      // Validasi berkas baru jika upload baru
+      if (!rowId) {
+        if (!fileSp) { Sultan.notif.peringatan('Surat Pernyataan (PDF) wajib diunggah.'); return; }
+        if (!fileDok) { Sultan.notif.peringatan('Foto Dokumentasi wajib diunggah.'); return; }
+      }
 
       var payload = {
-        rowId: $('#seragamlapor_rowId').val(),
-        tahun: $('#seragamlapor_in_tahun').val(),
+        rowId: rowId,
         npsn: IS_ADMIN ? $('#seragamlapor_in_sekolah').val() : $('#seragamlapor_in_sekolah_hidden').val(),
         nama_sekolah: IS_ADMIN ? $('#seragamlapor_in_sekolah option:selected').attr('data-nama') : (userLogin.unit || "Sekolah"),
-        user_login: userLogin.username || "user",
-        
-        url_file_sp: $('#seragamlapor_url_file_sp').val(),
+        tahun: $('#seragamlapor_in_tahun').val(),
         id_file_sp: $('#seragamlapor_id_file_sp').val(),
-        nama_file_sp: fileSp ? fileSp.name : (isEdit ? $('#seragamlapor_lbl_sp').text().replace('Berkas saat ini: ', '') : ''),
-        
-        url_file_dok: $('#seragamlapor_url_file_dok').val(),
+        url_file_sp: $('#seragamlapor_url_file_sp').val(),
         id_file_dok: $('#seragamlapor_id_file_dok').val(),
-        nama_file_dok: fileDok ? fileDok.name : (isEdit ? $('#seragamlapor_lbl_dok').text().replace('Berkas saat ini: ', '') : '')
+        url_file_dok: $('#seragamlapor_url_file_dok').val(),
+        user_login: userLogin.username || "user",
+        nama_file_sp: fileSp ? fileSp.name : '',
+        mimeTypeSp: fileSp ? fileSp.type : '',
+        nama_file_dok: fileDok ? fileDok.name : '',
+        mimeTypeDok: fileDok ? fileDok.type : ''
       };
 
-      // Read files sequentially if available
-      var processSubmit = function() {
+      if (!payload.npsn) {
+        Sultan.notif.peringatan('Sekolah belum dipilih.');
+        return;
+      }
+
+      var btnSubmit = $('#seragamlapor_modalForm button[type="submit"]');
+      var originalText = btnSubmit.text();
+      btnSubmit.prop('disabled', true).text('MENGUNGGAH...');
+
+      var proceedUpload = function(base64Sp, base64Dok) {
+        if (base64Sp) payload.fileSpBase64 = base64Sp;
+        if (base64Dok) payload.fileDokBase64 = base64Dok;
+        
         google.script.run
           .withSuccessHandler(function(response) {
-            btn.text(originalText).prop('disabled', false);
             var res = JSON.parse(response);
+            btnSubmit.prop('disabled', false).text(originalText);
             if (res.success) {
-              Sultan.notif.sukses(res.message);
               $('#seragamlapor_modalForm').modal('hide');
+              Sultan.notif.sukses(res.message);
               fetchLaporanData();
             } else {
-              Sultan.notif.gagal(res.message);
+              Sultan.notif.gagal('Gagal menyimpan laporan: ' + res.message);
             }
           })
           .seragam_saveLaporan(payload);
       };
 
-      var readDok = function() {
-        if (fileDok) {
-          var readerDok = new FileReader();
-          readerDok.onload = function(evt) {
-            payload.fileDokBase64 = evt.target.result.split(',')[1];
-            payload.mimeTypeDok = fileDok.type;
-            processSubmit();
-          };
-          readerDok.readAsDataURL(fileDok);
-        } else {
-          processSubmit();
-        }
+      // Baca berkas base64
+      var readSp = function(callback) {
+        if (!fileSp) { callback(null); return; }
+        var reader = new FileReader();
+        reader.onload = function(evt) { callback(evt.target.result.split(',')[1]); };
+        reader.readAsDataURL(fileSp);
       };
 
-      if (fileSp) {
-        var readerSp = new FileReader();
-        readerSp.onload = function(evt) {
-          payload.fileSpBase64 = evt.target.result.split(',')[1];
-          payload.mimeTypeSp = fileSp.type;
-          readDok();
-        };
-        readerSp.readAsDataURL(fileSp);
-      } else {
-        readDok();
-      }
+      var readDok = function(base64Sp) {
+        if (!fileDok) { proceedUpload(base64Sp, null); return; }
+        var reader = new FileReader();
+        reader.onload = function(evt) { proceedUpload(base64Sp, evt.target.result.split(',')[1]); };
+        reader.readAsDataURL(fileDok);
+      };
+
+      readSp(readDok);
     }
 
     function handleDeleteLaporan(row) {
-      Swal.fire({
-        title: 'Hapus Laporan',
-        text: 'Apakah Anda yakin ingin menghapus Laporan Penerimaan tahun ' + row.tahun + ' untuk ' + row.nama_sekolah + '?',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        confirmButtonText: 'Ya, Hapus',
-        cancelButtonText: 'Batal'
-      }).then((result) => {
-        if (result.isConfirmed) {
-          SultanUI.showLoading('#seragamlapor_loadingState', 'Menghapus dokumen...');
-          google.script.run
-            .withSuccessHandler(function(response) {
-              var res = JSON.parse(response);
-              if (res.success) {
-                Sultan.notif.sukses(res.message);
-                fetchLaporanData();
-              } else {
-                SultanUI.hideLoading('#seragamlapor_loadingState');
-                $('#seragamlapor_tableState').show();
-                Sultan.notif.gagal(res.message);
-              }
-            })
-            .seragam_deleteLaporan(row.rowId);
-        }
+      Sultan.notif.konfirmasi('Apakah Anda yakin ingin menghapus Laporan Penerimaan ' + row.nama_sekolah + '?', function() {
+        SultanUI.showLoading('#seragamlapor_loadingState', 'Menghapus laporan...');
+        google.script.run
+          .withSuccessHandler(function(response) {
+            var res = JSON.parse(response);
+            SultanUI.hideLoading('#seragamlapor_loadingState');
+            if (res.success) {
+              Sultan.notif.sukses(res.message);
+              fetchLaporanData();
+            } else {
+              Sultan.notif.gagal('Gagal menghapus laporan: ' + res.message);
+            }
+          })
+          .seragam_deleteLaporan(row.rowId);
       });
     }
 
