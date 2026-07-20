@@ -928,13 +928,19 @@ function getEfileDashboardData(idKategori, namaKategori, forceRefresh) {
           }
         } else if (jPeriode === "SK_PPPK" || jPeriode === "SK_KP" || jPeriode === "SK_JF" || jPeriode === "IJAZAH") {
           var targetKarakteristik = ePeriode;
+          if (ePeriode && ePeriode.indexOf('|') > -1) {
+            targetKarakteristik = String(ePeriode.split(' | ')[0]).trim();
+          }
           if (targetKarakteristik && targetKarakteristik !== "-") {
             periodsSet.add(targetKarakteristik);
             if (!efileMap[resolvedPtkId]) efileMap[resolvedPtkId] = {};
             efileMap[resolvedPtkId][targetKarakteristik] = eStatus;
           }
         } else if (jPeriode === "DIKLAT") {
-          var targetDiklatTgl = ePeriode && ePeriode.includes('|') ? String(ePeriode.split('|')[0]).trim() : ePeriode;
+          var targetDiklatTgl = ePeriode;
+          if (ePeriode && ePeriode.indexOf('|') > -1) {
+            targetDiklatTgl = String(ePeriode.split(' | ')[0]).trim();
+          }
           if (targetDiklatTgl && targetDiklatTgl !== "-") {
             periodsSet.add(targetDiklatTgl);
             if (!efileMap[resolvedPtkId]) efileMap[resolvedPtkId] = {};
