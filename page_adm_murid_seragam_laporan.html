@@ -56,6 +56,9 @@
                       <th class="text-left align-middle" style="min-width: 250px;">NAMA SEKOLAH</th>
                       <th class="text-center align-middle">TAHAP</th>
                       <th class="text-left align-middle">JENIS SERAGAM</th>
+                      <th class="text-center align-middle">L</th>
+                      <th class="text-center align-middle">P</th>
+                      <th class="text-center align-middle font-weight-bold">JML</th>
                       <th class="text-center align-middle" style="min-width: 150px;">SURAT PERNYATAAN (PDF)</th>
                       <th class="text-center align-middle" style="min-width: 150px;">DOKUMENTASI (FOTO)</th>
                       <th class="text-left align-middle">WAKTU UNGGAH</th>
@@ -124,7 +127,23 @@
         </div>
       </div>
 
-      <!-- BARIS 3: Berkas-Berkas -->
+      <!-- BARIS 3: Jumlah Seragam L, P dan Total -->
+      <div class="row">
+        <div class="col-md-4 col-12 mb-3">
+          <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Seragam L <span class="text-danger">*</span></label>
+          <input type="number" class="form-control form-control-sultan border-maroon text-center font-weight-bold" id="seragamlapor_in_jml_l" required min="0" value="0">
+        </div>
+        <div class="col-md-4 col-12 mb-3">
+          <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Seragam P <span class="text-danger">*</span></label>
+          <input type="number" class="form-control form-control-sultan border-maroon text-center font-weight-bold" id="seragamlapor_in_jml_p" required min="0" value="0">
+        </div>
+        <div class="col-md-4 col-12 mb-3">
+          <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Jumlah Seragam</label>
+          <input type="number" class="form-control form-control-sultan border-maroon text-center font-weight-bold" id="seragamlapor_in_jml_total" readonly value="0">
+        </div>
+      </div>
+
+      <!-- BARIS 4: Berkas-Berkas -->
       <div class="row">
         <div class="col-12 mb-3">
           <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Berkas Surat Pernyataan (PDF, Max 1MB) <span class="text-danger">*</span></label>
@@ -197,6 +216,13 @@
       
       // Event delegation inside templates or global modal
       $(document).off('submit', '#seragamlapor_formLaporan').on('submit', '#seragamlapor_formLaporan', handleUploadLaporan);
+
+      // Dynamic calculation for JML total
+      $(document).off('input', '#seragamlapor_in_jml_l, #seragamlapor_in_jml_p').on('input', '#seragamlapor_in_jml_l, #seragamlapor_in_jml_p', function() {
+        var l = parseInt($('#seragamlapor_in_jml_l').val()) || 0;
+        var p = parseInt($('#seragamlapor_in_jml_p').val()) || 0;
+        $('#seragamlapor_in_jml_total').val(l + p);
+      });
 
       // Load Initial
       initData();
@@ -384,8 +410,9 @@
             { targets: 2, className: "text-left align-middle text-wrap" },
             { targets: 3, width: "1%", className: "text-center align-middle font-weight-bold" },
             { targets: 4, className: "text-left align-middle text-wrap font-weight-normal" },
-            { targets: [5, 6], width: "1%", className: "text-center align-middle text-nowrap" },
-            { targets: [7, 8], className: "text-left align-middle text-wrap" }
+            { targets: [5, 6, 7], width: "1%", className: "text-center align-middle font-weight-bold" },
+            { targets: [8, 9], width: "1%", className: "text-center align-middle text-nowrap" },
+            { targets: [10, 11], className: "text-left align-middle text-wrap" }
           ],
           language: {
             url: "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json",
@@ -424,6 +451,9 @@
           sekolahCell,
           row.tahap || "Tahap 1",
           row.jenis_seragam || "Merah Putih",
+          row.jml_l || 0,
+          row.jml_p || 0,
+          row.jml_total || 0,
           linkSp,
           linkDok,
           row.tgl_upload,
@@ -449,6 +479,11 @@
       $('#seragamlapor_in_tahap').val('Tahap 1');
       $('#seragamlapor_cb_merah').prop('checked', false);
       $('#seragamlapor_cb_pramuka').prop('checked', false);
+
+      // Reset numeric inputs
+      $('#seragamlapor_in_jml_l').val(0);
+      $('#seragamlapor_in_jml_p').val(0);
+      $('#seragamlapor_in_jml_total').val(0);
       
       // Reset custom label values
       $('#seragamlapor_formLaporan .custom-file-label').removeClass("selected font-weight-bold").css('color', '').text('Pilih berkas...');
@@ -484,11 +519,16 @@
       $('#seragamlapor_in_sekolah').val(row.npsn).prop('disabled', true);
       $('#seragamlapor_in_tahun').val(row.tahun).prop('disabled', true);
       
-      // Populate new inputs
+      // Populate inputs
       $('#seragamlapor_in_tahap').val(row.tahap || 'Tahap 1');
       var jenis = row.jenis_seragam || "";
       $('#seragamlapor_cb_merah').prop('checked', jenis.includes("Merah Putih"));
       $('#seragamlapor_cb_pramuka').prop('checked', jenis.includes("Pramuka"));
+
+      // Populate counts
+      $('#seragamlapor_in_jml_l').val(row.jml_l || 0);
+      $('#seragamlapor_in_jml_p').val(row.jml_p || 0);
+      $('#seragamlapor_in_jml_total').val(row.jml_total || 0);
       
       $('#seragamlapor_lbl_sp').html(row.nama_file_sp ? `<i class="fas fa-file-pdf text-danger mr-1"></i> ${row.nama_file_sp}` : '');
       $('#seragamlapor_lbl_dok').html(row.nama_file_dok ? `<i class="fas fa-image text-info mr-1"></i> ${row.nama_file_dok}` : '');
@@ -529,6 +569,9 @@
       if ($('#seragamlapor_cb_merah').is(':checked')) selectedJenis.push("Merah Putih");
       if ($('#seragamlapor_cb_pramuka').is(':checked')) selectedJenis.push("Pramuka");
       
+      var btnSubmit = $('#global_modalForm button[type="submit"]');
+      var originalText = btnSubmit.text();
+
       if (selectedJenis.length === 0) {
         Sultan.notif.peringatan('Jenis Seragam wajib dipilih minimal satu.');
         return;
@@ -541,6 +584,9 @@
         tahun: $('#seragamlapor_in_tahun').val(),
         tahap: $('#seragamlapor_in_tahap').val(),
         jenis_seragam: selectedJenis.join(', '),
+        jml_l: parseInt($('#seragamlapor_in_jml_l').val()) || 0,
+        jml_p: parseInt($('#seragamlapor_in_jml_p').val()) || 0,
+        jml_total: parseInt($('#seragamlapor_in_jml_total').val()) || 0,
         id_file_sp: $('#seragamlapor_id_file_sp').val(),
         url_file_sp: $('#seragamlapor_url_file_sp').val(),
         id_file_dok: $('#seragamlapor_id_file_dok').val(),
@@ -557,8 +603,6 @@
         return;
       }
 
-      var btnSubmit = $('#global_modalForm button[type="submit"]');
-      var originalText = btnSubmit.text();
       btnSubmit.prop('disabled', true).text('MENGUNGGAH...');
 
       var proceedUpload = function(base64Sp, base64Dok) {

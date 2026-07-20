@@ -299,7 +299,10 @@ function seragam_getLaporan(tahun, npsnFilter) {
           tgl_upload: values[i][9],
           uploader: values[i][10],
           tahap: values[i][11] || "Tahap 1",
-          jenis_seragam: values[i][12] || "Merah Putih"
+          jenis_seragam: values[i][12] || "Merah Putih",
+          jml_l: parseInt(values[i][13]) || 0,
+          jml_p: parseInt(values[i][14]) || 0,
+          jml_total: parseInt(values[i][15]) || 0
         });
       }
     }
@@ -348,12 +351,13 @@ function seragam_saveLaporan(payload) {
 
     if (isEdit) {
       var row = parseInt(payload.rowId);
-      sheet.getRange(row, 1, 1, 13).setValues([[
+      sheet.getRange(row, 1, 1, 16).setValues([[
         payload.npsn, payload.nama_sekolah, payload.tahun,
         payload.nama_file_sp, fileUrlSp, fileIdSp,
         payload.nama_file_dok, fileUrlDok, fileIdDok,
         now, payload.user_login,
-        payload.tahap, payload.jenis_seragam
+        payload.tahap, payload.jenis_seragam,
+        payload.jml_l, payload.jml_p, payload.jml_total
       ]]);
     } else {
       sheet.appendRow([
@@ -361,7 +365,8 @@ function seragam_saveLaporan(payload) {
         payload.nama_file_sp, fileUrlSp, fileIdSp,
         payload.nama_file_dok, fileUrlDok, fileIdDok,
         now, payload.user_login,
-        payload.tahap, payload.jenis_seragam
+        payload.tahap, payload.jenis_seragam,
+        payload.jml_l, payload.jml_p, payload.jml_total
       ]);
     }
 
