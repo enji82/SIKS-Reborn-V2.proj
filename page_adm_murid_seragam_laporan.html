@@ -138,6 +138,33 @@
       // Deteksi Hak Akses
       IS_ADMIN = checkUserRoleIsAdmin();
       
+      // Render Filter Bar Placeholder immediately
+      var filtersConfig = [
+        { id: "seragamlapor_filterSekolah", placeholder: "- Memuat Sekolah... -", disabled: true, visible: IS_ADMIN },
+        { id: "seragamlapor_filterTahun", placeholder: "- Memuat Tahun... -", disabled: true }
+      ];
+
+      var extraButtons = `
+        <div class="divider-vertical d-none d-md-block mx-2"></div>
+        <button type="button" id="seragamlapor_btnSync" class="sultan-btn-refresh" title="Segarkan Data dari Server" disabled>
+          <i class="fas fa-sync-alt"></i>
+        </button>
+        <div class="ml-auto d-none d-md-block"></div>
+        <button class="sultan-btn-tambah" id="seragamlapor_btnUnggah" type="button" disabled>
+          <i class="fas fa-upload mr-1"></i> UNGGAH LAPORAN
+        </button>
+      `;
+
+      $('#seragamlapor_filterBarArea').html(SultanUI.renderFilterBar(filtersConfig, extraButtons));
+      $('#seragamlapor_filterSekolah_container').addClass('sultan-filter-unit-width');
+
+      // Bind Listeners (delegated where needed, or bound now)
+      $('#seragamlapor_filterTahun').on('change', fetchLaporanData);
+      $('#seragamlapor_filterSekolah').on('change', applyLocalFilter);
+      $('#seragamlapor_btnSync').on('click', fetchLaporanData);
+      $('#seragamlapor_btnUnggah').on('click', showUploadModal);
+      $('#seragamlapor_formLaporan').on('submit', handleUploadLaporan);
+
       // Load Initial
       initData();
 
@@ -186,12 +213,18 @@
     });
 
     function initData() {
-      SultanUI.showLoading('#seragamlapor_loadingState', 'Memuat daftar tahun & sekolah...');
+      SultanUI.showLoading('#seragamlapor_loadingState', 'Memuat daftar tahun...');
       google.script.run
         .withSuccessHandler(function(response) {
           var res = JSON.parse(response);
           if (res.success) {
             availableYears = res.data;
+            
+            // Populate and enable Tahun filter
+            var filterTahunOpts = availableYears.map(function(y) { return `<option value="${y}">${y}</option>`; }).join('');
+            $('#seragamlapor_filterTahun').html(filterTahunOpts).prop('disabled', false);
+            $('#seragamlapor_in_tahun').html(filterTahunOpts);
+            
             loadSekolahList();
           } else {
             Sultan.notif.gagal('Gagal memuat tahun: ' + res.message);
@@ -204,64 +237,36 @@
       google.script.run
         .withSuccessHandler(function(schoolRes) {
           listSekolah = schoolRes || [];
-          renderFilterBar();
+          
+          // Populate form sekolah list
+          var inSekolahOpts = '<option value="">- Pilih Sekolah -</option>';
+          listSekolah.forEach(function(s) {
+            if (s.jenjang === "SD") {
+              inSekolahOpts += `<option value="${s.npsn}" data-nama="${s.nama}">${s.nama} (${s.npsn})</option>`;
+            }
+          });
+          
+          if (IS_ADMIN) {
+            $('#seragamlapor_in_sekolah').html(inSekolahOpts);
+          } else {
+            var userNpsn = userLogin.npsn || userLogin.username || "";
+            $('#seragamlapor_in_sekolah_hidden').val(userNpsn);
+            $('#seragamlapor_groupSekolah').hide();
+          }
+
+          // Enable upload and refresh button
+          $('#seragamlapor_btnUnggah').prop('disabled', false);
+          $('#seragamlapor_btnSync').prop('disabled', false);
+
+          fetchLaporanData();
         })
         .seragam_getSekolahList();
     }
 
-    function renderFilterBar() {
-      var filterTahunOpts = availableYears.map(function(y) { return `<option value="${y}">${y}</option>`; }).join('');
-      var inSekolahOpts = '<option value="">- Pilih Sekolah -</option>';
-      
-      listSekolah.forEach(function(s) {
-        if (s.jenjang === "SD") {
-          inSekolahOpts += `<option value="${s.npsn}" data-nama="${s.nama}">${s.nama} (${s.npsn})</option>`;
-        }
-      });
-
-      var filtersConfig = [
-        { id: "seragamlapor_filterSekolah", value: "SEMUA", text: "Semua Sekolah", visible: IS_ADMIN },
-        { id: "seragamlapor_filterTahun", value: availableYears[0], text: availableYears[0] }
-      ];
-
-      var extraButtons = `
-        <div class="divider-vertical d-none d-md-block mx-2"></div>
-        <button type="button" id="seragamlapor_btnSync" class="sultan-btn-refresh" title="Segarkan Data dari Server">
-          <i class="fas fa-sync-alt"></i>
-        </button>
-        <div class="ml-auto d-none d-md-block"></div>
-        <button class="sultan-btn-tambah" id="seragamlapor_btnUnggah" type="button">
-          <i class="fas fa-upload mr-1"></i> UNGGAH LAPORAN
-        </button>
-      `;
-
-      $('#seragamlapor_filterBarArea').html(SultanUI.renderFilterBar(filtersConfig, extraButtons));
-      $('#seragamlapor_filterSekolah_container').addClass('sultan-filter-unit-width');
-      
-      // Inject options
-      $('#seragamlapor_filterTahun').html(filterTahunOpts);
-      $('#seragamlapor_in_tahun').html(filterTahunOpts);
-      if (IS_ADMIN) {
-        $('#seragamlapor_filterSekolah').html('<option value="SEMUA">- Semua Sekolah -</option>');
-        $('#seragamlapor_in_sekolah').html(inSekolahOpts);
-      } else {
-        var userNpsn = userLogin.npsn || userLogin.username || "";
-        $('#seragamlapor_in_sekolah_hidden').val(userNpsn);
-        $('#seragamlapor_groupSekolah').hide();
-      }
-
-      // Bind Listeners
-      $('#seragamlapor_filterTahun').on('change', fetchLaporanData);
-      $('#seragamlapor_filterSekolah').on('change', applyLocalFilter);
-      $('#seragamlapor_btnSync').on('click', fetchLaporanData);
-      $('#seragamlapor_btnUnggah').on('click', showUploadModal);
-      $('#seragamlapor_formLaporan').on('submit', handleUploadLaporan);
-
-      fetchLaporanData();
-    }
-
     function fetchLaporanData() {
       var tahun = $('#seragamlapor_filterTahun').val();
+      if (!tahun) return; // Wait until populated
+      
       var npsnQuery = IS_ADMIN ? "SEMUA" : (userLogin.npsn || userLogin.username || "");
 
       SultanUI.showLoading('#seragamlapor_loadingState', 'Mengambil dokumen laporan...');
