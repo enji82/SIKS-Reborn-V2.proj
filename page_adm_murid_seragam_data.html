@@ -42,17 +42,15 @@
                   <thead class="thead-sultan-premium text-uppercase font-weight-bold">
                     <tr>
                       <th class="text-center align-middle">NO</th>
-                      <th class="text-center align-middle">NPSN</th>
-                      <th class="text-left align-middle" style="min-width: 150px;">NAMA SEKOLAH</th>
-                      <th class="text-left align-middle" style="min-width: 150px;">NAMA MURID</th>
-                      <th class="text-center align-middle">NISN</th>
+                      <th class="text-left align-middle" style="min-width: 250px;">NAMA SEKOLAH</th>
+                      <th class="text-left align-middle" style="min-width: 200px;">NAMA MURID</th>
                       <th class="text-center align-middle">GENDER</th>
                       <th class="text-center align-middle">UKURAN</th>
-                      <th class="text-left align-middle" style="min-width: 180px;">ALAMAT</th>
-                      <th class="text-left align-middle" style="min-width: 150px;">ORANG TUA / WALI</th>
+                      <th class="text-left align-middle" style="min-width: 320px; white-space: normal;">ALAMAT</th>
+                      <th class="text-left align-middle" style="min-width: 240px; white-space: normal;">ORANG TUA / WALI</th>
                     </tr>
                   </thead>
-                  <tbody class="text-dark font-weight-bold"></tbody>
+                  <tbody class="text-dark"></tbody>
                 </table>
               </div>
             </div>
@@ -176,7 +174,7 @@
       Object.keys(uniqueSchools).sort(function(a, b) {
         return uniqueSchools[a].localeCompare(uniqueSchools[b]);
       }).forEach(function(npsn) {
-        $dropdown.append(`<option value="${npsn}">${uniqueSchools[npsn]} (${npsn})</option>`);
+        $dropdown.append(`<option value="${npsn}">${uniqueSchools[npsn]}</option>`);
       });
 
       if (uniqueSchools[currentSelection] || currentSelection === "SEMUA") {
@@ -189,37 +187,52 @@
     function applyLocalFilter() {
       var targetSekolah = IS_ADMIN ? $('#seragamdata_filterSekolah').val() : (userLogin.npsn || userLogin.username || "");
       var filtered = SERAGAMDATA_CACHE_DATA;
-    
-    if (targetSekolah && targetSekolah !== "SEMUA") {
-      filtered = SERAGAMDATA_CACHE_DATA.filter(function(row) {
-        return String(row.npsn).trim() === String(targetSekolah).trim();
-      });
+      
+      if (targetSekolah && targetSekolah !== "SEMUA") {
+        filtered = SERAGAMDATA_CACHE_DATA.filter(function(row) {
+          return String(row.npsn).trim() === String(targetSekolah).trim();
+        });
+      }
+      
+      renderTable(filtered);
     }
-    
-    renderTable(filtered);
-  }
+
+    function getUkuranBadgeClass(sz) {
+      var s = String(sz || "").toUpperCase().trim();
+      if (s === 'S') return 'badge-success';
+      if (s === 'M') return 'badge-info';
+      if (s === 'L') return 'badge-warning text-dark';
+      if (s === 'XL') return 'badge-danger';
+      if (s === 'XXL' || s === '3XL' || s === 'XXXL') return 'badge-dark';
+      return 'badge-secondary';
+    }
 
     function renderTable(data) {
       var tbody = $('#seragamdata_tabelUtama tbody');
       tbody.empty();
 
       if (data.length === 0) {
-        tbody.append(`<tr><td colspan="9" class="text-center text-muted p-4">Tidak ada data penerima seragam gratis pada tahun/tahap ini.</td></tr>`);
+        tbody.append(`<tr><td colspan="7" class="text-center text-muted p-4">Tidak ada data penerima seragam gratis pada tahun/tahap ini.</td></tr>`);
         return;
       }
 
       data.forEach(function(row, idx) {
+        var sizeClass = getUkuranBadgeClass(row.ukuran_seragam);
         tbody.append(`
           <tr>
-            <td class="text-center align-middle">${idx + 1}</td>
-            <td class="text-center align-middle">${row.npsn}</td>
-            <td class="text-left align-middle text-truncate" style="max-width: 200px;">${row.nama_sekolah}</td>
-            <td class="text-left align-middle text-uppercase">${row.nama_murid}</td>
-            <td class="text-center align-middle">${row.nisn}</td>
-            <td class="text-center align-middle">${row.jenis_kelamin}</td>
-            <td class="text-center align-middle"><span class="badge badge-secondary px-2 py-1">${row.ukuran_seragam}</span></td>
-            <td class="text-left align-middle text-wrap" style="max-width: 250px;">${row.alamat}</td>
-            <td class="text-left align-middle text-uppercase">${row.nama_wali}</td>
+            <td class="text-center align-middle font-weight-bold">${idx + 1}</td>
+            <td class="text-left align-middle text-wrap">
+              <div class="font-weight-bold text-maroon" style="font-size: 13px; line-height: 1.2;">${row.nama_sekolah}</div>
+              <div class="text-muted small font-weight-normal">${row.npsn}</div>
+            </td>
+            <td class="text-left align-middle text-wrap">
+              <div class="font-weight-bold text-dark text-uppercase" style="font-size: 13px; line-height: 1.2;">${row.nama_murid}</div>
+              <div class="text-muted small font-weight-normal">${row.nisn || '-'}</div>
+            </td>
+            <td class="text-center align-middle font-weight-bold text-uppercase">${row.jenis_kelamin}</td>
+            <td class="text-center align-middle"><span class="badge ${sizeClass} px-2 py-1 font-weight-bold" style="font-size: 12px;">${row.ukuran_seragam}</span></td>
+            <td class="text-left align-middle text-wrap font-weight-normal" style="max-width: 320px; white-space: normal;">${row.alamat}</td>
+            <td class="text-left align-middle text-uppercase text-wrap font-weight-bold" style="max-width: 240px; white-space: normal;">${row.nama_wali}</td>
           </tr>
         `);
       });
