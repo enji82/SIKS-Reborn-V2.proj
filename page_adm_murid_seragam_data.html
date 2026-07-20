@@ -139,36 +139,54 @@
         $('#seragamdata_filterSekolah').html(filterSekolahOpts);
       }
 
-      // Bind Listeners
-      $('#seragamdata_filterTahun, #seragamdata_filterTahap, #seragamdata_filterSekolah').on('change', fetchTableData);
-      $('#seragamdata_btnSync').on('click', fetchTableData);
+    var SERAGAMDATA_CACHE_DATA = [];
 
-      // Fetch first time
-      fetchTableData();
+    // Bind Listeners
+    $('#seragamdata_filterTahun, #seragamdata_filterTahap').on('change', fetchTableData);
+    $('#seragamdata_filterSekolah').on('change', applyLocalFilter);
+    $('#seragamdata_btnSync').on('click', fetchTableData);
+
+    // Fetch first time
+    fetchTableData();
+  }
+
+  function fetchTableData() {
+    var tahun = $('#seragamdata_filterTahun').val();
+    var tahap = $('#seragamdata_filterTahap').val();
+    // Always fetch everything ("SEMUA") for admin to allow local filtering, or user's npsn if not admin
+    var npsnQuery = IS_ADMIN ? "SEMUA" : (userLogin.npsn || userLogin.username || "");
+
+    SultanUI.showLoading('#seragamdata_loadingState', 'Mengambil data penerima...');
+    $('#seragamdata_tableState').hide();
+
+    google.script.run
+      .withSuccessHandler(function(response) {
+        var res = JSON.parse(response);
+        SultanUI.hideLoading('#seragamdata_loadingState');
+        $('#seragamdata_tableState').show();
+        
+        if (res.success) {
+          SERAGAMDATA_CACHE_DATA = res.data || [];
+          applyLocalFilter();
+        } else {
+          Sultan.notif.gagal('Gagal memuat data: ' + res.message);
+        }
+      })
+      .seragam_getDataPenerima(tahun, tahap, npsnQuery);
+  }
+
+  function applyLocalFilter() {
+    var targetSekolah = IS_ADMIN ? $('#seragamdata_filterSekolah').val() : (userLogin.npsn || userLogin.username || "");
+    var filtered = SERAGAMDATA_CACHE_DATA;
+    
+    if (targetSekolah && targetSekolah !== "SEMUA") {
+      filtered = SERAGAMDATA_CACHE_DATA.filter(function(row) {
+        return String(row.npsn).trim() === String(targetSekolah).trim();
+      });
     }
-
-    function fetchTableData() {
-      var tahun = $('#seragamdata_filterTahun').val();
-      var tahap = $('#seragamdata_filterTahap').val();
-      var npsn = IS_ADMIN ? $('#seragamdata_filterSekolah').val() : (userLogin.npsn || userLogin.username || "");
-
-      SultanUI.showLoading('#seragamdata_loadingState', 'Mengambil data penerima...');
-      $('#seragamdata_tableState').hide();
-
-      google.script.run
-        .withSuccessHandler(function(response) {
-          var res = JSON.parse(response);
-          SultanUI.hideLoading('#seragamdata_loadingState');
-          $('#seragamdata_tableState').show();
-          
-          if (res.success) {
-            renderTable(res.data);
-          } else {
-            Sultan.notif.gagal('Gagal memuat data: ' + res.message);
-          }
-        })
-        .seragam_getDataPenerima(tahun, tahap, npsn);
-    }
+    
+    renderTable(filtered);
+  }
 
     function renderTable(data) {
       var tbody = $('#seragamdata_tabelUtama tbody');
