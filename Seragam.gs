@@ -305,7 +305,13 @@ function seragam_getLaporan(tahun, npsnFilter) {
           jml_total: parseInt(values[i][15]) || 0,
           nama_file_video: values[i][16] || "",
           url_file_video: values[i][17] || "",
-          id_file_video: values[i][18] || ""
+          id_file_video: values[i][18] || "",
+          tgl_edit: values[i][19] || "",
+          user_edit: values[i][20] || "",
+          status: values[i][21] || "DIPROSES",
+          catatan: values[i][22] || "",
+          user_verif: values[i][23] || "",
+          tgl_verif: values[i][24] || ""
         });
       }
     }
@@ -393,15 +399,25 @@ function seragam_saveLaporan(payload) {
 
     if (isEdit) {
       var row = parseInt(payload.rowId);
+      // Retrieve previous upload date and uploader if not supplied to preserve original info
+      var currentValues = sheet.getRange(row, 1, 1, 11).getValues()[0];
+      var originalTglUpload = currentValues[9] ? Utilities.formatDate(new Date(currentValues[9]), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss") : now;
+      var originalUploader = currentValues[10] || payload.user_login;
+
       sheet.getRange(row, 1, 1, 19).setValues([[
         payload.npsn, payload.nama_sekolah, payload.tahun,
         payload.nama_file_sp, fileUrlSp, fileIdSp,
         fileNamesDok, fileUrlsDok, fileIdsDok,
-        now, payload.user_login,
+        originalTglUpload, originalUploader,
         payload.tahap, payload.jenis_seragam,
         payload.jml_l, payload.jml_p, payload.jml_total,
         fileNameVideo, fileUrlVideo, fileIdVideo
       ]]);
+      
+      sheet.getRange(row, 20).setValue(now);
+      sheet.getRange(row, 21).setValue(payload.user_login);
+      sheet.getRange(row, 22).setValue("DIPROSES");
+      sheet.getRange(row, 23).setValue("");
     } else {
       sheet.appendRow([
         payload.npsn, payload.nama_sekolah, payload.tahun,
@@ -410,11 +426,35 @@ function seragam_saveLaporan(payload) {
         now, payload.user_login,
         payload.tahap, payload.jenis_seragam,
         payload.jml_l, payload.jml_p, payload.jml_total,
-        fileNameVideo, fileUrlVideo, fileIdVideo
+        fileNameVideo, fileUrlVideo, fileIdVideo,
+        "", "", // tgl_edit, user_edit
+        "DIPROSES", "", "", "" // status, catatan, user_verif, tgl_verif
       ]);
     }
 
     return JSON.stringify({ success: true, message: "Laporan Penerimaan berhasil disimpan." });
+  } catch(e) {
+    return JSON.stringify({ success: false, message: e.message });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function seragam_saveVerifikasi(payload) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+    var sheet = getOrCreateSheetSeragam("Laporan_Penerimaan");
+    var row = parseInt(payload.rowId);
+    var now = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
+
+    // Column 22: status, Column 23: catatan, Column 24: user_verif, Column 25: tgl_verif
+    sheet.getRange(row, 22).setValue(payload.status);
+    sheet.getRange(row, 23).setValue(payload.catatan || "");
+    sheet.getRange(row, 24).setValue(payload.user_verif);
+    sheet.getRange(row, 25).setValue(now);
+
+    return JSON.stringify({ success: true, message: "Verifikasi Laporan Penerimaan berhasil disimpan." });
   } catch(e) {
     return JSON.stringify({ success: false, message: e.message });
   } finally {

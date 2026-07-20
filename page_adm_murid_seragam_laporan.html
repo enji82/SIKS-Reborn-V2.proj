@@ -55,7 +55,7 @@
                       <th class="text-center align-middle">TAHUN</th>
                       <th class="text-left align-middle" style="min-width: 200px;">NAMA SEKOLAH</th>
                       <th class="text-center align-middle">TAHAP</th>
-                      <th class="text-left align-middle">JENIS SERAGAM</th>
+                      <th class="text-left align-middle">SERAGAM</th>
                       <th class="text-center align-middle">L</th>
                       <th class="text-center align-middle">P</th>
                       <th class="text-center align-middle font-weight-bold">JML</th>
@@ -63,6 +63,8 @@
                       <th class="text-center align-middle" style="min-width: 150px;">DOKUMENTASI (FOTO)</th>
                       <th class="text-center align-middle" style="min-width: 150px;">DOKUMENTASI (VIDEO)</th>
                       <th class="text-left align-middle">DIUNGGAH</th>
+                      <th class="text-left align-middle">DIUBAH</th>
+                      <th class="text-center align-middle">VERIFIKASI</th>
                     </tr>
                   </thead>
                   <tbody class="text-dark"></tbody>
@@ -79,6 +81,7 @@
 
 <!-- TEMPLATES AREA (HIDDEN) -->
 <div id="seragamlapor_templates" style="display: none;">
+  <!-- FORM INPUT LAPORAN -->
   <form id="seragamlapor_formLaporan">
     <input type="hidden" id="seragamlapor_rowId" name="rowId">
     <input type="hidden" id="seragamlapor_id_file_sp" name="id_file_sp">
@@ -183,6 +186,68 @@
       </button>
     </div>
   </form>
+
+  <!-- FORM VERIFIKASI -->
+  <form id="seragamlapor_formVerif" class="d-flex flex-column flex-grow-1 overflow-hidden m-0 p-0">
+    <div class="px-4 pb-4 flex-grow-1 overflow-auto" style="padding-top: 15px !important;">
+      <input type="hidden" id="seragamlapor_verif_rowId">
+      
+      <h6 class="modal-verifikasi-section-title"><i class="fas fa-list-alt mr-2"></i> DETAIL DATA</h6>
+      
+      <div class="sultan-detail-container mb-4">
+        <div class="sultan-detail-item">
+          <label class="sultan-detail-label">NAMA SEKOLAH</label>
+          <div class="sultan-detail-value text-uppercase" id="seragamlapor_vNamaSd">-</div>
+        </div>
+        <div class="sultan-detail-item">
+          <label class="sultan-detail-label">TAHUN LAPORAN</label>
+          <div class="sultan-detail-value font-weight-bold" id="seragamlapor_vTahun">-</div>
+        </div>
+        <div class="sultan-detail-item">
+          <label class="sultan-detail-label">TAHAP</label>
+          <div class="sultan-detail-value font-weight-bold" id="seragamlapor_vTahap">-</div>
+        </div>
+        <div class="sultan-detail-item">
+          <label class="sultan-detail-label">SERAGAM</label>
+          <div class="sultan-detail-value text-uppercase" id="seragamlapor_vSeragam">-</div>
+        </div>
+        <div class="sultan-detail-item border-0 mb-0">
+          <label class="sultan-detail-label">JUMLAH SERAGAM</label>
+          <div class="sultan-detail-value">
+            L: <span class="font-weight-bold text-primary mr-3" id="seragamlapor_vJmlL">0</span>
+            P: <span class="font-weight-bold text-primary mr-3" id="seragamlapor_vJmlP">0</span>
+            TOTAL: <span class="font-weight-bold text-maroon" id="seragamlapor_vJmlTotal">0</span>
+          </div>
+        </div>
+      </div>
+
+      <h6 class="modal-verifikasi-section-title"><i class="fas fa-check-circle mr-2"></i> VERIFIKASI</h6>
+
+      <div class="form-group mb-3">
+        <label class="modal-verifikasi-form-label">Keputusan Verifikasi <span class="text-danger">*</span></label>
+        <select class="modal-verifikasi-select font-weight-bold w-100" id="seragamlapor_verif_status" required>
+          <option value="">-- Pilih Keputusan --</option>
+          <option value="Diproses">Diproses</option>
+          <option value="Disetujui">Disetujui</option>
+          <option value="Revisi">Revisi</option>
+          <option value="Ditolak">Ditolak</option>
+        </select>
+      </div>
+
+      <div class="form-group mb-0">
+        <label class="modal-verifikasi-form-label">Catatan Admin <span id="seragamlapor_verifWajibCatatan" class="text-danger d-none">*</span></label>
+        <textarea class="modal-verifikasi-textarea w-100" id="seragamlapor_verif_catatan" rows="3" placeholder="Wajib diisi jika ditolak / direvisi..."></textarea>
+      </div>
+    </div>
+    <div class="modal-verifikasi-footer" id="seragamlapor_verifFooter">
+      <button type="button" class="modal-btn-batal" data-dismiss="modal">
+        <i class="fas fa-times mr-2"></i>BATAL
+      </button>
+      <button type="submit" id="seragamlapor_btnSimpanVerif" class="modal-verifikasi-btn-verifikasi" form="seragamlapor_formVerif">
+        <i class="fas fa-check mr-2"></i>VERIFIKASI
+      </button>
+    </div>
+  </form>
 </div>
 
 <script>
@@ -226,6 +291,8 @@
       
       // Event delegation inside templates or global modal
       $(document).off('submit', '#seragamlapor_formLaporan').on('submit', '#seragamlapor_formLaporan', handleUploadLaporan);
+      $(document).off('submit', '#seragamlapor_formVerif').on('submit', '#seragamlapor_formVerif', handleSaveVerifikasi);
+      $(document).off('change', '#seragamlapor_verif_status').on('change', '#seragamlapor_verif_status', handleStatusVerifChange);
 
       // Dynamic calculation for JML total
       $(document).off('input', '#seragamlapor_in_jml_l, #seragamlapor_in_jml_p').on('input', '#seragamlapor_in_jml_l, #seragamlapor_in_jml_p', function() {
@@ -258,33 +325,40 @@
         var payload = JSON.parse($(this).attr('data-payload'));
         handleDeleteLaporan(payload);
       });
+
+      $('#seragamlapor_tabelUtama').off('click', '.btn-verif').on('click', '.btn-verif', function() {
+        var payload = JSON.parse($(this).attr('data-payload'));
+        showVerifikasiModal(payload);
+      });
       
-      $('#seragamlapor_tabelUtama').off('click', '.btn-preview-pdf').on('click', '.btn-preview-pdf', function(e) {
+      // Preview handler (Uses standard global preview modal)
+      $(document).off('click', '.btn-preview-pdf, .btn-preview-img, .btn-preview-video').on('click', '.btn-preview-pdf, .btn-preview-img, .btn-preview-video', function(e) {
         e.preventDefault();
         var url = $(this).attr('data-url');
-        var nama = $(this).attr('data-nama');
-        if (typeof SultanUI.viewPDF === 'function') {
-          SultanUI.viewPDF(url, nama);
+        var nama = $(this).attr('data-nama') || 'Dokumen';
+        if (!url) { Sultan.notif.peringatan('URL tidak tersedia.'); return; }
+        
+        var isImage = $(this).hasClass('btn-preview-img') || url.toLowerCase().endsWith('.jpg') || url.toLowerCase().endsWith('.png') || url.toLowerCase().endsWith('.jpeg');
+        var finalUrl = url;
+        var downloadUrl = "";
+        var isGoogleDrive = url.indexOf('drive.google.com') > -1;
+        
+        if (isGoogleDrive) {
+          var match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+          if (match && match[1]) {
+            finalUrl = 'https://drive.google.com/file/d/' + match[1] + '/preview';
+            downloadUrl = 'https://drive.google.com/uc?export=download&id=' + match[1];
+          }
         } else {
-          window.open(url, '_blank');
+          downloadUrl = url;
         }
-      });
-
-      $('#seragamlapor_tabelUtama').off('click', '.btn-preview-img').on('click', '.btn-preview-img', function(e) {
-        e.preventDefault();
-        var url = $(this).attr('data-url');
-        var nama = $(this).attr('data-nama');
-        if (typeof SultanUI.viewImage === 'function') {
-          SultanUI.viewImage(url, nama);
-        } else {
-          window.open(url, '_blank');
-        }
-      });
-
-      $('#seragamlapor_tabelUtama').off('click', '.btn-preview-video').on('click', '.btn-preview-video', function(e) {
-        e.preventDefault();
-        var url = $(this).attr('data-url');
-        window.open(url, '_blank');
+        
+        Sultan.modal.preview({
+          url: finalUrl,
+          title: nama,
+          downloadUrl: downloadUrl,
+          isImage: isImage
+        });
       });
     });
 
@@ -429,7 +503,8 @@
             { targets: 4, className: "text-left align-middle text-wrap font-weight-normal" },
             { targets: [5, 6, 7], width: "1%", className: "text-center align-middle font-weight-bold" },
             { targets: [8, 9, 10], width: "1%", className: "text-center align-middle text-nowrap" },
-            { targets: 11, className: "text-left align-middle text-wrap" }
+            { targets: [11, 12], className: "text-left align-middle text-wrap" },
+            { targets: 13, className: "text-center align-middle text-nowrap" }
           ],
           language: {
             url: "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json",
@@ -441,18 +516,20 @@
       var dtArray = [];
       data.forEach(function(row) {
         var isOwner = IS_ADMIN || String(row.npsn).trim() === String(userLogin.npsn || userLogin.username).trim();
+        var statusLower = String(row.status || "").toLowerCase();
+        var isLocked = (statusLower.includes('setuju') || statusLower.includes('acc') || statusLower.includes('valid'));
         
-        var btnAksi = '';
-        if (isOwner) {
-          btnAksi = `
-            <div class="d-flex flex-nowrap justify-content-center" style="gap:5px;">
-              <button class="sultan-btn-aksi sultan-btn-aksi-warning btn-edit" data-payload='${JSON.stringify(row)}' title="Unggah Ulang"><i class="fas fa-edit"></i></button>
-              <button class="sultan-btn-aksi sultan-btn-aksi-maroon btn-delete" data-payload='${JSON.stringify(row)}' title="Hapus"><i class="fas fa-trash-alt"></i></button>
-            </div>
-          `;
-        } else {
-          btnAksi = `<span class="text-muted small">No Access</span>`;
-        }
+        var btnV = IS_ADMIN
+          ? `<button class="sultan-btn-aksi sultan-btn-aksi-primary btn-verif" data-payload='${JSON.stringify(row)}' title="Verifikasi Laporan"><i class="fas fa-clipboard-check"></i></button>`
+          : '';
+        var btnP = (!isLocked && isOwner)
+          ? `<button class="sultan-btn-aksi sultan-btn-aksi-warning btn-edit" data-payload='${JSON.stringify(row)}' title="Unggah Ulang"><i class="fas fa-edit"></i></button>`
+          : `<button class="sultan-btn-aksi" disabled style="opacity:0.5;" title="Terkunci"><i class="fas fa-edit"></i></button>`;
+        var btnH = (!isLocked && isOwner)
+          ? `<button class="sultan-btn-aksi sultan-btn-aksi-maroon btn-delete" data-payload='${JSON.stringify(row)}' title="Hapus"><i class="fas fa-trash-alt"></i></button>`
+          : `<button class="sultan-btn-aksi" disabled style="opacity:0.5;" title="Terkunci"><i class="fas fa-trash-alt"></i></button>`;
+
+        var btnAksi = `<div class="d-flex flex-nowrap justify-content-center" style="gap:5px;">${btnV}${btnP}${btnH}</div>`;
 
         var linkSp = row.url_file_sp ? `<button type="button" class="sultan-btn-pdf btn-preview-pdf" data-url="${row.url_file_sp}" data-nama="SP-${row.nama_sekolah}"><i class="fas fa-file-pdf mr-1"></i> LIHAT</button>` : '<span class="text-muted">-</span>';
         
@@ -484,6 +561,12 @@
           ? `<div class="sultan-table-secondary"><span class="font-weight-bold text-dark">${row.tgl_upload}</span><span>${row.uploader}</span></div>` 
           : '-';
 
+        var editBy = row.user_edit 
+          ? `<div class="sultan-table-secondary"><span class="font-weight-bold text-dark">${row.tgl_edit}</span><span>${row.user_edit}</span></div>` 
+          : '-';
+
+        var statusBadge = getStatusBadge(row.status, row.catatan);
+
         dtArray.push([
           btnAksi,
           row.tahun,
@@ -496,11 +579,37 @@
           linkSp,
           linkDok,
           linkVideo,
-          uploadBy
+          uploadBy,
+          editBy,
+          statusBadge
         ]);
       });
 
       SERAGAMLAPOR_TABEL_INSTANCE.clear().rows.add(dtArray).draw(false);
+    }
+
+    function getStatusBadge(status, catatan) {
+      var statusUpper = String(status || "DIPROSES").toUpperCase();
+      var badgeClass = "badge-secondary";
+      var icon = "fa-clock";
+      
+      if (statusUpper === "DISETUJUI") {
+        badgeClass = "badge-success";
+        icon = "fa-check-circle";
+      } else if (statusUpper === "REVISI") {
+        badgeClass = "badge-warning text-dark";
+        icon = "fa-exclamation-circle";
+      } else if (statusUpper === "DITOLAK") {
+        badgeClass = "badge-danger";
+        icon = "fa-times-circle";
+      }
+      
+      var badgeHtml = `<span class="badge ${badgeClass} text-uppercase font-weight-bold px-2 py-1"><i class="fas ${icon} mr-1"></i>${statusUpper}</span>`;
+      
+      if (catatan && catatan.trim() !== "" && catatan !== "-") {
+        return badgeHtml + `<div class="mt-1"><button type="button" class="sultan-btn-note btn-catatan" data-pesan="${catatan.replace(/"/g, '&quot;')}"><i class="fas fa-comment-dots mr-1"></i> Baca Catatan</button></div>`;
+      }
+      return badgeHtml;
     }
 
     function showUploadModal() {
@@ -612,6 +721,96 @@
       });
       
       $('#global_modalForm').modal('show');
+    }
+
+    function showVerifikasiModal(row) {
+      $('#seragamlapor_formVerif')[0].reset();
+      $('#seragamlapor_verif_rowId').val(row.rowId);
+      
+      // Populate Details
+      $('#seragamlapor_vNamaSd').text(row.nama_sekolah || '-');
+      $('#seragamlapor_vTahun').text(row.tahun || '-');
+      $('#seragamlapor_vTahap').text(row.tahap || '-');
+      $('#seragamlapor_vSeragam').text(row.jenis_seragam || '-');
+      $('#seragamlapor_vJmlL').text(row.jml_l || '0');
+      $('#seragamlapor_vJmlP').text(row.jml_p || '0');
+      $('#seragamlapor_vJmlTotal').text(row.jml_total || '0');
+      
+      $('#seragamlapor_verif_status').val(row.status !== 'DIPROSES' ? (row.status || '') : 'Diproses');
+      $('#seragamlapor_verif_catatan').val(row.catatan !== '-' ? (row.catatan || '') : '');
+      
+      $('#seragamlapor_btnSimpanVerif').prop('disabled', false).html('<i class="fas fa-check mr-2"></i>VERIFIKASI');
+      checkWajibCatatan($('#seragamlapor_verif_status').val());
+
+      // Open global verification modal
+      Sultan.modal.verifikasi({
+        title: 'VERIFIKASI DATA LAPORAN PENERIMAAN',
+        url: row.url_file_sp || '',
+        isImage: false,
+        formHtml: $('#seragamlapor_formVerif').show()
+      });
+
+      // Move footer to global container
+      $('#seragamlapor_verifFooter').appendTo('#global_verifikasiFooterArea').show();
+      $('#global_verifikasiFooterArea').show();
+
+      // Return form on modal close
+      $('#global_modalVerifikasi').off('hidden.bs.modal.seragamlaporverif').on('hidden.bs.modal.seragamlaporverif', function() {
+        $('#seragamlapor_verifFooter').appendTo('#seragamlapor_formVerif');
+        $('#seragamlapor_formVerif').appendTo('#seragamlapor_templates');
+        $('#global_verifikasiFooterArea').hide().empty();
+      });
+    }
+
+    function handleStatusVerifChange() {
+      checkWajibCatatan($(this).val());
+    }
+
+    function checkWajibCatatan(val) {
+      if (val === 'Revisi' || val === 'Ditolak') {
+        $('#seragamlapor_verif_catatan').attr('placeholder', 'Jelaskan alasan revisi/penolakan kepada sekolah...').focus();
+        $('#seragamlapor_verifWajibCatatan').removeClass('d-none');
+      } else {
+        $('#seragamlapor_verif_catatan').attr('placeholder', 'Catatan opsional.');
+        $('#seragamlapor_verifWajibCatatan').addClass('d-none');
+      }
+    }
+
+    function handleSaveVerifikasi(e) {
+      e.preventDefault();
+      var btn = $('#seragamlapor_btnSimpanVerif');
+      var originalText = btn.html();
+      
+      var statusVal = $('#seragamlapor_verif_status').val();
+      var catatanVal = $('#seragamlapor_verif_catatan').val();
+      
+      if ((statusVal === 'Revisi' || statusVal === 'Ditolak') && !catatanVal.trim()) {
+        Sultan.notif.peringatan('Catatan wajib diisi untuk keputusan Revisi atau Ditolak.');
+        return;
+      }
+      
+      btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i>VERIFIKASI...');
+      
+      var payload = {
+        rowId: $('#seragamlapor_verif_rowId').val(),
+        status: statusVal,
+        catatan: catatanVal,
+        user_verif: userLogin.username || "admin"
+      };
+      
+      google.script.run
+        .withSuccessHandler(function(response) {
+          var res = JSON.parse(response);
+          btn.prop('disabled', false).html(originalText);
+          if (res.success) {
+            $('#global_modalVerifikasi').modal('hide');
+            Sultan.notif.sukses(res.message);
+            fetchLaporanData();
+          } else {
+            Sultan.notif.gagal('Gagal memproses verifikasi: ' + res.message);
+          }
+        })
+        .seragam_saveVerifikasi(payload);
     }
 
     function handleUploadLaporan(e) {
