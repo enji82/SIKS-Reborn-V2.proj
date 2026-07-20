@@ -636,19 +636,29 @@
       if ($('#seragamlapor_cb_pramuka').is(':checked')) selectedJenis.push("Pramuka");
       
       var btnSubmit = $('#global_modalForm button[type="submit"]');
-      var originalText = btnSubmit.text();
+      var originalText = btnSubmit.html();
 
       if (selectedJenis.length === 0) {
         Sultan.notif.peringatan('Jenis Seragam wajib dipilih minimal satu.');
         return;
       }
 
+      var namaSekolah = IS_ADMIN ? $('#seragamlapor_in_sekolah option:selected').attr('data-nama') : (userLogin.unit || "Sekolah");
+      var tahapLapor = $('#seragamlapor_in_tahap').val();
+
+      // Naming scheme extraction
+      var extSp = fileSp ? fileSp.name.split('.').pop() : 'pdf';
+      var customNamaSp = fileSp ? ('Laporan ' + namaSekolah + ' ' + tahapLapor + '.' + extSp) : '';
+
+      var extVideo = fileVideo ? fileVideo.name.split('.').pop() : 'mp4';
+      var customNamaVideo = fileVideo ? ('Video ' + namaSekolah + ' ' + tahapLapor + '.' + extVideo) : '';
+
       var payload = {
         rowId: rowId,
         npsn: IS_ADMIN ? $('#seragamlapor_in_sekolah').val() : $('#seragamlapor_in_sekolah_hidden').val(),
-        nama_sekolah: IS_ADMIN ? $('#seragamlapor_in_sekolah option:selected').attr('data-nama') : (userLogin.unit || "Sekolah"),
+        nama_sekolah: namaSekolah,
         tahun: $('#seragamlapor_in_tahun').val(),
-        tahap: $('#seragamlapor_in_tahap').val(),
+        tahap: tahapLapor,
         jenis_seragam: selectedJenis.join(', '),
         jml_l: parseInt($('#seragamlapor_in_jml_l').val()) || 0,
         jml_p: parseInt($('#seragamlapor_in_jml_p').val()) || 0,
@@ -664,12 +674,12 @@
         url_file_video: $('#seragamlapor_url_file_video').val(),
         
         user_login: userLogin.username || "user",
-        nama_file_sp: fileSp ? fileSp.name : '',
+        nama_file_sp: customNamaSp,
         mimeTypeSp: fileSp ? fileSp.type : '',
         
         photos: [], // Array of {base64, mimeType, name}
         videoBase64: null,
-        nama_file_video: fileVideo ? fileVideo.name : '',
+        nama_file_video: customNamaVideo,
         mimeTypeVideo: fileVideo ? fileVideo.type : ''
       };
 
@@ -678,7 +688,7 @@
         return;
       }
 
-      btnSubmit.prop('disabled', true).text('MENGUNGGAH...');
+      btnSubmit.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i>MENGUNGGAH...');
 
       // Conversion promises helper
       var readAsBase64 = function(file, callback) {
@@ -691,7 +701,7 @@
         google.script.run
           .withSuccessHandler(function(response) {
             var res = JSON.parse(response);
-            btnSubmit.prop('disabled', false).text(originalText);
+            btnSubmit.prop('disabled', false).html(originalText);
             if (res.success) {
               $('#global_modalForm').modal('hide');
               Sultan.notif.sukses(res.message);
@@ -719,19 +729,21 @@
         if (filesFoto.length > 0) {
           var filesProcessed = 0;
           for (var i = 0; i < filesFoto.length; i++) {
-            (function(file) {
+            (function(file, idx) {
               readAsBase64(file, function(base64) {
+                var extFoto = file.name.split('.').pop();
+                var photoName = 'Dokumentasi ' + namaSekolah + ' ' + tahapLapor + ' - ' + (idx + 1) + '.' + extFoto;
                 payload.photos.push({
                   base64: base64,
                   mimeType: file.type,
-                  name: file.name
+                  name: photoName
                 });
                 filesProcessed++;
                 if (filesProcessed === filesFoto.length) {
                   step4_upload();
                 }
               });
-            })(filesFoto[i]);
+            })(filesFoto[i], i);
           }
         } else {
           step4_upload();
