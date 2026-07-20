@@ -25,9 +25,9 @@
             <div id="seragamlapor_infoCollapse" class="collapse">
               <div class="info-body">
                 <ul class="mb-0 pl-3 text-dark mt-2 sultan-list-info">
-                  <li>Halaman ini digunakan untuk mengunggah berkas **Surat Pernyataan** (PDF) dan **Dokumentasi** (Foto) penerimaan seragam.</li>
-                  <li>Surat Pernyataan disimpan ke folder Drive **Laporan Penerimaan** dan Foto Dokumentasi disimpan ke folder Drive **Dokumentasi**.</li>
-                  <li>Maksimal ukuran berkas yang diperbolehkan adalah **1 MB** untuk PDF dan **2 MB** untuk Foto.</li>
+                  <li>Halaman ini digunakan untuk mengunggah berkas **Surat Pernyataan** (PDF) dan **Dokumentasi** (Foto & Video) penerimaan seragam.</li>
+                  <li>Surat Pernyataan disimpan ke folder Drive **Laporan Penerimaan** dan Dokumentasi disimpan ke folder Drive **Dokumentasi**.</li>
+                  <li>Maksimal ukuran berkas yang diperbolehkan adalah **1 MB** untuk PDF, **2 MB** per Foto (maksimal 5 foto), dan **10 MB** untuk Video (maksimal 1 video).</li>
                 </ul>
               </div>
             </div>
@@ -53,7 +53,7 @@
                     <tr>
                       <th class="text-center align-middle">AKSI</th>
                       <th class="text-center align-middle">TAHUN</th>
-                      <th class="text-left align-middle" style="min-width: 250px;">NAMA SEKOLAH</th>
+                      <th class="text-left align-middle" style="min-width: 200px;">NAMA SEKOLAH</th>
                       <th class="text-center align-middle">TAHAP</th>
                       <th class="text-left align-middle">JENIS SERAGAM</th>
                       <th class="text-center align-middle">L</th>
@@ -61,6 +61,7 @@
                       <th class="text-center align-middle font-weight-bold">JML</th>
                       <th class="text-center align-middle" style="min-width: 150px;">SURAT PERNYATAAN (PDF)</th>
                       <th class="text-center align-middle" style="min-width: 150px;">DOKUMENTASI (FOTO)</th>
+                      <th class="text-center align-middle" style="min-width: 150px;">DOKUMENTASI (VIDEO)</th>
                       <th class="text-left align-middle">WAKTU UNGGAH</th>
                       <th class="text-left align-middle">PENGUNGGAH</th>
                     </tr>
@@ -85,6 +86,8 @@
     <input type="hidden" id="seragamlapor_url_file_sp" name="url_file_sp">
     <input type="hidden" id="seragamlapor_id_file_dok" name="id_file_dok">
     <input type="hidden" id="seragamlapor_url_file_dok" name="url_file_dok">
+    <input type="hidden" id="seragamlapor_id_file_video" name="id_file_video">
+    <input type="hidden" id="seragamlapor_url_file_video" name="url_file_video">
     
     <div class="modal-body modal-body-sultan p-4">
       <!-- BARIS 1: Sekolah dan Tahun Laporan -->
@@ -153,13 +156,21 @@
           </div>
           <small class="text-muted" id="seragamlapor_lbl_sp"></small>
         </div>
-        <div class="col-12">
-          <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Berkas Dokumentasi (Foto JPG/PNG, Max 2MB) <span class="text-danger">*</span></label>
+        <div class="col-12 mb-3">
+          <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Foto Dokumentasi (Maks 5 Foto, Max 2MB/Foto) <span class="text-danger">*</span></label>
           <div class="custom-file">
-            <input type="file" class="custom-file-input form-control-sultan border-maroon" id="seragamlapor_file_dok" accept="image/*">
-            <label class="custom-file-label text-truncate text-muted" for="seragamlapor_file_dok">Pilih foto dokumentasi...</label>
+            <input type="file" class="custom-file-input form-control-sultan border-maroon" id="seragamlapor_files_foto" accept="image/*" multiple>
+            <label class="custom-file-label text-truncate text-muted" for="seragamlapor_files_foto">Pilih foto-foto...</label>
           </div>
-          <small class="text-muted" id="seragamlapor_lbl_dok"></small>
+          <small class="text-muted" id="seragamlapor_lbl_foto"></small>
+        </div>
+        <div class="col-12">
+          <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Video Dokumentasi (1 Video, Max 10MB)</label>
+          <div class="custom-file">
+            <input type="file" class="custom-file-input form-control-sultan border-maroon" id="seragamlapor_file_video" accept="video/*">
+            <label class="custom-file-label text-truncate text-muted" for="seragamlapor_file_video">Pilih video...</label>
+          </div>
+          <small class="text-muted" id="seragamlapor_lbl_video"></small>
         </div>
       </div>
     </div>
@@ -229,9 +240,10 @@
 
       // Custom file input label update
       $(document).off('change', '.custom-file-input').on('change', '.custom-file-input', function() {
-        var filename = $(this).val().split('\\').pop();
-        if (filename) {
-          $(this).next('.custom-file-label').html('<i class="fas fa-check mr-1" style="color: var(--sultan-aksi-success);"></i> ' + filename).css('color', 'var(--sultan-aksi-success)').addClass('font-weight-bold');
+        var files = this.files;
+        if (files && files.length > 0) {
+          var labelText = files.length === 1 ? files[0].name : files.length + ' berkas terpilih';
+          $(this).next('.custom-file-label').html('<i class="fas fa-check mr-1" style="color: var(--sultan-aksi-success);"></i> ' + labelText).css('color', 'var(--sultan-aksi-success)').addClass('font-weight-bold');
         } else {
           $(this).next('.custom-file-label').removeClass("selected font-weight-bold").css('color', '').text('Pilih berkas...');
         }
@@ -268,6 +280,12 @@
         } else {
           window.open(url, '_blank');
         }
+      });
+
+      $('#seragamlapor_tabelUtama').off('click', '.btn-preview-video').on('click', '.btn-preview-video', function(e) {
+        e.preventDefault();
+        var url = $(this).attr('data-url');
+        window.open(url, '_blank');
       });
     });
 
@@ -411,8 +429,8 @@
             { targets: 3, width: "1%", className: "text-center align-middle font-weight-bold" },
             { targets: 4, className: "text-left align-middle text-wrap font-weight-normal" },
             { targets: [5, 6, 7], width: "1%", className: "text-center align-middle font-weight-bold" },
-            { targets: [8, 9], width: "1%", className: "text-center align-middle text-nowrap" },
-            { targets: [10, 11], className: "text-left align-middle text-wrap" }
+            { targets: [8, 9, 10], width: "1%", className: "text-center align-middle text-nowrap" },
+            { targets: [11, 12], className: "text-left align-middle text-wrap" }
           ],
           language: {
             url: "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json",
@@ -438,7 +456,25 @@
         }
 
         var linkSp = row.url_file_sp ? `<button type="button" class="sultan-btn-pdf btn-preview-pdf" data-url="${row.url_file_sp}" data-nama="SP-${row.nama_sekolah}"><i class="fas fa-file-pdf mr-1"></i> LIHAT</button>` : '<span class="text-muted">-</span>';
-        var linkDok = row.url_file_dok ? `<button type="button" class="sultan-btn-pdf btn-preview-img" data-url="${row.url_file_dok}" data-nama="Foto-${row.nama_sekolah}"><i class="fas fa-image mr-1 text-info"></i> LIHAT</button>` : '<span class="text-muted">-</span>';
+        
+        // Render Multiple Photos
+        var linkDok = '<span class="text-muted">-</span>';
+        if (row.url_file_dok) {
+          var urls = row.url_file_dok.split(', ');
+          var names = row.nama_file_dok.split(', ');
+          linkDok = '<div class="d-flex flex-column" style="gap:2px;">';
+          urls.forEach(function(u, idx) {
+            var n = names[idx] || ('Foto ' + (idx + 1));
+            linkDok += `<button type="button" class="sultan-btn-pdf btn-preview-img mb-1" data-url="${u.trim()}" data-nama="${n.trim()}"><i class="fas fa-image mr-1 text-info"></i> FOTO ${idx + 1}</button>`;
+          });
+          linkDok += '</div>';
+        }
+
+        // Render Video
+        var linkVideo = '<span class="text-muted">-</span>';
+        if (row.url_file_video) {
+          linkVideo = `<button type="button" class="sultan-btn-pdf btn-preview-video" data-url="${row.url_file_video}" data-nama="Video-${row.nama_sekolah}"><i class="fas fa-video mr-1 text-success"></i> LIHAT VIDEO</button>`;
+        }
 
         var sekolahCell = `
           <div class="font-weight-bold text-brand-maroon text-left text-wrap" style="font-size: 13px; line-height: 1.2;">${row.nama_sekolah}</div>
@@ -456,6 +492,7 @@
           row.jml_total || 0,
           linkSp,
           linkDok,
+          linkVideo,
           row.tgl_upload,
           row.uploader
         ]);
@@ -469,11 +506,16 @@
       $('#seragamlapor_rowId').val('');
       $('#seragamlapor_id_file_sp').val('');
       $('#seragamlapor_url_file_sp').val('');
+      
       $('#seragamlapor_id_file_dok').val('');
       $('#seragamlapor_url_file_dok').val('');
+
+      $('#seragamlapor_id_file_video').val('');
+      $('#seragamlapor_url_file_video').val('');
       
       $('#seragamlapor_lbl_sp').text('');
-      $('#seragamlapor_lbl_dok').text('');
+      $('#seragamlapor_lbl_foto').text('');
+      $('#seragamlapor_lbl_video').text('');
       
       // Reset checkboxes & select
       $('#seragamlapor_in_tahap').val('Tahap 1');
@@ -511,10 +553,15 @@
     function showEditModal(row) {
       $('#seragamlapor_formLaporan')[0].reset();
       $('#seragamlapor_rowId').val(row.rowId);
+      
       $('#seragamlapor_id_file_sp').val(row.id_file_sp);
       $('#seragamlapor_url_file_sp').val(row.url_file_sp);
+      
       $('#seragamlapor_id_file_dok').val(row.id_file_dok);
       $('#seragamlapor_url_file_dok').val(row.url_file_dok);
+
+      $('#seragamlapor_id_file_video').val(row.id_file_video);
+      $('#seragamlapor_url_file_video').val(row.url_file_video);
       
       $('#seragamlapor_in_sekolah').val(row.npsn).prop('disabled', true);
       $('#seragamlapor_in_tahun').val(row.tahun).prop('disabled', true);
@@ -530,8 +577,21 @@
       $('#seragamlapor_in_jml_p').val(row.jml_p || 0);
       $('#seragamlapor_in_jml_total').val(row.jml_total || 0);
       
+      // File labels preview
       $('#seragamlapor_lbl_sp').html(row.nama_file_sp ? `<i class="fas fa-file-pdf text-danger mr-1"></i> ${row.nama_file_sp}` : '');
-      $('#seragamlapor_lbl_dok').html(row.nama_file_dok ? `<i class="fas fa-image text-info mr-1"></i> ${row.nama_file_dok}` : '');
+      
+      // Render multiple photos preview names
+      var photosLabelHtml = '';
+      if (row.nama_file_dok) {
+        var names = row.nama_file_dok.split(', ');
+        names.forEach(function(n) {
+          photosLabelHtml += `<div><i class="fas fa-image text-info mr-1"></i> ${n}</div>`;
+        });
+      }
+      $('#seragamlapor_lbl_foto').html(photosLabelHtml);
+      
+      // Video name preview
+      $('#seragamlapor_lbl_video').html(row.nama_file_video ? `<i class="fas fa-video text-success mr-1"></i> ${row.nama_file_video}` : '');
       
       $('#seragamlapor_formLaporan .custom-file-label').removeClass("selected font-weight-bold").css('color', '').text('Ganti berkas (opsional)...');
       
@@ -556,13 +616,19 @@
       e.preventDefault();
       
       var fileSp = $('#seragamlapor_file_sp')[0].files[0];
-      var fileDok = $('#seragamlapor_file_dok')[0].files[0];
+      var filesFoto = $('#seragamlapor_files_foto')[0].files;
+      var fileVideo = $('#seragamlapor_file_video')[0].files[0];
       var rowId = $('#seragamlapor_rowId').val();
 
       // Validasi berkas baru jika upload baru
       if (!rowId) {
         if (!fileSp) { Sultan.notif.peringatan('Surat Pernyataan (PDF) wajib diunggah.'); return; }
-        if (!fileDok) { Sultan.notif.peringatan('Foto Dokumentasi wajib diunggah.'); return; }
+        if (filesFoto.length === 0) { Sultan.notif.peringatan('Foto Dokumentasi wajib diunggah.'); return; }
+      }
+
+      if (filesFoto.length > 5) {
+        Sultan.notif.peringatan('Maksimal foto dokumentasi yang diizinkan adalah 5 foto.');
+        return;
       }
 
       var selectedJenis = [];
@@ -587,15 +653,24 @@
         jml_l: parseInt($('#seragamlapor_in_jml_l').val()) || 0,
         jml_p: parseInt($('#seragamlapor_in_jml_p').val()) || 0,
         jml_total: parseInt($('#seragamlapor_in_jml_total').val()) || 0,
+        
         id_file_sp: $('#seragamlapor_id_file_sp').val(),
         url_file_sp: $('#seragamlapor_url_file_sp').val(),
+        
         id_file_dok: $('#seragamlapor_id_file_dok').val(),
         url_file_dok: $('#seragamlapor_url_file_dok').val(),
+
+        id_file_video: $('#seragamlapor_id_file_video').val(),
+        url_file_video: $('#seragamlapor_url_file_video').val(),
+        
         user_login: userLogin.username || "user",
         nama_file_sp: fileSp ? fileSp.name : '',
         mimeTypeSp: fileSp ? fileSp.type : '',
-        nama_file_dok: fileDok ? fileDok.name : '',
-        mimeTypeDok: fileDok ? fileDok.type : ''
+        
+        photos: [], // Array of {base64, mimeType, name}
+        videoBase64: null,
+        nama_file_video: fileVideo ? fileVideo.name : '',
+        mimeTypeVideo: fileVideo ? fileVideo.type : ''
       };
 
       if (!payload.npsn) {
@@ -605,10 +680,14 @@
 
       btnSubmit.prop('disabled', true).text('MENGUNGGAH...');
 
-      var proceedUpload = function(base64Sp, base64Dok) {
-        if (base64Sp) payload.fileSpBase64 = base64Sp;
-        if (base64Dok) payload.fileDokBase64 = base64Dok;
-        
+      // Conversion promises helper
+      var readAsBase64 = function(file, callback) {
+        var reader = new FileReader();
+        reader.onload = function(evt) { callback(evt.target.result.split(',')[1]); };
+        reader.readAsDataURL(file);
+      };
+
+      var startUpload = function() {
         google.script.run
           .withSuccessHandler(function(response) {
             var res = JSON.parse(response);
@@ -624,22 +703,53 @@
           .seragam_saveLaporan(payload);
       };
 
-      // Baca berkas base64
-      var readSp = function(callback) {
-        if (!fileSp) { callback(null); return; }
-        var reader = new FileReader();
-        reader.onload = function(evt) { callback(evt.target.result.split(',')[1]); };
-        reader.readAsDataURL(fileSp);
+      // Flow: SP -> Photos -> Video -> Submit
+      var step4_upload = function() {
+        if (fileVideo) {
+          readAsBase64(fileVideo, function(base64) {
+            payload.videoBase64 = base64;
+            startUpload();
+          });
+        } else {
+          startUpload();
+        }
       };
 
-      var readDok = function(base64Sp) {
-        if (!fileDok) { proceedUpload(base64Sp, null); return; }
-        var reader = new FileReader();
-        reader.onload = function(evt) { proceedUpload(base64Sp, evt.target.result.split(',')[1]); };
-        reader.readAsDataURL(fileDok);
+      var step3_photos = function() {
+        if (filesFoto.length > 0) {
+          var filesProcessed = 0;
+          for (var i = 0; i < filesFoto.length; i++) {
+            (function(file) {
+              readAsBase64(file, function(base64) {
+                payload.photos.push({
+                  base64: base64,
+                  mimeType: file.type,
+                  name: file.name
+                });
+                filesProcessed++;
+                if (filesProcessed === filesFoto.length) {
+                  step4_upload();
+                }
+              });
+            })(filesFoto[i]);
+          }
+        } else {
+          step4_upload();
+        }
       };
 
-      readSp(readDok);
+      var step2_sp = function() {
+        if (fileSp) {
+          readAsBase64(fileSp, function(base64) {
+            payload.fileSpBase64 = base64;
+            step3_photos();
+          });
+        } else {
+          step3_photos();
+        }
+      };
+
+      step2_sp();
     }
 
     function handleDeleteLaporan(row) {

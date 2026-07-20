@@ -302,7 +302,10 @@ function seragam_getLaporan(tahun, npsnFilter) {
           jenis_seragam: values[i][12] || "Merah Putih",
           jml_l: parseInt(values[i][13]) || 0,
           jml_p: parseInt(values[i][14]) || 0,
-          jml_total: parseInt(values[i][15]) || 0
+          jml_total: parseInt(values[i][15]) || 0,
+          nama_file_video: values[i][16] || "",
+          url_file_video: values[i][17] || "",
+          id_file_video: values[i][18] || ""
         });
       }
     }
@@ -322,9 +325,16 @@ function seragam_saveLaporan(payload) {
     var isEdit = payload.rowId ? true : false;
     var fileUrlSp = payload.url_file_sp || "";
     var fileIdSp = payload.id_file_sp || "";
-    var fileUrlDok = payload.url_file_dok || "";
-    var fileIdDok = payload.id_file_dok || "";
+    
+    var fileNamesDok = payload.nama_file_dok || "";
+    var fileUrlsDok = payload.url_file_dok || "";
+    var fileIdsDok = payload.id_file_dok || "";
 
+    var fileNameVideo = payload.nama_file_video || "";
+    var fileUrlVideo = payload.url_file_video || "";
+    var fileIdVideo = payload.id_file_video || "";
+
+    // 1. Upload Surat Pernyataan (PDF)
     if (payload.fileSpBase64) {
       if (isEdit && fileIdSp) {
         try { DriveApp.getFileById(fileIdSp).setTrashed(true); } catch(err) {}
@@ -337,36 +347,70 @@ function seragam_saveLaporan(payload) {
       fileIdSp = file.getId();
     }
 
-    if (payload.fileDokBase64) {
-      if (isEdit && fileIdDok) {
-        try { DriveApp.getFileById(fileIdDok).setTrashed(true); } catch(err) {}
+    // 2. Upload Photos (Multiple, up to 5)
+    if (payload.photos && payload.photos.length > 0) {
+      if (isEdit && fileIdsDok) {
+        var oldIds = String(fileIdsDok).split(', ');
+        oldIds.forEach(function(oid) {
+          if (oid) {
+            try { DriveApp.getFileById(oid.trim()).setTrashed(true); } catch(err) {}
+          }
+        });
+      }
+      
+      var folderDok = DriveApp.getFolderById(FOLDER_CONFIG.SERAGAM_DOKUMENTASI_DOCS);
+      var uploadedNames = [];
+      var uploadedUrls = [];
+      var uploadedIds = [];
+      
+      payload.photos.forEach(function(photo) {
+        var blob = Utilities.newBlob(Utilities.base64Decode(photo.base64), photo.mimeType, photo.name);
+        var file = folderDok.createFile(blob);
+        file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        uploadedNames.push(photo.name);
+        uploadedUrls.push(file.getUrl());
+        uploadedIds.push(file.getId());
+      });
+      
+      fileNamesDok = uploadedNames.join(', ');
+      fileUrlsDok = uploadedUrls.join(', ');
+      fileIdsDok = uploadedIds.join(', ');
+    }
+
+    // 3. Upload Video
+    if (payload.videoBase64) {
+      if (isEdit && fileIdVideo) {
+        try { DriveApp.getFileById(fileIdVideo).setTrashed(true); } catch(err) {}
       }
       var folderDok = DriveApp.getFolderById(FOLDER_CONFIG.SERAGAM_DOKUMENTASI_DOCS);
-      var blob = Utilities.newBlob(Utilities.base64Decode(payload.fileDokBase64), payload.mimeTypeDok, payload.nama_file_dok);
+      var blob = Utilities.newBlob(Utilities.base64Decode(payload.videoBase64), payload.mimeTypeVideo, payload.nama_file_video);
       var file = folderDok.createFile(blob);
       file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-      fileUrlDok = file.getUrl();
-      fileIdDok = file.getId();
+      fileUrlVideo = file.getUrl();
+      fileIdVideo = file.getId();
+      fileNameVideo = payload.nama_file_video;
     }
 
     if (isEdit) {
       var row = parseInt(payload.rowId);
-      sheet.getRange(row, 1, 1, 16).setValues([[
+      sheet.getRange(row, 1, 1, 19).setValues([[
         payload.npsn, payload.nama_sekolah, payload.tahun,
         payload.nama_file_sp, fileUrlSp, fileIdSp,
-        payload.nama_file_dok, fileUrlDok, fileIdDok,
+        fileNamesDok, fileUrlsDok, fileIdsDok,
         now, payload.user_login,
         payload.tahap, payload.jenis_seragam,
-        payload.jml_l, payload.jml_p, payload.jml_total
+        payload.jml_l, payload.jml_p, payload.jml_total,
+        fileNameVideo, fileUrlVideo, fileIdVideo
       ]]);
     } else {
       sheet.appendRow([
         payload.npsn, payload.nama_sekolah, payload.tahun,
         payload.nama_file_sp, fileUrlSp, fileIdSp,
-        payload.nama_file_dok, fileUrlDok, fileIdDok,
+        fileNamesDok, fileUrlsDok, fileIdsDok,
         now, payload.user_login,
         payload.tahap, payload.jenis_seragam,
-        payload.jml_l, payload.jml_p, payload.jml_total
+        payload.jml_l, payload.jml_p, payload.jml_total,
+        fileNameVideo, fileUrlVideo, fileIdVideo
       ]);
     }
 
@@ -385,13 +429,22 @@ function seragam_deleteLaporan(rowId) {
     var sheet = getOrCreateSheetSeragam("Laporan_Penerimaan");
     var row = parseInt(rowId);
     var fileIdSp = sheet.getRange(row, 6).getValue();
-    var fileIdDok = sheet.getRange(row, 9).getValue();
+    var fileIdDokStr = sheet.getRange(row, 9).getValue();
+    var fileIdVideo = sheet.getRange(row, 19).getValue();
 
     if (fileIdSp) {
       try { DriveApp.getFileById(fileIdSp).setTrashed(true); } catch(err) {}
     }
-    if (fileIdDok) {
-      try { DriveApp.getFileById(fileIdDok).setTrashed(true); } catch(err) {}
+    if (fileIdDokStr) {
+      var ids = String(fileIdDokStr).split(', ');
+      ids.forEach(function(id) {
+        if (id) {
+          try { DriveApp.getFileById(id.trim()).setTrashed(true); } catch(err) {}
+        }
+      });
+    }
+    if (fileIdVideo) {
+      try { DriveApp.getFileById(fileIdVideo).setTrashed(true); } catch(err) {}
     }
 
     sheet.deleteRow(row);
