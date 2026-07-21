@@ -214,28 +214,21 @@
         </div>
         <div class="col-md-6 col-12 mb-3">
           <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Jenis Seragam <span class="text-danger">*</span></label>
-          <div class="mt-2">
-            <div class="custom-control custom-checkbox custom-control-inline">
-              <input type="checkbox" class="custom-control-input" id="seragamlapor_cb_merah" value="Merah Putih">
-              <label class="custom-control-label font-weight-bold text-dark" for="seragamlapor_cb_merah">Merah Putih</label>
-            </div>
-            <div class="custom-control custom-checkbox custom-control-inline">
-              <input type="checkbox" class="custom-control-input" id="seragamlapor_cb_pramuka" value="Pramuka">
-              <label class="custom-control-label font-weight-bold text-dark" for="seragamlapor_cb_pramuka">Pramuka</label>
-            </div>
-          </div>
+          <select class="form-control form-control-sultan border-maroon font-weight-bold" id="seragamlapor_in_jenis" required>
+            <option value="">- Pilih Jenis Seragam -</option>
+            <option value="Merah Putih">Merah Putih</option>
+            <option value="Pramuka">Pramuka</option>
+          </select>
         </div>
       </div>
 
       <!-- BARIS 3: Tabel Rincian Seragam Per Ukuran -->
       <div class="row mb-3">
         <div class="col-12">
-          <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Rincian Seragam Diterima Per Ukuran <span class="text-danger">*</span></label>
-          <div class="seragam-detail-wrap" id="seragamlapor_detailWrap">
-            <!-- Tab headers, rendered by JS -->
-            <div class="seragam-detail-tabs" id="seragamlapor_detailTabs"></div>
-            <!-- Tab panels, rendered by JS -->
-            <div id="seragamlapor_detailPanels">
+          <div class="seragam-detail-wrap" id="seragamlapor_detailWrap" style="display: none;">
+            <label class="form-label-sultan small font-weight-bold text-muted text-uppercase px-3 pt-3 mb-0">Rincian Seragam Diterima Per Ukuran <span class="text-danger">*</span></label>
+            <!-- Tab headers are removed, panels render directly -->
+            <div id="seragamlapor_detailPanels" class="p-3">
               <div class="seragam-detail-loading" id="seragamlapor_detailLoading">
                 <i class="fas fa-circle-notch fa-spin"></i> Memuat data rekap penerima...
               </div>
@@ -411,6 +404,11 @@
       $(document).off('input', '.inp-terima').on('input', '.inp-terima', function() {
         recalcDetailRow($(this).closest('tr'));
         recalcDetailFooter($(this).closest('table'));
+      });
+
+      // Trigger detail table loading on field changes
+      $(document).off('change', '#seragamlapor_in_sekolah, #seragamlapor_in_tahun, #seragamlapor_in_jenis').on('change', '#seragamlapor_in_sekolah, #seragamlapor_in_tahun, #seragamlapor_in_jenis', function() {
+        checkAndTriggerLoad();
       });
 
       // Load Initial
@@ -786,94 +784,75 @@
           .attr('class', 'tf-selisih-jml ' + selisihClass(totSelisihJml));
     }
 
-    /** Build the interactive tabbed detail table HTML for a list of jenis seragam and rekap sizes data */
-    function buildDetailTable(jenisArr, rekapSizes, existingDetailJson) {
+    /** Build the interactive detail table HTML for a single jenis seragam and rekap sizes data */
+    function buildDetailTable(jenis, rekapSizes, existingDetailJson) {
       // rekapSizes = { "S": {L,P,JML}, "M": {...}, ..., "TOTAL": {L,P,JML} } or {} if not found
-      var tabsHtml = '';
       var panelsHtml = '';
 
-      jenisArr.forEach(function(jenis, idx) {
-        var panelId = 'seragamlapor_panel_' + jenis.replace(/\s/g, '_');
-        var isActive = idx === 0;
-        tabsHtml += '<button type="button" class="seragam-detail-tab' + (isActive ? ' active' : '') + '" data-target="' + panelId + '">' + jenis + '</button>';
+      var existingForJenis = (existingDetailJson && existingDetailJson[jenis]) ? existingDetailJson[jenis] : {};
 
-        var existingForJenis = (existingDetailJson && existingDetailJson[jenis]) ? existingDetailJson[jenis] : {};
+      var rowsHtml = '';
+      SERAGAM_UKURAN.forEach(function(ukr) {
+        var rekL = (rekapSizes && rekapSizes[ukr]) ? (parseInt(rekapSizes[ukr].L) || 0) : 0;
+        var rekP = (rekapSizes && rekapSizes[ukr]) ? (parseInt(rekapSizes[ukr].P) || 0) : 0;
+        var rekJml = rekL + rekP;
+        var terL = existingForJenis[ukr] ? (parseInt(existingForJenis[ukr].terima_l) || 0) : 0;
+        var terP = existingForJenis[ukr] ? (parseInt(existingForJenis[ukr].terima_p) || 0) : 0;
+        var terJml = terL + terP;
+        var slL = terL - rekL, slP = terP - rekP, slJml = terJml - rekJml;
 
-        var rowsHtml = '';
-        SERAGAM_UKURAN.forEach(function(ukr) {
-          var rekL = (rekapSizes && rekapSizes[ukr]) ? (parseInt(rekapSizes[ukr].L) || 0) : 0;
-          var rekP = (rekapSizes && rekapSizes[ukr]) ? (parseInt(rekapSizes[ukr].P) || 0) : 0;
-          var rekJml = rekL + rekP;
-          var terL = existingForJenis[ukr] ? (parseInt(existingForJenis[ukr].terima_l) || 0) : 0;
-          var terP = existingForJenis[ukr] ? (parseInt(existingForJenis[ukr].terima_p) || 0) : 0;
-          var terJml = terL + terP;
-          var slL = terL - rekL, slP = terP - rekP, slJml = terJml - rekJml;
-
-          rowsHtml += '<tr>' +
-            '<td class="ukr-col">' + ukr + '</td>' +
-            '<td class="td-rekap-l">' + rekL + '</td>' +
-            '<td class="td-rekap-p">' + rekP + '</td>' +
-            '<td>' + rekJml + '</td>' +
-            '<td><input type="number" class="inp-terima" data-jk="L" data-ukr="' + ukr + '" data-jenis="' + jenis + '" min="0" value="' + terL + '"></td>' +
-            '<td><input type="number" class="inp-terima" data-jk="P" data-ukr="' + ukr + '" data-jenis="' + jenis + '" min="0" value="' + terP + '"></td>' +
-            '<td class="td-terima-jml">' + terJml + '</td>' +
-            '<td class="td-selisih-l ' + selisihClass(slL) + '">' + (slL >= 0 ? '+' : '') + slL + '</td>' +
-            '<td class="td-selisih-p ' + selisihClass(slP) + '">' + (slP >= 0 ? '+' : '') + slP + '</td>' +
-            '<td class="td-selisih-jml ' + selisihClass(slJml) + '">' + (slJml >= 0 ? '+' : '') + slJml + '</td>' +
-          '</tr>';
-        });
-
-        // Footer totals
-        var totRekL = 0, totRekP = 0, totTerL = 0, totTerP = 0;
-        SERAGAM_UKURAN.forEach(function(ukr) {
-          totRekL += (rekapSizes && rekapSizes[ukr]) ? (parseInt(rekapSizes[ukr].L) || 0) : 0;
-          totRekP += (rekapSizes && rekapSizes[ukr]) ? (parseInt(rekapSizes[ukr].P) || 0) : 0;
-          totTerL += existingForJenis[ukr] ? (parseInt(existingForJenis[ukr].terima_l) || 0) : 0;
-          totTerP += existingForJenis[ukr] ? (parseInt(existingForJenis[ukr].terima_p) || 0) : 0;
-        });
-        var totRekJml = totRekL + totRekP, totTerJml = totTerL + totTerP;
-        var tfSlL = totTerL - totRekL, tfSlP = totTerP - totRekP, tfSlJml = totTerJml - totRekJml;
-
-        panelsHtml += '<div class="seragam-detail-panel' + (isActive ? ' active' : '') + '" id="' + panelId + '">' +
-          '<div class="table-responsive">' +
-          '<table class="tbl-seragam-detail">' +
-          '<thead>' +
-            '<tr>' +
-              '<th rowspan="2" style="vertical-align:middle;">UKR</th>' +
-              '<th colspan="3" class="th-group">PENERIMA (REKAP)</th>' +
-              '<th colspan="3" class="th-group">DITERIMA (INPUT)</th>' +
-              '<th colspan="3" class="th-group">SELISIH</th>' +
-            '</tr>' +
-            '<tr>' +
-              '<th>L</th><th>P</th><th>JML</th>' +
-              '<th>L</th><th>P</th><th>JML</th>' +
-              '<th>L</th><th>P</th><th>JML</th>' +
-            '</tr>' +
-          '</thead>' +
-          '<tbody>' + rowsHtml + '</tbody>' +
-          '<tfoot><tr>' +
-            '<td class="ukr-col">TOTAL</td>' +
-            '<td class="tf-rekap-l">' + totRekL + '</td><td class="tf-rekap-p">' + totRekP + '</td><td class="tf-rekap-jml">' + totRekJml + '</td>' +
-            '<td class="tf-terima-l">' + totTerL + '</td><td class="tf-terima-p">' + totTerP + '</td><td class="tf-terima-jml">' + totTerJml + '</td>' +
-            '<td class="tf-selisih-l ' + selisihClass(tfSlL) + '">' + (tfSlL >= 0 ? '+' : '') + tfSlL + '</td>' +
-            '<td class="tf-selisih-p ' + selisihClass(tfSlP) + '">' + (tfSlP >= 0 ? '+' : '') + tfSlP + '</td>' +
-            '<td class="tf-selisih-jml ' + selisihClass(tfSlJml) + '">' + (tfSlJml >= 0 ? '+' : '') + tfSlJml + '</td>' +
-          '</tr></tfoot>' +
-          '</table></div>' +
-        '</div>';
+        rowsHtml += '<tr>' +
+          '<td class="ukr-col">' + ukr + '</td>' +
+          '<td class="td-rekap-l">' + rekL + '</td>' +
+          '<td class="td-rekap-p">' + rekP + '</td>' +
+          '<td>' + rekJml + '</td>' +
+          '<td><input type="number" class="inp-terima" data-jk="L" data-ukr="' + ukr + '" data-jenis="' + jenis + '" min="0" value="' + terL + '"></td>' +
+          '<td><input type="number" class="inp-terima" data-jk="P" data-ukr="' + ukr + '" data-jenis="' + jenis + '" min="0" value="' + terP + '"></td>' +
+          '<td class="td-terima-jml">' + terJml + '</td>' +
+          '<td class="td-selisih-l ' + selisihClass(slL) + '">' + (slL >= 0 ? '+' : '') + slL + '</td>' +
+          '<td class="td-selisih-p ' + selisihClass(slP) + '">' + (slP >= 0 ? '+' : '') + slP + '</td>' +
+          '<td class="td-selisih-jml ' + selisihClass(slJml) + '">' + (slJml >= 0 ? '+' : '') + slJml + '</td>' +
+        '</tr>';
       });
 
-      $('#seragamlapor_detailTabs').html(tabsHtml);
+      // Footer totals
+      var totRekL = 0, totRekP = 0, totTerL = 0, totTerP = 0;
+      SERAGAM_UKURAN.forEach(function(ukr) {
+        totRekL += (rekapSizes && rekapSizes[ukr]) ? (parseInt(rekapSizes[ukr].L) || 0) : 0;
+        totRekP += (rekapSizes && rekapSizes[ukr]) ? (parseInt(rekapSizes[ukr].P) || 0) : 0;
+        totTerL += existingForJenis[ukr] ? (parseInt(existingForJenis[ukr].terima_l) || 0) : 0;
+        totTerP += existingForJenis[ukr] ? (parseInt(existingForJenis[ukr].terima_p) || 0) : 0;
+      });
+      var totRekJml = totRekL + totRekP, totTerJml = totTerL + totTerP;
+      var tfSlL = totTerL - totRekL, tfSlP = totTerP - totRekP, tfSlJml = totTerJml - totRekJml;
+
+      panelsHtml += '<div class="table-responsive">' +
+        '<table class="tbl-seragam-detail">' +
+        '<thead>' +
+          '<tr>' +
+            '<th rowspan="2" style="vertical-align:middle;">UKR</th>' +
+            '<th colspan="3" class="th-group">PENERIMA (REKAP)</th>' +
+            '<th colspan="3" class="th-group">DITERIMA (INPUT)</th>' +
+            '<th colspan="3" class="th-group">SELISIH</th>' +
+          '</tr>' +
+          '<tr>' +
+            '<th>L</th><th>P</th><th>JML</th>' +
+            '<th>L</th><th>P</th><th>JML</th>' +
+            '<th>L</th><th>P</th><th>JML</th>' +
+          '</tr>' +
+        '</thead>' +
+        '<tbody>' + rowsHtml + '</tbody>' +
+        '<tfoot><tr>' +
+          '<td class="ukr-col">TOTAL</td>' +
+          '<td class="tf-rekap-l">' + totRekL + '</td><td class="tf-rekap-p">' + totRekP + '</td><td class="tf-rekap-jml">' + totRekJml + '</td>' +
+          '<td class="tf-terima-l">' + totTerL + '</td><td class="tf-terima-p">' + totTerP + '</td><td class="tf-terima-jml">' + totTerJml + '</td>' +
+          '<td class="tf-selisih-l ' + selisihClass(tfSlL) + '">' + (tfSlL >= 0 ? '+' : '') + tfSlL + '</td>' +
+          '<td class="tf-selisih-p ' + selisihClass(tfSlP) + '">' + (tfSlP >= 0 ? '+' : '') + tfSlP + '</td>' +
+          '<td class="tf-selisih-jml ' + selisihClass(tfSlJml) + '">' + (tfSlJml >= 0 ? '+' : '') + tfSlJml + '</td>' +
+        '</tr></tfoot>' +
+        '</table></div>';
+
       $('#seragamlapor_detailPanels').html(panelsHtml);
-
-      // Tab switching
-      $('#seragamlapor_detailTabs').off('click', '.seragam-detail-tab').on('click', '.seragam-detail-tab', function() {
-        var target = $(this).attr('data-target');
-        $('#seragamlapor_detailTabs .seragam-detail-tab').removeClass('active');
-        $(this).addClass('active');
-        $('#seragamlapor_detailPanels .seragam-detail-panel').removeClass('active');
-        $('#' + target).addClass('active');
-      });
     }
 
     /** Read all .inp-terima inputs and compile to detail_json */
@@ -935,15 +914,13 @@
       $('#seragamlapor_verifDetailTable').html(html);
     }
 
-    /** Load rekap data then render detail table for given NPSN, jenis array, and existing json */
-    function loadRekapForModal(npsn, tahun, jenisArr, existingDetailJson) {
-      $('#seragamlapor_detailTabs').html('');
+    /** Load rekap data then render detail table for given NPSN, jenis, and existing json */
+    function loadRekapForModal(npsn, tahun, jenis, existingDetailJson) {
       $('#seragamlapor_detailPanels').html(
         '<div class="seragam-detail-loading" id="seragamlapor_detailLoading">' +
         '<i class="fas fa-circle-notch fa-spin"></i> Memuat data rekap penerima...</div>'
       );
 
-      // Pilihan A: selalu muat dari server (seragam_getRekap)
       google.script.run
         .withSuccessHandler(function(response) {
           var res = JSON.parse(response);
@@ -956,7 +933,7 @@
               Sultan.notif.info('Belum ada data rekap penerima untuk sekolah ini. Kolom Penerima akan kosong (0).');
             }
           }
-          buildDetailTable(jenisArr, rekapSizes, existingDetailJson);
+          buildDetailTable(jenis, rekapSizes, existingDetailJson);
         })
         .withFailureHandler(function(err) {
           $('#seragamlapor_detailPanels').html(
@@ -964,6 +941,28 @@
           );
         })
         .seragam_getRekap(tahun, 'SEMUA');
+    }
+
+    /** Check and trigger loading detail table */
+    function checkAndTriggerLoad() {
+      var npsn = IS_ADMIN ? $('#seragamlapor_in_sekolah').val() : $('#seragamlapor_in_sekolah_hidden').val();
+      var tahun = $('#seragamlapor_in_tahun').val();
+      var jenis = $('#seragamlapor_in_jenis').val();
+      
+      if (!npsn || !tahun || !jenis) {
+        $('#seragamlapor_detailWrap').hide();
+        return;
+      }
+      
+      $('#seragamlapor_detailWrap').show();
+      
+      var existingJsonStr = $('#seragamlapor_formLaporan').data('existingDetailJson');
+      var existingDetailJson = null;
+      if (existingJsonStr) {
+        try { existingDetailJson = JSON.parse(existingJsonStr); } catch(e) {}
+      }
+      
+      loadRekapForModal(npsn, tahun, jenis, existingDetailJson);
     }
 
 
@@ -981,11 +980,12 @@
       $('#seragamlapor_lbl_foto2').text('');
       $('#seragamlapor_lbl_foto3').text('');
       
-      // Reset checkboxes & select
+      // Reset select
       $('#seragamlapor_in_tahap').val('Laporan 1');
-      $('#seragamlapor_cb_merah').prop('checked', false);
-      $('#seragamlapor_cb_pramuka').prop('checked', false);
-
+      $('#seragamlapor_in_jenis').val('').prop('disabled', false);
+      $('#seragamlapor_formLaporan').removeData('existingDetailJson');
+      $('#seragamlapor_detailWrap').hide();
+ 
       // Set 3 photo inputs as REQUIRED for new upload
       $('#seragamlapor_file_foto1, #seragamlapor_file_foto2, #seragamlapor_file_foto3').prop('required', true);
       
@@ -995,7 +995,7 @@
       $('#seragamlapor_in_sekolah').prop('disabled', false);
       $('#seragamlapor_in_tahun').prop('disabled', false);
       
-      // Show modal first (xl size for table), then load rekap
+      // Show modal first (xl size for table)
       // Inject to global modal
       $('#global_modalFormSize').removeClass('modal-lg modal-md').addClass('modal-xl');
       $('#global_modalFormHeader').removeClass('modal-header-sultan-primary modal-header-sultan-warning modal-header-sultan-danger modal-header-sultan-success modal-header-sultan-info modal-header-sultan-dark modal-header-edit modal-header-tambah-edit modal-header-hapus').addClass('modal-header-tambah-edit');
@@ -1011,13 +1011,6 @@
       });
       
       $('#global_modalForm').modal('show');
-
-      // After modal visible, load rekap from server (default: Merah Putih tab until checkbox changes)
-      var npsn = IS_ADMIN ? $('#seragamlapor_in_sekolah').val() : (userLogin.npsn || userLogin.username || '');
-      var tahun = $('#seragamlapor_filterTahun').val();
-      // Build jenis from checkboxes (if both unchecked at open, default to Merah Putih)
-      var jenisArr = ['Merah Putih', 'Pramuka'];
-      loadRekapForModal(npsn, tahun, jenisArr, null);
     }
 
     function showEditModal(row) {
@@ -1035,11 +1028,9 @@
       
       // Populate inputs
       $('#seragamlapor_in_tahap').val(row.tahap || 'Laporan 1');
-      var jenis = row.jenis_seragam || "";
-      $('#seragamlapor_cb_merah').prop('checked', jenis.includes("Merah Putih"));
-      $('#seragamlapor_cb_pramuka').prop('checked', jenis.includes("Pramuka"));
-
-      // Detail table will be loaded after modal show
+      $('#seragamlapor_in_jenis').val(row.jenis_seragam || '').prop('disabled', true);
+      $('#seragamlapor_formLaporan').data('existingDetailJson', row.detail_json);
+      $('#seragamlapor_detailWrap').hide();
       
       // Photos are not required for edit mode (only if they want to replace them)
       $('#seragamlapor_file_foto1, #seragamlapor_file_foto2, #seragamlapor_file_foto3').prop('required', false);
@@ -1075,17 +1066,9 @@
       });
       
       $('#global_modalForm').modal('show');
-
-      // Load rekap + populate existing detail data
-      var jenisArr = [];
-      if (row.jenis_seragam) {
-        if (row.jenis_seragam.includes('Merah Putih')) jenisArr.push('Merah Putih');
-        if (row.jenis_seragam.includes('Pramuka')) jenisArr.push('Pramuka');
-      }
-      if (jenisArr.length === 0) jenisArr = ['Merah Putih', 'Pramuka'];
-      var existingDetail = null;
-      try { existingDetail = row.detail_json ? JSON.parse(row.detail_json) : null; } catch(ex) {}
-      loadRekapForModal(row.npsn, row.tahun, jenisArr, existingDetail);
+      
+      // Call load immediately since all fields are populated
+      checkAndTriggerLoad();
     }
 
     function showVerifikasiModal(row) {
@@ -1234,12 +1217,9 @@
           return;
         }
 
-        var selectedJenis = [];
-        if ($('#seragamlapor_cb_merah').is(':checked')) selectedJenis.push("Merah Putih");
-        if ($('#seragamlapor_cb_pramuka').is(':checked')) selectedJenis.push("Pramuka");
-        
-        if (selectedJenis.length === 0) {
-          Sultan.notif.info('Jenis Seragam wajib dipilih minimal satu.');
+        var selectedJenis = $('#seragamlapor_in_jenis').val();
+        if (!selectedJenis) {
+          Sultan.notif.info('Jenis Seragam wajib dipilih.');
           return;
         }
 
@@ -1256,7 +1236,7 @@
           nama_sekolah: namaSekolah,
           tahun: $('#seragamlapor_in_tahun').val(),
           tahap: tahapLapor,
-          jenis_seragam: selectedJenis.join(', '),
+          jenis_seragam: selectedJenis,
 
           // Compute from detail table
           detail_json: (function() {
