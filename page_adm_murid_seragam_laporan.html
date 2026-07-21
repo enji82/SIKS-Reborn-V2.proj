@@ -890,7 +890,7 @@
         return;
       }
 
-      btnSubmit.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i>MEMULAI UNGGAH...');
+      btnSubmit.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i>MENGUNGGAH BERKAS...');
 
       // Conversion promises helper
       var readAsBase64 = function(file, callback) {
@@ -899,105 +899,98 @@
         reader.readAsDataURL(file);
       };
 
-      var uploadStep1 = function() {
-        if (fileSp) {
-          btnSubmit.html('<i class="fas fa-spinner fa-spin mr-2"></i>UNGGAH SP...');
-          readAsBase64(fileSp, function(base64) {
+      var uploadFilePromise = function(file, customName, fileType) {
+        return new Promise(function(resolve, reject) {
+          if (!file) {
+            resolve(null);
+            return;
+          }
+          readAsBase64(file, function(base64) {
             google.script.run
               .withSuccessHandler(function(response) {
                 var res = JSON.parse(response);
                 if (res.success) {
-                  payload.url_file_sp = res.url;
-                  payload.id_file_sp = res.id;
-                  payload.newSpUploaded = true;
-                  uploadStep2();
+                  resolve({ id: res.id, url: res.url, name: customName });
                 } else {
-                  Sultan.notif.gagal('Gagal mengunggah Surat Pernyataan: ' + res.message);
-                  btnSubmit.prop('disabled', false).html(originalText);
+                  reject(new Error(res.message));
                 }
               })
               .withFailureHandler(function(err) {
-                Sultan.notif.gagal('Koneksi terputus saat mengunggah Surat Pernyataan: ' + err.message);
-                btnSubmit.prop('disabled', false).html(originalText);
+                reject(err);
               })
-              .seragam_uploadSingleFile(base64, fileSp.type, customNamaSp, "sp");
+              .seragam_uploadSingleFile(base64, file.type, customName, fileType);
           });
-        } else {
-          uploadStep2();
-        }
+        });
       };
 
-      var uploadStep2 = function() {
-        var photoTasks = [];
-        if (fileFoto1) photoTasks.push({ file: fileFoto1, index: 1 });
-        if (fileFoto2) photoTasks.push({ file: fileFoto2, index: 2 });
-        if (fileFoto3) photoTasks.push({ file: fileFoto3, index: 3 });
+      var currentItem = SERAGAMLAPOR_CACHE_DATA.find(function(item) { return item.rowId == rowId; }) || {};
+      var currentNames = currentItem.nama_file_dok ? currentItem.nama_file_dok.split(', ') : [];
+      var currentUrls = currentItem.url_file_dok ? currentItem.url_file_dok.split(', ') : [];
+      var currentIds = currentItem.id_file_dok ? currentItem.id_file_dok.split(', ') : [];
+      
+      var finalNames = [currentNames[0] || "", currentNames[1] || "", currentNames[2] || ""];
+      var finalUrls = [currentUrls[0] || "", currentUrls[1] || "", currentUrls[2] || ""];
+      var finalIds = [currentIds[0] || "", currentIds[1] || "", currentIds[2] || ""];
+      
+      var idsToTrash = [];
 
-        if (photoTasks.length > 0) {
-          var currentItem = SERAGAMLAPOR_CACHE_DATA.find(function(item) { return item.rowId == rowId; }) || {};
-          var currentNames = currentItem.nama_file_dok ? currentItem.nama_file_dok.split(', ') : [];
-          var currentUrls = currentItem.url_file_dok ? currentItem.url_file_dok.split(', ') : [];
-          var currentIds = currentItem.id_file_dok ? currentItem.id_file_dok.split(', ') : [];
-          
-          var finalNames = [currentNames[0] || "", currentNames[1] || "", currentNames[2] || ""];
-          var finalUrls = [currentUrls[0] || "", currentUrls[1] || "", currentUrls[2] || ""];
-          var finalIds = [currentIds[0] || "", currentIds[1] || "", currentIds[2] || ""];
-          
-          var idsToTrash = [];
+      var extFoto1 = fileFoto1 ? fileFoto1.name.split('.').pop() : '';
+      var photoName1 = fileFoto1 ? 'Dokumentasi ' + namaSekolah + ' ' + tahapLapor + ' - 1.' + extFoto1 : '';
 
-          var uploadPhotoIndex = function(taskIdx) {
-            if (taskIdx >= photoTasks.length) {
-              payload.nama_file_dok = finalNames.filter(Boolean).join(', ');
-              payload.url_file_dok = finalUrls.filter(Boolean).join(', ');
-              payload.id_file_dok = finalIds.filter(Boolean).join(', ');
-              payload.newDokUploaded = true;
-              payload.oldIdsDok = idsToTrash.filter(Boolean).join(', ');
-              
-              saveMetadata();
-              return;
-            }
-            
-            var task = photoTasks[taskIdx];
-            var file = task.file;
-            var slotIdx = task.index - 1;
-            
-            btnSubmit.html('<i class="fas fa-spinner fa-spin mr-2"></i>FOTO ' + task.index + '...');
-            
-            var extFoto = file.name.split('.').pop();
-            var photoName = 'Dokumentasi ' + namaSekolah + ' ' + tahapLapor + ' - ' + task.index + '.' + extFoto;
-            
-            readAsBase64(file, function(base64) {
-              google.script.run
-                .withSuccessHandler(function(response) {
-                  var res = JSON.parse(response);
-                  if (res.success) {
-                    if (finalIds[slotIdx]) {
-                      idsToTrash.push(finalIds[slotIdx]);
-                    }
-                    finalNames[slotIdx] = photoName;
-                    finalUrls[slotIdx] = res.url;
-                    finalIds[slotIdx] = res.id;
-                    uploadPhotoIndex(taskIdx + 1);
-                  } else {
-                    Sultan.notif.gagal('Gagal mengunggah Foto ' + task.index + ': ' + res.message);
-                    btnSubmit.prop('disabled', false).html(originalText);
-                  }
-                })
-                .withFailureHandler(function(err) {
-                  Sultan.notif.gagal('Koneksi terputus saat mengunggah Foto ' + task.index + ': ' + err.message);
-                  btnSubmit.prop('disabled', false).html(originalText);
-                })
-                .seragam_uploadSingleFile(base64, file.type, photoName, "dok");
-            });
-          };
-          
-          uploadPhotoIndex(0);
-        } else {
-          saveMetadata();
+      var extFoto2 = fileFoto2 ? fileFoto2.name.split('.').pop() : '';
+      var photoName2 = fileFoto2 ? 'Dokumentasi ' + namaSekolah + ' ' + tahapLapor + ' - 2.' + extFoto2 : '';
+
+      var extFoto3 = fileFoto3 ? fileFoto3.name.split('.').pop() : '';
+      var photoName3 = fileFoto3 ? 'Dokumentasi ' + namaSekolah + ' ' + tahapLapor + ' - 3.' + extFoto3 : '';
+
+      Promise.all([
+        uploadFilePromise(fileSp, customNamaSp, "sp"),
+        uploadFilePromise(fileFoto1, photoName1, "dok"),
+        uploadFilePromise(fileFoto2, photoName2, "dok"),
+        uploadFilePromise(fileFoto3, photoName3, "dok")
+      ]).then(function(results) {
+        var resSp = results[0];
+        var resF1 = results[1];
+        var resF2 = results[2];
+        var resF3 = results[3];
+
+        if (resSp) {
+          payload.url_file_sp = resSp.url;
+          payload.id_file_sp = resSp.id;
+          payload.newSpUploaded = true;
         }
-      };
 
-      var saveMetadata = function() {
+        var newPhotosUploaded = false;
+        if (resF1) {
+          if (finalIds[0]) idsToTrash.push(finalIds[0]);
+          finalNames[0] = resF1.name;
+          finalUrls[0] = resF1.url;
+          finalIds[0] = resF1.id;
+          newPhotosUploaded = true;
+        }
+        if (resF2) {
+          if (finalIds[1]) idsToTrash.push(finalIds[1]);
+          finalNames[1] = resF2.name;
+          finalUrls[1] = resF2.url;
+          finalIds[1] = resF2.id;
+          newPhotosUploaded = true;
+        }
+        if (resF3) {
+          if (finalIds[2]) idsToTrash.push(finalIds[2]);
+          finalNames[2] = resF3.name;
+          finalUrls[2] = resF3.url;
+          finalIds[2] = resF3.id;
+          newPhotosUploaded = true;
+        }
+
+        if (newPhotosUploaded) {
+          payload.nama_file_dok = finalNames.filter(Boolean).join(', ');
+          payload.url_file_dok = finalUrls.filter(Boolean).join(', ');
+          payload.id_file_dok = finalIds.filter(Boolean).join(', ');
+          payload.newDokUploaded = true;
+          payload.oldIdsDok = idsToTrash.filter(Boolean).join(', ');
+        }
+
         btnSubmit.html('<i class="fas fa-spinner fa-spin mr-2"></i>MENYIMPAN DATA...');
         google.script.run
           .withSuccessHandler(function(response) {
@@ -1016,9 +1009,11 @@
             btnSubmit.prop('disabled', false).html(originalText);
           })
           .seragam_saveLaporan(payload);
-      };
 
-      uploadStep1();
+      }).catch(function(error) {
+        Sultan.notif.gagal('Gagal mengunggah berkas: ' + error.message);
+        btnSubmit.prop('disabled', false).html(originalText);
+      });
     }
 
     function handleDeleteLaporan(row) {
