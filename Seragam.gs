@@ -316,22 +316,30 @@ function seragam_getLaporan(tahun, npsnFilter) {
         });
       }
     }
-    // Helper function to parse dd-MM-yyyy HH:mm:ss to timestamp
-    var parseDateTime = function(dtStr) {
-      if (!dtStr || dtStr === "-") return 0;
-      var parts = dtStr.split(' ');
-      if (parts.length < 2) return 0;
-      var dateParts = parts[0].split('-');
-      var timeParts = parts[1].split(':');
-      if (dateParts.length < 3 || timeParts.length < 3) return 0;
-      return new Date(dateParts[2], dateParts[1] - 1, dateParts[0], timeParts[0], timeParts[1], timeParts[2]).getTime();
+    // Robust parser to get the latest activity timestamp
+    var getLatestTimestamp = function(row) {
+      var parseTime = function(dtStr) {
+        if (!dtStr) return 0;
+        var s = String(dtStr).trim();
+        if (s === "-" || s === "") return 0;
+        var parts = s.split(' ');
+        if (parts.length < 2) return 0;
+        var dateParts = parts[0].split('-');
+        var timeParts = parts[1].split(':');
+        if (dateParts.length < 3 || timeParts.length < 3) return 0;
+        return new Date(dateParts[2], dateParts[1] - 1, dateParts[0], timeParts[0], timeParts[1], timeParts[2]).getTime();
+      };
+      
+      var t1 = parseTime(row.tgl_upload);
+      var t2 = parseTime(row.tgl_edit);
+      var t3 = parseTime(row.tgl_verif);
+      
+      return Math.max(t1, t2, t3);
     };
 
-    // Sort by last activity (tgl_verif > tgl_edit > tgl_upload) descending
+    // Sort by last activity descending
     result.sort(function(a, b) {
-      var actA = parseDateTime(a.tgl_verif || a.tgl_edit || a.tgl_upload);
-      var actB = parseDateTime(b.tgl_verif || b.tgl_edit || b.tgl_upload);
-      return actB - actA;
+      return getLatestTimestamp(b) - getLatestTimestamp(a);
     });
 
     return JSON.stringify({ success: true, data: result });
