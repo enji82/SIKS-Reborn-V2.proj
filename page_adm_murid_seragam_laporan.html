@@ -817,221 +817,227 @@
     function handleUploadLaporan(e) {
       e.preventDefault();
       
-      var fileSp = $('#seragamlapor_file_sp')[0].files[0];
-      var fileFoto1 = $('#seragamlapor_file_foto1')[0].files[0];
-      var fileFoto2 = $('#seragamlapor_file_foto2')[0].files[0];
-      var fileFoto3 = $('#seragamlapor_file_foto3')[0].files[0];
-      var rowId = $('#seragamlapor_rowId').val();
-
-      // Validasi berkas baru jika upload baru
-      if (!rowId) {
-        if (!fileSp) { Sultan.notif.peringatan('Surat Pernyataan (PDF) wajib diunggah.'); return; }
-        if (!fileFoto1 || !fileFoto2 || !fileFoto3) { 
-          Sultan.notif.peringatan('Semua 3 Foto Dokumentasi wajib diunggah.'); 
-          return; 
-        }
-      }
-
-      // Validasi Ukuran Berkas
-      if (fileSp && fileSp.size > 1024 * 1024) {
-        Sultan.notif.peringatan('Ukuran berkas Surat Pernyataan (PDF) melebihi batas maksimal 1 MB.');
-        return;
-      }
-      if (fileFoto1 && fileFoto1.size > 2 * 1024 * 1024) {
-        Sultan.notif.peringatan('Ukuran Foto Dokumentasi 1 melebihi batas maksimal 2 MB.');
-        return;
-      }
-      if (fileFoto2 && fileFoto2.size > 2 * 1024 * 1024) {
-        Sultan.notif.peringatan('Ukuran Foto Dokumentasi 2 melebihi batas maksimal 2 MB.');
-        return;
-      }
-      if (fileFoto3 && fileFoto3.size > 2 * 1024 * 1024) {
-        Sultan.notif.peringatan('Ukuran Foto Dokumentasi 3 melebihi batas maksimal 2 MB.');
-        return;
-      }
-
-      var selectedJenis = [];
-      if ($('#seragamlapor_cb_merah').is(':checked')) selectedJenis.push("Merah Putih");
-      if ($('#seragamlapor_cb_pramuka').is(':checked')) selectedJenis.push("Pramuka");
-      
-      var btnSubmit = $('#global_modalForm button[type="submit"]');
+      var btnSubmit = $('#seragamlapor_formLaporan button[type="submit"]');
       var originalText = btnSubmit.html();
 
-      if (selectedJenis.length === 0) {
-        Sultan.notif.peringatan('Jenis Seragam wajib dipilih minimal satu.');
-        return;
-      }
+      try {
+        var fileSp = $('#seragamlapor_file_sp')[0].files[0];
+        var fileFoto1 = $('#seragamlapor_file_foto1')[0].files[0];
+        var fileFoto2 = $('#seragamlapor_file_foto2')[0].files[0];
+        var fileFoto3 = $('#seragamlapor_file_foto3')[0].files[0];
+        var rowId = $('#seragamlapor_rowId').val();
 
-      var namaSekolah = IS_ADMIN ? $('#seragamlapor_in_sekolah option:selected').attr('data-nama') : (userLogin.unit || "Sekolah");
-      var tahapLapor = $('#seragamlapor_in_tahap').val();
-
-      // Naming scheme extraction
-      var extSp = fileSp ? fileSp.name.split('.').pop() : 'pdf';
-      var customNamaSp = fileSp ? ('Laporan ' + namaSekolah + ' ' + tahapLapor + '.' + extSp) : '';
-
-      var payload = {
-        rowId: rowId,
-        npsn: IS_ADMIN ? $('#seragamlapor_in_sekolah').val() : $('#seragamlapor_in_sekolah_hidden').val(),
-        nama_sekolah: namaSekolah,
-        tahun: $('#seragamlapor_in_tahun').val(),
-        tahap: tahapLapor,
-        jenis_seragam: selectedJenis.join(', '),
-        jml_l: parseInt($('#seragamlapor_in_jml_l').val()) || 0,
-        jml_p: parseInt($('#seragamlapor_in_jml_p').val()) || 0,
-        jml_total: parseInt($('#seragamlapor_in_jml_total').val()) || 0,
-        
-        id_file_sp: $('#seragamlapor_id_file_sp').val(),
-        url_file_sp: $('#seragamlapor_url_file_sp').val(),
-        nama_file_sp: fileSp ? customNamaSp : $('#seragamlapor_lbl_sp').text().replace(' ', '').trim(),
-        
-        id_file_dok: $('#seragamlapor_id_file_dok').val(),
-        url_file_dok: $('#seragamlapor_url_file_dok').val(),
-        nama_file_dok: $('#seragamlapor_id_file_dok').val() ? (SERAGAMLAPOR_CACHE_DATA.find(function(item) { return item.rowId == rowId; }) || {}).nama_file_dok : '',
-
-        id_file_video: '',
-        url_file_video: '',
-        nama_file_video: '',
-        
-        user_login: userLogin.nama || userLogin.nama_lengkap || userLogin.username || "user",
-        
-        newSpUploaded: false,
-        newDokUploaded: false,
-        newVideoUploaded: false,
-        
-        oldIdSp: $('#seragamlapor_id_file_sp').val(),
-        oldIdsDok: $('#seragamlapor_id_file_dok').val(),
-        oldIdVideo: $('#seragamlapor_id_file_video').val()
-      };
-
-      if (!payload.npsn) {
-        Sultan.notif.peringatan('Sekolah belum dipilih.');
-        return;
-      }
-
-      btnSubmit.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i>MENGUNGGAH BERKAS...');
-
-      // Conversion promises helper
-      var readAsBase64 = function(file, callback) {
-        var reader = new FileReader();
-        reader.onload = function(evt) { callback(evt.target.result.split(',')[1]); };
-        reader.readAsDataURL(file);
-      };
-
-      var uploadFilePromise = function(file, customName, fileType) {
-        return new Promise(function(resolve, reject) {
-          if (!file) {
-            resolve(null);
-            return;
+        // Validasi berkas baru jika upload baru
+        if (!rowId) {
+          if (!fileSp) { Sultan.notif.peringatan('Surat Pernyataan (PDF) wajib diunggah.'); return; }
+          if (!fileFoto1 || !fileFoto2 || !fileFoto3) { 
+            Sultan.notif.peringatan('Semua 3 Foto Dokumentasi wajib diunggah.'); 
+            return; 
           }
-          readAsBase64(file, function(base64) {
-            google.script.run
-              .withSuccessHandler(function(response) {
-                var res = JSON.parse(response);
-                if (res.success) {
-                  resolve({ id: res.id, url: res.url, name: customName });
-                } else {
-                  reject(new Error(res.message));
-                }
-              })
-              .withFailureHandler(function(err) {
-                reject(err);
-              })
-              .seragam_uploadSingleFile(base64, file.type, customName, fileType);
-          });
-        });
-      };
-
-      var currentItem = SERAGAMLAPOR_CACHE_DATA.find(function(item) { return item.rowId == rowId; }) || {};
-      var currentNames = currentItem.nama_file_dok ? currentItem.nama_file_dok.split(', ') : [];
-      var currentUrls = currentItem.url_file_dok ? currentItem.url_file_dok.split(', ') : [];
-      var currentIds = currentItem.id_file_dok ? currentItem.id_file_dok.split(', ') : [];
-      
-      var finalNames = [currentNames[0] || "", currentNames[1] || "", currentNames[2] || ""];
-      var finalUrls = [currentUrls[0] || "", currentUrls[1] || "", currentUrls[2] || ""];
-      var finalIds = [currentIds[0] || "", currentIds[1] || "", currentIds[2] || ""];
-      
-      var idsToTrash = [];
-
-      var extFoto1 = fileFoto1 ? fileFoto1.name.split('.').pop() : '';
-      var photoName1 = fileFoto1 ? 'Dokumentasi ' + namaSekolah + ' ' + tahapLapor + ' - 1.' + extFoto1 : '';
-
-      var extFoto2 = fileFoto2 ? fileFoto2.name.split('.').pop() : '';
-      var photoName2 = fileFoto2 ? 'Dokumentasi ' + namaSekolah + ' ' + tahapLapor + ' - 2.' + extFoto2 : '';
-
-      var extFoto3 = fileFoto3 ? fileFoto3.name.split('.').pop() : '';
-      var photoName3 = fileFoto3 ? 'Dokumentasi ' + namaSekolah + ' ' + tahapLapor + ' - 3.' + extFoto3 : '';
-
-      Promise.all([
-        uploadFilePromise(fileSp, customNamaSp, "sp"),
-        uploadFilePromise(fileFoto1, photoName1, "dok"),
-        uploadFilePromise(fileFoto2, photoName2, "dok"),
-        uploadFilePromise(fileFoto3, photoName3, "dok")
-      ]).then(function(results) {
-        var resSp = results[0];
-        var resF1 = results[1];
-        var resF2 = results[2];
-        var resF3 = results[3];
-
-        if (resSp) {
-          payload.url_file_sp = resSp.url;
-          payload.id_file_sp = resSp.id;
-          payload.newSpUploaded = true;
         }
 
-        var newPhotosUploaded = false;
-        if (resF1) {
-          if (finalIds[0]) idsToTrash.push(finalIds[0]);
-          finalNames[0] = resF1.name;
-          finalUrls[0] = resF1.url;
-          finalIds[0] = resF1.id;
-          newPhotosUploaded = true;
+        // Validasi Ukuran Berkas
+        if (fileSp && fileSp.size > 1024 * 1024) {
+          Sultan.notif.peringatan('Ukuran berkas Surat Pernyataan (PDF) melebihi batas maksimal 1 MB.');
+          return;
         }
-        if (resF2) {
-          if (finalIds[1]) idsToTrash.push(finalIds[1]);
-          finalNames[1] = resF2.name;
-          finalUrls[1] = resF2.url;
-          finalIds[1] = resF2.id;
-          newPhotosUploaded = true;
+        if (fileFoto1 && fileFoto1.size > 2 * 1024 * 1024) {
+          Sultan.notif.peringatan('Ukuran Foto Dokumentasi 1 melebihi batas maksimal 2 MB.');
+          return;
         }
-        if (resF3) {
-          if (finalIds[2]) idsToTrash.push(finalIds[2]);
-          finalNames[2] = resF3.name;
-          finalUrls[2] = resF3.url;
-          finalIds[2] = resF3.id;
-          newPhotosUploaded = true;
+        if (fileFoto2 && fileFoto2.size > 2 * 1024 * 1024) {
+          Sultan.notif.peringatan('Ukuran Foto Dokumentasi 2 melebihi batas maksimal 2 MB.');
+          return;
+        }
+        if (fileFoto3 && fileFoto3.size > 2 * 1024 * 1024) {
+          Sultan.notif.peringatan('Ukuran Foto Dokumentasi 3 melebihi batas maksimal 2 MB.');
+          return;
         }
 
-        if (newPhotosUploaded) {
-          payload.nama_file_dok = finalNames.filter(Boolean).join(', ');
-          payload.url_file_dok = finalUrls.filter(Boolean).join(', ');
-          payload.id_file_dok = finalIds.filter(Boolean).join(', ');
-          payload.newDokUploaded = true;
-          payload.oldIdsDok = idsToTrash.filter(Boolean).join(', ');
+        var selectedJenis = [];
+        if ($('#seragamlapor_cb_merah').is(':checked')) selectedJenis.push("Merah Putih");
+        if ($('#seragamlapor_cb_pramuka').is(':checked')) selectedJenis.push("Pramuka");
+        
+        if (selectedJenis.length === 0) {
+          Sultan.notif.peringatan('Jenis Seragam wajib dipilih minimal satu.');
+          return;
         }
 
-        btnSubmit.html('<i class="fas fa-spinner fa-spin mr-2"></i>MENYIMPAN DATA...');
-        google.script.run
-          .withSuccessHandler(function(response) {
-            var res = JSON.parse(response);
-            btnSubmit.prop('disabled', false).html(originalText);
-            if (res.success) {
-              $('#global_modalForm').modal('hide');
-              Sultan.notif.sukses(res.message);
-              fetchLaporanData();
-            } else {
-              Sultan.notif.gagal('Gagal menyimpan laporan: ' + res.message);
+        var namaSekolah = IS_ADMIN ? $('#seragamlapor_in_sekolah option:selected').attr('data-nama') : (userLogin.unit || "Sekolah");
+        var tahapLapor = $('#seragamlapor_in_tahap').val();
+
+        // Naming scheme extraction
+        var extSp = fileSp ? fileSp.name.split('.').pop() : 'pdf';
+        var customNamaSp = fileSp ? ('Laporan ' + namaSekolah + ' ' + tahapLapor + '.' + extSp) : '';
+
+        var payload = {
+          rowId: rowId,
+          npsn: IS_ADMIN ? $('#seragamlapor_in_sekolah').val() : $('#seragamlapor_in_sekolah_hidden').val(),
+          nama_sekolah: namaSekolah,
+          tahun: $('#seragamlapor_in_tahun').val(),
+          tahap: tahapLapor,
+          jenis_seragam: selectedJenis.join(', '),
+          jml_l: parseInt($('#seragamlapor_in_jml_l').val()) || 0,
+          jml_p: parseInt($('#seragamlapor_in_jml_p').val()) || 0,
+          jml_total: parseInt($('#seragamlapor_in_jml_total').val()) || 0,
+          
+          id_file_sp: $('#seragamlapor_id_file_sp').val(),
+          url_file_sp: $('#seragamlapor_url_file_sp').val(),
+          nama_file_sp: fileSp ? customNamaSp : $('#seragamlapor_lbl_sp').text().replace(' ', '').trim(),
+          
+          id_file_dok: $('#seragamlapor_id_file_dok').val(),
+          url_file_dok: $('#seragamlapor_url_file_dok').val(),
+          nama_file_dok: $('#seragamlapor_id_file_dok').val() ? (SERAGAMLAPOR_CACHE_DATA.find(function(item) { return item.rowId == rowId; }) || {}).nama_file_dok : '',
+
+          id_file_video: '',
+          url_file_video: '',
+          nama_file_video: '',
+          
+          user_login: userLogin.nama || userLogin.nama_lengkap || userLogin.username || "user",
+          
+          newSpUploaded: false,
+          newDokUploaded: false,
+          newVideoUploaded: false,
+          
+          oldIdSp: $('#seragamlapor_id_file_sp').val(),
+          oldIdsDok: $('#seragamlapor_id_file_dok').val(),
+          oldIdVideo: $('#seragamlapor_id_file_video').val()
+        };
+
+        if (!payload.npsn) {
+          Sultan.notif.peringatan('Sekolah belum dipilih.');
+          return;
+        }
+
+        btnSubmit.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i>MENGUNGGAH BERKAS...');
+
+        // Conversion promises helper
+        var readAsBase64 = function(file, callback) {
+          var reader = new FileReader();
+          reader.onload = function(evt) { callback(evt.target.result.split(',')[1]); };
+          reader.readAsDataURL(file);
+        };
+
+        var uploadFilePromise = function(file, customName, fileType) {
+          return new Promise(function(resolve, reject) {
+            if (!file) {
+              resolve(null);
+              return;
             }
-          })
-          .withFailureHandler(function(err) {
-            Sultan.notif.gagal('Koneksi terputus saat menyimpan data: ' + err.message);
-            btnSubmit.prop('disabled', false).html(originalText);
-          })
-          .seragam_saveLaporan(payload);
+            readAsBase64(file, function(base64) {
+              google.script.run
+                .withSuccessHandler(function(response) {
+                  var res = JSON.parse(response);
+                  if (res.success) {
+                    resolve({ id: res.id, url: res.url, name: customName });
+                  } else {
+                    reject(new Error(res.message));
+                  }
+                })
+                .withFailureHandler(function(err) {
+                  reject(err);
+                })
+                .seragam_uploadSingleFile(base64, file.type, customName, fileType);
+            });
+          });
+        };
 
-      }).catch(function(error) {
-        Sultan.notif.gagal('Gagal mengunggah berkas: ' + error.message);
+        var currentItem = SERAGAMLAPOR_CACHE_DATA.find(function(item) { return item.rowId == rowId; }) || {};
+        var currentNames = currentItem.nama_file_dok ? currentItem.nama_file_dok.split(', ') : [];
+        var currentUrls = currentItem.url_file_dok ? currentItem.url_file_dok.split(', ') : [];
+        var currentIds = currentItem.id_file_dok ? currentItem.id_file_dok.split(', ') : [];
+        
+        var finalNames = [currentNames[0] || "", currentNames[1] || "", currentNames[2] || ""];
+        var finalUrls = [currentUrls[0] || "", currentUrls[1] || "", currentUrls[2] || ""];
+        var finalIds = [currentIds[0] || "", currentIds[1] || "", currentIds[2] || ""];
+        
+        var idsToTrash = [];
+
+        var extFoto1 = fileFoto1 ? fileFoto1.name.split('.').pop() : '';
+        var photoName1 = fileFoto1 ? 'Dokumentasi ' + namaSekolah + ' ' + tahapLapor + ' - 1.' + extFoto1 : '';
+
+        var extFoto2 = fileFoto2 ? fileFoto2.name.split('.').pop() : '';
+        var photoName2 = fileFoto2 ? 'Dokumentasi ' + namaSekolah + ' ' + tahapLapor + ' - 2.' + extFoto2 : '';
+
+        var extFoto3 = fileFoto3 ? fileFoto3.name.split('.').pop() : '';
+        var photoName3 = fileFoto3 ? 'Dokumentasi ' + namaSekolah + ' ' + tahapLapor + ' - 3.' + extFoto3 : '';
+
+        Promise.all([
+          uploadFilePromise(fileSp, customNamaSp, "sp"),
+          uploadFilePromise(fileFoto1, photoName1, "dok"),
+          uploadFilePromise(fileFoto2, photoName2, "dok"),
+          uploadFilePromise(fileFoto3, photoName3, "dok")
+        ]).then(function(results) {
+          var resSp = results[0];
+          var resF1 = results[1];
+          var resF2 = results[2];
+          var resF3 = results[3];
+
+          if (resSp) {
+            payload.url_file_sp = resSp.url;
+            payload.id_file_sp = resSp.id;
+            payload.newSpUploaded = true;
+          }
+
+          var newPhotosUploaded = false;
+          if (resF1) {
+            if (finalIds[0]) idsToTrash.push(finalIds[0]);
+            finalNames[0] = resF1.name;
+            finalUrls[0] = resF1.url;
+            finalIds[0] = resF1.id;
+            newPhotosUploaded = true;
+          }
+          if (resF2) {
+            if (finalIds[1]) idsToTrash.push(finalIds[1]);
+            finalNames[1] = resF2.name;
+            finalUrls[1] = resF2.url;
+            finalIds[1] = resF2.id;
+            newPhotosUploaded = true;
+          }
+          if (resF3) {
+            if (finalIds[2]) idsToTrash.push(finalIds[2]);
+            finalNames[2] = resF3.name;
+            finalUrls[2] = resF3.url;
+            finalIds[2] = resF3.id;
+            newPhotosUploaded = true;
+          }
+
+          if (newPhotosUploaded) {
+            payload.nama_file_dok = finalNames.filter(Boolean).join(', ');
+            payload.url_file_dok = finalUrls.filter(Boolean).join(', ');
+            payload.id_file_dok = finalIds.filter(Boolean).join(', ');
+            payload.newDokUploaded = true;
+            payload.oldIdsDok = idsToTrash.filter(Boolean).join(', ');
+          }
+
+          btnSubmit.html('<i class="fas fa-spinner fa-spin mr-2"></i>MENYIMPAN DATA...');
+          google.script.run
+            .withSuccessHandler(function(response) {
+              var res = JSON.parse(response);
+              btnSubmit.prop('disabled', false).html(originalText);
+              if (res.success) {
+                $('#global_modalForm').modal('hide');
+                Sultan.notif.sukses(res.message);
+                fetchLaporanData();
+              } else {
+                Sultan.notif.gagal('Gagal menyimpan laporan: ' + res.message);
+              }
+            })
+            .withFailureHandler(function(err) {
+              Sultan.notif.gagal('Koneksi terputus saat menyimpan data: ' + err.message);
+              btnSubmit.prop('disabled', false).html(originalText);
+            })
+            .seragam_saveLaporan(payload);
+
+        }).catch(function(error) {
+          Sultan.notif.gagal('Gagal mengunggah berkas: ' + error.message);
+          btnSubmit.prop('disabled', false).html(originalText);
+        });
+      } catch (err) {
+        console.error(err);
+        Sultan.notif.gagal('Terjadi kesalahan script: ' + err.message);
         btnSubmit.prop('disabled', false).html(originalText);
-      });
+      }
     }
 
     function handleDeleteLaporan(row) {
