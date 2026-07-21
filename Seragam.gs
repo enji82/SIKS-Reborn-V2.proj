@@ -311,7 +311,10 @@ function seragam_getLaporan(tahun, npsnFilter) {
           status: values[i][21] || "DIPROSES",
           catatan: values[i][22] || "",
           user_verif: values[i][23] || "",
-          tgl_verif: values[i][24] || ""
+          tgl_verif: values[i][24] || "",
+          kurang_l: parseInt(values[i][25]) || 0,
+          kurang_p: parseInt(values[i][26]) || 0,
+          kurang_total: parseInt(values[i][27]) || 0
         });
       }
     }
@@ -381,6 +384,11 @@ function seragam_saveLaporan(payload) {
       sheet.getRange(row, 21).setValue(payload.user_login);
       sheet.getRange(row, 22).setValue("DIPROSES");
       sheet.getRange(row, 23).setValue("");
+      
+      // Update Kekurangan columns (26, 27, 28)
+      sheet.getRange(row, 26).setValue(payload.kurang_l || 0);
+      sheet.getRange(row, 27).setValue(payload.kurang_p || 0);
+      sheet.getRange(row, 28).setValue(payload.kurang_total || 0);
     } else {
       sheet.appendRow([
         payload.npsn, payload.nama_sekolah, payload.tahun,
@@ -391,7 +399,10 @@ function seragam_saveLaporan(payload) {
         payload.jml_l, payload.jml_p, payload.jml_total,
         fileNameVideo, fileUrlVideo, fileIdVideo,
         "", "", // tgl_edit, user_edit
-        "DIPROSES", "", "", "" // status, catatan, user_verif, tgl_verif
+        "DIPROSES", "", "", "", // status, catatan, user_verif, tgl_verif
+        payload.kurang_l || 0,
+        payload.kurang_p || 0,
+        payload.kurang_total || 0
       ]);
     }
 
