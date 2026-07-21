@@ -806,7 +806,18 @@
           if (res.success) {
             $('#global_modalVerifikasi').modal('hide');
             Sultan.notif.sukses(res.message);
-            fetchLaporanData();
+            
+            // Zero Blink: Update local cache data
+            var item = SERAGAMLAPOR_CACHE_DATA.find(function(r) { return r.rowId == payload.rowId; });
+            if (item) {
+              var now = new Date();
+              var nowStr = String(now.getDate()).padStart(2, '0') + "-" + String(now.getMonth() + 1).padStart(2, '0') + "-" + now.getFullYear() + " " + String(now.getHours()).padStart(2, '0') + ":" + String(now.getMinutes()).padStart(2, '0') + ":" + String(now.getSeconds()).padStart(2, '0');
+              item.status = payload.status;
+              item.catatan = payload.catatan || "";
+              item.user_verif = payload.user_verif;
+              item.tgl_verif = nowStr;
+            }
+            applyLocalFilter();
           } else {
             Sultan.notif.gagal('Gagal memproses verifikasi: ' + res.message);
           }
@@ -1065,7 +1076,10 @@
               var res = JSON.parse(response);
               if (res.success) {
                 Sultan.notif.sukses(res.message);
-                fetchLaporanData();
+                
+                // Zero Blink: Remove from local cache data
+                SERAGAMLAPOR_CACHE_DATA = SERAGAMLAPOR_CACHE_DATA.filter(function(r) { return r.rowId != row.rowId; });
+                applyLocalFilter();
               } else {
                 Sultan.notif.gagal('Gagal menghapus laporan: ' + res.message);
               }
