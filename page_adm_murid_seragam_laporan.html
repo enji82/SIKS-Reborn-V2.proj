@@ -172,9 +172,35 @@
                       <th class="text-left align-middle">DIUNGGAH</th>
                       <th class="text-left align-middle">DIUBAH</th>
                       <th class="text-left align-middle">VERIFIKASI</th>
-                    </tr>
                   </thead>
                   <tbody class="text-dark"></tbody>
+                  <tfoot class="bg-light-maroon font-weight-bold text-dark text-center">
+                    <tr>
+                      <th class="col-sticky-left text-center">TOTAL</th>
+                      <th></th> <!-- Status -->
+                      <th></th> <!-- Nama Sekolah -->
+                      <th></th> <!-- Tahun -->
+                      <th></th> <!-- Laporan -->
+                      <th></th> <!-- Seragam -->
+                      <!-- Rekap -->
+                      <th class="text-center font-weight-bold"></th>
+                      <th class="text-center font-weight-bold"></th>
+                      <th class="text-center font-weight-bold"></th>
+                      <!-- Terima -->
+                      <th class="text-center font-weight-bold"></th>
+                      <th class="text-center font-weight-bold"></th>
+                      <th class="text-center font-weight-bold"></th>
+                      <!-- Selisih -->
+                      <th class="text-center font-weight-bold"></th>
+                      <th class="text-center font-weight-bold"></th>
+                      <th class="text-center font-weight-bold"></th>
+                      <th></th> <!-- SP -->
+                      <th></th> <!-- Foto -->
+                      <th></th> <!-- Upload -->
+                      <th></th> <!-- Edit -->
+                      <th></th> <!-- Verif -->
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
             </div>
@@ -633,6 +659,39 @@
           language: {
             url: "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json",
             emptyTable: "Belum ada berkas dokumen laporan penerimaan yang diunggah."
+          },
+          footerCallback: function (row, data, start, end, display) {
+            var api = this.api();
+            
+            var getInt = function (val) {
+              if (typeof val === 'number') return val;
+              if (typeof val === 'string') {
+                var clean = val.replace(/<[^>]*>/g, '').trim();
+                if (clean === '-' || !clean) return 0;
+                return parseInt(clean.replace('+', '')) || 0;
+              }
+              return 0;
+            };
+
+            for (var col = 6; col <= 14; col++) {
+              var total = api.column(col, { page: 'current' }).data().reduce(function (a, b) {
+                return getInt(a) + getInt(b);
+              }, 0);
+              
+              var formatted = total === 0 ? '-' : total;
+              if (col >= 12 && col <= 14) {
+                if (total > 0) {
+                  formatted = '<span class="text-success font-weight-bold">+' + total + '</span>';
+                } else if (total < 0) {
+                  formatted = '<span class="text-danger font-weight-bold">' + total + '</span>';
+                } else {
+                  formatted = '-';
+                }
+              }
+            }
+          },
+          drawCallback: function() {
+            $('[data-toggle="popover"]').popover();
           }
         });
       }
@@ -689,27 +748,37 @@
 
         var statusText = getStatusText(row.status, row.catatan);
 
-        // Parse detail_json to sum DITERIMA L, P, JML
+        // Parse detail_json to sum DITERIMA and REKAP
         var dJson = {};
         try { dJson = row.detail_json ? JSON.parse(row.detail_json) : {}; } catch(e) {}
         
+        var rekapL = 0, rekapP = 0;
         var terimaL = 0, terimaP = 0;
         var parts = String(row.jenis_seragam || "").split(', ');
+        var hasDetailRekap = false;
         parts.forEach(function(jns) {
           jns = jns.trim();
           if (dJson[jns]) {
             Object.keys(dJson[jns]).forEach(function(ukr) {
+              if (dJson[jns][ukr].rekap_l !== undefined) {
+                rekapL += parseInt(dJson[jns][ukr].rekap_l) || 0;
+                rekapP += parseInt(dJson[jns][ukr].rekap_p) || 0;
+                hasDetailRekap = true;
+              }
               terimaL += parseInt(dJson[jns][ukr].terima_l) || 0;
               terimaP += parseInt(dJson[jns][ukr].terima_p) || 0;
             });
           }
         });
-        var terimaJml = terimaL + terimaP;
         
-        // Rekap (JUMLAH)
-        var rekapL = parseInt(row.jml_l) || 0;
-        var rekapP = parseInt(row.jml_p) || 0;
-        var rekapJml = parseInt(row.jml_total) || 0;
+        if (!hasDetailRekap) {
+          // Fallback for legacy data (old rows)
+          rekapL = parseInt(row.jml_l) || 0;
+          rekapP = parseInt(row.jml_p) || 0;
+        }
+        
+        var rekapJml = rekapL + rekapP;
+        var terimaJml = terimaL + terimaP;
         
         // Selisih
         var selisihL = terimaL - rekapL;
@@ -725,6 +794,31 @@
           return `<span class="${cls} font-weight-bold">${sign}${v}</span>`;
         };
 
+        // Popover breakdown helper
+        var buildPopoverHtml = function(dj, jns) {
+          var tbl = '<table class="table table-bordered table-sm text-center mb-0" style="font-size:10px; width:150px;"><thead><tr><th>UKR</th><th>L</th><th>P</th></tr></thead><tbody>';
+          var sizes = ["S","M","L","XL","2XL","3XL","4XL","5XL"];
+          var hasData = false;
+          sizes.forEach(function(ukr) {
+            if (dj[jns] && dj[jns][ukr]) {
+              var lVal = dj[jns][ukr].terima_l || 0;
+              var pVal = dj[jns][ukr].terima_p || 0;
+              if (lVal > 0 || pVal > 0) {
+                tbl += `<tr><td><strong>${ukr}</strong></td><td>${lVal}</td><td>${pVal}</td></tr>`;
+                hasData = true;
+              }
+            }
+          });
+          tbl += '</tbody></table>';
+          return hasData ? tbl : 'Tidak ada data rincian.';
+        };
+
+        var popContent = buildPopoverHtml(dJson, row.jenis_seragam || "Merah Putih");
+        var terimaJmlText = `<span>${fmt(terimaJml)}</span>`;
+        if (terimaJml > 0) {
+          terimaJmlText += ` <i class="fas fa-info-circle text-info ml-1 cursor-pointer" data-toggle="popover" data-trigger="hover focus" data-html="true" data-placement="top" title="Rincian Ukuran" data-content='${popContent}'></i>`;
+        }
+
         dtArray.push([
           btnAksi,
           statusText,
@@ -737,7 +831,7 @@
           fmt(rekapJml),
           fmt(terimaL),
           fmt(terimaP),
-          fmt(terimaJml),
+          terimaJmlText,
           fmtS(selisihL),
           fmtS(selisihP),
           fmtS(selisihJml),
