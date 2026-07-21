@@ -403,14 +403,6 @@ function seragam_saveLaporan(payload) {
   }
 }
 
-    return JSON.stringify({ success: true, message: "Laporan Penerimaan berhasil disimpan." });
-  } catch(e) {
-    return JSON.stringify({ success: false, message: e.message });
-  } finally {
-    lock.releaseLock();
-  }
-}
-
 function seragam_saveVerifikasi(payload) {
   var lock = LockService.getScriptLock();
   try {
