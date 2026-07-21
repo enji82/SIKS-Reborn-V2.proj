@@ -452,7 +452,8 @@
       // Render Filter Bar Placeholder immediately
       var filtersConfig = [
         { id: "seragamlapor_filterSekolah", placeholder: "- Memuat Sekolah... -", disabled: true, visible: IS_ADMIN },
-        { id: "seragamlapor_filterTahun", placeholder: "- Memuat Tahun... -", disabled: true }
+        { id: "seragamlapor_filterTahun", placeholder: "- Memuat Tahun... -", disabled: true },
+        { id: "seragamlapor_filterStatus", placeholder: "- Pilih Status -", disabled: false }
       ];
 
       var extraButtons = '<div class="divider-vertical d-none d-md-block mx-2"></div>' +
@@ -470,9 +471,17 @@
       $('#seragamlapor_filterBarArea').html(SultanUI.renderFilterBar(filtersConfig, extraButtons));
       $('#seragamlapor_filterSekolah_container').addClass('sultan-filter-unit-width');
 
+      // Populate Status filter options
+      $('#seragamlapor_filterStatus').html(
+        '<option value="SEMUA">- Semua Status -</option>' +
+        '<option value="DIPROSES">Diproses</option>' +
+        '<option value="DISETUJUI">Disetujui</option>' +
+        '<option value="DITOLAK">Ditolak</option>'
+      );
+
       // Bind Listeners
       $('#seragamlapor_filterTahun').on('change', fetchLaporanData);
-      $('#seragamlapor_filterSekolah').on('change', applyLocalFilter);
+      $('#seragamlapor_filterSekolah, #seragamlapor_filterStatus').on('change', applyLocalFilter);
       $('#seragamlapor_btnSync').on('click', fetchLaporanData);
       $('#seragamlapor_btnUnggah').on('click', showUploadModal);
       
@@ -665,11 +674,18 @@
 
     function applyLocalFilter() {
       var targetSekolah = IS_ADMIN ? $('#seragamlapor_filterSekolah').val() : (userLogin.npsn || userLogin.username || "");
+      var targetStatus = $('#seragamlapor_filterStatus').val() || "SEMUA";
       var filtered = SERAGAMLAPOR_CACHE_DATA;
       
       if (targetSekolah && targetSekolah !== "SEMUA") {
-        filtered = SERAGAMLAPOR_CACHE_DATA.filter(function(row) {
+        filtered = filtered.filter(function(row) {
           return String(row.npsn).trim() === String(targetSekolah).trim();
+        });
+      }
+
+      if (targetStatus && targetStatus !== "SEMUA") {
+        filtered = filtered.filter(function(row) {
+          return String(row.status || "DIPROSES").trim().toUpperCase() === String(targetStatus).trim().toUpperCase();
         });
       }
       
