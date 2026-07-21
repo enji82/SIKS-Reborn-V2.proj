@@ -315,6 +315,7 @@ function seragam_getLaporan(tahun, npsnFilter) {
           detail_json: values[i][25] || ""
         });
       }
+    }
     // Helper function to parse dd-MM-yyyy HH:mm:ss to timestamp
     var parseDateTime = function(dtStr) {
       if (!dtStr || dtStr === "-") return 0;
