@@ -34,6 +34,27 @@
   /* Style progress bar table rekap adaptif */
   #admptk_dash_tabelRekap .progress { background-color: rgba(0, 0, 0, 0.08) !important; }
   body.dark-mode #admptk_dash_tabelRekap .progress { background-color: rgba(255, 255, 255, 0.15) !important; }
+
+  /* Skeleton Screen Shimmer Effect */
+  .sultan-skeleton {
+    display: inline-block;
+    height: 100%;
+    width: 100%;
+    background: #e9ecef;
+    background-image: linear-gradient(90deg, #e9ecef 0px, #f8f9fa 40px, #e9ecef 80px);
+    background-size: 250px 100%;
+    background-repeat: no-repeat;
+    animation: sultan-shimmer 1.2s infinite linear;
+    border-radius: 4px;
+  }
+  body.dark-mode .sultan-skeleton {
+    background: #2b2e30;
+    background-image: linear-gradient(90deg, #2b2e30 0px, #3e444a 40px, #2b2e30 80px);
+  }
+  @keyframes sultan-shimmer {
+    0% { background-position: -250px 0; }
+    100% { background-position: 250px 0; }
+  }
 </style>
 
 <section class="content">
@@ -298,10 +319,32 @@ var ADMPTK_DASH_TAHUN_DEFAULTED = false;
 var ADMPTK_DASH_PERIODE_DEFAULTED = false;
 var ADMPTK_DASH_JENIS_PERIODE = "TAHUNAN";
 
+function admptk_dash_showSkeleton() {
+    $('#admptk_dash_cardTotalPtk, #admptk_dash_cardSudah, #admptk_dash_cardBelum, #admptk_dash_cardPersentaseProgres, #admptk_dash_cardJmlDokumen, #admptk_dash_cardDiproses, #admptk_dash_cardDisetujui, #admptk_dash_cardRevisi, #admptk_dash_cardDitolak')
+        .html('<span class="sultan-skeleton" style="width: 50px; height: 22px; display: inline-block; vertical-align: middle;"></span>');
+    $('#admptk_dash_progressText').html('<span class="sultan-skeleton" style="width: 80px; height: 14px; display: inline-block;"></span>');
+    if (ADMPTK_DASH_IS_ADMIN) {
+        if ($.fn.DataTable.isDataTable('#admptk_dash_tabelRekap')) {
+            $('#admptk_dash_tabelRekap').DataTable().destroy();
+        }
+        var skeletonTbody = '';
+        for (var i = 0; i < 5; i++) {
+            skeletonTbody += '<tr>' +
+                '<td><span class="sultan-skeleton" style="width: 150px; height: 16px; display: inline-block; vertical-align: middle;"></span></td>' +
+                '<td class="text-center"><span class="sultan-skeleton" style="width: 30px; height: 16px; display: inline-block; vertical-align: middle;"></span></td>' +
+                '<td class="text-center"><span class="sultan-skeleton" style="width: 30px; height: 16px; display: inline-block; vertical-align: middle;"></span></td>' +
+                '<td class="text-center"><span class="sultan-skeleton" style="width: 30px; height: 16px; display: inline-block; vertical-align: middle;"></span></td>' +
+                '<td><span class="sultan-skeleton" style="width: 100px; height: 16px; display: inline-block; vertical-align: middle;"></span></td>' +
+                '<td class="text-center"><span class="sultan-skeleton" style="width: 70px; height: 16px; display: inline-block; vertical-align: middle;"></span></td>' +
+                '</tr>';
+        }
+        $('#admptk_dash_bodyTabelRekap').html(skeletonTbody);
+    }
+}
+
 $(document).ready(function() {
     $('#admptk_dash_dashboardState').show();
-    var initialOv = '<div class="card-loading-overlay d-flex align-items-center justify-content-center" style="position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,0.6);backdrop-filter:blur(1px);z-index:100;border-radius:16px;"><i class="fas fa-spinner fa-spin fa-3x text-maroon"></i></div>';
-    $('#admptk_dash_dashboardState').css('position','relative').append(initialOv);
+    admptk_dash_showSkeleton();
     $('#admptk_dash_filterContainer').hide();
  
     try {
@@ -366,11 +409,8 @@ function admptk_dash_loadDataKategori(idKategori, forceRefresh) {
     var btn = $('#admptk_dash_btnRefresh'); btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin text-maroon"></i>');
     $('#admptk_dash_filterKategori, #admptk_dash_filterTahun, #admptk_dash_filterPeriode').prop('disabled', true);
 
-    // Selalu tampilkan overlay di atas dashboard secara utuh tanpa menyembunyikannya
     $('#admptk_dash_dashboardState').show();
-    $('.card-loading-overlay').remove(); // bersihkan overlay yang lama
-    var ov = '<div class="card-loading-overlay d-flex align-items-center justify-content-center" style="position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,0.6);backdrop-filter:blur(1px);z-index:100;border-radius:16px;"><i class="fas fa-spinner fa-spin fa-3x text-maroon"></i></div>';
-    $('#admptk_dash_dashboardState').css('position','relative').append(ov);
+    admptk_dash_showSkeleton();
 
     var jenjang = $('#admptk_dash_filterJenjang').val() || "SD";
     var npsnFilter = ADMPTK_DASH_IS_ADMIN ? "" : ADMPTK_DASH_USER_NPSN;
@@ -380,7 +420,6 @@ function admptk_dash_loadDataKategori(idKategori, forceRefresh) {
         btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
         $('#admptk_dash_filterKategori, #admptk_dash_filterTahun, #admptk_dash_filterPeriode').prop('disabled', false);
         if (ADMPTK_DASH_IS_ADMIN) $('#admptk_dash_filterNamaSekolah').prop('disabled', false);
-        $('.card-loading-overlay').remove();
  
         var data = JSON.parse(jsonStr);
         if (!data.success) { $('#admptk_dash_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>' + admptk_dash_esc(data.message) + '</span>'); return; }
