@@ -1041,20 +1041,42 @@
     }
 
     function handleDeleteLaporan(row) {
-      Sultan.notif.konfirmasi('Apakah Anda yakin ingin menghapus Laporan Penerimaan ' + row.nama_sekolah + '?', function() {
-        SultanUI.showLoading('#seragamlapor_loadingState', 'Menghapus laporan...');
-        google.script.run
-          .withSuccessHandler(function(response) {
-            var res = JSON.parse(response);
-            SultanUI.hideLoading('#seragamlapor_loadingState');
-            if (res.success) {
-              Sultan.notif.sukses(res.message);
-              fetchLaporanData();
-            } else {
-              Sultan.notif.gagal('Gagal menghapus laporan: ' + res.message);
-            }
-          })
-          .seragam_deleteLaporan(row.rowId);
+      var d = new Date();
+      var kd = d.getFullYear() + "" + String(d.getMonth() + 1).padStart(2, '0') + "" + String(d.getDate()).padStart(2, '0');
+
+      Sultan.modal.konfirmasiHapus({
+        title: 'HAPUS LAPORAN PENERIMAAN',
+        teksUtama: 'Apakah Anda yakin ingin menghapus Laporan Penerimaan ini?',
+        teksSub: 'Seluruh berkas terkait di Google Drive akan ikut terhapus permanen.',
+        kode: kd,
+        showReason: false,
+        autoClose: false,
+        detail: {
+          'Nama Sekolah': row.nama_sekolah || '-',
+          'Tahun Laporan': row.tahun || '-',
+          'Laporan': row.tahap || '-'
+        },
+        onConfirm: function(alasan, closeModal) {
+          SultanUI.showLoading('#seragamlapor_loadingState', 'Menghapus laporan...');
+          google.script.run
+            .withSuccessHandler(function(response) {
+              closeModal();
+              SultanUI.hideLoading('#seragamlapor_loadingState');
+              var res = JSON.parse(response);
+              if (res.success) {
+                Sultan.notif.sukses(res.message);
+                fetchLaporanData();
+              } else {
+                Sultan.notif.gagal('Gagal menghapus laporan: ' + res.message);
+              }
+            })
+            .withFailureHandler(function(err) {
+              closeModal();
+              SultanUI.hideLoading('#seragamlapor_loadingState');
+              Sultan.notif.gagal('Koneksi terputus saat menghapus data: ' + err.message);
+            })
+            .seragam_deleteLaporan(row.rowId);
+        }
       });
     }
 
