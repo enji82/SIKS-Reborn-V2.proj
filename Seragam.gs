@@ -315,7 +315,24 @@ function seragam_getLaporan(tahun, npsnFilter) {
           detail_json: values[i][25] || ""
         });
       }
-    }
+    // Helper function to parse dd-MM-yyyy HH:mm:ss to timestamp
+    var parseDateTime = function(dtStr) {
+      if (!dtStr || dtStr === "-") return 0;
+      var parts = dtStr.split(' ');
+      if (parts.length < 2) return 0;
+      var dateParts = parts[0].split('-');
+      var timeParts = parts[1].split(':');
+      if (dateParts.length < 3 || timeParts.length < 3) return 0;
+      return new Date(dateParts[2], dateParts[1] - 1, dateParts[0], timeParts[0], timeParts[1], timeParts[2]).getTime();
+    };
+
+    // Sort by last activity (tgl_verif > tgl_edit > tgl_upload) descending
+    result.sort(function(a, b) {
+      var actA = parseDateTime(a.tgl_verif || a.tgl_edit || a.tgl_upload);
+      var actB = parseDateTime(b.tgl_verif || b.tgl_edit || b.tgl_upload);
+      return actB - actA;
+    });
+
     return JSON.stringify({ success: true, data: result });
   } catch(e) {
     return JSON.stringify({ success: false, message: e.message });
@@ -359,6 +376,24 @@ function seragam_saveLaporan(payload) {
     // If new Video was uploaded, trash the old one
     if (isEdit && payload.newVideoUploaded && payload.oldIdVideo) {
       try { DriveApp.getFileById(payload.oldIdVideo).setTrashed(true); } catch(err) {}
+    }
+
+    // Check duplicates if it is a new record
+    if (!isEdit) {
+      var data = sheet.getDataRange().getValues();
+      for (var i = 1; i < data.length; i++) {
+        var existingNpsn = String(data[i][0]).trim();
+        var existingTahun = String(data[i][2]).trim();
+        var existingTahap = String(data[i][11]).trim();
+        var existingJenis = String(data[i][12]).trim();
+        
+        if (existingNpsn === String(payload.npsn).trim() &&
+            existingTahun === String(payload.tahun).trim() &&
+            existingTahap === String(payload.tahap).trim() &&
+            existingJenis === String(payload.jenis_seragam).trim()) {
+          throw new Error("Laporan untuk sekolah, tahun, tahap, dan jenis seragam ini sudah pernah diunggah. Silakan lakukan EDIT pada laporan yang sudah ada.");
+        }
+      }
     }
 
     if (isEdit) {

@@ -455,11 +455,12 @@
         var isGoogleDrive = url.indexOf('drive.google.com') > -1;
         
         if (isGoogleDrive) {
-          var match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+          var match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
           if (match && match[1]) {
             finalUrl = 'https://drive.google.com/file/d/' + match[1] + '/preview';
             downloadUrl = 'https://drive.google.com/uc?export=download&id=' + match[1];
           }
+          isImage = false; // Always use iframe preview for Google Drive URLs
         } else {
           downloadUrl = url;
         }
@@ -1274,6 +1275,22 @@
 
         var namaSekolah = IS_ADMIN ? $('#seragamlapor_in_sekolah option:selected').attr('data-nama') : (userLogin.unit || "Sekolah");
         var tahapLapor = $('#seragamlapor_in_tahap').val();
+        var targetNpsn = IS_ADMIN ? $('#seragamlapor_in_sekolah').val() : $('#seragamlapor_in_sekolah_hidden').val();
+        var targetTahun = $('#seragamlapor_in_tahun').val();
+
+        // Check duplicates locally if creating a new record
+        if (!rowId && SERAGAMLAPOR_CACHE_DATA) {
+          var isDuplicate = SERAGAMLAPOR_CACHE_DATA.some(function(item) {
+            return String(item.npsn).trim() === String(targetNpsn).trim() &&
+                   String(item.tahun).trim() === String(targetTahun).trim() &&
+                   String(item.tahap).trim() === String(tahapLapor).trim() &&
+                   String(item.jenis_seragam).trim() === String(selectedJenis).trim();
+          });
+          if (isDuplicate) {
+            Sultan.notif.gagal('Laporan untuk sekolah, tahun, tahap, dan jenis seragam ini sudah pernah diunggah. Silakan lakukan EDIT pada laporan yang sudah ada.');
+            return;
+          }
+        }
 
         // Naming scheme extraction
         var extSp = fileSp ? fileSp.name.split('.').pop() : 'pdf';
@@ -1281,9 +1298,9 @@
 
         var payload = {
           rowId: rowId,
-          npsn: IS_ADMIN ? $('#seragamlapor_in_sekolah').val() : $('#seragamlapor_in_sekolah_hidden').val(),
+          npsn: targetNpsn,
           nama_sekolah: namaSekolah,
-          tahun: $('#seragamlapor_in_tahun').val(),
+          tahun: targetTahun,
           tahap: tahapLapor,
           jenis_seragam: selectedJenis,
 
