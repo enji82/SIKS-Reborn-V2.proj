@@ -45,6 +45,7 @@
     font-size: 12px;
     border-collapse: collapse;
     margin: 0;
+    table-layout: fixed;
   }
   .tbl-seragam-detail th, .tbl-seragam-detail td {
     padding: 5px 8px;
@@ -732,10 +733,55 @@
       return 'selisih-netral';
     }
 
+    /** Parse cell text value, treating '-' as 0 and ignoring '+' sign */
+    function parseCellVal(text) {
+      text = String(text || '').trim();
+      if (text === '-' || !text) return 0;
+      return parseInt(text.replace('+', '')) || 0;
+    }
+
+    /** Format display value: replace 0 with '-' */
+    function fmtVal(val) {
+      var num = parseInt(val) || 0;
+      return num === 0 ? '-' : num;
+    }
+
+    /** Format selisih display value: replace 0 with '-' and prefix positive values with '+' */
+    function fmtSelisih(val) {
+      var num = parseInt(val) || 0;
+      if (num === 0) return '-';
+      return (num > 0 ? '+' : '') + num;
+    }
+
+    /** Equal column colgroup HTML for 10 columns */
+    var COLGROUP_HTML = '<colgroup>' +
+      '<col style="width: 10%;">' + // UKR
+      '<col style="width: 10%;">' + // Rekap L
+      '<col style="width: 10%;">' + // Rekap P
+      '<col style="width: 10%;">' + // Rekap JML
+      '<col style="width: 10%;">' + // Terima L
+      '<col style="width: 10%;">' + // Terima P
+      '<col style="width: 10%;">' + // Terima JML
+      '<col style="width: 10%;">' + // Selisih L
+      '<col style="width: 10%;">' + // Selisih P
+      '<col style="width: 10%;">' + // Selisih JML
+    '</colgroup>';
+
+    /** Equal column colgroup HTML for 7 columns (Verification table has no Rekap column groups, but let's make it equal too) */
+    var COLGROUP_VERIF_HTML = '<colgroup>' +
+      '<col style="width: 14%;">' + // UKR
+      '<col style="width: 14%;">' + // Terima L
+      '<col style="width: 14%;">' + // Terima P
+      '<col style="width: 14%;">' + // Terima JML
+      '<col style="width: 14%;">' + // Selisih L
+      '<col style="width: 14%;">' + // Selisih P
+      '<col style="width: 15%;">' + // Selisih JML
+    '</colgroup>';
+
     /** Recalculate JML and Selisih for a single data row */
     function recalcDetailRow($tr) {
-      var rekapL = parseInt($tr.find('.td-rekap-l').text()) || 0;
-      var rekapP = parseInt($tr.find('.td-rekap-p').text()) || 0;
+      var rekapL = parseCellVal($tr.find('.td-rekap-l').text());
+      var rekapP = parseCellVal($tr.find('.td-rekap-p').text());
       var terimaL = parseInt($tr.find('.inp-terima[data-jk="L"]').val()) || 0;
       var terimaP = parseInt($tr.find('.inp-terima[data-jk="P"]').val()) || 0;
       var terimaJml = terimaL + terimaP;
@@ -743,12 +789,12 @@
       var selisihP = terimaP - rekapP;
       var selisihJml = terimaJml - (rekapL + rekapP);
 
-      $tr.find('.td-terima-jml').text(terimaJml);
-      $tr.find('.td-selisih-l').text((selisihL >= 0 ? '+' : '') + selisihL)
+      $tr.find('.td-terima-jml').text(fmtVal(terimaJml));
+      $tr.find('.td-selisih-l').text(fmtSelisih(selisihL))
          .attr('class', 'td-selisih-l ' + selisihClass(selisihL));
-      $tr.find('.td-selisih-p').text((selisihP >= 0 ? '+' : '') + selisihP)
+      $tr.find('.td-selisih-p').text(fmtSelisih(selisihP))
          .attr('class', 'td-selisih-p ' + selisihClass(selisihP));
-      $tr.find('.td-selisih-jml').text((selisihJml >= 0 ? '+' : '') + selisihJml)
+      $tr.find('.td-selisih-jml').text(fmtSelisih(selisihJml))
          .attr('class', 'td-selisih-jml ' + selisihClass(selisihJml));
     }
 
@@ -758,8 +804,8 @@
       var totTerimaL = 0, totTerimaP = 0;
 
       $tbl.find('tbody tr').each(function() {
-        totRekapL += parseInt($(this).find('.td-rekap-l').text()) || 0;
-        totRekapP += parseInt($(this).find('.td-rekap-p').text()) || 0;
+        totRekapL += parseCellVal($(this).find('.td-rekap-l').text());
+        totRekapP += parseCellVal($(this).find('.td-rekap-p').text());
         totTerimaL += parseInt($(this).find('.inp-terima[data-jk="L"]').val()) || 0;
         totTerimaP += parseInt($(this).find('.inp-terima[data-jk="P"]').val()) || 0;
       });
@@ -770,23 +816,22 @@
       var totSelisihP = totTerimaP - totRekapP;
       var totSelisihJml = totTerimaJml - totRekapJml;
 
-      $tbl.find('tfoot .tf-rekap-l').text(totRekapL);
-      $tbl.find('tfoot .tf-rekap-p').text(totRekapP);
-      $tbl.find('tfoot .tf-rekap-jml').text(totRekapJml);
-      $tbl.find('tfoot .tf-terima-l').text(totTerimaL);
-      $tbl.find('tfoot .tf-terima-p').text(totTerimaP);
-      $tbl.find('tfoot .tf-terima-jml').text(totTerimaJml);
-      $tbl.find('tfoot .tf-selisih-l').text((totSelisihL >= 0 ? '+' : '') + totSelisihL)
+      $tbl.find('tfoot .tf-rekap-l').text(fmtVal(totRekapL));
+      $tbl.find('tfoot .tf-rekap-p').text(fmtVal(totRekapP));
+      $tbl.find('tfoot .tf-rekap-jml').text(fmtVal(totRekapJml));
+      $tbl.find('tfoot .tf-terima-l').text(fmtVal(totTerimaL));
+      $tbl.find('tfoot .tf-terima-p').text(fmtVal(totTerimaP));
+      $tbl.find('tfoot .tf-terima-jml').text(fmtVal(totTerimaJml));
+      $tbl.find('tfoot .tf-selisih-l').text(fmtSelisih(totSelisihL))
           .attr('class', 'tf-selisih-l ' + selisihClass(totSelisihL));
-      $tbl.find('tfoot .tf-selisih-p').text((totSelisihP >= 0 ? '+' : '') + totSelisihP)
+      $tbl.find('tfoot .tf-selisih-p').text(fmtSelisih(totSelisihP))
           .attr('class', 'tf-selisih-p ' + selisihClass(totSelisihP));
-      $tbl.find('tfoot .tf-selisih-jml').text((totSelisihJml >= 0 ? '+' : '') + totSelisihJml)
+      $tbl.find('tfoot .tf-selisih-jml').text(fmtSelisih(totSelisihJml))
           .attr('class', 'tf-selisih-jml ' + selisihClass(totSelisihJml));
     }
 
     /** Build the interactive detail table HTML for a single jenis seragam and rekap sizes data */
     function buildDetailTable(jenis, rekapSizes, existingDetailJson) {
-      // rekapSizes = { "S": {L,P,JML}, "M": {...}, ..., "TOTAL": {L,P,JML} } or {} if not found
       var panelsHtml = '';
 
       var existingForJenis = (existingDetailJson && existingDetailJson[jenis]) ? existingDetailJson[jenis] : {};
@@ -803,15 +848,15 @@
 
         rowsHtml += '<tr>' +
           '<td class="ukr-col">' + ukr + '</td>' +
-          '<td class="td-rekap-l">' + rekL + '</td>' +
-          '<td class="td-rekap-p">' + rekP + '</td>' +
-          '<td>' + rekJml + '</td>' +
-          '<td><input type="number" class="inp-terima" data-jk="L" data-ukr="' + ukr + '" data-jenis="' + jenis + '" min="0" value="' + terL + '"></td>' +
-          '<td><input type="number" class="inp-terima" data-jk="P" data-ukr="' + ukr + '" data-jenis="' + jenis + '" min="0" value="' + terP + '"></td>' +
-          '<td class="td-terima-jml">' + terJml + '</td>' +
-          '<td class="td-selisih-l ' + selisihClass(slL) + '">' + (slL >= 0 ? '+' : '') + slL + '</td>' +
-          '<td class="td-selisih-p ' + selisihClass(slP) + '">' + (slP >= 0 ? '+' : '') + slP + '</td>' +
-          '<td class="td-selisih-jml ' + selisihClass(slJml) + '">' + (slJml >= 0 ? '+' : '') + slJml + '</td>' +
+          '<td class="td-rekap-l">' + fmtVal(rekL) + '</td>' +
+          '<td class="td-rekap-p">' + fmtVal(rekP) + '</td>' +
+          '<td>' + fmtVal(rekJml) + '</td>' +
+          '<td><input type="number" class="inp-terima" data-jk="L" data-ukr="' + ukr + '" data-jenis="' + jenis + '" min="0" value="' + (terL === 0 ? '' : terL) + '" placeholder="-"></td>' +
+          '<td><input type="number" class="inp-terima" data-jk="P" data-ukr="' + ukr + '" data-jenis="' + jenis + '" min="0" value="' + (terP === 0 ? '' : terP) + '" placeholder="-"></td>' +
+          '<td class="td-terima-jml">' + fmtVal(terJml) + '</td>' +
+          '<td class="td-selisih-l ' + selisihClass(slL) + '">' + fmtSelisih(slL) + '</td>' +
+          '<td class="td-selisih-p ' + selisihClass(slP) + '">' + fmtSelisih(slP) + '</td>' +
+          '<td class="td-selisih-jml ' + selisihClass(slJml) + '">' + fmtSelisih(slJml) + '</td>' +
         '</tr>';
       });
 
@@ -828,6 +873,7 @@
 
       panelsHtml += '<div class="table-responsive">' +
         '<table class="tbl-seragam-detail">' +
+        COLGROUP_HTML +
         '<thead>' +
           '<tr>' +
             '<th rowspan="2" style="vertical-align:middle;">UKR</th>' +
@@ -844,11 +890,11 @@
         '<tbody>' + rowsHtml + '</tbody>' +
         '<tfoot><tr>' +
           '<td class="ukr-col">TOTAL</td>' +
-          '<td class="tf-rekap-l">' + totRekL + '</td><td class="tf-rekap-p">' + totRekP + '</td><td class="tf-rekap-jml">' + totRekJml + '</td>' +
-          '<td class="tf-terima-l">' + totTerL + '</td><td class="tf-terima-p">' + totTerP + '</td><td class="tf-terima-jml">' + totTerJml + '</td>' +
-          '<td class="tf-selisih-l ' + selisihClass(tfSlL) + '">' + (tfSlL >= 0 ? '+' : '') + tfSlL + '</td>' +
-          '<td class="tf-selisih-p ' + selisihClass(tfSlP) + '">' + (tfSlP >= 0 ? '+' : '') + tfSlP + '</td>' +
-          '<td class="tf-selisih-jml ' + selisihClass(tfSlJml) + '">' + (tfSlJml >= 0 ? '+' : '') + tfSlJml + '</td>' +
+          '<td class="tf-rekap-l">' + fmtVal(totRekL) + '</td><td class="tf-rekap-p">' + fmtVal(totRekP) + '</td><td class="tf-rekap-jml">' + fmtVal(totRekJml) + '</td>' +
+          '<td class="tf-terima-l">' + fmtVal(totTerL) + '</td><td class="tf-terima-p">' + fmtVal(totTerP) + '</td><td class="tf-terima-jml">' + fmtVal(totTerJml) + '</td>' +
+          '<td class="tf-selisih-l ' + selisihClass(tfSlL) + '">' + fmtSelisih(tfSlL) + '</td>' +
+          '<td class="tf-selisih-p ' + selisihClass(tfSlP) + '">' + fmtSelisih(tfSlP) + '</td>' +
+          '<td class="tf-selisih-jml ' + selisihClass(tfSlJml) + '">' + fmtSelisih(tfSlJml) + '</td>' +
         '</tr></tfoot>' +
         '</table></div>';
 
@@ -893,7 +939,9 @@
       var html = '';
       Object.keys(detailJson).forEach(function(jenis) {
         html += '<div class="mb-2"><strong class="small text-uppercase" style="color:#800000;">' + jenis + '</strong></div>';
-        html += '<div class="table-responsive mb-3"><table class="tbl-seragam-detail tbl-seragam-verif"><thead>';
+        html += '<div class="table-responsive mb-3"><table class="tbl-seragam-detail tbl-seragam-verif">';
+        html += COLGROUP_VERIF_HTML;
+        html += '<thead>';
         html += '<tr><th rowspan="2" style="vertical-align:middle;">UKR</th><th colspan="3" class="th-group">DITERIMA</th><th colspan="3" class="th-group">SELISIH</th></tr>';
         html += '<tr><th>L</th><th>P</th><th>JML</th><th>L</th><th>P</th><th>JML</th></tr></thead><tbody>';
 
@@ -904,10 +952,10 @@
           var rL = parseInt(d.rekap_l) || 0, rP = parseInt(d.rekap_p) || 0;
           var sL = tL - rL, sP = tP - rP, sJml = tJml - (rL + rP);
           html += '<tr><td class="ukr-col">' + ukr + '</td>' +
-            '<td>' + tL + '</td><td>' + tP + '</td><td>' + tJml + '</td>' +
-            '<td class="' + selisihClass(sL) + '">' + (sL >= 0 ? '+' : '') + sL + '</td>' +
-            '<td class="' + selisihClass(sP) + '">' + (sP >= 0 ? '+' : '') + sP + '</td>' +
-            '<td class="' + selisihClass(sJml) + '">' + (sJml >= 0 ? '+' : '') + sJml + '</td></tr>';
+            '<td>' + fmtVal(tL) + '</td><td>' + fmtVal(tP) + '</td><td>' + fmtVal(tJml) + '</td>' +
+            '<td class="' + selisihClass(sL) + '">' + fmtSelisih(sL) + '</td>' +
+            '<td class="' + selisihClass(sP) + '">' + fmtSelisih(sP) + '</td>' +
+            '<td class="' + selisihClass(sJml) + '">' + fmtSelisih(sJml) + '</td></tr>';
         });
         html += '</tbody></table></div>';
       });
