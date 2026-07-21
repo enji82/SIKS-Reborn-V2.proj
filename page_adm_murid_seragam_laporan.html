@@ -155,9 +155,18 @@
                       <th class="text-center align-middle">TAHUN</th>
                       <th class="text-center align-middle">LAPORAN</th>
                       <th class="text-left align-middle">SERAGAM</th>
-                      <th class="text-center align-middle">L</th>
-                      <th class="text-center align-middle">P</th>
-                      <th class="text-center align-middle font-weight-bold">JML</th>
+                      <!-- Rekap -->
+                      <th class="text-center align-middle text-brand-maroon">REKAP L</th>
+                      <th class="text-center align-middle text-brand-maroon">REKAP P</th>
+                      <th class="text-center align-middle text-brand-maroon font-weight-bold">REKAP JML</th>
+                      <!-- Terima -->
+                      <th class="text-center align-middle text-primary">TERIMA L</th>
+                      <th class="text-center align-middle text-primary">TERIMA P</th>
+                      <th class="text-center align-middle text-primary font-weight-bold">TERIMA JML</th>
+                      <!-- Selisih -->
+                      <th class="text-center align-middle">SELISIH L</th>
+                      <th class="text-center align-middle">SELISIH P</th>
+                      <th class="text-center align-middle font-weight-bold">SELISIH JML</th>
                       <th class="text-center align-middle" style="min-width: 150px;">SURAT PERNYATAAN (PDF)</th>
                       <th class="text-center align-middle" style="min-width: 150px;">DOKUMENTASI (FOTO)</th>
                       <th class="text-left align-middle">DIUNGGAH</th>
@@ -617,9 +626,9 @@
             { targets: 3, width: "1%", className: "text-center align-middle font-weight-bold" },
             { targets: 4, width: "1%", className: "text-center align-middle font-weight-bold" },
             { targets: 5, className: "text-left align-middle text-wrap font-weight-normal" },
-            { targets: [6, 7, 8], width: "1%", className: "text-center align-middle font-weight-bold" },
-            { targets: [9, 10], width: "1%", className: "text-center align-middle text-nowrap" },
-            { targets: [11, 12, 13], className: "text-left align-middle text-wrap" }
+            { targets: [6, 7, 8, 9, 10, 11, 12, 13, 14], width: "1%", className: "text-center align-middle font-weight-bold" },
+            { targets: [15, 16], width: "1%", className: "text-center align-middle text-nowrap" },
+            { targets: [17, 18, 19], className: "text-left align-middle text-wrap" }
           ],
           language: {
             url: "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json",
@@ -680,6 +689,42 @@
 
         var statusText = getStatusText(row.status, row.catatan);
 
+        // Parse detail_json to sum DITERIMA L, P, JML
+        var dJson = {};
+        try { dJson = row.detail_json ? JSON.parse(row.detail_json) : {}; } catch(e) {}
+        
+        var terimaL = 0, terimaP = 0;
+        var parts = String(row.jenis_seragam || "").split(', ');
+        parts.forEach(function(jns) {
+          jns = jns.trim();
+          if (dJson[jns]) {
+            Object.keys(dJson[jns]).forEach(function(ukr) {
+              terimaL += parseInt(dJson[jns][ukr].terima_l) || 0;
+              terimaP += parseInt(dJson[jns][ukr].terima_p) || 0;
+            });
+          }
+        });
+        var terimaJml = terimaL + terimaP;
+        
+        // Rekap (JUMLAH)
+        var rekapL = parseInt(row.jml_l) || 0;
+        var rekapP = parseInt(row.jml_p) || 0;
+        var rekapJml = parseInt(row.jml_total) || 0;
+        
+        // Selisih
+        var selisihL = terimaL - rekapL;
+        var selisihP = terimaP - rekapP;
+        var selisihJml = terimaJml - rekapJml;
+
+        // Formatter helpers
+        var fmt = function(v) { return v === 0 ? '-' : v; };
+        var fmtS = function(v) {
+          if (v === 0) return '-';
+          var cls = v > 0 ? 'text-success' : 'text-danger';
+          var sign = v > 0 ? '+' : '';
+          return `<span class="${cls} font-weight-bold">${sign}${v}</span>`;
+        };
+
         dtArray.push([
           btnAksi,
           statusText,
@@ -687,9 +732,15 @@
           row.tahun,
           row.tahap || "Laporan 1",
           row.jenis_seragam || "Merah Putih",
-          row.jml_l || 0,
-          row.jml_p || 0,
-          row.jml_total || 0,
+          fmt(rekapL),
+          fmt(rekapP),
+          fmt(rekapJml),
+          fmt(terimaL),
+          fmt(terimaP),
+          fmt(terimaJml),
+          fmtS(selisihL),
+          fmtS(selisihP),
+          fmtS(selisihJml),
           linkSp,
           linkDok,
           uploadBy,
