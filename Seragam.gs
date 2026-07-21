@@ -312,9 +312,7 @@ function seragam_getLaporan(tahun, npsnFilter) {
           catatan: values[i][22] || "",
           user_verif: values[i][23] || "",
           tgl_verif: values[i][24] || "",
-          kurang_l: parseInt(values[i][25]) || 0,
-          kurang_p: parseInt(values[i][26]) || 0,
-          kurang_total: parseInt(values[i][27]) || 0
+          detail_json: values[i][25] || ""
         });
       }
     }
@@ -385,10 +383,23 @@ function seragam_saveLaporan(payload) {
       sheet.getRange(row, 22).setValue("DIPROSES");
       sheet.getRange(row, 23).setValue("");
       
-      // Update Kekurangan columns (26, 27, 28)
-      sheet.getRange(row, 26).setValue(payload.kurang_l || 0);
-      sheet.getRange(row, 27).setValue(payload.kurang_p || 0);
-      sheet.getRange(row, 28).setValue(payload.kurang_total || 0);
+      // Compute jml totals from detail_json and write col 14-16 + 26
+      var detailObj = {};
+      try { detailObj = JSON.parse(payload.detail_json || "{}" ); } catch(ex) {}
+      var totL = 0, totP = 0;
+      var ukuranList = ["S","M","L","XL","2XL","3XL","4XL","5XL"];
+      Object.keys(detailObj).forEach(function(jns) {
+        ukuranList.forEach(function(ukr) {
+          if (detailObj[jns][ukr]) {
+            totL += parseInt(detailObj[jns][ukr].terima_l) || 0;
+            totP += parseInt(detailObj[jns][ukr].terima_p) || 0;
+          }
+        });
+      });
+      sheet.getRange(row, 14).setValue(totL);
+      sheet.getRange(row, 15).setValue(totP);
+      sheet.getRange(row, 16).setValue(totL + totP);
+      sheet.getRange(row, 26).setValue(payload.detail_json || "");
     } else {
       sheet.appendRow([
         payload.npsn, payload.nama_sekolah, payload.tahun,
@@ -400,10 +411,29 @@ function seragam_saveLaporan(payload) {
         fileNameVideo, fileUrlVideo, fileIdVideo,
         "", "", // tgl_edit, user_edit
         "DIPROSES", "", "", "", // status, catatan, user_verif, tgl_verif
-        payload.kurang_l || 0,
-        payload.kurang_p || 0,
-        payload.kurang_total || 0
+        (function() {
+          var dj = {};
+          try { dj = JSON.parse(payload.detail_json || "{}"); } catch(ex) {}
+          var tL = 0, tP = 0;
+          var ukl = ["S","M","L","XL","2XL","3XL","4XL","5XL"];
+          Object.keys(dj).forEach(function(jns) {
+            ukl.forEach(function(ukr) {
+              if (dj[jns][ukr]) {
+                tL += parseInt(dj[jns][ukr].terima_l) || 0;
+                tP += parseInt(dj[jns][ukr].terima_p) || 0;
+              }
+            });
+          });
+          // patch jml cols inline via closure — appendRow needs all at once, handled below
+          payload._totL = tL; payload._totP = tP;
+          return payload.detail_json || "";
+        })()
       ]);
+      // Fix computed jml cols after appendRow
+      var lastRow = sheet.getLastRow();
+      sheet.getRange(lastRow, 14).setValue(payload._totL || 0);
+      sheet.getRange(lastRow, 15).setValue(payload._totP || 0);
+      sheet.getRange(lastRow, 16).setValue((payload._totL || 0) + (payload._totP || 0));
     }
 
     return JSON.stringify({ success: true, message: "Laporan Penerimaan berhasil disimpan." });
