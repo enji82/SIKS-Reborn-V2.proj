@@ -298,7 +298,7 @@ function seragam_getLaporan(tahun, npsnFilter) {
           id_file_dok: values[i][8],
           tgl_upload: values[i][9],
           uploader: values[i][10],
-          tahap: values[i][11] || "Tahap 1",
+          tahap: values[i][11] || "Laporan 1",
           jenis_seragam: values[i][12] || "Merah Putih",
           jml_l: parseInt(values[i][13]) || 0,
           jml_p: parseInt(values[i][14]) || 0,
