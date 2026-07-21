@@ -347,6 +347,7 @@ function seragam_saveLaporan(payload) {
     var sheet = getOrCreateSheetSeragam("Laporan_Penerimaan");
     var now = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
 
+    payload.nama_sekolah = String(payload.nama_sekolah || "").toUpperCase().trim();
     var isEdit = payload.rowId ? true : false;
     var fileUrlSp = payload.url_file_sp || "";
     var fileIdSp = payload.id_file_sp || "";
