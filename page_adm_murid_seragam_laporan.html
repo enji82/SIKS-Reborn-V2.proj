@@ -1658,30 +1658,24 @@
           'Laporan': row.tahap || '-'
         },
         onConfirm: function(alasan, closeModal) {
-          $('#seragamlapor_tableState').hide();
-          SultanUI.showLoading('#seragamlapor_loadingState', 'Menghapus laporan...');
+          closeModal();
+          Sultan.notif.loading("Menghapus laporan...");
           google.script.run
             .withSuccessHandler(function(response) {
-              closeModal();
-              SultanUI.hideLoading('#seragamlapor_loadingState');
+              Sultan.notif.tutup();
               var res = JSON.parse(response);
               if (res.success) {
-                Sultan.notif.sukses(res.message);
-                
+                Sultan.notif.crud.hapus();
                 // Zero Blink: Remove from local cache data
                 SERAGAMLAPOR_CACHE_DATA = SERAGAMLAPOR_CACHE_DATA.filter(function(r) { return r.rowId != row.rowId; });
                 applyLocalFilter();
-                $('#seragamlapor_tableState').show();
               } else {
-                Sultan.notif.gagal('Gagal menghapus laporan: ' + res.message);
-                $('#seragamlapor_tableState').show();
+                Sultan.notif.crud.gagal(res.message);
               }
             })
             .withFailureHandler(function(err) {
-              closeModal();
-              SultanUI.hideLoading('#seragamlapor_loadingState');
-              $('#seragamlapor_tableState').show();
-              Sultan.notif.gagal('Koneksi terputus saat menghapus data: ' + err.message);
+              Sultan.notif.tutup();
+              Sultan.notif.crud.gagal(err.message);
             })
             .seragam_deleteLaporan(row.rowId);
         }
