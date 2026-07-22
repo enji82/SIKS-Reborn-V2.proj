@@ -484,10 +484,23 @@ function getDashboardSK(filterTahun, filterSemester) {
       return matchTahun && matchSmt;
     });
 
-    stats.totalMasuk = filteredRows.length;
+    // Deduplikasi: Hanya ambil baris terupdate (terakhir diinput) per sekolah + kriteria
+    var uniqueMap = {};
+    filteredRows.forEach(function(r) {
+      var schoolName = String(r[1] || "").trim();
+      var kriteria = String(r[6] || "").trim().toLowerCase();
+      var key = schoolName + '|' + kriteria;
+      uniqueMap[key] = r;
+    });
+    var uniqueRows = [];
+    for (var k in uniqueMap) {
+      uniqueRows.push(uniqueMap[k]);
+    }
+
+    stats.totalMasuk = uniqueRows.length;
 
     // 2. Hitung Agregat Rinci
-    filteredRows.forEach(function(r) {
+    uniqueRows.forEach(function(r) {
       var s = String(r[9] || "").toLowerCase(); 
       var kriteria = String(r[6] || "").toLowerCase();
       var isAwal = kriteria.includes("awal");
