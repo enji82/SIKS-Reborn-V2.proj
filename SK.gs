@@ -518,11 +518,13 @@ function getDashboardSK(filterTahun, filterSemester) {
     if (masterSekolah.length > 0) {
         stats.belumLaporList = masterSekolah.filter(function(x) { return !sekolahSudahLaporAwal.has(x); }).sort();
         stats.belumLaporCount = stats.belumLaporList.length;
+        stats.sudahLaporList = Array.from(sekolahSudahLaporAwal).sort();
         
         // VAKSIN LOGIKA: Progress = (Total Sekolah - Belum Lapor) / Total Sekolah
         // Ini memastikan hitungan murni berdasarkan JUMLAH SEKOLAH, bukan jumlah file ganda
         var jmlSekolahSudahLapor = masterSekolah.length - stats.belumLaporCount;
         stats.progress = Math.round((jmlSekolahSudahLapor / masterSekolah.length) * 100);
+        stats.totalSekolah = masterSekolah.length;
         
         if(stats.progress > 100) stats.progress = 100; // Pengaman visual
         if(stats.progress < 0) stats.progress = 0;
