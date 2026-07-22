@@ -458,11 +458,16 @@ function getDashboardSK(filterTahun, filterSemester) {
     var rows = rawData.slice(1); 
 
     var masterSekolah = [];
+    var masterSekolahSet = new Set();
     var sheetMaster = getSheet("SK_DATA_DB", "Master_Sekolah");
     if (sheetMaster) {
         var rawMaster = sheetMaster.getDataRange().getDisplayValues();
         for (var i = 1; i < rawMaster.length; i++) {
-            if(rawMaster[i][0]) masterSekolah.push(String(rawMaster[i][0]).trim());
+            if(rawMaster[i][0]) {
+                var sName = String(rawMaster[i][0]).trim();
+                masterSekolah.push(sName);
+                masterSekolahSet.add(sName.toUpperCase());
+            }
         }
     }
 
@@ -487,7 +492,11 @@ function getDashboardSK(filterTahun, filterSemester) {
     // Deduplikasi: Hanya ambil baris terupdate (terakhir diinput) per sekolah + kriteria
     var uniqueMap = {};
     filteredRows.forEach(function(r) {
-      var schoolName = String(r[1] || "").trim();
+      var schoolName = String(r[1] || "").trim().toUpperCase();
+      // Hanya proses sekolah yang terdaftar di Master_Sekolah untuk keakuratan metrik
+      if (masterSekolahSet.size > 0 && !masterSekolahSet.has(schoolName)) {
+        return;
+      }
       var kriteria = String(r[6] || "").trim().toLowerCase();
       var key = schoolName + '|' + kriteria;
       uniqueMap[key] = r;
@@ -523,15 +532,19 @@ function getDashboardSK(filterTahun, filterSemester) {
 
       // LOGIKA MUTLAK BELUM LAPOR: HANYA berdasarkan SEKOLAH UNIK "Awal Semester" yang TIDAK Ditolak
       if (isAwal && !s.includes("tolak")) {
-          sekolahSudahLaporAwal.add(String(r[1]).trim());
+          sekolahSudahLaporAwal.add(String(r[1]).trim().toUpperCase());
       }
     });
 
     // 3. Kalkulasi Persentase Realisasi yang Akurat
     if (masterSekolah.length > 0) {
-        stats.belumLaporList = masterSekolah.filter(function(x) { return !sekolahSudahLaporAwal.has(x); }).sort();
+        stats.belumLaporList = masterSekolah.filter(function(x) { 
+            return !sekolahSudahLaporAwal.has(x.toUpperCase()); 
+        }).sort();
         stats.belumLaporCount = stats.belumLaporList.length;
-        stats.sudahLaporList = Array.from(sekolahSudahLaporAwal).sort();
+        stats.sudahLaporList = masterSekolah.filter(function(x) {
+            return sekolahSudahLaporAwal.has(x.toUpperCase());
+        }).sort();
         
         // VAKSIN LOGIKA: Progress = (Total Sekolah - Belum Lapor) / Total Sekolah
         // Ini memastikan hitungan murni berdasarkan JUMLAH SEKOLAH, bukan jumlah file ganda
