@@ -1038,12 +1038,15 @@ function getEfileDashboardData(idKategori, namaKategori, forceRefresh) {
         var totalUnit = group.length;
         var sudahUnit = 0;
         var belumUnit = 0;
+        var diprosesUnit = 0;
+        var disetujuiUnit = 0;
+        var revisiUnit = 0;
+        var ditolakUnit = 0;
         
         group.forEach(function(ptk) {
           var status = null;
           var ptkId = String(ptk.id || "").trim();
           
-          // efileMap kini diindeks dengan canonical id_ptk dari master GTK
           if (jPeriode === "PERMANEN") {
             status = efileMap[ptkId] ? efileMap[ptkId]["PERMANEN"] : null;
           } else {
@@ -1051,21 +1054,34 @@ function getEfileDashboardData(idKategori, namaKategori, forceRefresh) {
           }
           
           var isUploaded = false;
+          var pStatus = "";
           if (status) {
-            var stLower = status.toLowerCase();
-            if (stLower.includes("setuju") || stLower.includes("ok") || stLower.includes("proses") || stLower.includes("valid")) {
-              isUploaded = true;
-            }
+            pStatus = String(status).trim();
+            isUploaded = true;
           }
           
           if (isUploaded) {
             sudahUnit++;
+            var stLower = pStatus.toLowerCase();
+            if (stLower.includes("setuju") || stLower.includes("ok") || stLower.includes("valid")) {
+              disetujuiUnit++;
+            } else if (stLower.includes("proses") || stLower.includes("pending") || stLower.includes("menunggu")) {
+              diprosesUnit++;
+            } else if (stLower.includes("revisi")) {
+              revisiUnit++;
+            } else if (stLower.includes("tolak") || stLower.includes("ditolak")) {
+              ditolakUnit++;
+            } else {
+              diprosesUnit++;
+            }
+
             arrSudah.push({
               nama: ptk.nama,
               nip: ptk.nip,
               unit: unitName,
               tahun: periodeKey,
-              npsn: npsn
+              npsn: npsn,
+              status: pStatus || "Diproses"
             });
           } else {
             belumUnit++;
@@ -1073,7 +1089,7 @@ function getEfileDashboardData(idKategori, namaKategori, forceRefresh) {
               nama: ptk.nama,
               nip: ptk.nip,
               unit: unitName,
-              tahun: periodeKey, // Key tahun kita samakan ke key periode terpilih
+              tahun: periodeKey,
               npsn: npsn
             });
           }
@@ -1085,7 +1101,11 @@ function getEfileDashboardData(idKategori, namaKategori, forceRefresh) {
           tahun: periodeKey,
           jml: totalUnit,
           sudah: sudahUnit,
-          belum: belumUnit
+          belum: belumUnit,
+          diproses: diprosesUnit,
+          disetujui: disetujuiUnit,
+          revisi: revisiUnit,
+          ditolak: ditolakUnit
         });
       });
     });
