@@ -331,7 +331,9 @@
     }
 
     function dashsiaba_showLoadingState() {
-        $('#dashsiaba_dashTotalCuti, #dashsiaba_dashTotalDinas, #dashsiaba_dashTotalLupa, #dashsiaba_dashTotalSalah').html('<i class="fas fa-spinner fa-spin f-20"></i>');
+        if (typeof SultanUI !== 'undefined') {
+            SultanUI.startLottery('#dashsiaba_dashTotalCuti, #dashsiaba_dashTotalDinas, #dashsiaba_dashTotalLupa, #dashsiaba_dashTotalSalah', 3);
+        }
         $('#dashsiaba_dashBulanCuti, #dashsiaba_dashBulanDinas, #dashsiaba_dashBulanLupa, #dashsiaba_dashBulanSalah').text('-');
         $('#dashsiaba_dashContainerRincianMaster').html('<div class="text-center py-5 text-muted"><i class="fas fa-circle-notch fa-spin fa-2x mb-2"></i><br><small>Sinkronisasi...</small></div>');
         $('#dashsiaba_dashWrapChartTrendCuti, #dashsiaba_dashWrapChartTrendDinas, #dashsiaba_dashWrapChartTrendLupa, #dashsiaba_dashWrapChartTrendSalah').html('<div class="h-100 d-flex align-items-center justify-content-center text-muted"><i class="fas fa-spinner fa-spin fa-2x"></i></div>');
@@ -342,14 +344,22 @@
             .withSuccessHandler(function (json) {
                 try {
                     var data = JSON.parse(json);
-                    $('#' + idTotal).text(data.total).hide().fadeIn();
+                    if (typeof SultanUI !== 'undefined') {
+                        SultanUI.stopLottery('#' + idTotal);
+                    }
+                    dashsiaba_animateValue(idTotal, data.total);
                     $('#' + idBulan).text(data.bulanIni);
                     DASHSIABA_HTML_RINCIAN[type] = dashsiaba_createSlimVisualRow(dashsiaba_capitalize(type), icon, data, type);
                     dashsiaba_renderSpecificChart(idChart, data.trend);
                     DASHSIABA_GLOBAL_STATS[type] = { proses: data.proses || 0, revisi: data.revisi || 0, setuju: data.setuju || 0, tolak: data.tolak || 0 };
                 } catch (err) { console.error("Err JS [" + type + "]:", err); } finally { dashsiaba_finishRequest(); }
             })
-            .withFailureHandler(function (e) { dashsiaba_finishRequest(); })
+            .withFailureHandler(function (e) {
+                if (typeof SultanUI !== 'undefined') {
+                    SultanUI.stopLottery('#' + idTotal);
+                }
+                dashsiaba_finishRequest();
+            })
             .getSiabaMetric(type);
     }
 
@@ -602,4 +612,15 @@
             '</div>';
     }
     function dashsiaba_capitalize(s) { return s && s[0].toUpperCase() + s.slice(1); }
+
+    function dashsiaba_animateValue(id, value) {
+        var $el = $('#' + id);
+        if ($el.length === 0) return;
+        $({ Counter: 0 }).animate({ Counter: value }, {
+            duration: 1000,
+            easing: 'swing',
+            step: function() { $el.text(Math.ceil(this.Counter)); },
+            complete: function() { $el.text(value); }
+        });
+    }
 </script>
