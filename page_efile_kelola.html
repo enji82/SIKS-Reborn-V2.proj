@@ -208,6 +208,8 @@
                         <span id="efilekelola_v_tahun"></span> <span id="efilekelola_v_periode" class="ml-2 badge badge-info shadow-sm" style="font-size:11px;"></span>
                     </div>
                 </div>
+                <!-- Container detail dinamis tambahan (SK PPPK, SK KP, SK JF, IJAZAH, DIKLAT) -->
+                <div id="efilekelola_v_detail_dinamis" style="display:contents;"></div>
             </div>
 
             <h6 class="modal-verifikasi-section-title"><i class="fas fa-check-circle mr-2"></i> Verifikasi</h6>
@@ -1080,10 +1082,50 @@ function efilekelola_bukaModalVerif(rowId) {
     $('#efilekelola_v_nama').text(data.nama);
     $('#efilekelola_v_kategori').text(data.nama_kategori);
     $('#efilekelola_v_tahun').text(data.tahun);
-    if (data.periode && data.periode !== "-") {
-        $('#efilekelola_v_periode').text(data.periode).show();
-    } else {
-        $('#efilekelola_v_periode').hide();
+    
+    // Sembunyikan default text badge periode karena kita jabarkan secara dinamis di bawahnya
+    $('#efilekelola_v_periode').hide();
+
+    // Render detail berkas dinamis sesuai jenis periode
+    var $vDinamis = $('#efilekelola_v_detail_dinamis').empty();
+    var kData = EFILEKELOLA_MASTER_KAT.find(function(k) { return String(k.idKat).trim() === String(data.id_kategori).trim(); });
+    if (kData) {
+        var jp = String(kData.jenisPeriode || 'TAHUNAN').toUpperCase();
+        var rawPeriode = data.periode && data.periode !== '-' ? data.periode : '';
+        var pParts = rawPeriode.split(' | ');
+
+        var buildDetailItem = function(icon, label, value) {
+            return '<div class="sultan-detail-item">'
+                + '  <label class="sultan-detail-label"><i class="' + icon + ' mr-1 text-muted"></i> ' + label + '</label>'
+                + '  <div class="sultan-detail-value font-weight-bold">' + (value || '-') + '</div>'
+                + '</div>';
+        };
+
+        if (jp === 'TMT' || jp === 'PERMANEN_TMT') {
+            $vDinamis.append(buildDetailItem('fas fa-hourglass-start', 'TMT (TANGGAL MULAI)', Sultan.format.strip(Sultan.format.tanggal(rawPeriode))));
+        } else if (jp === 'PERIODE') {
+            $vDinamis.append(buildDetailItem('fas fa-info-circle', 'PERIODE', Sultan.format.strip(rawPeriode)));
+        } else if (jp === 'TRIWULAN') {
+            $vDinamis.append(buildDetailItem('fas fa-hourglass-half', 'TRIWULAN', Sultan.format.strip(rawPeriode)));
+        } else if (jp === 'SKP') {
+            $vDinamis.append(buildDetailItem('fas fa-star', 'PERIODE SKP', Sultan.format.strip(rawPeriode)));
+        } else if (jp === 'SK_PPPK') {
+            $vDinamis.append(buildDetailItem('fas fa-file-contract', 'PILIHAN SK', Sultan.format.strip(pParts[0])));
+            $vDinamis.append(buildDetailItem('fas fa-hourglass-start', 'TMT SK', Sultan.format.strip(Sultan.format.tanggal(pParts[1]))));
+        } else if (jp === 'SK_KP') {
+            $vDinamis.append(buildDetailItem('fas fa-medal', 'GOLONGAN', Sultan.format.strip(pParts[0])));
+            $vDinamis.append(buildDetailItem('fas fa-hourglass-start', 'TMT GOLONGAN', Sultan.format.strip(Sultan.format.tanggal(pParts[1]))));
+        } else if (jp === 'SK_JF') {
+            $vDinamis.append(buildDetailItem('fas fa-briefcase', 'JENJANG JABATAN', Sultan.format.strip(pParts[0])));
+            $vDinamis.append(buildDetailItem('fas fa-hourglass-start', 'TMT JABATAN', Sultan.format.strip(Sultan.format.tanggal(pParts[1]))));
+        } else if (jp === 'IJAZAH') {
+            $vDinamis.append(buildDetailItem('fas fa-graduation-cap', 'TINGKAT PENDIDIKAN', Sultan.format.strip(pParts[0])));
+            $vDinamis.append(buildDetailItem('fas fa-award', 'TAHUN LULUS', Sultan.format.strip(pParts[1])));
+        } else if (jp === 'DIKLAT') {
+            $vDinamis.append(buildDetailItem('fas fa-calendar-day', 'TANGGAL SERTIFIKAT', Sultan.format.strip(Sultan.format.tanggal(pParts[0]))));
+            $vDinamis.append(buildDetailItem('fas fa-chalkboard-teacher', 'NAMA DIKLAT', Sultan.format.strip(pParts[1])));
+            $vDinamis.append(buildDetailItem('fas fa-clock', 'JUMLAH JP', Sultan.format.strip(pParts[2]) + ' JP'));
+        }
     }
 
     var st = String(data.status).toLowerCase();
@@ -1114,6 +1156,7 @@ function efilekelola_bukaModalVerif(rowId) {
     $('#global_verifikasiFooterArea').show();
 
     $('#global_modalVerifikasi').off('hidden.bs.modal').on('hidden.bs.modal.efileverif', function() {
+        $('#efilekelola_v_detail_dinamis').empty();
         $('#efilekelola_verifFooter').appendTo('#efilekelola_formVerif');
         $('#efilekelola_formVerif').appendTo('#efilekelola_templates');
         $('#global_verifikasiFooterArea').hide().empty();
