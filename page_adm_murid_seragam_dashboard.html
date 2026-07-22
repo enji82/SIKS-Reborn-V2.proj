@@ -111,12 +111,12 @@
             </select>
             <i class="fas fa-chevron-down"></i>
           </div>
-          <!-- Filter Jenjang -->
-          <div class="sultan-filter-item" id="seragamdash_filterJenjangContainer">
-            <select id="seragamdash_filterJenjang" class="form-control" aria-label="Pilih Jenjang">
-              <option value="SEMUA">Semua Jenjang</option>
-              <option value="SD" selected>Sekolah Dasar (SD)</option>
-              <option value="PAUD">PAUD / TK</option>
+          <!-- Filter Jenis Seragam -->
+          <div class="sultan-filter-item" id="seragamdash_filterJenisContainer">
+            <select id="seragamdash_filterJenis" class="form-control" aria-label="Pilih Jenis Seragam">
+              <option value="SEMUA">Semua Jenis Seragam</option>
+              <option value="Merah Putih">Merah Putih</option>
+              <option value="Pramuka">Pramuka</option>
             </select>
             <i class="fas fa-chevron-down"></i>
           </div>
@@ -252,7 +252,7 @@
 
 <script>
 var SERAGAM_DASH_CACHE_REKAP = [];
-var SERAGAM_DASH_SUMMARY = {};
+var SERAGAM_DASH_CACHE_LAPORAN = [];
 var SERAGAM_DASH_PENDING_REQ = 0;
 var SERAGAM_DASH_LIST_SUDAH = [];
 var SERAGAM_DASH_LIST_BELUM = [];
@@ -288,7 +288,7 @@ $(document).ready(function() {
         if (thn) seragam_dash_loadData(thn);
     });
 
-    $(document).off('change', '#seragamdash_filterJenjang').on('change', '#seragamdash_filterJenjang', function() {
+    $(document).off('change', '#seragamdash_filterJenis').on('change', '#seragamdash_filterJenis', function() {
         seragam_dash_terapkanFilterLokal();
     });
 
@@ -307,8 +307,14 @@ $(document).ready(function() {
             return;
         }
         var thn = $('#seragamdash_filterTahun').val() || '';
-        var txt = '*[SIKS - DAFTAR BELUM UNGGAH LAPORAN SERAGAM GRATIS ' + thn + ']*\n\n' +
-                  'Berikut daftar sekolah yang belum mengunggah berkas Laporan Penerimaan Seragam Gratis:\n';
+        var jns = $('#seragamdash_filterJenis').val() || 'SEMUA';
+        var labelJns = jns === 'SEMUA' ? 'Semua Jenis Seragam' : jns;
+        
+        var txt = '*[SIKS - DAFTAR BELUM UNGGAH LAPORAN SERAGAM GRATIS]*\n' +
+                  'Tahun Pelajaran: ' + thn + '\n' +
+                  'Jenis Seragam: ' + labelJns + '\n\n' +
+                  'Berikut daftar sekolah yang belum mengunggah berkas Laporan Penerimaan:\n';
+                  
         SERAGAM_DASH_LIST_BELUM.forEach(function(s, idx) {
             txt += (idx + 1) + '. ' + s.namaSekolah + ' (' + s.npsn + ') - Sasaran: ' + s.jmlPenerima + ' murid\n';
         });
@@ -350,14 +356,14 @@ function seragam_dash_loadData(tahun, forceRefresh) {
     
     var btn = $('#seragamdash_btnRefresh');
     btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin text-maroon"></i>');
-    $('#seragamdash_filterTahun, #seragamdash_filterJenjang').prop('disabled', true);
+    $('#seragamdash_filterTahun, #seragamdash_filterJenis').prop('disabled', true);
     
     seragam_dash_showSkeleton();
 
     google.script.run.withSuccessHandler(function(jsonStr) {
         SERAGAM_DASH_PENDING_REQ = 0;
         btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
-        $('#seragamdash_filterTahun, #seragamdash_filterJenjang').prop('disabled', false);
+        $('#seragamdash_filterTahun, #seragamdash_filterJenis').prop('disabled', false);
 
         var res = JSON.parse(jsonStr);
         if (!res.success) {
@@ -366,48 +372,70 @@ function seragam_dash_loadData(tahun, forceRefresh) {
         }
 
         SERAGAM_DASH_CACHE_REKAP = res.rekap || [];
-        SERAGAM_DASH_SUMMARY = res.summary || {};
+        SERAGAM_DASH_CACHE_LAPORAN = res.laporan || [];
 
         seragam_dash_terapkanFilterLokal();
 
     }).withFailureHandler(function(err) {
         SERAGAM_DASH_PENDING_REQ = 0;
         btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
-        $('#seragamdash_filterTahun, #seragamdash_filterJenjang').prop('disabled', false);
+        $('#seragamdash_filterTahun, #seragamdash_filterJenis').prop('disabled', false);
         Sultan.alert('danger', 'Koneksi Terputus', 'Gagal memuat data dasbor.');
     }).seragam_getDashboardData(tahun);
 }
 
 function seragam_dash_terapkanFilterLokal() {
-    var jenjangFilt = $('#seragamdash_filterJenjang').val() || "SEMUA";
-    
-    var filteredData = SERAGAM_DASH_CACHE_REKAP.filter(function(r) {
-        if (jenjangFilt !== "SEMUA") {
-            var jj = String(r.jenjang || "").toUpperCase();
-            if (jenjangFilt === "PAUD") {
-                return (jj === "TK" || jj === "KB" || jj === "SPS" || jj === "TPA" || jj.includes("PAUD"));
-            }
-            if (jenjangFilt === "SD") {
-                return (jj === "SD" || jj === "SDS");
+    var jenisFilt = $('#seragamdash_filterJenis').val() || "SEMUA";
+
+    // Petakan laporan yang masuk per NPSN berdasarkan filter Jenis Seragam
+    var mapLap = {}; // NPSN -> { sp, dok, tgl }
+    SERAGAM_DASH_CACHE_LAPORAN.forEach(function(l) {
+        var matchJenis = false;
+        if (jenisFilt === "SEMUA") {
+            matchJenis = true; // Dianggap match untuk jenis apapun jika global
+        } else {
+            matchJenis = String(l.jenis || "").trim().toUpperCase() === jenisFilt.trim().toUpperCase();
+        }
+
+        if (matchJenis) {
+            // Jika ada banyak laporan, utamakan yang memiliki berkas lengkap
+            if (!mapLap[l.npsn] || (!mapLap[l.npsn].sp && l.sp)) {
+                mapLap[l.npsn] = { sp: l.sp, dok: l.dok, tgl: l.tgl || "-" };
             }
         }
-        return true;
     });
 
-    // Pisahkan Sudah & Belum
+    // Pilah rekap data sekolah sasaran
     SERAGAM_DASH_LIST_SUDAH = [];
     SERAGAM_DASH_LIST_BELUM = [];
-    
-    filteredData.forEach(function(r) {
-        if (r.sudahKirim) {
-            SERAGAM_DASH_LIST_SUDAH.push(r);
+
+    SERAGAM_DASH_CACHE_REKAP.forEach(function(r) {
+        var lap = mapLap[r.npsn];
+        var sudahKirim = false;
+        var tglUpload = "-";
+        
+        if (lap && (lap.sp || lap.dok)) {
+            sudahKirim = true;
+            tglUpload = lap.tgl || "-";
+        }
+
+        var item = {
+            npsn: r.npsn,
+            namaSekolah: r.namaSekolah,
+            jmlPenerima: r.jmlPenerima,
+            tglUpload: tglUpload,
+            sudahKirim: sudahKirim
+        };
+
+        if (sudahKirim) {
+            SERAGAM_DASH_LIST_SUDAH.push(item);
         } else {
-            SERAGAM_DASH_LIST_BELUM.push(r);
+            SERAGAM_DASH_LIST_BELUM.push(item);
         }
     });
 
     // Hitung ulang metrik lokal
-    var totalSek = filteredData.length;
+    var totalSek = SERAGAM_DASH_CACHE_REKAP.length;
     var sudah = SERAGAM_DASH_LIST_SUDAH.length;
     var belum = SERAGAM_DASH_LIST_BELUM.length;
     var pct = totalSek > 0 ? Math.round((sudah / totalSek) * 100) : 0;

@@ -660,11 +660,13 @@ function seragam_getSekolahList() {
       var rNpsn = String(sekolahData[j][0]).trim();
       var rNama = String(sekolahData[j][2]).trim();
       var rJenjang = String(sekolahData[j][1]).trim().toUpperCase();
+      var rStatus = String(sekolahData[j][3]).trim().toUpperCase();
       if (rNpsn !== "") {
         schools.push({ 
           npsn: rNpsn, 
           nama: rNama, 
-          jenjang: rJenjang 
+          jenjang: rJenjang,
+          status: rStatus
         });
       }
     }
@@ -698,18 +700,21 @@ function seragam_getDashboardData(tahun) {
   try {
     var ss = getDB(KONFIG_SERAGAM.DB_KEY);
     var sheets = ss.getSheets();
-    var mapSekolahSasaran = {}; // NPSN -> {nama: String, jmlPenerima: Number, jenjang: String}
     
-    // Ambil daftar sekolah resmi untuk pemetaan nama
-    var masterSekolah = {};
-    var masterJenjang = {};
+    // Ambil daftar sekolah resmi SD Negeri untuk filter utama
+    var masterSekolah = {}; // NPSN -> namaSekolah
+    var sdNegeriNpsn = {};  // NPSN -> true
     try {
       var schools = seragam_getSekolahList();
       schools.forEach(function(s) {
-        masterSekolah[s.npsn] = s.nama;
-        masterJenjang[s.npsn] = s.jenjang;
+        if (s.jenjang === "SD" && s.status === "NEGERI") {
+          masterSekolah[s.npsn] = s.nama;
+          sdNegeriNpsn[s.npsn] = true;
+        }
       });
     } catch(e) {}
+    
+    var mapSekolahSasaran = {}; // NPSN -> {nama: String, jmlPenerima: Number}
     
     // Ambil semua data penerima tahun tersebut
     sheets.forEach(function(sh) {
@@ -718,79 +723,56 @@ function seragam_getDashboardData(tahun) {
         var data = sh.getDataRange().getDisplayValues();
         for (var i = 1; i < data.length; i++) {
           var npsn = String(data[i][0] || "").trim();
-          if (!npsn) continue;
+          if (!npsn || !sdNegeriNpsn[npsn]) continue; // Saring hanya SD Negeri
           
-          var namaSek = masterSekolah[npsn] || "Sekolah " + npsn;
-          var jenjangSek = masterJenjang[npsn] || "SD";
+          var namaSek = masterSekolah[npsn] || "SDN " + npsn;
           if (!mapSekolahSasaran[npsn]) {
-            mapSekolahSasaran[npsn] = { npsn: npsn, nama: namaSek, jenjang: jenjangSek, jmlPenerima: 0 };
+            mapSekolahSasaran[npsn] = { npsn: npsn, nama: namaSek, jmlPenerima: 0 };
           }
           mapSekolahSasaran[npsn].jmlPenerima++;
         }
       }
     });
     
-    // Ambil data Laporan_Penerimaan
+    // Ambil data Laporan_Penerimaan beserta Jenis Seragam-nya
     var shLap = getOrCreateSheetSeragam("Laporan_Penerimaan");
     var dataLap = shLap.getDataRange().getDisplayValues();
-    var mapLaporan = {}; // NPSN -> { sp: boolean, dok: boolean, tgl: String }
+    var listLaporan = []; // Array of {npsn, jenis, sp, dok, tgl}
     
     for (var i = 1; i < dataLap.length; i++) {
       var npsn = String(dataLap[i][0] || "").trim();
       var thn = String(dataLap[i][2] || "").trim();
-      if (thn === tahun) {
+      if (thn === tahun && sdNegeriNpsn[npsn]) {
         var hasSp = String(dataLap[i][4] || "").trim() !== ""; // URL_File_SP
         var hasDok = String(dataLap[i][7] || "").trim() !== ""; // URL_File_Dok
         var tgl = dataLap[i][9];
-        mapLaporan[npsn] = { sp: hasSp, dok: hasDok, tgl: tgl };
+        var jenis = String(dataLap[i][12] || "").trim(); // Col 13 (index 12)
+        listLaporan.push({
+          npsn: npsn,
+          jenis: jenis,
+          sp: hasSp,
+          dok: hasDok,
+          tgl: tgl
+        });
       }
     }
     
-    // Rekapitulasi data
+    // Rekapitulasi awal (default global)
     var rekap = [];
-    var totSekolah = 0;
-    var totSudah = 0;
-    var totBelum = 0;
-    
     var listNpsn = Object.keys(mapSekolahSasaran);
     listNpsn.forEach(function(npsn) {
       var sasaran = mapSekolahSasaran[npsn];
-      var lap = mapLaporan[npsn];
-      
-      var sudahKirim = false;
-      var statusText = "Belum Kirim";
-      var tglUpload = "-";
-      
-      if (lap && (lap.sp || lap.dok)) {
-        sudahKirim = true;
-        statusText = "Sudah Kirim";
-        tglUpload = lap.tgl || "-";
-        totSudah++;
-      } else {
-        totBelum++;
-      }
-      totSekolah++;
-      
       rekap.push({
         npsn: npsn,
         namaSekolah: sasaran.nama,
-        jenjang: sasaran.jenjang,
-        jmlPenerima: sasaran.jmlPenerima,
-        status: statusText,
-        tglUpload: tglUpload,
-        sudahKirim: sudahKirim
+        jmlPenerima: sasaran.jmlPenerima
       });
     });
     
     return JSON.stringify({
       success: true,
-      summary: {
-        totalSekolah: totSekolah,
-        sudahKirim: totSudah,
-        belumKirim: totBelum,
-        persentase: totSekolah > 0 ? Math.round((totSudah / totSekolah) * 100) : 0
-      },
-      rekap: rekap
+      rekap: rekap,
+      laporan: listLaporan
     });
   } catch(e) {
     return JSON.stringify({ success: false, message: e.message });
