@@ -187,12 +187,7 @@
             </div>
           </div>
 
-          <!-- Insight Alerts -->
-          <div class="row mb-4">
-            <div class="col-12">
-              <div id="admptk_dash_insightAlerts"></div>
-            </div>
-          </div>
+
 
           <!-- Tabel Rekap Per Sekolah (Hanya Admin) -->
           <div class="row mb-4" id="admptk_dash_containerTabelSekolah" style="display: none;">
@@ -573,12 +568,28 @@ function admptk_dash_renderDashboard(dataRekap, dataBelum, fTahun, fPeriode) {
         }
 
         var tbodyHtml = '';
-        var listSortedSekolah = Object.keys(mapSekolah).sort();
-        listSortedSekolah.forEach(function(sek) {
+        var listSortedSekolah = Object.keys(mapSekolah).map(function(sek) {
             var jmlPtk = mapSekolah[sek].ptkList.size;
             var unggah = mapSekolah[sek].sudahList.size;
             var belum = jmlPtk - unggah;
             var capaian = jmlPtk > 0 ? Math.round((unggah / jmlPtk) * 100) : 0;
+            return {
+                sek: sek,
+                jml: jmlPtk,
+                sudah: unggah,
+                belum: belum,
+                capaian: capaian
+            };
+        }).sort(function(a, b) {
+            return b.capaian - a.capaian;
+        });
+
+        listSortedSekolah.forEach(function(item) {
+            var sek = item.sek;
+            var jmlPtk = item.jml;
+            var unggah = item.sudah;
+            var belum = item.belum;
+            var capaian = item.capaian;
             
             var dispJml = jmlPtk === 0 ? "-" : jmlPtk;
             var dispUnggah = unggah === 0 ? "-" : unggah;
@@ -592,16 +603,16 @@ function admptk_dash_renderDashboard(dataRekap, dataBelum, fTahun, fPeriode) {
                 '</div>' +
                 '</div>';
             
-            // Penentuan Label Status
+            // Penentuan Label Status Adaptif
             var labelStatus = '';
             if (capaian > 95) {
-                labelStatus = '<span class="badge font-weight-bold px-2 py-1" style="font-size:11px; background-color:#28a745 !important; color:#ffffff !important;"><i class="fas fa-check-double mr-1"></i>Sangat Baik</span>';
+                labelStatus = '<span class="badge badge-sultan badge-sultan-disetujui"><i class="fas fa-check-double mr-1"></i>Sangat Baik</span>';
             } else if (capaian >= 85) {
-                labelStatus = '<span class="badge font-weight-bold px-2 py-1" style="font-size:11px; background-color:#17a2b8 !important; color:#ffffff !important;"><i class="fas fa-check mr-1"></i>Baik</span>';
+                labelStatus = '<span class="badge badge-sultan badge-sultan-revisi"><i class="fas fa-check mr-1"></i>Baik</span>';
             } else if (capaian >= 75) {
-                labelStatus = '<span class="badge font-weight-bold px-2 py-1 text-dark" style="font-size:11px; background-color:#ffc107 !important; color:#1f2d3d !important;"><i class="fas fa-exclamation mr-1"></i>Cukup</span>';
+                labelStatus = '<span class="badge badge-sultan badge-sultan-diproses"><i class="fas fa-exclamation mr-1"></i>Cukup</span>';
             } else {
-                labelStatus = '<span class="badge font-weight-bold px-2 py-1" style="font-size:11px; background-color:#dc3545 !important; color:#ffffff !important;"><i class="fas fa-exclamation-triangle mr-1"></i>Perlu Perhatian</span>';
+                labelStatus = '<span class="badge badge-sultan badge-sultan-ditolak"><i class="fas fa-exclamation-triangle mr-1"></i>Perlu Perhatian</span>';
             }
             
             tbodyHtml += '<tr>' +
@@ -625,7 +636,7 @@ function admptk_dash_renderDashboard(dataRekap, dataBelum, fTahun, fPeriode) {
                 "lengthChange": true,
                 "searching": true,
                 "ordering": true,
-                "order": [[4, "desc"]], // Urutkan dari progres tertinggi secara default
+                "order": [], // Gunakan urutan bawaan dari JS (progres tertinggi)
                 "info": true,
                 "autoWidth": false,
                 "responsive": true,
@@ -700,12 +711,7 @@ function admptk_dash_renderDashboard(dataRekap, dataBelum, fTahun, fPeriode) {
     $('#admptk_dash_badgeSudah').text(totSudah);
     $('#admptk_dash_badgeBelum').text(totBelum);
 
-    // Insight
-    var inHtml = '';
-    if (pct >= 90) inHtml = '<div class="sultan-alert alert-soft-success"><i class="fas fa-trophy mr-3 mt-1" style="font-size:20px;"></i><div><div class="font-weight-bold mb-1">Luar Biasa! 🎉</div><div class="small">Capaian unggah berkas sudah mencapai <strong>' + pct + '%</strong>. Pertahankan prestasi ini!</div></div></div>';
-    else if (pct >= 70) inHtml = '<div class="sultan-alert alert-soft-info"><i class="fas fa-chart-line mr-3 mt-1" style="font-size:20px;"></i><div><div class="font-weight-bold mb-1">Bagus! 👍</div><div class="small">Capaian unggah berkas mencapai <strong>' + pct + '%</strong>. Tetap semangat untuk mencapai target!</div></div></div>';
-    else if (pct >= 50) inHtml = '<div class="sultan-alert alert-soft-warning"><i class="fas fa-exclamation-circle mr-3 mt-1" style="font-size:20px;"></i><div><div class="font-weight-bold mb-1">Perlu Perhatian ⚠️</div><div class="small">Capaian unggah berkas baru <strong>' + pct + '%</strong>. Segera koordinasikan dengan PTK!</div></div></div>';
-    $('#admptk_dash_insightAlerts').html(inHtml);
+
 
     // List Sudah Unggah
     var uiSudah = '';
