@@ -737,7 +737,7 @@ function seragam_getDashboardData(tahun) {
     // Ambil data Laporan_Penerimaan beserta Jenis Seragam-nya
     var shLap = getOrCreateSheetSeragam("Laporan_Penerimaan");
     var dataLap = shLap.getDataRange().getDisplayValues();
-    var listLaporan = []; // Array of {npsn, jenis, sp, dok, tgl}
+    var listLaporan = []; // Array of {npsn, jenis, sp, dok, tgl, status}
     
     for (var i = 1; i < dataLap.length; i++) {
       var npsn = String(dataLap[i][0] || "").trim();
@@ -747,12 +747,14 @@ function seragam_getDashboardData(tahun) {
         var hasDok = String(dataLap[i][7] || "").trim() !== ""; // URL_File_Dok
         var tgl = dataLap[i][9];
         var jenis = String(dataLap[i][12] || "").trim(); // Col 13 (index 12)
+        var statusLapor = String(dataLap[i][21] || "DIPROSES").trim().toUpperCase(); // Col 22 (index 21)
         listLaporan.push({
           npsn: npsn,
           jenis: jenis,
           sp: hasSp,
           dok: hasDok,
-          tgl: tgl
+          tgl: tgl,
+          status: statusLapor
         });
       }
     }
