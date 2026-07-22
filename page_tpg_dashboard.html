@@ -7,51 +7,51 @@
     <div id="tpgDb_mainContainer" style="display: none;">
       
       <!-- Summary Cards Row -->
-      <div class="row">
-        <div class="col-lg-3 col-6">
-          <div class="small-box bg-white shadow-sm border-left-primary" style="border-left: 4px solid #007bff; border-radius: 8px;">
-            <div class="inner p-3">
-              <h3 id="tpgDb_countTotal" class="font-weight-bold text-dark mb-1">0</h3>
-              <p class="text-primary mb-0 font-weight-bold text-uppercase" style="font-size: 0.85rem; letter-spacing: 0.5px;">Total Pengajuan</p>
+      <div class="row mb-3">
+        <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
+          <div class="sultan-metric-card metric-navy">
+            <div class="inner">
+              <h3 id="tpgDb_countTotal">0</h3>
+              <p>Total Pengajuan</p>
             </div>
             <div class="icon">
-              <i class="fas fa-file-invoice" style="color: rgba(0,123,255,0.15);"></i>
+              <i class="fas fa-file-invoice"></i>
             </div>
           </div>
         </div>
         
-        <div class="col-lg-3 col-6">
-          <div class="small-box bg-white shadow-sm border-left-success" style="border-left: 4px solid #28a745; border-radius: 8px;">
-            <div class="inner p-3">
-              <h3 id="tpgDb_countDisetujui" class="font-weight-bold text-dark mb-1">0</h3>
-              <p class="text-success mb-0 font-weight-bold text-uppercase" style="font-size: 0.85rem; letter-spacing: 0.5px;">Disetujui</p>
+        <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
+          <div class="sultan-metric-card metric-success">
+            <div class="inner">
+              <h3 id="tpgDb_countDisetujui">0</h3>
+              <p>Disetujui</p>
             </div>
             <div class="icon">
-              <i class="fas fa-check-circle" style="color: rgba(40,167,69,0.15);"></i>
+              <i class="fas fa-check-circle"></i>
             </div>
           </div>
         </div>
         
-        <div class="col-lg-3 col-6">
-          <div class="small-box bg-white shadow-sm border-left-warning" style="border-left: 4px solid #ffc107; border-radius: 8px;">
-            <div class="inner p-3">
-              <h3 id="tpgDb_countMenunggu" class="font-weight-bold text-dark mb-1">0</h3>
-              <p class="text-warning mb-0 font-weight-bold text-uppercase" style="font-size: 0.85rem; letter-spacing: 0.5px;">Menunggu Verifikasi</p>
+        <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
+          <div class="sultan-metric-card metric-info">
+            <div class="inner">
+              <h3 id="tpgDb_countMenunggu">0</h3>
+              <p>Menunggu Verifikasi</p>
             </div>
             <div class="icon">
-              <i class="fas fa-hourglass-half" style="color: rgba(255,193,7,0.15);"></i>
+              <i class="fas fa-hourglass-half"></i>
             </div>
           </div>
         </div>
 
-        <div class="col-lg-3 col-6">
-          <div class="small-box bg-white shadow-sm border-left-danger" style="border-left: 4px solid #dc3545; border-radius: 8px;">
-            <div class="inner p-3">
-              <h3 id="tpgDb_countRevisi" class="font-weight-bold text-dark mb-1">0</h3>
-              <p class="text-danger mb-0 font-weight-bold text-uppercase" style="font-size: 0.85rem; letter-spacing: 0.5px;">Perlu Revisi / Ditolak</p>
+        <div class="col-md-3 col-sm-6">
+          <div class="sultan-metric-card metric-maroon">
+            <div class="inner">
+              <h3 id="tpgDb_countRevisi">0</h3>
+              <p>Perlu Revisi / Ditolak</p>
             </div>
             <div class="icon">
-              <i class="fas fa-exclamation-triangle" style="color: rgba(220,53,69,0.15);"></i>
+              <i class="fas fa-exclamation-triangle"></i>
             </div>
           </div>
         </div>
@@ -145,15 +145,16 @@
     var user = getSesiUser();
     var isAdmin = checkUserRoleIsAdmin();
 
-    SultanUI.showLoading('#tpgDb_loadingState', 'Memuat Data Dashboard...');
-    $('#tpgDb_mainContainer').hide();
+    $('#tpgDb_mainContainer').show();
+    if (typeof SultanUI !== 'undefined') {
+      SultanUI.startLottery('#tpgDb_countTotal, #tpgDb_countDisetujui, #tpgDb_countMenunggu, #tpgDb_countRevisi', 3);
+    }
 
     if (isAdmin) {
       tpgDb_fetchData("", true);
     } else {
       var npsn = user ? (user.npsn || user.username || "") : "";
       if (!npsn) {
-          SultanUI.hideLoading('#tpgDb_loadingState');
           Sultan.modal.error({ title: 'Gagal', message: 'Akses ditolak: Sesi login tidak valid.' });
           return;
       }
@@ -161,14 +162,12 @@
         .withSuccessHandler(function (resUnit) {
             var dataUnit = JSON.parse(resUnit);
             if (dataUnit.error) {
-                SultanUI.hideLoading('#tpgDb_loadingState');
                 Sultan.modal.error({ title: 'Gagal', message: dataUnit.error });
                 return;
             }
             tpgDb_fetchData(dataUnit.unitKerja, false);
         })
         .withFailureHandler(function (error) {
-            SultanUI.hideLoading('#tpgDb_loadingState');
             Sultan.modal.error({ title: 'Error', message: 'Koneksi Terputus: ' + error.message });
         })
         .getUnitKerjaByNPSN(npsn, "SIABA_LUPA_DB");
@@ -178,7 +177,6 @@
   function tpgDb_fetchData(unitKerja, isAdmin) {
     google.script.run
       .withSuccessHandler(function (response) {
-        SultanUI.hideLoading('#tpgDb_loadingState');
         if (response && response.status === 'success') {
           tpgDb_renderDashboard(response.data, isAdmin);
         } else {
@@ -186,7 +184,6 @@
         }
       })
       .withFailureHandler(function (error) {
-        SultanUI.hideLoading('#tpgDb_loadingState');
         Sultan.modal.error({ title: 'Error', message: 'Terjadi kesalahan sistem: ' + error.message });
       })
       .tpg_getPerbaikanData(unitKerja, isAdmin);
@@ -261,6 +258,9 @@
   }
 
   function tpgDb_animateValue(id, start, end, duration) {
+    if (typeof SultanUI !== 'undefined') {
+      SultanUI.stopLottery('#' + id);
+    }
     if (start === end) {
       document.getElementById(id).innerHTML = end;
       return;
