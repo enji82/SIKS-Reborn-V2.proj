@@ -99,6 +99,19 @@
         </div>
     </div>
 
+    <!-- 2.1 PROGRESS BAR FULL WIDTH -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="progress" style="height: 10px; border-radius: 5px; background-color: #fce4e4;">
+                <div id="dash_progressBarFull" class="progress-bar" role="progressbar" style="width: 0%; background-color: #d11a2a;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
+            <div class="d-flex justify-content-between mt-1">
+                <small class="text-muted font-weight-bold" id="dash_progressText">0% Selesai</small>
+                <small class="text-muted" id="dash_lastUpdateFull">-</small>
+            </div>
+        </div>
+    </div>
+
     <!-- 3. CHARTS & LISTS -->
     <div class="row mb-4">
         <!-- PROPORSI DATA (Chart) -->
@@ -171,8 +184,14 @@
     function dash_loadData() {
         $('#dash_btnRefresh').prop('disabled', true).html('<i class="fas fa-sync fa-spin mr-2"></i> Sinkron...');
         
-        // SKELETON ANIMATION SIMULATION
-        $('.dash-count-up').html('---');
+        // SKELETON & LOTTERY ANIMATION SIMULATION
+        if (typeof SultanUI !== 'undefined') {
+            SultanUI.startLottery('#dash_valTotal, #dash_valSuccess, #dash_valPending', 3);
+            SultanUI.startLottery('#dash_valProgress', 2, '%');
+        } else {
+            $('.dash-count-up').html('---');
+        }
+        $('#dash_progressText').html('<span class="sultan-skeleton" style="width: 80px; height: 14px; display: inline-block;"></span>');
         
         // google.script.run.withSuccessHandler(dash_render).getDashboardData();
         
@@ -181,8 +200,10 @@
             var mockData = { total: 100, success: 85, progress: 85, pending: 15 };
             dash_render(mockData);
             $('#dash_btnRefresh').prop('disabled', false).html('<i class="fas fa-sync-alt mr-2"></i> REFRESH DATA');
-            $('#dash_lastUpdate').text(new Date().toLocaleTimeString() + " WIB");
-        }, 1000);
+            var timeString = new Date().toLocaleTimeString('id-ID') + " WIB";
+            $('#dash_lastUpdate').text(timeString);
+            $('#dash_lastUpdateFull').text(timeString);
+        }, 1200);
     }
 
     function dash_render(data) {
@@ -190,7 +211,21 @@
         dash_animateValue("dash_valSuccess", data.success);
         dash_animateValue("dash_valProgress", data.progress);
         dash_animateValue("dash_valPending", data.pending);
+        
+        // Update local progress card
         $('#dash_progressBar').css('width', data.progress + '%');
+        
+        // Update full width progress bar
+        if (typeof SultanUI !== 'undefined') {
+            SultanUI.stopLottery('#dash_progressBarFull');
+        }
+        var pBar = $('#dash_progressBarFull');
+        pBar.css('width', data.progress + '%');
+        $('#dash_progressText').text(data.progress + '% Selesai');
+        
+        if (data.progress < 30) pBar.css('background-color', '#d11a2a');
+        else if (data.progress < 70) pBar.css('background-color', '#ffc107');
+        else pBar.css('background-color', '#28a745');
         
         dash_renderChart(data);
     }
@@ -215,6 +250,9 @@
     }
 
     function dash_animateValue(id, end) {
+        if (typeof SultanUI !== 'undefined') {
+            SultanUI.stopLottery('#' + id);
+        }
         var obj = document.getElementById(id);
         if(!obj) return;
         var start = 0; var duration = 1000; var startTime = null;
