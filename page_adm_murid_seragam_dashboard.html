@@ -15,6 +15,14 @@
             </select>
             <i class="fas fa-chevron-down"></i>
           </div>
+          <!-- Filter Kategori -->
+          <div class="sultan-filter-item">
+            <select id="seragamdash_filterKategori" class="form-control" aria-label="Pilih Kategori">
+              <option value="penerimaan">Penerimaan</option>
+              <option value="penyerahan">Penyerahan</option>
+            </select>
+            <i class="fas fa-chevron-down"></i>
+          </div>
           <!-- Filter Jenis Seragam -->
           <div class="sultan-filter-item" id="seragamdash_filterJenisContainer">
             <select id="seragamdash_filterJenis" class="form-control" aria-label="Pilih Jenis Seragam">
@@ -248,12 +256,14 @@ $(document).ready(function() {
 
     $(document).off('click', '#seragamdash_btnRefresh').on('click', '#seragamdash_btnRefresh', function() {
         var thn = $('#seragamdash_filterTahun').val();
-        if (thn) seragam_dash_loadData(thn, true);
+        var kat = $('#seragamdash_filterKategori').val();
+        if (thn) seragam_dash_loadData(thn, kat, true);
     });
 
-    $(document).off('change', '#seragamdash_filterTahun').on('change', '#seragamdash_filterTahun', function() {
-        var thn = $(this).val();
-        if (thn) seragam_dash_loadData(thn);
+    $(document).off('change', '#seragamdash_filterTahun, #seragamdash_filterKategori').on('change', '#seragamdash_filterTahun, #seragamdash_filterKategori', function() {
+        var thn = $('#seragamdash_filterTahun').val();
+        var kat = $('#seragamdash_filterKategori').val();
+        if (thn) seragam_dash_loadData(thn, kat);
     });
 
     $(document).off('change', '#seragamdash_filterJenis').on('change', '#seragamdash_filterJenis', function() {
@@ -275,13 +285,16 @@ $(document).ready(function() {
             return;
         }
         var thn = $('#seragamdash_filterTahun').val() || '';
+        var kat = $('#seragamdash_filterKategori').val() || 'penerimaan';
+        var labelKat = kat.toUpperCase();
         var jns = $('#seragamdash_filterJenis').val() || 'SEMUA';
         var labelJns = jns === 'SEMUA' ? 'Semua Jenis Seragam' : jns;
         
-        var txt = '*[SIKS - DAFTAR BELUM UNGGAH LAPORAN SERAGAM GRATIS]*\n' +
+        var txt = '*[SIKS - DAFTAR BELUM UNGGAH LAPORAN ' + labelKat + ' SERAGAM GRATIS]*\n' +
                   'Tahun Pelajaran: ' + thn + '\n' +
+                  'Kategori: ' + (kat === 'penyerahan' ? 'Penyerahan' : 'Penerimaan') + '\n' +
                   'Jenis Seragam: ' + labelJns + '\n\n' +
-                  'Berikut daftar sekolah yang belum mengunggah berkas Laporan Penerimaan:\n';
+                  'Berikut daftar sekolah yang belum mengunggah berkas Laporan ' + (kat === 'penyerahan' ? 'Penyerahan' : 'Penerimaan') + ':\n';
                   
         SERAGAM_DASH_LIST_BELUM.forEach(function(s, idx) {
             txt += (idx + 1) + '. ' + s.namaSekolah + ' (' + s.npsn + ') - Sasaran: ' + s.jmlPenerima + ' murid\n';
@@ -313,25 +326,26 @@ function seragam_dash_initYears() {
             select.append('<option value="' + yr + '">' + yr + '</option>');
         });
         if (res.data.length > 0) {
-            seragam_dash_loadData(res.data[0]);
+            var kat = $('#seragamdash_filterKategori').val() || 'penerimaan';
+            seragam_dash_loadData(res.data[0], kat);
         }
     }).seragam_getAvailableYears();
 }
 
-function seragam_dash_loadData(tahun, forceRefresh) {
+function seragam_dash_loadData(tahun, kategori, forceRefresh) {
     if (SERAGAM_DASH_PENDING_REQ > 0) return;
     SERAGAM_DASH_PENDING_REQ = 1;
     
     var btn = $('#seragamdash_btnRefresh');
     btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin text-maroon"></i>');
-    $('#seragamdash_filterTahun, #seragamdash_filterJenis').prop('disabled', true);
+    $('#seragamdash_filterTahun, #seragamdash_filterKategori, #seragamdash_filterJenis').prop('disabled', true);
     
     seragam_dash_showSkeleton();
 
     google.script.run.withSuccessHandler(function(jsonStr) {
         SERAGAM_DASH_PENDING_REQ = 0;
         btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
-        $('#seragamdash_filterTahun, #seragamdash_filterJenis').prop('disabled', false);
+        $('#seragamdash_filterTahun, #seragamdash_filterKategori, #seragamdash_filterJenis').prop('disabled', false);
 
         var res = JSON.parse(jsonStr);
         if (!res.success) {
@@ -349,9 +363,9 @@ function seragam_dash_loadData(tahun, forceRefresh) {
     }).withFailureHandler(function(err) {
         SERAGAM_DASH_PENDING_REQ = 0;
         btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
-        $('#seragamdash_filterTahun, #seragamdash_filterJenis').prop('disabled', false);
+        $('#seragamdash_filterTahun, #seragamdash_filterKategori, #seragamdash_filterJenis').prop('disabled', false);
         Sultan.alert('danger', 'Koneksi Terputus', 'Gagal memuat data dasbor.');
-    }).seragam_getDashboardData(tahun);
+    }).seragam_getDashboardData(tahun, kategori);
 }
 
 function seragam_dash_terapkanFilterLokal() {

@@ -739,7 +739,7 @@ function seragam_uploadSingleFile(base64Data, mimeType, fileName, fileType) {
 /**
  * Get Dashboard Data for Seragam Gratis Laporan Penerimaan
  */
-function seragam_getDashboardData(tahun) {
+function seragam_getDashboardData(tahun, kategori) {
   try {
     var ss = getDB(KONFIG_SERAGAM.DB_KEY);
     var sheets = ss.getSheets();
@@ -777,8 +777,9 @@ function seragam_getDashboardData(tahun) {
       }
     });
     
-    // Ambil data Laporan_Penerimaan beserta Jenis Seragam-nya
-    var shLap = getOrCreateSheetSeragam("Laporan_Penerimaan");
+    // Ambil data Laporan_Penerimaan atau Laporan_Penyerahan beserta Jenis Seragam-nya
+    var sheetName = (String(kategori).toLowerCase() === "penyerahan") ? "Laporan_Penyerahan" : "Laporan_Penerimaan";
+    var shLap = getOrCreateSheetSeragam(sheetName);
     var dataLap = shLap.getDataRange().getDisplayValues();
     var listLaporan = []; // Array of {npsn, jenis, sp, dok, tgl, status}
     
