@@ -757,14 +757,18 @@ function invalidateNotifCache(role, unit) {
     }
     var cache = CacheService.getScriptCache();
 
-    // Bersihkan cache dashboard SK untuk filter yang umum digunakan
+    // Bersihkan cache dashboard SK untuk filter yang umum digunakan secara batch
     var years = ["", "2023/2024", "2024/2025", "2025/2026", "2026/2027"];
     var semesters = ["", "Gganjil", "Genap", "Ganjil"]; // Beberapa format semester
+    var skKeysToRemove = [];
     years.forEach(function(y) {
       semesters.forEach(function(s) {
-        cache.remove("DASHBOARD_SK_" + y + "_" + s);
+        skKeysToRemove.push("DASHBOARD_SK_" + y + "_" + s);
       });
     });
+    if (skKeysToRemove.length > 0) {
+      cache.removeAll(skKeysToRemove);
+    }
   } catch (e) { /* ignore */ }
 }
 

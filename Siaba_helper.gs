@@ -125,9 +125,15 @@ function invalidateNotifCachesFor(role, unit) {
       });
     });
 
-    // Eksekusi pembersihan batch sekaligus dalam satu API call
+    // Eksekusi pembersihan batch secara aman dengan memotongnya menjadi chunks maksimal 25 item
     if (keysToRemove.length > 0) {
-      cache.removeAll(keysToRemove);
+      var chunkSize = 25;
+      for (var i = 0; i < keysToRemove.length; i += chunkSize) {
+        var chunk = keysToRemove.slice(i, i + chunkSize);
+        try {
+          cache.removeAll(chunk);
+        } catch(err) {}
+      }
     }
   } catch (e) {}
 }

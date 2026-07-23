@@ -431,7 +431,6 @@ function verifikasiEfileData(rowId, status, catatan, adminName) {
     // Optimasi Batch Writing: tulis Kolom 8-9 (H-I) & Kolom 13-14 (M-N) sekaligus untuk mengurangi API call ke server Google Sheets
     sheet.getRange(r, 8, 1, 2).setValues([[status, catatan]]);
     sheet.getRange(r, 13, 1, 2).setValues([[now, adminName]]);
-    SpreadsheetApp.flush();
     
     try {
         var npsn = sheet.getRange(r, 12).getDisplayValue();
@@ -1119,23 +1118,50 @@ function getEfileDashboardData(idKategori, namaKategori, forceRefresh) {
 function invalidateEfileDashboardCache() {
   try {
     var cache = CacheService.getScriptCache();
-    var shDash = getSheet(KONFIG_EFILE.DB_KEY, "Dashboard");
-    if (shDash) {
-      var lastRow = shDash.getLastRow();
-      if (lastRow > 1) {
-        // Optimasi I/O: hanya membaca Kolom A dan B secara murni (getValues) untuk menghindari pembacaan visual lambat (.getDataRange().getDisplayValues())
-        var dataDash = shDash.getRange(2, 1, lastRow - 1, 2).getValues();
-        var keysToRemove = [];
-        for(var i=0; i<dataDash.length; i++) {
-          if(String(dataDash[i][0]).trim() !== "") {
-            var rekapName = String(dataDash[i][0]).replace(/\s/g, "_");
-            var laporName = String(dataDash[i][1]).replace(/\s/g, "_");
-            keysToRemove.push("EFILE_DASHBOARD_" + rekapName + "_" + laporName);
+    var cachedList = cache.get("EFILE_DASHBOARD_INSTANSI_LIST");
+    var listDash = [];
+
+    if (cachedList) {
+      try {
+        listDash = JSON.parse(cachedList);
+      } catch (ex) {}
+    }
+
+    // Jika cache kosong, baru kita buka spreadsheet Dashboard (menghindari openById yang memakan waktu 2 detik)
+    if (!listDash || listDash.length === 0) {
+      var shDash = getSheet(KONFIG_EFILE.DB_KEY, "Dashboard");
+      if (shDash) {
+        var lastRow = shDash.getLastRow();
+        if (lastRow > 1) {
+          var dataDash = shDash.getRange(2, 1, lastRow - 1, 2).getValues();
+          for (var i = 0; i < dataDash.length; i++) {
+            if (String(dataDash[i][0]).trim() !== "") {
+              listDash.push({
+                rekap: String(dataDash[i][0]).replace(/\s/g, "_"),
+                lapor: String(dataDash[i][1]).replace(/\s/g, "_")
+              });
+            }
+          }
+          // Simpan daftar instansi ini di cache selama 6 jam (21600 detik) agar verifikasi berikutnya instan
+          if (listDash.length > 0) {
+            cache.put("EFILE_DASHBOARD_INSTANSI_LIST", JSON.stringify(listDash), 21600);
           }
         }
-        // Optimasi Batch Cache Service Call: hapus seluruh keys sekaligus untuk menghindari looping latensi I/O CacheService
-        if (keysToRemove.length > 0) {
-          cache.removeAll(keysToRemove);
+      }
+    }
+
+    if (listDash && listDash.length > 0) {
+      var keysToRemove = [];
+      listDash.forEach(function(item) {
+        keysToRemove.push("EFILE_DASHBOARD_" + item.rekap + "_" + item.lapor);
+      });
+      if (keysToRemove.length > 0) {
+        var chunkSize = 25;
+        for (var j = 0; j < keysToRemove.length; j += chunkSize) {
+          var chunk = keysToRemove.slice(j, j + chunkSize);
+          try {
+            cache.removeAll(chunk);
+          } catch(err) {}
         }
       }
     }

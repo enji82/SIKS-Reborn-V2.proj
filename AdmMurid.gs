@@ -28,12 +28,13 @@ function getOrCreateSheetAdmMurid(sheetName) {
         "Tgl_Upload", "Uploader", "Tgl_Edit", "User_Edit", "Tgl_Verif", "Verifikator", "Read_by"
       ]]);
     } else if (sheetName === "Database_Ijazah") {
-      sheet.getRange(1, 1, 1, 21).setValues([[
+      sheet.getRange(1, 1, 1, 24).setValues([[
         "NPSN", "Nama_Sekolah", "Tahun_Ajaran", 
         "Jumlah_Murid_L", "Jumlah_Murid_P", "Jumlah_Total", 
         "Nama_File_Ijazah", "URL_File_Ijazah", "ID_File_Ijazah", 
         "Nama_File_Transkrip", "URL_File_Transkrip", "ID_File_Transkrip", 
-        "Status", "Catatan", "Tgl_Upload", "Uploader", "Tgl_Edit", "User_Edit", "Tgl_Verif", "Verifikator", "Read_by"
+        "Status", "Catatan", "Tgl_Upload", "Uploader", "Tgl_Edit", "User_Edit", "Tgl_Verif", "Verifikator", "Read_by",
+        "Nama_File_Transkrip_Kolektif", "URL_File_Transkrip_Kolektif", "ID_File_Transkrip_Kolektif"
       ]]);
     }
   }
@@ -265,7 +266,10 @@ function admMurid_getIjazahData(npsnFilter) {
           user_edit: values[i][17],
           tgl_verif: values[i][18],
           verifikator: values[i][19],
-          read_by: values[i][20] || ""
+          read_by: values[i][20] || "",
+          nama_file_transkrip_kolektif: values[i][21] || "",
+          url_file_transkrip_kolektif: values[i][22] || "",
+          id_file_transkrip_kolektif: values[i][23] || ""
         });
       }
     }
@@ -287,6 +291,8 @@ function admMurid_simpanIjazah(payload) {
     var idIjazah = payload.id_file_ijazah || "";
     var urlTranskrip = payload.url_file_transkrip || "";
     var idTranskrip = payload.id_file_transkrip || "";
+    var urlTranskripKolektif = payload.url_file_transkrip_kolektif || "";
+    var idTranskripKolektif = payload.id_file_transkrip_kolektif || "";
 
     // Unggah PDF Ijazah
     if (payload.fileIjazahBase64 || payload.fileBase64_ijazah) {
@@ -309,7 +315,7 @@ function admMurid_simpanIjazah(payload) {
       idIjazah = fileIjazah.getId();
     }
 
-    // Unggah PDF Transkrip
+    // Unggah Word KOP Surat
     if (payload.fileTranskripBase64 || payload.fileBase64_transkrip) {
       var base64Transkrip = payload.fileTranskripBase64 || payload.fileBase64_transkrip;
       if (isEdit && idTranskrip) {
@@ -323,11 +329,32 @@ function admMurid_simpanIjazah(payload) {
       } else {
         schoolFolderTranskrip = pFolderTranskrip.createFolder(payload.nama_sekolah);
       }
-      var blobTranskrip = Utilities.newBlob(Utilities.base64Decode(base64Transkrip), payload.mimeType_transkrip || "application/pdf", payload.nama_file_transkrip);
+      var blobTranskrip = Utilities.newBlob(Utilities.base64Decode(base64Transkrip), payload.mimeType_transkrip || "application/octet-stream", payload.nama_file_transkrip);
       var fileTranskrip = schoolFolderTranskrip.createFile(blobTranskrip);
       fileTranskrip.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
       urlTranskrip = fileTranskrip.getUrl();
       idTranskrip = fileTranskrip.getId();
+    }
+
+    // Unggah PDF Transkrip Kolektif
+    if (payload.fileTranskripKolektifBase64 || payload.fileBase64_transkrip_kolektif) {
+      var base64TranskripKolektif = payload.fileTranskripKolektifBase64 || payload.fileBase64_transkrip_kolektif;
+      if (isEdit && idTranskripKolektif) {
+        try { DriveApp.getFileById(idTranskripKolektif).setTrashed(true); } catch(err) {}
+      }
+      var pFolderTranskripKolektif = DriveApp.getFolderById(FOLDER_CONFIG.ADM_MURID_TRANSKRIP_DOCS);
+      var schoolFolderTranskripKolektif;
+      var schoolFoldersTranskripKolektif = pFolderTranskripKolektif.getFoldersByName(payload.nama_sekolah);
+      if (schoolFoldersTranskripKolektif.hasNext()) {
+        schoolFolderTranskripKolektif = schoolFoldersTranskripKolektif.next();
+      } else {
+        schoolFolderTranskripKolektif = pFolderTranskripKolektif.createFolder(payload.nama_sekolah);
+      }
+      var blobTranskripKolektif = Utilities.newBlob(Utilities.base64Decode(base64TranskripKolektif), payload.mimeType_transkrip_kolektif || "application/pdf", payload.nama_file_transkrip_kolektif);
+      var fileTranskripKolektif = schoolFolderTranskripKolektif.createFile(blobTranskripKolektif);
+      fileTranskripKolektif.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      urlTranskripKolektif = fileTranskripKolektif.getUrl();
+      idTranskripKolektif = fileTranskripKolektif.getId();
     }
 
     var jmlL = parseInt(payload.jumlah_murid_l || 0);
@@ -345,6 +372,9 @@ function admMurid_simpanIjazah(payload) {
       sheet.getRange(row, 7, 1, 6).setValues([[
         payload.nama_file_ijazah || "", urlIjazah, idIjazah,
         payload.nama_file_transkrip || "", urlTranskrip, idTranskrip
+      ]]);
+      sheet.getRange(row, 22, 1, 3).setValues([[
+        payload.nama_file_transkrip_kolektif || "", urlTranskripKolektif, idTranskripKolektif
       ]]);
       sheet.getRange(row, 13).setValue("Diproses");
       sheet.getRange(row, 17, 1, 2).setValues([[now, payload.user_login]]);
@@ -368,7 +398,8 @@ function admMurid_simpanIjazah(payload) {
         payload.nama_file_ijazah || "", urlIjazah, idIjazah,
         payload.nama_file_transkrip || "", urlTranskrip, idTranskrip,
         "Diproses", "",
-        now, payload.user_login, "", "", "", "", ""
+        now, payload.user_login, "", "", "", "", "",
+        payload.nama_file_transkrip_kolektif || "", urlTranskripKolektif, idTranskripKolektif
       ]);
     }
 
@@ -510,6 +541,7 @@ function admMurid_getDashboardData(npsnFilter, tahunFilter) {
           status: status,
           fileUrl: ijazahData[i][7],
           fileUrlTranskrip: ijazahData[i][10],
+          fileUrlTranskripKolektif: ijazahData[i][22],
           tglUpload: ijazahData[i][14],
           detail: {
             muridL: parseInt(ijazahData[i][3] || 0),
