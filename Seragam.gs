@@ -23,7 +23,7 @@ function getOrCreateSheetSeragam(sheetName) {
       sheet.getRange(1, 1, 1, 7).setValues([[
         "NPSN", "NAMA MURID", "NISN", "JENIS KELAMIN", "UKURAN SERAGAM", "ALAMAT", "NAMA ORANG TUA/WALI"
       ]]);
-    } else if (sheetName === "Laporan_Penerimaan") {
+    } else if (sheetName === "Laporan_Penerimaan" || sheetName === "Laporan_Penyerahan") {
       sheet.getRange(1, 1, 1, 11).setValues([[
         "NPSN", "Nama_Sekolah", "Tahun", "Nama_File_SP", "URL_File_SP", "ID_File_SP", 
         "Nama_File_Dok", "URL_File_Dok", "ID_File_Dok", "Tgl_Upload", "Uploader"
@@ -271,9 +271,10 @@ function seragam_getRekap(tahun, tahap) {
 // ==========================================
 // LAPORAN PENERIMAAN CRUD
 // ==========================================
-function seragam_getLaporan(tahun, npsnFilter) {
+function seragam_getLaporanCore(tahun, npsnFilter, tipe) {
   try {
-    var sheet = getOrCreateSheetSeragam("Laporan_Penerimaan");
+    var sheetName = (tipe === "penyerahan") ? "Laporan_Penyerahan" : "Laporan_Penerimaan";
+    var sheet = getOrCreateSheetSeragam(sheetName);
     var values = sheet.getDataRange().getDisplayValues();
     var result = [];
     var targetNpsn = String(npsnFilter || "").trim().toUpperCase();
@@ -348,11 +349,20 @@ function seragam_getLaporan(tahun, npsnFilter) {
   }
 }
 
-function seragam_saveLaporan(payload) {
+function seragam_getLaporan(tahun, npsnFilter) {
+  return seragam_getLaporanCore(tahun, npsnFilter, "penerimaan");
+}
+
+function seragam_getLaporanPenyerahan(tahun, npsnFilter) {
+  return seragam_getLaporanCore(tahun, npsnFilter, "penyerahan");
+}
+
+function seragam_saveLaporanCore(payload, tipe) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(30000);
-    var sheet = getOrCreateSheetSeragam("Laporan_Penerimaan");
+    var sheetName = (tipe === "penyerahan") ? "Laporan_Penyerahan" : "Laporan_Penerimaan";
+    var sheet = getOrCreateSheetSeragam(sheetName);
     var now = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
 
     payload.nama_sekolah = String(payload.nama_sekolah || "").toUpperCase().trim();
@@ -481,7 +491,7 @@ function seragam_saveLaporan(payload) {
       sheet.getRange(lastRow, 16).setValue((payload._totL || 0) + (payload._totP || 0));
     }
 
-    return JSON.stringify({ success: true, message: "Laporan Penerimaan berhasil disimpan." });
+    return JSON.stringify({ success: true, message: "Laporan " + (tipe === "penyerahan" ? "Penyerahan" : "Penerimaan") + " berhasil disimpan." });
   } catch(e) {
     return JSON.stringify({ success: false, message: e.message });
   } finally {
@@ -489,11 +499,20 @@ function seragam_saveLaporan(payload) {
   }
 }
 
-function seragam_saveVerifikasi(payload) {
+function seragam_saveLaporan(payload) {
+  return seragam_saveLaporanCore(payload, "penerimaan");
+}
+
+function seragam_saveLaporanPenyerahan(payload) {
+  return seragam_saveLaporanCore(payload, "penyerahan");
+}
+
+function seragam_saveVerifikasiCore(payload, tipe) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(30000);
-    var sheet = getOrCreateSheetSeragam("Laporan_Penerimaan");
+    var sheetName = (tipe === "penyerahan") ? "Laporan_Penyerahan" : "Laporan_Penerimaan";
+    var sheet = getOrCreateSheetSeragam(sheetName);
     var row = parseInt(payload.rowId);
     var now = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
 
@@ -503,7 +522,7 @@ function seragam_saveVerifikasi(payload) {
     sheet.getRange(row, 24).setValue(payload.user_verif);
     sheet.getRange(row, 25).setValue(now);
 
-    return JSON.stringify({ success: true, message: "Verifikasi Laporan Penerimaan berhasil disimpan." });
+    return JSON.stringify({ success: true, message: "Verifikasi Laporan " + (tipe === "penyerahan" ? "Penyerahan" : "Penerimaan") + " berhasil disimpan." });
   } catch(e) {
     return JSON.stringify({ success: false, message: e.message });
   } finally {
@@ -511,11 +530,20 @@ function seragam_saveVerifikasi(payload) {
   }
 }
 
-function seragam_deleteLaporan(rowId) {
+function seragam_saveVerifikasi(payload) {
+  return seragam_saveVerifikasiCore(payload, "penerimaan");
+}
+
+function seragam_saveVerifikasiPenyerahan(payload) {
+  return seragam_saveVerifikasiCore(payload, "penyerahan");
+}
+
+function seragam_deleteLaporanCore(rowId, tipe) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(30000);
-    var sheet = getOrCreateSheetSeragam("Laporan_Penerimaan");
+    var sheetName = (tipe === "penyerahan") ? "Laporan_Penyerahan" : "Laporan_Penerimaan";
+    var sheet = getOrCreateSheetSeragam(sheetName);
     var row = parseInt(rowId);
     var fileIdSp = sheet.getRange(row, 6).getValue();
     var fileIdDokStr = sheet.getRange(row, 9).getValue();
@@ -537,12 +565,20 @@ function seragam_deleteLaporan(rowId) {
     }
 
     sheet.deleteRow(row);
-    return JSON.stringify({ success: true, message: "Laporan Penerimaan berhasil dihapus." });
+    return JSON.stringify({ success: true, message: "Laporan " + (tipe === "penyerahan" ? "Penyerahan" : "Penerimaan") + " berhasil dihapus." });
   } catch(e) {
     return JSON.stringify({ success: false, message: e.message });
   } finally {
     lock.releaseLock();
   }
+}
+
+function seragam_deleteLaporan(rowId) {
+  return seragam_deleteLaporanCore(rowId, "penerimaan");
+}
+
+function seragam_deleteLaporanPenyerahan(rowId) {
+  return seragam_deleteLaporanCore(rowId, "penyerahan");
 }
 
 // ==========================================
@@ -678,7 +714,14 @@ function seragam_getSekolahList() {
 
 function seragam_uploadSingleFile(base64Data, mimeType, fileName, fileType) {
   try {
-    var folderId = (fileType === "sp") ? FOLDER_CONFIG.SERAGAM_LAPORAN_DOCS : FOLDER_CONFIG.SERAGAM_DOKUMENTASI_DOCS;
+    var folderId = FOLDER_CONFIG.SERAGAM_DOKUMENTASI_DOCS;
+    if (fileType === "sp") {
+      folderId = FOLDER_CONFIG.SERAGAM_LAPORAN_DOCS;
+    } else if (fileType === "sp_penyerahan") {
+      folderId = FOLDER_CONFIG.SERAGAM_LAPORAN_PENYERAHAN_DOCS;
+    } else if (fileType === "dok_penyerahan") {
+      folderId = FOLDER_CONFIG.SERAGAM_DOKUMENTASI_PENYERAHAN_DOCS;
+    }
     var folder = DriveApp.getFolderById(folderId);
     var blob = Utilities.newBlob(Utilities.base64Decode(base64Data), mimeType, fileName);
     var file = folder.createFile(blob);
