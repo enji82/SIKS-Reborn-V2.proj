@@ -1125,12 +1125,17 @@ function invalidateEfileDashboardCache() {
       if (lastRow > 1) {
         // Optimasi I/O: hanya membaca Kolom A dan B secara murni (getValues) untuk menghindari pembacaan visual lambat (.getDataRange().getDisplayValues())
         var dataDash = shDash.getRange(2, 1, lastRow - 1, 2).getValues();
+        var keysToRemove = [];
         for(var i=0; i<dataDash.length; i++) {
           if(String(dataDash[i][0]).trim() !== "") {
             var rekapName = String(dataDash[i][0]).replace(/\s/g, "_");
             var laporName = String(dataDash[i][1]).replace(/\s/g, "_");
-            cache.remove("EFILE_DASHBOARD_" + rekapName + "_" + laporName);
+            keysToRemove.push("EFILE_DASHBOARD_" + rekapName + "_" + laporName);
           }
+        }
+        // Optimasi Batch Cache Service Call: hapus seluruh keys sekaligus untuk menghindari looping latensi I/O CacheService
+        if (keysToRemove.length > 0) {
+          cache.removeAll(keysToRemove);
         }
       }
     }
