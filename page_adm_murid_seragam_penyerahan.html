@@ -307,7 +307,7 @@
       <div class="row mb-3">
         <div class="col-12">
           <div class="seragam-detail-wrap" id="seragampenyerahan_detailWrap" style="display: none;">
-            <label class="form-label-sultan small font-weight-bold text-muted text-uppercase px-3 pt-3 mb-0">Rincian Seragam Diterima Per Ukuran <span class="text-danger">*</span></label>
+            <label class="form-label-sultan small font-weight-bold text-muted text-uppercase px-3 pt-3 mb-0">Rincian Seragam Diserahkan Per Ukuran <span class="text-danger">*</span></label>
             <!-- Tab headers are removed, panels render directly -->
             <div id="seragampenyerahan_detailPanels" class="p-3">
               <div class="seragam-detail-loading" id="seragampenyerahan_detailLoading">
@@ -936,85 +936,98 @@
       return (num > 0 ? '+' : '') + num;
     }
 
-    /** Equal column colgroup HTML for 10 columns */
+    /** Equal column colgroup HTML for 13 columns */
     var COLGROUP_HTML = '<colgroup>' +
-      '<col style="width: 10%;">' + // UKR
-      '<col style="width: 10%;">' + // Rekap L
-      '<col style="width: 10%;">' + // Rekap P
-      '<col style="width: 10%;">' + // Rekap JML
-      '<col style="width: 10%;">' + // Terima L
-      '<col style="width: 10%;">' + // Terima P
-      '<col style="width: 10%;">' + // Terima JML
-      '<col style="width: 10%;">' + // Selisih L
-      '<col style="width: 10%;">' + // Selisih P
-      '<col style="width: 10%;">' + // Selisih JML
+      '<col style="width: 8%;">' + // UKR
+      '<col style="width: 7%;">' + // Rekap L
+      '<col style="width: 7%;">' + // Rekap P
+      '<col style="width: 7%;">' + // Rekap JML
+      '<col style="width: 7%;">' + // Terima L
+      '<col style="width: 7%;">' + // Terima P
+      '<col style="width: 7%;">' + // Terima JML
+      '<col style="width: 8%;">' + // Diserahkan L
+      '<col style="width: 8%;">' + // Diserahkan P
+      '<col style="width: 8%;">' + // Diserahkan JML
+      '<col style="width: 8%;">' + // Selisih L
+      '<col style="width: 8%;">' + // Selisih P
+      '<col style="width: 8%;">' + // Selisih JML
     '</colgroup>';
 
-    /** Equal column colgroup HTML for 7 columns (Verification table has no Rekap column groups, but let's make it equal too) */
-    var COLGROUP_VERIF_HTML = '<colgroup>' +
-      '<col style="width: 14%;">' + // UKR
-      '<col style="width: 14%;">' + // Terima L
-      '<col style="width: 14%;">' + // Terima P
-      '<col style="width: 14%;">' + // Terima JML
-      '<col style="width: 14%;">' + // Selisih L
-      '<col style="width: 14%;">' + // Selisih P
-      '<col style="width: 15%;">' + // Selisih JML
-    '</colgroup>';
+    /** Equal column colgroup HTML for 13 columns for Verification table as well */
+    var COLGROUP_VERIF_HTML = COLGROUP_HTML;
 
     /** Recalculate JML and Selisih for a single data row */
     function recalcDetailRow($tr) {
       var rekapL = parseCellVal($tr.find('.td-rekap-l').text());
       var rekapP = parseCellVal($tr.find('.td-rekap-p').text());
-      var terimaL = parseInt($tr.find('.inp-terima[data-jk="L"]').val()) || 0;
-      var terimaP = parseInt($tr.find('.inp-terima[data-jk="P"]').val()) || 0;
-      var terimaJml = terimaL + terimaP;
-      var selisihL = terimaL - rekapL;
-      var selisihP = terimaP - rekapP;
-      var selisihJml = terimaJml - (rekapL + rekapP);
+      
+      var ditL = parseCellVal($tr.find('.td-terima-l').text());
+      var ditP = parseCellVal($tr.find('.td-terima-p').text());
+      
+      var disL = parseInt($tr.find('.inp-terima[data-jk="L"]').val()) || 0;
+      var disP = parseInt($tr.find('.inp-terima[data-jk="P"]').val()) || 0;
+      var disJml = disL + disP;
+      
+      var belumL = ditL - disL;
+      var belumP = ditP - disP;
+      var belumJml = (ditL + ditP) - disJml;
 
-      $tr.find('.td-terima-jml').text(fmtVal(terimaJml));
-      $tr.find('.td-selisih-l').text(fmtSelisih(selisihL))
-         .attr('class', 'td-selisih-l ' + selisihClass(selisihL));
-      $tr.find('.td-selisih-p').text(fmtSelisih(selisihP))
-         .attr('class', 'td-selisih-p ' + selisihClass(selisihP));
-      $tr.find('.td-selisih-jml').text(fmtSelisih(selisihJml))
-         .attr('class', 'td-selisih-jml ' + selisihClass(selisihJml));
+      $tr.find('.td-diserahkan-jml').text(fmtVal(disJml));
+      $tr.find('.td-selisih-l').text(fmtSelisih(belumL))
+         .attr('class', 'td-selisih-l ' + selisihClass(belumL));
+      $tr.find('.td-selisih-p').text(fmtSelisih(belumP))
+         .attr('class', 'td-selisih-p ' + selisihClass(belumP));
+      $tr.find('.td-selisih-jml').text(fmtSelisih(belumJml))
+         .attr('class', 'td-selisih-jml ' + selisihClass(belumJml));
     }
 
     /** Recalculate footer totals for a given table */
     function recalcDetailFooter($tbl) {
       var totRekapL = 0, totRekapP = 0;
-      var totTerimaL = 0, totTerimaP = 0;
+      var totDitL = 0, totDitP = 0;
+      var totDisL = 0, totDisP = 0;
 
       $tbl.find('tbody tr').each(function() {
         totRekapL += parseCellVal($(this).find('.td-rekap-l').text());
         totRekapP += parseCellVal($(this).find('.td-rekap-p').text());
-        totTerimaL += parseInt($(this).find('.inp-terima[data-jk="L"]').val()) || 0;
-        totTerimaP += parseInt($(this).find('.inp-terima[data-jk="P"]').val()) || 0;
+        
+        totDitL += parseCellVal($(this).find('.td-terima-l').text());
+        totDitP += parseCellVal($(this).find('.td-terima-p').text());
+        
+        totDisL += parseInt($(this).find('.inp-terima[data-jk="L"]').val()) || 0;
+        totDisP += parseInt($(this).find('.inp-terima[data-jk="P"]').val()) || 0;
       });
 
       var totRekapJml = totRekapL + totRekapP;
-      var totTerimaJml = totTerimaL + totTerimaP;
-      var totSelisihL = totTerimaL - totRekapL;
-      var totSelisihP = totTerimaP - totRekapP;
-      var totSelisihJml = totTerimaJml - totRekapJml;
+      var totDitJml = totDitL + totDitP;
+      var totDisJml = totDisL + totDisP;
+      
+      var totBelumL = totDitL - totDisL;
+      var totBelumP = totDitP - totDisP;
+      var totBelumJml = totDitJml - totDisJml;
 
       $tbl.find('tfoot .tf-rekap-l').text(fmtVal(totRekapL));
       $tbl.find('tfoot .tf-rekap-p').text(fmtVal(totRekapP));
       $tbl.find('tfoot .tf-rekap-jml').text(fmtVal(totRekapJml));
-      $tbl.find('tfoot .tf-terima-l').text(fmtVal(totTerimaL));
-      $tbl.find('tfoot .tf-terima-p').text(fmtVal(totTerimaP));
-      $tbl.find('tfoot .tf-terima-jml').text(fmtVal(totTerimaJml));
-      $tbl.find('tfoot .tf-selisih-l').text(fmtSelisih(totSelisihL))
-          .attr('class', 'tf-selisih-l ' + selisihClass(totSelisihL));
-      $tbl.find('tfoot .tf-selisih-p').text(fmtSelisih(totSelisihP))
-          .attr('class', 'tf-selisih-p ' + selisihClass(totSelisihP));
-      $tbl.find('tfoot .tf-selisih-jml').text(fmtSelisih(totSelisihJml))
-          .attr('class', 'tf-selisih-jml ' + selisihClass(totSelisihJml));
+      
+      $tbl.find('tfoot .tf-terima-l').text(fmtVal(totDitL));
+      $tbl.find('tfoot .tf-terima-p').text(fmtVal(totDitP));
+      $tbl.find('tfoot .tf-terima-jml').text(fmtVal(totDitJml));
+      
+      $tbl.find('tfoot .tf-diserahkan-l').text(fmtVal(totDisL));
+      $tbl.find('tfoot .tf-diserahkan-p').text(fmtVal(totDisP));
+      $tbl.find('tfoot .tf-diserahkan-jml').text(fmtVal(totDisJml));
+      
+      $tbl.find('tfoot .tf-selisih-l').text(fmtSelisih(totBelumL))
+          .attr('class', 'tf-selisih-l ' + selisihClass(totBelumL));
+      $tbl.find('tfoot .tf-selisih-p').text(fmtSelisih(totBelumP))
+          .attr('class', 'tf-selisih-p ' + selisihClass(totBelumP));
+      $tbl.find('tfoot .tf-selisih-jml').text(fmtSelisih(totBelumJml))
+          .attr('class', 'tf-selisih-jml ' + selisihClass(totBelumJml));
     }
 
     /** Build the interactive detail table HTML for a single jenis seragam and rekap sizes data */
-    function buildDetailTable(jenis, rekapSizes, existingDetailJson) {
+    function buildDetailTable(jenis, rekapSizes, penerimaanSizes, existingDetailJson) {
       var panelsHtml = '';
 
       var existingForJenis = (existingDetailJson && existingDetailJson[jenis]) ? existingDetailJson[jenis] : {};
@@ -1024,35 +1037,50 @@
         var rekL = (rekapSizes && rekapSizes[ukr]) ? (parseInt(rekapSizes[ukr].L) || 0) : 0;
         var rekP = (rekapSizes && rekapSizes[ukr]) ? (parseInt(rekapSizes[ukr].P) || 0) : 0;
         var rekJml = rekL + rekP;
-        var terL = existingForJenis[ukr] ? (parseInt(existingForJenis[ukr].terima_l) || 0) : 0;
-        var terP = existingForJenis[ukr] ? (parseInt(existingForJenis[ukr].terima_p) || 0) : 0;
-        var terJml = terL + terP;
-        var slL = terL - rekL, slP = terP - rekP, slJml = terJml - rekJml;
+
+        var ditL = (penerimaanSizes && penerimaanSizes[ukr]) ? (parseInt(penerimaanSizes[ukr].terima_l) || 0) : 0;
+        var ditP = (penerimaanSizes && penerimaanSizes[ukr]) ? (parseInt(penerimaanSizes[ukr].terima_p) || 0) : 0;
+        var ditJml = ditL + ditP;
+
+        var disL = existingForJenis[ukr] ? (parseInt(existingForJenis[ukr].terima_l) || 0) : 0;
+        var disP = existingForJenis[ukr] ? (parseInt(existingForJenis[ukr].terima_p) || 0) : 0;
+        var disJml = disL + disP;
+
+        var belumL = ditL - disL;
+        var belumP = ditP - disP;
+        var belumJml = ditJml - disJml;
 
         rowsHtml += '<tr>' +
           '<td class="ukr-col">' + ukr + '</td>' +
           '<td class="td-rekap-l">' + fmtVal(rekL) + '</td>' +
           '<td class="td-rekap-p">' + fmtVal(rekP) + '</td>' +
           '<td>' + fmtVal(rekJml) + '</td>' +
-          '<td><input type="number" class="inp-terima" data-jk="L" data-ukr="' + ukr + '" data-jenis="' + jenis + '" min="0" value="' + (terL === 0 ? '' : terL) + '" placeholder="-"></td>' +
-          '<td><input type="number" class="inp-terima" data-jk="P" data-ukr="' + ukr + '" data-jenis="' + jenis + '" min="0" value="' + (terP === 0 ? '' : terP) + '" placeholder="-"></td>' +
-          '<td class="td-terima-jml">' + fmtVal(terJml) + '</td>' +
-          '<td class="td-selisih-l ' + selisihClass(slL) + '">' + fmtSelisih(slL) + '</td>' +
-          '<td class="td-selisih-p ' + selisihClass(slP) + '">' + fmtSelisih(slP) + '</td>' +
-          '<td class="td-selisih-jml ' + selisihClass(slJml) + '">' + fmtSelisih(slJml) + '</td>' +
+          '<td class="td-terima-l">' + fmtVal(ditL) + '</td>' +
+          '<td class="td-terima-p">' + fmtVal(ditP) + '</td>' +
+          '<td class="td-terima-jml">' + fmtVal(ditJml) + '</td>' +
+          '<td><input type="number" class="inp-terima" data-jk="L" data-ukr="' + ukr + '" data-jenis="' + jenis + '" min="0" value="' + (disL === 0 ? '' : disL) + '" placeholder="-"></td>' +
+          '<td><input type="number" class="inp-terima" data-jk="P" data-ukr="' + ukr + '" data-jenis="' + jenis + '" min="0" value="' + (disP === 0 ? '' : disP) + '" placeholder="-"></td>' +
+          '<td class="td-diserahkan-jml">' + fmtVal(disJml) + '</td>' +
+          '<td class="td-selisih-l ' + selisihClass(belumL) + '">' + fmtSelisih(belumL) + '</td>' +
+          '<td class="td-selisih-p ' + selisihClass(belumP) + '">' + fmtSelisih(belumP) + '</td>' +
+          '<td class="td-selisih-jml ' + selisihClass(belumJml) + '">' + fmtSelisih(belumJml) + '</td>' +
         '</tr>';
       });
 
       // Footer totals
-      var totRekL = 0, totRekP = 0, totTerL = 0, totTerP = 0;
+      var totRekL = 0, totRekP = 0, totDitL = 0, totDitP = 0, totDisL = 0, totDisP = 0;
       SERAGAM_UKURAN.forEach(function(ukr) {
         totRekL += (rekapSizes && rekapSizes[ukr]) ? (parseInt(rekapSizes[ukr].L) || 0) : 0;
         totRekP += (rekapSizes && rekapSizes[ukr]) ? (parseInt(rekapSizes[ukr].P) || 0) : 0;
-        totTerL += existingForJenis[ukr] ? (parseInt(existingForJenis[ukr].terima_l) || 0) : 0;
-        totTerP += existingForJenis[ukr] ? (parseInt(existingForJenis[ukr].terima_p) || 0) : 0;
+        totDitL += (penerimaanSizes && penerimaanSizes[ukr]) ? (parseInt(penerimaanSizes[ukr].terima_l) || 0) : 0;
+        totDitP += (penerimaanSizes && penerimaanSizes[ukr]) ? (parseInt(penerimaanSizes[ukr].terima_p) || 0) : 0;
+        totDisL += existingForJenis[ukr] ? (parseInt(existingForJenis[ukr].terima_l) || 0) : 0;
+        totDisP += existingForJenis[ukr] ? (parseInt(existingForJenis[ukr].terima_p) || 0) : 0;
       });
-      var totRekJml = totRekL + totRekP, totTerJml = totTerL + totTerP;
-      var tfSlL = totTerL - totRekL, tfSlP = totTerP - totRekP, tfSlJml = totTerJml - totRekJml;
+      var totRekJml = totRekL + totRekP;
+      var totDitJml = totDitL + totDitP;
+      var totDisJml = totDisL + totDisP;
+      var tfSlL = totDitL - totDisL, tfSlP = totDitP - totDisP, tfSlJml = totDitJml - totDisJml;
 
       panelsHtml += '<div class="table-responsive">' +
         '<table class="tbl-seragam-detail">' +
@@ -1060,11 +1088,13 @@
         '<thead>' +
           '<tr>' +
             '<th rowspan="2" style="vertical-align:middle;">UKR</th>' +
-            '<th colspan="3" class="th-group">PENERIMA (REKAP)</th>' +
-            '<th colspan="3" class="th-group">DITERIMA (INPUT)</th>' +
-            '<th colspan="3" class="th-group">SELISIH</th>' +
+            '<th colspan="3" class="th-group">JUMLAH MURID</th>' +
+            '<th colspan="3" class="th-group">DITERIMA</th>' +
+            '<th colspan="3" class="th-group">DISERAHKAN (INPUT)</th>' +
+            '<th colspan="3" class="th-group">BELUM DISERAHKAN</th>' +
           '</tr>' +
           '<tr>' +
+            '<th>L</th><th>P</th><th>JML</th>' +
             '<th>L</th><th>P</th><th>JML</th>' +
             '<th>L</th><th>P</th><th>JML</th>' +
             '<th>L</th><th>P</th><th>JML</th>' +
@@ -1074,7 +1104,8 @@
         '<tfoot><tr>' +
           '<td class="ukr-col">TOTAL</td>' +
           '<td class="tf-rekap-l">' + fmtVal(totRekL) + '</td><td class="tf-rekap-p">' + fmtVal(totRekP) + '</td><td class="tf-rekap-jml">' + fmtVal(totRekJml) + '</td>' +
-          '<td class="tf-terima-l">' + fmtVal(totTerL) + '</td><td class="tf-terima-p">' + fmtVal(totTerP) + '</td><td class="tf-terima-jml">' + fmtVal(totTerJml) + '</td>' +
+          '<td class="tf-terima-l">' + fmtVal(totDitL) + '</td><td class="tf-terima-p">' + fmtVal(totDitP) + '</td><td class="tf-terima-jml">' + fmtVal(totDitJml) + '</td>' +
+          '<td class="tf-diserahkan-l">' + fmtVal(totDisL) + '</td><td class="tf-diserahkan-p">' + fmtVal(totDisP) + '</td><td class="tf-diserahkan-jml">' + fmtVal(totDisJml) + '</td>' +
           '<td class="tf-selisih-l ' + selisihClass(tfSlL) + '">' + fmtSelisih(tfSlL) + '</td>' +
           '<td class="tf-selisih-p ' + selisihClass(tfSlP) + '">' + fmtSelisih(tfSlP) + '</td>' +
           '<td class="tf-selisih-jml ' + selisihClass(tfSlJml) + '">' + fmtSelisih(tfSlJml) + '</td>' +
@@ -1122,53 +1153,102 @@
       var html = '';
       Object.keys(detailJson).forEach(function(jenis) {
         html += '<div class="mb-2"><strong class="small text-uppercase" style="color:#800000;">' + jenis + '</strong></div>';
-        html += '<div class="table-responsive mb-3"><table class="tbl-seragam-detail tbl-seragam-verif">';
-        html += COLGROUP_VERIF_HTML;
+        html += '<div class="table-responsive mb-3"><table class="tbl-seragam-detail">';
+        html += COLGROUP_HTML;
         html += '<thead>';
-        html += '<tr><th rowspan="2" style="vertical-align:middle;">UKR</th><th colspan="3" class="th-group">DITERIMA</th><th colspan="3" class="th-group">SELISIH</th></tr>';
-        html += '<tr><th>L</th><th>P</th><th>JML</th><th>L</th><th>P</th><th>JML</th></tr></thead><tbody>';
+        html += '<tr>' +
+          '<th rowspan="2" style="vertical-align:middle;">UKR</th>' +
+          '<th colspan="3" class="th-group">JUMLAH MURID</th>' +
+          '<th colspan="3" class="th-group">DITERIMA</th>' +
+          '<th colspan="3" class="th-group">DISERAHKAN</th>' +
+          '<th colspan="3" class="th-group">BELUM DISERAHKAN</th>' +
+        '</tr>';
+        html += '<tr><th>L</th><th>P</th><th>JML</th><th>L</th><th>P</th><th>JML</th><th>L</th><th>P</th><th>JML</th><th>L</th><th>P</th><th>JML</th></tr></thead><tbody>';
+
+        var tRekL = 0, tRekP = 0, tDitL = 0, tDitP = 0, tDisL = 0, tDisP = 0;
 
         SERAGAM_UKURAN.forEach(function(ukr) {
           if (!detailJson[jenis][ukr]) return;
           var d = detailJson[jenis][ukr];
-          var tL = parseInt(d.terima_l) || 0, tP = parseInt(d.terima_p) || 0, tJml = tL + tP;
-          var rL = parseInt(d.rekap_l) || 0, rP = parseInt(d.rekap_p) || 0;
-          var sL = tL - rL, sP = tP - rP, sJml = tJml - (rL + rP);
+          var rL = parseInt(d.rekap_l) || 0, rP = parseInt(d.rekap_p) || 0, rJml = rL + rP;
+          var ditL = parseInt(d.diterima_l) || 0, ditP = parseInt(d.diterima_p) || 0, ditJml = ditL + ditP;
+          var disL = parseInt(d.terima_l) || 0, disP = parseInt(d.terima_p) || 0, disJml = disL + disP;
+          var sL = ditL - disL, sP = ditP - disP, sJml = ditJml - disJml;
+
+          tRekL += rL; tRekP += rP;
+          tDitL += ditL; tDitP += ditP;
+          tDisL += disL; tDisP += disP;
+
           html += '<tr><td class="ukr-col">' + ukr + '</td>' +
-            '<td>' + fmtVal(tL) + '</td><td>' + fmtVal(tP) + '</td><td>' + fmtVal(tJml) + '</td>' +
+            '<td>' + fmtVal(rL) + '</td><td>' + fmtVal(rP) + '</td><td>' + fmtVal(rJml) + '</td>' +
+            '<td>' + fmtVal(ditL) + '</td><td>' + fmtVal(ditP) + '</td><td>' + fmtVal(ditJml) + '</td>' +
+            '<td>' + fmtVal(disL) + '</td><td>' + fmtVal(disP) + '</td><td>' + fmtVal(disJml) + '</td>' +
             '<td class="' + selisihClass(sL) + '">' + fmtSelisih(sL) + '</td>' +
             '<td class="' + selisihClass(sP) + '">' + fmtSelisih(sP) + '</td>' +
             '<td class="' + selisihClass(sJml) + '">' + fmtSelisih(sJml) + '</td></tr>';
         });
-        html += '</tbody></table></div>';
+
+        var tRekJml = tRekL + tRekP;
+        var tDitJml = tDitL + tDitP;
+        var tDisJml = tDisL + tDisP;
+        var tSlL = tDitL - tDisL, tSlP = tDitP - tDisP, tSlJml = tDitJml - tDisJml;
+
+        html += '</tbody><tfoot><tr>' +
+          '<td class="ukr-col">TOTAL</td>' +
+          '<td>' + fmtVal(tRekL) + '</td><td>' + fmtVal(tRekP) + '</td><td>' + fmtVal(tRekJml) + '</td>' +
+          '<td>' + fmtVal(tDitL) + '</td><td>' + fmtVal(tDitP) + '</td><td>' + fmtVal(tDitJml) + '</td>' +
+          '<td>' + fmtVal(tDisL) + '</td><td>' + fmtVal(tDisP) + '</td><td>' + fmtVal(tDisJml) + '</td>' +
+          '<td class="' + selisihClass(tSlL) + '">' + fmtSelisih(tSlL) + '</td>' +
+          '<td class="' + selisihClass(tSlP) + '">' + fmtSelisih(tSlP) + '</td>' +
+          '<td class="' + selisihClass(tSlJml) + '">' + fmtSelisih(tSlJml) + '</td>' +
+          '</tr></tfoot></table></div>';
       });
       $('#seragampenyerahan_verifDetailTable').html(html);
     }
 
-    /** Load rekap data then render detail table for given NPSN, jenis, and existing json */
-    function loadRekapForModal(npsn, tahun, jenis, existingDetailJson) {
+    /** Load rekap data and Laporan Penerimaan data, then render detail table for given NPSN, jenis, tahap, and existing json */
+    function loadRekapForModal(npsn, tahun, jenis, tahap, existingDetailJson) {
       $('#seragampenyerahan_detailPanels').html(
         '<div class="seragam-detail-loading" id="seragampenyerahan_detailLoading">' +
-        '<i class="fas fa-circle-notch fa-spin"></i> Memuat data rekap penerima...</div>'
+        '<i class="fas fa-circle-notch fa-spin"></i> Memuat data rekap penerima & penerimaan...</div>'
       );
 
       google.script.run
-        .withSuccessHandler(function(response) {
-          var res = JSON.parse(response);
+        .withSuccessHandler(function(rekapResponse) {
+          var rekapRes = JSON.parse(rekapResponse);
           var rekapSizes = {};
-          if (res.success && res.data) {
-            var sekolahRekap = res.data.find(function(r) { return String(r.npsn) === String(npsn); });
+          if (rekapRes.success && rekapRes.data) {
+            var sekolahRekap = rekapRes.data.find(function(r) { return String(r.npsn) === String(npsn); });
             if (sekolahRekap) {
               rekapSizes = sekolahRekap.sizes || {};
-            } else {
-              Sultan.notif.info('Belum ada data rekap penerima untuk sekolah ini. Kolom Penerima akan kosong (0).');
             }
           }
-          buildDetailTable(jenis, rekapSizes, existingDetailJson);
+          
+          google.script.run
+            .withSuccessHandler(function(penerimaanResponse) {
+              var penRes = JSON.parse(penerimaanResponse);
+              var penerimaanSizes = {};
+              if (penRes.success && penRes.detail_json) {
+                try {
+                  var pDet = JSON.parse(penRes.detail_json);
+                  penerimaanSizes = pDet[jenis] || {};
+                } catch(e) {}
+              } else {
+                Sultan.notif.info('Perhatian: Laporan Penerimaan untuk sekolah, tahun, tahap, dan jenis seragam ini belum diunggah/disetujui. Kolom Diterima akan kosong (0).');
+              }
+              
+              buildDetailTable(jenis, rekapSizes, penerimaanSizes, existingDetailJson);
+            })
+            .withFailureHandler(function(err) {
+              $('#seragampenyerahan_detailPanels').html(
+                '<div class="p-3 text-danger small"><i class="fas fa-exclamation-triangle mr-1"></i>Gagal memuat data laporan penerimaan: ' + err.message + '</div>'
+              );
+            })
+            .seragam_getPenerimaanDetail(npsn, tahun, tahap, jenis);
         })
         .withFailureHandler(function(err) {
           $('#seragampenyerahan_detailPanels').html(
-            '<div class="p-3 text-danger small"><i class="fas fa-exclamation-triangle mr-1"></i>Gagal memuat data rekap: ' + err.message + '</div>'
+            '<div class="p-3 text-danger small"><i class="fas fa-exclamation-triangle mr-1"></i>Gagal memuat data rekap murid: ' + err.message + '</div>'
           );
         })
         .seragam_getRekap(tahun, 'SEMUA');
@@ -1179,8 +1259,9 @@
       var npsn = IS_ADMIN ? $('#seragampenyerahan_in_sekolah').val() : $('#seragampenyerahan_in_sekolah_hidden').val();
       var tahun = $('#seragampenyerahan_in_tahun').val();
       var jenis = $('#seragampenyerahan_in_jenis').val();
+      var tahap = $('#seragampenyerahan_in_tahap').val();
       
-      if (!npsn || !tahun || !jenis) {
+      if (!npsn || !tahun || !jenis || !tahap) {
         $('#seragampenyerahan_detailWrap').hide();
         return;
       }
@@ -1193,7 +1274,7 @@
         try { existingDetailJson = JSON.parse(existingJsonStr); } catch(e) {}
       }
       
-      loadRekapForModal(npsn, tahun, jenis, existingDetailJson);
+      loadRekapForModal(npsn, tahun, jenis, tahap, existingDetailJson);
     }
 
 
@@ -1497,13 +1578,15 @@
           // Compute from detail table
           detail_json: (function() {
             var dj = readDetailJson();
-            // Embed rekap values into detail_json for reference in verif modal
+            // Embed rekap and diterima values into detail_json for reference in verif modal
             $('#seragampenyerahan_detailPanels .tbl-seragam-detail tbody tr').each(function() {
               var jenis = $(this).find('.inp-terima[data-jk="L"]').attr('data-jenis');
               var ukr = $(this).find('.inp-terima[data-jk="L"]').attr('data-ukr');
               if (jenis && ukr && dj[jenis] && dj[jenis][ukr]) {
                 dj[jenis][ukr].rekap_l = parseInt($(this).find('.td-rekap-l').text()) || 0;
                 dj[jenis][ukr].rekap_p = parseInt($(this).find('.td-rekap-p').text()) || 0;
+                dj[jenis][ukr].diterima_l = parseInt($(this).find('.td-terima-l').text()) || 0;
+                dj[jenis][ukr].diterima_p = parseInt($(this).find('.td-terima-p').text()) || 0;
               }
             });
             return JSON.stringify(dj);

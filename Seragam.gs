@@ -823,3 +823,31 @@ function seragam_getDashboardData(tahun) {
     return JSON.stringify({ success: false, message: e.message });
   }
 }
+
+function seragam_getPenerimaanDetail(npsn, tahun, tahap, jenisSeragam) {
+  try {
+    var sheet = getOrCreateSheetSeragam("Laporan_Penerimaan");
+    var values = sheet.getDataRange().getDisplayValues();
+    for (var i = 1; i < values.length; i++) {
+      var rNpsn = String(values[i][0]).trim();
+      var rTahun = String(values[i][2]).trim();
+      var rTahap = String(values[i][11] || "Laporan 1").trim();
+      var rJenis = String(values[i][12] || "Merah Putih").trim();
+      var status = String(values[i][21] || "DIPROSES").trim().toUpperCase();
+
+      if (rNpsn === String(npsn).trim() && 
+          rTahun === String(tahun).trim() && 
+          rTahap === String(tahap).trim() && 
+          rJenis === String(jenisSeragam).trim()) {
+        return JSON.stringify({
+          success: true,
+          status: status,
+          detail_json: values[i][25] || "{}"
+        });
+      }
+    }
+    return JSON.stringify({ success: false, message: "Laporan Penerimaan untuk Sekolah, Tahun, Tahap, dan Jenis Seragam tersebut belum diunggah." });
+  } catch(e) {
+    return JSON.stringify({ success: false, message: e.message });
+  }
+}
