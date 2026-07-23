@@ -99,7 +99,6 @@ function getCachedNotifModule(moduleKey, role, unit, fetchFn, ttlSeconds) {
   }, ttlSeconds || 60);
 }
 
-/** Invalidasi cache notifikasi (global + per modul) untuk role/unit tertentu. */
 function invalidateNotifCachesFor(role, unit) {
   var cache = CacheService.getScriptCache();
   var mods = ["sk", "lapbul", "lupa", "salah", "perdin", "cuti", "surat_cuti", "efile",
@@ -107,18 +106,29 @@ function invalidateNotifCachesFor(role, unit) {
   var roles = [String(role || "").toLowerCase(), "admin", "verifikator", "korwil", "user"];
   var units = [String(unit || "").toUpperCase(), ""];
   try {
-    cache.remove("NOTIF_GLOBAL_" + String(role || "").toLowerCase() + "_" + String(unit || "").toUpperCase());
-    cache.remove("NOTIF_GLOBAL_admin_");
-    cache.remove("NOTIF_GLOBAL_verifikator_");
-    cache.remove("NOTIF_GLOBAL_korwil_");
-    if (unit) cache.remove("NOTIF_GLOBAL_user_" + String(unit).toUpperCase());
+    var keysToRemove = [
+      "NOTIF_GLOBAL_" + String(role || "").toLowerCase() + "_" + String(unit || "").toUpperCase(),
+      "NOTIF_GLOBAL_admin_",
+      "NOTIF_GLOBAL_verifikator_",
+      "NOTIF_GLOBAL_korwil_"
+    ];
+    if (unit) {
+      keysToRemove.push("NOTIF_GLOBAL_user_" + String(unit).toUpperCase());
+    }
+    
+    // Kumpulkan 110 kunci cache modul secara batch
     mods.forEach(function(m) {
       roles.forEach(function(r) {
         units.forEach(function(u) {
-          cache.remove(notifModuleCacheKey(m, r, u));
+          keysToRemove.push(notifModuleCacheKey(m, r, u));
         });
       });
     });
+
+    // Eksekusi pembersihan batch sekaligus dalam satu API call
+    if (keysToRemove.length > 0) {
+      cache.removeAll(keysToRemove);
+    }
   } catch (e) {}
 }
 
