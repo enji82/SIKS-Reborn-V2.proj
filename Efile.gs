@@ -427,8 +427,10 @@ function verifikasiEfileData(rowId, status, catatan, adminName) {
     lock.waitLock(10000);
     var sheet = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile"); var r = parseInt(rowId);
     var now = "'" + Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
-    sheet.getRange(r, 8).setValue(status); sheet.getRange(r, 9).setValue(catatan);
-    sheet.getRange(r, 13).setValue(now); sheet.getRange(r, 14).setValue(adminName); 
+    
+    // Optimasi Batch Writing: tulis Kolom 8-9 (H-I) & Kolom 13-14 (M-N) sekaligus untuk mengurangi API call ke server Google Sheets
+    sheet.getRange(r, 8, 1, 2).setValues([[status, catatan]]);
+    sheet.getRange(r, 13, 1, 2).setValues([[now, adminName]]);
     SpreadsheetApp.flush();
     
     try {
@@ -1119,12 +1121,16 @@ function invalidateEfileDashboardCache() {
     var cache = CacheService.getScriptCache();
     var shDash = getSheet(KONFIG_EFILE.DB_KEY, "Dashboard");
     if (shDash) {
-      var dataDash = shDash.getDataRange().getDisplayValues();
-      for(var i=1; i<dataDash.length; i++) {
-        if(String(dataDash[i][0]).trim() !== "") {
-          var rekapName = String(dataDash[i][0]).replace(/\s/g, "_");
-          var laporName = String(dataDash[i][1]).replace(/\s/g, "_");
-          cache.remove("EFILE_DASHBOARD_" + rekapName + "_" + laporName);
+      var lastRow = shDash.getLastRow();
+      if (lastRow > 1) {
+        // Optimasi I/O: hanya membaca Kolom A dan B secara murni (getValues) untuk menghindari pembacaan visual lambat (.getDataRange().getDisplayValues())
+        var dataDash = shDash.getRange(2, 1, lastRow - 1, 2).getValues();
+        for(var i=0; i<dataDash.length; i++) {
+          if(String(dataDash[i][0]).trim() !== "") {
+            var rekapName = String(dataDash[i][0]).replace(/\s/g, "_");
+            var laporName = String(dataDash[i][1]).replace(/\s/g, "_");
+            cache.remove("EFILE_DASHBOARD_" + rekapName + "_" + laporName);
+          }
         }
       }
     }
