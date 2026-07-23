@@ -245,6 +245,9 @@
         <button type="button" id="seragamdist_btnSync" class="sultan-btn-refresh" title="Segarkan Data dari Server">
           <i class="fas fa-sync-alt"></i>
         </button>
+        <button type="button" id="seragamdist_btnExcel" class="sultan-btn-excel ml-2" title="Ekspor Excel">
+          <i class="fas fa-file-excel mr-1"></i> EKSPOR EXCEL
+        </button>
       `;
 
       $('#seragamdist_filterBarArea').html(SultanUI.renderFilterBar(filtersConfig, extraButtons));
@@ -262,6 +265,7 @@
       $('#seragamdist_filterTahun').on('change', loadDataFromServer);
       $('#seragamdist_filterSekolah, #seragamdist_filterJenis').on('change', applyLocalFilter);
       $('#seragamdist_btnSync').on('click', loadDataFromServer);
+      $('#seragamdist_btnExcel').on('click', exportToExcel);
     }
 
     function loadDataFromServer() {
@@ -486,6 +490,65 @@
       });
 
       SERAGAMDIST_TABEL_INSTANCE.clear().rows.add(dtArray).draw(false);
+    }
+
+    function exportToExcel() {
+      var jenisSeragam = ($('#seragamdist_filterJenis').val() || "SEMUA").toUpperCase();
+      if (jenisSeragam === "SEMUA") {
+        jenisSeragam = "MERAH PUTIH / PRAMUKA";
+      }
+      
+      var indonesianMonths = [
+        "JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI",
+        "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"
+      ];
+      var today = new Date();
+      var formattedDate = today.getDate() + " " + indonesianMonths[today.getMonth()] + " " + today.getFullYear();
+      
+      var tempLength = 10;
+      if (SERAGAMDIST_TABEL_INSTANCE) {
+        tempLength = SERAGAMDIST_TABEL_INSTANCE.page.len();
+        SERAGAMDIST_TABEL_INSTANCE.page.len(-1).draw(false);
+      }
+      
+      var table = document.getElementById("seragamdist_tabelUtama");
+      var originalHead = table.querySelector("thead").innerHTML;
+      var originalBody = table.querySelector("tbody").innerHTML;
+      var originalFoot = table.querySelector("tfoot") ? table.querySelector("tfoot").innerHTML : "";
+      
+      if (SERAGAMDIST_TABEL_INSTANCE) {
+        SERAGAMDIST_TABEL_INSTANCE.page.len(tempLength).draw(false);
+      }
+      
+      var html = '<html><head><meta charset="utf-8"><style>';
+      html += 'table { border-collapse: collapse; }';
+      html += 'th, td { border: 1px solid #000000; padding: 4px; font-family: Arial, sans-serif; font-size: 10pt; }';
+      html += 'thead th { background-color: #f2f2f2; font-weight: bold; text-align: center; }';
+      html += 'tfoot th { background-color: #e6e6e6; font-weight: bold; text-align: center; }';
+      html += '.text-success { color: #28a745; font-weight: bold; }';
+      html += '.text-danger { color: #dc3545; font-weight: bold; }';
+      html += '</style></head><body>';
+      html += '<table>';
+      html += '<tr><td colspan="83" style="font-weight: bold; font-size: 14pt; border: none; text-align: left;">PENDISTRIBUSIAN SERAGAM ' + jenisSeragam + '</td></tr>';
+      html += '<tr><td colspan="83" style="font-weight: bold; font-size: 12pt; border: none; text-align: left;">KORWIL DISDIKBUD KECAMATAN SECANG</td></tr>';
+      html += '<tr><td colspan="83" style="font-weight: bold; font-size: 12pt; border: none; text-align: left;">PER ' + formattedDate + '</td></tr>';
+      html += '<tr><td colspan="83" style="border: none;"></td></tr>';
+      html += '<thead>' + originalHead + '</thead>';
+      html += '<tbody>' + originalBody + '</tbody>';
+      if (originalFoot) {
+        html += '<tfoot>' + originalFoot + '</tfoot>';
+      }
+      html += '</table>';
+      html += '</body></html>';
+      
+      var url = 'data:application/vnd.ms-excel;charset=utf-8,' + encodeURIComponent(html);
+      var link = document.createElement("a");
+      var fileName = "Pendistribusian_Seragam_" + jenisSeragam.replace(/\s+/g, '_') + "_" + formattedDate.replace(/\s+/g, '_') + ".xls";
+      link.download = fileName;
+      link.href = url;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
 
   })();
