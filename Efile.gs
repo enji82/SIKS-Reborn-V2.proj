@@ -428,12 +428,20 @@ function verifikasiEfileData(rowId, status, catatan, adminName) {
     var sheet = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile"); var r = parseInt(rowId);
     var now = "'" + Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
     
-    // Optimasi Batch Writing: tulis Kolom 8-9 (H-I) & Kolom 13-14 (M-N) sekaligus untuk mengurangi API call ke server Google Sheets
-    sheet.getRange(r, 8, 1, 2).setValues([[status, catatan]]);
-    sheet.getRange(r, 13, 1, 2).setValues([[now, adminName]]);
+    // Optimasi API Call: Baca dan tulis kolom 8 s/d 14 (H s/d N) secara sekaligus
+    var range = sheet.getRange(r, 8, 1, 7);
+    var values = range.getValues()[0];
+    
+    var npsn = String(values[4] || "").trim(); // Kolom 12 (NPSN) adalah indeks ke-4
+    
+    values[0] = status;     // Kolom 8
+    values[1] = catatan;    // Kolom 9
+    values[5] = now;        // Kolom 13
+    values[6] = adminName;  // Kolom 14
+    
+    range.setValues([values]);
     
     try {
-        var npsn = sheet.getRange(r, 12).getDisplayValue();
         onEfileDataChange(npsn);
     } catch(err) {}
 
@@ -1127,56 +1135,9 @@ function getEfileDashboardData(idKategori, namaKategori, forceRefresh) {
 }
 
 function invalidateEfileDashboardCache() {
-  try {
-    var cache = CacheService.getScriptCache();
-    var cachedList = cache.get("EFILE_DASHBOARD_INSTANSI_LIST");
-    var listDash = [];
-
-    if (cachedList) {
-      try {
-        listDash = JSON.parse(cachedList);
-      } catch (ex) {}
-    }
-
-    // Jika cache kosong, baru kita buka spreadsheet Dashboard (menghindari openById yang memakan waktu 2 detik)
-    if (!listDash || listDash.length === 0) {
-      var shDash = getSheet(KONFIG_EFILE.DB_KEY, "Dashboard");
-      if (shDash) {
-        var lastRow = shDash.getLastRow();
-        if (lastRow > 1) {
-          var dataDash = shDash.getRange(2, 1, lastRow - 1, 2).getValues();
-          for (var i = 0; i < dataDash.length; i++) {
-            if (String(dataDash[i][0]).trim() !== "") {
-              listDash.push({
-                rekap: String(dataDash[i][0]).replace(/\s/g, "_"),
-                lapor: String(dataDash[i][1]).replace(/\s/g, "_")
-              });
-            }
-          }
-          // Simpan daftar instansi ini di cache selama 6 jam (21600 detik) agar verifikasi berikutnya instan
-          if (listDash.length > 0) {
-            cache.put("EFILE_DASHBOARD_INSTANSI_LIST", JSON.stringify(listDash), 21600);
-          }
-        }
-      }
-    }
-
-    if (listDash && listDash.length > 0) {
-      var keysToRemove = [];
-      listDash.forEach(function(item) {
-        keysToRemove.push("EFILE_DASHBOARD_" + item.rekap + "_" + item.lapor);
-      });
-      if (keysToRemove.length > 0) {
-        var chunkSize = 25;
-        for (var j = 0; j < keysToRemove.length; j += chunkSize) {
-          var chunk = keysToRemove.slice(j, j + chunkSize);
-          try {
-            cache.removeAll(chunk);
-          } catch(err) {}
-        }
-      }
-    }
-  } catch(e) {}
+  // Menghapus fungsi karena dashboard E-file V2 tidak lagi disimpan di CacheService server,
+  // melainkan dimuat secara real-time / local storage client. Ini menghemat 3-4 detik API call.
+  return;
 }
 
 function onEfileDataChange(npsn) {
@@ -1392,11 +1353,47 @@ function getEfileDashboardUnitLengkap(npsn, tahun) {
 
     // Bangun peta lookup PTK untuk pencocokan cepat unggahan e-file
     var ptkLookup = {};
+    var ptkByNip = {};
+    var ptkByNama = {};
     ptkList.forEach(function(p) {
       ptkLookup[String(p.id_ptk).trim()] = p;
-      if (p.nip && p.nip !== "-") ptkLookup[String(p.nip).trim()] = p;
-      if (p.nama) ptkLookup[String(p.nama).trim().toUpperCase()] = p;
+      if (p.nip && p.nip !== "-") {
+        ptkLookup[String(p.nip).trim()] = p;
+        ptkByNip[String(p.nip).trim()] = p;
+      }
+      if (p.nama) {
+        ptkLookup[String(p.nama).trim().toUpperCase()] = p;
+        ptkByNama[String(p.nama).trim().toUpperCase()] = p;
+      }
     });
+
+    // Fallback pemetaan ID lama (Database_PTK lama) ke ptkLookup agar pencocokan e-file dengan ID lama (misal NIK) bisa terbaca di tab Unit Kerja
+    try {
+      var shPtkLama = getSheet(KONFIG_EFILE.DB_KEY, "Database_PTK");
+      if (shPtkLama) {
+        var dataPtkLama = shPtkLama.getDataRange().getDisplayValues();
+        for (var j = 1; j < dataPtkLama.length; j++) {
+          var idLama = String(dataPtkLama[j][0]).trim();
+          var namaLama = String(dataPtkLama[j][1]).trim().toUpperCase();
+          var nipLama = String(dataPtkLama[j][3]).trim();
+          
+          if (idLama && !ptkLookup[idLama]) {
+            var matchedPtk = null;
+            if (nipLama && nipLama !== "" && nipLama !== "-") {
+              matchedPtk = ptkByNip[nipLama];
+            }
+            if (!matchedPtk && namaLama) {
+              matchedPtk = ptkByNama[namaLama];
+            }
+            if (matchedPtk) {
+              ptkLookup[idLama] = matchedPtk;
+            }
+          }
+        }
+      }
+    } catch(e) {
+      Logger.log("Gagal memetakan Database_PTK lama di dashboard unit lengkap: " + e.message);
+    }
 
     // 3. Ambil seluruh kategori aktif
     var shKat = getSheet(KONFIG_EFILE.DB_KEY, "Master_Kategori_Efile");
