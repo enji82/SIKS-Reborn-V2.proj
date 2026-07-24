@@ -424,7 +424,7 @@ function simpanEfileBatch(batchData) {
 function verifikasiEfileData(rowId, status, catatan, adminName) {
   var lock = LockService.getScriptLock();
   try {
-    lock.waitLock(10000);
+    lock.waitLock(30000);
     var sheet = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile"); var r = parseInt(rowId);
     var now = "'" + Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
     
@@ -444,7 +444,7 @@ function verifikasiEfileData(rowId, status, catatan, adminName) {
 function hapusEfileData(rowId, securityCode) {
   var lock = LockService.getScriptLock();
   try {
-    lock.waitLock(10000);
+    lock.waitLock(30000);
     var d = new Date(); var kd = d.getFullYear()+""+String(d.getMonth()+1).padStart(2,'0')+""+String(d.getDate()).padStart(2,'0');
     if (String(securityCode).trim() !== kd) return JSON.stringify({ success: false, message: "Kode Keamanan Salah!" });
     var sheet = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile"); var r = parseInt(rowId);
@@ -470,7 +470,7 @@ function hapusEfileData(rowId, securityCode) {
 function perbaikiEfileData(payload, fileData) {
   var lock = LockService.getScriptLock();
   try {
-    lock.waitLock(20000);
+    lock.waitLock(30000);
     var sheet = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile"); var r = parseInt(payload.rowId);
     var oldUrl = sheet.getRange(r, 7).getValue(); var newFileUrl = oldUrl; 
 
@@ -1272,7 +1272,7 @@ function getEfileMasterKategoriAdmin() {
 function simpanMasterKategori(payload) {
   var lock = LockService.getScriptLock();
   try {
-    lock.waitLock(10000);
+    lock.waitLock(30000);
     var shKat = getSheet(KONFIG_EFILE.DB_KEY, "Master_Kategori_Efile");
     if (!shKat) return JSON.stringify({ success: false, message: "Sheet tidak ditemukan." });
 
@@ -1338,7 +1338,7 @@ function simpanMasterKategori(payload) {
 function toggleAktifMasterKategori(idKat, aktifBaru) {
   var lock = LockService.getScriptLock();
   try {
-    lock.waitLock(10000);
+    lock.waitLock(30000);
     var shKat = getSheet(KONFIG_EFILE.DB_KEY, "Master_Kategori_Efile");
     if (!shKat) return JSON.stringify({ success: false, message: "Sheet tidak ditemukan." });
     var dataKat = shKat.getDataRange().getDisplayValues();
