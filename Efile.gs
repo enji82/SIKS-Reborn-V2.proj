@@ -293,6 +293,7 @@ function getEfileData(npsnFilter) {
                 verifikator: data[i][13] || "-",
                 periode: data[i][14] || "-",
                 tgl_edit: data[i][15] || "-",
+                user_edit: data[i][16] || "-",
             });
         }
     }
