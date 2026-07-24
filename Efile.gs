@@ -720,13 +720,24 @@ function getEfileDashboardInit(npsnFilter) {
         }
     }
     
-    var ptkListRaw = efileGetSharedDaftarPtk(npsnFilter);
+    var ptkListRaw = efileGetSharedDaftarPtk("SEMUA");
     var myUnit = "";
-    if (npsnFilter && npsnFilter !== "SEMUA" && ptkListRaw.length > 0) {
-        myUnit = ptkListRaw[0].unit;
-    }
+    var listUnitKerja = [];
+    var mapUnitSeen = {};
 
-    return JSON.stringify({ success: true, kategori: listKategori, myUnit: myUnit });
+    ptkListRaw.forEach(function(p) {
+      if (p.unit && !mapUnitSeen[p.unit]) {
+        mapUnitSeen[p.unit] = true;
+        listUnitKerja.push({ npsn: p.npsn, unit: p.unit });
+      }
+      if (npsnFilter && npsnFilter !== "SEMUA" && (p.npsn === npsnFilter || p.unit === npsnFilter)) {
+        myUnit = p.unit;
+      }
+    });
+
+    listUnitKerja.sort(function(a, b) { return a.unit.localeCompare(b.unit); });
+
+    return JSON.stringify({ success: true, kategori: listKategori, myUnit: myUnit, listUnit: listUnitKerja });
   } catch(e) { return JSON.stringify({ success: false, message: e.message }); }
 }
 
@@ -1356,18 +1367,30 @@ function toggleAktifMasterKategori(idKat, aktifBaru) {
  */
 function getEfileDashboardUnitLengkap(npsn, tahun) {
   try {
-    if (!npsn || npsn === "SEMUA") {
-      return JSON.stringify({ success: false, message: "Pilih sekolah/unit kerja terlebih dahulu." });
-    }
+    var targetKey = String(npsn || "").trim().toUpperCase();
+    var isSemua = (!targetKey || targetKey === "SEMUA");
     
-    // 1. Ambil daftar PTK untuk Unit Kerja ini
-    var ptkList = efileGetSharedDaftarPtk(npsn);
+    // 1. Ambil daftar seluruh PTK
+    var ptkListRaw = efileGetSharedDaftarPtk("SEMUA");
+    
+    // 2. Saring PTK berdasarkan Unit/NPSN terpilih (jika bukan SEMUA)
+    var ptkList = [];
+    if (isSemua) {
+      ptkList = ptkListRaw;
+    } else {
+      ptkList = ptkListRaw.filter(function(p) {
+        var pNpsn = String(p.npsn || "").trim().toUpperCase();
+        var pUnit = String(p.unit || "").trim().toUpperCase();
+        return (pNpsn === targetKey || pUnit === targetKey);
+      });
+    }
+
     var totalPegawai = ptkList.length;
     if (totalPegawai === 0) {
       return JSON.stringify({ success: true, rekap: [], totalPegawai: 0 });
     }
 
-    // Bangun peta lookup PTK untuk pencocokan cepat
+    // Bangun peta lookup PTK untuk pencocokan cepat unggahan e-file
     var ptkLookup = {};
     ptkList.forEach(function(p) {
       ptkLookup[String(p.id_ptk).trim()] = p;
@@ -1375,7 +1398,7 @@ function getEfileDashboardUnitLengkap(npsn, tahun) {
       if (p.nama) ptkLookup[String(p.nama).trim().toUpperCase()] = p;
     });
 
-    // 2. Ambil seluruh kategori aktif
+    // 3. Ambil seluruh kategori aktif
     var shKat = getSheet(KONFIG_EFILE.DB_KEY, "Master_Kategori_Efile");
     var dataKat = shKat ? shKat.getDataRange().getDisplayValues() : [];
     var listKategori = [];
@@ -1395,7 +1418,7 @@ function getEfileDashboardUnitLengkap(npsn, tahun) {
       }
     }
 
-    // 3. Ambil data unggahan dari Database_Efile
+    // 4. Ambil data unggahan dari Database_Efile
     var shEfile = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile");
     var dataEfile = shEfile ? shEfile.getDataRange().getDisplayValues() : [];
     
@@ -1416,15 +1439,13 @@ function getEfileDashboardUnitLengkap(npsn, tahun) {
       var matchedPtk = ptkLookup[ePtk] || ptkLookup[ePtkNama];
       if (matchedPtk) {
         var mapKey = eKat + "_" + matchedPtk.id_ptk;
-        // Simpan status unggahan
         uploadMap[mapKey] = eStatus;
       }
     }
 
-    // 4. Hitung rekapitulasi capaian untuk setiap Kategori
+    // 5. Hitung rekapitulasi capaian untuk setiap Kategori untuk unit terpilih
     var rekapResult = [];
     listKategori.forEach(function(kat) {
-      // Saring target pegawai sekolah yang cocok dengan kategori ini berdasarkan klasifikasi jenjang/kepeg/tugas
       var targetPegawaiKategori = ptkList.filter(function(p) {
         if (kat.targetJenjang.length > 0 && kat.targetJenjang[0] !== "ALL") {
           if (kat.targetJenjang.indexOf(String(p.jenjang || "").toUpperCase()) === -1) return false;

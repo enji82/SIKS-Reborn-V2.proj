@@ -430,7 +430,14 @@ function efiledash_initMasterAccess() {
             }
         } else {
             $('#efiledash_filterUnitContainer').show();
-            $('#efiledash_filterUnit').empty().append('<option value="SEMUA">- Semua Unit Kerja -</option>').prop('disabled', false);
+            var selectUnit = $('#efiledash_filterUnit');
+            selectUnit.empty().append('<option value="SEMUA">- Semua Unit Kerja -</option>');
+            if (res.listUnit && res.listUnit.length > 0) {
+                res.listUnit.forEach(function(uItem) {
+                    selectUnit.append($('<option>', { value: uItem.unit, text: uItem.unit }));
+                });
+            }
+            selectUnit.prop('disabled', false);
         }
 
         // Tembak inisialisasi dropdown tahun default
@@ -1142,45 +1149,24 @@ function efiledash_setDashboardMode(mode) {
         $('#efiledash_containerTabelUnit').hide();
         
         var selectUnit = $('#efiledash_filterUnit');
-        // Jika value saat ini SEMUA, minta user memilih unit kerja
-        if (selectUnit.val() === "SEMUA" || selectUnit.val() === "") {
-            // Coba pilih item pertama yang valid di dropdown jika ada
-            var options = $('#efiledash_filterUnit option');
-            if (options.length > 1) {
-                for (var i = 0; i < options.length; i++) {
-                    var val = $(options[i]).val();
-                    if (val !== "SEMUA" && val !== "") {
-                        selectUnit.val(val);
-                        break;
-                    }
-                }
-            }
-        }
-        
-        var curUnit = selectUnit.val();
-        if (curUnit && curUnit !== "SEMUA") {
-            efiledash_loadDataSekolahLengkap(curUnit);
-        } else {
-            tbodyHtml = '<tr><td colspan="6" class="text-center text-muted py-4"><i class="fas fa-school fa-2x mb-2 d-block opacity-50"></i>Silakan pilih Unit Kerja/Sekolah terlebih dahulu.</td></tr>';
-            $('#efiledash_bodyTabelRekapSekolah').html(tbodyHtml);
-            $('#efiledash_containerTabelSekolah').show();
-        }
+        var curUnit = selectUnit.val() || "SEMUA";
+        efiledash_loadDataSekolahLengkap(curUnit);
     }
 }
 
-// Menembak database secara langsung untuk mengambil kelengkapan seluruh kategori di satu Sekolah
+// Menembak database secara langsung untuk mengambil kelengkapan seluruh kategori di satu Sekolah (atau semua sekolah jika SEMUA)
 function efiledash_loadDataSekolahLengkap(unitKey) {
     if (EFILEDASH_PENDING_REQ > 0) return;
     
-    // Cari NPSN sekolah tersebut dari nama unit
-    var npsn = unitKey; // fallback
-    var optMatched = $('#efiledash_filterUnit option:selected');
-    if (optMatched.length > 0 && optMatched.val() !== "SEMUA") {
-        npsn = optMatched.val();
-    }
-    
     var fTahun = $('#efiledash_filterTahun').val() || "SEMUA";
+    var labelNamaSekolah = (unitKey === "SEMUA" || !unitKey) ? "Semua Unit Kerja" : unitKey;
     
+    // Aktifkan animasi lottery SultanUI selama memuat data
+    if (typeof SultanUI !== 'undefined') {
+        SultanUI.startLottery('#efiledash_cardTotalAsn, #efiledash_cardSudah, #efiledash_cardBelum, #efiledash_cardTotalDokumen, #efiledash_cardDiproses, #efiledash_cardDisetujui, #efiledash_cardRevisi, #efiledash_cardDitolak', 3);
+        SultanUI.startLottery('#efiledash_cardProgress', 2, '%');
+    }
+
     EFILEDASH_PENDING_REQ = 1;
     var btn = $('#efiledash_btnRefresh'); btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin text-maroon"></i>');
     $('#efiledash_filterTahun, #efiledash_filterUnit').prop('disabled', true);
@@ -1197,14 +1183,14 @@ function efiledash_loadDataSekolahLengkap(unitKey) {
         }
         
         // Render ke tabel sekolah
-        efiledash_renderTabelSekolahLengkapData(res.rekap, unitKey);
+        efiledash_renderTabelSekolahLengkapData(res.rekap, labelNamaSekolah);
         
     }).withFailureHandler(function(err) {
         EFILEDASH_PENDING_REQ = 0;
         btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
         $('#efiledash_filterTahun, #efiledash_filterUnit').prop('disabled', false);
         Sultan.alert('error', 'Koneksi Terputus', err.message);
-    }).getEfileDashboardUnitLengkap(npsn, fTahun);
+    }).getEfileDashboardUnitLengkap(unitKey, fTahun);
 }
 
 // Render data sekolah hasil load lengkap backend ke tabel biru navy
@@ -1214,12 +1200,18 @@ function efiledash_renderTabelSekolahLengkapData(rekapData, namaSekolah) {
     var tbodyHtml = '';
     var totalJml = 0, totalSudah = 0, totalBelum = 0;
     var totalDiproses = 0, totalDisetujui = 0, totalRevisi = 0, totalDitolak = 0;
+    var tableHasData = false;
 
     if (!rekapData || rekapData.length === 0) {
         tbodyHtml = '<tr><td colspan="6" class="text-center text-muted py-4"><i class="fas fa-folder-open fa-2x mb-2 d-block opacity-50"></i>Tidak ada data kategori yang terdaftar atau aktif.</td></tr>';
     } else {
         rekapData.forEach(function(d) {
             var jml = parseInt(d.jml) || 0;
+            // SKIP Kategori yang tidak memiliki target pegawai pada unit kerja ini
+            if (jml === 0) return;
+            
+            tableHasData = true;
+            
             var sudah = parseInt(d.sudah) || 0;
             var belum = Math.max(0, jml - sudah);
             var capaian = jml > 0 ? Math.round((sudah / jml) * 100) : 0;
@@ -1255,18 +1247,60 @@ function efiledash_renderTabelSekolahLengkapData(rekapData, namaSekolah) {
                 '</tr>';
         });
 
-        // Baris Total
-        var totalCapaian = totalJml > 0 ? Math.round((totalSudah / totalJml) * 100) : 0;
-        var bgTot = totalCapaian >= 80 ? 'bg-success' : (totalCapaian >= 50 ? 'bg-warning' : 'bg-danger');
-        tbodyHtml += '<tr class="font-weight-bold" style="background-color: rgba(0,64,133,0.08);">' +
-            '<td><i class="fas fa-sigma mr-1"></i>TOTAL KESELURUHAN</td>' +
-            '<td class="text-center">' + (totalJml === 0 ? '-' : totalJml) + '</td>' +
-            '<td class="text-center text-success">' + (totalSudah === 0 ? '-' : totalSudah) + '</td>' +
-            '<td class="text-center text-danger">' + (totalBelum === 0 ? '-' : totalBelum) + '</td>' +
-            '<td><div class="d-flex align-items-center justify-content-center" style="font-size:13px;"><span class="mr-2 font-weight-bold">' + totalCapaian + '%</span>' +
-            '<div class="progress" style="width:60px;height:8px;border-radius:4px;"><div class="progress-bar ' + bgTot + '" style="width:' + totalCapaian + '%"></div></div></div></td>' +
-            '<td class="text-center"><span class="badge badge-secondary"><i class="fas fa-layer-group mr-1"></i>' + rekapData.length + ' Kategori</span></td>' +
-            '</tr>';
+        if (!tableHasData) {
+            tbodyHtml = '<tr><td colspan="6" class="text-center text-muted py-4"><i class="fas fa-folder-open fa-2x mb-2 d-block opacity-50"></i>Tidak ada dokumen yang diwajibkan untuk unit kerja ini.</td></tr>';
+        } else {
+            // Baris Total
+            var totalCapaian = totalJml > 0 ? Math.round((totalSudah / totalJml) * 100) : 0;
+            var bgTot = totalCapaian >= 80 ? 'bg-success' : (totalCapaian >= 50 ? 'bg-warning' : 'bg-danger');
+            tbodyHtml += '<tr class="font-weight-bold" style="background-color: rgba(0,64,133,0.08);">' +
+                '<td><i class="fas fa-sigma mr-1"></i>TOTAL KESELURUHAN</td>' +
+                '<td class="text-center">' + (totalJml === 0 ? '-' : totalJml) + '</td>' +
+                '<td class="text-center text-success">' + (totalSudah === 0 ? '-' : totalSudah) + '</td>' +
+                '<td class="text-center text-danger">' + (totalBelum === 0 ? '-' : totalBelum) + '</td>' +
+                '<td><div class="d-flex align-items-center justify-content-center" style="font-size:13px;"><span class="mr-2 font-weight-bold">' + totalCapaian + '%</span>' +
+                '<div class="progress" style="width:60px;height:8px;border-radius:4px;"><div class="progress-bar ' + bgTot + '" style="width:' + totalCapaian + '%"></div></div></div></td>' +
+                '<td class="text-center"><span class="badge badge-secondary"><i class="fas fa-layer-group mr-1"></i>Total Kategori</span></td>' +
+                '</tr>';
+        }
+    }
+
+    // Update Metric Cards atas agar sesuai dengan total unit kerja terpilih
+    if (typeof SultanUI !== 'undefined') {
+        SultanUI.stopLottery('#efiledash_cardTotalAsn');
+        SultanUI.stopLottery('#efiledash_cardSudah');
+        SultanUI.stopLottery('#efiledash_cardBelum');
+        SultanUI.stopLottery('#efiledash_cardProgress');
+        SultanUI.stopLottery('#efiledash_cardTotalDokumen');
+        SultanUI.stopLottery('#efiledash_cardDiproses');
+        SultanUI.stopLottery('#efiledash_cardDisetujui');
+        SultanUI.stopLottery('#efiledash_cardRevisi');
+        SultanUI.stopLottery('#efiledash_cardDitolak');
+    }
+
+    var metricCapaian = totalJml > 0 ? Math.round((totalSudah / totalJml) * 100) : 0;
+
+    // Animasi angka
+    if (typeof efiledash_animateValue === 'function') {
+        efiledash_animateValue('efiledash_cardTotalAsn', totalJml);
+        efiledash_animateValue('efiledash_cardSudah', totalSudah);
+        efiledash_animateValue('efiledash_cardBelum', totalBelum);
+        efiledash_animateValue('efiledash_cardProgress', metricCapaian, true);
+        efiledash_animateValue('efiledash_cardTotalDokumen', totalSudah);
+        efiledash_animateValue('efiledash_cardDiproses', totalDiproses);
+        efiledash_animateValue('efiledash_cardDisetujui', totalDisetujui);
+        efiledash_animateValue('efiledash_cardRevisi', totalRevisi);
+        efiledash_animateValue('efiledash_cardDitolak', totalDitolak);
+    } else {
+        $('#efiledash_cardTotalAsn').text(totalJml.toLocaleString('id-ID'));
+        $('#efiledash_cardSudah').text(totalSudah.toLocaleString('id-ID'));
+        $('#efiledash_cardBelum').text(totalBelum.toLocaleString('id-ID'));
+        $('#efiledash_cardProgress').text(metricCapaian + '%');
+        $('#efiledash_cardTotalDokumen').text(totalSudah.toLocaleString('id-ID'));
+        $('#efiledash_cardDiproses').text(totalDiproses.toLocaleString('id-ID'));
+        $('#efiledash_cardDisetujui').text(totalDisetujui.toLocaleString('id-ID'));
+        $('#efiledash_cardRevisi').text(totalRevisi.toLocaleString('id-ID'));
+        $('#efiledash_cardDitolak').text(totalDitolak.toLocaleString('id-ID'));
     }
 
     $('#efiledash_bodyTabelRekapSekolah').html(tbodyHtml);
