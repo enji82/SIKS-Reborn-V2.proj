@@ -709,6 +709,31 @@
         });
       }
       
+      // Sort by last activity descending
+      var parseTime = function(dtStr) {
+        if (!dtStr) return 0;
+        var s = String(dtStr).trim();
+        if (s === "-" || s === "") return 0;
+        s = s.replace(/\//g, '-');
+        var parts = s.split(' ');
+        if (parts.length < 2) return 0;
+        var dateParts = parts[0].split('-');
+        var timeParts = parts[1].split(':');
+        if (dateParts.length < 3 || timeParts.length < 3) return 0;
+        return new Date(dateParts[2], dateParts[1] - 1, dateParts[0], timeParts[0], timeParts[1], timeParts[2]).getTime();
+      };
+      
+      var getLatestTimestamp = function(row) {
+        var t1 = parseTime(row.tgl_upload);
+        var t2 = parseTime(row.tgl_edit);
+        var t3 = parseTime(row.tgl_verif);
+        return Math.max(t1, t2, t3);
+      };
+
+      filtered.sort(function(a, b) {
+        return getLatestTimestamp(b) - getLatestTimestamp(a);
+      });
+      
       renderTable(filtered);
     }
 
