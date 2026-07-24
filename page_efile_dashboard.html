@@ -14,10 +14,10 @@
   #efiledash_tabelRekap_wrapper table td,
   #efiledash_tabelRekap_wrapper table tr { font-size: 13px !important; }
 
-  /* Adaptif Header Tabel Rekap Per Sekolah */
+  /* Adaptif Header Tabel Rekap Per Unit Kerja */
   body:not(.dark-mode) #efiledash_tabelRekap thead th { background-color: #800000 !important; color: #ffffff !important; border-bottom: 3px solid #600000 !important; }
   body.dark-mode #efiledash_tabelRekap thead th { background-color: #2b2e30 !important; color: #f1f3f5 !important; border-bottom: 3px solid #3e444a !important; }
-  
+
   /* Sembunyikan panah sorting DataTables */
   #efiledash_tabelRekap th.sorting::before,
   #efiledash_tabelRekap th.sorting::after,
@@ -30,6 +30,23 @@
   /* Style progress bar table rekap adaptif */
   #efiledash_tabelRekap .progress { background-color: rgba(0, 0, 0, 0.08) !important; }
   body.dark-mode #efiledash_tabelRekap .progress { background-color: rgba(255, 255, 255, 0.15) !important; }
+
+  /* Style Tabel Rekap Per Sekolah */
+  #efiledash_tabelRekapSekolah_wrapper table,
+  #efiledash_tabelRekapSekolah_wrapper table th,
+  #efiledash_tabelRekapSekolah_wrapper table td,
+  #efiledash_tabelRekapSekolah_wrapper table tr { font-size: 13px !important; }
+  body:not(.dark-mode) #efiledash_tabelRekapSekolah thead th { background-color: #004085 !important; color: #ffffff !important; border-bottom: 3px solid #002752 !important; }
+  body.dark-mode #efiledash_tabelRekapSekolah thead th { background-color: #1e3a5f !important; color: #f1f3f5 !important; border-bottom: 3px solid #2c4f7a !important; }
+  #efiledash_tabelRekapSekolah th.sorting::before,
+  #efiledash_tabelRekapSekolah th.sorting::after,
+  #efiledash_tabelRekapSekolah th.sorting_asc::before,
+  #efiledash_tabelRekapSekolah th.sorting_asc::after,
+  #efiledash_tabelRekapSekolah th.sorting_desc::before,
+  #efiledash_tabelRekapSekolah th.sorting_desc::after { display: none !important; }
+  #efiledash_tabelRekapSekolah th { padding-right: 8px !important; }
+  #efiledash_tabelRekapSekolah .progress { background-color: rgba(0, 0, 0, 0.08) !important; }
+  body.dark-mode #efiledash_tabelRekapSekolah .progress { background-color: rgba(255, 255, 255, 0.15) !important; }
 </style>
 
 <section class="content">
@@ -215,6 +232,38 @@
             </div>
           </div>
 
+          <!-- Tabel Rekap Per Sekolah (Muncul saat memilih 1 Unit Kerja spesifik) -->
+          <div class="row mb-4" id="efiledash_containerTabelSekolah" style="display: none;">
+            <div class="col-12">
+              <div class="card-sultan shadow-sm border-0" style="border-left: 4px solid #004085 !important;">
+                <div class="card-header card-header-sultan-adaptive py-3 d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 class="m-0 font-weight-bold" style="font-size: 15px; color: #004085;"><i class="fas fa-school mr-2"></i>Profil Kelengkapan Berkas: <span id="efiledash_lblNamaSekolah" class="text-maroon">-</span></h6>
+                    <small class="text-muted" style="font-size: 11px;">Rekapitulasi seluruh jenis dokumen untuk unit kerja terpilih</small>
+                  </div>
+                </div>
+                <div class="card-body p-3">
+                  <div class="table-responsive">
+                    <table class="table table-bordered table-striped table-hover w-100" id="efiledash_tabelRekapSekolah">
+                      <thead class="text-center">
+                        <tr>
+                          <th>KATEGORI DOKUMEN</th>
+                          <th>PEGAWAI</th>
+                          <th>UNGGAH</th>
+                          <th>BELUM</th>
+                          <th>PROGRES</th>
+                          <th>STATUS</th>
+                        </tr>
+                      </thead>
+                      <tbody id="efiledash_bodyTabelRekapSekolah">
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Sudah Unggah / Belum Unggah Lists -->
           <div class="row">
             <div class="row w-100 m-0">
@@ -289,6 +338,8 @@ var EFILEDASH_USE_NPSN_FILTER = false;
 var EFILEDASH_TAHUN_DEFAULTED = false;
 var EFILEDASH_SKP_TAHUN_DEFAULTED = false;
 var EFILEDASH_JENIS_PERIODE = "TAHUNAN";
+// Cache agregat lintas kategori untuk fitur Profil Per Sekolah
+var EFILEDASH_SEKOLAH_STORE = {}; // key: namaUnit, value: { rekap: [...], sudah: [...], belum: [...] }
 
 $(document).ready(function() {
     $('#efiledash_dashboardState').show();
@@ -414,6 +465,9 @@ function efiledash_loadDataKategori(idKategori, forceRefresh) {
 
         // Simpan ke Cache Client-Side
         EFILEDASH_LOCAL_STORE[idKategori] = data;
+
+        // Agregasi cache lintas kategori untuk fitur Profil Per Sekolah
+        efiledash_updateSekolahStore(idKategori, data);
 
         EFILEDASH_JENIS_PERIODE = data.jenisPeriode || "TAHUNAN";
         EFILEDASH_CACHE_REKAP = data.rekap || [];
@@ -757,6 +811,14 @@ function efiledash_terapkanFilterLokal() {
         $('#efiledash_filterTahun').closest('.sultan-filter-item').show();
     }
 
+    // Jika unit spesifik dipilih (bukan SEMUA), render Tabel Profil Per Sekolah
+    var fUnitCheck = String($('#efiledash_filterUnit').val() || "SEMUA").trim().toUpperCase();
+    if ((EFILEDASH_IS_ADMIN || EFILEDASH_USE_NPSN_FILTER) && fUnitCheck !== "SEMUA" && fUnitCheck !== "") {
+        efiledash_renderTabelPerSekolah(fUnitCheck);
+    } else {
+        $('#efiledash_containerTabelSekolah').hide();
+    }
+
     efiledash_renderDashboard(filterRekap, filterSudah, filterBelum, resolvedTahun);
 }
 
@@ -1009,6 +1071,155 @@ function efiledash_animateValue(id, end, formatPercent) {
         if (progress < 1) { obj.dataset.efileDashAnimId = window.requestAnimationFrame(step); } else { obj.dataset.efileDashAnimId = ""; }
     }
     obj.dataset.efileDashAnimId = window.requestAnimationFrame(step);
+}
+
+// Menyimpan agregasi data rekap setiap kategori ke dalam EFILEDASH_SEKOLAH_STORE per unit kerja
+function efiledash_updateSekolahStore(idKategori, data) {
+    var namaKategori = '';
+    var mapData = EFILEDASH_KATEGORI_MAP.find(function(k) { return k.sheetRekap === idKategori; });
+    if (mapData) namaKategori = mapData.namaKategori;
+    else namaKategori = idKategori;
+
+    var allRows = (data.rekap || []).concat(data.sudah || []).concat(data.belum || []);
+    var unitsSeen = {};
+    allRows.forEach(function(r) {
+        var unit = String(r.unit || '').trim();
+        if (!unit) return;
+        if (!unitsSeen[unit]) unitsSeen[unit] = true;
+    });
+
+    Object.keys(unitsSeen).forEach(function(unit) {
+        if (!EFILEDASH_SEKOLAH_STORE[unit]) {
+            EFILEDASH_SEKOLAH_STORE[unit] = {};
+        }
+        var rekapUnit = (data.rekap || []).filter(function(r) { return String(r.unit || '').trim() === unit; });
+        var sudahUnit = (data.sudah || []).filter(function(r) { return String(r.unit || '').trim() === unit; });
+        var belumUnit = (data.belum || []).filter(function(r) { return String(r.unit || '').trim() === unit; });
+
+        // Hitung total pegawai dari data rekap (jml unik berdasarkan baris rekap, atau dari sudah+belum)
+        var totalPegawai = 0;
+        if (rekapUnit.length > 0) {
+            rekapUnit.forEach(function(r) { totalPegawai += parseInt(r.jml) || 0; });
+            // Ambil nilai maksimum dari satu periode terbaru agar tidak berlipat ganda
+            var maxPegawai = 0;
+            rekapUnit.forEach(function(r) { var v = parseInt(r.jml) || 0; if (v > maxPegawai) maxPegawai = v; });
+            totalPegawai = maxPegawai;
+        } else {
+            // Fallback: distinct NIP dari sudah+belum
+            var setNip = {};
+            sudahUnit.concat(belumUnit).forEach(function(r) { var k = r.nip || r.nama; if (k) setNip[k] = 1; });
+            totalPegawai = Object.keys(setNip).length;
+        }
+
+        var totalSudah = 0;
+        if (rekapUnit.length > 0) {
+            var maxSudah = 0;
+            rekapUnit.forEach(function(r) { var v = parseInt(r.sudah) || 0; if (v > maxSudah) maxSudah = v; });
+            totalSudah = maxSudah;
+        } else {
+            totalSudah = sudahUnit.length;
+        }
+
+        EFILEDASH_SEKOLAH_STORE[unit][namaKategori] = {
+            jml: totalPegawai,
+            sudah: totalSudah,
+            belum: totalPegawai - totalSudah
+        };
+    });
+}
+
+// Render Tabel Profil Kelengkapan Per Sekolah
+function efiledash_renderTabelPerSekolah(unitKey) {
+    // Cari nama sekolah dengan match UPPERCASE
+    var namaSekolah = '';
+    $('#efiledash_filterUnit option').each(function() {
+        if (String($(this).val() || '').trim().toUpperCase() === unitKey.toUpperCase()) {
+            namaSekolah = $(this).text().trim();
+        }
+    });
+    if (!namaSekolah) namaSekolah = unitKey;
+
+    var dataSekolah = EFILEDASH_SEKOLAH_STORE[namaSekolah] || {};
+    // Coba juga match case insensitive
+    if (Object.keys(dataSekolah).length === 0) {
+        Object.keys(EFILEDASH_SEKOLAH_STORE).forEach(function(k) {
+            if (k.trim().toUpperCase() === unitKey.toUpperCase()) {
+                dataSekolah = EFILEDASH_SEKOLAH_STORE[k];
+                namaSekolah = k;
+            }
+        });
+    }
+
+    $('#efiledash_lblNamaSekolah').text(namaSekolah);
+
+    var tbodyHtml = '';
+    var totalJml = 0, totalSudah = 0, totalBelum = 0;
+
+    var listKategori = Object.keys(dataSekolah).sort();
+    if (listKategori.length === 0) {
+        tbodyHtml = '<tr><td colspan="6" class="text-center text-muted py-4"><i class="fas fa-folder-open fa-2x mb-2 d-block opacity-50"></i>Belum ada data kategori yang dimuat untuk unit ini.<br><small>Silakan pilih kategori lain untuk memuat datanya terlebih dahulu.</small></td></tr>';
+    } else {
+        listKategori.forEach(function(kat) {
+            var d = dataSekolah[kat];
+            var jml = parseInt(d.jml) || 0;
+            var sudah = parseInt(d.sudah) || 0;
+            var belum = Math.max(0, jml - sudah);
+            var capaian = jml > 0 ? Math.round((sudah / jml) * 100) : 0;
+
+            totalJml += jml;
+            totalSudah += sudah;
+            totalBelum += belum;
+
+            var bgProgress = capaian >= 80 ? 'bg-success' : (capaian >= 50 ? 'bg-warning' : 'bg-danger');
+            var uiCapaian = '<div class="d-flex align-items-center justify-content-center" style="font-size: 13px;">' +
+                '<span class="mr-2 font-weight-bold">' + capaian + '%</span>' +
+                '<div class="progress" style="width: 60px; height: 8px; border-radius: 4px;">' +
+                '<div class="progress-bar ' + bgProgress + '" role="progressbar" style="width: ' + capaian + '%"></div>' +
+                '</div></div>';
+
+            var statusBadge = '';
+            if (capaian > 95) { statusBadge = '<span class="badge badge-sultan badge-sultan-disetujui"><i class="fas fa-check-double mr-1"></i>Sangat Baik</span>'; }
+            else if (capaian >= 85) { statusBadge = '<span class="badge badge-sultan badge-sultan-revisi"><i class="fas fa-check mr-1"></i>Baik</span>'; }
+            else if (capaian >= 75) { statusBadge = '<span class="badge badge-sultan badge-sultan-diproses"><i class="fas fa-exclamation mr-1"></i>Cukup</span>'; }
+            else { statusBadge = '<span class="badge badge-sultan badge-sultan-ditolak"><i class="fas fa-exclamation-triangle mr-1"></i>Perlu Perhatian</span>'; }
+
+            tbodyHtml += '<tr>' +
+                '<td><b>' + efiledash_esc(kat) + '</b></td>' +
+                '<td class="text-center font-weight-bold">' + (jml === 0 ? '-' : jml) + '</td>' +
+                '<td class="text-center text-success font-weight-bold">' + (sudah === 0 ? '-' : sudah) + '</td>' +
+                '<td class="text-center text-danger font-weight-bold">' + (belum === 0 ? '-' : belum) + '</td>' +
+                '<td>' + uiCapaian + '</td>' +
+                '<td class="text-center">' + statusBadge + '</td>' +
+                '</tr>';
+        });
+
+        // Baris Total
+        var totalCapaian = totalJml > 0 ? Math.round((totalSudah / totalJml) * 100) : 0;
+        var bgTot = totalCapaian >= 80 ? 'bg-success' : (totalCapaian >= 50 ? 'bg-warning' : 'bg-danger');
+        tbodyHtml += '<tr class="font-weight-bold" style="background-color: rgba(0,64,133,0.08);">' +
+            '<td><i class="fas fa-sigma mr-1"></i>TOTAL KESELURUHAN</td>' +
+            '<td class="text-center">' + (totalJml === 0 ? '-' : totalJml) + '</td>' +
+            '<td class="text-center text-success">' + (totalSudah === 0 ? '-' : totalSudah) + '</td>' +
+            '<td class="text-center text-danger">' + (totalBelum === 0 ? '-' : totalBelum) + '</td>' +
+            '<td><div class="d-flex align-items-center justify-content-center" style="font-size:13px;"><span class="mr-2 font-weight-bold">' + totalCapaian + '%</span>' +
+            '<div class="progress" style="width:60px;height:8px;border-radius:4px;"><div class="progress-bar ' + bgTot + '" style="width:' + totalCapaian + '%"></div></div></div></td>' +
+            '<td class="text-center"><span class="badge badge-secondary"><i class="fas fa-layer-group mr-1"></i>' + listKategori.length + ' Kategori</span></td>' +
+            '</tr>';
+    }
+
+    $('#efiledash_bodyTabelRekapSekolah').html(tbodyHtml);
+
+    if ($.fn.DataTable.isDataTable('#efiledash_tabelRekapSekolah')) {
+        $('#efiledash_tabelRekapSekolah').DataTable().destroy();
+    }
+    if (listKategori.length > 0) {
+        $('#efiledash_tabelRekapSekolah').DataTable({
+            "paging": false, "lengthChange": false, "searching": false, "ordering": false, "info": false, "autoWidth": false,
+            "language": { "emptyTable": "Tidak ada data." }
+        });
+    }
+
+    $('#efiledash_containerTabelSekolah').show();
 }
 
 function efiledash_salinKeWA() {
