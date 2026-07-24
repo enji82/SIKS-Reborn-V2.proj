@@ -1331,6 +1331,9 @@ function toggleAktifMasterKategori(idKat, aktifBaru) {
     var shKat = getSheet(KONFIG_EFILE.DB_KEY, "Master_Kategori_Efile");
     if (!shKat) return JSON.stringify({ success: false, message: "Sheet tidak ditemukan." });
     var dataKat = shKat.getDataRange().getDisplayValues();
+    var shKat = getSheet(KONFIG_EFILE.DB_KEY, "Master_Kategori_Efile");
+    if (!shKat) return JSON.stringify({ success: false, message: "Sheet tidak ditemukan." });
+    var dataKat = shKat.getDataRange().getDisplayValues();
     for (var i = 1; i < dataKat.length; i++) {
       if (String(dataKat[i][0]).trim().toUpperCase() === String(idKat).trim().toUpperCase()) {
         shKat.getRange(i + 1, 7).setValue(aktifBaru ? "TRUE" : "FALSE");
@@ -1344,5 +1347,132 @@ function toggleAktifMasterKategori(idKat, aktifBaru) {
     return JSON.stringify({ success: false, message: e.message });
   } finally {
     lock.releaseLock();
+  }
+}
+
+/**
+ * Mengambil status rekap kelengkapan untuk seluruh kategori dokumen bagi suatu Unit Kerja / NPSN tertentu.
+ * Digunakan untuk tab 'Unit Kerja' di Dashboard.
+ */
+function getEfileDashboardUnitLengkap(npsn, tahun) {
+  try {
+    if (!npsn || npsn === "SEMUA") {
+      return JSON.stringify({ success: false, message: "Pilih sekolah/unit kerja terlebih dahulu." });
+    }
+    
+    // 1. Ambil daftar PTK untuk Unit Kerja ini
+    var ptkList = efileGetSharedDaftarPtk(npsn);
+    var totalPegawai = ptkList.length;
+    if (totalPegawai === 0) {
+      return JSON.stringify({ success: true, rekap: [], totalPegawai: 0 });
+    }
+
+    // Bangun peta lookup PTK untuk pencocokan cepat
+    var ptkLookup = {};
+    ptkList.forEach(function(p) {
+      ptkLookup[String(p.id_ptk).trim()] = p;
+      if (p.nip && p.nip !== "-") ptkLookup[String(p.nip).trim()] = p;
+      if (p.nama) ptkLookup[String(p.nama).trim().toUpperCase()] = p;
+    });
+
+    // 2. Ambil seluruh kategori aktif
+    var shKat = getSheet(KONFIG_EFILE.DB_KEY, "Master_Kategori_Efile");
+    var dataKat = shKat ? shKat.getDataRange().getDisplayValues() : [];
+    var listKategori = [];
+    for (var i = 1; i < dataKat.length; i++) {
+      var idKat = String(dataKat[i][0]).trim();
+      var namaKat = String(dataKat[i][1]).trim();
+      var showDash = String(dataKat[i][8] || "TRUE").trim().toUpperCase() !== "FALSE";
+      if (idKat && showDash) {
+        listKategori.push({
+          id: idKat,
+          nama: namaKat,
+          jenisPeriode: String(dataKat[i][4] || "TAHUNAN").toUpperCase(),
+          targetJenjang: String(dataKat[i][10] || "ALL").split(",").map(function(s) { return s.trim().toUpperCase(); }),
+          targetKepeg: String(dataKat[i][11] || "ALL").split(",").map(function(s) { return s.trim().toUpperCase(); }),
+          targetTugas: String(dataKat[i][12] || "ALL").split(",").map(function(s) { return s.trim().toUpperCase(); })
+        });
+      }
+    }
+
+    // 3. Ambil data unggahan dari Database_Efile
+    var shEfile = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile");
+    var dataEfile = shEfile ? shEfile.getDataRange().getDisplayValues() : [];
+    
+    // Petakan unggahan berdasarkan Kategori -> PTK ID
+    var uploadMap = {}; // key: idKat + "_" + ptkId
+    for (var k = 1; k < dataEfile.length; k++) {
+      var ePtk = String(dataEfile[k][0]).trim();
+      var ePtkNama = String(dataEfile[k][1]).trim().toUpperCase();
+      var eKat = String(dataEfile[k][2]).trim();
+      var eThn = String(dataEfile[k][4]).trim();
+      var eStatus = String(dataEfile[k][7]).trim();
+
+      // Filter Tahun jika bukan SEMUA
+      if (tahun && tahun !== "SEMUA") {
+        if (eThn !== tahun && !eThn.includes(tahun)) continue;
+      }
+
+      var matchedPtk = ptkLookup[ePtk] || ptkLookup[ePtkNama];
+      if (matchedPtk) {
+        var mapKey = eKat + "_" + matchedPtk.id_ptk;
+        // Simpan status unggahan
+        uploadMap[mapKey] = eStatus;
+      }
+    }
+
+    // 4. Hitung rekapitulasi capaian untuk setiap Kategori
+    var rekapResult = [];
+    listKategori.forEach(function(kat) {
+      // Saring target pegawai sekolah yang cocok dengan kategori ini berdasarkan klasifikasi jenjang/kepeg/tugas
+      var targetPegawaiKategori = ptkList.filter(function(p) {
+        if (kat.targetJenjang.length > 0 && kat.targetJenjang[0] !== "ALL") {
+          if (kat.targetJenjang.indexOf(String(p.jenjang || "").toUpperCase()) === -1) return false;
+        }
+        if (kat.targetKepeg.length > 0 && kat.targetKepeg[0] !== "ALL") {
+          if (kat.targetKepeg.indexOf(String(p.status || "").toUpperCase()) === -1) return false;
+        }
+        if (kat.targetTugas.length > 0 && kat.targetTugas[0] !== "ALL") {
+          if (kat.targetTugas.indexOf(String(p.tugas || "").toUpperCase()) === -1) return false;
+        }
+        return true;
+      });
+
+      var jmlTarget = targetPegawaiKategori.length;
+      var jmlUnggah = 0;
+      var jmlDiproses = 0;
+      var jmlDisetujui = 0;
+      var jmlRevisi = 0;
+      var jmlDitolak = 0;
+
+      targetPegawaiKategori.forEach(function(p) {
+        var statusUpload = uploadMap[kat.id + "_" + p.id_ptk];
+        if (statusUpload) {
+          jmlUnggah++;
+          var st = statusUpload.toLowerCase();
+          if (st.includes("setuju") || st.includes("ok") || st.includes("valid")) jmlDisetujui++;
+          else if (st.includes("revisi")) jmlRevisi++;
+          else if (st.includes("tolak") || st.includes("ditolak")) jmlDitolak++;
+          else jmlDiproses++;
+        }
+      });
+
+      var jmlBelum = Math.max(0, jmlTarget - jmlUnggah);
+
+      rekapResult.push({
+        kategori: kat.nama,
+        jml: jmlTarget,
+        sudah: jmlUnggah,
+        belum: jmlBelum,
+        diproses: jmlDiproses,
+        disetujui: jmlDisetujui,
+        revisi: jmlRevisi,
+        ditolak: jmlDitolak
+      });
+    });
+
+    return JSON.stringify({ success: true, rekap: rekapResult, totalPegawai: totalPegawai });
+  } catch(e) {
+    return JSON.stringify({ success: false, message: e.message });
   }
 }

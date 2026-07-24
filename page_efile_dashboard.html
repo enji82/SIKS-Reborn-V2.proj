@@ -54,9 +54,19 @@
     <div class="row justify-content-center">
       <div class="col-12">
 
+        <!-- Switcher Mode Dashboard -->
+        <div class="d-flex justify-content-start mb-3">
+          <button type="button" id="efiledash_btnModeDokumen" class="btn btn-maroon px-4 mr-2 font-weight-bold shadow-sm" style="border-radius: 20px;">
+            <i class="fas fa-file-alt mr-2"></i>Dokumen
+          </button>
+          <button type="button" id="efiledash_btnModeUnit" class="btn btn-outline-secondary px-4 font-weight-bold shadow-sm" style="border-radius: 20px;">
+            <i class="fas fa-building mr-2"></i>Unit Kerja
+          </button>
+        </div>
+
         <div class="sultan-filter-pill-container shadow-sm mb-4 sultan-page-transition">
-          <!-- Filter Kategori -->
-          <div class="sultan-filter-item">
+          <!-- Filter Kategori (Hanya tampil di Mode Dokumen) -->
+          <div class="sultan-filter-item" id="efiledash_filterKategoriContainer">
             <select id="efiledash_filterKategori" class="form-control" aria-label="Pilih Kategori E-File">
               <option value="">- Memuat Kategori... -</option>
             </select>
@@ -232,7 +242,7 @@
             </div>
           </div>
 
-          <!-- Tabel Rekap Per Sekolah (Muncul saat memilih 1 Unit Kerja spesifik) -->
+          <!-- Tabel Rekap Per Sekolah (Muncul saat memilih Mode Unit Kerja & memilih 1 unit) -->
           <div class="row mb-4" id="efiledash_containerTabelSekolah" style="display: none;">
             <div class="col-12">
               <div class="card-sultan shadow-sm border-0" style="border-left: 4px solid #004085 !important;">
@@ -338,8 +348,7 @@ var EFILEDASH_USE_NPSN_FILTER = false;
 var EFILEDASH_TAHUN_DEFAULTED = false;
 var EFILEDASH_SKP_TAHUN_DEFAULTED = false;
 var EFILEDASH_JENIS_PERIODE = "TAHUNAN";
-// Cache agregat lintas kategori untuk fitur Profil Per Sekolah
-var EFILEDASH_SEKOLAH_STORE = {}; // key: namaUnit, value: { rekap: [...], sudah: [...], belum: [...] }
+var EFILEDASH_MODE = "DOKUMEN"; // DOKUMEN atau UNIT
 
 $(document).ready(function() {
     $('#efiledash_dashboardState').show();
@@ -356,12 +365,36 @@ $(document).ready(function() {
         EFILEDASH_USER_NPSN = user.npsn || user.unit || user.username || "";
     } catch(e) { EFILEDASH_USER_NPSN = ""; EFILEDASH_IS_ADMIN = false; }
 
+    // Click handler untuk Mode Switcher
+    $(document).off('click', '#efiledash_btnModeDokumen').on('click', '#efiledash_btnModeDokumen', function() {
+        efiledash_setDashboardMode("DOKUMEN");
+    });
+    $(document).off('click', '#efiledash_btnModeUnit').on('click', '#efiledash_btnModeUnit', function() {
+        efiledash_setDashboardMode("UNIT");
+    });
+
     $(document).off('click', '#efiledash_btnRefresh').on('click', '#efiledash_btnRefresh', function() {
-        var k = $('#efiledash_filterKategori').val();
-        if (k !== "" && k != null) efiledash_loadDataKategori(k, true);
+        if (EFILEDASH_MODE === "DOKUMEN") {
+            var k = $('#efiledash_filterKategori').val();
+            if (k !== "" && k != null) efiledash_loadDataKategori(k, true);
+        } else {
+            var u = $('#efiledash_filterUnit').val();
+            if (u !== "SEMUA" && u !== "") efiledash_loadDataSekolahLengkap(u);
+        }
     });
     $(document).off('change', '#efiledash_filterKategori').on('change', '#efiledash_filterKategori', function() { var k = $(this).val(); if (k) efiledash_loadDataKategori(k); });
-    $(document).off('change', '#efiledash_filterTahun, #efiledash_filterUnit, #efiledash_filterKategoriSkp').on('change', '#efiledash_filterTahun, #efiledash_filterUnit, #efiledash_filterKategoriSkp', efiledash_terapkanFilterLokal);
+    $(document).off('change', '#efiledash_filterTahun, #efiledash_filterUnit, #efiledash_filterKategoriSkp').on('change', '#efiledash_filterTahun, #efiledash_filterUnit, #efiledash_filterKategoriSkp', function() {
+        if (EFILEDASH_MODE === "DOKUMEN") {
+            efiledash_terapkanFilterLokal();
+        } else {
+            var u = $('#efiledash_filterUnit').val();
+            if (u !== "SEMUA" && u !== "") {
+                efiledash_loadDataSekolahLengkap(u);
+            } else {
+                $('#efiledash_containerTabelSekolah').hide();
+            }
+        }
+    });
     $(document).off('click', '#efiledash_btnSalinWa').on('click', '#efiledash_btnSalinWa', efiledash_salinKeWA);
     $(document).off('keyup', '#efiledash_inputCariSudah').on('keyup', '#efiledash_inputCariSudah', function() { var val = $(this).val().toLowerCase(); $('.efiledash-dash-item-sudah').filter(function() { $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1); }); });
     $(document).off('keyup', '#efiledash_inputCariBelum').on('keyup', '#efiledash_inputCariBelum', function() { var val = $(this).val().toLowerCase(); $('.efiledash-dash-item-belum').filter(function() { $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1); }); });
@@ -400,10 +433,20 @@ function efiledash_initMasterAccess() {
             $('#efiledash_filterUnit').empty().append('<option value="SEMUA">- Semua Unit Kerja -</option>').prop('disabled', false);
         }
 
+        // Tembak inisialisasi dropdown tahun default
+        var selectTahun = $('#efiledash_filterTahun');
+        selectTahun.empty().append('<option value="SEMUA">- Semua Tahun -</option>');
+        var currentYear = new Date().getFullYear();
+        for (var y = currentYear; y >= currentYear - 4; y--) {
+            selectTahun.append('<option value="' + y + '">' + y + '</option>');
+        }
+        selectTahun.val(currentYear);
+
         var selectKat = $('#efiledash_filterKategori');
         selectKat.empty();
         EFILEDASH_KATEGORI_MAP.forEach(function(k) { selectKat.append($('<option>', { value: k.sheetRekap, text: k.namaKategori })); });
-        efiledash_loadDataKategori($('#efiledash_filterKategori').val());
+        
+        efiledash_setDashboardMode("DOKUMEN");
 
     }).withFailureHandler(function(err) {
         $('#efiledash_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Terputus: ' + efiledash_esc(err.message) + '</span>');
@@ -465,9 +508,6 @@ function efiledash_loadDataKategori(idKategori, forceRefresh) {
 
         // Simpan ke Cache Client-Side
         EFILEDASH_LOCAL_STORE[idKategori] = data;
-
-        // Agregasi cache lintas kategori untuk fitur Profil Per Sekolah
-        efiledash_updateSekolahStore(idKategori, data);
 
         EFILEDASH_JENIS_PERIODE = data.jenisPeriode || "TAHUNAN";
         EFILEDASH_CACHE_REKAP = data.rekap || [];
@@ -811,14 +851,6 @@ function efiledash_terapkanFilterLokal() {
         $('#efiledash_filterTahun').closest('.sultan-filter-item').show();
     }
 
-    // Jika unit spesifik dipilih (bukan SEMUA), render Tabel Profil Per Sekolah
-    var fUnitCheck = String($('#efiledash_filterUnit').val() || "SEMUA").trim().toUpperCase();
-    if ((EFILEDASH_IS_ADMIN || EFILEDASH_USE_NPSN_FILTER) && fUnitCheck !== "SEMUA" && fUnitCheck !== "") {
-        efiledash_renderTabelPerSekolah(fUnitCheck);
-    } else {
-        $('#efiledash_containerTabelSekolah').hide();
-    }
-
     efiledash_renderDashboard(filterRekap, filterSudah, filterBelum, resolvedTahun);
 }
 
@@ -1073,94 +1105,120 @@ function efiledash_animateValue(id, end, formatPercent) {
     obj.dataset.efileDashAnimId = window.requestAnimationFrame(step);
 }
 
-// Menyimpan agregasi data rekap setiap kategori ke dalam EFILEDASH_SEKOLAH_STORE per unit kerja
-function efiledash_updateSekolahStore(idKategori, data) {
-    var namaKategori = '';
-    var mapData = EFILEDASH_KATEGORI_MAP.find(function(k) { return k.sheetRekap === idKategori; });
-    if (mapData) namaKategori = mapData.namaKategori;
-    else namaKategori = idKategori;
-
-    var allRows = (data.rekap || []).concat(data.sudah || []).concat(data.belum || []);
-    var unitsSeen = {};
-    allRows.forEach(function(r) {
-        var unit = String(r.unit || '').trim();
-        if (!unit) return;
-        if (!unitsSeen[unit]) unitsSeen[unit] = true;
-    });
-
-    Object.keys(unitsSeen).forEach(function(unit) {
-        if (!EFILEDASH_SEKOLAH_STORE[unit]) {
-            EFILEDASH_SEKOLAH_STORE[unit] = {};
-        }
-        var rekapUnit = (data.rekap || []).filter(function(r) { return String(r.unit || '').trim() === unit; });
-        var sudahUnit = (data.sudah || []).filter(function(r) { return String(r.unit || '').trim() === unit; });
-        var belumUnit = (data.belum || []).filter(function(r) { return String(r.unit || '').trim() === unit; });
-
-        // Hitung total pegawai dari data rekap (jml unik berdasarkan baris rekap, atau dari sudah+belum)
-        var totalPegawai = 0;
-        if (rekapUnit.length > 0) {
-            rekapUnit.forEach(function(r) { totalPegawai += parseInt(r.jml) || 0; });
-            // Ambil nilai maksimum dari satu periode terbaru agar tidak berlipat ganda
-            var maxPegawai = 0;
-            rekapUnit.forEach(function(r) { var v = parseInt(r.jml) || 0; if (v > maxPegawai) maxPegawai = v; });
-            totalPegawai = maxPegawai;
+// Mengatur Visibilitas UI sesuai Mode Terpilih (Dokumen vs Unit Kerja)
+function efiledash_setDashboardMode(mode) {
+    EFILEDASH_MODE = mode;
+    
+    if (mode === "DOKUMEN") {
+        // Tombol Active State
+        $('#efiledash_btnModeDokumen').removeClass('btn-outline-secondary').addClass('btn-maroon');
+        $('#efiledash_btnModeUnit').removeClass('btn-maroon').addClass('btn-outline-secondary');
+        
+        // Saring filter-filter yang tampil
+        $('#efiledash_filterKategoriContainer').show();
+        if (EFILEDASH_IS_ADMIN) {
+            $('#efiledash_filterUnitContainer').show();
         } else {
-            // Fallback: distinct NIP dari sudah+belum
-            var setNip = {};
-            sudahUnit.concat(belumUnit).forEach(function(r) { var k = r.nip || r.nama; if (k) setNip[k] = 1; });
-            totalPegawai = Object.keys(setNip).length;
+            $('#efiledash_filterUnitContainer').hide();
         }
-
-        var totalSudah = 0;
-        if (rekapUnit.length > 0) {
-            var maxSudah = 0;
-            rekapUnit.forEach(function(r) { var v = parseInt(r.sudah) || 0; if (v > maxSudah) maxSudah = v; });
-            totalSudah = maxSudah;
+        
+        // Show/Hide tabel yang tepat
+        $('#efiledash_containerTabelUnit').show();
+        $('#efiledash_containerTabelSekolah').hide();
+        
+        // Muat data kategori terpilih
+        efiledash_loadDataKategori($('#efiledash_filterKategori').val());
+    } else {
+        // Mode UNIT KERJA
+        $('#efiledash_btnModeDokumen').removeClass('btn-maroon').addClass('btn-outline-secondary');
+        $('#efiledash_btnModeUnit').removeClass('btn-outline-secondary').addClass('btn-maroon');
+        
+        // Saring filter-filter yang tampil
+        $('#efiledash_filterKategoriContainer').hide();
+        $('#efiledash_filterKategoriSkpContainer').hide();
+        $('#efiledash_filterUnitContainer').show(); // Unit wajib tampil untuk disaring
+        
+        // Show/Hide tabel yang tepat
+        $('#efiledash_containerTabelUnit').hide();
+        
+        var selectUnit = $('#efiledash_filterUnit');
+        // Jika value saat ini SEMUA, minta user memilih unit kerja
+        if (selectUnit.val() === "SEMUA" || selectUnit.val() === "") {
+            // Coba pilih item pertama yang valid di dropdown jika ada
+            var options = $('#efiledash_filterUnit option');
+            if (options.length > 1) {
+                for (var i = 0; i < options.length; i++) {
+                    var val = $(options[i]).val();
+                    if (val !== "SEMUA" && val !== "") {
+                        selectUnit.val(val);
+                        break;
+                    }
+                }
+            }
+        }
+        
+        var curUnit = selectUnit.val();
+        if (curUnit && curUnit !== "SEMUA") {
+            efiledash_loadDataSekolahLengkap(curUnit);
         } else {
-            totalSudah = sudahUnit.length;
+            tbodyHtml = '<tr><td colspan="6" class="text-center text-muted py-4"><i class="fas fa-school fa-2x mb-2 d-block opacity-50"></i>Silakan pilih Unit Kerja/Sekolah terlebih dahulu.</td></tr>';
+            $('#efiledash_bodyTabelRekapSekolah').html(tbodyHtml);
+            $('#efiledash_containerTabelSekolah').show();
         }
-
-        EFILEDASH_SEKOLAH_STORE[unit][namaKategori] = {
-            jml: totalPegawai,
-            sudah: totalSudah,
-            belum: totalPegawai - totalSudah
-        };
-    });
+    }
 }
 
-// Render Tabel Profil Kelengkapan Per Sekolah
-function efiledash_renderTabelPerSekolah(unitKey) {
-    // Cari nama sekolah dengan match UPPERCASE
-    var namaSekolah = '';
-    $('#efiledash_filterUnit option').each(function() {
-        if (String($(this).val() || '').trim().toUpperCase() === unitKey.toUpperCase()) {
-            namaSekolah = $(this).text().trim();
-        }
-    });
-    if (!namaSekolah) namaSekolah = unitKey;
-
-    var dataSekolah = EFILEDASH_SEKOLAH_STORE[namaSekolah] || {};
-    // Coba juga match case insensitive
-    if (Object.keys(dataSekolah).length === 0) {
-        Object.keys(EFILEDASH_SEKOLAH_STORE).forEach(function(k) {
-            if (k.trim().toUpperCase() === unitKey.toUpperCase()) {
-                dataSekolah = EFILEDASH_SEKOLAH_STORE[k];
-                namaSekolah = k;
-            }
-        });
+// Menembak database secara langsung untuk mengambil kelengkapan seluruh kategori di satu Sekolah
+function efiledash_loadDataSekolahLengkap(unitKey) {
+    if (EFILEDASH_PENDING_REQ > 0) return;
+    
+    // Cari NPSN sekolah tersebut dari nama unit
+    var npsn = unitKey; // fallback
+    var optMatched = $('#efiledash_filterUnit option:selected');
+    if (optMatched.length > 0 && optMatched.val() !== "SEMUA") {
+        npsn = optMatched.val();
     }
+    
+    var fTahun = $('#efiledash_filterTahun').val() || "SEMUA";
+    
+    EFILEDASH_PENDING_REQ = 1;
+    var btn = $('#efiledash_btnRefresh'); btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin text-maroon"></i>');
+    $('#efiledash_filterTahun, #efiledash_filterUnit').prop('disabled', true);
+    
+    google.script.run.withSuccessHandler(function(jsonStr) {
+        EFILEDASH_PENDING_REQ = 0;
+        btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
+        $('#efiledash_filterTahun, #efiledash_filterUnit').prop('disabled', false);
+        
+        var res = JSON.parse(jsonStr);
+        if (!res.success) {
+            Sultan.alert('error', 'Gagal memuat', res.message || 'Terjadi kesalahan sistem.');
+            return;
+        }
+        
+        // Render ke tabel sekolah
+        efiledash_renderTabelSekolahLengkapData(res.rekap, unitKey);
+        
+    }).withFailureHandler(function(err) {
+        EFILEDASH_PENDING_REQ = 0;
+        btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
+        $('#efiledash_filterTahun, #efiledash_filterUnit').prop('disabled', false);
+        Sultan.alert('error', 'Koneksi Terputus', err.message);
+    }).getEfileDashboardUnitLengkap(npsn, fTahun);
+}
 
+// Render data sekolah hasil load lengkap backend ke tabel biru navy
+function efiledash_renderTabelSekolahLengkapData(rekapData, namaSekolah) {
     $('#efiledash_lblNamaSekolah').text(namaSekolah);
 
     var tbodyHtml = '';
     var totalJml = 0, totalSudah = 0, totalBelum = 0;
+    var totalDiproses = 0, totalDisetujui = 0, totalRevisi = 0, totalDitolak = 0;
 
-    var listKategori = Object.keys(dataSekolah).sort();
-    if (listKategori.length === 0) {
-        tbodyHtml = '<tr><td colspan="6" class="text-center text-muted py-4"><i class="fas fa-folder-open fa-2x mb-2 d-block opacity-50"></i>Belum ada data kategori yang dimuat untuk unit ini.<br><small>Silakan pilih kategori lain untuk memuat datanya terlebih dahulu.</small></td></tr>';
+    if (!rekapData || rekapData.length === 0) {
+        tbodyHtml = '<tr><td colspan="6" class="text-center text-muted py-4"><i class="fas fa-folder-open fa-2x mb-2 d-block opacity-50"></i>Tidak ada data kategori yang terdaftar atau aktif.</td></tr>';
     } else {
-        listKategori.forEach(function(kat) {
-            var d = dataSekolah[kat];
+        rekapData.forEach(function(d) {
             var jml = parseInt(d.jml) || 0;
             var sudah = parseInt(d.sudah) || 0;
             var belum = Math.max(0, jml - sudah);
@@ -1169,6 +1227,10 @@ function efiledash_renderTabelPerSekolah(unitKey) {
             totalJml += jml;
             totalSudah += sudah;
             totalBelum += belum;
+            totalDiproses += parseInt(d.diproses) || 0;
+            totalDisetujui += parseInt(d.disetujui) || 0;
+            totalRevisi += parseInt(d.revisi) || 0;
+            totalDitolak += parseInt(d.ditolak) || 0;
 
             var bgProgress = capaian >= 80 ? 'bg-success' : (capaian >= 50 ? 'bg-warning' : 'bg-danger');
             var uiCapaian = '<div class="d-flex align-items-center justify-content-center" style="font-size: 13px;">' +
@@ -1184,7 +1246,7 @@ function efiledash_renderTabelPerSekolah(unitKey) {
             else { statusBadge = '<span class="badge badge-sultan badge-sultan-ditolak"><i class="fas fa-exclamation-triangle mr-1"></i>Perlu Perhatian</span>'; }
 
             tbodyHtml += '<tr>' +
-                '<td><b>' + efiledash_esc(kat) + '</b></td>' +
+                '<td><b>' + efiledash_esc(d.kategori) + '</b></td>' +
                 '<td class="text-center font-weight-bold">' + (jml === 0 ? '-' : jml) + '</td>' +
                 '<td class="text-center text-success font-weight-bold">' + (sudah === 0 ? '-' : sudah) + '</td>' +
                 '<td class="text-center text-danger font-weight-bold">' + (belum === 0 ? '-' : belum) + '</td>' +
@@ -1203,7 +1265,7 @@ function efiledash_renderTabelPerSekolah(unitKey) {
             '<td class="text-center text-danger">' + (totalBelum === 0 ? '-' : totalBelum) + '</td>' +
             '<td><div class="d-flex align-items-center justify-content-center" style="font-size:13px;"><span class="mr-2 font-weight-bold">' + totalCapaian + '%</span>' +
             '<div class="progress" style="width:60px;height:8px;border-radius:4px;"><div class="progress-bar ' + bgTot + '" style="width:' + totalCapaian + '%"></div></div></div></td>' +
-            '<td class="text-center"><span class="badge badge-secondary"><i class="fas fa-layer-group mr-1"></i>' + listKategori.length + ' Kategori</span></td>' +
+            '<td class="text-center"><span class="badge badge-secondary"><i class="fas fa-layer-group mr-1"></i>' + rekapData.length + ' Kategori</span></td>' +
             '</tr>';
     }
 
@@ -1212,12 +1274,34 @@ function efiledash_renderTabelPerSekolah(unitKey) {
     if ($.fn.DataTable.isDataTable('#efiledash_tabelRekapSekolah')) {
         $('#efiledash_tabelRekapSekolah').DataTable().destroy();
     }
-    if (listKategori.length > 0) {
+    if (rekapData && rekapData.length > 0) {
         $('#efiledash_tabelRekapSekolah').DataTable({
             "paging": false, "lengthChange": false, "searching": false, "ordering": false, "info": false, "autoWidth": false,
             "language": { "emptyTable": "Tidak ada data." }
         });
     }
+
+    // Update Metric Cards atas agar sesuai dengan total unit kerja terpilih
+    efiledash_animateValue('efiledash_cardTotalAsn', totalJml);
+    efiledash_animateValue('efiledash_cardSudah', totalSudah);
+    efiledash_animateValue('efiledash_cardBelum', totalBelum);
+
+    var pct = totalJml > 0 ? Math.round((totalSudah / totalJml) * 100) : 0;
+    efiledash_animateValue('efiledash_cardProgress', pct, true);
+
+    efiledash_animateValue('efiledash_cardTotalDokumen', totalSudah);
+    efiledash_animateValue('efiledash_cardDiproses', totalDiproses);
+    efiledash_animateValue('efiledash_cardDisetujui', totalDisetujui);
+    efiledash_animateValue('efiledash_cardRevisi', totalRevisi);
+    efiledash_animateValue('efiledash_cardDitolak', totalDitolak);
+
+    var pBar = $('#efiledash_progressBar');
+    pBar.css('width', pct + '%').attr('aria-valuenow', pct);
+    $('#efiledash_progressText').text(pct + '% Selesai');
+    if (pct < 30) pBar.css('background-color', '#d11a2a'); else if (pct < 70) pBar.css('background-color', '#ffc107'); else pBar.css('background-color', '#28a745');
+
+    // Sembunyikan list sudah/belum karena di mode unit kerja kita fokus melihat kategori berkas
+    $('#efiledash_listSudah, #efiledash_listBelum').closest('.col-md-6').parent().hide();
 
     $('#efiledash_containerTabelSekolah').show();
 }
