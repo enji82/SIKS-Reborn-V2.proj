@@ -123,9 +123,9 @@ function perbaikiKategoriBpe() {
  */
 function efileGetSharedDaftarPtk(npsnFilter) {
   var sheets = [
-    { dbKey: "PTK_DB",      sheetName: "Master Data GTK",      jenjang: "SD",   namaCol: 6,  nipCol: 7,  statusCol: 19, tugasCol: 25, colCount: 26 },
-    { dbKey: "PTK_PAUD_DB", sheetName: "Master Data GTK PAUD", jenjang: "PAUD", namaCol: 7,  nipCol: 8,  statusCol: 20, tugasCol: -1, colCount: 26 },
-    { dbKey: "PTK_DB",      sheetName: "Master Data GTK SDS",  jenjang: "SDS",  namaCol: 6,  nipCol: 7,  statusCol: 19, tugasCol: 20, colCount: 26 }
+    { dbKey: "PTK_DB",      sheetName: "Master Data GTK",      jenjang: "SD",   namaCol: 6,  nipCol: 7,  statusCol: 19, tugasCol: 25, colCount: 26, nikCol: 10 },
+    { dbKey: "PTK_PAUD_DB", sheetName: "Master Data GTK PAUD", jenjang: "PAUD", namaCol: 7,  nipCol: 8,  statusCol: 20, tugasCol: -1, colCount: 26, nikCol: 11 },
+    { dbKey: "PTK_DB",      sheetName: "Master Data GTK SDS",  jenjang: "SDS",  namaCol: 6,  nipCol: 7,  statusCol: 19, tugasCol: 20, colCount: 26, nikCol: 10 }
   ];
   var result = [];
   var targetNpsn = String(npsnFilter || "").trim().toUpperCase();
@@ -151,6 +151,7 @@ function efileGetSharedDaftarPtk(npsnFilter) {
         }
         var nama = String(row[s.namaCol] || "").trim();
         var nip  = String(row[s.nipCol]  || "").trim();
+        var nik  = s.nikCol !== undefined ? String(row[s.nikCol] || "").trim().replace(/'/g, "") : "";
         if (!nama) return;
         result.push({
           id_ptk:     String(row[0]).trim(),
@@ -158,6 +159,7 @@ function efileGetSharedDaftarPtk(npsnFilter) {
           unit:       String(row[2] || "").trim(),
           nama:       nama,
           nip:        nip,
+          nik:        nik,
           jenjang:    s.jenjang,
           status:     String(row[s.statusCol] || "").trim(),
           tugas:      (s.tugasCol !== -1 && s.tugasCol < readCol) ? String(row[s.tugasCol] || "").trim() : ""
@@ -210,10 +212,12 @@ function getEfileData(npsnFilter) {
             unit: p.unit,
             status: p.status,
             nama: p.nama,
-            nip: p.nip
+            nip: p.nip,
+            nik: p.nik
         };
         ptkMap[p.id_ptk] = info;
         if (p.nip) ptkMap[p.nip] = info; // Fallback mapping NIP
+        if (p.nik) ptkMap[p.nik] = info; // Fallback mapping NIK
         if (p.nama) ptkMap[p.nama.toUpperCase()] = info; // Fallback mapping nama
     });
 
@@ -440,6 +444,7 @@ function verifikasiEfileData(rowId, status, catatan, adminName) {
     values[6] = adminName;  // Kolom 14
     
     range.setValues([values]);
+    SpreadsheetApp.flush(); // Pastikan data langsung terkomit ke spreadsheet
     
     try {
         onEfileDataChange(npsn);
@@ -830,6 +835,11 @@ function getEfileDashboardData(idKategori, namaKategori, forceRefresh) {
       if (ptk.nip && String(ptk.nip).trim() !== "" && String(ptk.nip).trim() !== "-") {
         ptkLookupMap[String(ptk.nip).trim()] = ptk.id;
         ptkByNip[String(ptk.nip).trim()] = ptk.id;
+      }
+      
+      // Key 2b: NIK (kolom K master GTK) jika ada
+      if (ptk.nik && String(ptk.nik).trim() !== "" && String(ptk.nik).trim() !== "-") {
+        ptkLookupMap[String(ptk.nik).trim()] = ptk.id;
       }
       
       // Key 3: Nama (uppercase) jika ada
@@ -1360,6 +1370,9 @@ function getEfileDashboardUnitLengkap(npsn, tahun) {
       if (p.nip && p.nip !== "-") {
         ptkLookup[String(p.nip).trim()] = p;
         ptkByNip[String(p.nip).trim()] = p;
+      }
+      if (p.nik && p.nik !== "-") {
+        ptkLookup[String(p.nik).trim()] = p;
       }
       if (p.nama) {
         ptkLookup[String(p.nama).trim().toUpperCase()] = p;
