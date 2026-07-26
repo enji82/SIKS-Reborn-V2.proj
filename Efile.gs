@@ -302,19 +302,31 @@ function getEfileData(npsnFilter) {
       function parseDateTime(dStr) {
         if (!dStr || dStr === "-" || String(dStr).trim() === "") return 0;
         try {
-          // Format standar aplikasi: "dd-MM-yyyy HH:mm:ss"
+          dStr = String(dStr).replace(/'/g, "").trim();
           var p = dStr.split(" ");
-          var dateParts = p[0].split("-");
+          if (!p[0]) return 0;
+          
+          var dateParts = p[0].split(/[-/]/);
+          if (dateParts.length < 3) return 0;
+          
           var timeParts = p[1] ? p[1].split(":") : ["00", "00", "00"];
-          // Date constructor: (year, monthIndex, day, hours, minutes, seconds)
-          var d = new Date(
-            parseInt(dateParts[2]), 
-            parseInt(dateParts[1]) - 1, 
-            parseInt(dateParts[0]), 
-            parseInt(timeParts[0] || 0), 
-            parseInt(timeParts[1] || 0), 
-            parseInt(timeParts[2] || 0)
-          );
+          
+          var year, month, day;
+          if (dateParts[0].length === 4) {
+            year = parseInt(dateParts[0], 10);
+            month = parseInt(dateParts[1], 10) - 1;
+            day = parseInt(dateParts[2], 10);
+          } else {
+            year = parseInt(dateParts[2], 10);
+            month = parseInt(dateParts[1], 10) - 1;
+            day = parseInt(dateParts[0], 10);
+          }
+          
+          var hours = parseInt(timeParts[0] || 0, 10);
+          var minutes = parseInt(timeParts[1] || 0, 10);
+          var seconds = parseInt(timeParts[2] || 0, 10);
+          
+          var d = new Date(year, month, day, hours, minutes, seconds);
           return d.getTime() || 0;
         } catch(e) {
           return 0;
