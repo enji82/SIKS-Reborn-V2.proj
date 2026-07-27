@@ -852,3 +852,55 @@ function seragam_getPenerimaanDetail(npsn, tahun, tahap, jenisSeragam) {
     return JSON.stringify({ success: false, message: e.message });
   }
 }
+
+/**
+ * One-time utility to migrate files uploaded to wrong folders
+ */
+function seragam_migrasiBerkasPenyerahan() {
+  var results = [];
+  try {
+    var sheet = getOrCreateSheetSeragam("Laporan_Penyerahan");
+    var values = sheet.getDataRange().getDisplayValues();
+    
+    var folderSpTarget = DriveApp.getFolderById(FOLDER_CONFIG.SERAGAM_LAPORAN_PENYERAHAN_DOCS);
+    var folderDokTarget = DriveApp.getFolderById(FOLDER_CONFIG.SERAGAM_DOKUMENTASI_PENYERAHAN_DOCS);
+    
+    for (var i = 1; i < values.length; i++) {
+      var npsn = values[i][0];
+      var namaSekolah = values[i][1];
+      var idSp = String(values[i][5]).trim(); // Col 6 (index 5) = ID_File_SP
+      var idDoksStr = String(values[i][8]).trim(); // Col 9 (index 8) = ID_File_Dok
+      
+      // Migrasi File SP (Surat Pernyataan)
+      if (idSp && idSp !== "-" && idSp !== "") {
+        try {
+          var fileSp = DriveApp.getFileById(idSp);
+          fileSp.moveTo(folderSpTarget);
+          results.push("Memindahkan SP untuk " + namaSekolah);
+        } catch(e) {
+          // File might already be moved or inaccessible
+        }
+      }
+      
+      // Migrasi File Dokumentasi (bisa beberapa file dipisahkan koma)
+      if (idDoksStr && idDoksStr !== "-" && idDoksStr !== "") {
+        var idDoks = idDoksStr.split(",");
+        idDoks.forEach(function(id) {
+          var trimmedId = id.trim();
+          if (trimmedId) {
+            try {
+              var fileDok = DriveApp.getFileById(trimmedId);
+              fileDok.moveTo(folderDokTarget);
+              results.push("Memindahkan Dokumentasi ID " + trimmedId + " untuk " + namaSekolah);
+            } catch(e) {
+              // File might already be moved or inaccessible
+            }
+          }
+        });
+      }
+    }
+    return JSON.stringify({ success: true, log: results });
+  } catch(e) {
+    return JSON.stringify({ success: false, message: e.message, log: results });
+  }
+}
