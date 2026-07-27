@@ -480,13 +480,26 @@ function verifikasiEfileData(rowId, status, catatan, adminName, idPtk) {
   } catch(e) { return JSON.stringify({ success: false, message: e.message }); } finally { lock.releaseLock(); }
 }
 
-function hapusEfileData(rowId, securityCode) {
+function hapusEfileData(rowId, securityCode, idPtk) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(30000);
     var d = new Date(); var kd = d.getFullYear()+""+String(d.getMonth()+1).padStart(2,'0')+""+String(d.getDate()).padStart(2,'0');
     if (String(securityCode).trim() !== kd) return JSON.stringify({ success: false, message: "Kode Keamanan Salah!" });
     var sheet = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile"); var r = parseInt(rowId);
+
+    // ============================================================
+    // VALIDASI FINGERPRINT: Pastikan rowId benar-benar menunjuk
+    // ke data milik idPtk yang dikirim dari client sebelum dihapus.
+    // ============================================================
+    if (idPtk) {
+      var rowIdPtk = String(sheet.getRange(r, 1).getDisplayValue() || "").trim();
+      if (rowIdPtk !== String(idPtk).trim()) {
+        Logger.log("[EFILE HAPUS MISMATCH] rowId=" + r + " id_ptk_di_sheet=" + rowIdPtk + " id_ptk_client=" + idPtk + " → DIBATALKAN");
+        return JSON.stringify({ success: false, message: "Hapus dibatalkan: data telah bergeser. Silakan refresh halaman (F5) dan coba lagi." });
+      }
+    }
+    // ============================================================
     var npsn = "";
     try {
         npsn = sheet.getRange(r, 12).getDisplayValue();
@@ -505,13 +518,25 @@ function hapusEfileData(rowId, securityCode) {
   } catch(e) { return JSON.stringify({ success: false, message: e.message }); } finally { lock.releaseLock(); }
 }
 
-// VAKSIN NON-DESTRUCTIVE EDIT: fileData bisa kosong (null)
 function perbaikiEfileData(payload, fileData) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(30000);
     var sheet = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile"); var r = parseInt(payload.rowId);
     var oldUrl = sheet.getRange(r, 7).getValue(); var newFileUrl = oldUrl; 
+
+    // ============================================================
+    // VALIDASI FINGERPRINT: Pastikan rowId benar-benar menunjuk
+    // ke data milik id_ptk yang dikirim dari client sebelum diedit.
+    // ============================================================
+    if (payload.id_ptk) {
+      var rowIdPtk = String(sheet.getRange(r, 1).getDisplayValue() || "").trim();
+      if (rowIdPtk !== String(payload.id_ptk).trim()) {
+        Logger.log("[EFILE EDIT MISMATCH] rowId=" + r + " id_ptk_di_sheet=" + rowIdPtk + " id_ptk_client=" + payload.id_ptk + " → DIBATALKAN");
+        return JSON.stringify({ success: false, message: "Penyimpanan dibatalkan: data telah bergeser. Silakan refresh halaman (F5) dan coba lagi." });
+      }
+    }
+    // ============================================================
 
     // Jika user mengunggah file baru
     if (fileData && fileData.data) {
@@ -1241,6 +1266,38 @@ function resetVerifikasiEfile(arrBaris) {
   SpreadsheetApp.flush();
   Logger.log("Reset selesai untuk " + arrBaris.length + " baris.");
 }
+
+/**
+ * PANDUAN PEMULIHAN DATA TERHAPUS
+ * 
+ * Data yang dihapus dengan deleteRow tidak bisa dipulihkan dari GAS.
+ * Gunakan "Version History" Google Sheets:
+ * 1. Buka spreadsheet Database_Efile
+ * 2. File → Version history → See version history
+ * 3. Pilih versi sebelum tanggal penghapusan (misal: 26-07-2026)
+ * 4. Catat data baris yang seharusnya ada
+ * 5. Tambahkan kembali manual atau via fungsi insertRecoveredRow di bawah
+ * 
+ * Fungsi di bawah ini membantu mengecek jumlah baris saat ini
+ * dan membandingkan dengan ID PTK yang seharusnya ada.
+ */
+function cekJumlahDataEfile() {
+  var sheet = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile");
+  var data = sheet.getDataRange().getDisplayValues();
+  var jumlahBaris = data.length - 1; // minus header
+  Logger.log("Jumlah baris data saat ini: " + jumlahBaris);
+  
+  // Hitung per status
+  var statusCount = {};
+  for (var i = 1; i < data.length; i++) {
+    var st = String(data[i][7] || "Diproses").trim();
+    statusCount[st] = (statusCount[st] || 0) + 1;
+  }
+  Logger.log("Rincian per status: " + JSON.stringify(statusCount));
+  return { total: jumlahBaris, statusCount: statusCount };
+}
+
+
 /* ======================================================================
    MODUL E-FILE — FUNGSI HELPER & MASTER KATEGORI (CRUD ADMIN)
    ====================================================================== */
