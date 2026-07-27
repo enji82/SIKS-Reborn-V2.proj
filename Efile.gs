@@ -438,11 +438,27 @@ function simpanEfileBatch(batchData) {
   }
 }
 
-function verifikasiEfileData(rowId, status, catatan, adminName) {
+function verifikasiEfileData(rowId, status, catatan, adminName, idPtk) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(30000);
     var sheet = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile"); var r = parseInt(rowId);
+
+    // ============================================================
+    // VALIDASI FINGERPRINT: Cek apakah kolom A (id_ptk) di baris r
+    // cocok dengan idPtk yang dikirim dari client.
+    // Jika tidak cocok → rowId sudah bergeser (misalnya karena ada
+    // penghapusan baris sebelumnya), tolak operasi dan minta refresh.
+    // ============================================================
+    if (idPtk) {
+      var rowIdPtk = String(sheet.getRange(r, 1).getDisplayValue() || "").trim();
+      if (rowIdPtk !== String(idPtk).trim()) {
+        Logger.log("[EFILE VERIF MISMATCH] rowId=" + r + " id_ptk_di_sheet=" + rowIdPtk + " id_ptk_client=" + idPtk + " → DITOLAK");
+        return JSON.stringify({ success: false, message: "Verifikasi dibatalkan: data telah bergeser. Silakan refresh halaman (F5) dan ulangi verifikasi." });
+      }
+    }
+    // ============================================================
+
     var now = "'" + Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
 
     // Baca NPSN dari kolom L (kolom ke-12) untuk invalidate cache notif
@@ -450,12 +466,11 @@ function verifikasiEfileData(rowId, status, catatan, adminName) {
     try { npsn = String(sheet.getRange(r, 12).getDisplayValue() || "").trim(); } catch(err2) {}
 
     // Tulis hanya kolom yang berubah — TIDAK membaca lalu menulis ulang semua kolom
-    // agar tidak merusak data di kolom J, K, L yang mungkin berformat Date di Sheets
     sheet.getRange(r, 8).setValue(status);    // H: Status
     sheet.getRange(r, 9).setValue(catatan);   // I: Catatan Admin
     sheet.getRange(r, 13).setValue(now);      // M: Tgl Verifikasi
     sheet.getRange(r, 14).setValue(adminName); // N: Verifikator
-    SpreadsheetApp.flush(); // Pastikan data langsung terkomit ke spreadsheet
+    SpreadsheetApp.flush();
 
     try {
         onEfileDataChange(npsn);
@@ -1170,6 +1185,62 @@ function onEfileDataChange(npsn) {
   } catch(e) {}
 }
 
+/**
+ * AUDIT: Kembalikan semua baris yang terverifikasi pada tanggal tertentu.
+ * Jalankan fungsi ini dari Apps Script Editor untuk mendeteksi data terkontaminasi.
+ * Contoh: auditVerifikasiEfile("26-07-2026")
+ */
+function auditVerifikasiEfile(tanggal) {
+  var sheet = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile");
+  var data = sheet.getDataRange().getDisplayValues();
+  var hasilAudit = [];
+  var targetTgl = tanggal || Utilities.formatDate(new Date(new Date().getTime() - 86400000), "Asia/Jakarta", "dd-MM-yyyy"); // default: kemarin
+
+  for (var i = 1; i < data.length; i++) {
+    var tglVerif = String(data[i][12] || "").trim().replace(/'/g, "");
+    if (tglVerif.startsWith(targetTgl)) {
+      hasilAudit.push({
+        baris: i + 1,
+        id_ptk: data[i][0],
+        nama_file: data[i][5],
+        status: data[i][7],
+        catatan: data[i][8],
+        tgl_upload: data[i][9],
+        tgl_verif: tglVerif,
+        verifikator: data[i][13]
+      });
+    }
+  }
+
+  Logger.log("=== AUDIT VERIFIKASI TANGGAL " + targetTgl + " ===");
+  Logger.log("Total baris terverifikasi: " + hasilAudit.length);
+  hasilAudit.forEach(function(h) {
+    Logger.log("Baris " + h.baris + " | ID PTK: " + h.id_ptk + " | Status: " + h.status + " | File: " + h.nama_file + " | Oleh: " + h.verifikator);
+  });
+  Logger.log("=== SELESAI ===");
+
+  return hasilAudit;
+}
+
+/**
+ * RESET: Hapus status verifikasi (set ke Diproses) untuk baris tertentu.
+ * Jalankan HANYA setelah konfirmasi baris mana yang terkontaminasi.
+ * Contoh: resetVerifikasiEfile([5, 12, 23])
+ */
+function resetVerifikasiEfile(arrBaris) {
+  if (!arrBaris || arrBaris.length === 0) { Logger.log("Tidak ada baris yang direset."); return; }
+  var sheet = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile");
+  arrBaris.forEach(function(baris) {
+    var r = parseInt(baris);
+    sheet.getRange(r, 8).setValue("Diproses"); // H: Status
+    sheet.getRange(r, 9).setValue("");         // I: Catatan
+    sheet.getRange(r, 13).setValue("");        // M: Tgl Verif
+    sheet.getRange(r, 14).setValue("");        // N: Verifikator
+    Logger.log("Baris " + r + " direset ke Diproses.");
+  });
+  SpreadsheetApp.flush();
+  Logger.log("Reset selesai untuk " + arrBaris.length + " baris.");
+}
 /* ======================================================================
    MODUL E-FILE — FUNGSI HELPER & MASTER KATEGORI (CRUD ADMIN)
    ====================================================================== */
