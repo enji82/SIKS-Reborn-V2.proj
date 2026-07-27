@@ -444,21 +444,19 @@ function verifikasiEfileData(rowId, status, catatan, adminName) {
     lock.waitLock(30000);
     var sheet = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile"); var r = parseInt(rowId);
     var now = "'" + Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
-    
-    // Optimasi API Call: Baca dan tulis kolom 8 s/d 14 (H s/d N) secara sekaligus
-    var range = sheet.getRange(r, 8, 1, 7);
-    var values = range.getValues()[0];
-    
-    var npsn = String(values[4] || "").trim(); // Kolom 12 (NPSN) adalah indeks ke-4
-    
-    values[0] = status;     // Kolom 8
-    values[1] = catatan;    // Kolom 9
-    values[5] = now;        // Kolom 13
-    values[6] = adminName;  // Kolom 14
-    
-    range.setValues([values]);
+
+    // Baca NPSN dari kolom L (kolom ke-12) untuk invalidate cache notif
+    var npsn = "";
+    try { npsn = String(sheet.getRange(r, 12).getDisplayValue() || "").trim(); } catch(err2) {}
+
+    // Tulis hanya kolom yang berubah — TIDAK membaca lalu menulis ulang semua kolom
+    // agar tidak merusak data di kolom J, K, L yang mungkin berformat Date di Sheets
+    sheet.getRange(r, 8).setValue(status);    // H: Status
+    sheet.getRange(r, 9).setValue(catatan);   // I: Catatan Admin
+    sheet.getRange(r, 13).setValue(now);      // M: Tgl Verifikasi
+    sheet.getRange(r, 14).setValue(adminName); // N: Verifikator
     SpreadsheetApp.flush(); // Pastikan data langsung terkomit ke spreadsheet
-    
+
     try {
         onEfileDataChange(npsn);
     } catch(err) {}
