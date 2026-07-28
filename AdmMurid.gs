@@ -610,3 +610,264 @@ function admMurid_getDashboardData(npsnFilter, tahunFilter) {
     return JSON.stringify({ success: false, message: e.message });
   }
 }
+
+/* ==========================================
+   4. NOTIFIKASI MODUL (SPMB & IJAZAH)
+   ========================================== */
+function getNotifikasiSPMB(role, unit) {
+  try {
+    var rLower = String(role || "").toLowerCase();
+    var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
+    var notifList = [];
+    var unreadCount = 0;
+
+    var sheet = getOrCreateSheetAdmMurid("Database_SPMB");
+    if (!sheet) return { count: 0, recent: [] };
+
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) return { count: 0, recent: [] };
+
+    var data = sheet.getDataRange().getDisplayValues();
+
+    for (var i = 1; i < data.length; i++) {
+      var rowNum = i + 1;
+      var status = String(data[i][18] || "Diproses").trim();
+      var isDiproses = (status === "Diproses" || status === "");
+      var isTarget = false;
+      var rNama = String(data[i][1] || "").trim();
+
+      if (isAdmin) {
+        isTarget = isDiproses;
+      } else {
+        isTarget = (rNama.toUpperCase() === String(unit).trim().toUpperCase() && !isDiproses);
+      }
+
+      if (isTarget) {
+        var isRead = false;
+        var readBy = String(data[i][26] || "").trim();
+        var readByList = readBy === "" ? [] : readBy.split(",");
+        if (isAdmin && readByList.indexOf("Admin") > -1) isRead = true;
+        if (!isAdmin && readByList.indexOf("User") > -1) isRead = true;
+
+        var stLower = status.toLowerCase();
+        var isDisetujui = stLower.includes("ok") || stLower.includes("setuju") || stLower.includes("valid") || stLower.includes("selesai");
+
+        if (isAdmin) {
+          if (!isRead) unreadCount++;
+        } else {
+          if (!(isDisetujui && isRead)) {
+            unreadCount++;
+          }
+        }
+
+        if (!(!isAdmin && isDisetujui && isRead)) {
+          notifList.push({
+            rowId: rowNum,
+            source: "SPMB",
+            namaSd: rNama,
+            kriteria: "Laporan SPMB " + data[i][2],
+            status: status,
+            waktu: (data[i][24] && !isDiproses) ? data[i][24] : data[i][20],
+            isRead: isRead
+          });
+        }
+      }
+    }
+
+    return {
+      count: unreadCount,
+      recent: notifList.slice(0, 5)
+    };
+  } catch (e) {
+    Logger.log("Error getNotifikasiSPMB: " + e.message);
+    return { count: 0, recent: [] };
+  }
+}
+
+function getNotifikasiIjazah(role, unit) {
+  try {
+    var rLower = String(role || "").toLowerCase();
+    var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
+    var notifList = [];
+    var unreadCount = 0;
+
+    var sheet = getOrCreateSheetAdmMurid("Database_Ijazah");
+    if (!sheet) return { count: 0, recent: [] };
+
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) return { count: 0, recent: [] };
+
+    var data = sheet.getDataRange().getDisplayValues();
+
+    for (var i = 1; i < data.length; i++) {
+      var rowNum = i + 1;
+      var status = String(data[i][12] || "Diproses").trim();
+      var isDiproses = (status === "Diproses" || status === "");
+      var isTarget = false;
+      var rNama = String(data[i][1] || "").trim();
+
+      if (isAdmin) {
+        isTarget = isDiproses;
+      } else {
+        isTarget = (rNama.toUpperCase() === String(unit).trim().toUpperCase() && !isDiproses);
+      }
+
+      if (isTarget) {
+        var isRead = false;
+        var readBy = String(data[i][20] || "").trim();
+        var readByList = readBy === "" ? [] : readBy.split(",");
+        if (isAdmin && readByList.indexOf("Admin") > -1) isRead = true;
+        if (!isAdmin && readByList.indexOf("User") > -1) isRead = true;
+
+        var stLower = status.toLowerCase();
+        var isDisetujui = stLower.includes("ok") || stLower.includes("setuju") || stLower.includes("valid") || stLower.includes("selesai");
+
+        if (isAdmin) {
+          if (!isRead) unreadCount++;
+        } else {
+          if (!(isDisetujui && isRead)) {
+            unreadCount++;
+          }
+        }
+
+        if (!(!isAdmin && isDisetujui && isRead)) {
+          notifList.push({
+            rowId: rowNum,
+            source: "Ijazah",
+            namaSd: rNama,
+            kriteria: "Cetak Ijazah " + data[i][2],
+            status: status,
+            waktu: (data[i][18] && !isDiproses) ? data[i][18] : data[i][14],
+            isRead: isRead
+          });
+        }
+      }
+    }
+
+    return {
+      count: unreadCount,
+      recent: notifList.slice(0, 5)
+    };
+  } catch (e) {
+    Logger.log("Error getNotifikasiIjazah: " + e.message);
+    return { count: 0, recent: [] };
+  }
+}
+
+function admMurid_tandaiNotifSpmbDibaca(rowId, role) {
+  try {
+    var sheet = getOrCreateSheetAdmMurid("Database_SPMB");
+    var rIdx = parseInt(rowId);
+    if (isNaN(rIdx)) return false;
+
+    var currentReadBy = String(sheet.getRange(rIdx, 27).getDisplayValue() || "").trim();
+    var readMark = (role === "Admin") ? "Admin" : "User";
+
+    if (currentReadBy === "") {
+      sheet.getRange(rIdx, 27).setValue(readMark);
+    } else {
+      var list = currentReadBy.split(",");
+      if (list.indexOf(readMark) === -1) {
+        list.push(readMark);
+        sheet.getRange(rIdx, 27).setValue(list.join(","));
+      }
+    }
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+function admMurid_tandaiNotifIjazahDibaca(rowId, role) {
+  try {
+    var sheet = getOrCreateSheetAdmMurid("Database_Ijazah");
+    var rIdx = parseInt(rowId);
+    if (isNaN(rIdx)) return false;
+
+    var currentReadBy = String(sheet.getRange(rIdx, 21).getDisplayValue() || "").trim();
+    var readMark = (role === "Admin") ? "Admin" : "User";
+
+    if (currentReadBy === "") {
+      sheet.getRange(rIdx, 21).setValue(readMark);
+    } else {
+      var list = currentReadBy.split(",");
+      if (list.indexOf(readMark) === -1) {
+        list.push(readMark);
+        sheet.getRange(rIdx, 21).setValue(list.join(","));
+      }
+    }
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+function admMurid_tandaiSemuaNotifSpmbDibaca(role, unit) {
+  try {
+    var sheet = getOrCreateSheetAdmMurid("Database_SPMB");
+    var data = sheet.getDataRange().getDisplayValues();
+    var rLower = String(role || "").toLowerCase();
+    var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
+    var readMark = isAdmin ? "Admin" : "User";
+
+    for (var i = 1; i < data.length; i++) {
+      var status = String(data[i][18] || "Diproses").trim();
+      var isDiproses = (status === "Diproses" || status === "");
+      var isTarget = false;
+      var rNama = String(data[i][1] || "").trim();
+
+      if (isAdmin) {
+        isTarget = isDiproses;
+      } else {
+        isTarget = (rNama.toUpperCase() === String(unit).trim().toUpperCase() && !isDiproses);
+      }
+
+      if (isTarget) {
+        var currentReadBy = String(data[i][26] || "").trim();
+        var list = currentReadBy === "" ? [] : currentReadBy.split(",");
+        if (list.indexOf(readMark) === -1) {
+          list.push(readMark);
+          sheet.getRange(i + 1, 27).setValue(list.join(","));
+        }
+      }
+    }
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+function admMurid_tandaiSemuaNotifIjazahDibaca(role, unit) {
+  try {
+    var sheet = getOrCreateSheetAdmMurid("Database_Ijazah");
+    var data = sheet.getDataRange().getDisplayValues();
+    var rLower = String(role || "").toLowerCase();
+    var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
+    var readMark = isAdmin ? "Admin" : "User";
+
+    for (var i = 1; i < data.length; i++) {
+      var status = String(data[i][12] || "Diproses").trim();
+      var isDiproses = (status === "Diproses" || status === "");
+      var isTarget = false;
+      var rNama = String(data[i][1] || "").trim();
+
+      if (isAdmin) {
+        isTarget = isDiproses;
+      } else {
+        isTarget = (rNama.toUpperCase() === String(unit).trim().toUpperCase() && !isDiproses);
+      }
+
+      if (isTarget) {
+        var currentReadBy = String(data[i][20] || "").trim();
+        var list = currentReadBy === "" ? [] : currentReadBy.split(",");
+        if (list.indexOf(readMark) === -1) {
+          list.push(readMark);
+          sheet.getRange(i + 1, 21).setValue(list.join(","));
+        }
+      }
+    }
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
