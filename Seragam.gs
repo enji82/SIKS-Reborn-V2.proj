@@ -904,3 +904,147 @@ function seragam_migrasiBerkasPenyerahan() {
     return JSON.stringify({ success: false, message: e.message, log: results });
   }
 }
+
+/**
+ * Get notifications for Seragam Penerimaan & Penyerahan
+ */
+function getNotifikasiSeragam(kategori, role, unit) {
+  try {
+    var sheetName = (kategori === "penyerahan") ? "Laporan_Penyerahan" : "Laporan_Penerimaan";
+    var sheet = getOrCreateSheetSeragam(sheetName);
+    var values = sheet.getDataRange().getDisplayValues();
+    var rLower = String(role || "").toLowerCase();
+    var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
+    
+    var notifList = [];
+    var unreadCount = 0;
+    
+    var sdNegeriNpsn = {};
+    if (isAdmin) {
+      try {
+        var schools = seragam_getSekolahList();
+        schools.forEach(function(s) {
+          if (s.jenjang === "SD" && s.status === "NEGERI") {
+            sdNegeriNpsn[s.npsn] = true;
+          }
+        });
+      } catch(e) {}
+    }
+
+    for (var i = 1; i < values.length; i++) {
+      var npsn = String(values[i][0] || "").trim();
+      if (!npsn) continue;
+      if (isAdmin && !sdNegeriNpsn[npsn]) continue;
+      if (!isAdmin && npsn !== String(unit).trim()) continue;
+
+      var status = String(values[i][21] || "DIPROSES").trim().toUpperCase();
+      var isDiproses = (status === "DIPROSES");
+      var isTarget = isAdmin ? isDiproses : !isDiproses;
+      
+      if (isTarget) {
+        var readMark = String(values[i][26] || "").trim(); // Col 27 (index 26)
+        var readByList = readMark.split(",");
+        var mark = isAdmin ? "Admin" : "User";
+        var isRead = (readByList.indexOf(mark) > -1);
+        
+        if (!isRead) {
+          unreadCount++;
+        }
+        
+        var source = (kategori === "penyerahan") ? "Seragam_Penyerahan" : "Seragam_Penerimaan";
+        var tgl = values[i][19] || values[i][9]; // Tgl_Edit atau Tgl_Upload
+        
+        notifList.push({
+          rowId: i + 1,
+          source: source,
+          nama: values[i][1], // Nama_Sekolah
+          jenis: (kategori === "penyerahan" ? "Penyerahan " : "Penerimaan ") + (values[i][12] || "Merah Putih"),
+          status: status,
+          waktu: tgl,
+          isRead: isRead
+        });
+      }
+    }
+    
+    var parseSiabaDateTime = function(dtStr) {
+      if (!dtStr) return 0;
+      var s = String(dtStr).trim();
+      if (s === "-" || s === "") return 0;
+      s = s.replace(/\//g, '-');
+      var parts = s.split(' ');
+      if (parts.length < 2) return 0;
+      var dateParts = parts[0].split('-');
+      var timeParts = parts[1].split(':');
+      if (dateParts.length < 3 || timeParts.length < 3) return 0;
+      return new Date(dateParts[2], dateParts[1] - 1, dateParts[0], timeParts[0], timeParts[1], timeParts[2]).getTime();
+    };
+    
+    notifList.sort(function(a, b) {
+      if (a.isRead !== b.isRead) return a.isRead ? 1 : -1;
+      return parseSiabaDateTime(b.waktu) - parseSiabaDateTime(a.waktu);
+    });
+    
+    return { count: unreadCount, recent: notifList.slice(0, 5) };
+  } catch(e) {
+    return { count: 0, recent: [] };
+  }
+}
+
+function tandaiNotifSeragamDibaca(rowId, kategori, role) {
+  try {
+    var sheetName = (kategori === "penyerahan") ? "Laporan_Penyerahan" : "Laporan_Penerimaan";
+    var sheet = getOrCreateSheetSeragam(sheetName);
+    var r = parseInt(rowId);
+    var mark = (role === "Admin") ? "Admin" : "User";
+    
+    var cur = String(sheet.getRange(r, 27).getDisplayValue() || "").trim(); // Col 27
+    if (cur === "") {
+      sheet.getRange(r, 27).setValue(mark);
+    } else {
+      var l = cur.split(",");
+      if (l.indexOf(mark) === -1) {
+        l.push(mark);
+        sheet.getRange(r, 27).setValue(l.join(","));
+      }
+    }
+    return true;
+  } catch(e) {
+    return false;
+  }
+}
+
+function tandaiSemuaNotifSeragamDibaca_Global(kategori, role, unit) {
+  try {
+    var sheetName = (kategori === "penyerahan") ? "Laporan_Penyerahan" : "Laporan_Penerimaan";
+    var sheet = getOrCreateSheetSeragam(sheetName);
+    var values = sheet.getDataRange().getDisplayValues();
+    var rLower = String(role || "").toLowerCase();
+    var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
+    
+    var mark = isAdmin ? "Admin" : "User";
+    
+    for (var i = 1; i < values.length; i++) {
+      var npsn = String(values[i][0] || "").trim();
+      if (!npsn) continue;
+      if (!isAdmin && npsn !== String(unit).trim()) continue;
+      
+      var cur = String(values[i][26] || "").trim();
+      var l = cur === "" ? [] : cur.split(",");
+      if (l.indexOf(mark) === -1) {
+        l.push(mark);
+        sheet.getRange(i + 1, 27).setValue(l.join(","));
+      }
+    }
+    return true;
+  } catch(e) {
+    return false;
+  }
+}
+
+function getNotifikasiSeragamPenerimaan(role, unit) {
+  return getNotifikasiSeragam("penerimaan", role, unit);
+}
+
+function getNotifikasiSeragamPenyerahan(role, unit) {
+  return getNotifikasiSeragam("penyerahan", role, unit);
+}
