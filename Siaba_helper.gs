@@ -139,6 +139,37 @@ function invalidateNotifCachesFor(role, unit) {
   } catch (e) {}
 }
 
+/**
+ * Invalidasi cache HANYA untuk satu modul spesifik + global cache key.
+ * Gunakan ini setelah simpan/verifikasi agar tidak memicu RESOURCE_EXHAUSTED
+ * (menghindari 16 modul membaca ulang spreadsheet bersamaan).
+ */
+function invalidateNotifCacheForModule(moduleName, role, unit) {
+  try {
+    var cache = CacheService.getScriptCache();
+    var roles = [String(role || "").toLowerCase(), "admin", "verifikator", "korwil", "user"];
+    var units = [String(unit || "").toUpperCase(), ""];
+    
+    var keysToRemove = [
+      // Hapus global cache untuk semua role admin
+      "NOTIF_GLOBAL_admin_",
+      "NOTIF_GLOBAL_verifikator_",
+      "NOTIF_GLOBAL_korwil_"
+    ];
+    if (unit) {
+      keysToRemove.push("NOTIF_GLOBAL_user_" + String(unit).toUpperCase());
+    }
+    // Hapus cache modul spesifik saja (bukan semua modul)
+    roles.forEach(function(r) {
+      units.forEach(function(u) {
+        keysToRemove.push(notifModuleCacheKey(moduleName, r, u));
+      });
+    });
+    
+    cache.removeAll(keysToRemove);
+  } catch (e) {}
+}
+
 /** Invalidasi cache daftar PTK SD. */
 function invalidatePtkSdnCache() {
   invalidateCacheKeys(["ptk_filter_options", "PTK_LIST_SDN"]);

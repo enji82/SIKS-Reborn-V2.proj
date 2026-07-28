@@ -491,10 +491,9 @@ function seragam_saveLaporanCore(payload, tipe) {
       sheet.getRange(lastRow, 16).setValue((payload._totL || 0) + (payload._totP || 0));
     }
 
-    // Hapus cache notifikasi global agar badge Admin langsung muncul
-    if (typeof invalidateNotifCache === 'function') {
-      try { invalidateNotifCache("admin", ""); } catch(ce) {}
-    }
+    // Hapus cache notifikasi hanya modul seragam yang relevan
+    var modName = (tipe === "penyerahan") ? "seragam_penyerahan" : "seragam_penerimaan";
+    try { invalidateNotifCacheForModule(modName, "admin", ""); } catch(ce) {}
 
     return JSON.stringify({ success: true, message: "Laporan " + (tipe === "penyerahan" ? "Penyerahan" : "Penerimaan") + " berhasil disimpan." });
   } catch(e) {
@@ -535,10 +534,9 @@ function seragam_saveVerifikasiCore(payload, tipe) {
       sheet.getRange(row, 27).setValue(readList.join(","));
     }
 
-    // Hapus cache notifikasi global agar badge sidebar langsung terupdate
-    if (typeof invalidateNotifCache === 'function') {
-      try { invalidateNotifCache(payload.user_verif || "admin", ""); } catch(ce) {}
-    }
+    // Hapus cache notifikasi hanya modul seragam yang relevan
+    var modNameV = (tipe === "penyerahan") ? "seragam_penyerahan" : "seragam_penerimaan";
+    try { invalidateNotifCacheForModule(modNameV, payload.user_verif || "admin", ""); } catch(ce) {}
 
     return JSON.stringify({ success: true, message: "Verifikasi Laporan " + (tipe === "penyerahan" ? "Penyerahan" : "Penerimaan") + " berhasil disimpan." });
   } catch(e) {

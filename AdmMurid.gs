@@ -180,10 +180,8 @@ function admMurid_simpanSpmb(payload) {
       ]);
     }
 
-    // Hapus cache notifikasi global agar badge Admin langsung muncul
-    if (typeof invalidateNotifCache === 'function') {
-      try { invalidateNotifCache("admin", ""); } catch(ce) {}
-    }
+    // Hapus cache notifikasi hanya modul SPMB agar badge Admin langsung muncul
+    try { invalidateNotifCacheForModule("spmb", "admin", ""); } catch(ce) {}
 
     return JSON.stringify({ success: true, message: "Data SPMB berhasil disimpan." });
   } catch (e) {
@@ -231,10 +229,8 @@ function admMurid_verifikasiSpmb(rowId, status, catatan, verifikator) {
       sheet.getRange(row, 27).setValue(listSpmb.join(","));
     }
 
-    // Hapus cache notifikasi global agar badge sidebar langsung terupdate
-    if (typeof invalidateNotifCache === 'function') {
-      try { invalidateNotifCache(verifikator, ""); } catch(ce) {}
-    }
+    // Hapus cache notifikasi hanya modul SPMB agar badge sidebar terupdate
+    try { invalidateNotifCacheForModule("spmb", verifikator, ""); } catch(ce) {}
 
     return JSON.stringify({ success: true, message: "Verifikasi SPMB berhasil disimpan." });
   } catch (e) {
@@ -419,9 +415,8 @@ function admMurid_simpanIjazah(payload) {
     }
 
     // Hapus cache notifikasi global agar badge Admin langsung muncul
-    if (typeof invalidateNotifCache === 'function') {
-      try { invalidateNotifCache("admin", ""); } catch(ce) {}
-    }
+    // Hapus cache notifikasi hanya modul Ijazah agar badge Admin langsung muncul
+    try { invalidateNotifCacheForModule("ijazah", "admin", ""); } catch(ce) {}
 
     return JSON.stringify({ success: true, message: "Data Cetak Ijazah berhasil disimpan." });
   } catch (e) {
@@ -476,9 +471,8 @@ function admMurid_verifikasiIjazah(rowId, status, catatan, verifikator) {
     }
 
     // Hapus cache notifikasi global agar badge sidebar langsung terupdate
-    if (typeof invalidateNotifCache === 'function') {
-      try { invalidateNotifCache(verifikator, ""); } catch(ce) {}
-    }
+    // Hapus cache notifikasi hanya modul Ijazah agar badge sidebar terupdate
+    try { invalidateNotifCacheForModule("ijazah", verifikator, ""); } catch(ce) {}
 
     return JSON.stringify({ success: true, message: "Verifikasi Cetak Ijazah berhasil disimpan." });
   } catch (e) {
