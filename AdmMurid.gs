@@ -180,6 +180,11 @@ function admMurid_simpanSpmb(payload) {
       ]);
     }
 
+    // Hapus cache notifikasi global agar badge Admin langsung muncul
+    if (typeof invalidateNotifCache === 'function') {
+      try { invalidateNotifCache("admin", ""); } catch(ce) {}
+    }
+
     return JSON.stringify({ success: true, message: "Data SPMB berhasil disimpan." });
   } catch (e) {
     return JSON.stringify({ success: false, message: e.message });
@@ -218,8 +223,18 @@ function admMurid_verifikasiSpmb(rowId, status, catatan, verifikator) {
     sheet.getRange(row, 19, 1, 2).setValues([[status, catatan]]);
     sheet.getRange(row, 25, 1, 2).setValues([[now, verifikator]]);
     
-    // Set read_by dinas/admin
-    sheet.getRange(row, 27).setValue(verifikator);
+    // Set read_by: tandai sebagai sudah dibaca oleh Admin
+    var currentReadBySpmb = String(sheet.getRange(row, 27).getDisplayValue() || "").trim();
+    var listSpmb = currentReadBySpmb === "" ? [] : currentReadBySpmb.split(",");
+    if (listSpmb.indexOf("Admin") === -1) {
+      listSpmb.push("Admin");
+      sheet.getRange(row, 27).setValue(listSpmb.join(","));
+    }
+
+    // Hapus cache notifikasi global agar badge sidebar langsung terupdate
+    if (typeof invalidateNotifCache === 'function') {
+      try { invalidateNotifCache(verifikator, ""); } catch(ce) {}
+    }
 
     return JSON.stringify({ success: true, message: "Verifikasi SPMB berhasil disimpan." });
   } catch (e) {
@@ -403,6 +418,11 @@ function admMurid_simpanIjazah(payload) {
       ]);
     }
 
+    // Hapus cache notifikasi global agar badge Admin langsung muncul
+    if (typeof invalidateNotifCache === 'function') {
+      try { invalidateNotifCache("admin", ""); } catch(ce) {}
+    }
+
     return JSON.stringify({ success: true, message: "Data Cetak Ijazah berhasil disimpan." });
   } catch (e) {
     return JSON.stringify({ success: false, message: e.message });
@@ -446,14 +466,26 @@ function admMurid_verifikasiIjazah(rowId, status, catatan, verifikator) {
     sheet.getRange(row, 13, 1, 2).setValues([[status, catatan]]);
     sheet.getRange(row, 19, 1, 2).setValues([[now, verifikator]]);
     
-    // Set read_by
-    sheet.getRange(row, 21).setValue(verifikator);
+    // Set read_by: tandai sebagai sudah dibaca oleh Admin
+    // (verifikator adalah Admin/Korwil, sehingga badge sidebar Admin akan hilang)
+    var currentReadBy = String(sheet.getRange(row, 21).getDisplayValue() || "").trim();
+    var list = currentReadBy === "" ? [] : currentReadBy.split(",");
+    if (list.indexOf("Admin") === -1) {
+      list.push("Admin");
+      sheet.getRange(row, 21).setValue(list.join(","));
+    }
+
+    // Hapus cache notifikasi global agar badge sidebar langsung terupdate
+    if (typeof invalidateNotifCache === 'function') {
+      try { invalidateNotifCache(verifikator, ""); } catch(ce) {}
+    }
 
     return JSON.stringify({ success: true, message: "Verifikasi Cetak Ijazah berhasil disimpan." });
   } catch (e) {
     return JSON.stringify({ success: false, message: e.message });
   }
 }
+
 
 /* ==========================================
    3. DASHBOARD REKAPITULASI ADMINISTRASI MURID
