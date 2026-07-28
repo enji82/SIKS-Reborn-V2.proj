@@ -36,6 +36,14 @@ function getOrCreateSheetAdmMurid(sheetName) {
         "Status", "Catatan", "Tgl_Upload", "Uploader", "Tgl_Edit", "User_Edit", "Tgl_Verif", "Verifikator", "Read_by",
         "Nama_File_Transkrip_Kolektif", "URL_File_Transkrip_Kolektif", "ID_File_Transkrip_Kolektif"
       ]]);
+    } else if (sheetName === "Arsip_Ijazah") {
+      sheet.getRange(1, 1, 1, 19).setValues([[
+        "NPSN", "Nama_Sekolah", "Tahun_Ajaran",
+        "Jumlah_Murid_L", "Jumlah_Murid_P", "Jumlah_Total",
+        "Nama_File_Ijazah", "URL_File_Ijazah", "ID_File_Ijazah",
+        "Nama_File_Transkrip", "URL_File_Transkrip", "ID_File_Transkrip",
+        "Status", "Catatan", "Tgl_Upload", "Uploader", "Tgl_Edit", "User_Edit", "Read_by"
+      ]]);
     }
   }
   return sheet;
@@ -895,5 +903,251 @@ function admMurid_tandaiSemuaNotifIjazahDibaca(role, unit) {
     return true;
   } catch (e) {
     return false;
+  }
+}
+
+
+/* ==========================================
+   5. CRUD: ARSIP IJAZAH (SCAN FISIK)
+   ========================================== */
+
+function admMurid_getArsipIjazahData(npsnFilter) {
+  try {
+    var sheet = getOrCreateSheetAdmMurid("Arsip_Ijazah");
+    var values = sheet.getDataRange().getDisplayValues();
+    var result = [];
+    var targetNpsn = String(npsnFilter || "").trim().toUpperCase();
+
+    for (var i = 1; i < values.length; i++) {
+      var rNpsn = String(values[i][0]).trim();
+      var rNama = String(values[i][1]).trim();
+      if (!rNpsn) continue;
+
+      if (!targetNpsn || targetNpsn === "SEMUA" || String(rNpsn).trim() === targetNpsn || rNama.toUpperCase() === targetNpsn) {
+        result.push({
+          rowId: i + 1,
+          npsn: values[i][0],
+          nama_sekolah: values[i][1],
+          tahun_ajaran: values[i][2],
+          jumlah_murid_l: values[i][3],
+          jumlah_murid_p: values[i][4],
+          jumlah_total: values[i][5],
+          nama_file_ijazah: values[i][6],
+          url_file_ijazah: values[i][7],
+          id_file_ijazah: values[i][8],
+          nama_file_transkrip: values[i][9],
+          url_file_transkrip: values[i][10],
+          id_file_transkrip: values[i][11],
+          status: values[i][12],
+          catatan: values[i][13],
+          tgl_upload: values[i][14],
+          uploader: values[i][15],
+          tgl_edit: values[i][16],
+          user_edit: values[i][17],
+          read_by: values[i][18] || ""
+        });
+      }
+    }
+    return JSON.stringify({ success: true, data: result });
+  } catch (e) {
+    return JSON.stringify({ success: false, message: e.message });
+  }
+}
+
+function admMurid_simpanArsipIjazah(payload) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+    var sheet = getOrCreateSheetAdmMurid("Arsip_Ijazah");
+    var now = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
+
+    var isEdit = payload.rowId ? true : false;
+    var urlIjazah = payload.url_file_ijazah || "";
+    var idIjazah = payload.id_file_ijazah || "";
+    var urlTranskrip = payload.url_file_transkrip || "";
+    var idTranskrip = payload.id_file_transkrip || "";
+
+    // Unggah Scan Ijazah
+    if (payload.fileIjazahBase64) {
+      if (isEdit && idIjazah) {
+        try { DriveApp.getFileById(idIjazah).setTrashed(true); } catch(err) {}
+      }
+      var pFolderIjazah = DriveApp.getFolderById(FOLDER_CONFIG.ARSIP_IJAZAH_DOCS);
+      var blobIjazah = Utilities.newBlob(Utilities.base64Decode(payload.fileIjazahBase64), payload.mimeType_ijazah || "application/pdf", payload.nama_file_ijazah);
+      var fileIjazah = pFolderIjazah.createFile(blobIjazah);
+      fileIjazah.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      urlIjazah = fileIjazah.getUrl();
+      idIjazah = fileIjazah.getId();
+    }
+
+    // Unggah Scan Transkrip
+    if (payload.fileTranskripBase64) {
+      if (isEdit && idTranskrip) {
+        try { DriveApp.getFileById(idTranskrip).setTrashed(true); } catch(err) {}
+      }
+      var pFolderTranskrip = DriveApp.getFolderById(FOLDER_CONFIG.ARSIP_TRANSKRIP_DOCS);
+      var blobTranskrip = Utilities.newBlob(Utilities.base64Decode(payload.fileTranskripBase64), payload.mimeType_transkrip || "application/pdf", payload.nama_file_transkrip);
+      var fileTranskrip = pFolderTranskrip.createFile(blobTranskrip);
+      fileTranskrip.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      urlTranskrip = fileTranskrip.getUrl();
+      idTranskrip = fileTranskrip.getId();
+    }
+
+    var jmlL = parseInt(payload.jumlah_murid_l || 0);
+    var jmlP = parseInt(payload.jumlah_murid_p || 0);
+    var jmlTotal = jmlL + jmlP;
+
+    if (isEdit) {
+      var row = parseInt(payload.rowId);
+      var currentStatus = String(sheet.getRange(row, 13).getValue()).trim();
+      if (currentStatus.toLowerCase() === "disetujui" && (payload.user_login || "").toLowerCase() !== "admin") {
+        return JSON.stringify({ success: false, message: "Arsip yang telah disetujui tidak dapat diedit." });
+      }
+      sheet.getRange(row, 3, 1, 4).setValues([[payload.tahun_ajaran, jmlL, jmlP, jmlTotal]]);
+      sheet.getRange(row, 7, 1, 6).setValues([[payload.nama_file_ijazah || "", urlIjazah, idIjazah, payload.nama_file_transkrip || "", urlTranskrip, idTranskrip]]);
+      sheet.getRange(row, 13).setValue("Diproses");
+      sheet.getRange(row, 17, 1, 2).setValues([[now, payload.user_login]]);
+    } else {
+      // Cek duplikat
+      var existingData = sheet.getDataRange().getDisplayValues();
+      var targetNpsn = String(payload.npsn || "").trim();
+      var targetTa = String(payload.tahun_ajaran || "").trim();
+      for (var i = 1; i < existingData.length; i++) {
+        var rowNpsn = String(existingData[i][0] || "").trim();
+        var rowTa = String(existingData[i][2] || "").trim();
+        if (!rowNpsn || !rowTa) continue;
+        if (rowNpsn === targetNpsn && rowTa === targetTa) {
+          return JSON.stringify({ success: false, message: "Arsip Ijazah untuk Tahun Ajaran " + payload.tahun_ajaran + " sudah ada." });
+        }
+      }
+      sheet.appendRow([
+        payload.npsn, payload.nama_sekolah, payload.tahun_ajaran,
+        jmlL, jmlP, jmlTotal,
+        payload.nama_file_ijazah || "", urlIjazah, idIjazah,
+        payload.nama_file_transkrip || "", urlTranskrip, idTranskrip,
+        "Diproses", "",
+        now, payload.user_login, "", "", ""
+      ]);
+    }
+
+    try { invalidateNotifCacheForModule("arsip_ijazah", "admin", ""); } catch(ce) {}
+    return JSON.stringify({ success: true, message: "Arsip Ijazah berhasil disimpan." });
+  } catch (e) {
+    return JSON.stringify({ success: false, message: e.message });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function admMurid_hapusArsipIjazah(rowId) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+    var sheet = getOrCreateSheetAdmMurid("Arsip_Ijazah");
+    var row = parseInt(rowId);
+    var idIjazah = sheet.getRange(row, 9).getValue();
+    var idTranskrip = sheet.getRange(row, 12).getValue();
+
+    if (idIjazah) {
+      try { DriveApp.getFileById(idIjazah).setTrashed(true); } catch(err) {}
+    }
+    if (idTranskrip) {
+      try { DriveApp.getFileById(idTranskrip).setTrashed(true); } catch(err) {}
+    }
+    sheet.deleteRow(row);
+    try { invalidateNotifCacheForModule("arsip_ijazah", "admin", ""); } catch(ce) {}
+    return JSON.stringify({ success: true, message: "Arsip Ijazah berhasil dihapus." });
+  } catch (e) {
+    return JSON.stringify({ success: false, message: e.message });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function admMurid_verifikasiArsipIjazah(rowId, status, catatan, verifikator) {
+  try {
+    var sheet = getOrCreateSheetAdmMurid("Arsip_Ijazah");
+    var row = parseInt(rowId);
+
+    // Kolom 13=Status, 14=Catatan
+    sheet.getRange(row, 13, 1, 2).setValues([[status, catatan]]);
+
+    // Tandai Read_by Admin (kolom 19)
+    var currentReadBy = String(sheet.getRange(row, 19).getDisplayValue() || "").trim();
+    var list = currentReadBy === "" ? [] : currentReadBy.split(",");
+    if (list.indexOf("Admin") === -1) {
+      list.push("Admin");
+      sheet.getRange(row, 19).setValue(list.join(","));
+    }
+
+    try { invalidateNotifCacheForModule("arsip_ijazah", verifikator, ""); } catch(ce) {}
+    return JSON.stringify({ success: true, message: "Verifikasi Arsip Ijazah berhasil disimpan." });
+  } catch (e) {
+    return JSON.stringify({ success: false, message: e.message });
+  }
+}
+
+function getNotifikasiArsipIjazah(role, unit) {
+  try {
+    var rLower = String(role || "").toLowerCase();
+    var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
+    var notifList = [];
+    var unreadCount = 0;
+
+    var sheet = getOrCreateSheetAdmMurid("Arsip_Ijazah");
+    if (!sheet) return { count: 0, recent: [] };
+
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) return { count: 0, recent: [] };
+
+    var data = sheet.getDataRange().getDisplayValues();
+
+    for (var i = 1; i < data.length; i++) {
+      var rowNum = i + 1;
+      var status = String(data[i][12] || "Diproses").trim();
+      var isDiproses = (status === "Diproses" || status === "");
+      var isTarget = false;
+      var rNama = String(data[i][1] || "").trim();
+
+      if (isAdmin) {
+        isTarget = isDiproses;
+      } else {
+        isTarget = (rNama.toUpperCase() === String(unit).trim().toUpperCase() && !isDiproses);
+      }
+
+      if (isTarget) {
+        var isRead = false;
+        var readBy = String(data[i][18] || "").trim();
+        var readByList = readBy === "" ? [] : readBy.split(",");
+        if (isAdmin && readByList.indexOf("Admin") > -1) isRead = true;
+        if (!isAdmin && readByList.indexOf("User") > -1) isRead = true;
+
+        var stLower = status.toLowerCase();
+        var isDisetujui = stLower.includes("ok") || stLower.includes("setuju") || stLower.includes("valid") || stLower.includes("selesai");
+
+        if (isAdmin) {
+          if (!isRead) unreadCount++;
+        } else {
+          if (!(isDisetujui && isRead)) unreadCount++;
+        }
+
+        if (!(!isAdmin && isDisetujui && isRead)) {
+          notifList.push({
+            rowId: rowNum,
+            source: "ArsipIjazah",
+            namaSd: rNama,
+            kriteria: "Arsip Ijazah " + data[i][2],
+            status: status,
+            waktu: data[i][14],
+            isRead: isRead
+          });
+        }
+      }
+    }
+
+    return { count: unreadCount, recent: notifList.slice(0, 5) };
+  } catch (e) {
+    Logger.log("Error getNotifikasiArsipIjazah: " + e.message);
+    return { count: 0, recent: [] };
   }
 }

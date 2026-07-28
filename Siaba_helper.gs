@@ -103,7 +103,7 @@ function invalidateNotifCachesFor(role, unit) {
   var cache = CacheService.getScriptCache();
   var mods = ["sk", "lapbul", "lupa", "salah", "perdin", "cuti", "surat_cuti", "efile",
     "mutasi_paud", "mutasi_sdn", "mutasi_sds", "perbaikan_gaji",
-    "seragam_penerimaan", "seragam_penyerahan", "spmb", "ijazah"];
+    "seragam_penerimaan", "seragam_penyerahan", "spmb", "ijazah", "arsip_ijazah"];
   var roles = [String(role || "").toLowerCase(), "admin", "verifikator", "korwil", "user"];
   var units = [String(unit || "").toUpperCase(), ""];
   try {

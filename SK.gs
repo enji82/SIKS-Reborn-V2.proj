@@ -708,6 +708,7 @@ function getNotifikasiGlobal(role, unit) {
     callSafe('seragam_penyerahan', getNotifikasiSeragamPenyerahan, role, unit);
     callSafe('spmb', getNotifikasiSPMB, role, unit);
     callSafe('ijazah', getNotifikasiIjazah, role, unit);
+    callSafe('arsip_ijazah', getNotifikasiArsipIjazah, role, unit);
   } catch (err) {
     Logger.log("SULTAN Critical Error: " + err.message);
   }
@@ -750,6 +751,28 @@ function tandaiSemuaNotifGlobalDibaca(role, unit) {
     }
     if (typeof admMurid_tandaiSemuaNotifIjazahDibaca === 'function') {
       admMurid_tandaiSemuaNotifIjazahDibaca(role, unit);
+    }
+    if (typeof admMurid_verifikasiArsipIjazah === 'function') {
+      // Tandai semua arsip ijazah yang belum dibaca
+      try {
+        var arsipNotifs = getNotifikasiArsipIjazah(role, unit);
+        if (arsipNotifs && arsipNotifs.recent) {
+          arsipNotifs.recent.forEach(function(item) {
+            if (!item.isRead) {
+              var rLower = String(role || '').toLowerCase();
+              var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
+              var sheet = getOrCreateSheetAdmMurid('Arsip_Ijazah');
+              var readMark = isAdmin ? 'Admin' : 'User';
+              var current = String(sheet.getRange(item.rowId, 19).getDisplayValue() || '').trim();
+              var list = current === '' ? [] : current.split(',');
+              if (list.indexOf(readMark) === -1) {
+                list.push(readMark);
+                sheet.getRange(item.rowId, 19).setValue(list.join(','));
+              }
+            }
+          });
+        }
+      } catch(ae) {}
     }
     
     // Clear Global Cache
