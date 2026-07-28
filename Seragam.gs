@@ -491,6 +491,11 @@ function seragam_saveLaporanCore(payload, tipe) {
       sheet.getRange(lastRow, 16).setValue((payload._totL || 0) + (payload._totP || 0));
     }
 
+    // Hapus cache notifikasi global agar badge Admin langsung muncul
+    if (typeof invalidateNotifCache === 'function') {
+      try { invalidateNotifCache("admin", ""); } catch(ce) {}
+    }
+
     return JSON.stringify({ success: true, message: "Laporan " + (tipe === "penyerahan" ? "Penyerahan" : "Penerimaan") + " berhasil disimpan." });
   } catch(e) {
     return JSON.stringify({ success: false, message: e.message });
@@ -521,6 +526,19 @@ function seragam_saveVerifikasiCore(payload, tipe) {
     sheet.getRange(row, 23).setValue(payload.catatan || "");
     sheet.getRange(row, 24).setValue(payload.user_verif);
     sheet.getRange(row, 25).setValue(now);
+
+    // Set Read_by (kolom 27): tandai sudah dibaca oleh Admin setelah verifikasi
+    var currentReadBy = String(sheet.getRange(row, 27).getDisplayValue() || "").trim();
+    var readList = currentReadBy === "" ? [] : currentReadBy.split(",");
+    if (readList.indexOf("Admin") === -1) {
+      readList.push("Admin");
+      sheet.getRange(row, 27).setValue(readList.join(","));
+    }
+
+    // Hapus cache notifikasi global agar badge sidebar langsung terupdate
+    if (typeof invalidateNotifCache === 'function') {
+      try { invalidateNotifCache(payload.user_verif || "admin", ""); } catch(ce) {}
+    }
 
     return JSON.stringify({ success: true, message: "Verifikasi Laporan " + (tipe === "penyerahan" ? "Penyerahan" : "Penerimaan") + " berhasil disimpan." });
   } catch(e) {
@@ -933,9 +951,13 @@ function getNotifikasiSeragam(kategori, role, unit) {
 
     for (var i = 1; i < values.length; i++) {
       var npsn = String(values[i][0] || "").trim();
+      var rNama = String(values[i][1] || "").trim();
       if (!npsn) continue;
-      if (isAdmin && !sdNegeriNpsn[npsn]) continue;
-      if (!isAdmin && npsn !== String(unit).trim()) continue;
+      // Admin: filter hanya SD Negeri, tapi jika daftar kosong tampilkan semua
+      var hasNegeriFilter = Object.keys(sdNegeriNpsn).length > 0;
+      if (isAdmin && hasNegeriFilter && !sdNegeriNpsn[npsn]) continue;
+      // User: cocokkan berdasarkan nama sekolah (bukan NPSN), konsisten dengan modul lain
+      if (!isAdmin && rNama.toUpperCase() !== String(unit).trim().toUpperCase()) continue;
 
       var status = String(values[i][21] || "DIPROSES").trim().toUpperCase();
       var isDiproses = (status === "DIPROSES");
@@ -1025,8 +1047,9 @@ function tandaiSemuaNotifSeragamDibaca_Global(kategori, role, unit) {
     
     for (var i = 1; i < values.length; i++) {
       var npsn = String(values[i][0] || "").trim();
+      var rNama = String(values[i][1] || "").trim();
       if (!npsn) continue;
-      if (!isAdmin && npsn !== String(unit).trim()) continue;
+      if (!isAdmin && rNama.toUpperCase() !== String(unit).trim().toUpperCase()) continue;
       
       var cur = String(values[i][26] || "").trim();
       var l = cur === "" ? [] : cur.split(",");
