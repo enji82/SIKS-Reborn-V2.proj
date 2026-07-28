@@ -954,6 +954,24 @@ function admMurid_getArsipIjazahData(npsnFilter) {
   }
 }
 
+/**
+ * Mengambil atau membuat subfolder berdasarkan Tahun Ajaran di dalam folder induk Arsip.
+ * Nama folder: "TA 2025-2026" (tanda "/" diganti "-" agar valid sebagai nama folder Drive).
+ * @param {string} parentFolderId ID folder induk (ARSIP_IJAZAH_DOCS atau ARSIP_TRANSKRIP_DOCS)
+ * @param {string} tahunAjaran Tahun ajaran, misal "2025/2026"
+ * @return {Folder} Folder Google Drive untuk tahun ajaran tersebut
+ */
+function getOrCreateArsipSubFolder(parentFolderId, tahunAjaran) {
+  var parent = DriveApp.getFolderById(parentFolderId);
+  // Nama subfolder: "TA 2025-2026"
+  var folderName = "TA " + String(tahunAjaran).replace(/\//g, "-");
+  var existing = parent.getFoldersByName(folderName);
+  if (existing.hasNext()) {
+    return existing.next();
+  }
+  return parent.createFolder(folderName);
+}
+
 function admMurid_simpanArsipIjazah(payload) {
   var lock = LockService.getScriptLock();
   try {
@@ -967,27 +985,27 @@ function admMurid_simpanArsipIjazah(payload) {
     var urlTranskrip = payload.url_file_transkrip || "";
     var idTranskrip = payload.id_file_transkrip || "";
 
-    // Unggah Scan Ijazah
+    // Unggah Scan Ijazah ke subfolder tahun ajaran
     if (payload.fileIjazahBase64) {
       if (isEdit && idIjazah) {
         try { DriveApp.getFileById(idIjazah).setTrashed(true); } catch(err) {}
       }
-      var pFolderIjazah = DriveApp.getFolderById(FOLDER_CONFIG.ARSIP_IJAZAH_DOCS);
+      var subFolderIjazah = getOrCreateArsipSubFolder(FOLDER_CONFIG.ARSIP_IJAZAH_DOCS, payload.tahun_ajaran);
       var blobIjazah = Utilities.newBlob(Utilities.base64Decode(payload.fileIjazahBase64), payload.mimeType_ijazah || "application/pdf", payload.nama_file_ijazah);
-      var fileIjazah = pFolderIjazah.createFile(blobIjazah);
+      var fileIjazah = subFolderIjazah.createFile(blobIjazah);
       fileIjazah.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
       urlIjazah = fileIjazah.getUrl();
       idIjazah = fileIjazah.getId();
     }
 
-    // Unggah Scan Transkrip
+    // Unggah Scan Transkrip ke subfolder tahun ajaran
     if (payload.fileTranskripBase64) {
       if (isEdit && idTranskrip) {
         try { DriveApp.getFileById(idTranskrip).setTrashed(true); } catch(err) {}
       }
-      var pFolderTranskrip = DriveApp.getFolderById(FOLDER_CONFIG.ARSIP_TRANSKRIP_DOCS);
+      var subFolderTranskrip = getOrCreateArsipSubFolder(FOLDER_CONFIG.ARSIP_TRANSKRIP_DOCS, payload.tahun_ajaran);
       var blobTranskrip = Utilities.newBlob(Utilities.base64Decode(payload.fileTranskripBase64), payload.mimeType_transkrip || "application/pdf", payload.nama_file_transkrip);
-      var fileTranskrip = pFolderTranskrip.createFile(blobTranskrip);
+      var fileTranskrip = subFolderTranskrip.createFile(blobTranskrip);
       fileTranskrip.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
       urlTranskrip = fileTranskrip.getUrl();
       idTranskrip = fileTranskrip.getId();
