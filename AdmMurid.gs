@@ -497,9 +497,11 @@ function admMurid_getDashboardData(npsnFilter, tahunFilter) {
   try {
     var shSpmb = getOrCreateSheetAdmMurid("Database_SPMB");
     var shIjazah = getOrCreateSheetAdmMurid("Database_Ijazah");
+    var shArsip = getOrCreateSheetAdmMurid("Arsip_Ijazah");
     
     var spmbData = shSpmb.getDataRange().getDisplayValues();
     var ijazahData = shIjazah.getDataRange().getDisplayValues();
+    var arsipData = shArsip.getDataRange().getDisplayValues();
     
     var shSekolah = getSheet("USER_DB", "Data_Sekolah");
     var sekolahData = shSekolah ? shSekolah.getDataRange().getDisplayValues() : [];
@@ -537,7 +539,8 @@ function admMurid_getDashboardData(npsnFilter, tahunFilter) {
         nama: s.nama,
         kecamatan: s.kecamatan,
         spmb: { status: "Belum Unggah", fileUrl: "", tglUpload: "", detail: null },
-        ijazah: { status: "Belum Unggah", fileUrl: "", tglUpload: "", detail: null }
+        ijazah: { status: "Belum Unggah", fileUrl: "", tglUpload: "", detail: null },
+        arsip_ijazah: { status: "Belum Unggah", fileUrl: "", tglUpload: "", detail: null }
       };
     });
     
@@ -585,9 +588,32 @@ function admMurid_getDashboardData(npsnFilter, tahunFilter) {
         };
       }
     }
+
+    for (var i = 1; i < arsipData.length; i++) {
+      var npsn = String(arsipData[i][0] || "").trim();
+      var thn = String(arsipData[i][2] || "").trim();
+      var status = String(arsipData[i][12] || "Diproses").trim();
+      
+      if (targetTahun && targetTahun !== "SEMUA" && thn !== targetTahun) continue;
+      
+      if (schoolStatusMap[npsn]) {
+        schoolStatusMap[npsn].arsip_ijazah = {
+          status: status,
+          fileUrl: arsipData[i][7],
+          fileUrlTranskrip: arsipData[i][10],
+          tglUpload: arsipData[i][14],
+          detail: {
+            muridL: parseInt(arsipData[i][3] || 0),
+            muridP: parseInt(arsipData[i][4] || 0),
+            total: parseInt(arsipData[i][5] || 0)
+          }
+        };
+      }
+    }
     
     var spmbStats = { jumlahSekolah: listSekolah.length, sudahUnggah: 0, belumUnggah: 0, diproses: 0, disetujui: 0, revisi: 0, ditolak: 0, muridL: 0, muridP: 0, totalMurid: 0 };
     var ijazahStats = { jumlahSekolah: listSekolah.length, sudahUnggah: 0, belumUnggah: 0, diproses: 0, disetujui: 0, revisi: 0, ditolak: 0, muridL: 0, muridP: 0, totalMurid: 0 };
+    var arsipStats = { jumlahSekolah: listSekolah.length, sudahUnggah: 0, belumUnggah: 0, diproses: 0, disetujui: 0, revisi: 0, ditolak: 0, muridL: 0, muridP: 0, totalMurid: 0 };
     
     Object.keys(schoolStatusMap).forEach(function(npsn) {
       var school = schoolStatusMap[npsn];
@@ -619,7 +645,7 @@ function admMurid_getDashboardData(npsnFilter, tahunFilter) {
         ijazahStats.sudahUnggah++;
         var statKey = ijazah.status.toLowerCase();
         if (statKey === "disetujui") ijazahStats.disetujui++;
-        else if (statKey === "diproses") ijazahStats.diproses++;
+        else if (statKey === "diproses" || statKey === "dicetak") ijazahStats.diproses++;
         else if (statKey === "revisi") ijazahStats.revisi++;
         else if (statKey === "ditolak") ijazahStats.ditolak++;
         
@@ -627,6 +653,25 @@ function admMurid_getDashboardData(npsnFilter, tahunFilter) {
           ijazahStats.muridL += ijazah.detail.muridL;
           ijazahStats.muridP += ijazah.detail.muridP;
           ijazahStats.totalMurid += ijazah.detail.total;
+        }
+      }
+
+      // Arsip Stats
+      var arsip = school.arsip_ijazah;
+      if (arsip.status === "Belum Unggah") {
+        arsipStats.belumUnggah++;
+      } else {
+        arsipStats.sudahUnggah++;
+        var statKey = arsip.status.toLowerCase();
+        if (statKey === "disetujui") arsipStats.disetujui++;
+        else if (statKey === "diproses" || statKey === "dicetak") arsipStats.diproses++;
+        else if (statKey === "revisi") arsipStats.revisi++;
+        else if (statKey === "ditolak") arsipStats.ditolak++;
+        
+        if (arsip.detail) {
+          arsipStats.muridL += arsip.detail.muridL;
+          arsipStats.muridP += arsip.detail.muridP;
+          arsipStats.totalMurid += arsip.detail.total;
         }
       }
     });
@@ -638,6 +683,7 @@ function admMurid_getDashboardData(npsnFilter, tahunFilter) {
       targetSD: countSD,
       spmbStats: spmbStats,
       ijazahStats: ijazahStats,
+      arsipStats: arsipStats,
       detailSekolah: finalSchoolList
     });
   } catch (e) {

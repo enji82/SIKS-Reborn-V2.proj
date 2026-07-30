@@ -32,6 +32,7 @@
                 <select id="admmuriddash_filterSubmenu" class="form-control" aria-label="Pilih Sub Menu">
                     <option value="SPMB" selected>Laporan SPMB</option>
                     <option value="IJAZAH">Cetak Ijazah</option>
+                    <option value="ARSIP_IJAZAH">Arsip Ijazah</option>
                 </select>
                 <i class="fas fa-chevron-down"></i>
             </div>
@@ -401,14 +402,16 @@
   function admmuriddash_terapkanFilterLokal() {
     if (!ADMMURIDDASH_CACHE_DATA) return;
 
-    var submenu = $('#admmuriddash_filterSubmenu').val(); // "SPMB" atau "IJAZAH"
+    var submenu = $('#admmuriddash_filterSubmenu').val(); // "SPMB", "IJAZAH", atau "ARSIP_IJAZAH"
     var fSekolah = $('#admmuriddash_filterSekolah').val() || "SEMUA";
     
     // Set table title
     if (submenu === "SPMB") {
         $('#admmuriddash_tableTitle').html('<i class="fas fa-table mr-2"></i>Rekapitulasi Jumlah Murid Kelas 1');
-    } else {
+    } else if (submenu === "IJAZAH") {
         $('#admmuriddash_tableTitle').html('<i class="fas fa-table mr-2"></i>Rekapitulasi Jumlah Cetak Ijazah');
+    } else {
+        $('#admmuriddash_tableTitle').html('<i class="fas fa-table mr-2"></i>Rekapitulasi Jumlah Arsip Ijazah');
     }
 
     // Filter detailSekolah
@@ -442,7 +445,7 @@
     var listBelum = [];
 
     schools.forEach(function (s) {
-      var doc = (submenu === "SPMB") ? s.spmb : s.ijazah;
+      var doc = (submenu === "SPMB") ? s.spmb : ((submenu === "IJAZAH") ? s.ijazah : s.arsip_ijazah);
       var status = doc.status || "Belum Unggah";
 
       // 1. Hitung Sasaran & Status
@@ -462,10 +465,13 @@
         // Hitung Jml Dokumen
         if (submenu === "SPMB") {
           jmlDokumen++;
-        } else {
+        } else if (submenu === "IJAZAH") {
           if (doc.fileUrl) jmlDokumen++;
           if (doc.fileUrlTranskrip) jmlDokumen++;
           if (doc.fileUrlTranskripKolektif) jmlDokumen++;
+        } else {
+          if (doc.fileUrl) jmlDokumen++;
+          if (doc.fileUrlTranskrip) jmlDokumen++;
         }
       }
 
@@ -549,7 +555,7 @@
         uiSudah = '<li class="list-group-item text-center py-5"><i class="fas fa-exclamation-triangle fa-2x text-warning mb-3 opacity-50"></i><br><div class="font-weight-bold text-dark mb-1" style="font-size:12px;">Belum Ada Data</div></li>'; 
     } else {
         listSudah.forEach(function(s) {
-            var doc = (submenu === "SPMB") ? s.spmb : s.ijazah;
+            var doc = (submenu === "SPMB") ? s.spmb : ((submenu === "IJAZAH") ? s.ijazah : s.arsip_ijazah);
             var t = doc.detail ? (parseInt(doc.detail.total) || 0) : 0;
             uiSudah += '<li class="list-group-item admmuriddash-item-sudah py-2 px-3 hover-sultan">' +
                 '<div class="d-flex justify-content-between align-items-center">' +
@@ -610,7 +616,7 @@
     if (ADMMURIDDASH_BELUM_UNGGAH_LIST.length === 0) { Sultan.notif.info('Semua sekolah sudah mengunggah dokumen.'); return; }
     
     var submenu = $('#admmuriddash_filterSubmenu').val();
-    var selSub = (submenu === "SPMB") ? "Laporan SPMB" : "Cetak Ijazah";
+    var selSub = (submenu === "SPMB") ? "Laporan SPMB" : ((submenu === "IJAZAH") ? "Cetak Ijazah" : "Arsip Ijazah");
     var selTahun = $('#admmuriddash_filterTahun').val() === "SEMUA" ? "Semua Tahun" : $('#admmuriddash_filterTahun').val();
     
     var teks = `🚨 *DAFTAR SEKOLAH BELUM UNGGAH* 🚨\n`;
