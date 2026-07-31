@@ -801,7 +801,7 @@ function getNotifikasiIjazah(role, unit) {
     for (var i = 1; i < data.length; i++) {
       var rowNum = i + 1;
       var status = String(data[i][12] || "Diproses").trim();
-      var isDiproses = (status === "Diproses" || status === "");
+      var isDiproses = (status === "Diproses" || status === "Dicetak" || status === "");
       var isTarget = false;
       var rNama = String(data[i][1] || "").trim();
 
