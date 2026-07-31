@@ -397,6 +397,8 @@ function admMurid_simpanIjazah(payload) {
       ]]);
       sheet.getRange(row, 13).setValue("Diproses");
       sheet.getRange(row, 17, 1, 2).setValues([[now, payload.user_login]]);
+      // Reset read_by saat status kembali menjadi Diproses agar notifikasi Admin muncul kembali
+      sheet.getRange(row, 21).setValue("");
     } else {
       var existingData = sheet.getDataRange().getDisplayValues();
       var targetNpsn = String(payload.npsn || "").trim();
@@ -473,10 +475,27 @@ function admMurid_verifikasiIjazah(rowId, status, catatan, verifikator) {
     // (verifikator adalah Admin/Korwil, sehingga badge sidebar Admin akan hilang)
     var currentReadBy = String(sheet.getRange(row, 21).getDisplayValue() || "").trim();
     var list = currentReadBy === "" ? [] : currentReadBy.split(",");
-    if (list.indexOf("Admin") === -1) {
-      list.push("Admin");
-      sheet.getRange(row, 21).setValue(list.join(","));
+    
+    var stLower = status.toLowerCase();
+    if (stLower === "diproses" || stLower === "") {
+      // Jika status dikembalikan ke Diproses, hapus "Admin" dari read_by agar Admin mendapatkan notifikasi lagi
+      var idxAdmin = list.indexOf("Admin");
+      if (idxAdmin > -1) {
+        list.splice(idxAdmin, 1);
+      }
+    } else {
+      // Jika diverifikasi (Disetujui, Dicetak, dll.), tandai sudah dibaca Admin
+      if (list.indexOf("Admin") === -1) {
+        list.push("Admin");
+      }
+      
+      // Hapus "User" dari read_by jika status berubah dari diproses menjadi status verifikasi (Disetujui/Dicetak dll.) agar User mendapat notifikasi
+      var idxUser = list.indexOf("User");
+      if (idxUser > -1) {
+        list.splice(idxUser, 1);
+      }
     }
+    sheet.getRange(row, 21).setValue(list.join(","));
 
     // Hapus cache notifikasi global agar badge sidebar langsung terupdate
     // Hapus cache notifikasi hanya modul Ijazah agar badge sidebar terupdate
