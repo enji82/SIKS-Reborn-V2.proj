@@ -19,6 +19,20 @@
             </div>
 
             <div class="sultan-filter-item">
+                <select id="efilekelola_filterTahun" class="form-control">
+                    <option value="SEMUA">- Semua Tahun -</option>
+                </select>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+
+            <div class="sultan-filter-item" id="efilekelola_filterPeriodeContainer" style="display: none;">
+                <select id="efilekelola_filterPeriode" class="form-control">
+                    <option value="SEMUA">- Semua Periode -</option>
+                </select>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+
+            <div class="sultan-filter-item">
                 <select id="efilekelola_filterStatus" class="form-control">
                     <option value="SEMUA">- Semua Status -</option>
                     <option value="diproses">Diproses</option>
@@ -321,7 +335,46 @@ $(document).ready(function() {
             }
         });
     });
-    $(document).off('change', '#efilekelola_filterStatus, #efilekelola_filterKategori').on('change', '#efilekelola_filterStatus, #efilekelola_filterKategori', efilekelola_terapkanFilterLokal);
+    $(document).off('change', '#efilekelola_filterStatus, #efilekelola_filterKategori, #efilekelola_filterTahun, #efilekelola_filterPeriode').on('change', '#efilekelola_filterStatus, #efilekelola_filterKategori, #efilekelola_filterTahun, #efilekelola_filterPeriode', efilekelola_terapkanFilterLokal);
+    $(document).on('change', '#efilekelola_filterKategori', function() {
+        var katId = $(this).val();
+        var katData = EFILEKELOLA_MASTER_KAT.find(function(k) { return String(k.idKat).trim() === String(katId).trim(); });
+        var filterPeriodeContainer = $('#efilekelola_filterPeriodeContainer');
+        var filterPer = $('#efilekelola_filterPeriode');
+        
+        filterPer.empty().append('<option value="SEMUA">- Semua Periode -</option>');
+        
+        if (katData) {
+            var jPeriode = String(katData.jenisPeriode || 'TAHUNAN').toUpperCase();
+            // Tampilkan filter periode hanya jika periodenya bukan TAHUNAN atau PERMANEN (karena ini tidak punya sub-periode di data baris)
+            if (jPeriode !== 'TAHUNAN' && !jPeriode.includes('PERMANEN')) {
+                // Cari periode unik khusus untuk kategori ini dari cache data
+                var uniquePeriods = new Set();
+                EFILEKELOLA_CACHE_DATA.forEach(function(row) {
+                    if (String(row.id_kategori).trim() === String(katId).trim() && row.periode && row.periode !== "-") {
+                        uniquePeriods.add(String(row.periode).trim());
+                    }
+                });
+                
+                // Isi dropdown periode
+                Array.from(uniquePeriods).sort().forEach(function(p) {
+                    filterPer.append($('<option>', {value: p, text: p}));
+                });
+                
+                filterPeriodeContainer.show();
+            } else {
+                filterPer.val('SEMUA');
+                filterPeriodeContainer.hide();
+            }
+        } else {
+            // Jika memilih "SEMUA", sembunyikan filter periode
+            filterPer.val('SEMUA');
+            filterPeriodeContainer.hide();
+        }
+        
+        // Picu pembaruan tabel
+        efilekelola_terapkanFilterLokal();
+    });
     if(EFILEKELOLA_IS_ADMIN) $(document).off('change', '#efilekelola_filterUnit').on('change', '#efilekelola_filterUnit', efilekelola_terapkanFilterLokal);
     $(document).off('click', '.efilekelola-btn-catatan').on('click', '.efilekelola-btn-catatan', function() {
         var pesan = $(this).attr('data-pesan');
@@ -586,6 +639,26 @@ function efilekelola_tarikDataServer() {
             var su = $('#efilekelola_filterUnit'); var cu = su.val(); su.empty().append('<option value="SEMUA">- Semua Unit Kerja -</option>');
             Object.keys(un).forEach(function(n) { su.append($('<option>', {value: n, text: un[n]})); }); if(cu) su.val(cu);
         }
+
+        // BIND FILTER TAHUN DINAMIS
+        var uniqueYears = new Set();
+        EFILEKELOLA_CACHE_DATA.forEach(function(row) {
+            if (row.tahun) uniqueYears.add(String(row.tahun).trim());
+        });
+
+        // Set filter Tahun dropdown
+        var filterTh = $('#efilekelola_filterTahun');
+        var curThVal = filterTh.val();
+        filterTh.empty().append('<option value="SEMUA">- Semua Tahun -</option>');
+        Array.from(uniqueYears).sort(function(a,b){ return b - a; }).forEach(function(yr) {
+            filterTh.append($('<option>', {value: yr, text: yr}));
+        });
+        if (curThVal && uniqueYears.has(curThVal)) filterTh.val(curThVal);
+
+        // Reset filter Periode ke SEMUA saat awal tarik data
+        $('#efilekelola_filterPeriode').empty().append('<option value="SEMUA">- Semua Periode -</option>').val('SEMUA');
+        $('#efilekelola_filterPeriodeContainer').hide();
+
         if (!$.fn.DataTable.isDataTable('#efilekelola_tabelUtama')) efilekelola_initDataTables();
         efilekelola_terapkanFilterLokal(); SultanUI.hideLoading('#efilekelola_loadingState'); $('#efilekelola_tableState').show();
         if(EFILEKELOLA_TABEL_INSTANCE) setTimeout(function() { EFILEKELOLA_TABEL_INSTANCE.columns.adjust(); }, 150);
@@ -608,12 +681,19 @@ function efilekelola_initDataTables() {
 
 function efilekelola_terapkanFilterLokal() {
     if (!EFILEKELOLA_TABEL_INSTANCE) return;
-    var fS = $('#efilekelola_filterStatus').val().toLowerCase(); var fK = $('#efilekelola_filterKategori').val(); var fN = EFILEKELOLA_IS_ADMIN ? $('#efilekelola_filterUnit').val() : "";
+    var fS = $('#efilekelola_filterStatus').val().toLowerCase(); 
+    var fK = $('#efilekelola_filterKategori').val(); 
+    var fN = EFILEKELOLA_IS_ADMIN ? $('#efilekelola_filterUnit').val() : "";
+    var fT = $('#efilekelola_filterTahun').val() || "SEMUA";
+    var fP = $('#efilekelola_filterPeriode').val() || "SEMUA";
+
     var hasil = EFILEKELOLA_CACHE_DATA.filter(function(r) {
         var st = String(r.status || "").toLowerCase(); var rn = String(r.npsn || "");
         if (EFILEKELOLA_IS_ADMIN && fN !== "SEMUA" && fN !== "" && rn !== fN) return false;
         if (fK !== "SEMUA" && fK !== "" && String(r.id_kategori) !== fK) return false;
         if (fS !== "semua" && fS !== "") { var ns = "diproses"; if (st.includes('setuju') || st.includes('ok')) ns = "disetujui"; else if (st.includes('revisi')) ns = "revisi"; else if (st.includes('tolak')) ns = "ditolak"; if (ns !== fS) return false; }
+        if (fT !== "SEMUA" && String(r.tahun || "").trim() !== fT) return false;
+        if (fP !== "SEMUA" && String(r.periode || "").trim() !== fP) return false;
         return true;
     }); efilekelola_renderTabel(hasil);
 }
