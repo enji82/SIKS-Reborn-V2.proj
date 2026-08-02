@@ -397,18 +397,23 @@ $(document).ready(function() {
             color: theme.color,
             padding: '1.5rem',
             showConfirmButton: true,
-            showCancelButton: true,
+            showCancelButton: false, // Hilangkan tombol lewati/cancel
+            allowOutsideClick: false, // Cegah tutup dengan klik di luar
+            allowEscapeKey: false, // Cegah tutup dengan tombol ESC
             confirmButtonText: '<i class="fas fa-check mr-1"></i> LANJUT UNGGAH',
-            cancelButtonText: '<i class="fas fa-times mr-1"></i> LEWATI',
             customClass: {
                 popup: 'card-sultan',
-                confirmButton: 'swal2-confirm-sultan',
-                cancelButton: 'btn btn-sm btn-outline-secondary'
+                confirmButton: 'swal2-confirm-sultan disabled' // Tambahkan class disabled di awal
             },
             buttonsStyling: false,
             didOpen: function(popup) {
                 if (popup && popup.parentNode) popup.parentNode.style.zIndex = '105000';
                 EFILEKELOLA_SURVEY_SCANNER = '';
+                
+                // Nonaktifkan tombol confirm secara visual dan fungsi di awal
+                var $btnConfirm = $(popup).find('.swal2-confirm-sultan');
+                $btnConfirm.prop('disabled', true).css({ opacity: 0.5, cursor: 'not-allowed' });
+
                 // Handler klik opsi
                 $(popup).find('.survey-scanner-option').on('click', function() {
                     // Deselect semua
@@ -427,15 +432,22 @@ $(document).ready(function() {
                         .css({ background: optBorderSel, borderColor: optBorderSel })
                         .html('<i class="fas fa-check" style="font-size:13px; color:#fff;"></i>');
                     EFILEKELOLA_SURVEY_SCANNER = $el.find('span').text().trim();
+
+                    // Aktifkan tombol confirm kembali
+                    $btnConfirm.prop('disabled', false).removeClass('disabled').css({ opacity: 1, cursor: 'pointer' });
                 });
             },
             preConfirm: function() {
-                // Boleh lanjut meski tidak memilih
+                if (!EFILEKELOLA_SURVEY_SCANNER) {
+                    Swal.showValidationMessage('Anda wajib memilih salah satu opsi jawaban sebelum melanjutkan!');
+                    return false;
+                }
                 return true;
             }
         }).then(function(res) {
-            // Lanjut buka modal upload baik confirm (OK) maupun cancel (Lewati)
-            efilekelola_bukaModalTambah();
+            if (res.isConfirmed) {
+                efilekelola_bukaModalTambah();
+            }
         });
     }
     $(document).off('change', '#efilekelola_filterStatus, #efilekelola_filterKategori, #efilekelola_filterTahun, #efilekelola_filterPeriode').on('change', '#efilekelola_filterStatus, #efilekelola_filterKategori, #efilekelola_filterTahun, #efilekelola_filterPeriode', efilekelola_terapkanFilterLokal);
