@@ -260,6 +260,7 @@ var EFILEKELOLA_CACHE_DATA = [], EFILEKELOLA_MASTER_PTK = [], EFILEKELOLA_MASTER
 var EFILEKELOLA_USER_AKTIF = "", EFILEKELOLA_IS_ADMIN = false, EFILEKELOLA_UNIT_TERKUNCI = "", EFILEKELOLA_NPSN_TERKUNCI = "", EFILEKELOLA_SELECTED_PTK_FILES = [];
 var EFILEKELOLA_SELECTED_PTK_STATUS = ""; 
 var EFILEKELOLA_SELECTED_PTK_OBJ = null;
+var EFILEKELOLA_SURVEY_SCANNER = "";
 
 $(document).ready(function() {
     $('#efilekelola_tableState').hide(); SultanUI.showLoading('#efilekelola_loadingState');
@@ -331,10 +332,112 @@ $(document).ready(function() {
             }
         }).then(function(res) {
             if (res.isConfirmed) {
-                efilekelola_bukaModalTambah();
+                efilekelola_showSurveyScanner();
             }
         });
     });
+
+    // ================================================================
+    // FUNGSI SURVEY SCANNER — Muncul setelah Panduan OK diklik
+    // ================================================================
+    function efilekelola_showSurveyScanner() {
+        var SURVEY_OPSI = [
+            { id: 'opt_a', teks: 'Ada, kondisi baik, bisa digunakan.' },
+            { id: 'opt_b', teks: 'Ada, kondisi baik, tidak bisa digunakan.' },
+            { id: 'opt_c', teks: 'Ada, kondisi rusak, bisa digunakan.' },
+            { id: 'opt_d', teks: 'Ada, kondisi rusak, tidak bisa digunakan.' },
+            { id: 'opt_e', teks: 'Tidak ada, sudah merencanakan pembelian.' },
+            { id: 'opt_f', teks: 'Tidak ada, belum merencanakan pembelian.' },
+            { id: 'opt_g', teks: 'Tidak ada, tidak merencanakan pembelian.' },
+            { id: 'opt_h', teks: 'Tidak tahu.' }
+        ];
+        // Acak urutan pilihan
+        var shuffled = SURVEY_OPSI.slice().sort(function() { return Math.random() - 0.5; });
+
+        var theme = typeof NotifSultan !== 'undefined' ? NotifSultan.getTheme() : { bg: '#fff', color: '#343a40' };
+        var isDark = theme.bg !== '#fff';
+        var cardBg = isDark ? '#23272a' : '#f8fafc';
+        var cardBorder = isDark ? '#444' : '#dee2e6';
+        var textColor = isDark ? '#e2e8f0' : '#2d3748';
+        var titleColor = isDark ? '#e9ecef' : '#800000';
+        var optBg = isDark ? '#2c3034' : '#ffffff';
+        var optBgSel = isDark ? '#1a2a1a' : '#e8f5e9';
+        var optBorderSel = isDark ? '#4caf50' : '#28a745';
+
+        var optHtml = shuffled.map(function(o) {
+            return `<div class="survey-scanner-option" data-id="${o.id}" title="Pilih jawaban ini"
+                style="display:flex; align-items:center; gap:12px; padding:10px 14px; border-radius:8px;
+                border:2px solid ${cardBorder}; background:${optBg}; margin-bottom:8px; cursor:pointer;
+                transition: all 0.15s ease; user-select:none;"
+                onmouseover="if(!this.classList.contains('selected')){this.style.background='${isDark?'#33393d':'#f0f7ff'}'; this.style.borderColor='${isDark?'#6c757d':'#adb5bd'}';}" 
+                onmouseout="if(!this.classList.contains('selected')){this.style.background='${optBg}'; this.style.borderColor='${cardBorder}';}">
+                <div class="survey-scanner-icon" style="width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+                    border:2px solid ${cardBorder}; background:${cardBg}; flex-shrink:0; transition:all 0.15s ease;">
+                    <i class="fas fa-circle" style="font-size:10px; color:${isDark?'#666':'#ccc'};"></i>
+                </div>
+                <span style="font-size:13.5px; line-height:1.5; color:${textColor};">${o.teks}</span>
+            </div>`;
+        }).join('');
+
+        var htmlSurvey = `<div style="font-size:13.5px; color:${textColor};">
+            <div style="background:${cardBg}; border:1px solid ${cardBorder}; border-radius:10px; padding:14px 16px; margin-bottom:16px;">
+                <p class="mb-0 font-weight-bold" style="color:${titleColor}; font-size:14px;">
+                    <i class="fas fa-print mr-2"></i>Apakah di sekolah Anda terdapat mesin scanner atau printer yang mempunyai fungsi scan?
+                </p>
+            </div>
+            <div id="survey_scanner_options">${optHtml}</div>
+            <p class="text-center text-muted mt-2 mb-0" style="font-size:12px;"><i class="fas fa-info-circle mr-1"></i>Pilih salah satu jawaban di atas.</p>
+        </div>`;
+
+        Swal.fire({
+            title: `<h5 class="font-weight-bold" style="margin-top:8px; color:${titleColor}; font-size:16px; letter-spacing:0.3px;"><i class="fas fa-question-circle mr-2"></i>SURVEI SINGKAT</h5>`,
+            html: htmlSurvey,
+            width: '540px',
+            background: theme.bg,
+            color: theme.color,
+            padding: '1.5rem',
+            showConfirmButton: true,
+            showCancelButton: true,
+            confirmButtonText: '<i class="fas fa-check mr-1"></i> LANJUT UNGGAH',
+            cancelButtonText: '<i class="fas fa-times mr-1"></i> LEWATI',
+            customClass: {
+                popup: 'card-sultan',
+                confirmButton: 'swal2-confirm-sultan',
+                cancelButton: 'btn btn-sm btn-outline-secondary'
+            },
+            buttonsStyling: false,
+            didOpen: function(popup) {
+                if (popup && popup.parentNode) popup.parentNode.style.zIndex = '105000';
+                EFILEKELOLA_SURVEY_SCANNER = '';
+                // Handler klik opsi
+                $(popup).find('.survey-scanner-option').on('click', function() {
+                    // Deselect semua
+                    $(popup).find('.survey-scanner-option').each(function() {
+                        $(this).removeClass('selected')
+                            .css({ background: optBg, borderColor: cardBorder });
+                        $(this).find('.survey-scanner-icon')
+                            .css({ background: cardBg, borderColor: cardBorder })
+                            .html('<i class="fas fa-circle" style="font-size:10px; color:' + (isDark?'#666':'#ccc') + ';"></i>');
+                    });
+                    // Select yang diklik
+                    var $el = $(this);
+                    $el.addClass('selected')
+                        .css({ background: optBgSel, borderColor: optBorderSel });
+                    $el.find('.survey-scanner-icon')
+                        .css({ background: optBorderSel, borderColor: optBorderSel })
+                        .html('<i class="fas fa-check" style="font-size:13px; color:#fff;"></i>');
+                    EFILEKELOLA_SURVEY_SCANNER = $el.find('span').text().trim();
+                });
+            },
+            preConfirm: function() {
+                // Boleh lanjut meski tidak memilih
+                return true;
+            }
+        }).then(function(res) {
+            // Lanjut buka modal upload baik confirm (OK) maupun cancel (Lewati)
+            efilekelola_bukaModalTambah();
+        });
+    }
     $(document).off('change', '#efilekelola_filterStatus, #efilekelola_filterKategori, #efilekelola_filterTahun, #efilekelola_filterPeriode').on('change', '#efilekelola_filterStatus, #efilekelola_filterKategori, #efilekelola_filterTahun, #efilekelola_filterPeriode', efilekelola_terapkanFilterLokal);
     $(document).on('change', '#efilekelola_filterKategori', function() {
         var katId = $(this).val();
@@ -975,7 +1078,8 @@ function efilekelola_submitBatchUpload(e) {
                     id_ptk: ptkData.id_ptk, nama_ptk: ptkData.nama, npsn: ptkData.npsn,
                     id_kategori: idKat, nama_kategori: katData.namaKat, tahun: thn, periode: per,
                     nama_file: cName, mimeType: fIn.files[0].type,
-                    fileBase64: ev.target.result.split(',')[1], user_login: EFILEKELOLA_USER_AKTIF
+                    fileBase64: ev.target.result.split(',')[1], user_login: EFILEKELOLA_USER_AKTIF,
+                    survey_scanner: EFILEKELOLA_SURVEY_SCANNER || ""
                 });
             };
             reader.onerror = function() { reject("Gagal baca file."); }; reader.readAsDataURL(fIn.files[0]);
@@ -1242,6 +1346,19 @@ function efilekelola_bukaModalVerif(rowId) {
     // Sembunyikan default text badge periode karena kita jabarkan secara dinamis di bawahnya
     $('#efilekelola_v_periode').hide();
 
+    // Tampilkan data survey scanner jika ada
+    var $surveyExisting = $('#efilekelola_v_survey_scanner_container');
+    $surveyExisting.remove();
+    if (data.survey_scanner && String(data.survey_scanner).trim() !== '' && String(data.survey_scanner).trim() !== '-') {
+        var surveyHtml = '<div class="sultan-detail-item" id="efilekelola_v_survey_scanner_container">' +
+            '<label class="sultan-detail-label"><i class="fas fa-print mr-1 text-warning"></i>SURVEI SCANNER</label>' +
+            '<div class="sultan-detail-value" style="font-size:12.5px; color: inherit;">' +
+            efilekelola_escapeHtml(data.survey_scanner) +
+            '</div></div>';
+        // Sisipkan di dalam sultan-detail-container pertama
+        $('#efilekelola_v_nama').closest('.sultan-detail-container').append(surveyHtml);
+    }
+
     // Render detail berkas dinamis sesuai jenis periode
     var $vDinamis = $('#efilekelola_v_detail_dinamis').empty();
     var kData = EFILEKELOLA_MASTER_KAT.find(function(k) { return String(k.idKat).trim() === String(data.id_kategori).trim(); });
@@ -1313,6 +1430,7 @@ function efilekelola_bukaModalVerif(rowId) {
 
     $('#global_modalVerifikasi').off('hidden.bs.modal').on('hidden.bs.modal.efileverif', function() {
         $('#efilekelola_v_detail_dinamis').empty();
+        $('#efilekelola_v_survey_scanner_container').remove();
         $('#efilekelola_verifFooter').appendTo('#efilekelola_formVerif');
         $('#efilekelola_formVerif').appendTo('#efilekelola_templates');
         $('#global_verifikasiFooterArea').hide().empty();

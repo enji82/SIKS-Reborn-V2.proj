@@ -294,6 +294,7 @@ function getEfileData(npsnFilter) {
                 periode: data[i][14] || "-",
                 tgl_edit: data[i][15] || "-",
                 user_edit: data[i][16] || "-",
+                survey_scanner: data[i][17] || "",
             });
         }
     }
@@ -394,11 +395,12 @@ function simpanEfileBatch(batchData) {
         continue;
       }
 
-      // Kolom A-O + P(Tgl_Edit kosong) + Q(User_Edit kosong) = 17 kolom
+      // Kolom A-Q + R(survey_scanner) = 18 kolom
       rowsToAppend.push([
         item.id_ptk, item.nama_ptk, item.id_kategori, item.nama_kategori,
         item.tahun, item.nama_file, fileUrl, "Diproses", "", "'" + now,
-        item.user_login, item.npsn, "", "", periodeItem, "", ""
+        item.user_login, item.npsn, "", "", periodeItem, "", "",
+        item.survey_scanner || ""
       ]);
       laporan.push({ nama_kategori: item.nama_kategori, tahun: item.tahun, periode: periodeItem, result: "OK", alasan: "" });
       berhasilCount++;
