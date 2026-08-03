@@ -1,244 +1,215 @@
 /**
  * NotifikasiHome.gs - ENGINE CHECKER DOKUMEN BELUM DIUNGGAH
  * Digunakan untuk menampilkan pesan berjalan (marquee) di Halaman Beranda (Home).
+ *
+ * PETA KOLOM SHEET (0-based index, sesuai SK.gs & definisi masing-masing module):
+ *   Unggah_SK   : B(1)=NamaSD, C(2)=TahunAjaran, D(3)=Semester, J(9)=Status, R(17)=NPSN
+ *   Input SD/PAUD: header-based detection (NPSN, Bulan, Tahun, Status)
+ *   arsip_siaba : header-based detection (NPSN/UnitKerja, Bulan, Tahun)
  */
+
+/**
+ * Helper: normalisasi NPSN - hapus semua non-digit dan strip apostrop
+ */
+function cleanNpsn_(val) {
+  return String(val || "").trim().replace(/^'+/, "").replace(/\.0+$/, "").trim();
+}
+
+/**
+ * Helper: normalisasi Tahun Ajaran (agar 2026/2027, 2026-2027, "2026 2027" semua cocok)
+ */
+function cleanTa_(val) {
+  return String(val || "").trim().replace(/[\s\-]+/g, "/");
+}
 
 function getMissingDocumentsReport(username, role, unit) {
   try {
-    var uName = String(username || "").trim();
+    var uName = cleanNpsn_(username); // NPSN numerik sudah dibersihkan
     var uRole = String(role || "").toLowerCase();
     var uUnit = String(unit || "").trim();
-    
-    Logger.log("=== RUN getMissingDocumentsReport ===");
-    Logger.log("User: " + uName + " | Role: " + uRole + " | Unit: " + uUnit);
-    
-    // 1. Jika admin/korwil/verifikator, tidak perlu cek dokumen
+
+    Logger.log("=== getMissingDocumentsReport ===");
+    Logger.log("NPSN: [" + uName + "] | Role: " + uRole + " | Unit: " + uUnit);
+
+    // 1. Admin/korwil/verifikator: skip semua pengecekan
     var isAdmin = (uRole.indexOf('admin') > -1 || uRole.indexOf('verifikator') > -1 || uRole.indexOf('korwil') > -1);
-    if (isAdmin) {
-      Logger.log("User is Admin/Verifikator/Korwil. Bypassing check.");
-      return { show: false };
-    }
-    
-    // 2. Identifikasi jenjang dan status sekolah secara presisi dari database Data_Sekolah
+    if (isAdmin) return { show: false };
+
+    // 2. Identifikasi jenjang dari master Data_Sekolah
     var isSD = false;
     var isPAUD = false;
     var isSDNegeri = false;
-    
+
     var infoSekolah = getSekolahByNPSN(uName);
     if (infoSekolah && infoSekolah.found) {
-      var jenjang = String(infoSekolah.jenjang).toUpperCase().trim();
-      var status = String(infoSekolah.status_sekolah).toLowerCase().trim();
-      
-      Logger.log("Database Data_Sekolah Match -> Jenjang: " + jenjang + " | Status: " + status);
-      
+      var jenjang = String(infoSekolah.jenjang || "").toUpperCase().trim();
+      var status  = String(infoSekolah.status_sekolah || "").toLowerCase().trim();
+      Logger.log("Data_Sekolah: jenjang=[" + jenjang + "] status=[" + status + "]");
       if (jenjang.indexOf("SD") > -1) {
         isSD = true;
-        if (status.indexOf("negeri") > -1) {
-          isSDNegeri = true;
-        }
+        if (status.indexOf("negeri") > -1) isSDNegeri = true;
       } else {
         isPAUD = true;
       }
     } else {
-      // Fallback jika tidak ditemukan di Data_Sekolah
-      Logger.log("NPSN not found in Data_Sekolah. Using text-based fallback.");
-      isPAUD = (uRole.indexOf('paud') > -1 || uRole.indexOf('tk') > -1 || uUnit.toLowerCase().indexOf('paud') > -1 || uUnit.toLowerCase().indexOf('tk ') > -1);
-      isSD = (uRole.indexOf('sd') > -1 || uUnit.toLowerCase().indexOf('sd') > -1);
-      isSDNegeri = isSD && !isPAUD && (uUnit.toLowerCase().indexOf('sdn') > -1 || uUnit.toLowerCase().indexOf('negeri') > -1 || uName.toLowerCase().indexOf('sdn') > -1);
+      // Fallback berbasis teks role/unit
+      isPAUD = (uRole.indexOf('paud') > -1 || uRole.indexOf('tk') > -1
+             || uUnit.toLowerCase().indexOf('paud') > -1 || uUnit.toLowerCase().indexOf('tk ') > -1);
+      isSD   = !isPAUD && (uRole.indexOf('sd') > -1 || uUnit.toLowerCase().indexOf('sd') > -1);
+      isSDNegeri = isSD && (uUnit.toLowerCase().indexOf('sdn') > -1
+                         || uUnit.toLowerCase().indexOf('negeri') > -1
+                         || uName.toLowerCase().indexOf('sdn') > -1);
+      Logger.log("Fallback: isSD=" + isSD + " isPAUD=" + isPAUD + " isSDNegeri=" + isSDNegeri);
     }
-    
-    Logger.log("Identifikasi Akhir -> isSD: " + isSD + " | isPAUD: " + isPAUD + " | isSDNegeri: " + isSDNegeri);
-    
+
+    var today        = new Date();
+    var currentYear  = today.getFullYear();
+    var currentMonth = today.getMonth(); // 0=Jan
+    var arrBulan     = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+    var targetBulanLimit = currentMonth; // Jan s.d. bulan sebelum sekarang
+
     var missingLapbul = [];
-    var missingSiaba = [];
-    var missingSK = false;
-    
-    var today = new Date();
-    var currentYear = today.getFullYear();
-    var currentMonth = today.getMonth(); // 0 = Jan, 11 = Dec
-    
-    // Daftar bulan Indonesia
-    var arrBulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-    
-    // Tentukan bulan wajib lapor di tahun berjalan
-    // Secara default, bulan yang wajib lapor adalah bulan berjalan dikurangi 1 (Januari s.d. bulan sebelum saat ini)
-    var targetBulanLimit = currentMonth; 
-    if (targetBulanLimit < 0) targetBulanLimit = 0;
-    
-    Logger.log("Periode Deteksi -> Tahun: " + currentYear + " | Bulan Indeks: " + currentMonth + " | Limit Bulan Pengecekan: " + targetBulanLimit);
-    
-    // A. CEK LAPORAN BULANAN (SD & PAUD)
-    var dbKeyLapbul = isPAUD ? "LAPBUL_PAUD_DB" : "LAPBUL_SD_DB";
+    var missingSiaba  = [];
+    var missingSK     = false;
+
+    // =====================================================================
+    // A. LAPORAN BULANAN (SD & PAUD)
+    // =====================================================================
+    var dbKeyLapbul    = isPAUD ? "LAPBUL_PAUD_DB" : "LAPBUL_SD_DB";
     var sheetNameLapbul = isPAUD ? "Input PAUD" : "Input SD";
-    
-    var sheetLapbul = null;
+
+    var uploadedLapbul = [];
     try {
-      sheetLapbul = getSheet(dbKeyLapbul, sheetNameLapbul);
-    } catch(e) {
-      Logger.log("Sheet Lapbul tidak dapat dibuka: " + e.message);
-    }
-    
-    var uploadedMonthsLapbul = [];
-    if (sheetLapbul) {
-      var dataLapbul = sheetLapbul.getDataRange().getDisplayValues();
-      if (dataLapbul.length >= 2) {
-        var headers = dataLapbul[0].map(function(h) { return String(h).toLowerCase().trim(); });
-        var idxNpsn = headers.indexOf("npsn");
-        var idxBulan = headers.indexOf("bulan");
-        var idxTahun = headers.indexOf("tahun");
-        var idxStatus = headers.indexOf("status data") > -1 ? headers.indexOf("status data") : headers.indexOf("status");
-        
-        // Fallbacks jika index headers tidak cocok
-        if (idxNpsn === -1) idxNpsn = 0;
-        if (idxBulan === -1) idxBulan = 1;
-        if (idxTahun === -1) idxTahun = 2;
-        
-        for (var k = 1; k < dataLapbul.length; k++) {
-          var row = dataLapbul[k];
-          var rowNpsn = idxNpsn < row.length ? String(row[idxNpsn]).trim().replace(/\.0+$/, "") : "";
-          var rowTahun = idxTahun < row.length ? String(row[idxTahun]).trim() : "";
-          var rowBulan = idxBulan < row.length ? String(row[idxBulan]).trim() : "";
-          var rowStatus = (idxStatus > -1 && idxStatus < row.length) ? String(row[idxStatus]).toLowerCase() : "";
-          
-          var isMatch = (rowNpsn === uName) || (row.indexOf(uName) > -1);
-          if (isMatch && rowTahun === String(currentYear) && !rowStatus.includes("hapus") && !rowStatus.includes("delete")) {
-            uploadedMonthsLapbul.push(rowBulan.toLowerCase());
+      var sheetLapbul = getSheet(dbKeyLapbul, sheetNameLapbul);
+      var rawLapbul   = sheetLapbul.getDataRange().getDisplayValues();
+      if (rawLapbul.length >= 2) {
+        var hdr = rawLapbul[0].map(function(h){ return String(h).toLowerCase().trim(); });
+        var iN = hdr.indexOf("npsn");        if (iN < 0) iN = 0;
+        var iB = hdr.indexOf("bulan");       if (iB < 0) iB = 1;
+        var iT = hdr.indexOf("tahun");       if (iT < 0) iT = 2;
+        var iS = hdr.indexOf("status data"); if (iS < 0) iS = hdr.indexOf("status");
+
+        for (var r = 1; r < rawLapbul.length; r++) {
+          var row = rawLapbul[r];
+          var rNpsn  = cleanNpsn_(row[iN]);
+          var rTahun = String(row[iT] || "").trim();
+          var rBulan = String(row[iB] || "").trim();
+          var rStat  = iS > -1 ? String(row[iS] || "").toLowerCase() : "";
+
+          if (rNpsn === uName && rTahun === String(currentYear)
+              && !rStat.includes("hapus") && !rStat.includes("delete")) {
+            uploadedLapbul.push(rBulan.toLowerCase());
           }
         }
       }
-    }
-    
+    } catch(e) { Logger.log("Lapbul error: " + e.message); }
+
     for (var i = 0; i < targetBulanLimit; i++) {
-      var bName = arrBulan[i];
-      if (uploadedMonthsLapbul.indexOf(bName.toLowerCase()) === -1) {
-        missingLapbul.push(bName + " " + currentYear);
+      var bLabel = arrBulan[i];
+      if (uploadedLapbul.indexOf(bLabel.toLowerCase()) === -1) {
+        missingLapbul.push(bLabel + " " + currentYear);
       }
     }
-    Logger.log("Lapbul Terunggah: " + JSON.stringify(uploadedMonthsLapbul) + " | Missing: " + JSON.stringify(missingLapbul));
-    
-    // B. CEK SK PEMBAGIAN TUGAS (Khusus SD)
-    var skSemesterAktif = "";
-    var skTahunAjaranAktif = "";
+    Logger.log("Lapbul terunggah: " + JSON.stringify(uploadedLapbul));
+    Logger.log("Lapbul kurang  : " + JSON.stringify(missingLapbul));
+
+    // =====================================================================
+    // B. SK PEMBAGIAN TUGAS (hanya SD)
+    //    PETA KOLOM FIXED (sesuai processManualForm di SK.gs):
+    //      idx 1  = Nama SD
+    //      idx 2  = Tahun Ajaran  (string, "2026/2027")
+    //      idx 3  = Semester      (string, "Ganjil" / "Genap")
+    //      idx 9  = Status        (string, "Diproses" / "Disetujui" / "Hapus")
+    //      idx 17 = NPSN          (stored as "'NPSN" → cleaned to "NPSN")
+    // =====================================================================
+    var skSemester = "";
+    var skTA       = "";
     if (isSD) {
-      // Tentukan Semester & Tahun Ajaran Aktif
-      // Juli - Desember: Ganjil (cth: 2026/2027)
-      // Januari - Juni: Genap (cth: 2025/2026)
-      if (currentMonth >= 6) { // Juli s.d. Desember
-        skSemesterAktif = "Ganjil";
-        skTahunAjaranAktif = currentYear + "/" + (currentYear + 1);
+      if (currentMonth >= 6) {
+        skSemester = "Ganjil";
+        skTA       = currentYear + "/" + (currentYear + 1);
       } else {
-        skSemesterAktif = "Genap";
-        skTahunAjaranAktif = (currentYear - 1) + "/" + currentYear;
+        skSemester = "Genap";
+        skTA       = (currentYear - 1) + "/" + currentYear;
       }
-      
-      Logger.log("Target SK Aktif -> Semester: " + skSemesterAktif + " | TA: " + skTahunAjaranAktif);
-      
-      var sheetSK = null;
-      try {
-        sheetSK = getSheet("SK_DATA_DB", "Unggah_SK");
-      } catch(e) {
-        Logger.log("Sheet SK tidak dapat dibuka: " + e.message);
-      }
-      
+      Logger.log("Target SK: Semester=[" + skSemester + "] TA=[" + skTA + "]");
+
       var hasSK = false;
-      if (sheetSK) {
-        var dataSK = sheetSK.getDataRange().getDisplayValues();
-        if (dataSK.length >= 2) {
-          var headersSK = dataSK[0].map(function(h) { return String(h).toLowerCase().trim(); });
-          var idxNpsnSK = headersSK.indexOf("npsn");
-          var idxSemesterSK = headersSK.indexOf("semester");
-          var idxTahunSK = headersSK.indexOf("tahun ajaran") > -1 ? headersSK.indexOf("tahun ajaran") : headersSK.indexOf("tahun");
-          var idxStatusSK = headersSK.indexOf("status data") > -1 ? headersSK.indexOf("status data") : headersSK.indexOf("status");
-          
-          // Fallbacks jika index headers tidak cocok
-          if (idxNpsnSK === -1) idxNpsnSK = 17; // kolom ke-18
-          if (idxTahunSK === -1) idxTahunSK = 2; // kolom ke-3
-          if (idxSemesterSK === -1) idxSemesterSK = 3; // kolom ke-4
-          
-          for (var j = 1; j < dataSK.length; j++) {
-            var row = dataSK[j];
-            var rowNpsn = idxNpsnSK < row.length ? String(row[idxNpsnSK]).trim().replace(/\.0+$/, "") : "";
-            var rowSemester = idxSemesterSK < row.length ? String(row[idxSemesterSK]).trim() : "";
-            var rowTahun = idxTahunSK < row.length ? String(row[idxTahunSK]).trim() : "";
-            var rowStatus = (idxStatusSK > -1 && idxStatusSK < row.length) ? String(row[idxStatusSK]).toLowerCase() : "";
-            
-            var npsnMengandung = (rowNpsn === uName) || (row.indexOf(uName) > -1);
-            
-            // Normalize spaces and slashes for TA comparison (e.g. 2026/2027 vs 2026-2027 or spaces)
-            var normRowTahun = rowTahun.replace(/[-\s]/g, '/');
-            var normTargetTahun = skTahunAjaranAktif.replace(/[-\s]/g, '/');
-            
-            if (npsnMengandung && 
-                rowSemester.toLowerCase() === skSemesterAktif.toLowerCase() && 
-                normRowTahun === normTargetTahun &&
-                !rowStatus.includes("hapus") && !rowStatus.includes("delete")) {
-              hasSK = true;
-              Logger.log("SK Ditemukan pada baris " + (j + 1) + " -> No SK: " + row[4]);
-              break;
-            }
-          }
-        }
-      }
-      if (!hasSK) {
-        missingSK = true;
-      }
-      Logger.log("Hasil Cek SK -> missingSK: " + missingSK);
-    }
-    
-    // C. CEK REKAP SIABA (Khusus SD Negeri)
-    if (isSDNegeri) {
-      var sheetSiaba = null;
       try {
-        sheetSiaba = getSheet("ARSIP_SIABA_DB", "arsip_siaba");
-      } catch(e) {
-        Logger.log("Sheet SIABA tidak dapat dibuka: " + e.message);
-      }
-      
-      var uploadedMonthsSiaba = [];
-      if (sheetSiaba) {
-        var dataSiaba = sheetSiaba.getDataRange().getDisplayValues();
-        if (dataSiaba.length >= 2) {
-          var headersSiaba = dataSiaba[0].map(function(h) { return String(h).toLowerCase().trim(); });
-          var idxNpsnSiaba = headersSiaba.indexOf("npsn");
-          var idxBulanSiaba = headersSiaba.indexOf("bulan");
-          var idxTahunSiaba = headersSiaba.indexOf("tahun");
-          
-          // Fallbacks jika index headers tidak cocok
-          if (idxNpsnSiaba === -1) idxNpsnSiaba = 8;
-          if (idxBulanSiaba === -1) idxBulanSiaba = 1;
-          if (idxTahunSiaba === -1) idxTahunSiaba = 2;
-          
-          for (var m = 1; m < dataSiaba.length; m++) {
-            var row = dataSiaba[m];
-            var rowNpsn = idxNpsnSiaba < row.length ? String(row[idxNpsnSiaba]).trim().replace(/\.0+$/, "").toLowerCase() : "";
-            var rowTahun = idxTahunSiaba < row.length ? String(row[idxTahunSiaba]).trim() : "";
-            var rowBulan = idxBulanSiaba < row.length ? String(row[idxBulanSiaba]).trim() : "";
-            var rowUnit = row[0] ? String(row[0]).trim().toLowerCase() : "";
-            
-            var matchesNpsnOrUnit = (rowNpsn === uName.toLowerCase()) || 
-                                    (rowUnit === uUnit.toLowerCase()) || 
-                                    (row.indexOf(uName) > -1);
-            
-            if (matchesNpsnOrUnit && rowTahun === String(currentYear)) {
-              uploadedMonthsSiaba.push(rowBulan.toLowerCase());
+        var sheetSK = getSheet("SK_DATA_DB", "Unggah_SK");
+        var rawSK   = sheetSK.getDataRange().getDisplayValues();
+
+        // Baris 0 = header, abaikan saja – pakai indeks kolom FIXED
+        for (var j = 1; j < rawSK.length; j++) {
+          var row       = rawSK[j];
+          var rNpsn     = cleanNpsn_(row[17]);          // kolom R (idx 17)
+          var rTA       = cleanTa_(row[2]);              // kolom C (idx 2)
+          var rSemester = String(row[3] || "").trim();   // kolom D (idx 3)
+          var rStatus   = String(row[9] || "").toLowerCase(); // kolom J (idx 9)
+
+          Logger.log("SK row " + (j+1) + ": NPSN=[" + rNpsn + "] TA=[" + rTA + "] Sem=[" + rSemester + "] Stat=[" + rStatus + "]");
+
+          var npsnMatch = (rNpsn === uName);
+          var taMatch   = (rTA   === cleanTa_(skTA));
+          var semMatch  = (rSemester.toLowerCase() === skSemester.toLowerCase());
+          var notHapus  = (!rStatus.includes("hapus") && !rStatus.includes("delete"));
+
+          if (npsnMatch && taMatch && semMatch && notHapus) {
+            hasSK = true;
+            Logger.log("✅ SK DITEMUKAN di baris " + (j + 1));
+            break;
+          }
+        }
+      } catch(e) { Logger.log("SK error: " + e.message); }
+
+      if (!hasSK) missingSK = true;
+      Logger.log("Hasil cek SK: missingSK=" + missingSK);
+    }
+
+    // =====================================================================
+    // C. REKAP SIABA (hanya SD Negeri)
+    // =====================================================================
+    if (isSDNegeri) {
+      var uploadedSiaba = [];
+      try {
+        var sheetSiaba = getSheet("ARSIP_SIABA_DB", "arsip_siaba");
+        var rawSiaba   = sheetSiaba.getDataRange().getDisplayValues();
+        if (rawSiaba.length >= 2) {
+          var hdrS = rawSiaba[0].map(function(h){ return String(h).toLowerCase().trim(); });
+          var iNS  = hdrS.indexOf("npsn");  if (iNS < 0) iNS = 8;
+          var iBS  = hdrS.indexOf("bulan"); if (iBS < 0) iBS = 1;
+          var iTS  = hdrS.indexOf("tahun"); if (iTS < 0) iTS = 2;
+
+          for (var m = 1; m < rawSiaba.length; m++) {
+            var row    = rawSiaba[m];
+            var rNpsn  = cleanNpsn_(row[iNS]);
+            var rUnit  = String(row[0] || "").trim().toLowerCase();
+            var rTahun = String(row[iTS] || "").trim();
+            var rBulan = String(row[iBS] || "").trim();
+
+            var siabaMatch = (rNpsn === uName) || (rUnit === uUnit.toLowerCase());
+            if (siabaMatch && rTahun === String(currentYear)) {
+              uploadedSiaba.push(rBulan.toLowerCase());
             }
           }
         }
-      }
-      
+      } catch(e) { Logger.log("SIABA error: " + e.message); }
+
       for (var i = 0; i < targetBulanLimit; i++) {
-        var bName = arrBulan[i];
-        if (uploadedMonthsSiaba.indexOf(bName.toLowerCase()) === -1) {
-          missingSiaba.push(bName + " " + currentYear);
+        var bLabel = arrBulan[i];
+        if (uploadedSiaba.indexOf(bLabel.toLowerCase()) === -1) {
+          missingSiaba.push(bLabel + " " + currentYear);
         }
       }
-      Logger.log("SIABA Terunggah: " + JSON.stringify(uploadedMonthsSiaba) + " | Missing: " + JSON.stringify(missingSiaba));
+      Logger.log("SIABA kurang: " + JSON.stringify(missingSiaba));
     }
-    
+
+    // =====================================================================
     // Susun kalimat peringatan
+    // =====================================================================
     var messages = [];
     if (missingSK) {
-      messages.push("Anda belum mengunggah SK Pembagian Tugas Semester " + skSemesterAktif + " TA " + skTahunAjaranAktif + ".");
+      messages.push("Anda belum mengunggah SK Pembagian Tugas Semester " + skSemester + " TA " + skTA + ".");
     }
     if (missingLapbul.length > 0) {
       messages.push("Anda belum mengunggah Laporan Bulan " + formatListSentence_(missingLapbul) + ".");
@@ -246,23 +217,23 @@ function getMissingDocumentsReport(username, role, unit) {
     if (missingSiaba.length > 0) {
       messages.push("Anda belum mengirimkan rekap SIABA bulan " + formatListSentence_(missingSiaba) + ".");
     }
-    
-    Logger.log("Final Messages: " + messages.join(" | "));
-    
+
+    Logger.log("Pesan akhir: " + messages.join(" | "));
+
     return {
       show: true,
       hasWarning: messages.length > 0,
       warnings: messages,
       messageHtml: messages.join(" | ")
     };
-    
+
   } catch (e) {
-    Logger.log("Error getMissingDocumentsReport: " + e.toString());
+    Logger.log("FATAL getMissingDocumentsReport: " + e.toString());
     return { show: false, error: e.toString() };
   }
 }
 
-// Helper: Merangkai array menjadi kalimat terpisah koma dan diakhiri "dan"
+// Helper: "A, B, dan C"
 function formatListSentence_(arr) {
   if (arr.length === 0) return "";
   if (arr.length === 1) return arr[0];
