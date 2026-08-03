@@ -327,7 +327,7 @@ function getNotifikasiLupa(role, unit) {
                     status: status || "Diproses",
                     waktu: row.tglVerif && !isDiproses ? row.tglVerif : (row.tglEdit && isDiproses ? row.tglEdit : row.tglKirim),
                     isRead: isRead,
-                    kriteria: "Tgl Lupa: " + row.tanggal
+                    kriteria: row.tanggal + " " + row.jam + " " + row.jenis
                 });
             }
         }
