@@ -22,6 +22,18 @@ function cleanTa_(val) {
   return String(val || "").trim().replace(/[\s\-]+/g, "/");
 }
 
+/**
+ * Helper: normalisasi Semester
+ * "Semester 1", "Semester Ganjil", "1", "Ganjil" → "ganjil"
+ * "Semester 2", "Semester Genap",  "2", "Genap"  → "genap"
+ */
+function normSemester_(val) {
+  var s = String(val || "").toLowerCase().trim();
+  if (s === "ganjil" || s === "1" || s === "semester 1" || s === "semester ganjil") return "ganjil";
+  if (s === "genap"  || s === "2" || s === "semester 2" || s === "semester genap")  return "genap";
+  return s;
+}
+
 function getMissingDocumentsReport(username, role, unit) {
   try {
     var uName = cleanNpsn_(username); // NPSN numerik sudah dibersihkan
@@ -151,7 +163,7 @@ function getMissingDocumentsReport(username, role, unit) {
 
           var npsnMatch = (rNpsn === uName);
           var taMatch   = (rTA   === cleanTa_(skTA));
-          var semMatch  = (rSemester.toLowerCase() === skSemester.toLowerCase());
+          var semMatch  = (normSemester_(rSemester) === normSemester_(skSemester));
           var notHapus  = (!rStatus.includes("hapus") && !rStatus.includes("delete"));
 
           if (npsnMatch && taMatch && semMatch && notHapus) {
