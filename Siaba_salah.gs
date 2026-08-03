@@ -300,7 +300,8 @@ function getNotifikasiSalah(role, unit) {
                     unit: row.unit,
                     status: status || "Diproses",
                     waktu: row.tglVerif && !isDiproses ? row.tglVerif : (row.tglEdit && isDiproses ? row.tglEdit : row.tglKirim),
-                    isRead: isRead
+                    isRead: isRead,
+                    kriteria: "Tgl Salah: " + row.tanggal
                 });
             }
         }
