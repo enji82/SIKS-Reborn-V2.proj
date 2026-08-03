@@ -83,6 +83,31 @@ function cekBentrokLupa(nipBaru, tglBaruStr, jenisBaru, rowIdPengecualian) {
   return null; 
 }
 
+function cekBatasLupaPerBulan(nipAsn, tglBaru, rowIdPengecualian) {
+  var sheet = getSheet(KONFIG_LUPA.DB_KEY, KONFIG_LUPA.SHEET_NAMA);
+  var data = sheet.getDataRange().getValues();
+
+  // Ambil prefix tahun-bulan dari tanggal baru (format hasil normalizeToYMD: "yyyy-MM-dd")
+  var tglNormalized = normalizeToYMD(tglBaru);
+  var tahunBulan = tglNormalized.substring(0, 7); // "yyyy-MM"
+
+  var count = 0;
+  for (var i = 1; i < data.length; i++) {
+    if (rowIdPengecualian && (i + 1) == rowIdPengecualian) continue;
+    var rowNip    = String(data[i][2]).replace(/'/g, "").trim();
+    var rowStatus = String(data[i][10]).toLowerCase();
+    var rowTgl    = normalizeToYMD(data[i][3]);
+
+    // Hitung hanya data dengan NIP sama, bukan "Ditolak", dan bulan+tahun sama
+    if (rowNip === String(nipAsn).trim()
+        && !rowStatus.includes("tolak")
+        && rowTgl.substring(0, 7) === tahunBulan) {
+      count++;
+    }
+  }
+  return count;
+}
+
 function simpanLupaPresensi(dataKirim) {
   var lock = LockService.getScriptLock();
   try {
@@ -90,7 +115,13 @@ function simpanLupaPresensi(dataKirim) {
 
     var tglSimpan = dataKirim.tanggal; 
     var err = cekBentrokLupa(dataKirim.nip_asn, tglSimpan, dataKirim.jenis, null);
-    if (err) return err; 
+    if (err) return err;
+
+    // CEK BATAS MAKSIMAL 5x PER BULAN
+    var jumlahBulanIni = cekBatasLupaPerBulan(dataKirim.nip_asn, tglSimpan, null);
+    if (jumlahBulanIni >= 5) {
+      return "Gagal: Batas maksimal pengajuan lupa presensi adalah 5 kali per bulan. Anda sudah mengajukan " + jumlahBulanIni + "x pada bulan ini.";
+    }
  
     var sheet = getSheet(KONFIG_LUPA.DB_KEY, KONFIG_LUPA.SHEET_NAMA);
 

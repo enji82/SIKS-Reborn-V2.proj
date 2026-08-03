@@ -640,6 +640,45 @@
     // KONTROLER MODAL & CRUD
     // =================================================================
     function lupa_bukaModalTambah() {
+        // === CEK BATAS 5x PER BULAN (DARI CACHE LOKAL) ===
+        if (!LUPA_IS_ADMIN) {
+            var now = new Date();
+            var tahunBulanIni = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, '0');
+
+            // Cari NIP user dari cache yang ada
+            var nipUser = "";
+            var sampleRow = LUPA_CACHE_DATA.find(function (r) {
+                return String(r.npsn || "").trim() === String(LUPA_USER_NPSN).trim();
+            });
+            if (sampleRow) nipUser = String(sampleRow.nip || "").trim();
+
+            if (nipUser) {
+                var hitungBulanIni = LUPA_CACHE_DATA.filter(function (r) {
+                    var tgl = String(r.tanggal || "").replace(/'/g, "").trim();
+                    var status = String(r.status || "").toLowerCase();
+                    // Normalisasi ke yyyy-MM-dd lalu ambil 7 karakter pertama
+                    var tglYM = "";
+                    var parts = tgl.split("-");
+                    if (parts.length === 3) {
+                        tglYM = parts[0].length === 4
+                            ? tgl.substring(0, 7)                           // sudah yyyy-MM-dd
+                            : parts[2] + "-" + parts[1].padStart(2, '0');   // dd-MM-yyyy → yyyy-MM
+                    }
+                    return String(r.nip || "").trim() === nipUser
+                        && tglYM === tahunBulanIni
+                        && !status.includes("tolak");
+                }).length;
+
+                if (hitungBulanIni >= 5) {
+                    Sultan.alert('warning', 'Batas Pengajuan Tercapai',
+                        'Anda sudah mengajukan lupa presensi sebanyak <strong>' + hitungBulanIni + 'x</strong> pada bulan ini.<br><br>' +
+                        'Batas maksimal adalah <strong>5 kali per bulan</strong>. Pengajuan bulan depan dapat dilakukan mulai tanggal 1.');
+                    return; // BLOK: tidak buka modal
+                }
+            }
+        }
+        // === AKHIR CEK BATAS ===
+
         $('#lupa_formUtama')[0].reset(); $('#lupa_inputIdData').val(''); LUPA_FILE_UPLOAD = null;
         $('#lupa_infoHariAjuan').addClass('d-none');
 
