@@ -508,6 +508,8 @@ function getDashboardSK(filterTahun, filterSemester) {
 
     stats.totalMasuk = uniqueRows.length;
 
+    var sekolahStatusMap = {};
+
     // 2. Hitung Agregat Rinci
     uniqueRows.forEach(function(r) {
       var s = String(r[9] || "").toLowerCase(); 
@@ -532,7 +534,14 @@ function getDashboardSK(filterTahun, filterSemester) {
 
       // LOGIKA MUTLAK BELUM LAPOR: HANYA berdasarkan SEKOLAH UNIK "Awal Semester" yang TIDAK Ditolak
       if (isAwal && !s.includes("tolak")) {
-          sekolahSudahLaporAwal.add(String(r[1]).trim().toUpperCase());
+          var schoolName = String(r[1]).trim().toUpperCase();
+          sekolahSudahLaporAwal.add(schoolName);
+
+          var statusProper = "Diproses";
+          if (isValid) statusProper = "Disetujui";
+          else if (s.includes("revisi")) statusProper = "Revisi";
+          
+          sekolahStatusMap[schoolName] = statusProper;
       }
     });
 
@@ -551,7 +560,12 @@ function getDashboardSK(filterTahun, filterSemester) {
             return sekolahSudahLaporAwal.has(x.toUpperCase());
         }).sort();
         stats.sudahLaporList = rawSudah.map(function(x) {
-            return { nama: x, npsn: npsnMap[x.toUpperCase()] || "-" };
+            var schoolKey = x.toUpperCase();
+            return { 
+                nama: x, 
+                npsn: npsnMap[schoolKey] || "-", 
+                status: sekolahStatusMap[schoolKey] || "Diproses" 
+            };
         });
         
         // VAKSIN LOGIKA: Progress = (Total Sekolah - Belum Lapor) / Total Sekolah
