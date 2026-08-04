@@ -467,11 +467,9 @@ function verifikasiEfileData(rowId, status, catatan, adminName, idPtk) {
     var npsn = "";
     try { npsn = String(sheet.getRange(r, 12).getDisplayValue() || "").trim(); } catch(err2) {}
 
-    // Tulis hanya kolom yang berubah — TIDAK membaca lalu menulis ulang semua kolom
-    sheet.getRange(r, 8).setValue(status);    // H: Status
-    sheet.getRange(r, 9).setValue(catatan);   // I: Catatan Admin
-    sheet.getRange(r, 13).setValue(now);      // M: Tgl Verifikasi
-    sheet.getRange(r, 14).setValue(adminName); // N: Verifikator
+    // Tulis data secara berkelompok (batch) untuk memotong latensi I/O Google Sheets secara drastis
+    sheet.getRange(r, 8, 1, 2).setValues([[status, catatan]]);       // Kolom 8 (H) & 9 (I): Status & Catatan
+    sheet.getRange(r, 13, 1, 2).setValues([[now, adminName]]);       // Kolom 13 (M) & 14 (N): Tgl Verif & Verifikator
     SpreadsheetApp.flush();
 
     try {
@@ -479,7 +477,9 @@ function verifikasiEfileData(rowId, status, catatan, adminName, idPtk) {
     } catch(err) {}
 
     return JSON.stringify({ success: true, message: "Berkas berhasil di-" + status });
-  } catch(e) { return JSON.stringify({ success: false, message: e.message }); } finally { lock.releaseLock(); }
+  } catch(e) { return JSON.stringify({ success: false, message: e.message }); } finally { 
+    try { lock.releaseLock(); } catch(lockErr) {} 
+  }
 }
 
 function hapusEfileData(rowId, securityCode, idPtk) {
