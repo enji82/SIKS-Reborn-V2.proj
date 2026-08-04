@@ -474,7 +474,11 @@ function getDashboardSK(filterTahun, filterSemester) {
     var stats = {
       totalMasuk: 0, diproses: 0, revisi: 0, disetujui: 0, ditolak: 0,
       progress: 0, belumLaporCount: 0, belumLaporList: [], recent: [],
-      totalAwal: 0, totalPerubahan: 0, validAwal: 0, validPerubahan: 0 
+      totalAwal: 0, totalPerubahan: 0, 
+      validAwal: 0, validPerubahan: 0,
+      prosesAwal: 0, prosesPerubahan: 0,
+      revisiAwal: 0, revisiPerubahan: 0,
+      tolakAwal: 0, tolakPerubahan: 0
     };
 
     var sekolahSudahLaporAwal = new Set();
@@ -528,9 +532,21 @@ function getDashboardSK(filterTahun, filterSemester) {
           if (isAwal) stats.validAwal++;
           else stats.validPerubahan++;
       }
-      else if (s.includes("revisi")) stats.revisi++;
-      else if (s.includes("tolak")) stats.ditolak++;
-      else stats.diproses++;
+      else if (s.includes("revisi")) {
+          stats.revisi++;
+          if (isAwal) stats.revisiAwal++;
+          else stats.revisiPerubahan++;
+      }
+      else if (s.includes("tolak")) {
+          stats.ditolak++;
+          if (isAwal) stats.tolakAwal++;
+          else stats.tolakPerubahan++;
+      }
+      else {
+          stats.diproses++;
+          if (isAwal) stats.prosesAwal++;
+          else stats.prosesPerubahan++;
+      }
 
       // LOGIKA MUTLAK BELUM LAPOR: HANYA berdasarkan SEKOLAH UNIK "Awal Semester" yang TIDAK Ditolak
       if (isAwal && !s.includes("tolak")) {
