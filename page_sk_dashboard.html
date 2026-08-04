@@ -238,6 +238,7 @@
     // ISOLASI STATE KE WINDOW (Tetap bertahan saat re-injeksi)
     window.DASHSK_CHART_INSTANCE = window.DASHSK_CHART_INSTANCE || null;
     window.DASHSK_LIST_BELUM_CACHE = window.DASHSK_LIST_BELUM_CACHE || [];
+    window.DASHSK_LIST_SUDAH_CACHE = window.DASHSK_LIST_SUDAH_CACHE || [];
     window.DASHSK_IS_FETCHING = window.DASHSK_IS_FETCHING || false;
     window.DASHSK_LAST_FETCH_TIME = window.DASHSK_LAST_FETCH_TIME || 0;
     window.DASHSK_CACHE_DATA = window.DASHSK_CACHE_DATA || null;
@@ -450,9 +451,9 @@
         $('#dashsk_badgeBelum').text(DASHSK_LIST_BELUM_CACHE.length);
         dashsk_renderBelumList(DASHSK_LIST_BELUM_CACHE);
 
-        var sudahList = data.sudahLaporList || [];
-        $('#dashsk_badgeSudah').text(sudahList.length);
-        dashsk_renderSudahList(sudahList);
+        DASHSK_LIST_SUDAH_CACHE = data.sudahLaporList || [];
+        $('#dashsk_badgeSudah').text(DASHSK_LIST_SUDAH_CACHE.length);
+        dashsk_renderSudahList(DASHSK_LIST_SUDAH_CACHE);
     }
 
     function dashsk_renderBelumList(list) {
@@ -672,30 +673,58 @@
     }
 
     function dashsk_copyListBelum() {
-        var items = [];
-        if ($('#dashsk_modalBelumLapor').hasClass('show')) {
-            var searchVal = $('#dashsk_inputCariBelumModal').val().toLowerCase();
-            items = DASHSK_LIST_BELUM_CACHE.filter(function(item) {
-                return item.nama.toLowerCase().indexOf(searchVal) > -1 || item.npsn.toLowerCase().indexOf(searchVal) > -1;
-            });
-        } else {
-            var searchVal = $('#dashsk_inputCariBelum').val().toLowerCase();
-            items = DASHSK_LIST_BELUM_CACHE.filter(function(item) {
-                return item.nama.toLowerCase().indexOf(searchVal) > -1 || item.npsn.toLowerCase().indexOf(searchVal) > -1;
-            });
-        }
-
-        if (items.length === 0) { Sultan.notif.info("Tidak ada data untuk disalin."); return; }
-
         var th = $('#dashsk_filterTahun').val() || "-";
         var sm = $('#dashsk_filterSemester').val() || "-";
-        var txt = "*DAFTAR SEKOLAH BELUM KIRIM SK PEMBAGIAN TUGAS*\nPeriode: " + th + " (" + sm + ")\nKriteria: AWAL SEMESTER\n\n";
+        var txt = "";
 
-        items.forEach(function (item, i) {
-            txt += (i + 1) + ". " + item.nama + "\n";
-        });
+        if ($('#dashsk_modalBelumLapor').hasClass('show')) {
+            // Modal copy button: Belum Lapor only
+            var searchVal = $('#dashsk_inputCariBelumModal').val().toLowerCase();
+            var itemsBelum = DASHSK_LIST_BELUM_CACHE.filter(function(item) {
+                return item.nama.toLowerCase().indexOf(searchVal) > -1 || item.npsn.toLowerCase().indexOf(searchVal) > -1;
+            });
 
-        txt += "\n_Mohon segera mengunggah melalui SIKS-Reborn._";
+            if (itemsBelum.length === 0) { Sultan.notif.info("Tidak ada data untuk disalin."); return; }
+
+            txt = "*DAFTAR SEKOLAH BELUM KIRIM SK PEMBAGIAN TUGAS*\nPeriode: " + th + " (" + sm + ")\nKriteria: AWAL SEMESTER\n\n";
+            itemsBelum.forEach(function (item, i) {
+                txt += (i + 1) + ". " + item.nama + "\n";
+            });
+            txt += "\n_Mohon segera mengunggah melalui SIKS-Reborn._";
+        } else {
+            // Main page copy button: Belum Lapor AND Revisi
+            var searchVal = $('#dashsk_inputCariBelum').val().toLowerCase();
+            
+            var itemsBelum = DASHSK_LIST_BELUM_CACHE.filter(function(item) {
+                return item.nama.toLowerCase().indexOf(searchVal) > -1 || item.npsn.toLowerCase().indexOf(searchVal) > -1;
+            });
+
+            var itemsRevisi = (window.DASHSK_LIST_SUDAH_CACHE || []).filter(function(item) {
+                return item.status === 'Revisi' && (item.nama.toLowerCase().indexOf(searchVal) > -1 || item.npsn.toLowerCase().indexOf(searchVal) > -1);
+            });
+
+            if (itemsBelum.length === 0 && itemsRevisi.length === 0) { Sultan.notif.info("Tidak ada data untuk disalin."); return; }
+
+            txt = "*DAFTAR TINDAK LANJUT SK PEMBAGIAN TUGAS*\nPeriode: " + th + " (" + sm + ")\nKriteria: AWAL SEMESTER\n\n";
+
+            if (itemsBelum.length > 0) {
+                txt += "*⚠️ BELUM UNGGAH (" + itemsBelum.length + "):*\n";
+                itemsBelum.forEach(function (item, i) {
+                    txt += (i + 1) + ". " + item.nama + "\n";
+                });
+                txt += "\n";
+            }
+
+            if (itemsRevisi.length > 0) {
+                txt += "*🔄 PERLU REVISI/PERBAIKAN (" + itemsRevisi.length + "):*\n";
+                itemsRevisi.forEach(function (item, i) {
+                    txt += (i + 1) + ". " + item.nama + "\n";
+                });
+                txt += "\n";
+            }
+
+            txt += "_Mohon segera menindaklanjuti melalui SIKS-Reborn._";
+        }
 
         navigator.clipboard.writeText(txt).then(function () {
             Sultan.notif.sukses('Daftar berhasil disalin!');
