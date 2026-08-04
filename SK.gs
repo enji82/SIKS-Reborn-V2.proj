@@ -538,13 +538,21 @@ function getDashboardSK(filterTahun, filterSemester) {
 
     // 3. Kalkulasi Persentase Realisasi yang Akurat
     if (masterSekolah.length > 0) {
-        stats.belumLaporList = masterSekolah.filter(function(x) { 
+        var npsnMap = getMappingMasterNpsn();
+        var rawBelum = masterSekolah.filter(function(x) { 
             return !sekolahSudahLaporAwal.has(x.toUpperCase()); 
         }).sort();
-        stats.belumLaporCount = stats.belumLaporList.length;
-        stats.sudahLaporList = masterSekolah.filter(function(x) {
+        stats.belumLaporCount = rawBelum.length;
+        stats.belumLaporList = rawBelum.map(function(x) {
+            return { nama: x, npsn: npsnMap[x.toUpperCase()] || "-" };
+        });
+
+        var rawSudah = masterSekolah.filter(function(x) {
             return sekolahSudahLaporAwal.has(x.toUpperCase());
         }).sort();
+        stats.sudahLaporList = rawSudah.map(function(x) {
+            return { nama: x, npsn: npsnMap[x.toUpperCase()] || "-" };
+        });
         
         // VAKSIN LOGIKA: Progress = (Total Sekolah - Belum Lapor) / Total Sekolah
         // Ini memastikan hitungan murni berdasarkan JUMLAH SEKOLAH, bukan jumlah file ganda
