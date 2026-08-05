@@ -183,6 +183,115 @@ var SultanUI = {
                 this.dataset.sultanLotteryId = "";
             }
         });
+    },
+
+    /**
+     * Merender Row 1 (Statistik Utama) secara Dinamis agar Seragam Visual
+     * @param {string} prefix - Prefix ID unik (misal: 'dashsk')
+     * @param {Object} labels - Label custom (default: { total: 'JML SEKOLAH', sudah: 'SUDAH', belum: 'BELUM', progress: 'PROGRESS' })
+     */
+    renderDashboardRow1: function(prefix, labels = {}) {
+        const lbl = {
+            total: labels.total || 'JML SEKOLAH',
+            sudah: labels.sudah || 'SUDAH',
+            belum: labels.belum || 'BELUM',
+            progress: labels.progress || 'PROGRESS'
+        };
+        return `
+        <!-- Row 1: Statistik Utama (4 Cards) -->
+        <div class="row mb-3">
+            <!-- KARTU 1: TOTAL -->
+            <div class="col-lg-3 col-md-6 mb-2">
+                <div class="sultan-metric-card metric-navy" style="min-height: 85px; padding: 12px 15px;">
+                    <div class="inner">
+                        <h3 id="${prefix}_cardTotalSekolah" class="dashsk-count-up" style="font-size: 2.0rem; font-weight: bold; margin-bottom: 2px;">0</h3>
+                        <p style="font-weight: bold; margin-bottom: 0; font-size: 11px;">${lbl.total}</p>
+                    </div>
+                    <div class="icon" style="font-size: 40px; right: 15px; top: 12px;"><i class="fas fa-school"></i></div>
+                </div>
+            </div>
+
+            <!-- KARTU 2: SUDAH -->
+            <div class="col-lg-3 col-md-6 mb-2">
+                <div class="sultan-metric-card metric-success" style="min-height: 85px; padding: 12px 15px;">
+                    <div class="inner">
+                        <h3 id="${prefix}_cardSudahUnggah" class="dashsk-count-up" style="font-size: 2.0rem; font-weight: bold; margin-bottom: 2px;">0</h3>
+                        <p style="font-weight: bold; margin-bottom: 0; font-size: 11px;">${lbl.sudah}</p>
+                    </div>
+                    <div class="icon" style="font-size: 40px; right: 15px; top: 12px;"><i class="fas fa-check-circle"></i></div>
+                </div>
+            </div>
+
+            <!-- KARTU 3: BELUM -->
+            <div class="col-lg-3 col-md-6 mb-2">
+                <div class="sultan-metric-card metric-maroon" style="min-height: 85px; padding: 12px 15px;">
+                    <div class="inner">
+                        <h3 id="${prefix}_cardBelumUnggah" class="dashsk-count-up" style="font-size: 2.0rem; font-weight: bold; margin-bottom: 2px;">0</h3>
+                        <p style="font-weight: bold; margin-bottom: 0; font-size: 11px;">${lbl.belum}</p>
+                    </div>
+                    <div class="icon" style="font-size: 40px; right: 15px; top: 12px;"><i class="fas fa-times-circle"></i></div>
+                </div>
+            </div>
+
+            <!-- KARTU 4: PROGRESS -->
+            <div class="col-lg-3 col-md-6 mb-2">
+                <div class="sultan-metric-card metric-gold" style="min-height: 85px; padding: 10px 15px; display: flex; align-items: center;">
+                    <div class="inner" style="width: 100%;">
+                        <h3 id="${prefix}_cardProgress" class="dashsk-count-up" style="font-size: 1.8rem; font-weight: bold; margin-bottom: 0px; line-height: 1.1;">0%</h3>
+                        <p style="font-weight: bold; margin-bottom: 0; font-size: 10px; opacity: 0.85; line-height: 1;">${lbl.progress}</p>
+                        <div class="progress mt-1.5" style="height: 5px; border-radius: 3px; background-color: rgba(0, 0, 0, 0.1); width: 85%;">
+                            <div id="${prefix}_progressBar" class="progress-bar" role="progressbar" style="width: 0%; transition: width 0.6s ease, background-color 0.6s ease; border-radius: 3px;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <span id="${prefix}_progressText" style="display:none;">0% Selesai</span>
+                    </div>
+                    <div class="icon" style="font-size: 40px; right: 15px; top: 12px; opacity: 0.25;"><i class="fas fa-chart-line"></i></div>
+                </div>
+            </div>
+        </div>
+        `;
+    },
+
+    /**
+     * Merender Row 2 (Status Detil) secara Dinamis dan Fleksibel
+     * @param {string} prefix - Prefix ID unik (misal: 'dashsk')
+     * @param {Array} cards - Konfigurasi kartu di Row 2 (misal: [{key: 'Diproses', label: 'DIPROSES', theme: 'metric-info', icon: 'fas fa-spinner fa-spin', detailKey: 'infoProsesDetail'}, ...])
+     */
+    renderDashboardRow2: function(prefix, cards = []) {
+        if (cards.length === 0) {
+            cards = [
+                { key: 'TotalDokumen', label: 'JML DOKUMEN', theme: 'metric-navy', icon: 'fas fa-file-alt', detailKey: 'infoTotalDetail' },
+                { key: 'Diproses', label: 'DIPROSES', theme: 'metric-info', icon: 'fas fa-spinner fa-spin', detailKey: 'infoProsesDetail' },
+                { key: 'Disetujui', label: 'DISETUJUI', theme: 'metric-success', icon: 'fas fa-check-double', detailKey: 'infoValidDetail' },
+                { key: 'Revisi', label: 'REVISI', theme: 'metric-gold', icon: 'fas fa-exclamation-triangle', detailKey: 'infoRevisiDetail' },
+                { key: 'Ditolak', label: 'DITOLAK', theme: 'metric-maroon', icon: 'fas fa-ban', detailKey: 'infoTolakDetail' }
+            ];
+        }
+
+        const flexWidth = (100 / cards.length) + '%';
+        let cardsHtml = '';
+        cards.forEach(function(c) {
+            cardsHtml += `
+            <div style="flex: 0 0 ${flexWidth}; max-width: ${flexWidth}; padding: 0 7.5px;" class="mb-2 col-sm-6">
+                <div class="sultan-metric-card ${c.theme}" style="min-height: 80px; padding: 10px 12px;">
+                    <div class="inner">
+                        <h3 id="${prefix}_card${c.key}" class="dashsk-count-up" style="font-size: 1.6rem; font-weight: bold; margin-bottom: 2px;">0</h3>
+                        <p style="font-size: 10px; font-weight: bold; margin-bottom: 0;">${c.label}</p>
+                    </div>
+                    <div class="icon" style="font-size: 40px; right: 10px; top: 8px;"><i class="${c.icon}"></i></div>
+                    <div id="${prefix}_${c.detailKey}" class="small mt-0.5 pt-0.5 border-top" style="font-size: 11px; font-weight: 500; opacity: 0.85; line-height: 1.2;">
+                        Awal: 0 | Perb: 0
+                    </div>
+                </div>
+            </div>
+            `;
+        });
+
+        return `
+        <!-- Row 2: Status Detil -->
+        <div class="row mb-3">
+            ${cardsHtml}
+        </div>
+        `;
     }
 };
 </script>
