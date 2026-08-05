@@ -66,62 +66,8 @@
             <!-- Row 2: Status Detil (5 Columns) - Rendered Dynamically -->
             <div id="admmuriddash_metricRow2"></div>
 
-            <!-- Sudah Unggah / Belum Unggah Lists -->
-            <div class="row">
-              <div class="row w-100 m-0">
-                <!-- Sudah Unggah -->
-                <div class="col-md-6 mb-3 d-flex flex-column">
-                  <div class="card-sultan flex-fill d-flex flex-column border-success" style="border-width: 2px; border-radius: var(--radius-sultan) !important; overflow: hidden; margin-bottom: 0.5rem;">
-                    <div class="card-header card-header-sultan-adaptive py-2.5 d-flex justify-content-between align-items-center">
-                      <h6 class="m-0 font-weight-bold text-success" style="font-size: 14px;"><i class="fas fa-check-circle mr-2"></i>Sudah Unggah</h6>
-                      <span class="shadow-sm" id="admmuriddash_badgeSudah" style="font-size: 12px; background-color: #28a745 !important; color: #ffffff !important; padding: 2px 8px !important; border-radius: 10px !important; font-weight: bold !important; display: inline-block !important; line-height: 1.2 !important;">0</span>
-                    </div>
-                    <div class="p-2 bg-light border-bottom">
-                      <div class="input-group input-group-sm">
-                        <div class="input-group-prepend"><span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span></div>
-                        <input type="text" id="admmuriddash_inputCariSudah" class="form-control border-left-0" placeholder="Cari nama sekolah...">
-                        <div class="input-group-append">
-                          <button type="button" id="admmuriddash_btnSalinSudahWa" class="btn btn-success px-3" title="Salin Daftar Sudah Unggah ke WhatsApp" style="border-top-right-radius: 4px; border-bottom-right-radius: 4px;">
-                            <i class="fab fa-whatsapp"></i> Salin
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="card-body p-0" style="height: calc(100vh - 390px); min-height: 280px; overflow-y: auto;">
-                      <ul class="list-group list-group-flush" id="admmuriddash_listSudah">
-                        <li class="list-group-item text-center text-muted py-4"><i class="fas fa-spinner fa-spin mr-2"></i> Memuat daftar...</li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Belum Unggah -->
-                <div class="col-md-6 mb-3 d-flex flex-column">
-                  <div class="card-sultan flex-fill d-flex flex-column border-danger" style="border-width: 2px; border-radius: var(--radius-sultan) !important; overflow: hidden; margin-bottom: 0.5rem;">
-                    <div class="card-header card-header-sultan-adaptive py-2.5 d-flex justify-content-between align-items-center">
-                      <h6 class="m-0 font-weight-bold text-danger" style="font-size: 14px;"><i class="fas fa-times-circle mr-2"></i>Belum Unggah</h6>
-                      <span class="shadow-sm" id="admmuriddash_badgeBelum" style="font-size: 12px; background-color: #dc3545 !important; color: #ffffff !important; padding: 2px 8px !important; border-radius: 10px !important; font-weight: bold !important; display: inline-block !important; line-height: 1.2 !important;">0</span>
-                    </div>
-                    <div class="p-2 bg-light border-bottom">
-                      <div class="input-group input-group-sm">
-                        <div class="input-group-prepend"><span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span></div>
-                        <input type="text" id="admmuriddash_inputCariBelum" class="form-control border-left-0" placeholder="Cari nama sekolah...">
-                        <div class="input-group-append">
-                          <button type="button" id="admmuriddash_btnSalinWa" class="btn btn-success px-3" title="Salin Daftar Belum Unggah ke WhatsApp" style="border-top-right-radius: 4px; border-bottom-right-radius: 4px;">
-                            <i class="fab fa-whatsapp"></i> Salin
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="card-body p-0" style="height: calc(100vh - 390px); min-height: 280px; overflow-y: auto;">
-                      <ul class="list-group list-group-flush" id="admmuriddash_listBelum">
-                        <li class="list-group-item text-center text-muted py-4"><i class="fas fa-spinner fa-spin mr-2"></i> Memuat daftar...</li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <!-- Sudah Unggah & Belum Unggah Lists - Rendered Dynamically -->
+            <div id="admmuriddash_listsContainer"></div>
 
             <!-- Row 3: Tabel Rekapitulasi Data (Pindahkan ke paling bawah) -->
             <div class="row mb-4">
@@ -183,6 +129,7 @@
         { key: 'Ditolak', label: 'DITOLAK', theme: 'metric-maroon', icon: 'fas fa-ban' }
     ];
     $('#admmuriddash_metricRow2').html(SultanUI.renderDashboardRow2('admmuriddash', row2Cards));
+    $('#admmuriddash_listsContainer').html(SultanUI.renderDashboardLists('admmuriddash', { placeholderCari: 'Cari nama sekolah...', hasCopySudah: true, hasCopyBelum: true }));
 
     var userLogin = typeof getSesiUser === 'function' ? getSesiUser() : {};
 
@@ -475,22 +422,18 @@
     if (listSudah.length === 0) { 
         uiSudah = '<li class="list-group-item text-center py-5"><i class="fas fa-exclamation-triangle fa-2x text-warning mb-3 opacity-50"></i><br><div class="font-weight-bold text-dark mb-1" style="font-size:12px;">Belum Ada Data</div></li>'; 
     } else {
-        listSudah.forEach(function(s) {
+        listSudah.forEach(function(s, idx) {
             var doc = (submenu === "SPMB") ? s.spmb : ((submenu === "IJAZAH") ? s.ijazah : s.arsip_ijazah);
             var t = doc.detail ? (parseInt(doc.detail.total) || 0) : 0;
             var statusStr = doc.status || "Diproses";
-            var stBadgeClass = "badge-secondary";
-            if (statusStr.toLowerCase() === "disetujui") stBadgeClass = "badge-success";
-            else if (statusStr.toLowerCase() === "diproses" || statusStr.toLowerCase() === "dicetak") stBadgeClass = "badge-warning";
-            else if (statusStr.toLowerCase() === "revisi") stBadgeClass = "badge-info";
-            else if (statusStr.toLowerCase() === "ditolak") stBadgeClass = "badge-danger";
+            var statusType = 'info';
+            if (statusStr.toLowerCase() === "disetujui") statusType = "success";
+            else if (statusStr.toLowerCase() === "diproses" || statusStr.toLowerCase() === "dicetak") statusType = "info";
+            else if (statusStr.toLowerCase() === "revisi") statusType = "warning";
+            else if (statusStr.toLowerCase() === "ditolak") statusType = "danger";
 
-            uiSudah += '<li class="list-group-item admmuriddash-item-sudah py-2 px-3 hover-sultan">' +
-                '<div class="d-flex justify-content-between align-items-center">' +
-                '<div><div class="font-weight-bold text-dark text-uppercase mb-0" style="font-size:12px;line-height:1.2;">' + s.nama + '</div>' +
-                '<div class="text-muted" style="font-size:10px;line-height:1.2;">NPSN: ' + s.npsn + '</div>' +
-                '<div class="text-success font-weight-bold mt-1 text-uppercase" style="font-size:10px;line-height:1.2;">Total Murid: ' + t.toLocaleString('id-ID') + '</div></div>' +
-                '<span class="badge ' + stBadgeClass + ' ml-2 px-2 py-1" style="font-size: 10px; border-radius: 6px;">' + statusStr.toUpperCase() + '</span></div></li>';
+            var extraAttrs = 'class="list-group-item admmuriddash-item-sudah py-2 px-3 hover-sultan"';
+            uiSudah += SultanUI.renderListItem(idx + 1, s.nama, 'NPSN: ' + s.npsn, 'Total Murid: ' + t.toLocaleString('id-ID'), statusType, extraAttrs);
         });
     }
     $('#admmuriddash_listSudah').html(uiSudah); $('#admmuriddash_inputCariSudah').val('');
@@ -500,12 +443,9 @@
     if (listBelum.length === 0) { 
         uiBelum = '<li class="list-group-item text-center py-5"><i class="fas fa-check-circle fa-2x text-success mb-3 opacity-50"></i><br><div class="font-weight-bold text-dark mb-1" style="font-size:12px;">Semua Sudah Unggah</div></li>'; 
     } else {
-        listBelum.forEach(function(s) {
-            uiBelum += '<li class="list-group-item admmuriddash-item-belum py-2 px-3 hover-sultan">' +
-                '<div class="d-flex justify-content-between align-items-center">' +
-                '<div><div class="font-weight-bold text-dark text-uppercase mb-0" style="font-size:12px;line-height:1.2;">' + s.nama + '</div>' +
-                '<div class="text-muted" style="font-size:10px;line-height:1.2;">NPSN: ' + s.npsn + '</div></div>' +
-                '<span class="badge badge-danger ml-2 px-2 py-1" style="font-size: 10px; border-radius: 6px;">BELUM</span></div></li>';
+        listBelum.forEach(function(s, idx) {
+            var extraAttrs = 'class="list-group-item admmuriddash-item-belum py-2 px-3 hover-sultan"';
+            uiBelum += SultanUI.renderListItem(idx + 1, s.nama, 'NPSN: ' + s.npsn, 'BELUM', 'danger', extraAttrs);
         });
     }
     $('#admmuriddash_listBelum').html(uiBelum); $('#admmuriddash_inputCariBelum').val('');

@@ -298,6 +298,133 @@ var SultanUI = {
             ${cardsHtml}
         </div>
         `;
+    },
+
+    /**
+     * Merender kolom pembungkus list Sudah Unggah & Belum Unggah secara Terpusat
+     * @param {string} prefix - Prefix ID unik (misal: 'dashsk')
+     * @param {Object} options - Opsi konfigurasi ({ placeholderCari: 'Cari nama sekolah...', hasCopySudah: false, hasCopyBelum: true })
+     */
+    renderDashboardLists: function(prefix, options = {}) {
+        const placeholder = options.placeholderCari || 'Cari nama sekolah...';
+        const hasCopySudah = !!options.hasCopySudah;
+        const hasCopyBelum = options.hasCopyBelum !== false; // default true
+        
+        const copySudahHtml = hasCopySudah ? `
+            <div class="input-group-append">
+              <button type="button" id="${prefix}_btnSalinSudahWa" class="btn btn-success px-3" title="Salin Daftar Sudah Unggah ke WhatsApp" style="border-top-right-radius: 4px; border-bottom-right-radius: 4px;">
+                <i class="fab fa-whatsapp"></i> Salin
+              </button>
+            </div>
+        ` : '';
+
+        const copyBelumHtml = hasCopyBelum ? `
+            <div class="input-group-append">
+              <button type="button" id="${prefix}_btnSalinWa" class="btn btn-success px-3" title="Salin Daftar Belum Unggah ke WhatsApp" style="border-top-right-radius: 4px; border-bottom-right-radius: 4px;">
+                <i class="fab fa-whatsapp"></i> Salin
+              </button>
+            </div>
+        ` : '';
+
+        return `
+        <div class="row">
+          <div class="row w-100 m-0">
+            <!-- Kolom Sudah Unggah -->
+            <div class="col-md-6 mb-3 d-flex flex-column">
+              <div class="card-sultan flex-fill d-flex flex-column border-success" style="border-width: 2px; border-radius: var(--radius-sultan) !important; overflow: hidden; margin-bottom: 0.5rem;">
+                <div class="card-header card-header-sultan-adaptive py-2.5 d-flex justify-content-between align-items-center">
+                  <h6 class="m-0 font-weight-bold text-success" style="font-size: 14px;"><i class="fas fa-check-circle mr-2"></i>Sudah Unggah</h6>
+                  <span class="shadow-sm" id="${prefix}_badgeSudah" style="font-size: 12px; background-color: #28a745 !important; color: #ffffff !important; padding: 2px 8px !important; border-radius: 10px !important; font-weight: bold !important; display: inline-block !important; line-height: 1.2 !important;">0</span>
+                </div>
+                <div class="p-2 bg-light border-bottom">
+                  <div class="input-group input-group-sm">
+                    <div class="input-group-prepend"><span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span></div>
+                    <input type="text" id="${prefix}_inputCariSudah" class="form-control border-left-0" placeholder="${placeholder}">
+                    ${copySudahHtml}
+                  </div>
+                </div>
+                <div class="card-body p-0" style="height: calc(100vh - 390px); min-height: 280px; overflow-y: auto;">
+                  <ul class="list-group list-group-flush" id="${prefix}_listSudah">
+                    <li class="list-group-item text-center text-muted py-4"><i class="fas fa-spinner fa-spin mr-2"></i> Memuat daftar...</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <!-- Kolom Belum Unggah -->
+            <div class="col-md-6 mb-3 d-flex flex-column">
+              <div class="card-sultan flex-fill d-flex flex-column border-danger" style="border-width: 2px; border-radius: var(--radius-sultan) !important; overflow: hidden; margin-bottom: 0.5rem;">
+                <div class="card-header card-header-sultan-adaptive py-2.5 d-flex justify-content-between align-items-center">
+                  <h6 class="m-0 font-weight-bold text-danger" style="font-size: 14px;"><i class="fas fa-times-circle mr-2"></i>Belum Unggah</h6>
+                  <span class="shadow-sm" id="${prefix}_badgeBelum" style="font-size: 12px; background-color: #dc3545 !important; color: #ffffff !important; padding: 2px 8px !important; border-radius: 10px !important; font-weight: bold !important; display: inline-block !important; line-height: 1.2 !important;">0</span>
+                </div>
+                <div class="p-2 bg-light border-bottom">
+                  <div class="input-group input-group-sm">
+                    <div class="input-group-prepend"><span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span></div>
+                    <input type="text" id="${prefix}_inputCariBelum" class="form-control border-left-0" placeholder="${placeholder}">
+                    ${copyBelumHtml}
+                  </div>
+                </div>
+                <div class="card-body p-0" style="height: calc(100vh - 390px); min-height: 280px; overflow-y: auto;">
+                  <ul class="list-group list-group-flush" id="${prefix}_listBelum">
+                    <li class="list-group-item text-center text-muted py-4"><i class="fas fa-spinner fa-spin mr-2"></i> Memuat daftar...</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        `;
+    },
+
+    /**
+     * Helper to render standardized list item content for Already Uploaded / Not Yet Uploaded list rows.
+     * @param {number} index - Index/number of the item (1-indexed)
+     * @param {string} title - Principal item title (e.g. school name)
+     * @param {string} subtitle - Subtitle content (e.g. NPSN | Sasaran details)
+     * @param {string} dateOrLabel - Additional label or date (e.g. Uploaded date or status label)
+     * @param {string} statusType - Status theme ('success', 'warning', 'info', 'danger')
+     * @param {string} extraAttrs - Extra HTML attributes to insert on the list item tag (e.g. 'class="my-class" data-id="123"')
+     */
+    renderListItem: function(index, title, subtitle, dateOrLabel, statusType = 'success', extraAttrs = '') {
+        let badgeColor = '#28a745';
+        let textColor = 'text-success';
+        let iconClass = 'fas fa-check';
+        let badgeClass = 'badge-success';
+
+        const type = String(statusType).toLowerCase();
+        if (type === 'danger' || type === 'error' || type === 'belum') {
+            badgeColor = '#dc3545';
+            textColor = 'text-danger';
+            iconClass = 'fas fa-exclamation-circle';
+            badgeClass = 'badge-danger';
+        } else if (type === 'warning' || type === 'revisi') {
+            badgeColor = '#ffc107';
+            textColor = 'text-warning';
+            iconClass = 'fas fa-exclamation-triangle';
+            badgeClass = 'badge-warning';
+        } else if (type === 'info' || type === 'proses' || type === 'diproses') {
+            badgeColor = '#17a2b8';
+            textColor = 'text-info';
+            iconClass = 'fas fa-clock';
+            badgeClass = 'badge-info';
+        }
+
+        return `
+            <li class="list-group-item py-2 px-3 hover-sultan" style="border-left: 3px solid ${badgeColor}; margin-bottom: 4px; border-radius: 4px;" ${extraAttrs}>
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center" style="gap: 12px; width: 85%;">
+                        <span style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background-color: rgba(0,0,0,0.06); font-size: 10px; font-weight: bold; color: #555; flex-shrink: 0;">${index}</span>
+                        <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%;">
+                            <div class="nama-asn font-weight-bold text-dark text-uppercase mb-0" style="font-size: 12.5px; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${title}</div>
+                            <div class="text-muted" style="font-size: 10.5px; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${subtitle}</div>
+                            ${dateOrLabel ? `<div class="${textColor} font-weight-bold mt-0.5 text-uppercase" style="font-size: 10px; line-height: 1.2;">${dateOrLabel}</div>` : ''}
+                        </div>
+                    </div>
+                    <span class="badge ${badgeClass} ml-2" style="font-size: 10px; padding: 4px 6px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 20px;"><i class="${iconClass}"></i></span>
+                </div>
+            </li>
+        `;
     }
 };
 </script>
