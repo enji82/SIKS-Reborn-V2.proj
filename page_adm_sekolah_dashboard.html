@@ -705,40 +705,69 @@ function admsekolahdash_renderDashboard(dataRekap, dataBelum, fTahun, fPeriode) 
 
 function admsekolahdash_salinKeWA() {
     var listEl = $('.admsekolahdash-item-belum:visible');
-    if (listEl.length === 0) { Sultan.notif.info('Tidak ada data pada daftar belum unggah untuk disalin.'); return; }
-    
-    var selNamaKat = $('#admsekolahdash_filterKategori option:selected').text();
-    var selTahun = $('#admsekolahdash_filterTahun').val() === "SEMUA" ? "Semua Tahun" : $('#admsekolahdash_filterTahun').val();
-    var selUnitFilter = (ADMSEKOLAHDASH_IS_ADMIN || ADMSEKOLAHDASH_USE_NPSN_FILTER) ? $('#admsekolahdash_filterSekolah').val() : ADMSEKOLAHDASH_UNIT_TERKUNCI;
-    var namaUnitDisplay = (selUnitFilter === "SEMUA" || selUnitFilter === "") ? "Seluruh Sekolah" : selUnitFilter;
-    
-    var teks = `🚨 *DAFTAR SEKOLAH BELUM UNGGAH* 🚨\n`;
-    teks += `Kategori: ${selNamaKat}\n`;
-    teks += `Tahun: ${selTahun}\n`;
-    teks += `Filter Unit: ${namaUnitDisplay}\n`;
-    teks += `Total Belum Unggah: ${listEl.length} Sekolah\n\n`;
+    var isPermanen = (ADMSEKOLAHDASH_JENIS_PERIODE === "PERMANEN" || ADMSEKOLAHDASH_JENIS_PERIODE === "TMT");
+    var fTahun = isPermanen ? "-" : ($('#admsekolahdash_filterTahun').val() === "SEMUA" ? "-" : $('#admsekolahdash_filterTahun').val());
+    var fPeriode = ($('#admsekolahdash_filterPeriode').val() === "SEMUA" || isPermanen) ? "-" : $('#admsekolahdash_filterPeriode').val();
+    var selNamaKat = $('#admsekolahdash_filterKategori option:selected').text().toUpperCase();
 
-    var mapUnit = {};
-    listEl.each(function() {
-        var nama = $(this).find('.nama-asn').text().trim();
-        var unitRaw = $(this).attr('data-unit') || $(this).find('.unit-asn').text().split('(')[0].trim();
-        if(!mapUnit[unitRaw]) { mapUnit[unitRaw] = []; }
-        mapUnit[unitRaw].push(nama);
+    // Dapatkan data revisi
+    var fUnit = "";
+    if (ADMSEKOLAHDASH_IS_ADMIN) {
+        fUnit = String($('#admsekolahdash_filterSekolah').val() || "").trim().toUpperCase();
+    } else if (ADMSEKOLAHDASH_USE_NPSN_FILTER) {
+        fUnit = String($('#admsekolahdash_filterSekolah').val() || "SEMUA").trim().toUpperCase();
+    } else {
+        fUnit = String(ADMSEKOLAHDASH_UNIT_TERKUNCI || "").trim().toUpperCase();
+    }
+
+    var listRevisi = ADMSEKOLAHDASH_CACHE_REKAP.filter(function(r) {
+        if (!admsekolahdash_rowMatchesUnit(r, fUnit)) return false;
+        var rTahun = String(r.tahun || "").trim().toUpperCase();
+        if (!isPermanen && fTahun !== "-" && fTahun !== "SEMUA" && rTahun !== fTahun) return false;
+        if (fPeriode !== "-" && fPeriode !== "SEMUA" && String(r.periode || "").trim().toUpperCase() !== fPeriode) return false;
+        return String(r.status || "").toLowerCase().includes("revisi");
     });
 
-    var sortedUnits = Object.keys(mapUnit).sort();
-    sortedUnits.forEach(function(unitName) {
-        teks += `🏢 *${unitName}*\n`; 
-        var sortedNames = mapUnit[unitName].sort();
-        sortedNames.forEach(function(namaSekolah, idx) { teks += `  ${idx + 1}. ${namaSekolah}\n`; });
-        teks += `\n`; 
-    });
+    if (listEl.length === 0 && listRevisi.length === 0) {
+        Sultan.notif.info('Tidak ada data belum unggah maupun revisi untuk disalin.');
+        return;
+    }
 
-    teks += `Mohon segera mengunggah dokumen elektronik sekolah Anda melalui sistem SIKS. Terima kasih. 🙏`;
+    var teks = `*INFORMASI ADMINISTRASI SEKOLAH*\n`;
+    teks += `DOKUMEN: ${selNamaKat}\n`;
+    teks += `TAHUN: ${fTahun}\n`;
+    teks += `PERIODE: ${fPeriode}\n`;
+    teks += `=======================\n\n`;
+
+    if (listEl.length > 0) {
+        teks += `*⚠️ BELUM UNGGAH (${listEl.length}):*\n`;
+        var listBelumNama = [];
+        listEl.each(function() {
+            var unitRaw = $(this).attr('data-unit') || $(this).find('.unit-asn').text().split('(')[0].trim();
+            listBelumNama.push(unitRaw);
+        });
+        listBelumNama.sort().forEach(function(nama, idx) {
+            teks += `${idx + 1}. ${nama}\n`;
+        });
+        teks += `\n`;
+    }
+
+    if (listRevisi.length > 0) {
+        teks += `*✍️ PERLU REVISI (${listRevisi.length}):*\n`;
+        var listRevisiNama = listRevisi.map(function(r) { return r.unit; }).sort();
+        listRevisiNama.forEach(function(nama, idx) {
+            teks += `${idx + 1}. ${nama}\n`;
+        });
+        teks += `\n`;
+    }
+
+    teks += `_Mohon segera menindaklanjuti melalui SIKS-Reborn._`;
 
     navigator.clipboard.writeText(teks).then(function() {
         Sultan.notif.sukses('Daftar berhasil disalin ke Clipboard (Siap Paste di WhatsApp).');
-    }).catch(function() { Sultan.alert('error', 'Gagal Menyalin', 'Browser Anda tidak mendukung Clipboard API.'); });
+    }).catch(function() {
+        Sultan.alert('error', 'Gagal Menyalin', 'Browser Anda tidak mendukung Clipboard API.');
+    });
 }
 
 function admsekolahdash_escapeHtml(text) { return text ? String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;") : ""; }
