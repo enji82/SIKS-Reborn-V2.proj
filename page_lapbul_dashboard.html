@@ -302,8 +302,7 @@
     // ======================================================================
     // BAB I: ISOLASI VARIABEL GLOBAL & PENCEGAH RACE CONDITION SPA
     // ======================================================================
-    var DASHLAPBUL_CHART_INSTANCE = null;
-    var DASHLAPBUL_CHART_TOTAL_INSTANCE = null; // Vaksin: Variabel grafik pie baru
+
 
     var DASHLAPBUL_DASH_DATA = {
         sd: { ok: 0, pro: 0, rev: 0, no: 0, blm: 0 },
@@ -325,8 +324,6 @@
         // 1. Inisialisasi filter dulu (TANPA memicu fetch)
         dashlapbul_initFilter();
 
-        // 2. Inisiasi Chart
-        dashlapbul_initChart();
 
         // 3. Tarik Data Manual Pertama Kali
         dashlapbul_loadDashboard();
@@ -358,13 +355,6 @@
         $(document).off('keyup', '#dashlapbul_inputCariKb').on('keyup', '#dashlapbul_inputCariKb', function() { dashlapbul_filterLokal('Kb'); });
         $(document).off('keyup', '#dashlapbul_inputCariSps').on('keyup', '#dashlapbul_inputCariSps', function() { dashlapbul_filterLokal('Sps'); });
 
-        // Bind listener ke global Dark Mode Toggle agar chart menyesuaikan secara dinamis
-        // Menggunakan namespace (.dashlapbulTheme) agar tidak menghapus listener global dark mode dari core system!
-        $(document).off('change.dashlapbulTheme', '#sultan_darkModeToggle').on('change.dashlapbulTheme', '#sultan_darkModeToggle', function () {
-            setTimeout(function () {
-                dashlapbul_applyChartTheme();
-            }, 100);
-        });
 
         // Pemicu Modal Sekolah Belum Lapor saat mengklik Card Header / Badge Belum Lapor
         $(document).off('click', '[id^="dashlapbul_countBelum"], .card-header[class*="bg-soft-"]').on('click', '[id^="dashlapbul_countBelum"], .card-header[class*="bg-soft-"]', function () {
@@ -441,7 +431,6 @@
         // Reset data store dan chart (ini memanggil animateValue(id, 0) → stopLottery pada card status)
         // Maka startLottery harus dipanggil SETELAH reset agar tidak langsung dibunuh
         dashlapbul_resetDataStore();
-        if (DASHLAPBUL_CHART_INSTANCE) dashlapbul_updateChart();
 
         // Mulai animasi lottery SETELAH reset chart selesai, agar tidak langsung dibunuh oleh animateValue(0)
         if (typeof SultanUI !== 'undefined') {
@@ -598,6 +587,7 @@
             dashlapbul_renderListBelum(CapJenjang, DASHLAPBUL_GLOBAL_BELUM_LAPOR[jenjang]);
         });
 
+        // Perbarui 5 status card di Row 2 berdasarkan data store yang baru terisi
         dashlapbul_updateChart();
     }
 
@@ -710,128 +700,6 @@
         DASHLAPBUL_DASH_DATA[key] = { ok: s.disetujui, pro: s.diproses, rev: s.revisi, no: s.ditolak, blm: s.belum };
     }
 
-    // ======================================================================
-    // PENGATURAN KEDUA GRAFIK CHART.JS
-    // ======================================================================
-    function dashlapbul_initChart() {
-        // 1. Chart Bar Komparasi (Original)
-        var ctxBar = document.getElementById('dashlapbul_chartLapbul').getContext('2d');
-        DASHLAPBUL_CHART_INSTANCE = new Chart(ctxBar, {
-            type: 'bar',
-            data: {
-                labels: ['SD', 'TK', 'KB', 'SPS'],
-                datasets: [
-                    { label: 'Disetujui', backgroundColor: '#28a745', data: [0, 0, 0, 0], borderRadius: 5 },
-                    { label: 'Diproses', backgroundColor: '#17a2b8', data: [0, 0, 0, 0], borderRadius: 5 },
-                    { label: 'Revisi', backgroundColor: '#ffc107', data: [0, 0, 0, 0], borderRadius: 5 },
-                    { label: 'Ditolak', backgroundColor: '#dc3545', data: [0, 0, 0, 0], borderRadius: 5 },
-                    { label: 'Belum Lapor', backgroundColor: '#6c757d', data: [0, 0, 0, 0], borderRadius: 5 }
-                ]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                scales: {
-                    x: { 
-                        grid: { display: false }, 
-                        stacked: false,
-                        ticks: {}
-                    },
-                    y: { 
-                        beginAtZero: true, 
-                        ticks: { stepSize: 1 },
-                        grid: {}
-                    }
-                },
-                plugins: { 
-                    legend: { 
-                        position: 'bottom',
-                        labels: {}
-                    } 
-                },
-                animation: { duration: 500 }
-            }
-        });
-
-        // 2. Chart Pie Total Status (Pengganti Timeline)
-        var ctxPie = document.getElementById('dashlapbul_chartTotalStatus').getContext('2d');
-        DASHLAPBUL_CHART_TOTAL_INSTANCE = new Chart(ctxPie, {
-            type: 'doughnut',
-            data: {
-                labels: ['Disetujui', 'Diproses', 'Revisi', 'Ditolak', 'Belum Lapor'],
-                datasets: [{
-                    data: [0.1, 0, 0, 0, 0], // Dummy awal agar bulat abu-abu
-                    backgroundColor: ['#e9ecef', '#17a2b8', '#ffc107', '#dc3545', '#6c757d'],
-                    borderWidth: 0,
-                    hoverOffset: 8
-                }]
-            },
-            options: {
-                maintainAspectRatio: false,
-                responsive: true,
-                cutout: '70%',
-                plugins: {
-                    legend: { display: false },
-                    tooltip: { enabled: false }
-                },
-                animation: { animateScale: true, animateRotate: true }
-            }
-        });
-
-        // Oleskan warna tema secara dinamis ke opsi grafik
-        dashlapbul_applyChartTheme();
-    }
-
-    function dashlapbul_updateChart() {
-        var d = DASHLAPBUL_DASH_DATA;
-
-        // Kalkulasi Total untuk status card dan chart
-        var totOk = d.sd.ok + d.tk.ok + d.kb.ok + d.sps.ok;
-        var totPro = d.sd.pro + d.tk.pro + d.kb.pro + d.sps.pro;
-        var totRev = d.sd.rev + d.tk.rev + d.kb.rev + d.sps.rev;
-        var totNo = d.sd.no + d.tk.no + d.kb.no + d.sps.no;
-        var totBlm = d.sd.blm + d.tk.blm + d.kb.blm + d.sps.blm;
-
-        // Update 5 Kartu Status Detail di Baris Kedua
-        var totalSubmitted = totOk + totPro + totRev + totNo;
-        dashlapbul_animateValue('dashlapbul_cardTotalDokumen', totalSubmitted);
-        dashlapbul_animateValue('dashlapbul_cardDiproses', totPro);
-        dashlapbul_animateValue('dashlapbul_cardDisetujui', totOk);
-        dashlapbul_animateValue('dashlapbul_cardRevisi', totRev);
-        dashlapbul_animateValue('dashlapbul_cardDitolak', totNo);
-
-        if (!DASHLAPBUL_CHART_INSTANCE || !DASHLAPBUL_CHART_TOTAL_INSTANCE) return;
-
-        // Update Chart Bar Komparasi
-        DASHLAPBUL_CHART_INSTANCE.data.datasets[0].data = [d.sd.ok, d.tk.ok, d.kb.ok, d.sps.ok];
-        DASHLAPBUL_CHART_INSTANCE.data.datasets[1].data = [d.sd.pro, d.tk.pro, d.kb.pro, d.sps.pro];
-        DASHLAPBUL_CHART_INSTANCE.data.datasets[2].data = [d.sd.rev, d.tk.rev, d.kb.rev, d.sps.rev];
-        DASHLAPBUL_CHART_INSTANCE.data.datasets[3].data = [d.sd.no, d.tk.no, d.kb.no, d.sps.no];
-        DASHLAPBUL_CHART_INSTANCE.data.datasets[4].data = [d.sd.blm, d.tk.blm, d.kb.blm, d.sps.blm];
-
-        var totalAll = totOk + totPro + totRev + totNo + totBlm;
-
-        var isDark = $('body').hasClass('dark-mode');
-        var dummyColor = isDark ? '#2d2d2d' : '#e9ecef';
-
-        var finalDataTot = totalAll === 0 ? [0.1, 0, 0, 0, 0] : [totOk, totPro, totRev, totNo, totBlm];
-        var finalColorsTot = totalAll === 0
-            ? [dummyColor, '#17a2b8', '#ffc107', '#dc3545', '#6c757d']
-            : ['#28a745', '#17a2b8', '#ffc107', '#dc3545', '#6c757d'];
-
-        DASHLAPBUL_CHART_TOTAL_INSTANCE.data.datasets[0].data = finalDataTot;
-        DASHLAPBUL_CHART_TOTAL_INSTANCE.data.datasets[0].backgroundColor = finalColorsTot;
-        DASHLAPBUL_CHART_TOTAL_INSTANCE.options.plugins.tooltip.enabled = (totalAll > 0);
-
-        dashlapbul_applyChartTheme();
-
-        // Update Text Summary di bawah Doughnut
-        $('#dashlapbul_txtTotSetuju').text(totOk);
-        $('#dashlapbul_txtTotProses').text(totPro);
-        $('#dashlapbul_txtTotRevisi').text(totRev);
-        $('#dashlapbul_txtTotTolak').text(totNo);
-        $('#dashlapbul_txtTotBelum').text(totBlm);
-    }
-
     function dashlapbul_resetDataStore() {
         DASHLAPBUL_DASH_DATA = {
             sd: { ok: 0, pro: 0, rev: 0, no: 0, blm: 0 },
@@ -841,52 +709,22 @@
         };
     }
 
-    // Fungsi Pembantu untuk Mengatur Tema Grafik secara Dinamis (Dark & Light Mode)
-    function dashlapbul_applyChartTheme() {
-        if (!DASHLAPBUL_CHART_INSTANCE || !DASHLAPBUL_CHART_TOTAL_INSTANCE) return;
-
-        var isDark = $('body').hasClass('dark-mode');
-        var textColor = isDark ? '#adb5bd' : '#495057';
-        var gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)';
-        var dummyColor = isDark ? '#2d2d2d' : '#e9ecef';
-
-        // 1. Perbarui Komparasi Bar Chart
-        if (DASHLAPBUL_CHART_INSTANCE.options.scales) {
-            if (DASHLAPBUL_CHART_INSTANCE.options.scales.x) {
-                if (!DASHLAPBUL_CHART_INSTANCE.options.scales.x.ticks) DASHLAPBUL_CHART_INSTANCE.options.scales.x.ticks = {};
-                DASHLAPBUL_CHART_INSTANCE.options.scales.x.ticks.color = textColor;
-            }
-            if (DASHLAPBUL_CHART_INSTANCE.options.scales.y) {
-                if (!DASHLAPBUL_CHART_INSTANCE.options.scales.y.ticks) DASHLAPBUL_CHART_INSTANCE.options.scales.y.ticks = {};
-                DASHLAPBUL_CHART_INSTANCE.options.scales.y.ticks.color = textColor;
-                if (!DASHLAPBUL_CHART_INSTANCE.options.scales.y.grid) DASHLAPBUL_CHART_INSTANCE.options.scales.y.grid = {};
-                DASHLAPBUL_CHART_INSTANCE.options.scales.y.grid.color = gridColor;
-            }
-        }
-        if (DASHLAPBUL_CHART_INSTANCE.options.plugins && DASHLAPBUL_CHART_INSTANCE.options.plugins.legend) {
-            if (!DASHLAPBUL_CHART_INSTANCE.options.plugins.legend.labels) DASHLAPBUL_CHART_INSTANCE.options.plugins.legend.labels = {};
-            DASHLAPBUL_CHART_INSTANCE.options.plugins.legend.labels.color = textColor;
-        }
-        DASHLAPBUL_CHART_INSTANCE.update();
-
-        // 2. Perbarui Doughnut Chart (Warna Abu Dummy jika Total 0)
+    // Update 5 Kartu Status Detail (Row 2) tanpa chart
+    function dashlapbul_updateChart() {
         var d = DASHLAPBUL_DASH_DATA;
-        var totOk = d.sd.ok + d.tk.ok + d.kb.ok + d.sps.ok;
+        var totOk  = d.sd.ok  + d.tk.ok  + d.kb.ok  + d.sps.ok;
         var totPro = d.sd.pro + d.tk.pro + d.kb.pro + d.sps.pro;
         var totRev = d.sd.rev + d.tk.rev + d.kb.rev + d.sps.rev;
-        var totNo = d.sd.no + d.tk.no + d.kb.no + d.sps.no;
-        var totBlm = d.sd.blm + d.tk.blm + d.kb.blm + d.sps.blm;
-        var totalAll = totOk + totPro + totRev + totNo + totBlm;
-
-        if (totalAll === 0) {
-            DASHLAPBUL_CHART_TOTAL_INSTANCE.data.datasets[0].backgroundColor[0] = dummyColor;
-        } else {
-            DASHLAPBUL_CHART_TOTAL_INSTANCE.data.datasets[0].backgroundColor = ['#28a745', '#17a2b8', '#ffc107', '#dc3545', '#6c757d'];
-        }
-        DASHLAPBUL_CHART_TOTAL_INSTANCE.update();
+        var totNo  = d.sd.no  + d.tk.no  + d.kb.no  + d.sps.no;
+        var totalSubmitted = totOk + totPro + totRev + totNo;
+        dashlapbul_animateValue('dashlapbul_cardTotalDokumen', totalSubmitted);
+        dashlapbul_animateValue('dashlapbul_cardDiproses', totPro);
+        dashlapbul_animateValue('dashlapbul_cardDisetujui', totOk);
+        dashlapbul_animateValue('dashlapbul_cardRevisi', totRev);
+        dashlapbul_animateValue('dashlapbul_cardDitolak', totNo);
     }
 
-    // VAKSIN ANIMASI ANGKA
+
     function dashlapbul_animateValue(id, endValue, suffix = "") {
         if (typeof SultanUI !== 'undefined') {
             SultanUI.stopLottery('#' + id);
