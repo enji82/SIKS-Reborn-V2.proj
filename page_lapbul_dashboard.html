@@ -415,14 +415,9 @@
     // BAB VIII: FETCH DATA SERVER (DENGAN RACE CONDITION HANDLER)
     // ======================================================================
     function dashlapbul_loadDashboard() {
-        if (typeof SultanUI !== 'undefined') {
-            var selLottery = '#dashlapbul_valSdPersen, #dashlapbul_valTkPersen, #dashlapbul_valKbPersen, #dashlapbul_valSpsPersen, ' +
-                             '#dashlapbul_cardTotalDokumen, #dashlapbul_cardDiproses, #dashlapbul_cardDisetujui, #dashlapbul_cardRevisi, #dashlapbul_cardDitolak';
-            SultanUI.startLottery(selLottery, 3);
-        }
         $('.badge-info, .badge-warning, .badge-success, .badge-primary').css('opacity', '0.5');
 
-        // 2. Spinner untuk List Group
+        // Spinner untuk List Group
         var listLoading = '<li class="list-group-item border-0 px-3 py-4 bg-transparent text-center">' +
             '<i class="fas fa-spinner fa-spin text-maroon mb-2 opacity-50"></i><br>' +
             '<span class="small text-muted font-weight-bold">Memuat...</span></li>';
@@ -435,8 +430,17 @@
         var t = $('#dashlapbul_dashTahun').val();
         var b = $('#dashlapbul_dashBulan').val();
 
+        // Reset data store dan chart (ini memanggil animateValue(id, 0) → stopLottery pada card status)
+        // Maka startLottery harus dipanggil SETELAH reset agar tidak langsung dibunuh
         dashlapbul_resetDataStore();
         if (DASHLAPBUL_CHART_INSTANCE) dashlapbul_updateChart();
+
+        // Mulai animasi lottery SETELAH reset chart selesai, agar tidak langsung dibunuh oleh animateValue(0)
+        if (typeof SultanUI !== 'undefined') {
+            var selLottery = '#dashlapbul_valSdPersen, #dashlapbul_valTkPersen, #dashlapbul_valKbPersen, #dashlapbul_valSpsPersen, ' +
+                             '#dashlapbul_cardTotalDokumen, #dashlapbul_cardDiproses, #dashlapbul_cardDisetujui, #dashlapbul_cardRevisi, #dashlapbul_cardDitolak';
+            SultanUI.startLottery(selLottery, 3);
+        }
 
         DASHLAPBUL_GLOBAL_BELUM_LAPOR = { sd: [], tk: [], kb: [], sps: [] };
 
