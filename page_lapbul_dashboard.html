@@ -312,6 +312,7 @@
     };
 
     var DASHLAPBUL_GLOBAL_BELUM_LAPOR = { sd: [], tk: [], kb: [], sps: [] };
+    var DASHLAPBUL_GLOBAL_REVISI_LAPOR = { sd: [], tk: [], kb: [], sps: [] };
     var DASHLAPBUL_IS_INIT = true; // FLAG PENGAMAN STARTUP
     var dashlapbul_pendingRequests = 0;
 
@@ -440,6 +441,7 @@
         }
 
         DASHLAPBUL_GLOBAL_BELUM_LAPOR = { sd: [], tk: [], kb: [], sps: [] };
+        DASHLAPBUL_GLOBAL_REVISI_LAPOR = { sd: [], tk: [], kb: [], sps: [] };
 
         Lapbul_GetMasterSekolah(function(masterSekolah) {
             // Kita pass admin true karena dashboard butuh data agregat SEMUA sekolah (bukan 1 sekolah)
@@ -471,10 +473,10 @@
 
     function dashlapbul_calculateMetrics(masterSekolah, rawData, targetTahun, targetBulan) {
         var result = {
-            sd: { total:0, sudah:0, belum:0, persen:0, disetujui:0, diproses:0, revisi:0, ditolak:0, listBelum: [] },
-            tk: { total:0, sudah:0, belum:0, persen:0, disetujui:0, diproses:0, revisi:0, ditolak:0, listBelum: [] },
-            kb: { total:0, sudah:0, belum:0, persen:0, disetujui:0, diproses:0, revisi:0, ditolak:0, listBelum: [] },
-            sps: { total:0, sudah:0, belum:0, persen:0, disetujui:0, diproses:0, revisi:0, ditolak:0, listBelum: [] }
+            sd: { total:0, sudah:0, belum:0, persen:0, disetujui:0, diproses:0, revisi:0, ditolak:0, listBelum: [], listRevisi: [] },
+            tk: { total:0, sudah:0, belum:0, persen:0, disetujui:0, diproses:0, revisi:0, ditolak:0, listBelum: [], listRevisi: [] },
+            kb: { total:0, sudah:0, belum:0, persen:0, disetujui:0, diproses:0, revisi:0, ditolak:0, listBelum: [], listRevisi: [] },
+            sps: { total:0, sudah:0, belum:0, persen:0, disetujui:0, diproses:0, revisi:0, ditolak:0, listBelum: [], listRevisi: [] }
         };
 
         var schoolMap = {};
@@ -555,6 +557,7 @@
                 }
                 else if (st.indexOf("revisi") > -1 || st.indexOf("perbaiki") > -1) {
                     result[j].revisi++;
+                    result[j].listRevisi.push(s.nama);
                 }
                 else { // proses/tunggu dll
                     result[j].diproses++;
@@ -568,6 +571,9 @@
                 result[j].persen = Math.round((result[j].sudah / result[j].total) * 100);
             }
             result[j].listBelum.sort(function(a, b) {
+                return String(a).localeCompare(String(b));
+            });
+            result[j].listRevisi.sort(function(a, b) {
                 return String(a).localeCompare(String(b));
             });
         });
@@ -584,6 +590,7 @@
             dashlapbul_updateStore(jenjang, d);
             
             DASHLAPBUL_GLOBAL_BELUM_LAPOR[jenjang] = d.listBelum || [];
+            DASHLAPBUL_GLOBAL_REVISI_LAPOR[jenjang] = d.listRevisi || [];
             dashlapbul_renderListBelum(CapJenjang, DASHLAPBUL_GLOBAL_BELUM_LAPOR[jenjang]);
         });
 
@@ -663,21 +670,35 @@
 
     function dashlapbul_copyBelumJenjang(jenjang) {
         var th = $('#dashlapbul_dashTahun').val();
-        var blnText = $('#dashlapbul_dashBulan option:selected').text();
-        var list = DASHLAPBUL_GLOBAL_BELUM_LAPOR[jenjang] || [];
+        var blnText = $('#dashlapbul_dashBulan option:selected').text().toUpperCase();
+        var listBelum = DASHLAPBUL_GLOBAL_BELUM_LAPOR[jenjang] || [];
+        var listRevisi = DASHLAPBUL_GLOBAL_REVISI_LAPOR[jenjang] || [];
         var label = jenjang.toUpperCase();
 
-        if (list.length === 0) {
-            Sultan.notif.sukses('Semua sekolah jenjang ' + label + ' sudah lapor!'); return;
+        if (listBelum.length === 0 && listRevisi.length === 0) {
+            Sultan.notif.sukses('Semua sekolah jenjang ' + label + ' sudah lapor dan tidak ada revisi!'); return;
         }
 
-        var txt = '*DAFTAR SEKOLAH BELUM LAPOR JENJANG ' + label + '*\n';
-        txt += 'Periode: ' + blnText + ' ' + th + '\n\n';
-        list.forEach(function(nama, i) { txt += (i + 1) + '. ' + nama + '\n'; });
-        txt += '\n_Mohon segera mengirimkan laporan ke sistem SIKS-REBORN._';
+        var txt = '*INFORMASI LAPORAN BULAN JENJANG ' + label + '*\n';
+        txt += 'BULAN: ' + blnText + ' ' + th + '\n';
+        txt += '=======================\n\n';
+
+        if (listBelum.length > 0) {
+            txt += '*⚠️ BELUM UNGGAH (' + listBelum.length + '):*\n';
+            listBelum.forEach(function(nama, i) { txt += (i + 1) + '. ' + nama + '\n'; });
+            txt += '\n';
+        }
+
+        if (listRevisi.length > 0) {
+            txt += '*✍️ PERLU REVISI (' + listRevisi.length + '):*\n';
+            listRevisi.forEach(function(nama, i) { txt += (i + 1) + '. ' + nama + '\n'; });
+            txt += '\n';
+        }
+
+        txt += '_Mohon segera menindaklanjuti melalui SIKS-Reborn._';
 
         navigator.clipboard.writeText(txt).then(function () {
-            Sultan.notif.sukses('Daftar ' + label + ' tersalin! Siap ditempel di WhatsApp.');
+            Sultan.notif.sukses('Informasi jenjang ' + label + ' tersalin! Siap ditempel di WhatsApp.');
         }).catch(function () {
             Sultan.alert('error', 'Gagal', 'Browser memblokir fitur clipboard.');
         });
