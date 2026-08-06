@@ -514,51 +514,67 @@
   }
 
   function admmuriddash_salinKeWA() {
-    if (ADMMURIDDASH_BELUM_UNGGAH_LIST.length === 0) { Sultan.notif.info('Semua sekolah sudah mengunggah dokumen.'); return; }
-    
+    var listEl = $('#admmuriddash_listBelum .hover-sultan:visible');
     var submenu = $('#admmuriddash_filterSubmenu').val();
     var selSub = (submenu === "SPMB") ? "Laporan SPMB" : ((submenu === "IJAZAH") ? "Cetak Ijazah" : "Arsip Ijazah");
-    var selTahun = $('#admmuriddash_filterTahun').val() === "SEMUA" ? "Semua Tahun" : $('#admmuriddash_filterTahun').val();
-    
-    var teks = `🚨 *DAFTAR SEKOLAH BELUM UNGGAH* 🚨\n`;
-    teks += `Menu: Administrasi Murid (${selSub})\n`;
-    teks += `Tahun Ajaran: ${selTahun}\n`;
-    teks += `Total Belum Unggah: ${ADMMURIDDASH_BELUM_UNGGAH_LIST.length} Sekolah\n\n`;
+    var selTahun = $('#admmuriddash_filterTahun').val() === "SEMUA" ? "-" : $('#admmuriddash_filterTahun').val();
 
-    ADMMURIDDASH_BELUM_UNGGAH_LIST.forEach(function(item, idx) {
-        teks += `${idx + 1}. ${item.nama.toUpperCase()} | ${item.npsn}\n`;
-    });
+    // Dapatkan data revisi
+    var listRevisi = [];
+    if (ADMMURIDDASH_CACHE_DATA && ADMMURIDDASH_CACHE_DATA.detailSekolah) {
+      var fSekolah = $('#admmuriddash_filterSekolah').val() || "SEMUA";
+      listRevisi = ADMMURIDDASH_CACHE_DATA.detailSekolah.filter(function(s) {
+        if (fSekolah !== "SEMUA" && fSekolah !== "") {
+          if (String(s.npsn || "").trim().toUpperCase() !== fSekolah.trim().toUpperCase()) return false;
+        }
+        var doc = (submenu === "SPMB") ? s.spmb : ((submenu === "IJAZAH") ? s.ijazah : s.arsip_ijazah);
+        var statusStr = String(doc.status || "").toLowerCase();
+        return statusStr.includes("revisi");
+      });
+    }
 
-    teks += `\nMohon segera mengunggah dokumen sekolah Anda melalui SIKS-REBORN. Terima kasih. 🙏`;
+    if (listEl.length === 0 && listRevisi.length === 0) {
+      Sultan.notif.info('Tidak ada data belum unggah maupun revisi untuk disalin.');
+      return;
+    }
+
+    var teks = `*INFORMASI ADMINISTRASI MURID*\n`;
+    teks += `DOKUMEN: ${selSub.toUpperCase()}\n`;
+    teks += `TAHUN: ${selTahun}\n`;
+    teks += `=======================\n\n`;
+
+    if (listEl.length > 0) {
+      teks += `*⚠️ BELUM UNGGAH (${listEl.length}):*\n`;
+      var listBelumNama = [];
+      listEl.each(function() {
+        var unitRaw = $(this).attr('data-unit') || $(this).find('.nama-asn').text().trim();
+        listBelumNama.push(unitRaw);
+      });
+      listBelumNama.sort().forEach(function(nama, idx) {
+        teks += `${idx + 1}. ${nama}\n`;
+      });
+      teks += `\n`;
+    }
+
+    if (listRevisi.length > 0) {
+      teks += `*✍️ PERLU REVISI (${listRevisi.length}):*\n`;
+      var listRevisiNama = listRevisi.map(function(r) { return r.nama; }).sort();
+      listRevisiNama.forEach(function(nama, idx) {
+        teks += `${idx + 1}. ${nama}\n`;
+      });
+      teks += `\n`;
+    }
+
+    teks += `_Mohon segera menindaklanjuti melalui SIKS-Reborn._`;
 
     navigator.clipboard.writeText(teks).then(function() {
-        Sultan.notif.sukses('Daftar belum unggah berhasil disalin ke Clipboard.');
-    }).catch(function() { Sultan.alert('error', 'Gagal Menyalin', 'Browser Anda tidak mendukung Clipboard API.'); });
+      Sultan.notif.sukses('Daftar berhasil disalin ke Clipboard.');
+    }).catch(function() {
+      Sultan.alert('error', 'Gagal Menyalin', 'Browser Anda tidak mendukung Clipboard API.');
+    });
   }
 
   function admmuriddash_salinSudahKeWA() {
-    if (ADMMURIDDASH_SUDAH_UNGGAH_LIST.length === 0) { Sultan.notif.info('Belum ada sekolah yang mengunggah dokumen.'); return; }
-    
-    var submenu = $('#admmuriddash_filterSubmenu').val();
-    var selSub = (submenu === "SPMB") ? "Laporan SPMB" : ((submenu === "IJAZAH") ? "Cetak Ijazah" : "Arsip Ijazah");
-    var selTahun = $('#admmuriddash_filterTahun').val() === "SEMUA" ? "Semua Tahun" : $('#admmuriddash_filterTahun').val();
-    
-    var teks = `✅ *DAFTAR SEKOLAH SUDAH UNGGAH* ✅\n`;
-    teks += `Menu: Administrasi Murid (${selSub})\n`;
-    teks += `Tahun Ajaran: ${selTahun}\n`;
-    teks += `Total Sudah Unggah: ${ADMMURIDDASH_SUDAH_UNGGAH_LIST.length} Sekolah\n\n`;
-
-    ADMMURIDDASH_SUDAH_UNGGAH_LIST.forEach(function(item, idx) {
-        // Capitalize status
-        var rawStatus = String(item.status || "Diproses");
-        var formattedStatus = rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1).toLowerCase();
-        teks += `${idx + 1}. ${item.nama.toUpperCase()} | ${item.npsn} | *${formattedStatus}*\n`;
-    });
-
-    teks += `\nTerima kasih sudah melaporkan, bagi yang revisi mohon untuk diperbaiki melalui SIKS-REBORN. 🙏`;
-
-    navigator.clipboard.writeText(teks).then(function() {
-        Sultan.notif.sukses('Daftar sudah unggah berhasil disalin ke Clipboard.');
-    }).catch(function() { Sultan.alert('error', 'Gagal Menyalin', 'Browser Anda tidak mendukung Clipboard API.'); });
+    admmuriddash_salinKeWA();
   }
 </script>
