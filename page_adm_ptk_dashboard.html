@@ -622,18 +622,78 @@ function admptk_dash_animateValue(id, end) {
 }
 
 function admptk_dash_salinKeWA() {
-    var listEl = $('.admptk-dash-item-belum:visible');
-    if (listEl.length === 0) { Sultan.notif.info('Tidak ada data pada daftar belum unggah untuk disalin.'); return; }
-    var selNamaKat = $('#admptk_dash_filterKategori option:selected').text();
-    var selTahun = $('#admptk_dash_filterTahun').val() === "SEMUA" ? "Semua Tahun" : $('#admptk_dash_filterTahun').val();
-    var teks = "🚨 *DAFTAR PTK BELUM UNGGAH* 🚨\n";
-    teks += "Kategori: " + selNamaKat + "\n";
-    teks += "Tahun: " + selTahun + "\n";
-    teks += "Total Belum Unggah: " + listEl.length + " PTK\n\n";
-    var no = 1;
-    listEl.each(function() { teks += no++ + ". " + $(this).find('.font-weight-bold.text-uppercase').first().text().trim() + "\n"; });
-    teks += "\nMohon segera mengunggah dokumen elektronik melalui sistem SIKS. Terima kasih. 🙏";
-    navigator.clipboard.writeText(teks).then(function() { Sultan.notif.sukses('Daftar berhasil disalin ke Clipboard (Siap Paste di WhatsApp).'); }).catch(function() { Sultan.alert('error','Gagal Menyalin','Browser Anda tidak mendukung Clipboard API.'); });
+    var listEl = $('#admptk_dash_listBelum .hover-sultan:visible');
+    var isPermanen = (ADMPTK_DASH_JENIS_PERIODE === "PERMANEN" || ADMPTK_DASH_JENIS_PERIODE === "TMT");
+    var fTahun = isPermanen ? "-" : ($('#admptk_dash_filterTahun').val() === "SEMUA" ? "-" : $('#admptk_dash_filterTahun').val());
+    var fPeriode = ($('#admptk_dash_filterPeriode').val() === "SEMUA" || isPermanen) ? "-" : $('#admptk_dash_filterPeriode').val();
+    var selNamaKat = $('#admptk_dash_filterKategori option:selected').text().toUpperCase();
+
+    // Dapatkan data revisi
+    var fSekolah = $('#admptk_dash_filterNamaSekolah').val() || "SEMUA";
+    var filterJenjang = $('#admptk_dash_filterJenjang').val() || "SEMUA";
+
+    var listRevisi = ADMPTK_DASH_CACHE_REKAP.filter(function(r) {
+        // Cek filter jenjang
+        var jenjang = String(r.jenjang || "").toUpperCase();
+        if (filterJenjang !== "SEMUA") {
+            if (filterJenjang === "PAUD") {
+                if (jenjang !== "TK" && jenjang !== "KB" && jenjang !== "SPS" && jenjang !== "TPA" && !jenjang.includes("PAUD")) return false;
+            } else if (filterJenjang === "SD") {
+                if (jenjang !== "SD") return false;
+            }
+        }
+        // Cek filter sekolah
+        if (fSekolah !== "SEMUA" && fSekolah !== "") {
+            if (String(r.npsn || "").trim().toUpperCase() !== fSekolah.trim().toUpperCase()) return false;
+        }
+        // Cek filter tahun & periode
+        var rTahun = String(r.tahun || "").trim().toUpperCase();
+        if (!isPermanen && fTahun !== "-" && fTahun !== "SEMUA" && rTahun !== fTahun) return false;
+        if (fPeriode !== "-" && fPeriode !== "SEMUA" && String(r.periode || "").trim().toUpperCase() !== fPeriode) return false;
+
+        return String(r.status_dokumen || "").toLowerCase().includes("revisi");
+    });
+
+    if (listEl.length === 0 && listRevisi.length === 0) {
+        Sultan.notif.info('Tidak ada data belum unggah maupun revisi untuk disalin.');
+        return;
+    }
+
+    var teks = `*INFORMASI ADMINISTRASI PTK*\n`;
+    teks += `DOKUMEN: ${selNamaKat}\n`;
+    teks += `TAHUN: ${fTahun}\n`;
+    teks += `PERIODE: ${fPeriode}\n`;
+    teks += `=======================\n\n`;
+
+    if (listEl.length > 0) {
+        teks += `*⚠️ BELUM UNGGAH (${listEl.length}):*\n`;
+        var listBelumNama = [];
+        listEl.each(function() {
+            var unitRaw = $(this).attr('data-unit') || $(this).find('.nama-asn').text().trim();
+            listBelumNama.push(unitRaw);
+        });
+        listBelumNama.sort().forEach(function(nama, idx) {
+            teks += `${idx + 1}. ${nama}\n`;
+        });
+        teks += `\n`;
+    }
+
+    if (listRevisi.length > 0) {
+        teks += `*✍️ PERLU REVISI (${listRevisi.length}):*\n`;
+        var listRevisiNama = listRevisi.map(function(r) { return r.unit; }).sort();
+        listRevisiNama.forEach(function(nama, idx) {
+            teks += `${idx + 1}. ${nama}\n`;
+        });
+        teks += `\n`;
+    }
+
+    teks += `_Mohon segera menindaklanjuti melalui SIKS-Reborn._`;
+
+    navigator.clipboard.writeText(teks).then(function() {
+        Sultan.notif.sukses('Daftar berhasil disalin ke Clipboard (Siap Paste di WhatsApp).');
+    }).catch(function() {
+        Sultan.alert('error', 'Gagal Menyalin', 'Browser Anda tidak mendukung Clipboard API.');
+    });
 }
 
 function admptk_dash_esc(text) { return text ? String(text).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;") : ""; }
