@@ -126,34 +126,68 @@ $(document).ready(function() {
 
     // Tombol Salin WA
     $(document).off('click', '#seragamdash_btnSalinWa').on('click', '#seragamdash_btnSalinWa', function() {
-        if (SERAGAM_DASH_LIST_BELUM.length === 0) {
-            Sultan.alert('info', 'Daftar Kosong', 'Tidak ada sekolah yang belum mengirim laporan.');
-            return;
-        }
-        var thn = $('#seragamdash_filterTahun').val() || '';
+        var listEl = $('#seragamdash_listBelum .hover-sultan:visible');
+        var thn = $('#seragamdash_filterTahun').val() || '-';
         var kat = $('#seragamdash_filterKategori').val() || 'penerimaan';
-        var labelKat = kat.toUpperCase();
         var jns = $('#seragamdash_filterJenis').val() || 'SEMUA';
         var labelJns = jns === 'SEMUA' ? 'Semua Jenis Seragam' : jns;
+
+        // Dapatkan data revisi
+        var listRevisi = [];
+        var jenisFilt = $('#seragamdash_filterJenis').val() || "SEMUA";
         
-        var txt = '*[SIKS - DAFTAR BELUM UNGGAH LAPORAN ' + labelKat + ' SERAGAM GRATIS]*\n' +
-                  'Tahun Pelajaran: ' + thn + '\n' +
-                  'Kategori: ' + (kat === 'penyerahan' ? 'Penyerahan' : 'Penerimaan') + '\n' +
-                  'Jenis Seragam: ' + labelJns + '\n\n' +
-                  'Berikut daftar sekolah yang belum mengunggah berkas Laporan ' + (kat === 'penyerahan' ? 'Penyerahan' : 'Penerimaan') + ':\n';
-                  
-        SERAGAM_DASH_LIST_BELUM.forEach(function(s, idx) {
-            txt += (idx + 1) + '. ' + s.namaSekolah + ' (' + s.npsn + ') - Sasaran: ' + s.jmlPenerima + ' murid\n';
+        SERAGAM_DASH_CACHE_LAPORAN.forEach(function(l) {
+            var matchJenis = (jenisFilt === "SEMUA") || (String(l.jenis || "").trim().toUpperCase() === jenisFilt.trim().toUpperCase());
+            if (matchJenis && String(l.status || "").trim().toUpperCase() === "REVISI") {
+                // Temukan nama sekolah dari cache rekap
+                var matchRekap = SERAGAM_DASH_CACHE_REKAP.find(r => r.npsn === l.npsn);
+                var namaSek = matchRekap ? matchRekap.namaSekolah : l.npsn;
+                if (!listRevisi.includes(namaSek)) {
+                    listRevisi.push(namaSek);
+                }
+            }
         });
-        txt += '\nMohon untuk segera mengunggah Laporan Penerimaan di aplikasi SIKS. Terima kasih.';
-        
+
+        if (listEl.length === 0 && listRevisi.length === 0) {
+            Sultan.notif.info('Tidak ada data belum unggah maupun revisi untuk disalin.');
+            return;
+        }
+
+        var txt = `*INFORMASI SERAGAM GRATIS*\n`;
+        txt += `TAHUN: ${thn}\n`;
+        txt += `JENIS: ${labelJns.toUpperCase()}\n`;
+        txt += `=======================\n\n`;
+
+        if (listEl.length > 0) {
+            txt += `*⚠️ BELUM UNGGAH (${listEl.length}):*\n`;
+            var listBelumNama = [];
+            listEl.each(function() {
+                var unitRaw = $(this).attr('data-unit') || $(this).find('.nama-asn').text().trim();
+                listBelumNama.push(unitRaw);
+            });
+            listBelumNama.sort().forEach(function(nama, idx) {
+                txt += `${idx + 1}. ${nama}\n`;
+            });
+            txt += `\n`;
+        }
+
+        if (listRevisi.length > 0) {
+            txt += `*✍️ PERLU REVISI (${listRevisi.length}):*\n`;
+            listRevisi.sort().forEach(function(nama, idx) {
+                txt += `${idx + 1}. ${nama}\n`;
+            });
+            txt += `\n`;
+        }
+
+        txt += `_Mohon segera menindaklanjuti melalui SIKS-Reborn._`;
+
         var temp = $('<textarea>');
         $('body').append(temp);
         temp.val(txt).select();
         document.execCommand('copy');
         temp.remove();
-        
-        Sultan.alert('success', 'Berhasil Disalin', 'Daftar sekolah belum unggah telah disalin ke clipboard Anda dalam format WhatsApp.');
+
+        Sultan.notif.sukses('Daftar berhasil disalin ke Clipboard (Siap Paste di WhatsApp).');
     });
 
     seragam_dash_initYears();
