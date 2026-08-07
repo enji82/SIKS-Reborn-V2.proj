@@ -2029,15 +2029,19 @@
         else { formData['npsn_baru'] = PTKSDN_USER_NPSN; }
 
         var mode = $('#ptksdn_inputMode').val();
+        // Capture dataId SEKARANG (sinkron) sebelum request async dikirim
+        // agar tidak terbaca dari DOM yang bisa berubah saat callback datang
+        var capturedDataId = $('#ptksdn_inputIdData').val();
+        var capturedIsUpdate = capturedDataId !== "";
 
         var cbSuccess = function (res) {
             btn.prop('disabled', false).html(txt);
             if (res === "Sukses") {
-                Sultan.notif.crud.simpan($('#ptksdn_inputIdData').val() !== "");
+                Sultan.notif.crud.simpan(capturedIsUpdate);
                 
                 if (mode === 'update' || mode === 'revisi_baru') {
-                    var dataId = $('#ptksdn_inputIdData').val();
-                    var dIdx = PTKSDN_CACHE_DATA.findIndex(function(r) { return String(r.id) === String(dataId); });
+                    // Gunakan capturedDataId (diambil sebelum request) bukan dari DOM async
+                    var dIdx = PTKSDN_CACHE_DATA.findIndex(function(r) { return String(r.id) === String(capturedDataId); });
                     if (dIdx !== -1) {
                         var cData = PTKSDN_CACHE_DATA[dIdx];
                         cData.nama_lengkap = formData.nama_lengkap;
@@ -2045,6 +2049,11 @@
                         cData.nik = formData.nik;
                         cData.tmp_lahir = formData.tmp_lahir;
                         cData.tgl_lahir = formData.tgl_lahir;
+                        cData.lp = formData.lp;
+                        cData.agama = formData.agama;
+                        cData.alamat_ktp = formData.alamat_ktp;
+                        cData.alamat_domisili = formData.alamat_domisili;
+                        cData.hp = formData.hp;
                         cData.pendidikan = formData.pendidikan;
                         cData.jurusan = formData.jurusan;
                         cData.thn_lulus = formData.thn_lulus;
@@ -2053,7 +2062,10 @@
                         cData.tmt_gol = formData.tmt_gol;
                         cData.jabatan = formData.jabatan;
                         cData.tmt_jabatan = formData.tmt_jabatan;
-                        cData.mkg = formData.mkg;
+                        // Rakit ulang mkg dari mkg_thn + mkg_bln (bukan formData.mkg yang tidak ada)
+                        if (formData.mkg_thn || formData.mkg_bln) {
+                            cData.mkg = (formData.mkg_thn || '0') + ' Tahun ' + (formData.mkg_bln || '0') + ' Bulan';
+                        }
                         cData.tugas = formData.tugas;
                         cData.nuptk = formData.nuptk;
                         cData.serdik = formData.serdik;

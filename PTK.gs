@@ -607,12 +607,15 @@ function updateDataPTK(form, base64Data, fileName, jenisDokumen) {
 
     var inputNip = String(form.nip || "").trim().replace(/[^0-9]/g, '');
     if (inputNip !== "" && inputNip !== "-") {
+        var selfId = String(form.id).trim();
         for (var i = 1; i < data.length; i++) {
-            var rowNip = String(data[i][7]).replace(/[^0-9]/g, ''); 
-            var rowId = String(data[i][0]);
-            if (rowNip === inputNip && rowId !== String(form.id)) return "Gagal: NIP " + inputNip + " sudah dipakai oleh " + data[i][6];
+            var rowNip = String(data[i][7]).trim().replace(/[^0-9]/g, '');
+            var rowId  = String(data[i][0]).trim();
+            if (rowId === selfId) continue; // lewati baris milik PTK yang sedang diedit
+            if (rowNip === inputNip) return "Gagal: NIP " + inputNip + " sudah dipakai oleh " + data[i][6] + " (ID: " + rowId + ")";
         }
     }
+
 
     var extras = {};
     if (jenisDokumen) extras.jenisDokumen = jenisDokumen;
