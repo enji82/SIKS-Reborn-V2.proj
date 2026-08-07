@@ -592,6 +592,12 @@ function applyPtkMasterRowUpdate_(sheet, rowIndex, form, extras) {
 
 // 3. UPDATE DATA PTK
 function updateDataPTK(form, base64Data, fileName, jenisDokumen) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+  } catch(lockErr) {
+    return "Error: Sistem sedang sibuk digunakan pengguna lain. Coba lagi dalam beberapa saat.";
+  }
   try {
     var sheet = getSheet(KONFIG_PTK.DB_KEY, KONFIG_PTK.SHEET_PTK);
     var data = sheet.getDataRange().getValues();
@@ -632,113 +638,131 @@ function updateDataPTK(form, base64Data, fileName, jenisDokumen) {
     }
 
     applyPtkMasterRowUpdate_(sheet, rowIndex, form, extras);
+    SpreadsheetApp.flush();
     invalidatePtkSdnDataCache_();
 
     return "Sukses";
   } catch(e) { return "Error: " + e.message; }
+  finally { lock.releaseLock(); }
 }
 
 // 4. INSERT DATA PTK (AUTO FILL LOGIC)
 function insertDataPTK(form, base64Data, fileName, jenisDokumen, userPengusul) {
-  var sheet = getSheet(KONFIG_PTK.DB_KEY, KONFIG_PTK.SHEET_PTK);
-  if (!sheet) return "Error: Sheet 'Master Data GTK' tidak ditemukan.";
-
-  // Deteksi Ganda NIP
-  var inputNip = String(form.nip || "").trim().replace(/[^0-9]/g, ''); 
-  if (inputNip !== "" && inputNip !== "-") {
-      var data = sheet.getDataRange().getValues();
-      for (var i = 1; i < data.length; i++) {
-        var rowNip = String(data[i][7]).replace(/[^0-9]/g, ''); 
-        if (rowNip === inputNip) return "Gagal: NIP " + inputNip + " sudah terdaftar atas nama " + data[i][6];
-      }
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+  } catch(lockErr) {
+    return "Error: Sistem sedang sibuk digunakan pengguna lain. Coba lagi dalam beberapa saat.";
   }
+  try {
+    var sheet = getSheet(KONFIG_PTK.DB_KEY, KONFIG_PTK.SHEET_PTK);
+    if (!sheet) return "Error: Sheet 'Master Data GTK' tidak ditemukan.";
 
-  // Deteksi Ganda NIK
-  var inputNik = String(form.nik || "").trim().replace(/[^0-9]/g, ''); 
-  if (inputNik !== "" && inputNik !== "-") {
-      var data = sheet.getDataRange().getValues();
-      for (var i = 1; i < data.length; i++) {
-        var rowNik = String(data[i][10]).replace(/[^0-9]/g, ''); // Kolom K (10)
-        if (rowNik === inputNik) return "Gagal: NIK " + inputNik + " sudah terdaftar atas nama " + data[i][6];
-      }
-  }
-
-  var newId = "GTK-" + new Date().getTime();
-  var namaFull = (form.gelar_depan ? form.gelar_depan + " " : "") + form.nama_lengkap + (form.gelar_belakang ? ", " + form.gelar_belakang : "");
-  var mkg = ""; if (form.mkg_thn || form.mkg_bln) { mkg = (form.mkg_thn || "0") + " Tahun " + (form.mkg_bln || "0") + " Bulan"; }
-  var timestamp = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss");
-
-  var fileUrl = "-";
-  var jenisDok = jenisDokumen || "-";
-
-  // Upload dokumen ke Google Drive jika ada
-  if (base64Data && fileName) {
-    try {
-      var folderId = "1WScDrF-y4PyjFjneXuIqX3yRNxIcqKzB";
-      var folder = DriveApp.getFolderById(folderId);
-      var fileBytes = Utilities.base64Decode(base64Data);
-      var blob = Utilities.newBlob(fileBytes, "application/pdf", fileName || "dokumen_ptk_baru.pdf");
-      var file = folder.createFile(blob);
-      fileUrl = file.getUrl();
-    } catch(uploadErr) {
-      Logger.log("Upload dokumen gagal: " + uploadErr.message);
-      // Tetap lanjutkan proses simpan data meskipun upload gagal
+    // Deteksi Ganda NIP
+    var inputNip = String(form.nip || "").trim().replace(/[^0-9]/g, ''); 
+    if (inputNip !== "" && inputNip !== "-") {
+        var data = sheet.getDataRange().getValues();
+        for (var i = 1; i < data.length; i++) {
+          var rowNip = String(data[i][7]).replace(/[^0-9]/g, ''); 
+          if (rowNip === inputNip) return "Gagal: NIP " + inputNip + " sudah terdaftar atas nama " + data[i][6];
+        }
     }
-  }
 
-  var rawNpsn = form.npsn_baru || form.npsn_login || "";
-  var npsnNum = parseInt(String(rawNpsn).replace(/[^0-9]/g, ''), 10);
-  var finalNpsn = isNaN(npsnNum) ? rawNpsn : npsnNum;
+    // Deteksi Ganda NIK
+    var inputNik = String(form.nik || "").trim().replace(/[^0-9]/g, ''); 
+    if (inputNik !== "" && inputNik !== "-") {
+        var data = sheet.getDataRange().getValues();
+        for (var i = 1; i < data.length; i++) {
+          var rowNik = String(data[i][10]).replace(/[^0-9]/g, ''); // Kolom K (10)
+          if (rowNik === inputNik) return "Gagal: NIK " + inputNik + " sudah terdaftar atas nama " + data[i][6];
+        }
+    }
 
-  var rowData = [
-      newId,                  // A (0)
-      finalNpsn,              // B (1)
-      form.unit_kerja || form.unit_login || "", // C (2)
-      form.gelar_depan || "", // D (3)
-      form.nama_lengkap || "",// E (4)
-      form.gelar_belakang || "",// F (5)
-      namaFull || "",         // G (6)
-      "'" + (form.nip || ""), // H (7)
-      form.tmp_lahir || "",   // I (8)
-      convertStringToDate_(form.tgl_lahir),   // J (9)
-      "'" + (form.nik || ""), // K (10)
-      form.lp || "",          // L (11)
-      form.agama || "",       // M (12)
-      form.pendidikan || "",  // N (13)
-      form.jurusan || "",     // O (14)
-      form.thn_lulus || "",   // P (15)
-      form.alamat_ktp || "",  // Q (16)
-      form.alamat_domisili || "", // R (17)
-      "'" + (form.hp || ""),  // S (18)
-      form.status_peg || "",  // T (19)
-      form.jabatan || "",     // U (20)
-      convertStringToDate_(form.tmt_jabatan), // V (21)
-      form.pangkat || "",     // W (22)
-      convertStringToDate_(form.tmt_gol),     // X (23)
-      mkg,                    // Y (24) 
-      form.tugas || "",       // Z (25)
-      "'" + (form.nuptk || ""),// AA (26)
-      form.serdik || "",      // AB (27)
-      form.dapodik || "",     // AC (28)
-      form.tugtam || "",      // AD (29)
-      form.email || "",       // AE (30) 
-      timestamp,              // AF (31)
-      form.user_login || "",  // AG (32)
-      "",                     // AH (33)
-      "",                     // AI (34)
-      jenisDok,               // AJ (35)
-      fileUrl,                // AK (36)
-      ""                      // AL (37)
-  ];
+    var newId = "GTK-" + new Date().getTime();
+    var namaFull = (form.gelar_depan ? form.gelar_depan + " " : "") + form.nama_lengkap + (form.gelar_belakang ? ", " + form.gelar_belakang : "");
+    var mkg = ""; if (form.mkg_thn || form.mkg_bln) { mkg = (form.mkg_thn || "0") + " Tahun " + (form.mkg_bln || "0") + " Bulan"; }
+    var timestamp = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss");
 
-  sheet.appendRow(rowData);
-  invalidatePtkSdnDataCache_();
+    var fileUrl = "-";
+    var jenisDok = jenisDokumen || "-";
 
-  return "Sukses";
+    // Upload dokumen ke Google Drive jika ada
+    if (base64Data && fileName) {
+      try {
+        var folderId = "1WScDrF-y4PyjFjneXuIqX3yRNxIcqKzB";
+        var folder = DriveApp.getFolderById(folderId);
+        var fileBytes = Utilities.base64Decode(base64Data);
+        var blob = Utilities.newBlob(fileBytes, "application/pdf", fileName || "dokumen_ptk_baru.pdf");
+        var file = folder.createFile(blob);
+        fileUrl = file.getUrl();
+      } catch(uploadErr) {
+        Logger.log("Upload dokumen gagal: " + uploadErr.message);
+        // Tetap lanjutkan proses simpan data meskipun upload gagal
+      }
+    }
+
+    var rawNpsn = form.npsn_baru || form.npsn_login || "";
+    var npsnNum = parseInt(String(rawNpsn).replace(/[^0-9]/g, ''), 10);
+    var finalNpsn = isNaN(npsnNum) ? rawNpsn : npsnNum;
+
+    var rowData = [
+        newId,                  // A (0)
+        finalNpsn,              // B (1)
+        form.unit_kerja || form.unit_login || "", // C (2)
+        form.gelar_depan || "", // D (3)
+        form.nama_lengkap || "",// E (4)
+        form.gelar_belakang || "",// F (5)
+        namaFull || "",         // G (6)
+        "'" + (form.nip || ""), // H (7)
+        form.tmp_lahir || "",   // I (8)
+        convertStringToDate_(form.tgl_lahir),   // J (9)
+        "'" + (form.nik || ""), // K (10)
+        form.lp || "",          // L (11)
+        form.agama || "",       // M (12)
+        form.pendidikan || "",  // N (13)
+        form.jurusan || "",     // O (14)
+        form.thn_lulus || "",   // P (15)
+        form.alamat_ktp || "",  // Q (16)
+        form.alamat_domisili || "", // R (17)
+        "'" + (form.hp || ""),  // S (18)
+        form.status_peg || "",  // T (19)
+        form.jabatan || "",     // U (20)
+        convertStringToDate_(form.tmt_jabatan), // V (21)
+        form.pangkat || "",     // W (22)
+        convertStringToDate_(form.tmt_gol),     // X (23)
+        mkg,                    // Y (24) 
+        form.tugas || "",       // Z (25)
+        "'" + (form.nuptk || ""),// AA (26)
+        form.serdik || "",      // AB (27)
+        form.dapodik || "",     // AC (28)
+        form.tugtam || "",      // AD (29)
+        form.email || "",       // AE (30) 
+        timestamp,              // AF (31)
+        form.user_login || "",  // AG (32)
+        "",                     // AH (33)
+        "",                     // AI (34)
+        jenisDok,               // AJ (35)
+        fileUrl,                // AK (36)
+        ""                      // AL (37)
+    ];
+
+    sheet.appendRow(rowData);
+    SpreadsheetApp.flush();
+    invalidatePtkSdnDataCache_();
+
+    return "Sukses";
+  } catch(e) { return "Error: " + e.message; }
+  finally { lock.releaseLock(); }
 }
 
 // 5. REVISI DATA PTK BARU (Tanpa Insert Baru)
 function revisiUsulanPTKBaru(form, base64Data, fileName, jenisDokumen, userPengusul) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+  } catch(lockErr) {
+    return "Error: Sistem sedang sibuk digunakan pengguna lain. Coba lagi dalam beberapa saat.";
+  }
   try {
     var sheet = getSheet(KONFIG_PTK.DB_KEY, KONFIG_PTK.SHEET_PTK);
     if (!sheet) return "Error: Sheet 'Master Data GTK' tidak ditemukan.";
@@ -836,9 +860,11 @@ function revisiUsulanPTKBaru(form, base64Data, fileName, jenisDokumen, userPengu
        return "Error: Data usulan dengan ID " + form.id_usulan + " tidak ditemukan.";
     }
 
+    SpreadsheetApp.flush();
     invalidatePtkSdnDataCache_();
     return "Sukses";
   } catch(e) { return "Error: " + e.message; }
+  finally { lock.releaseLock(); }
 }
 
 // ======================================================================
@@ -949,6 +975,12 @@ function parseIndoDate(dateStr) {
 }
 
 function moveDataPTKToNonAktif(id, reason, userLogin) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+  } catch(lockErr) {
+    return "Error: Sistem sedang sibuk digunakan pengguna lain. Coba lagi dalam beberapa saat.";
+  }
   try {
     var sheetSource = getSheet(KONFIG_PTK.DB_KEY, KONFIG_PTK.SHEET_PTK); 
     var sheetTarget = getSheet(KONFIG_PTK.DB_KEY, "gtk_non_aktif");
@@ -964,8 +996,10 @@ function moveDataPTKToNonAktif(id, reason, userLogin) {
     if (rowIndex === -1) return "Data tidak ditemukan.";
     var rowData = data[rowIndex]; var deleteTime = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MM-yyyy HH:mm:ss");
     rowData.push(reason, deleteTime, userLogin); sheetTarget.appendRow(rowData); sheetSource.deleteRow(rowIndex + 1);
+    SpreadsheetApp.flush();
     return "Sukses";
   } catch (e) { return "Error: " + e.message; }
+  finally { lock.releaseLock(); }
 }
 
 function getDataKeadaanGTK() { var sheet = getSheet(KONFIG_PTK.DB_KEY, "Keadaan GTK"); if (!sheet) return []; var lastRow = sheet.getLastRow(); if (lastRow < 3) return []; return sheet.getRange(3, 1, lastRow - 2, 67).getDisplayValues(); }
