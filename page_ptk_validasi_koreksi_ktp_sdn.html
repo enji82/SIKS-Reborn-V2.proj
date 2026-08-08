@@ -113,8 +113,8 @@
         <div id="vktp_verifFooter" class="modal-footer modal-footer-tambah-edit justify-content-between w-100">
             <button type="button" class="modal-btn-batal" data-dismiss="modal"><i class="fas fa-times mr-2"></i>BATAL</button>
             <div>
-                <button type="button" onclick="vktp_submitVerif('Ditolak')" class="btn btn-danger font-weight-bold px-3 py-2 mr-2" style="border-radius: 8px;"><i class="fas fa-times-circle mr-1"></i> TOLAK AJUAN</button>
-                <button type="button" onclick="vktp_submitVerif('Disetujui')" class="btn btn-success font-weight-bold px-3 py-2" style="border-radius: 8px;"><i class="fas fa-check-circle mr-1"></i> SETUJUI & UPDATE</button>
+                <button type="button" class="modal-btn-tolak-usulan mr-2" onclick="vktp_submitVerif('Ditolak')"><i class="fas fa-times-circle mr-2"></i>TOLAK AJUAN</button>
+                <button type="button" class="modal-btn-setuju-usulan" onclick="vktp_submitVerif('Disetujui')"><i class="fas fa-check-circle mr-2"></i>SETUJUI & UPDATE</button>
             </div>
         </div>
     </form>
@@ -330,39 +330,34 @@
                 return;
             }
 
-            Sultan.confirm({
+            Sultan.konfirmasi({
                 title: 'Konfirmasi',
                 text: 'Apakah Anda yakin ingin status ajuan ini disetel sebagai [' + status.toUpperCase() + ']?',
-                preConfirm: function() {
-                    return new Promise(function(resolve, reject) {
-                        google.script.run
-                            .withSuccessHandler(function(res) {
-                                if (res === "Sukses") {
-                                    resolve(res);
-                                } else {
-                                    reject(res);
-                                }
-                            })
-                            .withFailureHandler(function(err) {
-                                reject(err.message);
-                            })
-                            .prosesUsulanKoreksiKtp(idAjuan, status, catatan, VKTP_USER_AKTIF);
-                    });
-                },
-                onSuccess: function() {
-                    $('#global_modalVerifikasi').modal('hide');
-                    Sultan.notif.crud.simpan(true);
-                    
-                    // Refresh notif badge
-                    if (typeof sultan_fetchNotifikasi === 'function') {
-                        sultan_fetchNotifikasi();
-                    }
-                    
-                    vktp_tarikData();
-                },
-                onError: function(err) {
-                    Sultan.alert('error', 'Gagal Proses', err);
-                }
+                icon: 'question',
+                btnYa: 'Ya, Lanjutkan',
+                btnBatal: 'Batal'
+            }, function() {
+                Sultan.notif.loading(status === 'Disetujui' ? 'Menyetujui & Memperbarui...' : 'Menolak Ajuan...');
+                google.script.run
+                    .withSuccessHandler(function(res) {
+                        if (res === "Sukses") {
+                            $('#global_modalVerifikasi').modal('hide');
+                            Sultan.notif.crud.simpan(true);
+                            
+                            // Refresh notif badge
+                            if (typeof sultan_fetchNotifikasi === 'function') {
+                                sultan_fetchNotifikasi();
+                            }
+                            
+                            vktp_tarikData();
+                        } else {
+                            Sultan.notif.gagal(res);
+                        }
+                    })
+                    .withFailureHandler(function(err) {
+                        Sultan.notif.gagal(err.message);
+                    })
+                    .prosesUsulanKoreksiKtp(idAjuan, status, catatan, VKTP_USER_AKTIF);
             });
         };
     })();
