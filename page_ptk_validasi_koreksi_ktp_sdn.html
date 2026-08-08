@@ -185,6 +185,31 @@
         }
 
         function vktp_renderTableLokal() {
+            // Sort by last activity descending (newest first)
+            VKTP_DATA_CACHE.sort(function(a, b) {
+                var dateA = a.tgl_eksekusi && a.tgl_eksekusi !== '-' ? a.tgl_eksekusi : a.tgl_usulan;
+                var dateB = b.tgl_eksekusi && b.tgl_eksekusi !== '-' ? b.tgl_eksekusi : b.tgl_usulan;
+                
+                function parseDateTime(dtStr) {
+                    if (!dtStr) return 0;
+                    var parts = dtStr.split(' ');
+                    if (parts.length < 2) return 0;
+                    var dateParts = parts[0].split('/');
+                    var timeParts = parts[1].split(':');
+                    if (dateParts.length < 3 || timeParts.length < 3) return 0;
+                    return new Date(
+                        parseInt(dateParts[2], 10),
+                        parseInt(dateParts[1], 10) - 1,
+                        parseInt(dateParts[0], 10),
+                        parseInt(timeParts[0], 10),
+                        parseInt(timeParts[1], 10),
+                        parseInt(timeParts[2], 10)
+                    ).getTime();
+                }
+                
+                return parseDateTime(dateB) - parseDateTime(dateA);
+            });
+
             var statusFilter = $('#vktp_filterStatus').val();
             var filtered = VKTP_DATA_CACHE.filter(function(row) {
                 if (statusFilter === "SEMUA") return true;
@@ -192,14 +217,14 @@
             });
 
             var cols = [
-                { title: "AKSI" },
-                { title: "STATUS" },
-                { title: "NAMA PTK (LAMA)" },
-                { title: "PERUBAHAN DATA" },
-                { title: "KTP" },
-                { title: "TANGGAL USULAN" },
-                { title: "PENGUSUL" },
-                { title: "PROSES VERIFIKASI" }
+                { title: "AKSI", className: "col-sticky-left bg-white text-center align-middle" },
+                { title: "STATUS", className: "text-center align-middle" },
+                { title: "NAMA PTK (LAMA)", className: "text-left align-middle" },
+                { title: "PERUBAHAN DATA", className: "text-left align-middle" },
+                { title: "KTP", className: "text-center align-middle" },
+                { title: "TANGGAL USULAN", className: "text-left align-middle" },
+                { title: "PENGUSUL", className: "text-left align-middle" },
+                { title: "PROSES VERIFIKASI", className: "text-left align-middle" }
             ];
 
             var rows = filtered.map(function(row) {
@@ -210,9 +235,19 @@
 
                 var statusBadge = '';
                 var st = String(row.status).toLowerCase();
-                if (st === 'pending') statusBadge = '<span class="badge badge-warning text-dark px-2 py-1"><i class="fas fa-spinner fa-spin mr-1"></i>Pending</span>';
-                else if (st === 'disetujui') statusBadge = '<span class="badge badge-success px-2 py-1"><i class="fas fa-check-circle mr-1"></i>Disetujui</span>';
-                else if (st === 'ditolak') statusBadge = '<span class="badge badge-danger px-2 py-1"><i class="fas fa-times-circle mr-1"></i>Ditolak</span>';
+                if (st === 'pending') {
+                    statusBadge = '<span class="badge badge-warning text-dark px-2 py-1"><i class="fas fa-spinner fa-spin mr-1"></i>Pending</span>';
+                } else if (st === 'disetujui') {
+                    statusBadge = '<span class="badge badge-success px-2 py-1"><i class="fas fa-check-circle mr-1"></i>Disetujui</span>';
+                    if (row.catatan && row.catatan !== '-') {
+                        statusBadge += '<br><button type="button" class="sultan-btn-compact mt-1 bg-info text-white px-2 py-0" style="font-size:10px; border-radius:4px;" onclick="vktp_bacaCatatan(\'' + row.id_ajuan + '\')"><i class="fas fa-comment-dots mr-1"></i>Baca Catatan</button>';
+                    }
+                } else if (st === 'ditolak') {
+                    statusBadge = '<span class="badge badge-danger px-2 py-1"><i class="fas fa-times-circle mr-1"></i>Ditolak</span>';
+                    if (row.catatan && row.catatan !== '-') {
+                        statusBadge += '<br><button type="button" class="sultan-btn-compact mt-1 bg-info text-white px-2 py-0" style="font-size:10px; border-radius:4px;" onclick="vktp_bacaCatatan(\'' + row.id_ajuan + '\')"><i class="fas fa-comment-dots mr-1"></i>Baca Catatan</button>';
+                    }
+                }
 
                 var detailPerubahan = [];
                 if (row.nama_baru !== '-') detailPerubahan.push('<b>Nama:</b> ' + row.nama_baru);
@@ -226,7 +261,7 @@
                 if (row.status !== 'Pending') {
                     infoVerif = '<div><b>Oleh:</b> ' + row.user_eksekutor + '</div>' +
                                 '<div class="small text-muted">' + row.tgl_eksekusi + '</div>' +
-                                (row.catatan !== '-' ? '<div class="font-italic text-info small">Cat: ' + row.catatan + '</div>' : '');
+                                (row.catatan !== '-' ? '<div class="font-italic text-info small text-truncate" style="max-width:150px;" title="' + row.catatan + '">Cat: ' + row.catatan + '</div>' : '');
                 }
 
                 return [
@@ -250,6 +285,12 @@
                 $('#vktp_tableState').show();
             });
         }
+
+        window.vktp_bacaCatatan = function(idAjuan) {
+            var row = VKTP_DATA_CACHE.find(function(r) { return r.id_ajuan === idAjuan; });
+            if (!row) return;
+            Sultan.alert('info', 'Catatan Verifikasi', row.catatan);
+        };
 
         window.vktp_bukaModalProses = function(idAjuan) {
             var row = VKTP_DATA_CACHE.find(function(r) { return r.id_ajuan === idAjuan; });
