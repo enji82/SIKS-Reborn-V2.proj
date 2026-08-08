@@ -240,10 +240,9 @@ function admsekolahdash_loadDataKategori(idKategori, forceRefresh) {
 
     $('#admsekolahdash_lblTableKategori').text(mapData.namaKategori);
 
-    $('#admsekolahdash_dashboardState').show();
+    // Tampilkan Skeleton Loader sebagai ganti spinner konvensional
     if (typeof SultanUI !== 'undefined') {
-        SultanUI.startLottery('#admsekolahdash_cardTotalSekolah, #admsekolahdash_cardSudah, #admsekolahdash_cardBelum, #admsekolahdash_cardTotalDokumen, #admsekolahdash_cardDiproses, #admsekolahdash_cardDisetujui, #admsekolahdash_cardRevisi, #admsekolahdash_cardDitolak', 3);
-        SultanUI.startLottery('#admsekolahdash_cardProgress', 2, '%');
+        SultanUI.showSkeleton('#admsekolahdash_dashboardState');
     }
 
     google.script.run.withSuccessHandler(function(jsonStr) {
@@ -255,7 +254,7 @@ function admsekolahdash_loadDataKategori(idKategori, forceRefresh) {
         
         var data = JSON.parse(jsonStr);
         if (!data.success) { 
-            $('#admsekolahdash_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>' + admsekolahdash_escapeHtml(data.message) + '</span>'); return; 
+            $('#admsekolahdash_loadingState').html('<div class="text-center p-4"><span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>' + admsekolahdash_escapeHtml(data.message) + '</span></div>'); return; 
         }
         
         ADMSEKOLAHDASH_JENIS_PERIODE = data.jenisPeriode || "TAHUNAN";
@@ -269,16 +268,44 @@ function admsekolahdash_loadDataKategori(idKategori, forceRefresh) {
         }
         admsekolahdash_initDropdownTahun();
 
-        admsekolahdash_terapkanFilterLokal();
+        // Kosongkan target skeleton dan render struktur dashboard state yang asli
+        $('#admsekolahdash_dashboardState').html(`
+            <!-- Row 1: Statistik Utama (4 Cards) -->
+            <div id="admsekolahdash_metricRow1"></div>
 
+            <!-- Row 2: Status Detil (5 Columns) -->
+            <div id="admsekolahdash_metricRow2"></div>
+
+            <!-- Sudah Unggah & Belum Unggah Lists -->
+            <div id="admsekolahdash_listsContainer"></div>
+        `);
+
+        // Isi data ke baris-baris dashboard
+        $('#admsekolahdash_metricRow1').html(SultanUI.renderDashboardRow1('admsekolahdash', { total: 'TARGET SASARAN', sudah: 'SUDAH UNGGAH', belum: 'BELUM UNGGAH', progress: 'PROGRES' }));
+        
+        var row2Cards = [
+            { key: 'TotalDokumen', label: 'JML DOKUMEN', theme: 'metric-navy', icon: 'fas fa-file-alt' },
+            { key: 'Diproses', label: 'DIPROSES', theme: 'metric-info', icon: 'fas fa-spinner fa-spin' },
+            { key: 'Disetujui', label: 'DISETUJUI', theme: 'metric-success', icon: 'fas fa-check-double' },
+            { key: 'Revisi', label: 'REVISI', theme: 'metric-gold', icon: 'fas fa-edit' },
+            { key: 'Ditolak', label: 'DITOLAK', theme: 'metric-maroon', icon: 'fas fa-ban' }
+        ];
+        $('#admsekolahdash_metricRow2').html(SultanUI.renderDashboardRow2('admsekolahdash', row2Cards));
+        $('#admsekolahdash_listsContainer').html(SultanUI.renderDashboardLists('admsekolahdash', { placeholderCari: 'Cari NPSN atau nama sekolah...', hasCopyBelum: true }));
+
+        if (typeof SultanUI !== 'undefined') {
+            SultanUI.startLottery('#admsekolahdash_cardTotalSekolah, #admsekolahdash_cardSudah, #admsekolahdash_cardBelum, #admsekolahdash_cardTotalDokumen, #admsekolahdash_cardDiproses, #admsekolahdash_cardDisetujui, #admsekolahdash_cardRevisi, #admsekolahdash_cardDitolak', 3);
+            SultanUI.startLottery('#admsekolahdash_cardProgress', 2, '%');
+        }
+
+        admsekolahdash_terapkanFilterLokal();
         SultanUI.hideLoading('#admsekolahdash_loadingState');
-        $('#admsekolahdash_dashboardState').show();
 
     }).withFailureHandler(function(err) {
         ADMSEKOLAHDASH_PENDING_REQ = 0; btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
         $('#admsekolahdash_filterKategori').prop('disabled', false);
         $('.card-loading-overlay').remove();
-        $('#admsekolahdash_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Terputus: ' + admsekolahdash_escapeHtml(err.message) + '</span>');
+        $('#admsekolahdash_loadingState').html('<div class="text-center p-4"><span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Terputus: ' + admsekolahdash_escapeHtml(err.message) + '</span></div>');
     }).getAdmSekolahDashboardData(idKategori, forceRefresh); 
 }
 
