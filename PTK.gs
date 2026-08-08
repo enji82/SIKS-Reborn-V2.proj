@@ -2521,7 +2521,7 @@ function kirimAjuanKoreksiKtp(form, base64Data, fileName, userPengusul) {
         "ID Ajuan", "ID PTK", "Nama PTK (Lama)", "Nama PTK (Baru)", 
         "NIK (Lama)", "NIK (Baru)", "TTL (Lama)", "TTL (Baru)", 
         "File KTP", "Status", "Tanggal Usulan", "User Pengusul", 
-        "Tanggal Eksekusi", "User Eksekutor", "Catatan"
+        "Tanggal Eksekusi", "User Eksekutor", "Catatan", "Read Status"
       ];
       sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
       sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold").setBackground("#f3f3f3");
@@ -2567,7 +2567,8 @@ function kirimAjuanKoreksiKtp(form, base64Data, fileName, userPengusul) {
       userPengusul || "User Web",
       "-", // Tanggal Eksekusi
       "-", // User Eksekutor
-      "-"  // Catatan
+      "-", // Catatan
+      ""   // Read Status
     ];
     
     sheet.appendRow(rowData);
@@ -2809,5 +2810,249 @@ function searchPTKGlobalLapbul(keyword, jenjang) {
   } catch (e) {
     Logger.log('searchPTKGlobalLapbul ERROR: ' + e.message);
     return { error: e.message };
+  }
+}
+
+// ======================================================================
+// KOREKSI KTP APPROVAL ENGINE
+// ======================================================================
+
+function getUsulanKoreksiKtpList() {
+  try {
+    var ss = getDB(KONFIG_PTK.DB_KEY);
+    var sheet = ss.getSheetByName("usulan_koreksi_ktp_sdn");
+    if (!sheet) return JSON.stringify([]);
+    
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) return JSON.stringify([]);
+    
+    var data = sheet.getRange(2, 1, lastRow - 1, 16).getDisplayValues();
+    var list = [];
+    for (var i = 0; i < data.length; i++) {
+      var row = data[i];
+      if (!row[0]) continue;
+      list.push({
+        id_ajuan: row[0],
+        id_ptk: row[1],
+        nama_lama: row[2],
+        nama_baru: row[3],
+        nik_lama: row[4],
+        nik_baru: row[5],
+        ttl_lama: row[6],
+        ttl_baru: row[7],
+        file_ktp: row[8],
+        status: row[9],
+        tgl_usulan: row[10],
+        user_pengusul: row[11],
+        tgl_eksekusi: row[12],
+        user_eksekutor: row[13],
+        catatan: row[14],
+        read_status: row[15] || ""
+      });
+    }
+    return JSON.stringify(list);
+  } catch (e) {
+    Logger.log("Error getUsulanKoreksiKtpList: " + e.message);
+    return JSON.stringify({ error: e.message });
+  }
+}
+
+function prosesUsulanKoreksiKtp(idAjuan, status, catatan, userExecutor) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+  } catch (lockErr) {
+    return "Error: Sistem sedang sibuk. Coba lagi dalam beberapa saat.";
+  }
+  
+  try {
+    var ss = getDB(KONFIG_PTK.DB_KEY);
+    var sheetUsulan = ss.getSheetByName("usulan_koreksi_ktp_sdn");
+    if (!sheetUsulan) return "Error: Sheet usulan tidak ditemukan.";
+    
+    var usulanData = sheetUsulan.getDataRange().getValues();
+    var usulanRowIndex = -1;
+    for (var i = 1; i < usulanData.length; i++) {
+      if (String(usulanData[i][0]).trim() === String(idAjuan).trim()) {
+        usulanRowIndex = i + 1;
+        break;
+      }
+    }
+    if (usulanRowIndex === -1) return "Error: Data usulan dengan ID " + idAjuan + " tidak ditemukan.";
+    
+    var row = usulanData[usulanRowIndex - 1];
+    var idPtk = String(row[1]).trim();
+    var namaBaru = String(row[3]).trim();
+    var nikBaru = String(row[5]).trim();
+    var ttlBaru = String(row[7]).trim(); // Format: "Tempat, Tanggal"
+    
+    var timestamp = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss");
+    
+    // Update Usulan Status
+    sheetUsulan.getRange(usulanRowIndex, 10).setValue(status); // Status
+    sheetUsulan.getRange(usulanRowIndex, 13).setValue(timestamp); // Tanggal Eksekusi
+    sheetUsulan.getRange(usulanRowIndex, 14).setValue(userExecutor || "Admin"); // User Eksekutor
+    sheetUsulan.getRange(usulanRowIndex, 15).setValue(catatan || "-"); // Catatan
+    
+    // Jika disetujui, update ke Master Data GTK
+    if (status === "Disetujui") {
+      var sheetMaster = ss.getSheetByName(KONFIG_PTK.SHEET_PTK);
+      if (!sheetMaster) return "Error: Sheet master PTK tidak ditemukan.";
+      
+      var masterData = sheetMaster.getDataRange().getValues();
+      var masterRowIndex = -1;
+      for (var j = 1; j < masterData.length; j++) {
+        if (String(masterData[j][0]).trim() === idPtk) {
+          masterRowIndex = j + 1;
+          break;
+        }
+      }
+      
+      if (masterRowIndex === -1) {
+        return "Error: ID PTK " + idPtk + " tidak ditemukan di Master Data.";
+      }
+      
+      // Update fields
+      if (namaBaru !== "-" && namaBaru !== "") {
+        sheetMaster.getRange(masterRowIndex, 5).setValue(namaBaru); // Kolom E (nama_lengkap)
+      }
+      if (nikBaru !== "-" && nikBaru !== "") {
+        sheetMaster.getRange(masterRowIndex, 11).setValue("'" + nikBaru); // Kolom K (nik)
+      }
+      if (ttlBaru !== "-" && ttlBaru !== "") {
+        var parts = ttlBaru.split(",");
+        if (parts.length >= 2) {
+          var tmpLahir = parts[0].trim();
+          var tglLahirStr = parts.slice(1).join(",").trim(); // e.g. "1990-05-15"
+          sheetMaster.getRange(masterRowIndex, 9).setValue(tmpLahir); // Kolom I (tmp_lahir)
+          sheetMaster.getRange(masterRowIndex, 10).setValue(convertStringToDate_(tglLahirStr)); // Kolom J (tgl_lahir)
+        }
+      }
+      
+      // Rebuild nama lengkap beserta gelar (Nama Full)
+      var gelarDepan = String(sheetMaster.getRange(masterRowIndex, 4).getValue() || "").trim();
+      var namaLengkap = String(sheetMaster.getRange(masterRowIndex, 5).getValue() || "").trim();
+      var gelarBelakang = String(sheetMaster.getRange(masterRowIndex, 6).getValue() || "").trim();
+      var namaFull = (gelarDepan ? gelarDepan + " " : "") + namaLengkap + (gelarBelakang ? ", " + gelarBelakang : "");
+      sheetMaster.getRange(masterRowIndex, 7).setValue(namaFull); // Kolom G (namaFull)
+    }
+    
+    SpreadsheetApp.flush();
+    invalidatePtkSdnDataCache_();
+    return "Sukses";
+  } catch (e) {
+    Logger.log("Error prosesUsulanKoreksiKtp: " + e.message);
+    return "Error Server: " + e.message;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function getNotifikasiKoreksiKtp(role, unit) {
+  try {
+    var ss = getDB(KONFIG_PTK.DB_KEY);
+    var sheet = ss.getSheetByName("usulan_koreksi_ktp_sdn");
+    if (!sheet) return { count: 0, recent: [] };
+    
+    var data = sheet.getDataRange().getValues();
+    var rLower = String(role || "").toLowerCase();
+    var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
+    
+    // Hanya admin yang bisa memproses koreksi KTP
+    if (!isAdmin) return { count: 0, recent: [] };
+    
+    var notifList = [];
+    var unreadCount = 0;
+    
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      var status = String(row[9]).trim(); // Status (Index 9)
+      var isPending = (status === "Pending" || status === "");
+      
+      if (isPending) {
+        var readStatus = String(row[15] || "").trim(); // Read Status (Index 15)
+        var isRead = (readStatus.indexOf("Admin") > -1);
+        
+        if (!isRead) {
+          unreadCount++;
+        }
+        
+        var namaBaru = String(row[3]).trim();
+        var nikBaru = String(row[5]).trim();
+        var ttlBaru = String(row[7]).trim();
+        var jenisKoreksi = [];
+        if (namaBaru !== "-" && namaBaru !== "") jenisKoreksi.push("Nama");
+        if (nikBaru !== "-" && nikBaru !== "") jenisKoreksi.push("NIK");
+        if (ttlBaru !== "-" && ttlBaru !== "") jenisKoreksi.push("TTL");
+        
+        notifList.push({
+          rowId: i + 1,
+          source: "Koreksi KTP",
+          nama: row[2] !== "-" ? row[2] : (row[3] !== "-" ? row[3] : "PTK"),
+          kriteria: "Koreksi " + jenisKoreksi.join("/"),
+          status: status || "Pending",
+          waktu: row[10] || "-", // Tanggal Usulan
+          isRead: isRead
+        });
+      }
+    }
+    
+    // Urutkan: unread first, lalu berdasarkan waktu terbaru
+    notifList.sort(function(a, b) {
+      if (a.isRead !== b.isRead) return a.isRead ? 1 : -1;
+      return parseSiabaDateTime(b.waktu) - parseSiabaDateTime(a.waktu);
+    });
+    
+    return { count: unreadCount, recent: notifList.slice(0, 5) };
+  } catch (e) {
+    Logger.log("Error getNotifikasiKoreksiKtp: " + e.message);
+    return { count: 0, recent: [] };
+  }
+}
+
+function tandaiNotifKoreksiKtpDibaca(rowId, role) {
+  try {
+    var ss = getDB(KONFIG_PTK.DB_KEY);
+    var sheet = ss.getSheetByName("usulan_koreksi_ktp_sdn");
+    if (!sheet) return "Error: Sheet usulan tidak ditemukan.";
+    
+    var idx = parseInt(rowId, 10);
+    if (isNaN(idx) || idx <= 1 || idx > sheet.getLastRow()) return "Error: Baris tidak valid.";
+    
+    var currentReadStatus = String(sheet.getRange(idx, 16).getValue() || "").trim();
+    if (currentReadStatus.indexOf("Admin") === -1) {
+      var newReadStatus = currentReadStatus ? currentReadStatus + ",Admin" : "Admin";
+      sheet.getRange(idx, 16).setValue(newReadStatus);
+      SpreadsheetApp.flush();
+    }
+    return "Sukses";
+  } catch(e) {
+    return "Error: " + e.message;
+  }
+}
+
+function tandaiSemuaNotifKoreksiKtpDibaca(role, unit) {
+  try {
+    var ss = getDB(KONFIG_PTK.DB_KEY);
+    var sheet = ss.getSheetByName("usulan_koreksi_ktp_sdn");
+    if (!sheet) return "Error: Sheet tidak ditemukan.";
+    
+    var data = sheet.getDataRange().getValues();
+    var isChanged = false;
+    for (var i = 1; i < data.length; i++) {
+      var status = String(data[i][9]).trim();
+      if (status === "Pending" || status === "") {
+        var currentReadStatus = String(data[i][15] || "").trim();
+        if (currentReadStatus.indexOf("Admin") === -1) {
+          var newReadStatus = currentReadStatus ? currentReadStatus + ",Admin" : "Admin";
+          sheet.getRange(i + 1, 16).setValue(newReadStatus);
+          isChanged = true;
+        }
+      }
+    }
+    if (isChanged) SpreadsheetApp.flush();
+    return "Sukses";
+  } catch(e) {
+    return "Error: " + e.message;
   }
 }
