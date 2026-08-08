@@ -2862,13 +2862,18 @@ function prosesUsulanKoreksiKtp(idAjuan, status, catatan, userExecutor) {
   try {
     lock.waitLock(10000);
   } catch (lockErr) {
+    Logger.log("prosesUsulanKoreksiKtp: Gagal mendapatkan lock");
     return "Error: Sistem sedang sibuk. Coba lagi dalam beberapa saat.";
   }
   
   try {
+    Logger.log("prosesUsulanKoreksiKtp: Memulai idAjuan=" + idAjuan + ", status=" + status + ", executor=" + userExecutor);
     var ss = getDB(KONFIG_PTK.DB_KEY);
     var sheetUsulan = ss.getSheetByName("usulan_koreksi_ktp_sdn");
-    if (!sheetUsulan) return "Error: Sheet usulan tidak ditemukan.";
+    if (!sheetUsulan) {
+      Logger.log("prosesUsulanKoreksiKtp: Sheet usulan_koreksi_ktp_sdn tidak ditemukan");
+      return "Error: Sheet usulan tidak ditemukan.";
+    }
     
     var usulanData = sheetUsulan.getDataRange().getValues();
     var usulanRowIndex = -1;
@@ -2878,7 +2883,11 @@ function prosesUsulanKoreksiKtp(idAjuan, status, catatan, userExecutor) {
         break;
       }
     }
-    if (usulanRowIndex === -1) return "Error: Data usulan dengan ID " + idAjuan + " tidak ditemukan.";
+    
+    Logger.log("prosesUsulanKoreksiKtp: Pencarian row usulan -> usulanRowIndex=" + usulanRowIndex);
+    if (usulanRowIndex === -1) {
+      return "Error: Data usulan dengan ID " + idAjuan + " tidak ditemukan.";
+    }
     
     var row = usulanData[usulanRowIndex - 1];
     var idPtk = String(row[1]).trim();
@@ -2893,11 +2902,15 @@ function prosesUsulanKoreksiKtp(idAjuan, status, catatan, userExecutor) {
     sheetUsulan.getRange(usulanRowIndex, 13).setValue(timestamp); // Tanggal Eksekusi
     sheetUsulan.getRange(usulanRowIndex, 14).setValue(userExecutor || "Admin"); // User Eksekutor
     sheetUsulan.getRange(usulanRowIndex, 15).setValue(catatan || "-"); // Catatan
+    Logger.log("prosesUsulanKoreksiKtp: Berhasil update status usulan ke " + status);
     
     // Jika disetujui, update ke Master Data GTK
     if (status === "Disetujui") {
       var sheetMaster = ss.getSheetByName(KONFIG_PTK.SHEET_PTK);
-      if (!sheetMaster) return "Error: Sheet master PTK tidak ditemukan.";
+      if (!sheetMaster) {
+        Logger.log("prosesUsulanKoreksiKtp: Sheet master GTK tidak ditemukan");
+        return "Error: Sheet master PTK tidak ditemukan.";
+      }
       
       var masterData = sheetMaster.getDataRange().getValues();
       var masterRowIndex = -1;
@@ -2908,7 +2921,9 @@ function prosesUsulanKoreksiKtp(idAjuan, status, catatan, userExecutor) {
         }
       }
       
+      Logger.log("prosesUsulanKoreksiKtp: Pencarian row master -> masterRowIndex=" + masterRowIndex + " (idPtk=" + idPtk + ")");
       if (masterRowIndex === -1) {
+        Logger.log("prosesUsulanKoreksiKtp: ID PTK tidak ditemukan di master");
         return "Error: ID PTK " + idPtk + " tidak ditemukan di Master Data.";
       }
       
@@ -2935,10 +2950,12 @@ function prosesUsulanKoreksiKtp(idAjuan, status, catatan, userExecutor) {
       var gelarBelakang = String(sheetMaster.getRange(masterRowIndex, 6).getValue() || "").trim();
       var namaFull = (gelarDepan ? gelarDepan + " " : "") + namaLengkap + (gelarBelakang ? ", " + gelarBelakang : "");
       sheetMaster.getRange(masterRowIndex, 7).setValue(namaFull); // Kolom G (namaFull)
+      Logger.log("prosesUsulanKoreksiKtp: Berhasil update master PTK");
     }
     
     SpreadsheetApp.flush();
     invalidatePtkSdnDataCache_();
+    Logger.log("prosesUsulanKoreksiKtp: Selesai proses, status sukses");
     return "Sukses";
   } catch (e) {
     Logger.log("Error prosesUsulanKoreksiKtp: " + e.message);
