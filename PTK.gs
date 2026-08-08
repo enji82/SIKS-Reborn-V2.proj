@@ -2826,28 +2826,47 @@ function getUsulanKoreksiKtpList() {
     var lastRow = sheet.getLastRow();
     if (lastRow < 2) return JSON.stringify([]);
     
-    var data = sheet.getRange(2, 1, lastRow - 1, 16).getDisplayValues();
+    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    var idxIdAjuan = headers.indexOf("ID Ajuan");
+    var idxIdPtk = headers.indexOf("ID PTK");
+    var idxNamaLama = headers.indexOf("Nama PTK (Lama)");
+    var idxNamaBaru = headers.indexOf("Nama PTK (Baru)");
+    var idxNikLama = headers.indexOf("NIK (Lama)");
+    var idxNikBaru = headers.indexOf("NIK (Baru)");
+    var idxTtlLama = headers.indexOf("TTL (Lama)");
+    var idxTtlBaru = headers.indexOf("TTL (Baru)");
+    var idxFileKtp = headers.indexOf("File KTP");
+    var idxStatus = headers.indexOf("Status");
+    var idxTglUsulan = headers.indexOf("Tanggal Usulan");
+    var idxUserPengusul = headers.indexOf("User Pengusul");
+    var idxTglEksekusi = headers.indexOf("Tanggal Eksekusi");
+    var idxUserEksekutor = headers.indexOf("User Eksekutor");
+    var idxCatatan = headers.indexOf("Catatan");
+    var idxReadStatus = headers.indexOf("Read Status");
+    
+    var data = sheet.getRange(2, 1, lastRow - 1, headers.length).getDisplayValues();
     var list = [];
     for (var i = 0; i < data.length; i++) {
       var row = data[i];
-      if (!row[0]) continue;
+      if (idxIdAjuan !== -1 && !row[idxIdAjuan]) continue;
+      
       list.push({
-        id_ajuan: row[0],
-        id_ptk: row[1],
-        nama_lama: row[2],
-        nama_baru: row[3],
-        nik_lama: row[4],
-        nik_baru: row[5],
-        ttl_lama: row[6],
-        ttl_baru: row[7],
-        file_ktp: row[8],
-        status: row[9],
-        tgl_usulan: row[10],
-        user_pengusul: row[11],
-        tgl_eksekusi: row[12],
-        user_eksekutor: row[13],
-        catatan: row[14],
-        read_status: row[15] || ""
+        id_ajuan: idxIdAjuan !== -1 ? row[idxIdAjuan] : "",
+        id_ptk: idxIdPtk !== -1 ? row[idxIdPtk] : "",
+        nama_lama: idxNamaLama !== -1 ? row[idxNamaLama] : "",
+        nama_baru: idxNamaBaru !== -1 ? row[idxNamaBaru] : "",
+        nik_lama: idxNikLama !== -1 ? row[idxNikLama] : "",
+        nik_baru: idxNikBaru !== -1 ? row[idxNikBaru] : "",
+        ttl_lama: idxTtlLama !== -1 ? row[idxTtlLama] : "",
+        ttl_baru: idxTtlBaru !== -1 ? row[idxTtlBaru] : "",
+        file_ktp: idxFileKtp !== -1 ? row[idxFileKtp] : "",
+        status: idxStatus !== -1 ? row[idxStatus] : "Pending",
+        tgl_usulan: idxTglUsulan !== -1 ? row[idxTglUsulan] : "",
+        user_pengusul: idxUserPengusul !== -1 ? row[idxUserPengusul] : "",
+        tgl_eksekusi: idxTglEksekusi !== -1 ? row[idxTglEksekusi] : "",
+        user_eksekutor: idxUserEksekutor !== -1 ? row[idxUserEksekutor] : "",
+        catatan: idxCatatan !== -1 ? row[idxCatatan] : "",
+        read_status: idxReadStatus !== -1 ? (row[idxReadStatus] || "") : ""
       });
     }
     return JSON.stringify(list);
@@ -2876,9 +2895,21 @@ function prosesUsulanKoreksiKtp(idAjuan, status, catatan, userExecutor) {
     }
     
     var usulanData = sheetUsulan.getDataRange().getValues();
+    var headers = usulanData[0];
+    
+    var colIdAjuan = headers.indexOf("ID Ajuan") + 1;
+    var colIdPtk = headers.indexOf("ID PTK") + 1;
+    var colNamaBaru = headers.indexOf("Nama PTK (Baru)") + 1;
+    var colNikBaru = headers.indexOf("NIK (Baru)") + 1;
+    var colTtlBaru = headers.indexOf("TTL (Baru)") + 1;
+    var colStatus = headers.indexOf("Status") + 1;
+    var colTglEksekusi = headers.indexOf("Tanggal Eksekusi") + 1;
+    var colUserEksekutor = headers.indexOf("User Eksekutor") + 1;
+    var colCatatan = headers.indexOf("Catatan") + 1;
+    
     var usulanRowIndex = -1;
     for (var i = 1; i < usulanData.length; i++) {
-      if (String(usulanData[i][0]).trim() === String(idAjuan).trim()) {
+      if (colIdAjuan > 0 && String(usulanData[i][colIdAjuan - 1]).trim() === String(idAjuan).trim()) {
         usulanRowIndex = i + 1;
         break;
       }
@@ -2889,19 +2920,18 @@ function prosesUsulanKoreksiKtp(idAjuan, status, catatan, userExecutor) {
       return "Error: Data usulan dengan ID " + idAjuan + " tidak ditemukan.";
     }
     
-    var row = usulanData[usulanRowIndex - 1];
-    var idPtk = String(row[1]).trim();
-    var namaBaru = String(row[3]).trim();
-    var nikBaru = String(row[5]).trim();
-    var ttlBaru = String(row[7]).trim(); // Format: "Tempat, Tanggal"
+    var idPtk = colIdPtk > 0 ? String(usulanData[usulanRowIndex - 1][colIdPtk - 1]).trim() : "";
+    var namaBaru = colNamaBaru > 0 ? String(usulanData[usulanRowIndex - 1][colNamaBaru - 1]).trim() : "";
+    var nikBaru = colNikBaru > 0 ? String(usulanData[usulanRowIndex - 1][colNikBaru - 1]).trim() : "";
+    var ttlBaru = colTtlBaru > 0 ? String(usulanData[usulanRowIndex - 1][colTtlBaru - 1]).trim() : "";
     
     var timestamp = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss");
     
     // Update Usulan Status
-    sheetUsulan.getRange(usulanRowIndex, 10).setValue(status); // Status
-    sheetUsulan.getRange(usulanRowIndex, 13).setValue(timestamp); // Tanggal Eksekusi
-    sheetUsulan.getRange(usulanRowIndex, 14).setValue(userExecutor || "Admin"); // User Eksekutor
-    sheetUsulan.getRange(usulanRowIndex, 15).setValue(catatan || "-"); // Catatan
+    if (colStatus > 0) sheetUsulan.getRange(usulanRowIndex, colStatus).setValue(status);
+    if (colTglEksekusi > 0) sheetUsulan.getRange(usulanRowIndex, colTglEksekusi).setValue(timestamp);
+    if (colUserEksekutor > 0) sheetUsulan.getRange(usulanRowIndex, colUserEksekutor).setValue(userExecutor || "Admin");
+    if (colCatatan > 0) sheetUsulan.getRange(usulanRowIndex, colCatatan).setValue(catatan || "-");
     Logger.log("prosesUsulanKoreksiKtp: Berhasil update status usulan ke " + status);
     
     // Jika disetujui, update ke Master Data GTK
@@ -3027,19 +3057,35 @@ function getNotifikasiKoreksiKtp(role, unit) {
   }
 }
 
-function tandaiNotifKoreksiKtpDibaca(rowId, role) {
+function tandaiNotifKoreksiKtpDibaca(rowIdOrIdAjuan, role) {
   try {
     var ss = getDB(KONFIG_PTK.DB_KEY);
     var sheet = ss.getSheetByName("usulan_koreksi_ktp_sdn");
     if (!sheet) return "Error: Sheet usulan tidak ditemukan.";
     
-    var idx = parseInt(rowId, 10);
-    if (isNaN(idx) || idx <= 1 || idx > sheet.getLastRow()) return "Error: Baris tidak valid.";
+    var idx = -1;
+    if (!isNaN(rowIdOrIdAjuan) && parseInt(rowIdOrIdAjuan, 10) > 1) {
+      idx = parseInt(rowIdOrIdAjuan, 10);
+    } else {
+      var data = sheet.getDataRange().getValues();
+      for (var i = 1; i < data.length; i++) {
+        if (String(data[i][0]).trim() === String(rowIdOrIdAjuan).trim()) {
+          idx = i + 1;
+          break;
+        }
+      }
+    }
     
-    var currentReadStatus = String(sheet.getRange(idx, 16).getValue() || "").trim();
+    if (idx === -1 || idx > sheet.getLastRow()) return "Error: Baris tidak valid.";
+    
+    var headers = sheet.getDataRange().getValues()[0];
+    var colReadStatus = headers.indexOf("Read Status") + 1;
+    if (colReadStatus === 0) return "Error: Kolom Read Status tidak ditemukan.";
+    
+    var currentReadStatus = String(sheet.getRange(idx, colReadStatus).getValue() || "").trim();
     if (currentReadStatus.indexOf("Admin") === -1) {
       var newReadStatus = currentReadStatus ? currentReadStatus + ",Admin" : "Admin";
-      sheet.getRange(idx, 16).setValue(newReadStatus);
+      sheet.getRange(idx, colReadStatus).setValue(newReadStatus);
       SpreadsheetApp.flush();
     }
     return "Sukses";
