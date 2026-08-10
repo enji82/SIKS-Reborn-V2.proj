@@ -228,44 +228,20 @@ function verifikasiPengajuan(rowBaris, status, catatan, adminName) {
     lock.waitLock(20000);
     var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
     var row = parseInt(rowBaris);
-
     var rowData = sheet.getRange(row, 1, 1, 52).getDisplayValues()[0];
-    var oldUrl = rowData[12]; 
 
     sheet.getRange(row, 11).setValue(status);
     sheet.getRange(row, 12).setValue("'" + catatan);
     sheet.getRange(row, 18).setValue("'" + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MM-yyyy HH:mm:ss"));
     sheet.getRange(row, 19).setValue(adminName || "Admin");
-
-    var pData = {
-        asn: rowData[1], nip: String(rowData[2]).replace(/'/g, ""), unit: rowData[24],
-        jabatan: rowData[22], masa_kerja: rowData[23], 
-        ct: rowData[25], cb: rowData[26], cs: rowData[27], cm: rowData[28], cap: rowData[29], cltn: rowData[30],
-        "N-2": rowData[31], "N-1": rowData[32], "N": rowData[33],
-        jabatan_atasan: rowData[34], nama_atasan: rowData[35], nip_atasan: rowData[36],
-        jabatan_setuju: rowData[37], nama_setuju: rowData[38], nip_setuju: rowData[39],
-        kepada: rowData[40],
-        tanggal: rowData[21], 
-        alasan: rowData[7], jumlah: rowData[6],
-        tmc: rowData[4], tsc: rowData[5], alamat: rowData[8], telp: String(rowData[9]).replace(/'/g, ""),
-        jenisCutiRaw: rowData[3], 
-        tglMulaiRaw: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd") 
-    };
-    
-    var linkPdf = generatePdfCuti(pData);
-    if (linkPdf && linkPdf.length > 5) {
-        sheet.getRange(row, 13).setValue(linkPdf); 
-        if (oldUrl && oldUrl.includes("docs.google.com")) {
-            try {
-                var match = oldUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
-                if (match && match[1]) DriveApp.getFileById(match[1]).setTrashed(true);
-            } catch(e){}
-        }
-    }
-
     SpreadsheetApp.flush();
+    
     return "Sukses";
-  } catch (e) { return (e.message.includes("lock")) ? "Sistem memproses PDF, harap tunggu." : "Error: " + e.message; } finally { lock.releaseLock(); }
+  } catch (e) { 
+    return "Error: " + e.message; 
+  } finally { 
+    try { lock.releaseLock(); } catch(e) {} 
+  }
 }
 
 /* ======================================================================
