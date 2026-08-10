@@ -453,6 +453,7 @@
       var filtersConfig = [
         { id: "seragamlapor_filterSekolah", placeholder: "- Memuat Sekolah... -", disabled: true, visible: IS_ADMIN },
         { id: "seragamlapor_filterTahun", placeholder: "- Memuat Tahun... -", disabled: true },
+        { id: "seragamlapor_filterJenis", placeholder: "- Pilih Jenis Seragam -", disabled: false },
         { id: "seragamlapor_filterStatus", placeholder: "- Pilih Status -", disabled: false }
       ];
 
@@ -471,6 +472,13 @@
       $('#seragamlapor_filterBarArea').html(SultanUI.renderFilterBar(filtersConfig, extraButtons));
       $('#seragamlapor_filterSekolah_container').addClass('sultan-filter-unit-width');
 
+      // Populate Jenis Seragam filter options
+      $('#seragamlapor_filterJenis').html(
+        '<option value="SEMUA">- Semua Jenis -</option>' +
+        '<option value="Merah Putih">Merah Putih</option>' +
+        '<option value="Pramuka">Pramuka</option>'
+      );
+
       // Populate Status filter options
       $('#seragamlapor_filterStatus').html(
         '<option value="SEMUA">- Semua Status -</option>' +
@@ -482,7 +490,7 @@
 
       // Bind Listeners
       $('#seragamlapor_filterTahun').on('change', fetchLaporanData);
-      $('#seragamlapor_filterSekolah, #seragamlapor_filterStatus').on('change', applyLocalFilter);
+      $('#seragamlapor_filterSekolah, #seragamlapor_filterJenis, #seragamlapor_filterStatus').on('change', applyLocalFilter);
       $('#seragamlapor_btnSync').on('click', fetchLaporanData);
       $('#seragamlapor_btnUnggah').on('click', showUploadModal);
       
@@ -677,12 +685,19 @@
 
     function applyLocalFilter() {
       var targetSekolah = IS_ADMIN ? $('#seragamlapor_filterSekolah').val() : (userLogin.npsn || userLogin.username || "");
+      var targetJenis = $('#seragamlapor_filterJenis').val() || "SEMUA";
       var targetStatus = $('#seragamlapor_filterStatus').val() || "SEMUA";
       var filtered = SERAGAMLAPOR_CACHE_DATA;
       
       if (targetSekolah && targetSekolah !== "SEMUA") {
         filtered = filtered.filter(function(row) {
           return String(row.npsn).trim() === String(targetSekolah).trim();
+        });
+      }
+
+      if (targetJenis && targetJenis !== "SEMUA") {
+        filtered = filtered.filter(function(row) {
+          return String(row.jenis_seragam || "").trim().toUpperCase() === String(targetJenis).trim().toUpperCase();
         });
       }
 
