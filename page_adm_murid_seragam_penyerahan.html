@@ -603,13 +603,66 @@
       });
     });
 
+    // Persistent cache initialization
+    window.SERAGAM_PENYERAHAN_CACHE = window.SERAGAM_PENYERAHAN_CACHE || {
+      years: null,
+      sekolah: null,
+      data: null,
+      tahun: null
+    };
+
     function initData() {
+      // If cached data is available, load instantly without spinner
+      if (window.SERAGAM_PENYERAHAN_CACHE.years && window.SERAGAM_PENYERAHAN_CACHE.sekolah) {
+        availableYears = window.SERAGAM_PENYERAHAN_CACHE.years;
+        listSekolah = window.SERAGAM_PENYERAHAN_CACHE.sekolah;
+        
+        var filterTahunOpts = availableYears.map(function(y) { return `<option value="${y}">${y}</option>`; }).join('');
+        $('#seragampenyerahan_filterTahun').html(filterTahunOpts).prop('disabled', false);
+        $('#seragampenyerahan_in_tahun').html(filterTahunOpts);
+        
+        var inSekolahOpts = '<option value="">- Pilih Sekolah -</option>';
+        listSekolah.forEach(function(s) {
+          if (s.jenjang === "SD") {
+            inSekolahOpts += `<option value="${s.npsn}" data-nama="${s.nama}">${s.nama}</option>`;
+          }
+        });
+        
+        if (IS_ADMIN) {
+          $('#seragampenyerahan_in_sekolah').html(inSekolahOpts).prop('required', true);
+          $('#seragampenyerahan_groupSekolah').show();
+          $('#seragampenyerahan_groupTahun').removeClass('col-12').addClass('col-md-4');
+        } else {
+          var userNpsn = userLogin.npsn || userLogin.username || "";
+          $('#seragampenyerahan_in_sekolah_hidden').val(userNpsn);
+          $('#seragampenyerahan_in_sekolah').html('').prop('required', false);
+          $('#seragampenyerahan_groupSekolah').hide();
+          $('#seragampenyerahan_groupTahun').removeClass('col-md-4').addClass('col-12');
+        }
+        
+        $('#seragampenyerahan_btnUnggah').prop('disabled', false);
+        $('#seragampenyerahan_btnSync').prop('disabled', false);
+        
+        var currentTahun = $('#seragampenyerahan_filterTahun').val();
+        if (window.SERAGAM_PENYERAHAN_CACHE.data && window.SERAGAM_PENYERAHAN_CACHE.tahun === currentTahun) {
+          SERAGAMLAPOR_CACHE_DATA = window.SERAGAM_PENYERAHAN_CACHE.data;
+          SultanUI.hideLoading('#seragampenyerahan_loadingState');
+          $('#seragampenyerahan_tableState').show();
+          updateSekolahFilterDropdown();
+          applyLocalFilter();
+          
+          $('#seragampenyerahan_filterTahun').off('change').on('change', fetchLaporanData);
+          return;
+        }
+      }
+
       SultanUI.showLoading('#seragampenyerahan_loadingState', 'Memuat daftar tahun...');
       google.script.run
         .withSuccessHandler(function(response) {
           var res = JSON.parse(response);
           if (res.success) {
             availableYears = res.data;
+            window.SERAGAM_PENYERAHAN_CACHE.years = availableYears;
             
             // Populate and enable Tahun filter
             var filterTahunOpts = availableYears.map(function(y) { return `<option value="${y}">${y}</option>`; }).join('');
@@ -628,6 +681,7 @@
       google.script.run
         .withSuccessHandler(function(schoolRes) {
           listSekolah = schoolRes || [];
+          window.SERAGAM_PENYERAHAN_CACHE.sekolah = listSekolah;
           
           // Populate form sekolah list (Without NPSN in display text)
           var inSekolahOpts = '<option value="">- Pilih Sekolah -</option>';
@@ -679,6 +733,8 @@
           $('#seragampenyerahan_tableState').show();
           if (res.success) {
             SERAGAMLAPOR_CACHE_DATA = res.data || [];
+            window.SERAGAM_PENYERAHAN_CACHE.data = SERAGAMLAPOR_CACHE_DATA;
+            window.SERAGAM_PENYERAHAN_CACHE.tahun = tahun;
             updateSekolahFilterDropdown();
             applyLocalFilter();
           } else {
