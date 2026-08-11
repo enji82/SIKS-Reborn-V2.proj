@@ -1091,3 +1091,148 @@ function getNotifikasiSeragamPenerimaan(role, unit) {
 function getNotifikasiSeragamPenyerahan(role, unit) {
   return getNotifikasiSeragam("penyerahan", role, unit);
 }
+
+/**
+ * MIGRATION HELPER: Memindahkan semua berkas lama (penerimaan & penyerahan) yang masih 
+ * berada langsung di folder root ke subfolder dinamis: / [Tahun] / [Jenis Seragam] /
+ */
+function seragam_migrasiFileKeFolder() {
+  var logs = [];
+  var lock = LockService.getScriptLock();
+  
+  try {
+    lock.waitLock(30000);
+    var sheets = ["Laporan_Penerimaan", "Laporan_Penyerahan"];
+    
+    sheets.forEach(function(sheetName) {
+      var sheet = getOrCreateSheetSeragam(sheetName);
+      var values = sheet.getDataRange().getDisplayValues();
+      var isPenyerahan = (sheetName === "Laporan_Penyerahan");
+      
+      // Definisikan parent folders
+      var parentSpFolderId = isPenyerahan ? FOLDER_CONFIG.SERAGAM_LAPORAN_PENYERAHAN_DOCS : FOLDER_CONFIG.SERAGAM_LAPORAN_DOCS;
+      var parentDokFolderId = isPenyerahan ? FOLDER_CONFIG.SERAGAM_DOKUMENTASI_PENYERAHAN_DOCS : FOLDER_CONFIG.SERAGAM_DOKUMENTASI_DOCS;
+      
+      var parentSpFolder = DriveApp.getFolderById(parentSpFolderId);
+      var parentDokFolder = DriveApp.getFolderById(parentDokFolderId);
+      
+      for (var i = 1; i < values.length; i++) {
+        var rowNum = i + 1;
+        var npsn = values[i][0];
+        var namaSekolah = values[i][1];
+        var tahun = values[i][2] || "UMUM";
+        var idSp = values[i][5];
+        var idsDokStr = values[i][8];
+        var jenisSeragam = values[i][12] || "LAINNYA";
+        
+        if (!npsn) continue;
+        
+        // 1. Pembuatan / pengambilan subfolder dinamis untuk SP
+        var folderTahunNama = String(tahun).replace(/[\/\\:*?"<>|]/g, "-").trim();
+        var folderJenisNama = String(jenisSeragam).trim();
+        
+        // Setup Folder SP
+        var subSpTahun, targetSpFolder;
+        var searchSpTahun = parentSpFolder.getFoldersByName(folderTahunNama);
+        if (searchSpTahun.hasNext()) {
+          subSpTahun = searchSpTahun.next();
+        } else {
+          subSpTahun = parentSpFolder.createFolder(folderTahunNama);
+        }
+        var searchSpJenis = subSpTahun.getFoldersByName(folderJenisNama);
+        if (searchSpJenis.hasNext()) {
+          targetSpFolder = searchSpJenis.next();
+        } else {
+          targetSpFolder = subSpTahun.createFolder(folderJenisNama);
+        }
+        
+        // Setup Folder Dokumentasi Foto
+        var subDokTahun, targetDokFolder;
+        var searchDokTahun = parentDokFolder.getFoldersByName(folderTahunNama);
+        if (searchDokTahun.hasNext()) {
+          subDokTahun = searchDokTahun.next();
+        } else {
+          subDokTahun = parentDokFolder.createFolder(folderTahunNama);
+        }
+        var searchDokJenis = subDokTahun.getFoldersByName(folderJenisNama);
+        if (searchDokJenis.hasNext()) {
+          targetDokFolder = searchDokJenis.next();
+        } else {
+          targetDokFolder = subDokTahun.createFolder(folderJenisNama);
+        }
+        
+        // 2. Pindahkan file SP jika ada
+        if (idSp) {
+          try {
+            var fileSp = DriveApp.getFileById(idSp);
+            var currentParents = fileSp.getParents();
+            var needsMove = true;
+            
+            // Cek apakah file sudah berada di folder tujuan yang benar
+            while (currentParents.hasNext()) {
+              var p = currentParents.next();
+              if (p.getId() === targetSpFolder.getId()) {
+                needsMove = false;
+                break;
+              }
+            }
+            
+            if (needsMove) {
+              // Hapus dari folder lama dan tambahkan ke folder baru
+              var parentsToRemove = fileSp.getParents();
+              while (parentsToRemove.hasNext()) {
+                var p = parentsToRemove.next();
+                p.removeFile(fileSp);
+              }
+              targetSpFolder.addFile(fileSp);
+              logs.push("Berhasil memindahkan SP untuk " + namaSekolah + " ke folder " + folderTahunNama + "/" + folderJenisNama);
+            }
+          } catch(errSp) {
+            logs.push("Gagal memindahkan SP ID " + idSp + ": " + errSp.message);
+          }
+        }
+        
+        // 3. Pindahkan file Dokumentasi (Foto-foto) jika ada
+        if (idsDokStr) {
+          var ids = String(idsDokStr).split(",");
+          ids.forEach(function(idRaw) {
+            var id = idRaw.trim();
+            if (id) {
+              try {
+                var fileDok = DriveApp.getFileById(id);
+                var currentParents = fileDok.getParents();
+                var needsMove = true;
+                
+                while (currentParents.hasNext()) {
+                  var p = currentParents.next();
+                  if (p.getId() === targetDokFolder.getId()) {
+                    needsMove = false;
+                    break;
+                  }
+                }
+                
+                if (needsMove) {
+                  var parentsToRemove = fileDok.getParents();
+                  while (parentsToRemove.hasNext()) {
+                    var p = parentsToRemove.next();
+                    p.removeFile(fileDok);
+                  }
+                  targetDokFolder.addFile(fileDok);
+                  logs.push("Berhasil memindahkan Dokumentasi ID " + id + " (" + namaSekolah + ") ke folder " + folderTahunNama + "/" + folderJenisNama);
+                }
+              } catch(errDok) {
+                logs.push("Gagal memindahkan Dokumentasi ID " + id + ": " + errDok.message);
+              }
+            }
+          });
+        }
+      }
+    });
+    
+    return JSON.stringify({ success: true, message: "Migrasi selesai.", logs: logs });
+  } catch(e) {
+    return JSON.stringify({ success: false, message: e.message, logs: logs });
+  } finally {
+    lock.releaseLock();
+  }
+}
