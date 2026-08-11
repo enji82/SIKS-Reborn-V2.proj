@@ -358,42 +358,37 @@
         });
       },
       verifikasi: function (opsi) {
-        // Safely return form elements to templates if they are still attached to global modal areas
-        if ($('#global_verifikasiFooterArea #seragamlapor_verifFooter').length) {
-          if ($('#seragamlapor_templates #seragamlapor_verifFooter').length || $('#seragamlapor_formVerif #seragamlapor_verifFooter').length) {
-            $('#global_verifikasiFooterArea').empty();
+        // ── SAFE CLEANUP (Generic) ──────────────────────────────────────────
+        // Jika ada sisa elemen dari verifikasi sebelumnya yang belum sempat
+        // dikembalikan ke template (race condition animasi modal), gunakan detach()
+        // bukan empty() agar elemen tidak hancur dari DOM.
+        $('#global_verifikasiFooterArea').children().each(function () {
+          var $el = $(this);
+          // Coba temukan atribut data-return-to sebagai petunjuk kemana harus kembali
+          var returnTo = $el.data('return-to');
+          if (returnTo && $(returnTo).length) {
+            $el.appendTo(returnTo);
           } else {
-            $('#seragamlapor_verifFooter').appendTo('#seragamlapor_formVerif');
+            $el.detach(); // Simpan di memori, tidak dihapus dari DOM
           }
-        }
-        if ($('#global_verifikasiFormArea #seragamlapor_formVerif').length) {
-          if ($('#seragamlapor_templates #seragamlapor_formVerif').length) {
-            $('#global_verifikasiFormArea').empty();
+        });
+        $('#global_verifikasiFormArea').children().each(function () {
+          var $el = $(this);
+          var returnTo = $el.data('return-to');
+          if (returnTo && $(returnTo).length) {
+            $el.appendTo(returnTo);
           } else {
-            $('#seragamlapor_formVerif').appendTo('#seragamlapor_templates');
+            $el.detach();
           }
-        }
-        if ($('#global_verifikasiFooterArea #seragampenyerahan_verifFooter').length) {
-          if ($('#seragampenyerahan_templates #seragampenyerahan_verifFooter').length || $('#seragampenyerahan_formVerif #seragampenyerahan_verifFooter').length) {
-            $('#global_verifikasiFooterArea').empty();
-          } else {
-            $('#seragampenyerahan_verifFooter').appendTo('#seragampenyerahan_formVerif');
-          }
-        }
-        if ($('#global_verifikasiFormArea #seragampenyerahan_formVerif').length) {
-          if ($('#seragampenyerahan_templates #seragampenyerahan_formVerif').length) {
-            $('#global_verifikasiFormArea').empty();
-          } else {
-            $('#seragampenyerahan_formVerif').appendTo('#seragampenyerahan_templates');
-          }
-        }
+        });
+        // ────────────────────────────────────────────────────────────────────
 
         $('#global_verifikasiIframe').hide().attr('src', '');
         $('#global_verifikasiImg').hide().attr('src', '');
         $('#global_verifikasiLoading').show();
 
-        // Reset footer area agar bersih setiap kali modal dibuka ulang
-        $('#global_verifikasiFooterArea').hide().empty();
+        // Reset area: sembunyikan footer area (bukan dihapus)
+        $('#global_verifikasiFooterArea').hide();
 
         $('#global_modalVerifikasiTitle').html('<i class="fas fa-clipboard-check mr-2"></i>' + (opsi.title || 'Verifikasi Berkas'));
         // Dukung formHtml berupa string HTML maupun jQuery object (DOM element)
