@@ -554,28 +554,153 @@
       var today = new Date();
       var formattedDate = today.getDate() + " " + indonesianMonths[today.getMonth()] + " " + today.getFullYear();
       
-      var tempLength = 10;
-      if (SERAGAMDIST_TABEL_INSTANCE) {
-        tempLength = SERAGAMDIST_TABEL_INSTANCE.page.len();
-        SERAGAMDIST_TABEL_INSTANCE.page.len(-1).draw(false);
-      }
+      var targetSekolah = IS_ADMIN ? $('#seragamdist_filterSekolah').val() : (userLogin.npsn || userLogin.username || "");
+      var targetJenis = $('#seragamdist_filterJenis').val() || "SEMUA";
       
+      var filtered = SERAGAMDIST_CACHE_DATA;
+
+      if (targetSekolah && targetSekolah !== "SEMUA") {
+        filtered = filtered.filter(function(row) {
+          return String(row.npsn).trim() === String(targetSekolah).trim();
+        });
+      }
+
+      if (targetJenis && targetJenis !== "SEMUA") {
+        filtered = filtered.filter(function(row) {
+          return String(row.jenis_seragam || "").includes(targetJenis);
+        });
+      }
+
       var table = document.getElementById("seragamdist_tabelUtama");
       var originalHead = table.querySelector("thead").innerHTML;
-      var originalBody = table.querySelector("tbody").innerHTML;
-      var originalFoot = table.querySelector("tfoot") ? table.querySelector("tfoot").innerHTML : "";
       
-      if (SERAGAMDIST_TABEL_INSTANCE) {
-        SERAGAMDIST_TABEL_INSTANCE.page.len(tempLength).draw(false);
-      }
-      
+      var sizes = ["S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"];
+      var rowsToExport = [];
+
+      filtered.forEach(function(row) {
+        var detail = {};
+        try { detail = row.detail_json ? JSON.parse(row.detail_json) : {}; } catch(e) {}
+        
+        var parts = String(row.jenis_seragam || "").split(', ');
+        parts.forEach(function(jns) {
+          jns = jns.trim();
+          if (!detail[jns]) return;
+          
+          if (targetJenis !== "SEMUA" && jns !== targetJenis) return;
+
+          var namaSekolah = String(row.nama_sekolah || "").trim();
+          
+          // Row totals accumulators
+          var tot_rL = 0, tot_rP = 0, tot_rJml = 0;
+          var tot_tL = 0, tot_tP = 0, tot_tJml = 0;
+          var tot_disL = 0, tot_disP = 0, tot_disJml = 0;
+          var tot_bL = 0, tot_bP = 0, tot_bJml = 0;
+
+          // Temporary sub-arrays for sizes
+          var rekapCells = [];
+          var terimaCells = [];
+          var diserahkanCells = [];
+          var belumCells = [];
+
+          sizes.forEach(function(ukr) {
+            var sizeData = detail[jns][ukr] || {};
+            var rL = parseInt(sizeData.rekap_l) || 0;
+            var rP = parseInt(sizeData.rekap_p) || 0;
+            var rJ = rL + rP;
+
+            var tL = parseInt(sizeData.diterima_l) || 0;
+            var tP = parseInt(sizeData.diterima_p) || 0;
+            var tJ = tL + tP;
+
+            var disL = parseInt(sizeData.terima_l) || 0;
+            var disP = parseInt(sizeData.terima_p) || 0;
+            var disJ = disL + disP;
+
+            var bL = tL - disL;
+            var bP = tP - disP;
+            var bJ = tJ - disJ;
+
+            // Add sizes to totals
+            tot_rL += rL; tot_rP += rP; tot_rJml += rJ;
+            tot_tL += tL; tot_tP += tP; tot_tJml += tJ;
+            tot_disL += disL; tot_disP += disP; tot_disJml += disJ;
+            tot_bL += bL; tot_bP += bP; tot_bJml += bJ;
+
+            rekapCells.push(rL, rP, rJ);
+            terimaCells.push(tL, tP, tJ);
+            diserahkanCells.push(disL, disP, disJ);
+            belumCells.push(bL, bP, bJ);
+          });
+
+          // Append totals to group cells
+          rekapCells.push(tot_rL, tot_rP, tot_rJml);
+          terimaCells.push(tot_tL, tot_tP, tot_tJml);
+          diserahkanCells.push(tot_disL, tot_disP, tot_disJml);
+          belumCells.push(tot_bL, tot_bP, tot_bJml);
+
+          rowsToExport.push({
+            namaSekolah: namaSekolah,
+            cells: [].concat(rekapCells, terimaCells, diserahkanCells, belumCells)
+          });
+        });
+      });
+
+      // Sort by school name alphabetically (A-Z)
+      rowsToExport.sort(function(a, b) {
+        return a.namaSekolah.localeCompare(b.namaSekolah);
+      });
+
+      // Build HTML rows
+      var excelRows = '';
+      rowsToExport.forEach(function(r) {
+        excelRows += '<tr>';
+        excelRows += '<td style="text-align: left; font-weight: bold;">' + r.namaSekolah + '</td>';
+        r.cells.forEach(function(val, idx) {
+          var formattedVal = val === 0 ? '-' : val;
+          var style = 'text-align: center;';
+          // Belum cells are indices 81 to 107
+          if (idx >= 81 && idx <= 107) {
+            if (val > 0) {
+              style += ' color: #dc3545; font-weight: bold;';
+            } else if (val < 0) {
+              style += ' color: #28a745; font-weight: bold;';
+            }
+          }
+          excelRows += '<td style="' + style + '">' + formattedVal + '</td>';
+        });
+        excelRows += '</tr>';
+      });
+
+      // Compute Totals
+      var colTotals = new Array(108).fill(0);
+      rowsToExport.forEach(function(r) {
+        r.cells.forEach(function(val, idx) {
+          colTotals[idx] += val;
+        });
+      });
+
+      // Build Footer HTML
+      var excelFoot = '<tr>';
+      excelFoot += '<th style="text-align: left; font-weight: bold;">TOTAL DISTRIBUSI</th>';
+      colTotals.forEach(function(total, idx) {
+        var formattedTotal = total === 0 ? '-' : total;
+        var style = 'text-align: center; font-weight: bold;';
+        if (idx >= 81 && idx <= 107) {
+          if (total > 0) {
+            style += ' color: #dc3545;';
+          } else if (total < 0) {
+            style += ' color: #28a745;';
+          }
+        }
+        excelFoot += '<th style="' + style + '">' + formattedTotal + '</th>';
+      });
+      excelFoot += '</tr>';
+
       var html = '<html><head><meta charset="utf-8"><style>';
       html += 'table { border-collapse: collapse; }';
       html += 'th, td { border: 1px solid #000000; padding: 4px; font-family: Arial, sans-serif; font-size: 10pt; }';
       html += 'thead th { background-color: #f2f2f2; font-weight: bold; text-align: center; }';
       html += 'tfoot th { background-color: #e6e6e6; font-weight: bold; text-align: center; }';
-      html += '.text-success { color: #28a745; font-weight: bold; }';
-      html += '.text-danger { color: #dc3545; font-weight: bold; }';
       html += '</style></head><body>';
       html += '<table>';
       html += '<tr><td colspan="110" style="font-weight: bold; font-size: 14pt; border: none; text-align: left;">PENDISTRIBUSIAN PENYERAHAN SERAGAM ' + jenisSeragam + '</td></tr>';
@@ -583,10 +708,8 @@
       html += '<tr><td colspan="110" style="font-weight: bold; font-size: 12pt; border: none; text-align: left;">PER ' + formattedDate + '</td></tr>';
       html += '<tr><td colspan="110" style="border: none;"></td></tr>';
       html += '<thead>' + originalHead + '</thead>';
-      html += '<tbody>' + originalBody + '</tbody>';
-      if (originalFoot) {
-        html += '<tfoot>' + originalFoot + '</tfoot>';
-      }
+      html += '<tbody>' + excelRows + '</tbody>';
+      html += '<tfoot>' + excelFoot + '</tfoot>';
       html += '</table>';
       html += '</body></html>';
       
