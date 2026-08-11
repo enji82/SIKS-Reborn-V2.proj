@@ -274,6 +274,10 @@
         var rawFileName = null;
         var rawFileMime = null;
 
+        // State token pengaduan yang sudah di-unlock
+        var aduanUnlockedRows = {};
+        var aduanUnlockedTokens = {};
+
         // SISTEM SMART CACHE (ZERO-BLINK SULTAN BLUEPRINT)
         var ADUAN_CACHE_DATA = [];
         var ADUAN_CACHE_THN = "";
@@ -466,33 +470,54 @@
 
                 statusBadge = '<span class="' + style + '"><i class="fas fa-' + icon + ' mr-1"></i>' + labelStatus + '</span>';
 
+                var isRowUnlocked = isUserAdmin || 
+                                    (aduanUnlockedRows && aduanUnlockedRows[row.rowBaris] === true) || 
+                                    (row.token && aduanUnlockedTokens && aduanUnlockedTokens[row.token] === true);
+
+                if (isRowUnlocked && row.token) {
+                    aduanUnlockedRows[row.rowBaris] = true;
+                }
+
                 // Render Aksi
                 if (isUserAdmin) {
                     btnAksi = '<button class="sultan-btn-aksi sultan-btn-aksi-primary btn-verif" data-id="' + row.rowBaris + '" data-status="' + row.status + '" data-tindak="' + escapeHtml(row.tindakLanjut || '') + '" title="Tanggapi"><i class="fas fa-clipboard-check"></i></button>';
                     // Admin juga memiliki tombol hapus untuk membersihkan aduan sampah/tidak relevan
                     btnAksi += '<button class="sultan-btn-aksi sultan-btn-aksi-maroon btn-hapus ml-1" data-id="' + row.rowBaris + '" title="Hapus"><i class="fas fa-trash-alt"></i></button>';
                 } else {
-                    var st = row.status || 'Diproses';
-                    if (st === 'Diproses') {
-                        btnAksi = '<button class="sultan-btn-aksi sultan-btn-aksi-warning mr-1 btn-edit" data-id="' + row.rowBaris + '" data-kategori="' + row.kategori + '" data-detail="' + escapeHtml(row.detail) + '" data-file="' + (row.fileUrl || '') + '" title="Edit"><i class="fas fa-pencil-alt"></i></button>';
-                        btnAksi += '<button class="sultan-btn-aksi sultan-btn-aksi-maroon btn-hapus" data-id="' + row.rowBaris + '" title="Hapus"><i class="fas fa-trash-alt"></i></button>';
+                    if (isRowUnlocked) {
+                        var st = row.status || 'Diproses';
+                        if (st === 'Diproses') {
+                            btnAksi = '<button class="sultan-btn-aksi sultan-btn-aksi-warning mr-1 btn-edit" data-id="' + row.rowBaris + '" data-kategori="' + row.kategori + '" data-detail="' + escapeHtml(row.detail) + '" data-file="' + (row.fileUrl || '') + '" title="Edit"><i class="fas fa-pencil-alt"></i></button>';
+                            btnAksi += '<button class="sultan-btn-aksi sultan-btn-aksi-maroon btn-hapus" data-id="' + row.rowBaris + '" title="Hapus"><i class="fas fa-trash-alt"></i></button>';
+                        } else {
+                            // Jika sudah ditindaklanjuti, edit dikunci namun tetap bisa dihapus
+                            btnAksi = '<span class="text-muted small font-italic mr-2"><i class="fas fa-lock mr-1"></i>Terkunci</span>';
+                            btnAksi += '<button class="sultan-btn-aksi sultan-btn-aksi-maroon btn-hapus" data-id="' + row.rowBaris + '" title="Hapus"><i class="fas fa-trash-alt"></i></button>';
+                        }
                     } else {
-                        // Jika sudah ditindaklanjuti, edit dikunci namun tetap bisa dihapus
-                        btnAksi = '<span class="text-muted small font-italic mr-2"><i class="fas fa-lock mr-1"></i>Terkunci</span>';
-                        btnAksi += '<button class="sultan-btn-aksi sultan-btn-aksi-maroon btn-hapus" data-id="' + row.rowBaris + '" title="Hapus"><i class="fas fa-trash-alt"></i></button>';
+                        // Tombol Buka dengan Token
+                        btnAksi = '<button class="sultan-btn sultan-btn-aksi-warning btn-buka-token btn-sm px-2 py-1" data-id="' + row.rowBaris + '" title="Buka Detail Aduan"><i class="fas fa-unlock mr-1"></i>Buka</button>';
                     }
                 }
 
                 // Render Link File dengan Sultan Modal Preview (Tanpa Blink / Anti Tab Baru)
                 var linkFile = '<span class="text-muted small">-</span>';
                 if (row.fileUrl) {
-                    linkFile = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-primary btn-lihat-berkas" data-url="' + row.fileUrl + '" data-kategori="' + row.kategori + '" title="Lihat Bukti"><i class="fas fa-paperclip"></i></button>';
+                    if (isRowUnlocked) {
+                        linkFile = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-primary btn-lihat-berkas" data-url="' + row.fileUrl + '" data-kategori="' + row.kategori + '" title="Lihat Bukti"><i class="fas fa-paperclip"></i></button>';
+                    } else {
+                        linkFile = '<span class="text-muted small font-italic"><i class="fas fa-lock text-warning mr-1"></i>Terkunci</span>';
+                    }
                 }
 
                 // Render DETAIL MASALAH dengan style bubble (identik dengan kolom Tindak Lanjut)
                 var detailBubble = '';
                 if (row.detail) {
-                    detailBubble = '<div class="small font-italic text-wrap" style="white-space:normal; max-width:280px;">"' + escapeHtml(row.detail) + '"</div>';
+                    if (isRowUnlocked) {
+                        detailBubble = '<div class="small font-italic text-wrap" style="white-space:normal; max-width:280px;">"' + escapeHtml(row.detail) + '"</div>';
+                    } else {
+                        detailBubble = '<span class="text-muted small font-italic"><i class="fas fa-lock text-warning mr-1"></i>Terkunci (Masukkan Token)</span>';
+                    }
                 } else {
                     detailBubble = '<span class="text-muted">-</span>';
                 }
@@ -500,7 +525,11 @@
                 // Render TINDAK LANJUT (catatan admin, tanpa verifikator/tanggal)
                 var tindakBubble = '';
                 if (row.tindakLanjut) {
-                    tindakBubble = '<div class="small text-muted font-italic" style="white-space:normal; max-width:220px;">"' + escapeHtml(row.tindakLanjut) + '"</div>';
+                    if (isRowUnlocked) {
+                        tindakBubble = '<div class="small text-muted font-italic" style="white-space:normal; max-width:220px;">"' + escapeHtml(row.tindakLanjut) + '"</div>';
+                    } else {
+                        tindakBubble = '<span class="text-muted small font-italic"><i class="fas fa-lock text-warning mr-1"></i>Terkunci (Masukkan Token)</span>';
+                    }
                 } else {
                     tindakBubble = '<span class="text-muted">-</span>';
                 }
@@ -681,10 +710,36 @@
 
                         if (msg.indexOf("Sukses") > -1) {
                             $('#aduan_modalForm').modal('hide');
-                            Sultan.notif.sukses(msg);
-                            // Reset cache agar data baru ter-fetch kembali dari server
-                            ADUAN_CACHE_DATA = [];
-                            muatDataAduan();
+                            
+                            var token = "";
+                            var cleanMsg = msg;
+                            if (msg.indexOf("|TOKEN:") > -1) {
+                                var parts = msg.split("|TOKEN:");
+                                cleanMsg = parts[0];
+                                token = parts[1];
+                            }
+
+                            if (token) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Pengaduan Dikirim',
+                                    html: '<p class="mb-3">Mohon catat dan simpan token keamanan berikut untuk melihat/mengubah status aduan Anda di kemudian hari:</p>' +
+                                          '<div class="py-3 px-4 bg-light rounded text-center border mb-3" style="border-style: dashed !important; border-color: #bd2130 !important;">' +
+                                          '  <span class="h2 text-maroon font-weight-bold" style="letter-spacing: 4px;">' + token + '</span>' +
+                                          '</div>' +
+                                          '<p class="text-danger small mb-0 font-weight-bold"><i class="fas fa-exclamation-triangle mr-1"></i>PENTING: Jangan beritahukan token ini kepada orang lain!</p>',
+                                    confirmButtonText: 'Saya Sudah Mencatat Token',
+                                    confirmButtonColor: '#bd2130'
+                                }).then(function() {
+                                    aduanUnlockedTokens[token] = true;
+                                    ADUAN_CACHE_DATA = [];
+                                    muatDataAduan();
+                                });
+                            } else {
+                                Sultan.notif.sukses(cleanMsg);
+                                ADUAN_CACHE_DATA = [];
+                                muatDataAduan();
+                            }
                         } else {
                             Sultan.notif.gagal(msg);
                         }
@@ -696,6 +751,49 @@
                     })
                     .simpanAduan(dataKirim);
             }
+        });
+
+        // Buka Token Button Clicked (Delegated dengan off)
+        $(document).off('click', '.btn-buka-token').on('click', '.btn-buka-token', function () {
+            var id = $(this).data('id');
+            var rowData = ADUAN_CACHE_DATA.find(function (item) {
+                return String(item.rowBaris) === String(id);
+            });
+            if (!rowData) return;
+
+            Swal.fire({
+                title: 'Masukkan Token Keamanan',
+                html: 'Masukkan 6 karakter token untuk membuka detail pengaduan ini.',
+                input: 'text',
+                inputAttributes: {
+                    autocapitalize: 'characters',
+                    maxlength: 6,
+                    style: 'text-align: center; font-weight: bold; letter-spacing: 3px; font-size: 1.5rem;'
+                },
+                showCancelButton: true,
+                confirmButtonText: 'Buka Data',
+                cancelButtonText: 'Batal',
+                confirmButtonColor: '#bd2130',
+                preConfirm: function (token) {
+                    if (!token) {
+                        Swal.showValidationMessage('Token wajib diisi!');
+                        return false;
+                    }
+                    var cleanToken = String(token).trim().toUpperCase();
+                    var dbToken = String(rowData.token || '').trim().toUpperCase();
+                    if (cleanToken !== dbToken) {
+                        Swal.showValidationMessage('Token tidak valid/salah!');
+                        return false;
+                    }
+                    return true;
+                }
+            }).then(function (result) {
+                if (result.isConfirmed) {
+                    aduanUnlockedRows[id] = true;
+                    NotifSultan.alert("success", "Sukses", "Data berhasil dibuka.");
+                    renderTable(ADUAN_CACHE_DATA);
+                }
+            });
         });
 
         // Edit Button Clicked (Delegated dengan off)

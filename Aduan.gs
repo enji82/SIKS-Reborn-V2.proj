@@ -55,13 +55,26 @@ function getDaftarAduan(tahun, bulan) {
         tindakLanjut: row[11],
         tglVerif: row[12],
         adminVerif: row[13],
-        readBy: row[14] || ""
+        readBy: row[14] || "",
+        token: row[15] || ""
       });
     }
     return JSON.stringify(result);
   } catch (e) {
     return JSON.stringify({ error: "Error Server: " + e.message });
   }
+}
+
+/**
+ * Helper untuk men-generate token unik sepanjang 6 karakter alfanumerik (uppercase)
+ */
+function generateAduanToken() {
+  var chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // Hindari I, O, 0, 1 untuk mencegah salah baca
+  var token = "";
+  for (var i = 0; i < 6; i++) {
+    token += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return token;
 }
 
 /**
@@ -91,6 +104,7 @@ function simpanAduan(dataKirim) {
 
     var lastRow = sheet.getLastRow();
     var newId = lastRow === 1 ? 1 : lastRow; // Dummy sequential ID or rowBaris
+    var token = generateAduanToken();
 
     var rowData = [
       newId,
@@ -107,7 +121,8 @@ function simpanAduan(dataKirim) {
       "", // Tindak Lanjut Admin
       "", // Tanggal Verif
       "", // Admin Verifikator
-      ""  // Read By
+      "", // Read By
+      token // Token Pengaduan (Kolom ke-16 / P)
     ];
 
     sheet.appendRow(rowData);
@@ -115,7 +130,7 @@ function simpanAduan(dataKirim) {
     var realRow = sheet.getLastRow();
     sheet.getRange(realRow, 1).setValue(realRow);
 
-    return "Sukses Pengaduan Berhasil Disimpan";
+    return "Sukses Pengaduan Berhasil Disimpan|TOKEN:" + token;
   } catch (e) {
     return "Gagal menyimpan aduan: " + e.message;
   } finally {
