@@ -728,19 +728,41 @@ function seragam_getSekolahList() {
   }
 }
 
-function seragam_uploadSingleFile(base64Data, mimeType, fileName, fileType) {
+function seragam_uploadSingleFile(base64Data, mimeType, fileName, fileType, tahun, jenisSeragam) {
   try {
-    var folderId = FOLDER_CONFIG.SERAGAM_DOKUMENTASI_DOCS;
+    var parentFolderId = FOLDER_CONFIG.SERAGAM_DOKUMENTASI_DOCS;
     if (fileType === "sp") {
-      folderId = FOLDER_CONFIG.SERAGAM_LAPORAN_DOCS;
+      parentFolderId = FOLDER_CONFIG.SERAGAM_LAPORAN_DOCS;
     } else if (fileType === "sp_penyerahan") {
-      folderId = FOLDER_CONFIG.SERAGAM_LAPORAN_PENYERAHAN_DOCS;
+      parentFolderId = FOLDER_CONFIG.SERAGAM_LAPORAN_PENYERAHAN_DOCS;
     } else if (fileType === "dok_penyerahan") {
-      folderId = FOLDER_CONFIG.SERAGAM_DOKUMENTASI_PENYERAHAN_DOCS;
+      parentFolderId = FOLDER_CONFIG.SERAGAM_DOKUMENTASI_PENYERAHAN_DOCS;
     }
-    var folder = DriveApp.getFolderById(folderId);
+    
+    var parentFolder = DriveApp.getFolderById(parentFolderId);
+    
+    // Tentukan folder tahun ajaran (Bersihkan karakter khusus)
+    var folderTahunNama = String(tahun || "UMUM").replace(/[\/\\:*?"<>|]/g, "-").trim();
+    var folderTahun;
+    var subFoldersTahun = parentFolder.getFoldersByName(folderTahunNama);
+    if (subFoldersTahun.hasNext()) {
+      folderTahun = subFoldersTahun.next();
+    } else {
+      folderTahun = parentFolder.createFolder(folderTahunNama);
+    }
+    
+    // Tentukan folder jenis seragam di dalam folder tahun
+    var folderJenisNama = String(jenisSeragam || "LAINNYA").trim();
+    var targetFolder;
+    var subFoldersJenis = folderTahun.getFoldersByName(folderJenisNama);
+    if (subFoldersJenis.hasNext()) {
+      targetFolder = subFoldersJenis.next();
+    } else {
+      targetFolder = folderTahun.createFolder(folderJenisNama);
+    }
+
     var blob = Utilities.newBlob(Utilities.base64Decode(base64Data), mimeType, fileName);
-    var file = folder.createFile(blob);
+    var file = targetFolder.createFile(blob);
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     return JSON.stringify({
       success: true,
