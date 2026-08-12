@@ -95,7 +95,7 @@ $(document).ready(function() {
         { key: 'statusDitolak', label: 'DITOLAK', theme: 'metric-maroon', icon: 'fas fa-ban' }
     ];
     $('#seragamdash_metricRow2').html(SultanUI.renderDashboardRow2('seragamdash', row2Cards));
-    $('#seragamdash_listsContainer').html(SultanUI.renderDashboardLists('seragamdash', { placeholderCari: 'Cari NPSN atau nama sekolah...', hasCopyBelum: true }));
+    $('#seragamdash_listsContainer').html(SultanUI.renderDashboardLists('seragamdash', { placeholderCari: 'Cari NPSN atau nama sekolah...', hasCopyBelum: true, hasCopySudah: true }));
 
     $('#seragamdash_dashboardState').show();
     seragam_dash_showSkeleton();
@@ -188,6 +188,103 @@ $(document).ready(function() {
         temp.remove();
 
         Sultan.notif.sukses('Daftar berhasil disalin ke Clipboard (Siap Paste di WhatsApp).');
+    });
+
+    // Tombol Salin Sudah WA
+    $(document).off('click', '#seragamdash_btnSalinSudahWa').on('click', '#seragamdash_btnSalinSudahWa', function() {
+        var listEl = $('#seragamdash_listSudah .hover-sultan:visible');
+        var thn = $('#seragamdash_filterTahun').val() || '-';
+        var kat = $('#seragamdash_filterKategori').val() || 'penerimaan';
+        var jns = $('#seragamdash_filterJenis').val() || 'SEMUA';
+        var labelJns = jns === 'SEMUA' ? 'Semua Jenis Seragam' : jns;
+
+        if (listEl.length === 0) {
+            Sultan.notif.info('Tidak ada data sudah unggah untuk disalin.');
+            return;
+        }
+
+        var listDisetujui = [];
+        var listDiproses = [];
+        var listRevisi = [];
+        var listDitolak = [];
+
+        var jenisFilt = $('#seragamdash_filterJenis').val() || "SEMUA";
+        
+        var mapStatus = {};
+        SERAGAM_DASH_CACHE_LAPORAN.forEach(function(l) {
+            var matchJenis = (jenisFilt === "SEMUA") || (String(l.jenis || "").trim().toUpperCase() === jenisFilt.trim().toUpperCase());
+            if (matchJenis) {
+                mapStatus[l.npsn] = String(l.status || "DIPROSES").toUpperCase().trim();
+            }
+        });
+
+        listEl.each(function() {
+            var npsnText = $(this).find('.text-muted').text() || "";
+            var matchNpsn = npsnText.match(/NPSN:\s*([0-9]+)/i);
+            var npsn = matchNpsn ? matchNpsn[1].trim() : "";
+            var unitRaw = $(this).attr('data-unit') || $(this).find('.nama-asn').text().trim();
+            var status = npsn ? (mapStatus[npsn] || "DIPROSES") : "DIPROSES";
+
+            if (status === "DISETUJUI") {
+                listDisetujui.push(unitRaw);
+            } else if (status === "REVISI") {
+                listRevisi.push(unitRaw);
+            } else if (status === "DITOLAK") {
+                listDitolak.push(unitRaw);
+            } else {
+                listDiproses.push(unitRaw);
+            }
+        });
+
+        var txt = `*INFORMASI PENGUNGGAHAN SERAGAM GRATIS (SUDAH UNGGAH)*\n`;
+        txt += `TAHUN: ${thn}\n`;
+        txt += `JENIS: ${labelJns.toUpperCase()}\n`;
+        txt += `=======================\n\n`;
+
+        var totalSudah = listDisetujui.length + listDiproses.length + listRevisi.length + listDitolak.length;
+        txt += `*✅ TOTAL SUDAH UNGGAH: ${totalSudah} Sekolah*\n\n`;
+
+        if (listDisetujui.length > 0) {
+            txt += `*🌟 DISETUJUI (${listDisetujui.length}):*\n`;
+            listDisetujui.sort().forEach(function(nama, idx) {
+                txt += `${idx + 1}. ${nama}\n`;
+            });
+            txt += `\n`;
+        }
+
+        if (listDiproses.length > 0) {
+            txt += `*⏳ DIPROSES (${listDiproses.length}):*\n`;
+            listDiproses.sort().forEach(function(nama, idx) {
+                txt += `${idx + 1}. ${nama}\n`;
+            });
+            txt += `\n`;
+        }
+
+        if (listRevisi.length > 0) {
+            txt += `*✍️ PERLU REVISI (${listRevisi.length}):*\n`;
+            listRevisi.sort().forEach(function(nama, idx) {
+                txt += `${idx + 1}. ${nama}\n`;
+            });
+            txt += `\n`;
+        }
+
+        if (listDitolak.length > 0) {
+            txt += `*❌ DITOLAK (${listDitolak.length}):*\n`;
+            listDitolak.sort().forEach(function(nama, idx) {
+                txt += `${idx + 1}. ${nama}\n`;
+            });
+            txt += `\n`;
+        }
+
+        txt += `_Status pengunggahan terpantau real-time dari SIKS-Reborn._`;
+
+        var temp = $('<textarea>');
+        $('body').append(temp);
+        temp.val(txt).select();
+        document.execCommand('copy');
+        temp.remove();
+
+        Sultan.notif.sukses('Daftar sudah unggah berhasil disalin ke Clipboard (Siap Paste di WhatsApp).');
     });
 
     seragam_dash_initYears();
