@@ -340,7 +340,7 @@
       <!-- BARIS 4: Berkas-Berkas -->
       <div class="row">
         <div class="col-12 mb-3">
-          <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Berkas Surat Pernyataan dan Tanda Terima Digabung Menjadi 1 File (PDF, Max 2MB) <span class="text-danger">*</span></label>
+          <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Berkas Surat Pernyataan Penyerahan Seragam (PDF, Max 2MB) <span class="text-danger">*</span></label>
           <div class="custom-file">
             <input type="file" class="custom-file-input form-control-sultan border-maroon" id="seragampenyerahan_file_sp" accept="application/pdf">
             <label class="custom-file-label text-truncate text-muted" for="seragampenyerahan_file_sp">Pilih berkas PDF...</label>
@@ -472,6 +472,7 @@
         { id: "seragampenyerahan_filterSekolah", placeholder: "- Memuat Sekolah... -", disabled: true, visible: IS_ADMIN },
         { id: "seragampenyerahan_filterTahun", placeholder: "- Memuat Tahun... -", disabled: true },
         { id: "seragampenyerahan_filterJenis", placeholder: "- Pilih Jenis Seragam -", disabled: false },
+        { id: "seragampenyerahan_filterTahap", placeholder: "- Pilih Laporan -", disabled: false },
         { id: "seragampenyerahan_filterStatus", placeholder: "- Pilih Status -", disabled: false }
       ];
 
@@ -497,6 +498,16 @@
         '<option value="Pramuka">Pramuka</option>'
       );
 
+      // Populate Tahap / Laporan filter options
+      $('#seragampenyerahan_filterTahap').html(
+        '<option value="SEMUA">- Semua Laporan -</option>' +
+        '<option value="Laporan 1">Laporan 1</option>' +
+        '<option value="Laporan 2">Laporan 2</option>' +
+        '<option value="Laporan 3">Laporan 3</option>' +
+        '<option value="Laporan 4">Laporan 4</option>' +
+        '<option value="Laporan 5">Laporan 5</option>'
+      );
+
       // Populate Status filter options
       $('#seragampenyerahan_filterStatus').html(
         '<option value="SEMUA">- Semua Status -</option>' +
@@ -507,7 +518,7 @@
       );
 
       // Bind Listeners
-      $('#seragampenyerahan_filterSekolah, #seragampenyerahan_filterJenis, #seragampenyerahan_filterStatus').on('change', applyLocalFilter);
+      $('#seragampenyerahan_filterSekolah, #seragampenyerahan_filterJenis, #seragampenyerahan_filterTahap, #seragampenyerahan_filterStatus').on('change', applyLocalFilter);
       $('#seragampenyerahan_btnSync').on('click', fetchLaporanData);
       $('#seragampenyerahan_btnUnggah').on('click', showUploadModal);
       
@@ -522,8 +533,8 @@
         recalcDetailFooter($(this).closest('table'));
       });
 
-      // Trigger detail table loading on field changes
-      $(document).off('change', '#seragampenyerahan_in_sekolah, #seragampenyerahan_in_tahun, #seragampenyerahan_in_jenis').on('change', '#seragampenyerahan_in_sekolah, #seragampenyerahan_in_tahun, #seragampenyerahan_in_jenis', function() {
+      // Trigger detail table loading on field changes (including tahap)
+      $(document).off('change', '#seragampenyerahan_in_sekolah, #seragampenyerahan_in_tahun, #seragampenyerahan_in_jenis, #seragampenyerahan_in_tahap').on('change', '#seragampenyerahan_in_sekolah, #seragampenyerahan_in_tahun, #seragampenyerahan_in_jenis, #seragampenyerahan_in_tahap', function() {
         checkAndTriggerLoad();
       });
 
@@ -777,9 +788,35 @@
       }
     }
 
+    function updateTahapFilterDropdown() {
+      var currentSelection = $('#seragampenyerahan_filterTahap').val() || "SEMUA";
+      var uniqueTahap = {};
+      SERAGAMLAPOR_CACHE_DATA.forEach(function(row) {
+        if (row.tahap) {
+          uniqueTahap[row.tahap] = row.tahap;
+        }
+      });
+
+      var $dropdown = $('#seragampenyerahan_filterTahap');
+      $dropdown.empty().append('<option value="SEMUA">- Semua Tahap -</option>');
+      
+      Object.keys(uniqueTahap).sort().forEach(function(t) {
+        $dropdown.append(`<option value="${t}">${t}</option>`);
+      });
+
+      $dropdown.prop('disabled', false);
+
+      if (uniqueTahap[currentSelection] || currentSelection === "SEMUA") {
+        $dropdown.val(currentSelection);
+      } else {
+        $dropdown.val("SEMUA");
+      }
+    }
+
     function applyLocalFilter() {
       var targetSekolah = IS_ADMIN ? $('#seragampenyerahan_filterSekolah').val() : (userLogin.npsn || userLogin.username || "");
       var targetJenis = $('#seragampenyerahan_filterJenis').val() || "SEMUA";
+      var targetTahap = $('#seragampenyerahan_filterTahap').val() || "SEMUA";
       var targetStatus = $('#seragampenyerahan_filterStatus').val() || "SEMUA";
       var filtered = SERAGAMLAPOR_CACHE_DATA;
       
@@ -792,6 +829,12 @@
       if (targetJenis && targetJenis !== "SEMUA") {
         filtered = filtered.filter(function(row) {
           return String(row.jenis_seragam || "").trim().toUpperCase() === String(targetJenis).trim().toUpperCase();
+        });
+      }
+
+      if (targetTahap && targetTahap !== "SEMUA") {
+        filtered = filtered.filter(function(row) {
+          return String(row.tahap || "Laporan 1").trim().toUpperCase() === String(targetTahap).trim().toUpperCase();
         });
       }
 
