@@ -504,8 +504,8 @@
         recalcDetailFooter($(this).closest('table'));
       });
 
-      // Trigger detail table loading on field changes
-      $(document).off('change', '#seragamlapor_in_sekolah, #seragamlapor_in_tahun, #seragamlapor_in_jenis').on('change', '#seragamlapor_in_sekolah, #seragamlapor_in_tahun, #seragamlapor_in_jenis', function() {
+      // Trigger detail table loading on field changes (including tahap)
+      $(document).off('change', '#seragamlapor_in_sekolah, #seragamlapor_in_tahun, #seragamlapor_in_jenis, #seragamlapor_in_tahap').on('change', '#seragamlapor_in_sekolah, #seragamlapor_in_tahun, #seragamlapor_in_jenis, #seragamlapor_in_tahap', function() {
         checkAndTriggerLoad();
       });
 
@@ -1041,8 +1041,9 @@
 
     /** Recalculate JML and Selisih for a single data row */
     function recalcDetailRow($tr) {
-      var rekapL = parseCellVal($tr.find('.td-rekap-l').text());
-      var rekapP = parseCellVal($tr.find('.td-rekap-p').text());
+      // Use data-val attribute for reliable rekap values (handles '-' display format for 0)
+      var rekapL = parseInt($tr.find('.td-rekap-l').attr('data-val')) || parseCellVal($tr.find('.td-rekap-l').text());
+      var rekapP = parseInt($tr.find('.td-rekap-p').attr('data-val')) || parseCellVal($tr.find('.td-rekap-p').text());
       var terimaL = parseInt($tr.find('.inp-terima[data-jk="L"]').val()) || 0;
       var terimaP = parseInt($tr.find('.inp-terima[data-jk="P"]').val()) || 0;
       var terimaJml = terimaL + terimaP;
@@ -1092,8 +1093,10 @@
     }
 
     /** Build the interactive detail table HTML for a single jenis seragam and rekap sizes data */
-    function buildDetailTable(jenis, rekapSizes, existingDetailJson) {
+    // headerLabel: label for the first group column (default: 'PENERIMA (REKAP)')
+    function buildDetailTable(jenis, rekapSizes, existingDetailJson, headerLabel) {
       var panelsHtml = '';
+      var groupHeaderLabel = headerLabel || 'PENERIMA (REKAP)';
 
       var existingForJenis = (existingDetailJson && existingDetailJson[jenis]) ? existingDetailJson[jenis] : {};
 
@@ -1109,8 +1112,8 @@
 
         rowsHtml += '<tr>' +
           '<td class="ukr-col">' + ukr + '</td>' +
-          '<td class="td-rekap-l">' + fmtVal(rekL) + '</td>' +
-          '<td class="td-rekap-p">' + fmtVal(rekP) + '</td>' +
+          '<td class="td-rekap-l" data-val="' + rekL + '">' + fmtVal(rekL) + '</td>' +
+          '<td class="td-rekap-p" data-val="' + rekP + '">' + fmtVal(rekP) + '</td>' +
           '<td>' + fmtVal(rekJml) + '</td>' +
           '<td><input type="number" class="inp-terima" data-jk="L" data-ukr="' + ukr + '" data-jenis="' + jenis + '" min="0" value="' + (terL === 0 ? '' : terL) + '" placeholder="-"></td>' +
           '<td><input type="number" class="inp-terima" data-jk="P" data-ukr="' + ukr + '" data-jenis="' + jenis + '" min="0" value="' + (terP === 0 ? '' : terP) + '" placeholder="-"></td>' +
@@ -1138,7 +1141,7 @@
         '<thead>' +
           '<tr>' +
             '<th rowspan="2" style="vertical-align:middle;">UKR</th>' +
-            '<th colspan="3" class="th-group">PENERIMA (REKAP)</th>' +
+            '<th colspan="3" class="th-group">' + groupHeaderLabel + '</th>' +
             '<th colspan="3" class="th-group">DITERIMA (INPUT)</th>' +
             '<th colspan="3" class="th-group">SELISIH</th>' +
           '</tr>' +
@@ -1162,7 +1165,7 @@
       $('#seragamlapor_detailPanels').html(panelsHtml);
     }
 
-    /** Read all .inp-terima inputs and compile to detail_json */
+    /** Read all .inp-terima inputs and compile to detail_json. Also reads rekap_l/rekap_p per row from DOM. */
     function readDetailJson() {
       var result = {};
       $('#seragamlapor_detailPanels .inp-terima').each(function() {
@@ -1170,9 +1173,17 @@
         var ukr = $(this).attr('data-ukr');
         var jk = $(this).attr('data-jk');
         if (!result[jenis]) result[jenis] = {};
-        if (!result[jenis][ukr]) result[jenis][ukr] = { terima_l: 0, terima_p: 0 };
-        if (jk === 'L') result[jenis][ukr].terima_l = parseInt($(this).val()) || 0;
-        else result[jenis][ukr].terima_p = parseInt($(this).val()) || 0;
+        if (!result[jenis][ukr]) result[jenis][ukr] = { terima_l: 0, terima_p: 0, rekap_l: 0, rekap_p: 0 };
+        if (jk === 'L') {
+          result[jenis][ukr].terima_l = parseInt($(this).val()) || 0;
+          // Read rekap_l from the cell with data-val attribute (stored on the td)
+          var $row = $(this).closest('tr');
+          result[jenis][ukr].rekap_l = parseInt($row.find('.td-rekap-l').attr('data-val')) || 0;
+        } else {
+          result[jenis][ukr].terima_p = parseInt($(this).val()) || 0;
+          var $row = $(this).closest('tr');
+          result[jenis][ukr].rekap_p = parseInt($row.find('.td-rekap-p').attr('data-val')) || 0;
+        }
       });
       return result;
     }
@@ -1252,26 +1263,86 @@
         .seragam_getRekap(tahun, 'SEMUA');
     }
 
-    /** Check and trigger loading detail table */
+    /** Check and trigger loading detail table — handles cascading laporan logic */
     function checkAndTriggerLoad() {
       var npsn = IS_ADMIN ? $('#seragamlapor_in_sekolah').val() : $('#seragamlapor_in_sekolah_hidden').val();
       var tahun = $('#seragamlapor_in_tahun').val();
       var jenis = $('#seragamlapor_in_jenis').val();
-      
+      var tahap = $('#seragamlapor_in_tahap').val() || 'Laporan 1';
+
       if (!npsn || !tahun || !jenis) {
         $('#seragamlapor_detailWrap').hide();
         return;
       }
-      
+
       $('#seragamlapor_detailWrap').show();
-      
+
       var existingJsonStr = $('#seragamlapor_formLaporan').data('existingDetailJson');
       var existingDetailJson = null;
       if (existingJsonStr) {
         try { existingDetailJson = JSON.parse(existingJsonStr); } catch(e) {}
       }
-      
-      loadRekapForModal(npsn, tahun, jenis, existingDetailJson);
+
+      // Parse nomor tahap: "Laporan 1" => 1, "Laporan 2" => 2, dst.
+      var tahapNum = parseInt(String(tahap).replace(/[^0-9]/g, '')) || 1;
+
+      if (tahapNum <= 1) {
+        // Laporan 1: pakai rekap murid seperti biasa
+        loadRekapForModal(npsn, tahun, jenis, existingDetailJson);
+      } else {
+        // Laporan 2+: ambil detail laporan sebelumnya untuk menghitung kekurangan (selisih negatif)
+        var tahapSebelumnya = 'Laporan ' + (tahapNum - 1);
+        $('#seragamlapor_detailPanels').html(
+          '<div class="seragam-detail-loading" id="seragamlapor_detailLoading">' +
+          '<i class="fas fa-circle-notch fa-spin"></i> Memuat data kekurangan dari ' + tahapSebelumnya + '...</div>'
+        );
+
+        google.script.run
+          .withSuccessHandler(function(response) {
+            var res = JSON.parse(response);
+            if (!res.success) {
+              // Laporan sebelumnya tidak ada — blokir
+              $('#seragamlapor_detailWrap').hide();
+              Sultan.notif.gagal(
+                tahapSebelumnya + ' untuk sekolah dan jenis seragam ini belum diunggah. ' +
+                'Harap unggah ' + tahapSebelumnya + ' terlebih dahulu sebelum mengunggah ' + tahap + '.'
+              );
+              // Reset dropdown tahap kembali ke tahap sebelumnya agar tidak bisa lanjut
+              $('#seragamlapor_in_tahap').val(tahapSebelumnya);
+              return;
+            }
+
+            // Parse detail_json laporan sebelumnya
+            var prevDetailJson = {};
+            try { prevDetailJson = JSON.parse(res.detail_json || '{}'); } catch(e) {}
+
+            // Bangun rekapSizes dari kekurangan (selisih negatif per ukuran)
+            // Kekurangan: rekap_l - terima_l (jika positif = masih kurang)
+            var kekuranganSizes = {};
+            SERAGAM_UKURAN.forEach(function(ukr) {
+              var prevForJenis = (prevDetailJson[jenis] && prevDetailJson[jenis][ukr]) ? prevDetailJson[jenis][ukr] : null;
+              var rekL = 0, rekP = 0;
+              if (prevForJenis) {
+                var prevRekL = parseInt(prevForJenis.rekap_l) || 0;
+                var prevRekP = parseInt(prevForJenis.rekap_p) || 0;
+                var prevTerL = parseInt(prevForJenis.terima_l) || 0;
+                var prevTerP = parseInt(prevForJenis.terima_p) || 0;
+                // Kekurangan = rekap - yang sudah diterima, minimal 0
+                rekL = Math.max(0, prevRekL - prevTerL);
+                rekP = Math.max(0, prevRekP - prevTerP);
+              }
+              kekuranganSizes[ukr] = { L: rekL, P: rekP };
+            });
+
+            buildDetailTable(jenis, kekuranganSizes, existingDetailJson, 'KEKURANGAN (' + tahapSebelumnya + ')');
+          })
+          .withFailureHandler(function(err) {
+            $('#seragamlapor_detailPanels').html(
+              '<div class="p-3 text-danger small"><i class="fas fa-exclamation-triangle mr-1"></i>Gagal memuat data ' + tahapSebelumnya + ': ' + (err.message || err) + '</div>'
+            );
+          })
+          .seragam_getPenerimaanDetail(npsn, tahun, tahapSebelumnya, jenis);
+      }
     }
 
 
