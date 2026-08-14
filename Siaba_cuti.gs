@@ -27,10 +27,10 @@ function getDatabaseCutiOptions() {
     
     // Cari index kolom dinamis, fallback ke index lama jika tidak ditemukan
     var idxAlamat = headers.findIndex(function(h) { return h.includes("alamat"); });
-    if (idxAlamat === -1) idxAlamat = 10; 
+    if (idxAlamat === -1) idxAlamat = 8; 
     
-    var idxHp = headers.findIndex(function(h) { return h.includes("hp") || h.includes("whatsapp") || h.includes("wa") || h.includes("telepon"); });
-    if (idxHp === -1) idxHp = 11; 
+    var idxHp = headers.findIndex(function(h) { return h.includes("hp") || h.includes("whatsapp") || h.includes("wa") || h.includes("telepon") || h.includes("telp"); });
+    if (idxHp === -1) idxHp = 9; 
 
     var res = [];
     for (var i = 1; i < data.length; i++) { 
@@ -298,7 +298,31 @@ function cekBentrokCuti(nipBaru, tglMulaiBaruStr, tglSelesaiBaruStr, rowIdPengec
 function getDetailPegawaiByNip(targetNip) {
   var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_DB);
   var data = sheet.getDataRange().getDisplayValues();
-  for (var i = 1; i < data.length; i++) { if (String(data[i][0]).trim() === String(targetNip).trim()) return { golongan: data[i][4], jabatan: data[i][5], unitLengkap: data[i][6], masaKerja: data[i][7], fullRow: data[i] }; }
+  if (data.length < 2) return null;
+  
+  var headers = data[0].map(function(h) { return String(h).toLowerCase().trim(); });
+  var iGol = headers.findIndex(function(h) { return h === "gol" || h === "golongan" || h === "gol/ruang"; });
+  var iJab = headers.findIndex(function(h) { return h === "jabatan"; });
+  var iUnitLengkap = headers.findIndex(function(h) { return h === "skpd" || h === "unit kerja lengkap" || h === "unit lengkap"; });
+  var iMasaKerja = headers.findIndex(function(h) { return h === "masa kerja"; });
+  
+  // fallback if not found
+  if (iGol === -1) iGol = 10;
+  if (iJab === -1) iJab = 5;
+  if (iUnitLengkap === -1) iUnitLengkap = 6;
+  if (iMasaKerja === -1) iMasaKerja = 7;
+
+  for (var i = 1; i < data.length; i++) { 
+      if (String(data[i][0]).trim() === String(targetNip).trim()) {
+          return { 
+              golongan: data[i][iGol] || "", 
+              jabatan: data[i][iJab] || "", 
+              unitLengkap: data[i][iUnitLengkap] || "", 
+              masaKerja: data[i][iMasaKerja] || "", 
+              fullRow: data[i] 
+          }; 
+      }
+  }
   return null;
 }
 
