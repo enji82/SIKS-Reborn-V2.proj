@@ -734,6 +734,7 @@ function getNotifikasiGlobal(role, unit) {
     callSafe('lapbul', getNotifikasiLapbul, role, unit);
     callSafe('lupa', getNotifikasiLupa, role, unit);
     callSafe('salah', getNotifikasiSalah, role, unit);
+    callSafe('lokupa', getNotifikasiLokasi, role, unit);
     callSafe('perdin', getNotifikasiPerdin, role, unit);
     callSafe('cuti', getNotifikasiCuti, role, unit);
     callSafe('surat_cuti', getNotifikasiSuratCuti, role, unit);
@@ -772,6 +773,9 @@ function tandaiSemuaNotifGlobalDibaca(role, unit) {
     tandaiSemuaNotifLapbulDibaca(role, unit);
     tandaiSemuaNotifLupaDibaca(role, unit);
     tandaiSemuaNotifSalahDibaca(role, unit);
+    if (typeof tandaiSemuaNotifLokasiDibaca === 'function') {
+      tandaiSemuaNotifLokasiDibaca(role, unit);
+    }
     tandaiSemuaNotifPerdinDibaca(role, unit);
     tandaiSemuaNotifCutiDibaca_Global(role, unit); 
     tandaiSemuaNotifEfileDibaca_Global(role, unit);

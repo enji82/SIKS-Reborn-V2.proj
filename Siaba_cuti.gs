@@ -21,6 +21,17 @@ function getDatabaseCutiOptions() {
     var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_DB);
     
     var data = sheet.getDataRange().getDisplayValues();
+    if (data.length < 2) return JSON.stringify([]);
+    
+    var headers = data[0].map(function(h) { return String(h).toLowerCase().trim(); });
+    
+    // Cari index kolom dinamis, fallback ke index lama jika tidak ditemukan
+    var idxAlamat = headers.findIndex(function(h) { return h.includes("alamat"); });
+    if (idxAlamat === -1) idxAlamat = 10; 
+    
+    var idxHp = headers.findIndex(function(h) { return h.includes("hp") || h.includes("whatsapp") || h.includes("wa") || h.includes("telepon"); });
+    if (idxHp === -1) idxHp = 11; 
+
     var res = [];
     for (var i = 1; i < data.length; i++) { 
       if (data[i][0] && data[i][2]) {
@@ -29,8 +40,8 @@ function getDatabaseCutiOptions() {
               unit: String(data[i][1]), 
               nama: String(data[i][2]), 
               status: String(data[i][3]), 
-              alamat: String(data[i][10]), 
-              hp: String(data[i][11]) 
+              alamat: String(data[i][idxAlamat] || ""), 
+              hp: String(data[i][idxHp] || "") 
           });
       }
     }
@@ -426,7 +437,44 @@ function formatIndoText(iso) {
 }
 
 // parseTime → parseSiabaDateTime di Siaba_helper.gs
-function parseDateIndo(str) { if(!str) return null; str = String(str).toLowerCase().replace(/,/g, ""); var p = str.split(" "); if (p.length >= 3) { var mIdx = ["januari","februari","maret","april","mei","juni","juli","agustus","september","oktober","november","desember"].indexOf(p[1]); if(mIdx > -1) return new Date(parseInt(p[2]), mIdx, parseInt(p[0])); } var p2 = str.split("/"); if (p2.length === 3) return new Date(p2[2], p2[1]-1, p2[0]); return null; }
+function parseDateIndo(str) {
+    if(!str) return null; 
+    str = String(str).toLowerCase().trim().replace(/,/g, ""); 
+    
+    // 1. Text format: 14 agustus 2025
+    var p = str.split(" "); 
+    if (p.length >= 3) { 
+        var mIdx = ["januari","februari","maret","april","mei","juni","juli","agustus","september","oktober","november","desember"].indexOf(p[1]); 
+        if(mIdx > -1) return new Date(parseInt(p[2], 10), mIdx, parseInt(p[0], 10)); 
+    } 
+    
+    // 2. Slash format: 14/08/2025 or 08/14/2025
+    var p2 = str.split("/"); 
+    if (p2.length === 3) {
+        var d = parseInt(p2[0], 10);
+        var m = parseInt(p2[1], 10);
+        var y = parseInt(p2[2], 10);
+        if (m > 12) { return new Date(y, d - 1, m); } // MM/DD/YYYY
+        return new Date(y, m - 1, d); // DD/MM/YYYY
+    }
+    
+    // 3. Dash format: 2025-08-14 or 14-08-2025
+    var p3 = str.split("-");
+    if (p3.length === 3) {
+        if (p3[0].length === 4) return new Date(parseInt(p3[0], 10), parseInt(p3[1], 10) - 1, parseInt(p3[2], 10));
+        var d3 = parseInt(p3[0], 10);
+        var m3 = parseInt(p3[1], 10);
+        var y3 = parseInt(p3[2], 10);
+        if (m3 > 12) return new Date(y3, d3 - 1, m3); // MM-DD-YYYY
+        return new Date(y3, m3 - 1, d3); // DD-MM-YYYY
+    }
+    
+    // 4. Native fallback
+    var dNative = new Date(str);
+    if (!isNaN(dNative.getTime())) return dNative;
+    
+    return null; 
+}
 
 /* ======================================================================
    MODUL: SISA CUTI TAHUNAN & REKAP
