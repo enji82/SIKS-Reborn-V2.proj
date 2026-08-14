@@ -244,6 +244,7 @@
   (function() {
     var IS_ADMIN = false;
     var SERAGAMDIST_CACHE_DATA = [];
+    var SERAGAM_PENERIMAAN_CACHE_DATA = [];
     var SERAGAMDIST_TABEL_INSTANCE = null;
     var availableYears = [];
     var userLogin = typeof getSesiUser === 'function' ? getSesiUser() : {};
@@ -319,16 +320,35 @@
       }
 
       google.script.run
-        .withSuccessHandler(function(response) {
-          SultanUI.hideLoading('#seragamdist_loadingState');
-          var res = JSON.parse(response);
-          if (res.success) {
-            SERAGAMDIST_CACHE_DATA = res.data || [];
-            updateSekolahDropdown();
-            applyLocalFilter();
-            $('#seragamdist_tableState').show();
+        .withSuccessHandler(function(responsePenyerahan) {
+          var resPen = JSON.parse(responsePenyerahan);
+          if (resPen.success) {
+            SERAGAMDIST_CACHE_DATA = resPen.data || [];
+            
+            // Sequential load: load penerimaan data
+            google.script.run
+              .withSuccessHandler(function(responsePenerimaan) {
+                SultanUI.hideLoading('#seragamdist_loadingState');
+                var resPenerimaan = JSON.parse(responsePenerimaan);
+                if (resPenerimaan.success) {
+                  SERAGAM_PENERIMAAN_CACHE_DATA = resPenerimaan.data || [];
+                  updateSekolahDropdown();
+                  applyLocalFilter();
+                  $('#seragamdist_tableState').show();
+                } else {
+                  Sultan.notif.gagal('Gagal memuat rincian penerimaan: ' + resPenerimaan.message);
+                  $('#seragamdist_tableState').show();
+                }
+              })
+              .withFailureHandler(function(err) {
+                SultanUI.hideLoading('#seragamdist_loadingState');
+                Sultan.notif.gagal('Koneksi terputus saat memuat penerimaan: ' + err.message);
+                $('#seragamdist_tableState').show();
+              })
+              .seragam_getLaporan(tahun, npsnQuery);
           } else {
-            Sultan.notif.gagal('Gagal memuat rincian: ' + res.message);
+            SultanUI.hideLoading('#seragamdist_loadingState');
+            Sultan.notif.gagal('Gagal memuat rincian penyerahan: ' + resPen.message);
             $('#seragamdist_tableState').show();
           }
         })
@@ -470,9 +490,10 @@
           jns = jns.trim();
           if (!detail[jns]) return;
 
+          var tahapLabel = row.tahap || 'Laporan 1';
           var sekolahCell = `
             <div class="font-weight-bold text-brand-maroon text-left text-wrap" style="font-size: 13px; line-height: 1.2;">${row.nama_sekolah}</div>
-            <div class="text-muted text-left small font-weight-normal">${row.npsn}</div>
+            <div class="text-muted text-left small font-weight-normal">${tahapLabel}</div>
           `;
 
           var fmt = function(v) { return v === 0 ? '-' : v; };
@@ -481,6 +502,35 @@
             var cls = v > 0 ? 'text-danger' : 'text-success';
             return `<span class="${cls} font-weight-bold">${v}</span>`;
           };
+
+          // Find related Penerimaan & Penyerahan laporans up to current tahap
+          var currentTahapNum = parseInt(String(row.tahap || 'Laporan 1').replace(/[^0-9]/g, '')) || 1;
+          
+          var relatedPenerimaan = SERAGAM_PENERIMAAN_CACHE_DATA.filter(function(r) {
+            var rTahapNum = parseInt(String(r.tahap || 'Laporan 1').replace(/[^0-9]/g, '')) || 1;
+            return String(r.npsn).trim() === String(row.npsn).trim() &&
+                   String(r.jenis_seragam || "").indexOf(jns) >= 0 &&
+                   rTahapNum <= currentTahapNum;
+          });
+
+          var relatedPenyerahan = data.filter(function(r) {
+            var rTahapNum = parseInt(String(r.tahap || 'Laporan 1').replace(/[^0-9]/g, '')) || 1;
+            return String(r.npsn).trim() === String(row.npsn).trim() &&
+                   String(r.jenis_seragam || "").indexOf(jns) >= 0 &&
+                   rTahapNum <= currentTahapNum;
+          });
+
+          // Find original Rekap target from L1 Penerimaan
+          var L1Penerimaan = SERAGAM_PENERIMAAN_CACHE_DATA.find(function(r) {
+            var rTahapNum = parseInt(String(r.tahap || 'Laporan 1').replace(/[^0-9]/g, '')) || 1;
+            return String(r.npsn).trim() === String(row.npsn).trim() &&
+                   String(r.jenis_seragam || "").indexOf(jns) >= 0 &&
+                   rTahapNum === 1;
+          });
+          var L1Detail = {};
+          if (L1Penerimaan) {
+            try { L1Detail = L1Penerimaan.detail_json ? JSON.parse(L1Penerimaan.detail_json) : {}; } catch(e) {}
+          }
 
           // Row totals accumulators
           var tot_rL = 0, tot_rP = 0, tot_rJml = 0;
@@ -498,27 +548,47 @@
             var sizeData = detail[jns][ukr] || {};
             var rL = parseInt(sizeData.rekap_l) || 0;
             var rP = parseInt(sizeData.rekap_p) || 0;
-            var rJ = rL + rP;
 
-            var tL = parseInt(sizeData.diterima_l) || 0;
-            var tP = parseInt(sizeData.diterima_p) || 0;
+            // Get original rekap target from L1 Penerimaan, fallback to current values
+            var L1SizeData = (L1Detail[jns] && L1Detail[jns][ukr]) ? L1Detail[jns][ukr] : {};
+            var rekapAsliL = (L1Penerimaan && typeof L1SizeData.rekap_l !== 'undefined') ? (parseInt(L1SizeData.rekap_l) || 0) : rL;
+            var rekapAsliP = (L1Penerimaan && typeof L1SizeData.rekap_p !== 'undefined') ? (parseInt(L1SizeData.rekap_p) || 0) : rP;
+            var rJ = rekapAsliL + rekapAsliP;
+
+            // Compute cumulative terima L/P from L1 up to current Laporan Penerimaan
+            var tL = 0, tP = 0;
+            relatedPenerimaan.forEach(function(r) {
+              var rDetail = {};
+              try { rDetail = r.detail_json ? JSON.parse(r.detail_json) : {}; } catch(e) {}
+              var rSizeData = (rDetail[jns] && rDetail[jns][ukr]) ? rDetail[jns][ukr] : {};
+              tL += parseInt(rSizeData.terima_l) || 0;
+              tP += parseInt(rSizeData.terima_p) || 0;
+            });
             var tJ = tL + tP;
 
-            var disL = parseInt(sizeData.terima_l) || 0;
-            var disP = parseInt(sizeData.terima_p) || 0;
+            // Compute cumulative diserahkan L/P from L1 up to current Laporan Penyerahan
+            var disL = 0, disP = 0;
+            relatedPenyerahan.forEach(function(r) {
+              var rDetail = {};
+              try { rDetail = r.detail_json ? JSON.parse(r.detail_json) : {}; } catch(e) {}
+              var rSizeData = (rDetail[jns] && rDetail[jns][ukr]) ? rDetail[jns][ukr] : {};
+              disL += parseInt(rSizeData.terima_l) || 0;
+              disP += parseInt(rSizeData.terima_p) || 0;
+            });
             var disJ = disL + disP;
 
+            // Belum diserahkan = cumulative terima - cumulative diserahkan
             var bL = tL - disL;
             var bP = tP - disP;
             var bJ = tJ - disJ;
 
             // Add sizes to totals
-            tot_rL += rL; tot_rP += rP; tot_rJml += rJ;
+            tot_rL += rekapAsliL; tot_rP += rekapAsliP; tot_rJml += rJ;
             tot_tL += tL; tot_tP += tP; tot_tJml += tJ;
             tot_disL += disL; tot_disP += disP; tot_disJml += disJ;
             tot_bL += bL; tot_bP += bP; tot_bJml += bJ;
 
-            rekapCells.push(fmt(rL), fmt(rP), fmt(rJ));
+            rekapCells.push(fmt(rekapAsliL), fmt(rekapAsliP), fmt(rJ));
             terimaCells.push(fmt(tL), fmt(tP), fmt(tJ));
             diserahkanCells.push(fmt(disL), fmt(disP), fmt(disJ));
             belumCells.push(fmtS(bL), fmtS(bP), fmtS(bJ));
@@ -590,6 +660,35 @@
 
           var namaSekolah = String(row.nama_sekolah || "").trim();
           
+          // Find related Penerimaan & Penyerahan laporans up to current tahap
+          var currentTahapNum = parseInt(String(row.tahap || 'Laporan 1').replace(/[^0-9]/g, '')) || 1;
+          
+          var relatedPenerimaan = SERAGAM_PENERIMAAN_CACHE_DATA.filter(function(r) {
+            var rTahapNum = parseInt(String(r.tahap || 'Laporan 1').replace(/[^0-9]/g, '')) || 1;
+            return String(r.npsn).trim() === String(row.npsn).trim() &&
+                   String(r.jenis_seragam || "").indexOf(jns) >= 0 &&
+                   rTahapNum <= currentTahapNum;
+          });
+
+          var relatedPenyerahan = filtered.filter(function(r) {
+            var rTahapNum = parseInt(String(r.tahap || 'Laporan 1').replace(/[^0-9]/g, '')) || 1;
+            return String(r.npsn).trim() === String(row.npsn).trim() &&
+                   String(r.jenis_seragam || "").indexOf(jns) >= 0 &&
+                   rTahapNum <= currentTahapNum;
+          });
+
+          // Find original Rekap target from L1 Penerimaan
+          var L1Penerimaan = SERAGAM_PENERIMAAN_CACHE_DATA.find(function(r) {
+            var rTahapNum = parseInt(String(r.tahap || 'Laporan 1').replace(/[^0-9]/g, '')) || 1;
+            return String(r.npsn).trim() === String(row.npsn).trim() &&
+                   String(r.jenis_seragam || "").indexOf(jns) >= 0 &&
+                   rTahapNum === 1;
+          });
+          var L1Detail = {};
+          if (L1Penerimaan) {
+            try { L1Detail = L1Penerimaan.detail_json ? JSON.parse(L1Penerimaan.detail_json) : {}; } catch(e) {}
+          }
+
           // Row totals accumulators
           var tot_rL = 0, tot_rP = 0, tot_rJml = 0;
           var tot_tL = 0, tot_tP = 0, tot_tJml = 0;
@@ -606,27 +705,47 @@
             var sizeData = detail[jns][ukr] || {};
             var rL = parseInt(sizeData.rekap_l) || 0;
             var rP = parseInt(sizeData.rekap_p) || 0;
-            var rJ = rL + rP;
 
-            var tL = parseInt(sizeData.diterima_l) || 0;
-            var tP = parseInt(sizeData.diterima_p) || 0;
+            // Get original rekap target from L1 Penerimaan, fallback to current values
+            var L1SizeData = (L1Detail[jns] && L1Detail[jns][ukr]) ? L1Detail[jns][ukr] : {};
+            var rekapAsliL = (L1Penerimaan && typeof L1SizeData.rekap_l !== 'undefined') ? (parseInt(L1SizeData.rekap_l) || 0) : rL;
+            var rekapAsliP = (L1Penerimaan && typeof L1SizeData.rekap_p !== 'undefined') ? (parseInt(L1SizeData.rekap_p) || 0) : rP;
+            var rJ = rekapAsliL + rekapAsliP;
+
+            // Compute cumulative terima L/P from L1 up to current Laporan Penerimaan
+            var tL = 0, tP = 0;
+            relatedPenerimaan.forEach(function(r) {
+              var rDetail = {};
+              try { rDetail = r.detail_json ? JSON.parse(r.detail_json) : {}; } catch(e) {}
+              var rSizeData = (rDetail[jns] && rDetail[jns][ukr]) ? rDetail[jns][ukr] : {};
+              tL += parseInt(rSizeData.terima_l) || 0;
+              tP += parseInt(rSizeData.terima_p) || 0;
+            });
             var tJ = tL + tP;
 
-            var disL = parseInt(sizeData.terima_l) || 0;
-            var disP = parseInt(sizeData.terima_p) || 0;
+            // Compute cumulative diserahkan L/P from L1 up to current Laporan Penyerahan
+            var disL = 0, disP = 0;
+            relatedPenyerahan.forEach(function(r) {
+              var rDetail = {};
+              try { rDetail = r.detail_json ? JSON.parse(r.detail_json) : {}; } catch(e) {}
+              var rSizeData = (rDetail[jns] && rDetail[jns][ukr]) ? rDetail[jns][ukr] : {};
+              disL += parseInt(rSizeData.terima_l) || 0;
+              disP += parseInt(rSizeData.terima_p) || 0;
+            });
             var disJ = disL + disP;
 
+            // Belum diserahkan = cumulative terima - cumulative diserahkan
             var bL = tL - disL;
             var bP = tP - disP;
             var bJ = tJ - disJ;
 
             // Add sizes to totals
-            tot_rL += rL; tot_rP += rP; tot_rJml += rJ;
+            tot_rL += rekapAsliL; tot_rP += rekapAsliP; tot_rJml += rJ;
             tot_tL += tL; tot_tP += tP; tot_tJml += tJ;
             tot_disL += disL; tot_disP += disP; tot_disJml += disJ;
             tot_bL += bL; tot_bP += bP; tot_bJml += bJ;
 
-            rekapCells.push(rL, rP, rJ);
+            rekapCells.push(rekapAsliL, rekapAsliP, rJ);
             terimaCells.push(tL, tP, tJ);
             diserahkanCells.push(disL, disP, disJ);
             belumCells.push(bL, bP, bJ);

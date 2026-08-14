@@ -443,6 +443,27 @@
             return `<span class="${cls} font-weight-bold">${sign}${v}</span>`;
           };
 
+          // Find all previous & current laporans for kumulatif terima calculation
+          var currentTahapNum = parseInt(String(row.tahap || 'Laporan 1').replace(/[^0-9]/g, '')) || 1;
+          var relatedLaporans = data.filter(function(r) {
+            var rTahapNum = parseInt(String(r.tahap || 'Laporan 1').replace(/[^0-9]/g, '')) || 1;
+            return String(r.npsn).trim() === String(row.npsn).trim() &&
+                   String(r.jenis_seragam || "").indexOf(jns) >= 0 &&
+                   rTahapNum <= currentTahapNum;
+          });
+
+          // Find Laporan 1 to get the original rekap target
+          var L1Laporan = data.find(function(r) {
+            var rTahapNum = parseInt(String(r.tahap || 'Laporan 1').replace(/[^0-9]/g, '')) || 1;
+            return String(r.npsn).trim() === String(row.npsn).trim() &&
+                   String(r.jenis_seragam || "").indexOf(jns) >= 0 &&
+                   rTahapNum === 1;
+          });
+          var L1Detail = {};
+          if (L1Laporan) {
+            try { L1Detail = L1Laporan.detail_json ? JSON.parse(L1Laporan.detail_json) : {}; } catch(e) {}
+          }
+
           // Row totals accumulators
           var tot_rL = 0, tot_rP = 0, tot_rJml = 0;
           var tot_tL = 0, tot_tP = 0, tot_tJml = 0;
@@ -459,13 +480,26 @@
             var rP = parseInt(sizeData.rekap_p) || 0;
             var rJ = rL + rP;
 
-            var tL = parseInt(sizeData.terima_l) || 0;
-            var tP = parseInt(sizeData.terima_p) || 0;
+            // Compute cumulative terima L/P from L1 up to current Laporan
+            var tL = 0, tP = 0;
+            relatedLaporans.forEach(function(r) {
+              var rDetail = {};
+              try { rDetail = r.detail_json ? JSON.parse(r.detail_json) : {}; } catch(e) {}
+              var rSizeData = (rDetail[jns] && rDetail[jns][ukr]) ? rDetail[jns][ukr] : {};
+              tL += parseInt(rSizeData.terima_l) || 0;
+              tP += parseInt(rSizeData.terima_p) || 0;
+            });
             var tJ = tL + tP;
 
-            var sL = tL - rL;
-            var sP = tP - rP;
-            var sJ = tJ - rJ;
+            // Fetch original rekap target from Laporan 1, fallback to current rL/rP
+            var L1SizeData = (L1Detail[jns] && L1Detail[jns][ukr]) ? L1Detail[jns][ukr] : {};
+            var rekapAsliL = (L1Laporan && typeof L1SizeData.rekap_l !== 'undefined') ? (parseInt(L1SizeData.rekap_l) || 0) : rL;
+            var rekapAsliP = (L1Laporan && typeof L1SizeData.rekap_p !== 'undefined') ? (parseInt(L1SizeData.rekap_p) || 0) : rP;
+
+            // Selisih = cumulative terima - original rekap target
+            var sL = tL - rekapAsliL;
+            var sP = tP - rekapAsliP;
+            var sJ = tJ - (rekapAsliL + rekapAsliP);
 
             // Add sizes to totals
             tot_rL += rL; tot_rP += rP; tot_rJml += rJ;
@@ -542,6 +576,27 @@
 
           var namaSekolah = String(row.nama_sekolah || "").trim();
           
+          // Find all previous & current laporans for kumulatif terima calculation
+          var currentTahapNum = parseInt(String(row.tahap || 'Laporan 1').replace(/[^0-9]/g, '')) || 1;
+          var relatedLaporans = filtered.filter(function(r) {
+            var rTahapNum = parseInt(String(r.tahap || 'Laporan 1').replace(/[^0-9]/g, '')) || 1;
+            return String(r.npsn).trim() === String(row.npsn).trim() &&
+                   String(r.jenis_seragam || "").indexOf(jns) >= 0 &&
+                   rTahapNum <= currentTahapNum;
+          });
+
+          // Find Laporan 1 to get the original rekap target
+          var L1Laporan = filtered.find(function(r) {
+            var rTahapNum = parseInt(String(r.tahap || 'Laporan 1').replace(/[^0-9]/g, '')) || 1;
+            return String(r.npsn).trim() === String(row.npsn).trim() &&
+                   String(r.jenis_seragam || "").indexOf(jns) >= 0 &&
+                   rTahapNum === 1;
+          });
+          var L1Detail = {};
+          if (L1Laporan) {
+            try { L1Detail = L1Laporan.detail_json ? JSON.parse(L1Laporan.detail_json) : {}; } catch(e) {}
+          }
+
           // Row totals accumulators
           var tot_rL = 0, tot_rP = 0, tot_rJml = 0;
           var tot_tL = 0, tot_tP = 0, tot_tJml = 0;
@@ -558,13 +613,26 @@
             var rP = parseInt(sizeData.rekap_p) || 0;
             var rJ = rL + rP;
 
-            var tL = parseInt(sizeData.terima_l) || 0;
-            var tP = parseInt(sizeData.terima_p) || 0;
+            // Compute cumulative terima L/P from L1 up to current Laporan
+            var tL = 0, tP = 0;
+            relatedLaporans.forEach(function(r) {
+              var rDetail = {};
+              try { rDetail = r.detail_json ? JSON.parse(r.detail_json) : {}; } catch(e) {}
+              var rSizeData = (rDetail[jns] && rDetail[jns][ukr]) ? rDetail[jns][ukr] : {};
+              tL += parseInt(rSizeData.terima_l) || 0;
+              tP += parseInt(rSizeData.terima_p) || 0;
+            });
             var tJ = tL + tP;
 
-            var sL = tL - rL;
-            var sP = tP - rP;
-            var sJ = tJ - rJ;
+            // Fetch original rekap target from Laporan 1, fallback to current rL/rP
+            var L1SizeData = (L1Detail[jns] && L1Detail[jns][ukr]) ? L1Detail[jns][ukr] : {};
+            var rekapAsliL = (L1Laporan && typeof L1SizeData.rekap_l !== 'undefined') ? (parseInt(L1SizeData.rekap_l) || 0) : rL;
+            var rekapAsliP = (L1Laporan && typeof L1SizeData.rekap_p !== 'undefined') ? (parseInt(L1SizeData.rekap_p) || 0) : rP;
+
+            // Selisih = cumulative terima - original rekap target
+            var sL = tL - rekapAsliL;
+            var sP = tP - rekapAsliP;
+            var sJ = tJ - (rekapAsliL + rekapAsliP);
 
             // Add sizes to totals
             tot_rL += rL; tot_rP += rP; tot_rJml += rJ;
