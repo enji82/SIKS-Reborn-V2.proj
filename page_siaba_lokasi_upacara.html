@@ -1,0 +1,681 @@
+<section class="content">
+    <div class="container-fluid">
+        <div class="row justify-content-center">
+            <div class="col-12">
+
+                <!-- INFO CARD -->
+                <div class="sultan-info-card">
+                    <div class="card-body">
+                        <div class="info-header" data-toggle="collapse" data-target="#lokUpa_infoCollapse" aria-expanded="false">
+                            <div class="info-title">
+                                <div class="info-icon-circle"><i class="fas fa-info"></i></div>
+                                <span>INFORMASI</span>
+                            </div>
+                            <i class="fas fa-chevron-up"></i>
+                        </div>
+                        <div id="lokUpa_infoCollapse" class="collapse">
+                            <div class="info-body">
+                                <ul class="mb-0 pl-3" style="opacity:0.9!important;">
+                                    <li class="mb-1">Fasilitas bagi <strong>PNS, PPPK, dan PPPK Paruh Waktu</strong> di SD Negeri yang akan melaksanakan upacara <strong>di luar sekolahnya</strong>.</li>
+                                    <li class="mb-1">Unit Kerja dan NIP terisi otomatis sesuai data login dan pilihan nama ASN.</li>
+                                    <li class="mb-1"><strong>Satu orang hanya dapat mendaftarkan satu tanggal yang sama.</strong></li>
+                                    <li>Gunakan tombol <strong>Edit</strong> untuk memperbaiki data, dan tombol <strong>Hapus</strong> untuk menghapus dengan kode konfirmasi.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FILTER BAR -->
+                <div class="sultan-filter-pill-container shadow-sm mb-4">
+                    <div class="sultan-filter-item">
+                        <select id="lokUpa_filterUnit" class="form-control" disabled>
+                            <option value="">- Memvalidasi Akses... -</option>
+                        </select>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+
+                    <div class="sultan-filter-item">
+                        <select id="lokUpa_filterTahun" class="form-control">
+                            <option value="">- Semua Tahun -</option>
+                        </select>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+
+                    <div class="sultan-filter-item">
+                        <select id="lokUpa_filterBulan" class="form-control">
+                            <option value="">- Semua Bulan -</option>
+                            <option value="Januari">Januari</option>
+                            <option value="Februari">Februari</option>
+                            <option value="Maret">Maret</option>
+                            <option value="April">April</option>
+                            <option value="Mei">Mei</option>
+                            <option value="Juni">Juni</option>
+                            <option value="Juli">Juli</option>
+                            <option value="Agustus">Agustus</option>
+                            <option value="September">September</option>
+                            <option value="Oktober">Oktober</option>
+                            <option value="November">November</option>
+                            <option value="Desember">Desember</option>
+                        </select>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+
+                    <div class="divider-vertical d-none d-md-block"></div>
+
+                    <button type="button" id="lokUpa_btnRefresh" class="sultan-btn-refresh" title="Segarkan Data" disabled>
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+
+                    <div class="ml-auto d-none d-md-block"></div>
+
+                    <button type="button" id="lokUpa_btnTambah" class="sultan-btn-tambah" disabled>
+                        <i class="fas fa-plus"></i> TAMBAH DATA
+                    </button>
+                </div>
+
+                <!-- TABEL DATA -->
+                <div class="card card-sultan shadow-sm border-0 mb-4">
+                    <div class="card-body p-3">
+                        <div id="lokUpa_loadingState"></div>
+
+                        <div id="lokUpa_tableState" style="display:none;">
+                            <table id="lokUpa_tabelUtama" class="table table-premium table-sultan-compact w-100">
+                                <thead class="thead-sultan-premium">
+                                    <tr>
+                                        <th class="text-center sultan-sticky-col">AKSI</th>
+                                        <th>UNIT KERJA</th>
+                                        <th>NAMA ASN / NIP</th>
+                                        <th class="text-center">TANGGAL</th>
+                                        <th>ACARA</th>
+                                        <th>LOKASI UPACARA</th>
+                                        <th>DIKIRIM</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="lokUpa_tbody"></tbody>
+                            </table>
+                        </div>
+
+                        <div id="lokUpa_emptyState" style="display:none;" class="text-center py-5">
+                            <i class="fas fa-map-marker-alt fa-3x text-muted mb-3 d-block"></i>
+                            <p class="text-muted">Belum ada data Lokasi Upacara.</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============================================================
+     MODAL TAMBAH / EDIT
+     ============================================================ -->
+<div class="modal fade" id="lokUpa_modalForm" tabindex="-1" role="dialog" aria-labelledby="lokUpa_modalFormLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content sultan-modal">
+            <div class="modal-header sultan-modal-header">
+                <h5 class="modal-title" id="lokUpa_modalFormLabel">
+                    <i class="fas fa-map-marker-alt mr-2"></i>
+                    <span id="lokUpa_modalJudul">Tambah Lokasi Upacara</span>
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="lokUpa_recId" value="">
+                <input type="hidden" id="lokUpa_npsnHidden" value="">
+
+                <!-- Unit Kerja (readonly) -->
+                <div class="form-group">
+                    <label class="font-weight-bold text-sm">Unit Kerja <span class="text-danger">*</span></label>
+                    <input type="text" id="lokUpa_unitKerja" class="form-control" readonly
+                           placeholder="Otomatis terisi sesuai login">
+                    <small class="text-muted">Terisi otomatis sesuai akun yang login.</small>
+                </div>
+
+                <!-- Nama ASN (dropdown) -->
+                <div class="form-group">
+                    <label class="font-weight-bold text-sm">Nama ASN <span class="text-danger">*</span></label>
+                    <select id="lokUpa_namaAsn" class="form-control">
+                        <option value="">- Memuat daftar ASN... -</option>
+                    </select>
+                </div>
+
+                <!-- NIP (readonly, auto-fill) -->
+                <div class="form-group">
+                    <label class="font-weight-bold text-sm">NIP <span class="text-danger">*</span></label>
+                    <input type="text" id="lokUpa_nip" class="form-control bg-light" readonly
+                           placeholder="Terisi otomatis setelah memilih Nama ASN">
+                    <small class="text-muted">Terisi otomatis sesuai pilihan nama ASN.</small>
+                </div>
+
+                <!-- Tanggal -->
+                <div class="form-group">
+                    <label class="font-weight-bold text-sm">Tanggal <span class="text-danger">*</span></label>
+                    <input type="date" id="lokUpa_tanggal" class="form-control">
+                </div>
+
+                <!-- Acara -->
+                <div class="form-group">
+                    <label class="font-weight-bold text-sm">Acara <span class="text-danger">*</span></label>
+                    <input type="text" id="lokUpa_acara" class="form-control"
+                           placeholder="Contoh: Upacara HUT RI ke-80" maxlength="200">
+                </div>
+
+                <!-- Lokasi Upacara -->
+                <div class="form-group">
+                    <label class="font-weight-bold text-sm">Lokasi Upacara <span class="text-danger">*</span></label>
+                    <input type="text" id="lokUpa_lokasiUpacara" class="form-control"
+                           placeholder="Contoh: Lapangan Karang Jati" maxlength="200">
+                </div>
+
+                <div id="lokUpa_formAlert" class="alert d-none mt-2" role="alert"></div>
+            </div>
+            <div class="modal-footer sultan-modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">
+                    <i class="fas fa-times mr-1"></i> Batal
+                </button>
+                <button type="button" id="lokUpa_btnSimpan" class="btn btn-primary btn-sm">
+                    <i class="fas fa-save mr-1"></i> <span id="lokUpa_btnSimpanLabel">Simpan Data</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     MODAL HAPUS
+     ============================================================ -->
+<div class="modal fade" id="lokUpa_modalHapus" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm" role="document">
+        <div class="modal-content sultan-modal">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="fas fa-trash-alt mr-2"></i>Konfirmasi Hapus</h5>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-1">Anda akan menghapus data:</p>
+                <p class="font-weight-bold mb-1" id="lokUpa_hapusNama">-</p>
+                <p class="text-muted small mb-3" id="lokUpa_hapusTanggal">-</p>
+                <div class="form-group mb-0">
+                    <label class="font-weight-bold text-sm">
+                        Ketik kode konfirmasi hari ini:
+                        <span class="badge badge-dark ml-1" id="lokUpa_kodeHapusHint"></span>
+                    </label>
+                    <input type="text" id="lokUpa_kodeHapus" class="form-control"
+                           placeholder="Format: YYYYMMDD">
+                </div>
+                <div id="lokUpa_hapusAlert" class="alert d-none mt-2 mb-0" role="alert"></div>
+            </div>
+            <div class="modal-footer sultan-modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Batal</button>
+                <button type="button" id="lokUpa_btnHapusKonfirm" class="btn btn-danger btn-sm">
+                    <i class="fas fa-trash-alt mr-1"></i> Hapus
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     JAVASCRIPT
+     ============================================================ -->
+<script>
+(function () {
+    'use strict';
+
+    /* ── STATE ─────────────────────────────────────────────── */
+    var _state = {
+        userInfo   : null,
+        daftarAsn  : [],   // [{unit, nip, nama, npsn}]
+        allData    : [],   // data dari server
+        hapusRecId : null,
+        isLoading  : false
+    };
+
+    /* ── INIT ──────────────────────────────────────────────── */
+    function init() {
+        _state.userInfo = window.currentUser || null;
+        _setupFilterUnit();
+        _setupTahunOptions();
+        _bindEvents();
+        loadData();
+    }
+
+    /* ── FILTER UNIT ───────────────────────────────────────── */
+    function _setupFilterUnit() {
+        var sel  = document.getElementById('lokUpa_filterUnit');
+        var info = _state.userInfo;
+        if (!info) return;
+
+        var isAdmin = (info.role === 'admin' || info.role === 'verifikator' || info.role === 'korwil');
+        if (isAdmin) {
+            sel.disabled = false;
+            // Admin: tambahkan opsi semua + semua unit
+            sel.innerHTML = '<option value="">- Semua Unit -</option>';
+            // Unit diisi saat data tabel sudah dimuat (dinamis)
+        } else {
+            sel.innerHTML = '<option value="' + _esc(info.unit || '') + '">' + _esc(info.unit || '-') + '</option>';
+            sel.disabled  = true;
+        }
+    }
+
+    function _setupTahunOptions() {
+        var sel = document.getElementById('lokUpa_filterTahun');
+        var now = new Date().getFullYear();
+        var html = '<option value="">- Semua Tahun -</option>';
+        for (var y = now; y >= now - 3; y--) {
+            html += '<option value="' + y + '"' + (y === now ? ' selected' : '') + '>' + y + '</option>';
+        }
+        sel.innerHTML = html;
+    }
+
+    /* ── EVENT BINDINGS ────────────────────────────────────── */
+    function _bindEvents() {
+        document.getElementById('lokUpa_filterUnit').addEventListener('change',  loadData);
+        document.getElementById('lokUpa_filterTahun').addEventListener('change', loadData);
+        document.getElementById('lokUpa_filterBulan').addEventListener('change', loadData);
+        document.getElementById('lokUpa_btnRefresh').addEventListener('click',   loadData);
+        document.getElementById('lokUpa_btnTambah').addEventListener('click',    openModalTambah);
+        document.getElementById('lokUpa_btnSimpan').addEventListener('click',    simpanData);
+        document.getElementById('lokUpa_btnHapusKonfirm').addEventListener('click', eksekusiHapus);
+
+        // Auto-fill NIP saat nama ASN dipilih
+        document.getElementById('lokUpa_namaAsn').addEventListener('change', function () {
+            var nama = this.value;
+            var asn  = _state.daftarAsn.find(function (a) { return a.nama === nama; });
+            document.getElementById('lokUpa_nip').value = asn ? asn.nip : '';
+        });
+    }
+
+    /* ── LOAD DATA ─────────────────────────────────────────── */
+    function loadData() {
+        if (_state.isLoading) return;
+        _state.isLoading = true;
+
+        var info   = _state.userInfo;
+        var isAdmin = info && (info.role === 'admin' || info.role === 'verifikator' || info.role === 'korwil');
+
+        var filterUnit  = isAdmin
+            ? document.getElementById('lokUpa_filterUnit').value
+            : (info ? (info.unit || '') : '');
+        var filterTahun = document.getElementById('lokUpa_filterTahun').value;
+        var filterBulan = document.getElementById('lokUpa_filterBulan').value;
+
+        _showLoading();
+
+        google.script.run
+            .withSuccessHandler(function (res) {
+                _state.isLoading = false;
+                try {
+                    var parsed = (typeof res === 'string') ? JSON.parse(res) : res;
+                    if (parsed && parsed.error) { _showError(parsed.error); return; }
+                    _state.allData = Array.isArray(parsed) ? parsed : [];
+                    _renderTabel(_state.allData);
+                    _populateAdminUnitFilter(_state.allData);
+
+                    document.getElementById('lokUpa_btnRefresh').disabled = false;
+                    document.getElementById('lokUpa_btnTambah').disabled  = false;
+                } catch (e) { _showError('Gagal memuat data: ' + e.message); }
+            })
+            .withFailureHandler(function (err) {
+                _state.isLoading = false;
+                _showError('Gagal terhubung ke server: ' + err.message);
+            })
+            .getDaftarLokasiUpacara(filterUnit, filterTahun, filterBulan);
+    }
+
+    function _populateAdminUnitFilter(data) {
+        var info = _state.userInfo;
+        if (!info) return;
+        var isAdmin = (info.role === 'admin' || info.role === 'verifikator' || info.role === 'korwil');
+        if (!isAdmin) return;
+
+        var sel = document.getElementById('lokUpa_filterUnit');
+        var currentVal = sel.value;
+        var units = [];
+        data.forEach(function (d) {
+            var u = String(d.unit || '').trim();
+            if (u && units.indexOf(u) === -1) units.push(u);
+        });
+        units.sort();
+
+        var html = '<option value="">- Semua Unit -</option>';
+        units.forEach(function (u) { html += '<option value="' + _esc(u) + '">' + _esc(u) + '</option>'; });
+        sel.innerHTML = html;
+        sel.value = currentVal;
+    }
+
+    /* ── RENDER TABEL ──────────────────────────────────────── */
+    function _renderTabel(data) {
+        var tbody      = document.getElementById('lokUpa_tbody');
+        var tableState = document.getElementById('lokUpa_tableState');
+        var emptyState = document.getElementById('lokUpa_emptyState');
+        var loading    = document.getElementById('lokUpa_loadingState');
+
+        loading.innerHTML = '';
+        loading.style.display = 'none';
+
+        if (!data || data.length === 0) {
+            tableState.style.display = 'none';
+            emptyState.style.display = 'block';
+            return;
+        }
+
+        emptyState.style.display = 'none';
+        tableState.style.display = 'block';
+
+        var info    = _state.userInfo;
+        var isAdmin = info && (info.role === 'admin' || info.role === 'verifikator' || info.role === 'korwil');
+        var userNpsn = info ? (info.npsn || '') : '';
+
+        var html = '';
+        data.forEach(function (row) {
+            var canEdit = isAdmin || (String(row.npsn || '').trim() === userNpsn);
+            var aksi = canEdit
+                ? '<button class="btn btn-xs btn-warning mr-1 lokUpa-edit-btn" data-id="' + row.rowBaris + '" title="Edit"><i class="fas fa-edit"></i></button>'
+                + '<button class="btn btn-xs btn-danger lokUpa-hapus-btn" data-id="' + row.rowBaris + '" data-nama="' + _esc(row.nama) + '" data-tanggal="' + _esc(row.tanggal) + '" title="Hapus"><i class="fas fa-trash-alt"></i></button>'
+                : '<span class="badge badge-light text-muted">-</span>';
+
+            html += '<tr>'
+                + '<td class="text-center sultan-sticky-col">' + aksi + '</td>'
+                + '<td><small class="text-muted">' + _esc(row.unit) + '</small></td>'
+                + '<td><strong>' + _esc(row.nama) + '</strong><br><small class="text-muted">' + _esc(row.nip) + '</small></td>'
+                + '<td class="text-center"><span class="badge badge-info">' + _esc(row.tanggal) + '</span></td>'
+                + '<td>' + _esc(row.acara) + '</td>'
+                + '<td>' + _esc(row.lokasi) + '</td>'
+                + '<td><small class="text-muted">' + _esc(row.tglKirim) + '</small></td>'
+                + '</tr>';
+        });
+
+        tbody.innerHTML = html;
+
+        // DataTable init/refresh
+        if ($.fn.DataTable.isDataTable('#lokUpa_tabelUtama')) {
+            $('#lokUpa_tabelUtama').DataTable().destroy();
+        }
+        $('#lokUpa_tabelUtama').DataTable({
+            language : { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/id.json' },
+            pageLength: 25,
+            order    : []
+        });
+
+        // Bind tombol aksi
+        document.querySelectorAll('.lokUpa-edit-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () { openModalEdit(this.getAttribute('data-id')); });
+        });
+        document.querySelectorAll('.lokUpa-hapus-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                openModalHapus(
+                    this.getAttribute('data-id'),
+                    this.getAttribute('data-nama'),
+                    this.getAttribute('data-tanggal')
+                );
+            });
+        });
+    }
+
+    /* ── MODAL TAMBAH ──────────────────────────────────────── */
+    function openModalTambah() {
+        _resetFormModal();
+        document.getElementById('lokUpa_modalJudul').textContent    = 'Tambah Lokasi Upacara';
+        document.getElementById('lokUpa_btnSimpanLabel').textContent = 'Simpan Data';
+        document.getElementById('lokUpa_recId').value = '';
+
+        var info = _state.userInfo;
+        if (info) {
+            document.getElementById('lokUpa_unitKerja').value = info.unit || '';
+            document.getElementById('lokUpa_npsnHidden').value = info.npsn || '';
+        }
+
+        _loadDropdownAsn();
+        $('#lokUpa_modalForm').modal('show');
+    }
+
+    /* ── MODAL EDIT ────────────────────────────────────────── */
+    function openModalEdit(recId) {
+        var row = _state.allData.find(function (d) { return String(d.rowBaris) === String(recId); });
+        if (!row) { showSultanToast('Data tidak ditemukan.', 'warning'); return; }
+
+        _resetFormModal();
+        document.getElementById('lokUpa_modalJudul').textContent    = 'Edit Lokasi Upacara';
+        document.getElementById('lokUpa_btnSimpanLabel').textContent = 'Simpan Perubahan';
+        document.getElementById('lokUpa_recId').value               = row.rowBaris;
+        document.getElementById('lokUpa_unitKerja').value           = row.unit;
+        document.getElementById('lokUpa_nip').value                 = row.nip;
+        document.getElementById('lokUpa_tanggal').value             = _tglToISO(row.tanggal);
+        document.getElementById('lokUpa_acara').value               = row.acara;
+        document.getElementById('lokUpa_lokasiUpacara').value       = row.lokasi;
+        document.getElementById('lokUpa_npsnHidden').value          = row.npsn;
+
+        _loadDropdownAsn(row.nama);
+        $('#lokUpa_modalForm').modal('show');
+    }
+
+    /* ── LOAD DROPDOWN ASN ─────────────────────────────────── */
+    function _loadDropdownAsn(selectedNama) {
+        var sel  = document.getElementById('lokUpa_namaAsn');
+        sel.innerHTML = '<option value="">- Memuat... -</option>';
+        sel.disabled  = true;
+
+        var info = _state.userInfo;
+        var npsn = info ? (info.npsn || '') : '';
+
+        google.script.run
+            .withSuccessHandler(function (res) {
+                try {
+                    var list = (typeof res === 'string') ? JSON.parse(res) : res;
+                    if (!Array.isArray(list)) list = [];
+                    _state.daftarAsn = list;
+
+                    var html = '<option value="">- Pilih Nama ASN -</option>';
+                    list.forEach(function (a) {
+                        var sel2 = (selectedNama && a.nama === selectedNama) ? ' selected' : '';
+                        html += '<option value="' + _esc(a.nama) + '"' + sel2 + '>' + _esc(a.nama) + '</option>';
+                    });
+                    sel.innerHTML = html;
+                    sel.disabled  = false;
+
+                    // Auto-fill NIP jika sedang edit
+                    if (selectedNama) {
+                        var asn = list.find(function (a) { return a.nama === selectedNama; });
+                        if (asn) document.getElementById('lokUpa_nip').value = asn.nip;
+                    }
+                } catch (e) {
+                    sel.innerHTML = '<option value="">- Gagal memuat -</option>';
+                }
+            })
+            .withFailureHandler(function () {
+                sel.innerHTML = '<option value="">- Gagal memuat -</option>';
+            })
+            .getDatabasePegawaiSDN(npsn);
+    }
+
+    /* ── SIMPAN DATA ───────────────────────────────────────── */
+    function simpanData() {
+        var recId    = document.getElementById('lokUpa_recId').value.trim();
+        var unit     = document.getElementById('lokUpa_unitKerja').value.trim();
+        var nama     = document.getElementById('lokUpa_namaAsn').value.trim();
+        var nip      = document.getElementById('lokUpa_nip').value.trim();
+        var tanggal  = document.getElementById('lokUpa_tanggal').value.trim();
+        var acara    = document.getElementById('lokUpa_acara').value.trim();
+        var lokasi   = document.getElementById('lokUpa_lokasiUpacara').value.trim();
+        var npsn     = document.getElementById('lokUpa_npsnHidden').value.trim();
+        var info     = _state.userInfo;
+
+        // Validasi
+        if (!nama) { _showFormAlert('Nama ASN wajib dipilih.', 'warning'); return; }
+        if (!nip)  { _showFormAlert('NIP tidak boleh kosong.', 'warning'); return; }
+        if (!tanggal) { _showFormAlert('Tanggal wajib diisi.', 'warning'); return; }
+        if (!acara)   { _showFormAlert('Acara wajib diisi.', 'warning'); return; }
+        if (!lokasi)  { _showFormAlert('Lokasi Upacara wajib diisi.', 'warning'); return; }
+
+        var btn = document.getElementById('lokUpa_btnSimpan');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Menyimpan...';
+
+        var form = {
+            unit_kerja     : unit,
+            nama_asn       : nama,
+            nip_asn        : nip,
+            tanggal        : tanggal,
+            acara          : acara,
+            lokasi_upacara : lokasi,
+            npsn           : npsn,
+            user_login     : info ? (info.username || '') : '',
+            role           : info ? (info.role || '') : '',
+            isAdmin        : info && (info.role === 'admin' || info.role === 'verifikator'),
+            recId          : recId
+        };
+
+        var isEdit = (recId !== '');
+        var fnName = isEdit ? 'updateLokasiUpacara' : 'simpanLokasiUpacara';
+
+        google.script.run
+            .withSuccessHandler(function (res) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-save mr-1"></i> <span id="lokUpa_btnSimpanLabel">' + (isEdit ? 'Simpan Perubahan' : 'Simpan Data') + '</span>';
+
+                if (String(res).startsWith('Sukses')) {
+                    $('#lokUpa_modalForm').modal('hide');
+                    showSultanToast(isEdit ? 'Data berhasil diperbarui!' : 'Data berhasil disimpan!', 'success');
+                    loadData();
+                } else {
+                    _showFormAlert(res, 'danger');
+                }
+            })
+            .withFailureHandler(function (err) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-save mr-1"></i> Simpan';
+                _showFormAlert('Gagal terhubung ke server: ' + err.message, 'danger');
+            })
+            [fnName](form);
+    }
+
+    /* ── MODAL HAPUS ───────────────────────────────────────── */
+    function openModalHapus(recId, nama, tanggal) {
+        _state.hapusRecId = recId;
+        document.getElementById('lokUpa_hapusNama').textContent    = nama;
+        document.getElementById('lokUpa_hapusTanggal').textContent = 'Tanggal: ' + tanggal;
+        document.getElementById('lokUpa_kodeHapus').value          = '';
+
+        var today = new Date();
+        var kode  = String(today.getFullYear())
+            + String(today.getMonth() + 1).padStart(2, '0')
+            + String(today.getDate()).padStart(2, '0');
+        document.getElementById('lokUpa_kodeHapusHint').textContent = kode;
+
+        _hideHapusAlert();
+        $('#lokUpa_modalHapus').modal('show');
+    }
+
+    function eksekusiHapus() {
+        var kode   = document.getElementById('lokUpa_kodeHapus').value.trim();
+        var recId  = _state.hapusRecId;
+        var info   = _state.userInfo;
+
+        if (!kode) { _showHapusAlert('Kode konfirmasi wajib diisi.', 'warning'); return; }
+
+        var btn = document.getElementById('lokUpa_btnHapusKonfirm');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Menghapus...';
+
+        var payload = {
+            recId  : recId,
+            kode   : kode,
+            npsn   : info ? (info.npsn || '') : '',
+            role   : info ? (info.role || '') : '',
+            isAdmin: info && (info.role === 'admin' || info.role === 'verifikator')
+        };
+
+        google.script.run
+            .withSuccessHandler(function (res) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-trash-alt mr-1"></i> Hapus';
+
+                if (res === 'Sukses') {
+                    $('#lokUpa_modalHapus').modal('hide');
+                    showSultanToast('Data berhasil dihapus!', 'success');
+                    loadData();
+                } else if (res === 'KODE_SALAH') {
+                    _showHapusAlert('Kode konfirmasi salah! Masukkan kode yang benar.', 'danger');
+                } else {
+                    _showHapusAlert(res, 'danger');
+                }
+            })
+            .withFailureHandler(function (err) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-trash-alt mr-1"></i> Hapus';
+                _showHapusAlert('Gagal terhubung ke server: ' + err.message, 'danger');
+            })
+            .hapusLokasiUpacara(payload);
+    }
+
+    /* ── HELPERS ───────────────────────────────────────────── */
+    function _showLoading() {
+        document.getElementById('lokUpa_loadingState').innerHTML =
+            '<div class="text-center py-4">'
+            + '<i class="fas fa-spinner fa-spin fa-2x text-muted"></i>'
+            + '<p class="mt-2 text-muted">Memuat data...</p>'
+            + '</div>';
+        document.getElementById('lokUpa_tableState').style.display  = 'none';
+        document.getElementById('lokUpa_emptyState').style.display  = 'none';
+    }
+
+    function _showError(msg) {
+        document.getElementById('lokUpa_loadingState').innerHTML =
+            '<div class="alert alert-danger"><i class="fas fa-exclamation-triangle mr-2"></i>' + _esc(msg) + '</div>';
+        document.getElementById('lokUpa_tableState').style.display  = 'none';
+        document.getElementById('lokUpa_emptyState').style.display  = 'none';
+    }
+
+    function _showFormAlert(msg, type) {
+        var el = document.getElementById('lokUpa_formAlert');
+        el.className = 'alert alert-' + type + ' mt-2';
+        el.textContent = msg;
+        el.classList.remove('d-none');
+    }
+
+    function _showHapusAlert(msg, type) {
+        var el = document.getElementById('lokUpa_hapusAlert');
+        el.className = 'alert alert-' + type + ' mt-2 mb-0';
+        el.textContent = msg;
+        el.classList.remove('d-none');
+    }
+
+    function _hideHapusAlert() {
+        document.getElementById('lokUpa_hapusAlert').classList.add('d-none');
+    }
+
+    function _resetFormModal() {
+        ['lokUpa_unitKerja','lokUpa_nip','lokUpa_tanggal','lokUpa_acara','lokUpa_lokasiUpacara','lokUpa_npsnHidden','lokUpa_recId']
+            .forEach(function (id) { document.getElementById(id).value = ''; });
+        document.getElementById('lokUpa_namaAsn').innerHTML = '<option value="">- Pilih Nama ASN -</option>';
+        document.getElementById('lokUpa_formAlert').classList.add('d-none');
+    }
+
+    function _tglToISO(tgl) {
+        // Konversi dd-MM-yyyy atau dd/MM/yyyy ke yyyy-MM-dd
+        if (!tgl) return '';
+        var t = String(tgl).replace(/'/g,'').trim();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
+        var p = t.split(/[-\/]/);
+        if (p.length === 3 && p[2].length === 4) {
+            return p[2] + '-' + p[1].padStart(2,'0') + '-' + p[0].padStart(2,'0');
+        }
+        return t;
+    }
+
+    function _esc(s) {
+        return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    /* ── BOOT ──────────────────────────────────────────────── */
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+
+})();
+</script>

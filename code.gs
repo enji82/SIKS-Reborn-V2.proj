@@ -43,6 +43,7 @@ const SPREADSHEET_IDS = {
   ADUAN_DB: "1P9ZMeR5J2X7HWty9uli0htnh957Rq-aqlM8_KywEH00",
   ADM_MURID_DB: "1gmH7vZ27eIO4XovlkPFpAKTsCQWcRYGAzW_89-6UO8w",
   SERAGAM_GRATIS_DB: "1o_883fpui4Yow4Rz5DiwDciBxQo5SJIz23iimaBOn80",
+  SIABA_LOKASI_UPACARA_DB: "1xEwfMDAuTZiEcEglJWfHYiG89mpstSRmoaracj_tgVs",
 };
 
 // 2. FOLDER CONFIG (Digunakan oleh semua file .gs lainnya)
