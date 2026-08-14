@@ -28,8 +28,9 @@ function getDatabaseCutiOptions() {
     // Cari index kolom dinamis, fallback ke index lama jika tidak ditemukan
     var idxAlamat = headers.findIndex(function(h) { return h.includes("alamat"); });
     if (idxAlamat === -1) idxAlamat = 8; 
-    
-    var idxHp = headers.findIndex(function(h) { return h.includes("hp") || h.includes("whatsapp") || h.includes("wa") || h.includes("telepon") || h.includes("telp"); });
+    var idxHp = headers.findIndex(function(h) { 
+        return h.includes("hp") || h.includes("whatsapp") || h === "wa" || h.includes("telepon") || h.includes("telp") || h.includes("kontak"); 
+    });
     if (idxHp === -1) idxHp = 9; 
 
     var res = [];
