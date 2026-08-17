@@ -396,66 +396,7 @@
     </div>
 </div>
 
-<div class="modal fade" id="ptksds_modalHapus" tabindex="-1" role="dialog" data-backdrop="static">
-    <div class="modal-dialog modal-dialog-centered" role="document" style="max-width: 400px;">
-        <div class="modal-content border-0 shadow-lg modal-content-sultan modal-content-hapus">
-            <div class="modal-header modal-header-hapus">
-                <h5 class="modal-title font-weight-bold"><i class="fas fa-trash-alt mr-2"></i>HAPUS DATA PTK</h5>
-                <button type="button" class="close" data-dismiss="modal">
-                    <span>&times;</span>
-                </button>
-            </div>
-            <form id="ptksds_formHapus" novalidate>
-                <div class="modal-body modal-body-sultan p-4">
-                    <input type="hidden" id="ptksds_hapusIdData">
 
-                    <div class="alert alert-warning text-dark border-warning shadow-sm mb-3">
-                        <div class="d-flex align-items-start">
-                            <i class="fas fa-exclamation-triangle mt-1 mr-3 fa-lg"></i>
-                            <div>
-                                <strong>Peringatan!</strong><br>
-                                Anda akan menghapus data PTK atas nama:<br>
-                                <span id="ptksds_hapusNamaView" class="font-weight-bold text-uppercase"
-                                    style="font-size: 1.1em; color: #000;">-</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label-sultan small font-weight-bold text-uppercase text-muted">Alasan
-                            Penghapusan <span class="text-danger">*</span></label>
-                        <textarea id="ptksds_hapusAlasan" class="form-control form-control-sultan" rows="3"
-                            placeholder="Contoh: Salah input data, Pensiun, dll..." style="resize:none;"
-                            required></textarea>
-                    </div>
-
-                    <div class="form-group mb-0">
-                        <label class="form-label-sultan small font-weight-bold text-uppercase text-muted">Kode Keamanan
-                            <span class="text-danger">*</span></label>
-                        <div class="input-group">
-                            <div class="input-group-prepend">
-                                <span class="input-group-text border-right-0"><i
-                                        class="fas fa-key text-danger"></i></span>
-                            </div>
-                            <input type="password" id="ptksds_hapusInputKode"
-                                class="form-control form-control-sultan border-left-0 text-center font-weight-bold letter-spacing-1"
-                                placeholder="Ketik kode validasi..." required autocomplete="off">
-                        </div>
-                        <small class="form-text text-muted mt-1" style="font-size: 0.8rem;">
-                            <i class="fas fa-info-circle mr-1"></i> Hubungi admin Korwil untuk mendapatkan kode.
-                        </small>
-                    </div>
-                </div>
-                <div class="modal-footer modal-footer-tambah-edit">
-                    <button type="button" class="modal-btn-batal" data-dismiss="modal"><i class="fas fa-times mr-2"></i>BATAL</button>
-                    <button type="submit" id="ptksds_btnEksekusiHapus" class="modal-btn-hapus">
-                        <i class="fas fa-trash-alt mr-2"></i>HAPUS
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
 
 <div id="ptksds_templates" style="display:none;"></div>
 
@@ -1059,61 +1000,32 @@
         else { google.script.run.withSuccessHandler(cbSuccess).withFailureHandler(cbFail).updateDataPTKSDS(formData); }
     }
 
+
     function ptksds_bukaModalHapus(masterKey, nama) {
         var row = PTKSDS_DATA_MASTER[masterKey];
         var realId = row ? row.id : masterKey;
-        $('#ptksds_hapusIdData').val(realId); $('#ptksds_hapusNamaView').text(nama);
-        $('#ptksds_hapusAlasan').val(''); $('#ptksds_hapusInputKode').val('');
-        $('#ptksds_formHapus').removeClass('was-validated').find('.is-valid, .is-invalid').removeClass('is-valid is-invalid');
-        $('#ptksds_modalHapus').modal('show');
-    }
-
-    function ptksds_submitHapusPermanen(e) {
-        e.preventDefault();
-        var formHapus = $('#ptksds_formHapus');
-        
-        var isValid = true;
-        formHapus.find('[required]').each(function() {
-            var $field = $(this);
-            var val = $field.val();
-            if (!val || val === '') {
-                $field.addClass('is-invalid').removeClass('is-valid');
-                isValid = false;
-            } else {
-                $field.removeClass('is-invalid').removeClass('is-valid');
-            }
+        Sultan.modal.hapus({
+            title: 'HAPUS DATA PTK SDS',
+            teksUtama: 'Apakah Anda yakin ingin menghapus data PTK ini?',
+            teksSub: 'Tindakan ini permanen. Seluruh berkas digital e-file PTK atas nama ' + nama + ' akan terhapus.',
+            detailHtml: '<div class="p-2 bg-light rounded text-uppercase font-weight-bold text-center">' + nama + '</div>',
+            wajibAlasan: true
+        }, function(alasan, closeCallback) {
+            google.script.run
+                .withSuccessHandler(function(res) {
+                    closeCallback();
+                    if (res === 'Sukses') {
+                        Sultan.notif.crud.hapus();
+                        var dIdx = PTKSDS_CACHE_DATA.findIndex(function(r) { return String(r.id) === String(realId); });
+                        if (dIdx !== -1) { PTKSDS_CACHE_DATA.splice(dIdx, 1); }
+                        ptksds_terapkanFilterLokal();
+                    } else { Sultan.notif.crud.gagal(res); }
+                })
+                .withFailureHandler(function(err) {
+                    closeCallback();
+                    Sultan.notif.crud.gagal(err.message);
+                })
+                .deleteDataPTKSDS(realId, alasan, PTKSDS_USER_AKTIF);
         });
-
-        if (!isValid) {
-            formHapus.find('.is-valid').removeClass('is-valid');
-            Sultan.alert('warning', 'Perhatian', 'Harap lengkapi semua isian wajib!');
-            return;
-        }
-
-        var id = $('#ptksds_hapusIdData').val(); var alasan = $('#ptksds_hapusAlasan').val(); var kode = $('#ptksds_hapusInputKode').val();
-
-        var today = new Date(); var dd = String(today.getDate()).padStart(2, '0'); var mm = String(today.getMonth() + 1).padStart(2, '0'); var yyyy = today.getFullYear();
-        var correctCode = yyyy + mm + dd;
-
-        if (kode !== correctCode) { Sultan.alert('error', 'Gagal', 'Kode Keamanan salah!'); return; }
-
-        var btn = $('#ptksds_btnEksekusiHapus'); var oldText = btn.html();
-        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Menghapus...');
-
-        google.script.run
-            .withSuccessHandler(function (res) {
-                btn.prop('disabled', false).html(oldText);
-                if (res === 'Sukses') {
-                    $('#ptksds_modalHapus').modal('hide');
-                    var dIdx = PTKSDS_CACHE_DATA.findIndex(function(r) { return String(r.id) === String(id); });
-                    if (dIdx !== -1) {
-                        PTKSDS_CACHE_DATA.splice(dIdx, 1);
-                    }
-                    Sultan.notif.crud.hapus();
-                    ptksds_terapkanFilterLokal();
-                } else { Sultan.notif.crud.gagal(res); }
-            })
-            .withFailureHandler(function (err) { btn.prop('disabled', false).html(oldText); Sultan.notif.crud.gagal(err.message); })
-            .deleteDataPTKSDS(id, alasan, PTKSDS_USER_AKTIF);
     }
 </script>
