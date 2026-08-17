@@ -195,19 +195,18 @@
             <h6 class="modal-verifikasi-section-title"><i class="fas fa-check-circle mr-2"></i> Verifikasi</h6>
 
             <div class="form-group mb-3">
-                <label class="modal-verifikasi-form-label">Status Verifikasi <span class="text-danger">*</span></label>
-                <select class="modal-verifikasi-select" id="ptksds_verifStatus" required>
-                    <option value="">-- Pilih Status --</option>
-                    <option value="Setuju">Setuju</option>
-                    <option value="Tolak">Tolak</option>
+                <label class="modal-verifikasi-form-label font-weight-bold">Keputusan Verifikasi <span class="text-danger">*</span></label>
+                <select class="modal-verifikasi-select font-weight-bold w-100" id="ptksds_verifStatus" required>
+                    <option value="">-- Pilih Keputusan --</option>
+                    <option value="Disetujui">Disetujui</option>
+                    <option value="Revisi">Revisi</option>
+                    <option value="Ditolak">Ditolak</option>
                 </select>
             </div>
 
             <div class="form-group mb-0">
-                <label class="modal-verifikasi-form-label">Catatan Admin <span id="ptksds_reqCatatanVerif"
-                        class="text-danger" style="display:none;">*</span></label>
-                <textarea class="modal-verifikasi-textarea" id="ptksds_verifCatatan" rows="3"
-                    placeholder="Wajib diisi jika ditolak..."></textarea>
+                <label class="modal-verifikasi-form-label font-weight-bold">Catatan Admin <span id="ptksds_reqCatatanVerif" class="text-danger" style="display:none;">*</span></label>
+                <textarea class="modal-verifikasi-textarea w-100" id="ptksds_verifCatatan" rows="3" placeholder="Wajib diisi jika ditolak / direvisi..."></textarea>
             </div>
         </div>
 
@@ -293,9 +292,7 @@
         $(document).off('submit', '#ptksds_formHapus').on('submit', '#ptksds_formHapus', function (e) {
             e.preventDefault();
             ptksds_submitHapus();
-        });
-
-        // Event handler untuk form verifikasi
+        });        // Event handler untuk form verifikasi
         $(document).off('submit', '#ptksds_formVerif').on('submit', '#ptksds_formVerif', function (e) {
             e.preventDefault();
             var idUsulan = $('#ptksds_verifIdUsulan').val();
@@ -303,11 +300,14 @@
             var catatan = $('#ptksds_verifCatatan').val().trim();
 
             if (!keputusan) { Sultan.alert('warning', 'Pilih Status', 'Tentukan status verifikasi.'); return; }
-            if (keputusan === 'Tolak' && !catatan) { Sultan.alert('warning', 'Catatan Wajib', 'Berikan alasan penolakan.'); return; }
+            if ((keputusan === 'Ditolak' || keputusan === 'Revisi') && !catatan) { 
+                Sultan.alert('warning', 'Catatan Wajib', 'Mohon tulis alasan revisi/penolakan agar user mengerti.'); 
+                return; 
+            }
 
             var keputusanFinal = keputusan;
-            if (keputusan === 'Tolak' && catatan) {
-                keputusanFinal = 'Tolak|' + catatan;
+            if ((keputusan === 'Ditolak' || keputusan === 'Revisi') && catatan) {
+                keputusanFinal = keputusan + '|' + catatan;
             }
 
             ptksds_eksekusiMutasi(idUsulan, keputusanFinal);
@@ -316,7 +316,7 @@
         // Toggle catatan box based on status
         $(document).on('change', '#ptksds_verifStatus', function () {
             var s = $(this).val();
-            if (s === "Tolak") {
+            if (s === "Ditolak" || s === "Revisi") {
                 $('#ptksds_reqCatatanVerif').show();
                 $('#ptksds_verifCatatan').prop('required', true);
             } else {
@@ -324,6 +324,8 @@
                 $('#ptksds_verifCatatan').prop('required', false).val('');
             }
         });
+
+
 
         // Reset modal saat ditutup
         $('#ptksds_modalVerifikasi').on('hidden.bs.modal', function () {
@@ -1009,25 +1011,30 @@
         $('#ptksds_verifAsal').text(row.lembaga_asal || '-');
         $('#ptksds_verifTujuan').text(row.lembaga_tujuan || '-');
         $('#ptksds_verifTanggal').text(row.tanggal_usulan || '-');
-
         var rawStatus = row.status || '';
         var statusParts = rawStatus.split('|');
         var mainStatus = statusParts[0];
         var catatanTampil = row.catatan || statusParts[1] || '';
 
-        if (mainStatus === 'Tolak') {
-            $('#ptksds_verifStatus').val('Tolak');
+        // Standardized mapping: Tolak -> Ditolak, Setuju -> Disetujui
+        if (mainStatus === 'Tolak' || mainStatus === 'Ditolak') {
+            $('#ptksds_verifStatus').val('Ditolak');
             $('#ptksds_reqCatatanVerif').show();
             $('#ptksds_verifCatatan').val(catatanTampil).prop('required', true);
-        } else if (mainStatus === 'Setuju') {
-            $('#ptksds_verifStatus').val('Setuju');
+        } else if (mainStatus === 'Setuju' || mainStatus === 'Disetujui') {
+            $('#ptksds_verifStatus').val('Disetujui');
             $('#ptksds_reqCatatanVerif').hide();
             $('#ptksds_verifCatatan').val('').prop('required', false);
+        } else if (mainStatus === 'Revisi') {
+            $('#ptksds_verifStatus').val('Revisi');
+            $('#ptksds_reqCatatanVerif').show();
+            $('#ptksds_verifCatatan').val(catatanTampil).prop('required', true);
         } else {
             $('#ptksds_verifStatus').val('');
             $('#ptksds_reqCatatanVerif').hide();
             $('#ptksds_verifCatatan').val('').prop('required', false);
         }
+
 
         if (row.status !== 'Pending') {
             $('#ptksds_btnVerifEksekusi').hide();
@@ -1064,16 +1071,24 @@
         });
     }
 
-    function ptksds_eksekusiMutasi(idUsulan, keputusan) {
+
+function ptksds_eksekusiMutasi(idUsulan, keputusan) {
         var displayKeputusan = keputusan.split('|')[0];
+        var actionWord = 'memproses';
+        var loadWord = 'Memproses...';
+        if (displayKeputusan === 'Disetujui') { actionWord = 'menyetujui'; loadWord = 'Menyetujui...'; }
+        else if (displayKeputusan === 'Ditolak') { actionWord = 'menolak'; loadWord = 'Menolak...'; }
+        else if (displayKeputusan === 'Revisi') { actionWord = 'meminta revisi'; loadWord = 'Menyimpan...'; }
+
         Sultan.konfirmasi({
-            judul: 'Konfirmasi',
-            teks: 'Apakah Anda yakin ingin ' + (displayKeputusan === 'Setuju' ? 'menyetujui' : 'menolak') + ' usulan ini?',
+            tipe: (displayKeputusan === 'Ditolak' ? 'danger' : 'default'),
+            judul: 'Konfirmasi Verifikasi',
+            teks: 'Apakah Anda yakin ingin ' + actionWord + ' usulan ini?',
             icon: 'question',
             btnYa: 'Ya, Lanjutkan!',
             btnBatal: 'Batal'
         }, function () {
-            Sultan.notif.loading(displayKeputusan === 'Setuju' ? 'Menyetujui...' : 'Menolak...');
+            Sultan.notif.loading(loadWord);
             google.script.run
                 .withSuccessHandler(function (res) {
                     if (res === 'Sukses') {

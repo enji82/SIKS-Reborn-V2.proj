@@ -195,19 +195,18 @@
             <h6 class="modal-verifikasi-section-title"><i class="fas fa-check-circle mr-2"></i> Verifikasi</h6>
 
             <div class="form-group mb-3">
-                <label class="modal-verifikasi-form-label">Status Verifikasi <span class="text-danger">*</span></label>
-                <select class="modal-verifikasi-select" id="ptkpaud_verifStatus" required>
-                    <option value="">-- Pilih Status --</option>
-                    <option value="Setuju">Setuju</option>
-                    <option value="Tolak">Tolak</option>
+                <label class="modal-verifikasi-form-label font-weight-bold">Keputusan Verifikasi <span class="text-danger">*</span></label>
+                <select class="modal-verifikasi-select font-weight-bold w-100" id="ptkpaud_verifStatus" required>
+                    <option value="">-- Pilih Keputusan --</option>
+                    <option value="Disetujui">Disetujui</option>
+                    <option value="Revisi">Revisi</option>
+                    <option value="Ditolak">Ditolak</option>
                 </select>
             </div>
 
             <div class="form-group mb-0">
-                <label class="modal-verifikasi-form-label">Catatan Admin <span id="ptkpaud_reqCatatanVerif"
-                        class="text-danger" style="display:none;">*</span></label>
-                <textarea class="modal-verifikasi-textarea" id="ptkpaud_verifCatatan" rows="3"
-                    placeholder="Wajib diisi jika ditolak..."></textarea>
+                <label class="modal-verifikasi-form-label font-weight-bold">Catatan Admin <span id="ptkpaud_reqCatatanVerif" class="text-danger" style="display:none;">*</span></label>
+                <textarea class="modal-verifikasi-textarea w-100" id="ptkpaud_verifCatatan" rows="3" placeholder="Wajib diisi jika ditolak / direvisi..."></textarea>
             </div>
         </div>
 
@@ -291,7 +290,6 @@ $(document).ready(function() {
         e.preventDefault();
         ptkpaud_submitHapus();
     });
-
     // Event handler untuk form verifikasi
     $(document).off('submit', '#ptkpaud_formVerif').on('submit', '#ptkpaud_formVerif', function(e) {
         e.preventDefault();
@@ -300,11 +298,14 @@ $(document).ready(function() {
         var catatan = $('#ptkpaud_verifCatatan').val().trim();
         
         if (!keputusan) { Sultan.alert('warning', 'Pilih Status', 'Tentukan status verifikasi.'); return; }
-        if (keputusan === 'Tolak' && !catatan) { Sultan.alert('warning', 'Catatan Wajib', 'Berikan alasan penolakan.'); return; }
+        if ((keputusan === 'Ditolak' || keputusan === 'Revisi') && !catatan) { 
+            Sultan.alert('warning', 'Catatan Wajib', 'Mohon tulis alasan revisi/penolakan agar user mengerti.'); 
+            return; 
+        }
         
         var keputusanFinal = keputusan;
-        if (keputusan === 'Tolak' && catatan) {
-            keputusanFinal = 'Tolak|' + catatan;
+        if ((keputusan === 'Ditolak' || keputusan === 'Revisi') && catatan) {
+            keputusanFinal = keputusan + '|' + catatan;
         }
         
         ptkpaud_eksekusiMutasi(idUsulan, keputusanFinal);
@@ -312,7 +313,8 @@ $(document).ready(function() {
 
     // Toggle catatan box based on status
     $(document).on('change', '#ptkpaud_verifStatus', function() {
-        if ($(this).val() === 'Tolak') {
+        var s = $(this).val();
+        if (s === "Ditolak" || s === "Revisi") {
             $('#ptkpaud_reqCatatanVerif').show();
             $('#ptkpaud_verifCatatan').prop('required', true);
         } else {
@@ -320,6 +322,7 @@ $(document).ready(function() {
             $('#ptkpaud_verifCatatan').prop('required', false).val('');
         }
     });
+
 
     // Reset modal saat ditutup
     $('#ptkpaud_modalVerifikasi').on('hidden.bs.modal', function () {
@@ -1070,25 +1073,30 @@ function ptkpaud_bukaModalVerifikasi(row) {
     $('#ptkpaud_verifAsal').text(row.lembaga_asal || '-');
     $('#ptkpaud_verifTujuan').text(row.lembaga_tujuan || '-');
     $('#ptkpaud_verifTanggal').text(row.tanggal_usulan || '-');
-
     var rawStatus = row.status || '';
     var statusParts = rawStatus.split('|');
     var mainStatus = statusParts[0];
     var catatanTampil = row.catatan || statusParts[1] || '';
 
-    if (mainStatus === 'Tolak') {
-        $('#ptkpaud_verifStatus').val('Tolak');
+    // Standardized mapping: Tolak -> Ditolak, Setuju -> Disetujui
+    if (mainStatus === 'Tolak' || mainStatus === 'Ditolak') {
+        $('#ptkpaud_verifStatus').val('Ditolak');
         $('#ptkpaud_reqCatatanVerif').show();
         $('#ptkpaud_verifCatatan').val(catatanTampil).prop('required', true);
-    } else if (mainStatus === 'Setuju') {
-        $('#ptkpaud_verifStatus').val('Setuju');
+    } else if (mainStatus === 'Setuju' || mainStatus === 'Disetujui') {
+        $('#ptkpaud_verifStatus').val('Disetujui');
         $('#ptkpaud_reqCatatanVerif').hide();
         $('#ptkpaud_verifCatatan').val('').prop('required', false);
+    } else if (mainStatus === 'Revisi') {
+        $('#ptkpaud_verifStatus').val('Revisi');
+        $('#ptkpaud_reqCatatanVerif').show();
+        $('#ptkpaud_verifCatatan').val(catatanTampil).prop('required', true);
     } else {
         $('#ptkpaud_verifStatus').val('');
         $('#ptkpaud_reqCatatanVerif').hide();
         $('#ptkpaud_verifCatatan').val('').prop('required', false);
     }
+
 
     if (row.status !== 'Pending') {
         $('#ptkpaud_btnVerifEksekusi').hide();
@@ -1127,14 +1135,21 @@ function ptkpaud_bukaModalVerifikasi(row) {
 
 function ptkpaud_eksekusiMutasi(idUsulan, keputusan) {
     var displayKeputusan = keputusan.split('|')[0];
+    var actionWord = 'memproses';
+    var loadWord = 'Memproses...';
+    if (displayKeputusan === 'Disetujui') { actionWord = 'menyetujui'; loadWord = 'Menyetujui...'; }
+    else if (displayKeputusan === 'Ditolak') { actionWord = 'menolak'; loadWord = 'Menolak...'; }
+    else if (displayKeputusan === 'Revisi') { actionWord = 'meminta revisi'; loadWord = 'Menyimpan...'; }
+
     Sultan.konfirmasi({
-        judul: 'Konfirmasi',
-        teks: 'Apakah Anda yakin ingin ' + (displayKeputusan === 'Setuju' ? 'menyetujui' : 'menolak') + ' usulan ini?',
+        tipe: (displayKeputusan === 'Ditolak' ? 'danger' : 'default'),
+        judul: 'Konfirmasi Verifikasi',
+        teks: 'Apakah Anda yakin ingin ' + actionWord + ' usulan ini?',
         icon: 'question',
         btnYa: 'Ya, Lanjutkan!',
         btnBatal: 'Batal'
     }, function() {
-        Sultan.notif.loading(displayKeputusan === 'Setuju' ? 'Menyetujui...' : 'Menolak...');
+        Sultan.notif.loading(loadWord);
         google.script.run
             .withSuccessHandler(function(res){
                 if (res === 'Sukses') {
