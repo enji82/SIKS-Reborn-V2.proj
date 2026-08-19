@@ -90,7 +90,7 @@ function getMissingDocumentsReport(username, role, unit) {
     var dbKeyLapbul    = isPAUD ? "LAPBUL_PAUD_DB" : "LAPBUL_SD_DB";
     var sheetNameLapbul = isPAUD ? "Input PAUD" : "Input SD";
 
-    var uploadedLapbul = [];
+    var uploadedLapbul = {};
     try {
       var sheetLapbul = getSheet(dbKeyLapbul, sheetNameLapbul);
       var rawLapbul   = sheetLapbul.getDataRange().getDisplayValues();
@@ -106,11 +106,11 @@ function getMissingDocumentsReport(username, role, unit) {
           var rNpsn  = cleanNpsn_(row[iN]);
           var rTahun = String(row[iT] || "").trim();
           var rBulan = String(row[iB] || "").trim();
-          var rStat  = iS > -1 ? String(row[iS] || "").toLowerCase() : "";
+          var rStat  = iS > -1 ? String(row[iS] || "").trim() : "Diproses";
 
           if (rNpsn === uName && rTahun === String(currentYear)
-              && !rStat.includes("hapus") && !rStat.includes("delete")) {
-            uploadedLapbul.push(rBulan.toLowerCase());
+              && !rStat.toLowerCase().includes("hapus") && !rStat.toLowerCase().includes("delete")) {
+            uploadedLapbul[rBulan.toLowerCase()] = rStat || "Diproses";
           }
         }
       }
@@ -118,7 +118,7 @@ function getMissingDocumentsReport(username, role, unit) {
 
     for (var i = 0; i < targetBulanLimit; i++) {
       var bLabel = arrBulan[i];
-      if (uploadedLapbul.indexOf(bLabel.toLowerCase()) === -1) {
+      if (!uploadedLapbul[bLabel.toLowerCase()]) {
         missingLapbul.push(bLabel + " " + currentYear);
       }
     }
@@ -127,15 +127,11 @@ function getMissingDocumentsReport(username, role, unit) {
 
     // =====================================================================
     // B. SK PEMBAGIAN TUGAS (hanya SD)
-    //    PETA KOLOM FIXED (sesuai processManualForm di SK.gs):
-    //      idx 1  = Nama SD
-    //      idx 2  = Tahun Ajaran  (string, "2026/2027")
-    //      idx 3  = Semester      (string, "Ganjil" / "Genap")
-    //      idx 9  = Status        (string, "Diproses" / "Disetujui" / "Hapus")
-    //      idx 17 = NPSN          (stored as "'NPSN" → cleaned to "NPSN")
     // =====================================================================
     var skSemester = "";
     var skTA       = "";
+    var skStatus = { ganjil: "Belum", genap: "Belum" };
+
     if (isSD) {
       if (currentMonth >= 6) {
         skSemester = "Ganjil";
@@ -144,38 +140,37 @@ function getMissingDocumentsReport(username, role, unit) {
         skSemester = "Genap";
         skTA       = (currentYear - 1) + "/" + currentYear;
       }
-      Logger.log("Target SK: Semester=[" + skSemester + "] TA=[" + skTA + "]");
+      Logger.log("Target SK Cycle: TA=[" + skTA + "]");
 
-      var hasSK = false;
       try {
         var sheetSK = getSheet("SK_DATA_DB", "Unggah_SK");
         var rawSK   = sheetSK.getDataRange().getDisplayValues();
 
-        // Baris 0 = header, abaikan saja – pakai indeks kolom FIXED
         for (var j = 1; j < rawSK.length; j++) {
           var row       = rawSK[j];
           var rNpsn     = cleanNpsn_(row[17]);          // kolom R (idx 17)
           var rTA       = cleanTa_(row[2]);              // kolom C (idx 2)
           var rSemester = String(row[3] || "").trim();   // kolom D (idx 3)
-          var rStatus   = String(row[9] || "").toLowerCase(); // kolom J (idx 9)
-
-          Logger.log("SK row " + (j+1) + ": NPSN=[" + rNpsn + "] TA=[" + rTA + "] Sem=[" + rSemester + "] Stat=[" + rStatus + "]");
+          var rStatus   = String(row[9] || "").trim(); // kolom J (idx 9)
 
           var npsnMatch = (rNpsn === uName);
           var taMatch   = (rTA   === cleanTa_(skTA));
-          var semMatch  = (normSemester_(rSemester) === normSemester_(skSemester));
-          var notHapus  = (!rStatus.includes("hapus") && !rStatus.includes("delete"));
+          var notHapus  = (!rStatus.toLowerCase().includes("hapus") && !rStatus.toLowerCase().includes("delete"));
 
-          if (npsnMatch && taMatch && semMatch && notHapus) {
-            hasSK = true;
-            Logger.log("✅ SK DITEMUKAN di baris " + (j + 1));
-            break;
+          if (npsnMatch && taMatch && notHapus) {
+            var semNorm = normSemester_(rSemester);
+            if (semNorm === "ganjil") {
+              skStatus.ganjil = rStatus || "Diproses";
+            } else if (semNorm === "genap") {
+              skStatus.genap = rStatus || "Diproses";
+            }
           }
         }
       } catch(e) { Logger.log("SK error: " + e.message); }
 
-      if (!hasSK) missingSK = true;
-      Logger.log("Hasil cek SK: missingSK=" + missingSK);
+      if (skSemester === "Ganjil" && skStatus.ganjil === "Belum") missingSK = true;
+      if (skSemester === "Genap" && skStatus.genap === "Belum") missingSK = true;
+      Logger.log("Hasil cek SK: status=" + JSON.stringify(skStatus));
     }
 
     var uploadedSiaba = [];
@@ -237,13 +232,12 @@ function getMissingDocumentsReport(username, role, unit) {
       hasWarning: messages.length > 0,
       warnings: messages,
       messageHtml: messages.join(" | "),
-      // Rich metadata tambahan untuk view Beranda
       isSD: isSD,
       isSDNegeri: isSDNegeri,
       isPAUD: isPAUD,
-      missingSK: missingSK,
       skSemester: skSemester,
       skTA: skTA,
+      skStatus: skStatus,
       uploadedLapbul: uploadedLapbul,
       uploadedSiaba: uploadedSiaba,
       currentMonth: currentMonth,
