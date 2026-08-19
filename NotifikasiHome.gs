@@ -178,11 +178,11 @@ function getMissingDocumentsReport(username, role, unit) {
       Logger.log("Hasil cek SK: missingSK=" + missingSK);
     }
 
+    var uploadedSiaba = [];
     // =====================================================================
     // C. REKAP SIABA (hanya SD Negeri)
     // =====================================================================
     if (isSDNegeri) {
-      var uploadedSiaba = [];
       try {
         var sheetSiaba = getSheet("ARSIP_SIABA_DB", "arsip_siaba");
         var rawSiaba   = sheetSiaba.getDataRange().getDisplayValues();
@@ -236,7 +236,18 @@ function getMissingDocumentsReport(username, role, unit) {
       show: true,
       hasWarning: messages.length > 0,
       warnings: messages,
-      messageHtml: messages.join(" | ")
+      messageHtml: messages.join(" | "),
+      // Rich metadata tambahan untuk view Beranda
+      isSD: isSD,
+      isSDNegeri: isSDNegeri,
+      isPAUD: isPAUD,
+      missingSK: missingSK,
+      skSemester: skSemester,
+      skTA: skTA,
+      uploadedLapbul: uploadedLapbul,
+      uploadedSiaba: uploadedSiaba,
+      currentMonth: currentMonth,
+      currentYear: currentYear
     };
 
   } catch (e) {

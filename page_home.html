@@ -327,13 +327,28 @@
     <!-- SECTION 1: STATUS KELENGKAPAN DOKUMEN (1 GAS call, dinamis) -->
     <!-- ============================================================ -->
     <div class="mb-4" id="home-status-section">
-        <h5 class="font-weight-bold sultan-text-title d-flex align-items-center mb-3">
-            <span class="bg-maroon text-white rounded-circle mr-2 d-flex align-items-center justify-content-center" style="width: 30px; height: 30px;">
-                <i class="fas fa-bell" style="font-size: 13px;"></i>
-            </span>
-            Status Kelengkapan Dokumen
-            <small class="text-muted ml-2 font-weight-normal" style="font-size: 0.8rem; font-style: italic;" id="home-status-subtitle">Memeriksa kelengkapan...</small>
-        </h5>
+        <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap">
+            <h5 class="font-weight-bold sultan-text-title d-flex align-items-center m-0">
+                <span class="bg-maroon text-white rounded-circle mr-2 d-flex align-items-center justify-content-center" style="width: 30px; height: 30px;">
+                    <i class="fas fa-bell" style="font-size: 13px;"></i>
+                </span>
+                Status Kelengkapan Dokumen Sekolah
+                <small class="text-muted ml-2 font-weight-normal" style="font-size: 0.8rem; font-style: italic;" id="home-status-subtitle">Memeriksa kelengkapan...</small>
+            </h5>
+            <button class="btn btn-xs btn-outline-secondary ml-auto" onclick="toggleHelpHome()" style="border-radius: 8px; font-size: 0.75rem; padding: 2px 8px;">
+                <i class="fas fa-info-circle mr-1"></i> Batas Unggah &amp; Panduan
+            </button>
+        </div>
+
+        <!-- Panduan Batas Unggah (Collapsible) -->
+        <div id="home-help-info" class="alert shadow-sm mb-3 p-3" style="display:none; border-radius:12px; border: 1px solid rgba(23, 162, 184, 0.2); border-left: 5px solid #17a2b8; background-color: rgba(23, 162, 184, 0.05);">
+            <h6 class="font-weight-bold text-info mb-2" style="font-size: 0.9rem;"><i class="fas fa-info-circle mr-1"></i>Panduan Kepatuhan &amp; Batas Akhir Unggah</h6>
+            <ul class="mb-0 pl-3 small text-muted" style="line-height: 1.6; font-size: 0.82rem;">
+                <li><strong>SK Pembagian Tugas Mengajar:</strong> Diunggah setiap awal semester baru (Juli untuk Ganjil, Januari untuk Genap).</li>
+                <li><strong>Laporan Bulanan Sekolah:</strong> Paling lambat diunggah pada <strong>tanggal 10 bulan berikutnya</strong>.</li>
+                <li><strong>Rekap Absensi SIABA:</strong> Paling lambat dikirimkan pada <strong>tanggal 5 bulan berikutnya</strong> (Khusus SD Negeri).</li>
+            </ul>
+        </div>
 
         <!-- Loading shimmer saat menunggu data -->
         <div id="home-status-loading" class="row">
@@ -778,22 +793,15 @@
   }
 
   // ================================================================
-  // STATUS KELENGKAPAN DOKUMEN — satu GAS call, render card dinamis
-  // Sumber data: getMissingDocumentsReport (sudah ada di backend)
-  //
-  // Data warnings yang dikembalikan mencakup:
-  //   - SK Pembagian Tugas (untuk SD)
-  //   - Laporan Bulanan yang belum diunggah (per bulan)
-  //   - Rekap SIABA yang belum dikirim (untuk SD Negeri)
-  //
-  // Setiap peringatan dirender menjadi satu card tersendiri.
+  // PANDUAN BATAS UNGGAH
   // ================================================================
-  var _statusCardConfig = [
-    { key: 'sk',    icon: 'fas fa-file-signature', color: '#dc3545', bg: 'rgba(220,53,69,0.1)',   stripe: 'linear-gradient(90deg,#dc3545,#c0392b)', label: 'SK Pembagian Tugas',   page: 'sk_data',         btnClass: 'btn-outline-danger',   badge: 'BELUM UPLOAD', badgeClass: 'badge-danger' },
-    { key: 'lapbul',icon: 'fas fa-file-invoice',   color: '#e0a800', bg: 'rgba(255,193,7,0.1)',   stripe: 'linear-gradient(90deg,#ffc107,#e0a800)', label: 'Laporan Bulanan',    page: 'lapbul_kelola',   btnClass: 'btn-outline-warning',  badge: 'BELUM UPLOAD', badgeClass: 'badge-warning' },
-    { key: 'siaba', icon: 'fas fa-fingerprint',    color: '#6f42c1', bg: 'rgba(111,66,193,0.1)',  stripe: 'linear-gradient(90deg,#6f42c1,#4e2a84)', label: 'Rekap SIABA',         page: 'siaba_presensi_arsip', btnClass: 'btn-outline-primary', badge: 'BELUM KIRIM',  badgeClass: 'badge-primary' }
-  ];
+  window.toggleHelpHome = function() {
+    $('#home-help-info').slideToggle(200);
+  };
 
+  // ================================================================
+  // STATUS KELENGKAPAN DOKUMEN — Render Kalender/Pusat Kepatuhan
+  // ================================================================
   function muatStatusKelengkapanHome(u) {
     var username = u.npsn || u.username || "";
     var role = u.role || "";
@@ -804,51 +812,167 @@
         $('#home-status-loading').hide();
 
         if (!res || !res.show) {
-          // User tidak perlu lapor (misal admin/korwil)
           $('#home-status-section').hide();
           return;
         }
 
-        if (!res.hasWarning) {
-          // Semua dokumen LENGKAP — tampilkan banner hijau
-          $('#home-status-all-ok').css('display', 'flex');
-          $('#home-status-subtitle').text('Semua dokumen lengkap ✓');
-          return;
-        }
+        var isSD = res.isSD;
+        var isSDNegeri = res.isSDNegeri;
+        var isPAUD = res.isPAUD;
+        var currentMonth = res.currentMonth; // 0-based
+        var currentYear = res.currentYear;
+        var arrBulan = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
 
-        // Ada peringatan — parse dan render card per kategori
-        var warnings = res.warnings || [];
-        var cards = [];
+        var cardsHtml = [];
 
-        warnings.forEach(function(msg) {
-          var msgLow = msg.toLowerCase();
-          var cfg = null;
+        // ----------------------------------------------------
+        // CARD 1: Laporan Bulanan (Semua Sekolah)
+        // ----------------------------------------------------
+        var uploadedLapbul = (res.uploadedLapbul || []).map(function(m){ return m.toLowerCase(); });
+        var lapbulMonthsHtml = [];
+        for (var i = 0; i < 12; i++) {
+          var bName = arrBulan[i];
+          var bNameLow = bName.toLowerCase();
+          var stateClass = "";
+          var stateIcon = "";
+          var tooltip = bName;
 
-          if (msgLow.indexOf('sk ') !== -1 || msgLow.indexOf('pembagian tugas') !== -1) {
-            cfg = _statusCardConfig[0];
-            cards.push(renderStatusCard(cfg, msg));
-          } else if (msgLow.indexOf('laporan bulan') !== -1 || msgLow.indexOf('lapbul') !== -1) {
-            cfg = _statusCardConfig[1];
-            // Ekstrak nama bulan dari pesan
-            var bulanMatch = msg.match(/Bulan ([A-Za-z ,dan]+)\./);
-            var detail = bulanMatch ? bulanMatch[1] : '';
-            cards.push(renderStatusCard(cfg, msg, detail));
-          } else if (msgLow.indexOf('siaba') !== -1) {
-            cfg = _statusCardConfig[2];
-            cards.push(renderStatusCard(cfg, msg));
+          if (uploadedLapbul.indexOf(bNameLow) !== -1) {
+            stateClass = "bg-success text-white";
+            stateIcon = '<i class="fas fa-check-circle" style="font-size:0.75rem;"></i>';
+            tooltip += " (Selesai)";
+          } else if (i < currentMonth) {
+            stateClass = "bg-danger text-white";
+            stateIcon = '<i class="fas fa-times-circle" style="font-size:0.75rem;"></i>';
+            tooltip += " (Terlambat)";
+          } else if (i === currentMonth) {
+            stateClass = "bg-warning text-dark";
+            stateIcon = '<i class="fas fa-spinner fa-spin" style="font-size:0.75rem;"></i>';
+            tooltip += " (Berjalan)";
           } else {
-            // Peringatan generik
-            var cfgGeneric = { icon: 'fas fa-exclamation-circle', color: '#6c757d', bg: 'rgba(108,117,125,0.1)', stripe: 'linear-gradient(90deg,#6c757d,#495057)', label: 'Perhatian', page: 'home', btnClass: 'btn-outline-secondary', badge: 'INFO', badgeClass: 'badge-secondary' };
-            cards.push(renderStatusCard(cfgGeneric, msg));
+            stateClass = "bg-light text-muted border";
+            stateIcon = '<i class="far fa-circle" style="font-size:0.75rem;"></i>';
+            tooltip += " (Mendatang)";
           }
-        });
 
-        if (cards.length > 0) {
-          $('#home-status-cards').html(cards.join('')).show();
-          $('#home-status-subtitle').text(warnings.length + ' item perlu perhatian');
-        } else {
-          $('#home-status-all-ok').css('display', 'flex');
+          lapbulMonthsHtml.push(
+            '<div class="col-3 col-sm-2 col-md-3 col-lg-2 mb-2 px-1 text-center" title="' + tooltip + '">'
+            + '<div class="p-1 rounded d-flex flex-column align-items-center justify-content-center ' + stateClass + '" style="font-size:0.7rem; min-height:48px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">'
+            + '<span class="font-weight-bold">' + bName.substring(0, 3) + '</span>'
+            + '<span class="mt-1">' + stateIcon + '</span>'
+            + '</div>'
+            + '</div>'
+          );
         }
+
+        var cardLapbulHtml = '<div class="col-md-6 col-lg-6 mb-3">'
+          + '<div class="card-sultan h-100 p-3" style="border-radius:14px; border:none; box-shadow: 0 4px 16px rgba(0,0,0,0.08); border-left:4px solid #ffc107;">'
+          + '<div class="d-flex align-items-center justify-content-between mb-2">'
+          + '<span class="font-weight-bold text-maroon" style="font-size:0.95rem;"><i class="fas fa-file-invoice mr-2"></i>Laporan Bulanan ' + currentYear + '</span>'
+          + '<span class="badge badge-warning" style="font-size:0.65rem;">BULANAN</span>'
+          + '</div>'
+          + '<div class="row no-gutters mb-3">' + lapbulMonthsHtml.join('') + '</div>'
+          + '<div class="mt-auto pt-2 border-top text-muted d-flex align-items-center justify-content-between" style="font-size:0.75rem;">'
+          + '<span><i class="fas fa-clock mr-1"></i> Batas: Tanggal 10 bulan berikutnya</span>'
+          + '<button class="btn btn-xs btn-outline-warning" onclick="navigatePage(\'lapbul_kelola\')">Unggah</button>'
+          + '</div>'
+          + '</div>'
+          + '</div>';
+        
+        cardsHtml.push(cardLapbulHtml);
+
+        // ----------------------------------------------------
+        // CARD 2: SK Pembagian Tugas (Hanya SD)
+        // ----------------------------------------------------
+        if (isSD) {
+          var missingSK = res.missingSK;
+          var skStateText = missingSK ? "Belum Diunggah" : "Sudah Diunggah";
+          var skStateClass = missingSK ? "badge-danger" : "badge-success";
+          var skIconClass = missingSK ? "fas fa-exclamation-triangle text-danger" : "fas fa-check-circle text-success";
+          var skBg = missingSK ? "rgba(220,53,69,0.05)" : "rgba(40,167,69,0.05)";
+          var skBorder = missingSK ? "1px solid rgba(220,53,69,0.15)" : "1px solid rgba(40,167,69,0.15)";
+
+          var cardSKHtml = '<div class="col-md-6 col-lg-3 mb-3">'
+            + '<div class="card-sultan h-100 p-3 d-flex flex-column" style="border-radius:14px; border:none; box-shadow: 0 4px 16px rgba(0,0,0,0.08); border-left:4px solid #dc3545;">'
+            + '<div class="d-flex align-items-center justify-content-between mb-3">'
+            + '<span class="font-weight-bold text-maroon" style="font-size:0.95rem;"><i class="fas fa-file-signature mr-2"></i>SK Tugas Mengajar</span>'
+            + '<span class="badge ' + skStateClass + '" style="font-size:0.65rem;">SEMESTER</span>'
+            + '</div>'
+            + '<div class="p-3 rounded text-center mb-3 d-flex flex-column align-items-center justify-content-center" style="background:' + skBg + '; border:' + skBorder + '; flex-grow:1;">'
+            + '<i class="' + skIconClass + ' mb-2" style="font-size:2rem;"></i>'
+            + '<span class="font-weight-bold small text-dark">' + res.skSemester + ' TA ' + res.skTA + '</span>'
+            + '<span class="small text-muted mt-1">' + skStateText + '</span>'
+            + '</div>'
+            + '<div class="mt-auto pt-2 border-top text-muted d-flex align-items-center justify-content-between" style="font-size:0.75rem;">'
+            + '<span><i class="fas fa-info-circle mr-1"></i> Awal semester baru</span>'
+            + '<button class="btn btn-xs btn-outline-danger" onclick="navigatePage(\'sk_data\')">Kelola</button>'
+            + '</div>'
+            + '</div>'
+            + '</div>';
+          
+          cardsHtml.push(cardSKHtml);
+        }
+
+        // ----------------------------------------------------
+        // CARD 3: Rekap Absensi SIABA (Hanya SD Negeri)
+        // ----------------------------------------------------
+        if (isSDNegeri) {
+          var uploadedSiaba = (res.uploadedSiaba || []).map(function(m){ return m.toLowerCase(); });
+          var siabaMonthsHtml = [];
+          for (var i = 0; i < 12; i++) {
+            var bName = arrBulan[i];
+            var bNameLow = bName.toLowerCase();
+            var stateClass = "";
+            var stateIcon = "";
+            var tooltip = bName;
+
+            if (uploadedSiaba.indexOf(bNameLow) !== -1) {
+              stateClass = "bg-purple text-white";
+              stateIcon = '<i class="fas fa-check-circle" style="font-size:0.75rem;"></i>';
+              tooltip += " (Selesai)";
+            } else if (i < currentMonth) {
+              stateClass = "bg-danger text-white";
+              stateIcon = '<i class="fas fa-times-circle" style="font-size:0.75rem;"></i>';
+              tooltip += " (Terlambat)";
+            } else if (i === currentMonth) {
+              stateClass = "bg-warning text-dark";
+              stateIcon = '<i class="fas fa-spinner fa-spin" style="font-size:0.75rem;"></i>';
+              tooltip += " (Berjalan)";
+            } else {
+              stateClass = "bg-light text-muted border";
+              stateIcon = '<i class="far fa-circle" style="font-size:0.75rem;"></i>';
+              tooltip += " (Mendatang)";
+            }
+
+            siabaMonthsHtml.push(
+              '<div class="col-3 col-sm-2 col-md-3 col-lg-2 mb-2 px-1 text-center" title="' + tooltip + '">'
+              + '<div class="p-1 rounded d-flex flex-column align-items-center justify-content-center ' + stateClass + '" style="font-size:0.7rem; min-height:48px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">'
+              + '<span class="font-weight-bold">' + bName.substring(0, 3) + '</span>'
+              + '<span class="mt-1">' + stateIcon + '</span>'
+              + '</div>'
+              + '</div>'
+            );
+          }
+
+          var cardSiabaHtml = '<div class="col-md-12 col-lg-6 mb-3" style="flex-grow:1;">'
+            + '<div class="card-sultan h-100 p-3" style="border-radius:14px; border:none; box-shadow: 0 4px 16px rgba(0,0,0,0.08); border-left:4px solid #6f42c1;">'
+            + '<div class="d-flex align-items-center justify-content-between mb-2">'
+            + '<span class="font-weight-bold text-maroon" style="font-size:0.95rem;"><i class="fas fa-fingerprint mr-2"></i>Rekap SIABA ' + currentYear + '</span>'
+            + '<span class="badge badge-primary" style="background:#6f42c1; font-size:0.65rem;">SIABA</span>'
+            + '</div>'
+            + '<div class="row no-gutters mb-3">' + siabaMonthsHtml.join('') + '</div>'
+            + '<div class="mt-auto pt-2 border-top text-muted d-flex align-items-center justify-content-between" style="font-size:0.75rem;">'
+            + '<span><i class="fas fa-clock mr-1"></i> Batas: Tanggal 5 bulan berikutnya</span>'
+            + '<button class="btn btn-xs btn-outline-primary" onclick="navigatePage(\'siaba_presensi_arsip\')" style="border-color:#6f42c1; color:#6f42c1;">Kirim</button>'
+            + '</div>'
+            + '</div>'
+            + '</div>';
+          
+          cardsHtml.push(cardSiabaHtml);
+        }
+
+        $('#home-status-cards').html(cardsHtml.join('')).show();
+        $('#home-status-subtitle').text('Kelengkapan Berkas Satuan Pendidikan');
       })
       .withFailureHandler(function(err) {
         console.error('muatStatusKelengkapanHome error:', err);
@@ -856,28 +980,6 @@
         $('#home-status-subtitle').text('Gagal memuat status');
       })
       .getMissingDocumentsReport(username, role, unit);
-  }
-
-  function renderStatusCard(cfg, fullMsg, detail) {
-    var detailText = detail ? '<div class="text-muted mt-1" style="font-size:0.78rem;line-height:1.3;">' + detail + '</div>' : '';
-    return '<div class="col-md-4 col-sm-6 mb-3">'
-      + '<div class="card-sultan h-100 p-0 overflow-hidden" style="border-radius:14px;border:none;box-shadow:0 4px 16px rgba(0,0,0,0.08);">'
-      + '<div class="p-1" style="background:' + cfg.stripe + ';"></div>'
-      + '<div class="p-3 d-flex align-items-start">'
-      + '<div class="d-flex align-items-center justify-content-center rounded-circle mr-3 flex-shrink-0" style="width:48px;height:48px;min-width:48px;background:' + cfg.bg + ';">'
-      + '<i class="' + cfg.icon + '" style="font-size:1.2rem;color:' + cfg.color + ';"></i>'
-      + '</div>'
-      + '<div class="flex-grow-1 min-width-0">'
-      + '<div class="d-flex align-items-center justify-content-between">'
-      + '<span class="font-weight-bold sultan-text-title" style="font-size:0.9rem;">' + cfg.label + '</span>'
-      + '<span class="badge ' + cfg.badgeClass + ' ml-1" style="font-size:0.6rem;white-space:nowrap;">' + cfg.badge + '</span>'
-      + '</div>'
-      + detailText
-      + '</div></div>'
-      + '<div class="px-3 pb-3">'
-      + '<button class="btn btn-sm ' + cfg.btnClass + ' w-100" onclick="navigatePage(\'' + cfg.page + '\')" style="border-radius:8px;font-size:0.8rem;">'
-      + '<i class="fas fa-arrow-right mr-1"></i> Selesaikan Sekarang</button>'
-      + '</div></div></div>';
   }
 
   function muatNotifikasiDokumenKurang(u) {
