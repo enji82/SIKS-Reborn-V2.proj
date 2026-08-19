@@ -757,7 +757,7 @@ function getNotifikasiCuti(role, unit) {
         var isTarget = isAdmin ? isDiproses : (String(row[1]).trim().toUpperCase() === String(unit).trim().toUpperCase() && !isDiproses);
         
         if (isTarget) {
-            var readByList = String(row[19] || "").split(","); 
+            var readByList = String(row[48] || "").split(","); 
             var isRead = (isAdmin && readByList.indexOf("Admin") > -1) || (!isAdmin && readByList.indexOf("User") > -1);
             
             var stLower = String(status || "").toLowerCase();
@@ -874,9 +874,9 @@ function tandaiNotifCutiDibaca(rowId, role) {
         var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
         var rIdx = parseInt(rowId);
         var mark = (role === "Admin") ? "Admin" : "User";
-        var cur = String(sheet.getRange(rIdx, 20).getDisplayValue() || "").trim();
-        if (cur === "") sheet.getRange(rIdx, 20).setValue(mark);
-        else { var l = cur.split(","); if (l.indexOf(mark) === -1) { l.push(mark); sheet.getRange(rIdx, 20).setValue(l.join(",")); } }
+        var cur = String(sheet.getRange(rIdx, 49).getDisplayValue() || "").trim();
+        if (cur === "") sheet.getRange(rIdx, 49).setValue(mark);
+        else { var l = cur.split(","); if (l.indexOf(mark) === -1) { l.push(mark); sheet.getRange(rIdx, 49).setValue(l.join(",")); } }
         return true;
     } catch (e) { return false; }
 }
@@ -902,10 +902,10 @@ function tandaiSemuaNotifCutiDibaca(role, unit) {
             var status = String(row[10] || "").trim();
             var isDiproses = (status === "Diproses" || status === "" || status === "Usul Batal");
             var isTarget = (role === "Admin") ? isDiproses : (String(row[1]).trim().toUpperCase() === String(unit).trim().toUpperCase() && !isDiproses);
-            var cur = String(row[19] || "").trim();
+            var cur = String(row[48] || "").trim();
             if (isTarget && cur.indexOf(mark) === -1) {
                 var newVal = cur === "" ? mark : cur + "," + mark;
-                sheet.getRange(i + 1, 20).setValue(newVal);
+                sheet.getRange(i + 1, 49).setValue(newVal);
             }
         }
         return true;
