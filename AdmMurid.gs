@@ -507,6 +507,39 @@ function admMurid_verifikasiIjazah(rowId, status, catatan, verifikator) {
   }
 }
 
+function admMurid_ajukanKoreksiIjazah(rowId, alasan, pengaju) {
+  try {
+    var sheet = getOrCreateSheetAdmMurid("Database_Ijazah");
+    var row = parseInt(rowId);
+    var now = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
+
+    sheet.getRange(row, 13, 1, 2).setValues([["Pengajuan Koreksi", alasan]]);
+    sheet.getRange(row, 17, 1, 2).setValues([[now, pengaju]]);
+    
+    // Reset read_by Admin agar notifikasi baru langsung terkirim ke Admin
+    var currentReadBy = String(sheet.getRange(row, 21).getDisplayValue() || "").trim();
+    var list = currentReadBy === "" ? [] : currentReadBy.split(",");
+    var idxAdmin = list.indexOf("Admin");
+    if (idxAdmin > -1) {
+      list.splice(idxAdmin, 1);
+    }
+    
+    // User dianggap sudah membaca karena dialah pengaju perbaikan
+    if (list.indexOf("User") === -1) {
+      list.push("User");
+    }
+    
+    sheet.getRange(row, 21).setValue(list.join(","));
+
+    // Hapus cache notifikasi agar instan
+    try { invalidateNotifCacheForModule("ijazah", "admin", ""); } catch(ce) {}
+
+    return JSON.stringify({ success: true, message: "Permohonan koreksi data berhasil diajukan." });
+  } catch (e) {
+    return JSON.stringify({ success: false, message: e.message });
+  }
+}
+
 
 /* ==========================================
    3. DASHBOARD REKAPITULASI ADMINISTRASI MURID
@@ -805,10 +838,12 @@ function getNotifikasiIjazah(role, unit) {
       var isTarget = false;
       var rNama = String(data[i][1] || "").trim();
 
+      var isKoreksi = status.toLowerCase().includes("koreksi");
+
       if (isAdmin) {
-        isTarget = isDiproses;
+        isTarget = isDiproses || isKoreksi;
       } else {
-        isTarget = (rNama.toUpperCase() === String(unit).trim().toUpperCase() && !isDiproses);
+        isTarget = (rNama.toUpperCase() === String(unit).trim().toUpperCase() && !isDiproses && !isKoreksi);
       }
 
       if (isTarget) {

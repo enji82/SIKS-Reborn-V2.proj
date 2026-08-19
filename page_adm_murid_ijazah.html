@@ -537,7 +537,9 @@
       data.forEach(function (row) {
         var badgeStatus = getBadge(row.status, row.catatan);
         var statusLower = String(row.status || "").toLowerCase();
-        var isLocked = (statusLower.includes('setuju') || statusLower.includes('acc') || statusLower.includes('ok') || statusLower.includes('valid') || statusLower.includes('cetak'));
+        // Row terkunci jika status adalah Disetujui (ok, setuju, valid, selesai) ATAU Dicetak.
+        // Status "Pengajuan Koreksi" TIDAK mengunci baris sehingga sekolah bisa mengeditnya.
+        var isLocked = (statusLower.includes('setuju') || statusLower.includes('acc') || statusLower.includes('ok') || statusLower.includes('valid') || statusLower.includes('cetak')) && !statusLower.includes('koreksi');
 
         var btnV = ADMMURIDIJAZAH_IS_ADMIN
           ? '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-primary btn-verif" data-id="' + row.rowId + '" title="Verifikasi"><i class="fas fa-clipboard-check"></i></button>'
@@ -545,6 +547,12 @@
         var btnP = !isLocked
           ? '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning btn-edit" data-id="' + row.rowId + '" title="Edit Berkas"><i class="fas fa-edit"></i></button>'
           : '<button type="button" class="sultan-btn-aksi" disabled style="opacity:0.5;" title="Terkunci"><i class="fas fa-edit"></i></button>';
+        
+        // Sekolah dapat mengajukan koreksi jika status terkunci (Disetujui/Dicetak)
+        if (!ADMMURIDIJAZAH_IS_ADMIN && isLocked) {
+          btnP = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon btn-ajukan-koreksi" data-id="' + row.rowId + '" title="Ajukan Koreksi/Perbaikan Data"><i class="fas fa-unlock"></i></button>';
+        }
+
         var btnH = !isLocked
           ? '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon btn-delete" data-id="' + row.rowId + '" title="Hapus Berkas"><i class="fas fa-trash-alt"></i></button>'
           : '<button type="button" class="sultan-btn-aksi" disabled style="opacity:0.5;" title="Terkunci"><i class="fas fa-trash-alt"></i></button>';
@@ -605,6 +613,8 @@
         style = 'sultan-badge-info'; icon = 'sync-alt'; label = "Revisi";
       } else if (s.includes('tolak')) {
         style = 'sultan-badge-danger'; icon = 'times-circle'; label = "Ditolak";
+      } else if (s.includes('koreksi')) {
+        style = 'sultan-badge-warning'; icon = 'exclamation-circle'; label = "Pengajuan Koreksi";
       }
 
       var badgeHtml = '<span class="sultan-badge ' + style + '"><i class="fas fa-' + icon + ' mr-1"></i>' + label + '</span>';
@@ -1034,6 +1044,55 @@
         btn.prop('disabled', false).html(txt);
         Sultan.notif.crud.gagal(err.message);
       }).admMurid_verifikasiIjazah(rowId, status, catatan, verifikator);
+    });
+
+    // Aksi Ajukan Koreksi Click (Sekolah/User)
+    $(document).off('click', '.btn-ajukan-koreksi').on('click', '.btn-ajukan-koreksi', function () {
+      var rowId = $(this).data('id');
+      var raw = ADMMURIDIJAZAH_CACHE_DATA.find(function (item) { return item.rowId == rowId; });
+      if (!raw) return;
+
+      Swal.fire({
+        title: 'Ajukan Koreksi Data',
+        text: 'Masukkan alasan singkat mengapa data ijazah/transkrip perlu diperbaiki:',
+        input: 'textarea',
+        inputPlaceholder: 'Tulis alasan perbaikan disini...',
+        inputAttributes: {
+          'aria-label': 'Tulis alasan perbaikan disini'
+        },
+        showCancelButton: true,
+        confirmButtonText: 'Kirim Pengajuan',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#800000',
+        cancelButtonColor: '#6c757d',
+        preConfirm: function (text) {
+          if (!text || text.trim() === '') {
+            Swal.showValidationMessage('Alasan koreksi wajib diisi!');
+          }
+          return text;
+        }
+      }).then(function (result) {
+        if (result.isConfirmed) {
+          Sultan.notif.loading("Mengirim pengajuan...");
+          var pengaju = userLogin.nama_lengkap || userLogin.username || "Sekolah";
+          google.script.run.withSuccessHandler(function (resRaw) {
+            Sultan.notif.tutup();
+            var res = JSON.parse(resRaw);
+            if (res.success) {
+              Sultan.alert('success', 'Berhasil', 'Pengajuan koreksi terkirim. Kunci edit data Anda telah dibuka kembali.');
+              loadIjazahData();
+              if (typeof sultan_fetchNotifikasi === 'function') {
+                sultan_fetchNotifikasi();
+              }
+            } else {
+              Sultan.notif.crud.gagal(res.message);
+            }
+          }).withFailureHandler(function (err) {
+            Sultan.notif.tutup();
+            Sultan.notif.crud.gagal(err.message);
+          }).admMurid_ajukanKoreksiIjazah(rowId, result.value, pengaju);
+        }
+      });
     });
   });
 </script>
