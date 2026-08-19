@@ -805,11 +805,8 @@ function getNotifikasiIjazah(role, unit) {
       var isTarget = false;
       var rNama = String(data[i][1] || "").trim();
 
-      var stLower = status.toLowerCase();
-      var isResolved = stLower.includes("ok") || stLower.includes("setuju") || stLower.includes("valid") || stLower.includes("selesai") || stLower.includes("cetak");
-
       if (isAdmin) {
-        isTarget = !isResolved;
+        isTarget = isDiproses;
       } else {
         isTarget = (rNama.toUpperCase() === String(unit).trim().toUpperCase() && !isDiproses);
       }
