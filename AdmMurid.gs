@@ -805,8 +805,11 @@ function getNotifikasiIjazah(role, unit) {
       var isTarget = false;
       var rNama = String(data[i][1] || "").trim();
 
+      var stLower = status.toLowerCase();
+      var isResolved = stLower.includes("ok") || stLower.includes("setuju") || stLower.includes("valid") || stLower.includes("selesai") || stLower.includes("cetak");
+
       if (isAdmin) {
-        isTarget = isDiproses;
+        isTarget = !isResolved;
       } else {
         isTarget = (rNama.toUpperCase() === String(unit).trim().toUpperCase() && !isDiproses);
       }
@@ -822,7 +825,9 @@ function getNotifikasiIjazah(role, unit) {
         var isDisetujui = stLower.includes("ok") || stLower.includes("setuju") || stLower.includes("valid") || stLower.includes("selesai");
 
         if (isAdmin) {
-          if (!isRead) unreadCount++;
+          if (!isRead) {
+            unreadCount++;
+          }
         } else {
           if (!(isDisetujui && isRead)) {
             unreadCount++;
