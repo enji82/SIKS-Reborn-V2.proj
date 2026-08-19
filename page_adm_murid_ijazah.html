@@ -299,6 +299,33 @@
         <i class="fas fa-check mr-2"></i>VERIFIKASI</button>
     </div>
   </form>
+
+  <!-- FORM AJUKAN KOREKSI (SEKOLAH) -->
+  <form id="admmuridijazah_formKoreksi" novalidate>
+    <div class="modal-body modal-body-sultan p-4">
+      <input type="hidden" id="admmuridijazah_koreksi_rowId">
+      
+      <div class="alert alert-warning border-0 shadow-sm p-3 mb-3 d-flex align-items-center" style="border-radius:10px; background: rgba(255, 193, 7, 0.15);">
+        <i class="fas fa-exclamation-triangle fa-2x mr-3 text-warning"></i>
+        <div class="small text-dark" style="line-height:1.4;">
+          Mengajukan koreksi data akan <b>membuka kembali kunci edit data Anda</b>. Silakan tulis alasan koreksi secara detail.
+        </div>
+      </div>
+
+      <div class="form-group mb-0">
+        <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Alasan Koreksi/Perbaikan Data <span class="text-danger">*</span></label>
+        <textarea id="admmuridijazah_koreksi_alasan" class="form-control form-control-sultan border-maroon font-weight-bold" rows="4" placeholder="Contoh: Salah menginput jumlah siswa L/P atau berkas ijazah tertukar..." required></textarea>
+      </div>
+    </div>
+    <div class="modal-footer modal-footer-tambah-edit justify-content-between">
+      <button type="button" class="modal-btn-batal" data-dismiss="modal">
+        <i class="fas fa-times mr-2"></i>BATAL
+      </button>
+      <button type="submit" id="admmuridijazah_btnKirimKoreksi" class="modal-btn-simpan" style="background: var(--warna-maroon) !important;">
+        <i class="fas fa-paper-plane mr-2"></i>KIRIM PENGAJUAN
+      </button>
+    </div>
+  </form>
 </div>
 
 <script>
@@ -1052,64 +1079,58 @@
       var raw = ADMMURIDIJAZAH_CACHE_DATA.find(function (item) { return item.rowId == rowId; });
       if (!raw) return;
 
-      var theme = NotifSultan.getTheme();
-      var titleColor = theme.bg === '#fff' ? '#800000' : '#e9ecef';
+      // Reset form
+      $('#admmuridijazah_formKoreksi')[0].reset();
+      $('#admmuridijazah_koreksi_rowId').val(rowId);
 
-      Swal.fire({
-        title: `<h5 class="font-weight-bold" style="margin-top:10px; color:${titleColor}"><i class="fas fa-unlock mr-2"></i>AJUKAN KOREKSI DATA</h5>`,
-        html: `<div class="text-muted text-left mb-2" style="font-size:12px; color:${theme.bg === '#fff' ? '#6c757d' : '#adb5bd'}">Masukkan alasan singkat mengapa data ijazah/transkrip perlu diperbaiki:</div>`,
-        input: 'textarea',
-        inputPlaceholder: 'Tulis alasan perbaikan disini...',
-        inputAttributes: {
-          'aria-label': 'Tulis alasan perbaikan disini',
-          'style': `font-size: 13px; border-radius: 8px; border: 1px solid ${theme.bg === '#fff' ? '#800000' : '#454d55'}; background: ${theme.bg}; color: ${theme.color}; padding: 8px; width: 100%; box-sizing: border-box;`
-        },
-        showCancelButton: true,
-        confirmButtonText: 'Kirim Pengajuan',
-        cancelButtonText: 'Batal',
-        background: theme.bg,
-        color: theme.color,
-        padding: '1.2rem',
-        width: '380px',
-        customClass: {
-          popup: 'card-sultan',
-          confirmButton: 'swal2-confirm-sultan bg-danger border-0',
-          cancelButton: 'swal2-cancel-sultan'
-        },
-        buttonsStyling: false,
-        didOpen: (popup) => {
-          if (popup && popup.parentNode) {
-            popup.parentNode.style.zIndex = '105000';
-          }
-        },
-        preConfirm: function (text) {
-          if (!text || text.trim() === '') {
-            Swal.showValidationMessage('Alasan koreksi wajib diisi!');
-          }
-          return text;
-        }
-      }).then(function (result) {
-        if (result.isConfirmed) {
-          Sultan.notif.loading("Mengirim pengajuan...");
-          var pengaju = userLogin.nama_lengkap || userLogin.username || "Sekolah";
-          google.script.run.withSuccessHandler(function (resRaw) {
-            Sultan.notif.tutup();
-            var res = JSON.parse(resRaw);
-            if (res.success) {
-              Sultan.alert('success', 'Berhasil', 'Pengajuan koreksi terkirim. Kunci edit data Anda telah dibuka kembali.');
-              loadIjazahData();
-              if (typeof sultan_fetchNotifikasi === 'function') {
-                sultan_fetchNotifikasi();
-              }
-            } else {
-              Sultan.notif.crud.gagal(res.message);
-            }
-          }).withFailureHandler(function (err) {
-            Sultan.notif.tutup();
-            Sultan.notif.crud.gagal(err.message);
-          }).admMurid_ajukanKoreksiIjazah(rowId, result.value, pengaju);
-        }
+      // Pindahkan form utama ke global modal
+      $('#global_modalFormSize').removeClass('modal-lg modal-xl').addClass('modal-md');
+      $('#global_modalFormHeader').removeClass('modal-header-sultan-primary modal-header-sultan-warning modal-header-sultan-danger modal-header-sultan-success modal-header-sultan-info modal-header-sultan-dark modal-header-edit modal-header-tambah-edit modal-header-hapus').addClass('modal-header-sultan-danger');
+      $('#global_modalFormTitle').html('<i class="fas fa-unlock mr-3 shadow-sm"></i> AJUKAN KOREKSI DATA');
+      $('#global_modalFormBody, #global_modalFormFooter').hide();
+      $('#admmuridijazah_formKoreksi').appendTo('#global_modalFormSize .modal-content');
+
+      $('#global_modalForm').off('hidden.bs.modal.admmuridijazahkoreksi').on('hidden.bs.modal.admmuridijazahkoreksi', function () {
+        $('#admmuridijazah_formKoreksi').appendTo('#admmuridijazah_templates');
+        $('#global_modalFormBody, #global_modalFormFooter').show();
       });
+
+      $('#global_modalForm').modal('show');
+    });
+
+    // Submit Form Koreksi
+    $(document).off('submit', '#admmuridijazah_formKoreksi').on('submit', '#admmuridijazah_formKoreksi', function (e) {
+      e.preventDefault();
+      var rowId = $('#admmuridijazah_koreksi_rowId').val();
+      var alasan = ($('#admmuridijazah_koreksi_alasan').val() || '').trim();
+      var pengaju = userLogin.nama_lengkap || userLogin.username || "Sekolah";
+
+      if (alasan === "") {
+        Sultan.alert('warning', 'Alasan Wajib', 'Mohon tulis alasan koreksi agar kami dapat memproses pengajuan Anda.');
+        return;
+      }
+
+      var btn = $('#admmuridijazah_btnKirimKoreksi');
+      var txt = btn.html();
+      btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i> Mengirim...');
+
+      google.script.run.withSuccessHandler(function (resRaw) {
+        btn.prop('disabled', false).html(txt);
+        var res = JSON.parse(resRaw);
+        if (res.success) {
+          $('#global_modalForm').modal('hide');
+          Sultan.alert('success', 'Berhasil', 'Pengajuan koreksi terkirim. Kunci edit data Anda telah dibuka kembali.');
+          loadIjazahData();
+          if (typeof sultan_fetchNotifikasi === 'function') {
+            sultan_fetchNotifikasi();
+          }
+        } else {
+          Sultan.notif.crud.gagal(res.message);
+        }
+      }).withFailureHandler(function (err) {
+        btn.prop('disabled', false).html(txt);
+        Sultan.notif.crud.gagal(err.message);
+      }).admMurid_ajukanKoreksiIjazah(rowId, alasan, pengaju);
     });
   });
 </script>
