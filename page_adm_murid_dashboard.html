@@ -593,6 +593,127 @@
   }
 
   function admmuriddash_salinSudahKeWA() {
-    admmuriddash_salinKeWA();
+    if (!ADMMURIDDASH_CACHE_DATA || !ADMMURIDDASH_CACHE_DATA.detailSekolah) {
+      Sultan.notif.info('Tidak ada data untuk disalin.');
+      return;
+    }
+
+    var submenu = $('#admmuriddash_filterSubmenu').val();
+    var selSub = (submenu === "SPMB") ? "Laporan SPMB" : ((submenu === "IJAZAH") ? "Cetak Ijazah" : "Arsip Ijazah");
+    var selTahun = $('#admmuriddash_filterTahun').val() === "SEMUA" ? "-" : $('#admmuriddash_filterTahun').val();
+    var fSekolah = $('#admmuriddash_filterSekolah').val() || "SEMUA";
+
+    // Filter data sekolah yang sudah unggah
+    var listSudah = ADMMURIDDASH_CACHE_DATA.detailSekolah.filter(function(s) {
+      if (fSekolah !== "SEMUA" && fSekolah !== "") {
+        if (String(s.npsn || "").trim().toUpperCase() !== fSekolah.trim().toUpperCase()) return false;
+      }
+      var doc = (submenu === "SPMB") ? s.spmb : ((submenu === "IJAZAH") ? s.ijazah : s.arsip_ijazah);
+      var status = doc.status || "Belum Unggah";
+      return status !== "Belum Unggah";
+    });
+
+    if (listSudah.length === 0) {
+      Sultan.notif.info('Tidak ada data sekolah sudah unggah untuk disalin.');
+      return;
+    }
+
+    // Kelompokkan berdasarkan status
+    var groups = {
+      "DISETUJUI": [],
+      "DICETAK": [],
+      "DIPROSES": [],
+      "REVISI": [],
+      "DITOLAK": [],
+      "LAINNYA": []
+    };
+
+    listSudah.forEach(function(s) {
+      var doc = (submenu === "SPMB") ? s.spmb : ((submenu === "IJAZAH") ? s.ijazah : s.arsip_ijazah);
+      var statusStr = String(doc.status || "DIPROSES").toUpperCase().trim();
+      
+      var matchedGroup = "LAINNYA";
+      if (statusStr.indexOf("SETUJU") > -1) matchedGroup = "DISETUJUI";
+      else if (statusStr.indexOf("CETAK") > -1) matchedGroup = "DICETAK";
+      else if (statusStr.indexOf("PROSES") > -1) matchedGroup = "DIPROSES";
+      else if (statusStr.indexOf("REVISI") > -1) matchedGroup = "REVISI";
+      else if (statusStr.indexOf("TOLAK") > -1) matchedGroup = "DITOLAK";
+
+      groups[matchedGroup].push({ nama: s.nama, npsn: s.npsn, statusOriginal: doc.status || "Diproses" });
+    });
+
+    // Urutkan nama sekolah di setiap kelompok
+    Object.keys(groups).forEach(function(key) {
+      groups[key].sort(function(a, b) { return a.nama.localeCompare(b.nama); });
+    });
+
+    var teks = `✅ *DAFTAR SEKOLAH SUDAH UNGGAH* ✅\n`;
+    teks += `Menu: Administrasi Murid (${selSub})\n`;
+    teks += `Tahun Ajaran: ${selTahun}\n`;
+    teks += `Total Sudah Unggah: ${listSudah.length} Sekolah\n\n`;
+
+    var hasContent = false;
+
+    if (groups["DISETUJUI"].length > 0) {
+      teks += `🟢 *DISETUJUI (${groups["DISETUJUI"].length}):*\n`;
+      groups["DISETUJUI"].forEach(function(item, idx) {
+        teks += `${idx + 1}. ${item.nama} | ${item.npsn} | _*Disetujui*_\n`;
+      });
+      teks += `\n`;
+      hasContent = true;
+    }
+
+    if (groups["DICETAK"].length > 0) {
+      teks += `🔵 *DICETAK (${groups["DICETAK"].length}):*\n`;
+      groups["DICETAK"].forEach(function(item, idx) {
+        teks += `${idx + 1}. ${item.nama} | ${item.npsn} | _*Dicetak*_\n`;
+      });
+      teks += `\n`;
+      hasContent = true;
+    }
+
+    if (groups["DIPROSES"].length > 0) {
+      teks += `🟡 *DIPROSES / ANTRIAN (${groups["DIPROSES"].length}):*\n`;
+      groups["DIPROSES"].forEach(function(item, idx) {
+        teks += `${idx + 1}. ${item.nama} | ${item.npsn} | _*Diproses*_\n`;
+      });
+      teks += `\n`;
+      hasContent = true;
+    }
+
+    if (groups["REVISI"].length > 0) {
+      teks += `🟠 *PERLU REVISI (${groups["REVISI"].length}):*\n`;
+      groups["REVISI"].forEach(function(item, idx) {
+        teks += `${idx + 1}. ${item.nama} | ${item.npsn} | _*Revisi*_\n`;
+      });
+      teks += `\n`;
+      hasContent = true;
+    }
+
+    if (groups["DITOLAK"].length > 0) {
+      teks += `🔴 *DITOLAK (${groups["DITOLAK"].length}):*\n`;
+      groups["DITOLAK"].forEach(function(item, idx) {
+        teks += `${idx + 1}. ${item.nama} | ${item.npsn} | _*Ditolak*_\n`;
+      });
+      teks += `\n`;
+      hasContent = true;
+    }
+
+    if (groups["LAINNYA"].length > 0) {
+      teks += `⚪ *STATUS LAINNYA (${groups["LAINNYA"].length}):*\n`;
+      groups["LAINNYA"].forEach(function(item, idx) {
+        teks += `${idx + 1}. ${item.nama} | ${item.npsn} | _*${item.statusOriginal}*_\n`;
+      });
+      teks += `\n`;
+      hasContent = true;
+    }
+
+    teks += `Terima kasih sudah melaporkan. Bagi sekolah yang berstatus *Revisi* mohon untuk segera diperbaiki melalui SIKS-REBORN. 🙏`;
+
+    navigator.clipboard.writeText(teks).then(function() {
+      Sultan.notif.sukses('Daftar sudah unggah berhasil disalin ke Clipboard.');
+    }).catch(function() {
+      Sultan.alert('error', 'Gagal Menyalin', 'Browser Anda tidak mendukung Clipboard API.');
+    });
   }
 </script>
