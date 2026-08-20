@@ -1164,7 +1164,8 @@ function getEfileDashboardData(idKategori, namaKategori, forceRefresh) {
               unit: unitName,
               tahun: periodeKey,
               npsn: npsn,
-              status: pStatus || "Diproses"
+              status: pStatus || "Diproses",
+              statusPeg: ptk.status || ""
             });
           } else {
             belumUnit++;
@@ -1173,7 +1174,8 @@ function getEfileDashboardData(idKategori, namaKategori, forceRefresh) {
               nip: ptk.nip,
               unit: unitName,
               tahun: periodeKey,
-              npsn: npsn
+              npsn: npsn,
+              statusPeg: ptk.status || ""
             });
           }
         });

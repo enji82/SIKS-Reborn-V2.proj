@@ -92,6 +92,18 @@
             </select>
             <i class="fas fa-chevron-down"></i>
           </div>
+          <!-- Filter Status Kepegawaian SKP (hanya muncul untuk jenis SKP) -->
+          <div class="sultan-filter-item" id="efiledash_filterKepegContainer" style="display: none;">
+            <select id="efiledash_filterKepeg" class="form-control" aria-label="Pilih Status Kepegawaian">
+              <option value="SEMUA">- Semua Kepegawaian -</option>
+              <option value="PNS">PNS</option>
+              <option value="CPNS">CPNS</option>
+              <option value="PPPK">PPPK</option>
+              <option value="PPPK Paruh Waktu">PPPK Paruh Waktu</option>
+              <option value="Non ASN">Non ASN</option>
+            </select>
+            <i class="fas fa-chevron-down"></i>
+          </div>
           <!-- Filter Unit / Sekolah -->
           <div class="sultan-filter-item" id="efiledash_filterUnitContainer" style="display: none;">
             <select id="efiledash_filterUnit" class="form-control" aria-label="Pilih Unit Kerja">
@@ -239,7 +251,7 @@ $(document).ready(function() {
         }
     });
     $(document).off('change', '#efiledash_filterKategori').on('change', '#efiledash_filterKategori', function() { var k = $(this).val(); if (k) efiledash_loadDataKategori(k); });
-    $(document).off('change', '#efiledash_filterTahun, #efiledash_filterUnit, #efiledash_filterKategoriSkp').on('change', '#efiledash_filterTahun, #efiledash_filterUnit, #efiledash_filterKategoriSkp', function() {
+    $(document).off('change', '#efiledash_filterTahun, #efiledash_filterUnit, #efiledash_filterKategoriSkp, #efiledash_filterKepeg').on('change', '#efiledash_filterTahun, #efiledash_filterUnit, #efiledash_filterKategoriSkp, #efiledash_filterKepeg', function() {
         if (EFILEDASH_MODE === "DOKUMEN") {
             efiledash_terapkanFilterLokal();
         } else {
@@ -337,6 +349,7 @@ function efiledash_loadDataKategori(idKategori, forceRefresh) {
         EFILEDASH_TAHUN_DEFAULTED = false;
         EFILEDASH_SKP_TAHUN_DEFAULTED = false;
         $('#efiledash_filterKategoriSkp').val('SEMUA');
+        $('#efiledash_filterKepeg').val('SEMUA');
 
         if (EFILEDASH_IS_ADMIN || EFILEDASH_USE_NPSN_FILTER) efiledash_initDropdownUnit();
         efiledash_initDropdownTahun();
@@ -349,7 +362,7 @@ function efiledash_loadDataKategori(idKategori, forceRefresh) {
 
     EFILEDASH_PENDING_REQ = 1;
     var btn = $('#efiledash_btnRefresh'); btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin text-maroon"></i>');
-    $('#efiledash_filterKategori, #efiledash_filterTahun, #efiledash_filterUnit').prop('disabled', true);
+    $('#efiledash_filterKategori, #efiledash_filterTahun, #efiledash_filterUnit, #efiledash_filterKategoriSkp, #efiledash_filterKepeg').prop('disabled', true);
 
     $('#efiledash_lblTableKategori').text(mapData.namaKategori);
 
@@ -362,7 +375,7 @@ function efiledash_loadDataKategori(idKategori, forceRefresh) {
     google.script.run.withSuccessHandler(function(jsonStr) {
         EFILEDASH_PENDING_REQ = 0;
         btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
-        $('#efiledash_filterKategori, #efiledash_filterTahun').prop('disabled', false);
+        $('#efiledash_filterKategori, #efiledash_filterTahun, #efiledash_filterKategoriSkp, #efiledash_filterKepeg').prop('disabled', false);
         if (EFILEDASH_IS_ADMIN || EFILEDASH_USE_NPSN_FILTER) $('#efiledash_filterUnit').prop('disabled', false);
         $('.card-loading-overlay').remove();
 
@@ -381,6 +394,7 @@ function efiledash_loadDataKategori(idKategori, forceRefresh) {
         EFILEDASH_TAHUN_DEFAULTED = false;
         EFILEDASH_SKP_TAHUN_DEFAULTED = false;
         $('#efiledash_filterKategoriSkp').val('SEMUA');
+        $('#efiledash_filterKepeg').val('SEMUA');
 
         if (EFILEDASH_IS_ADMIN || EFILEDASH_USE_NPSN_FILTER) efiledash_initDropdownUnit();
         efiledash_initDropdownTahun();
@@ -446,12 +460,15 @@ function efiledash_initDropdownTahun() {
         
         // Tampilkan filter Kategori SKP
         $('#efiledash_filterKategoriSkpContainer').show();
+        $('#efiledash_filterKepegContainer').show();
         return;
     }
     
     // Sembunyikan filter kategori SKP jika bukan SKP
     $('#efiledash_filterKategoriSkpContainer').hide();
     $('#efiledash_filterKategoriSkp').val('SEMUA');
+    $('#efiledash_filterKepegContainer').hide();
+    $('#efiledash_filterKepeg').val('SEMUA');
     
     EFILEDASH_CACHE_REKAP.concat(EFILEDASH_CACHE_BELUM).forEach(function(r) {
         var thn = String(r.tahun || "").trim(); if (thn && thn !== "-") uniqueTahun.add(thn);
@@ -659,6 +676,7 @@ function efiledash_terapkanFilterLokal() {
     // Untuk SKP: filter menggunakan kombinasi Tahun + Kategori SKP
     if (EFILEDASH_JENIS_PERIODE === "SKP") {
         var fKatSkp = String($('#efiledash_filterKategoriSkp').val() || "SEMUA").trim();
+        var fKepeg = String($('#efiledash_filterKepeg').val() || "SEMUA").trim().toUpperCase();
         var validSkpParts = ["Sasaran", "Triwulan 1", "Triwulan 2", "Triwulan 3", "Triwulan 4", "Tahunan"];
         
         // Selesaikan resolvedTahun untuk SKP jika SEMUA
@@ -677,6 +695,11 @@ function efiledash_terapkanFilterLokal() {
             if (resolvedTahunSkp !== "SEMUA" && resolvedTahunSkp !== "" && year !== resolvedTahunSkp) return false;
             // Filter kategori
             if (fKatSkp !== "SEMUA" && fKatSkp !== "" && kategori !== fKatSkp) return false;
+            // Filter status kepegawaian
+            if (fKepeg !== "SEMUA" && fKepeg !== "") {
+                var rKepeg = String(r.statusPeg || "").trim().toUpperCase();
+                if (rKepeg !== fKepeg) return false;
+            }
             return true;
         }
         
@@ -764,32 +787,21 @@ function efiledash_renderDashboard(dataRekap, dataSudah, dataBelum, fTahun) {
         $('#efiledash_containerTabelUnit').show();
         var mapUnit = {};
         
-        if (fTahun === "SEMUA") {
-            // Jika Semua Tahun, bangun rekap unit dari dataSudah dan dataBelum distinct agar akurat
-            // Loop dataSudah distinct
-            dataSudah.forEach(function(s) {
-                var uni = s.unit || "Lainnya";
-                if (!mapUnit[uni]) { mapUnit[uni] = { jml: 0, sudah: 0, belum: 0 }; }
-                mapUnit[uni].sudah++;
-                mapUnit[uni].jml++;
-            });
-            // Loop dataBelum distinct
-            dataBelum.forEach(function(b) {
-                var uni = b.unit || "Lainnya";
-                if (!mapUnit[uni]) { mapUnit[uni] = { jml: 0, sudah: 0, belum: 0 }; }
-                mapUnit[uni].belum++;
-                mapUnit[uni].jml++;
-            });
-        } else {
-            // Jika periode tertentu dipilih, gunakan rekapMetrics bawaan
-            rekapMetrics.forEach(function(r) {
-                var uni = r.unit || "Lainnya";
-                if (!mapUnit[uni]) { mapUnit[uni] = { jml: 0, sudah: 0, belum: 0 }; }
-                mapUnit[uni].jml += parseInt(r.jml) || 0;
-                mapUnit[uni].sudah += parseInt(r.sudah) || 0;
-                mapUnit[uni].belum += parseInt(r.belum) || 0;
-            });
-        }
+        // Bangun rekap unit dari dataSudah dan dataBelum agar akurat
+        // Loop dataSudah
+        dataSudah.forEach(function(s) {
+            var uni = s.unit || "Lainnya";
+            if (!mapUnit[uni]) { mapUnit[uni] = { jml: 0, sudah: 0, belum: 0 }; }
+            mapUnit[uni].sudah++;
+            mapUnit[uni].jml++;
+        });
+        // Loop dataBelum
+        dataBelum.forEach(function(b) {
+            var uni = b.unit || "Lainnya";
+            if (!mapUnit[uni]) { mapUnit[uni] = { jml: 0, sudah: 0, belum: 0 }; }
+            mapUnit[uni].belum++;
+            mapUnit[uni].jml++;
+        });
 
         if ($.fn.DataTable.isDataTable('#efiledash_tabelRekap')) {
             $('#efiledash_tabelRekap').DataTable().destroy();
@@ -872,31 +884,18 @@ function efiledash_renderDashboard(dataRekap, dataSudah, dataBelum, fTahun) {
     var totAsn = 0, totSudah = 0, totBelum = 0;
     var totDiproses = 0, totDisetujui = 0, totRevisi = 0, totDitolak = 0;
 
-    if (fTahun === "SEMUA") {
-        // Jika Semua Tahun, hitung metric card langsung dari list distinct
-        totSudah = dataSudah.length;
-        totBelum = dataBelum.length;
-        totAsn = totSudah + totBelum;
-        dataSudah.forEach(function(s) {
-            var st = String(s.status || "").toLowerCase();
-            if (st.includes("setuju") || st.includes("ok") || st.includes("valid")) totDisetujui++;
-            else if (st.includes("proses") || st.includes("pending") || st.includes("menunggu")) totDiproses++;
-            else if (st.includes("revisi")) totRevisi++;
-            else if (st.includes("tolak") || st.includes("ditolak")) totDitolak++;
-            else totDiproses++; // fallback
-        });
-    } else {
-        rekapMetrics = efiledash_getRekapForMetrics(dataRekap, fTahun);
-        rekapMetrics.forEach(function(r) {
-            totAsn += parseInt(r.jml) || 0;
-            totSudah += parseInt(r.sudah) || 0;
-            totBelum += parseInt(r.belum) || 0;
-            totDiproses += parseInt(r.diproses) || 0;
-            totDisetujui += parseInt(r.disetujui) || 0;
-            totRevisi += parseInt(r.revisi) || 0;
-            totDitolak += parseInt(r.ditolak) || 0;
-        });
-    }
+    // Hitung metric card langsung dari list dataSudah dan dataBelum
+    totSudah = dataSudah.length;
+    totBelum = dataBelum.length;
+    totAsn = totSudah + totBelum;
+    dataSudah.forEach(function(s) {
+        var st = String(s.status || "").toLowerCase();
+        if (st.includes("setuju") || st.includes("ok") || st.includes("valid")) totDisetujui++;
+        else if (st.includes("proses") || st.includes("pending") || st.includes("menunggu")) totDiproses++;
+        else if (st.includes("revisi")) totRevisi++;
+        else if (st.includes("tolak") || st.includes("ditolak")) totDitolak++;
+        else totDiproses++; // fallback
+    });
 
     efiledash_animateValue('efiledash_cardTotalSekolah', totAsn);
     efiledash_animateValue('efiledash_cardSudah', totSudah);
@@ -995,6 +994,7 @@ function efiledash_setDashboardMode(mode) {
         // Saring filter-filter yang tampil
         $('#efiledash_filterKategoriContainer').hide();
         $('#efiledash_filterKategoriSkpContainer').hide();
+        $('#efiledash_filterKepegContainer').hide();
         $('#efiledash_filterUnitContainer').show(); // Unit wajib tampil untuk disaring
         
         // Show/Hide tabel yang tepat
