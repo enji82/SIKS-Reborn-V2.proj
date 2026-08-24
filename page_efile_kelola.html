@@ -11,6 +11,13 @@
                 <i class="fas fa-chevron-down"></i>
             </div>
 
+            <div class="sultan-filter-item" id="efilekelola_filterStatusPegawaiContainer">
+                <select id="efilekelola_filterStatusPegawai" class="form-control">
+                    <option value="SEMUA">- Semua Status Pegawai -</option>
+                </select>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+
             <div class="sultan-filter-item">
                 <select id="efilekelola_filterKategori" class="form-control">
                     <option value="SEMUA">- Semua Kategori -</option>
@@ -455,7 +462,7 @@ $(document).ready(function() {
             }
         });
     }
-    $(document).off('change', '#efilekelola_filterStatus, #efilekelola_filterKategori, #efilekelola_filterTahun, #efilekelola_filterPeriode').on('change', '#efilekelola_filterStatus, #efilekelola_filterKategori, #efilekelola_filterTahun, #efilekelola_filterPeriode', efilekelola_terapkanFilterLokal);
+    $(document).off('change', '#efilekelola_filterStatus, #efilekelola_filterKategori, #efilekelola_filterTahun, #efilekelola_filterPeriode, #efilekelola_filterStatusPegawai').on('change', '#efilekelola_filterStatus, #efilekelola_filterKategori, #efilekelola_filterTahun, #efilekelola_filterPeriode, #efilekelola_filterStatusPegawai', efilekelola_terapkanFilterLokal);
     $(document).on('change', '#efilekelola_filterKategori', function() {
         var katId = $(this).val();
         var katData = EFILEKELOLA_MASTER_KAT.find(function(k) { return String(k.idKat).trim() === String(katId).trim(); });
@@ -740,6 +747,16 @@ function efilekelola_initMasterData() {
     google.script.run.withSuccessHandler(function(json) {
         var res = JSON.parse(json); if(!res.success) { $('#efilekelola_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>' + efilekelola_escapeHtml(res.message) + '</span>'); return; }
         EFILEKELOLA_MASTER_KAT = res.kategori || []; EFILEKELOLA_MASTER_PTK = res.ptk || [];
+        // BIND FILTER STATUS PEGAWAI
+        var uniqueStatuses = new Set();
+        EFILEKELOLA_MASTER_PTK.forEach(function(p) {
+            if (p.status) uniqueStatuses.add(String(p.status).trim());
+        });
+        var filterSp = $('#efilekelola_filterStatusPegawai');
+        filterSp.empty().append('<option value="SEMUA">- Semua Status Pegawai -</option>');
+        Array.from(uniqueStatuses).sort().forEach(function(st) {
+            filterSp.append($('<option>', {value: st, text: st}));
+        });
         if (!EFILEKELOLA_IS_ADMIN && EFILEKELOLA_MASTER_PTK.length > 0) { EFILEKELOLA_UNIT_TERKUNCI = EFILEKELOLA_MASTER_PTK[0].unit || "UNIT_ANDA"; $('#efilekelola_filterContainer').show(); $('#efilekelola_filterUnit').empty().append($('<option>', {value: EFILEKELOLA_NPSN_TERKUNCI, text: EFILEKELOLA_UNIT_TERKUNCI})).prop('disabled', true); }
         var hk = '<option value="SEMUA">- Semua Kategori -</option>'; EFILEKELOLA_MASTER_KAT.forEach(function(k) { hk += `<option value="${k.idKat}">${k.namaKat}</option>`; }); $('#efilekelola_filterKategori').html(hk);
         $('#efilekelola_btnTambah').prop('disabled', false); efilekelola_tarikDataServer();
@@ -806,6 +823,7 @@ function efilekelola_terapkanFilterLokal() {
     var fN = EFILEKELOLA_IS_ADMIN ? $('#efilekelola_filterUnit').val() : "";
     var fT = $('#efilekelola_filterTahun').val() || "SEMUA";
     var fP = $('#efilekelola_filterPeriode').val() || "SEMUA";
+    var fSP = $('#efilekelola_filterStatusPegawai').val() || "SEMUA";
 
     var hasil = EFILEKELOLA_CACHE_DATA.filter(function(r) {
         var st = String(r.status || "").toLowerCase(); var rn = String(r.npsn || "");
@@ -814,6 +832,11 @@ function efilekelola_terapkanFilterLokal() {
         if (fS !== "semua" && fS !== "") { var ns = "diproses"; if (st.includes('setuju') || st.includes('ok')) ns = "disetujui"; else if (st.includes('revisi')) ns = "revisi"; else if (st.includes('tolak')) ns = "ditolak"; if (ns !== fS) return false; }
         if (fT !== "SEMUA" && String(r.tahun || "").trim() !== fT) return false;
         if (fP !== "SEMUA" && String(r.periode || "").trim() !== fP) return false;
+        if (fSP !== "SEMUA" && fSP !== "") {
+            var ptk = EFILEKELOLA_MASTER_PTK.find(function(p) { return String(p.id_ptk).trim() === String(r.id_ptk).trim(); });
+            var pStatus = ptk ? String(ptk.status || "").trim() : "";
+            if (pStatus !== fSP) return false;
+        }
         return true;
     }); efilekelola_renderTabel(hasil);
 }
