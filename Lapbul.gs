@@ -536,7 +536,10 @@ function cekKelengkapanLaporanSebelumnya(npsn, jenjang, bulan, tahun, isEditMode
         }
         
         if (bulanClean.toLowerCase() === "juli") {
-            return { success: true, message: "Valid" };
+            var lastRep = getLastUploadedReportInfo(sheet, npsn, idxNpsn, idxBulan, idxTahun, idxStatus);
+            if (!lastRep) {
+                return { success: true, message: "Valid" };
+            }
         }
         
         var prevExists = false;
