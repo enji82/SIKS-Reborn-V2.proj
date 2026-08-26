@@ -925,8 +925,14 @@ function efiledash_renderDashboard(dataRekap, dataSudah, dataBelum, fTahun) {
     if (dataSudah.length === 0) { uiSudah = SultanUI.renderListEmptyWarning('Belum Ada Data', 'Belum ada pegawai yang mengunggah dokumen.'); }
     else {
         dataSudah.forEach(function(b, idx) {
-            var extraAttrs = 'class="list-group-item efiledash-dash-item-sudah py-2 px-3 hover-sultan"';
-            uiSudah += SultanUI.renderListItem(idx + 1, b.nama, 'NIP: ' + (b.nip || '-'), b.unit + ' (' + b.tahun + ')', 'success', extraAttrs);
+            var stLower = String(b.status || "").toLowerCase();
+            var statusType = 'success';
+            if (stLower.indexOf("revisi") > -1) statusType = 'warning';
+            else if (stLower.indexOf("proses") > -1 || stLower.indexOf("pending") > -1 || stLower.indexOf("menunggu") > -1) statusType = 'info';
+            else if (stLower.indexOf("tolak") > -1 || stLower.indexOf("ditolak") > -1) statusType = 'danger';
+            
+            var extraAttrs = 'class="list-group-item efiledash-dash-item-sudah py-2 px-3 hover-sultan" data-status="' + efiledash_esc(b.status) + '"';
+            uiSudah += SultanUI.renderListItem(idx + 1, b.nama, 'NIP: ' + (b.nip || '-'), b.unit + ' (' + b.tahun + ') | ' + (b.status || 'Diproses'), statusType, extraAttrs);
         });
     }
     $('#efiledash_listSudah').html(uiSudah); $('#efiledash_inputCariSudah').val('');
@@ -1198,16 +1204,50 @@ function efiledash_renderTabelSekolahLengkapData(rekapData, namaSekolah) {
 
 function efiledash_salinKeWA() {
     var listEl = $('.efiledash-dash-item-belum:visible');
-    if (listEl.length === 0) { Sultan.notif.info('Tidak ada data pada daftar belum unggah untuk disalin.'); return; }
+    var listRevisi = $('.efiledash-dash-item-sudah:visible').filter(function() {
+        var status = String($(this).attr('data-status') || "").toLowerCase();
+        return status.indexOf('revisi') > -1;
+    });
+
+    if (listEl.length === 0 && listRevisi.length === 0) { 
+        Sultan.notif.info('Tidak ada data pada daftar belum unggah atau revisi untuk disalin.'); 
+        return; 
+    }
+
     var selNamaKat = $('#efiledash_filterKategori option:selected').text();
     var selTahun = $('#efiledash_filterTahun').val() === "SEMUA" ? "Semua Tahun" : $('#efiledash_filterTahun').val();
+    var isSkp = (EFILEDASH_JENIS_PERIODE === "SKP");
+    var subKat = isSkp ? $('#efiledash_filterKategoriSkp option:selected').text() : "";
+    var statusKepeg = isSkp ? $('#efiledash_filterKepeg option:selected').text() : "";
+
     var teks = "🚨 *DAFTAR PEGAWAI BELUM UNGGAH E-FILE* 🚨\n";
     teks += "Kategori: " + selNamaKat + "\n";
     teks += "Tahun: " + selTahun + "\n";
+    if (isSkp) {
+        teks += "Kategori: " + subKat + "\n";
+        teks += "Pegawai: " + statusKepeg + "\n";
+    }
     teks += "Total Belum Unggah: " + listEl.length + " Pegawai\n\n";
-    var no = 1;
-    listEl.each(function() { teks += no++ + ". " + $(this).find('.font-weight-bold.text-uppercase').first().text().trim() + "\n"; });
-    teks += "\nMohon segera mengunggah dokumen elektronik melalui sistem SIKS. Terima kasih. 🙏";
+    
+    if (listEl.length > 0) {
+        var no = 1;
+        listEl.each(function() { 
+            teks += no++ + ". " + $(this).find('.nama-asn').first().text().trim() + "\n"; 
+        });
+        teks += "\n";
+    }
+    
+    teks += "Perlu Revisi: " + listRevisi.length + " Pegawai\n";
+    if (listRevisi.length > 0) {
+        teks += "\n";
+        var noRev = 1;
+        listRevisi.each(function() { 
+            teks += noRev++ + ". " + $(this).find('.nama-asn').first().text().trim() + "\n"; 
+        });
+        teks += "\n";
+    }
+    
+    teks += "Mohon segera mengunggah scan dokumen melalui SIKS-Reborn. Terima kasih. 🙏";
     navigator.clipboard.writeText(teks).then(function() { Sultan.notif.sukses('Daftar berhasil disalin ke Clipboard (Siap Paste di WhatsApp).'); }).catch(function() { Sultan.alert('error','Gagal Menyalin','Browser Anda tidak mendukung Clipboard API.'); });
 }
 
