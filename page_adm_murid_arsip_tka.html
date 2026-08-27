@@ -264,31 +264,95 @@
     var ARSIPTKA_CACHE_DATA = [];
     var ARSIPTKA_TABEL_INSTANCE = null;
 
-    // Filter Bar Setup
-    var filterBarConfig = {
-      id: 'arsiptka',
-      showAdd: true,
-      labelAdd: 'TAMBAH',
-      placeholderSekolah: '- Semua Sekolah -',
-      showTahun: true,
-      showSekolah: true,
-      showStatus: true
-    };
-    $('#arsiptka_filterBarArea').html(SultanUI.renderFilterBar(filterBarConfig));
+    // Inisialisasi Filter Bar
+    var filtersConfig = [
+      { id: 'arsiptka_filterSekolah', placeholder: '- Memvalidasi Akses... -', disabled: true },
+      { id: 'arsiptka_filterTahun', placeholder: '- Memuat TA... -', disabled: true },
+      { id: 'arsiptka_filterStatus', placeholder: '- Pilih Status... -', disabled: false }
+    ];
+    var extraButtons = `
+        <div class="divider-vertical d-none d-md-block mx-2"></div>
+        <button type="button" id="arsiptka_btnRefresh" class="sultan-btn-refresh" title="Segarkan Data Server">
+            <i class="fas fa-sync-alt"></i>
+        </button>
+        <div class="ml-auto d-none d-md-block"></div>
+        <button type="button" id="arsiptka_btnTambah" class="sultan-btn-tambah" disabled>
+            <i class="fas fa-plus"></i> TAMBAH
+        </button>
+    `;
+    $('#arsiptka_filterBarArea').html(SultanUI.renderFilterBar(filtersConfig, extraButtons));
+    $('#arsiptka_filterSekolah_container').addClass('sultan-filter-unit-width');
 
-    SultanUI.initFilterComponents('arsiptka', {
-      onTahunChange: function () { terapkanFilterLokalArsipTka(); },
-      onSekolahChange: function () { terapkanFilterLokalArsipTka(); },
-      onStatusChange: function () { terapkanFilterLokalArsipTka(); },
-      onAddClick: function () { arsiptka_bukaModalTambah(); },
-      onRefreshClick: function (btn) { loadArsipTkaData(btn); }
-    });
+    // Inisialisasi Dropdown Status
+    var htmlStatus = `
+      <option value="SEMUA">- Semua Status -</option>
+      <option value="DIPROSES">Diproses</option>
+      <option value="DISETUJUI">Disetujui</option>
+      <option value="DICETAK">Dicetak</option>
+      <option value="REVISI">Revisi</option>
+      <option value="DITOLAK">Ditolak</option>
+    `;
+    $('#arsiptka_filterStatus').html(htmlStatus).val('SEMUA');
 
-    // Populate Filters
-    SultanUI.populateTahunSelect('#arsiptka_filterTahun');
-    SultanUI.populateTahunSelect('#arsiptka_in_tahun');
-    SultanUI.populateSekolahSelect('#arsiptka_filterSekolah');
-    SultanUI.populateSekolahSelect('#arsiptka_in_sekolah');
+    // Inisialisasi Filter Tahun Ajaran
+    var now = new Date(); var curYear = now.getFullYear(); var curMonth = now.getMonth();
+    // Tahun ajaran berjalan saat ini
+    var curTahunAjaran = (curMonth >= 6) ? curYear + "/" + (curYear + 1) : (curYear - 1) + "/" + curYear;
+    
+    // Default filter adalah tahun ajaran tahun lalu
+    var parts = curTahunAjaran.split("/");
+    var prevStart = parseInt(parts[0], 10) - 1;
+    var prevEnd = parseInt(parts[1], 10) - 1;
+    var currentTahunAjaran = prevStart + "/" + prevEnd;
+
+    var htmlTahun = '<option value="SEMUA">- Semua Tahun -</option>';
+    var formTahun = '<option value="">- Pilih Tahun Ajaran -</option>';
+    for (var y = 2023; y <= curYear + 1; y++) {
+      var ta = y + "/" + (y + 1);
+      htmlTahun += '<option value="' + ta + '">' + ta + '</option>';
+      formTahun += '<option value="' + ta + '">' + ta + '</option>';
+    }
+    $('#arsiptka_filterTahun').html(htmlTahun).val(currentTahunAjaran).prop('disabled', false);
+    $('#arsiptka_in_tahun').html(formTahun);
+
+    var listMasterSekolah = [];
+
+    // Ambil daftar sekolah & inisialisasi filter sekolah
+    google.script.run.withSuccessHandler(function (resRaw) {
+      var res = JSON.parse(resRaw);
+      if (res.success) {
+        listMasterSekolah = res.sekolah;
+        var filterSekolah = $('#arsiptka_filterSekolah');
+        var inSekolah = $('#arsiptka_in_sekolah');
+
+        filterSekolah.empty();
+        inSekolah.empty();
+
+        if (ARSIPTKA_IS_ADMIN) {
+          filterSekolah.append('<option value="SEMUA">- Semua Sekolah -</option>');
+          inSekolah.append('<option value="">- Pilih Sekolah -</option>');
+          res.sekolah.forEach(function (s) {
+            var isSD = String(s.jenjang || "").toUpperCase() === "SD";
+            if (isSD) {
+              filterSekolah.append('<option value="' + s.npsn + '">' + s.nama + '</option>');
+              inSekolah.append('<option value="' + s.npsn + '" data-nama="' + s.nama + '">' + s.nama + '</option>');
+            }
+          });
+          filterSekolah.prop('disabled', false);
+          inSekolah.removeClass('d-none').prop('disabled', false);
+          $('#arsiptka_in_sekolah_display').addClass('d-none');
+        } else {
+          var userNpsn = userLogin.npsn || userLogin.username || "";
+          filterSekolah.append('<option value="' + userNpsn + '">' + userLogin.unit + '</option>');
+          filterSekolah.prop('disabled', true);
+
+          inSekolah.addClass('d-none');
+          $('#arsiptka_in_sekolah_display').removeClass('d-none').val(userLogin.unit || userLogin.nama || '-');
+          $('#arsiptka_in_sekolah_hidden').val(userNpsn);
+        }
+        $('#arsiptka_btnTambah').prop('disabled', false);
+      }
+    }).getAdmSekolahMasterData("SEMUA");
 
     // Auto-calculate Total Murid
     $(document).off('input', '.input-hitung-arsip-tka').on('input', '.input-hitung-arsip-tka', function () {
@@ -298,7 +362,7 @@
     function hitungTotalMuridArsipTka() {
       var l = parseInt($('#arsiptka_in_l').val()) || 0;
       var p = parseInt($('#arsiptka_in_p').val()) || 0;
-      $('#arsiptka_lbl_total').text((l + p).toLocaleString('id-ID'));
+      $('#arsiptka_lbl_total').text(l + p);
     }
 
     // File Input Styling Helper
@@ -309,6 +373,19 @@
       } else {
         $(this).next('.custom-file-label').removeClass("selected font-weight-bold").css('color', '').text('Pilih PDF Sertifikat TKA...');
       }
+    });
+
+    // Event Filter Handlers
+    $(document).off('change', '#arsiptka_filterTahun, #arsiptka_filterSekolah, #arsiptka_filterStatus').on('change', '#arsiptka_filterTahun, #arsiptka_filterSekolah, #arsiptka_filterStatus', function () {
+      terapkanFilterLokalArsipTka();
+    });
+
+    $(document).off('click', '#arsiptka_btnRefresh').on('click', '#arsiptka_btnRefresh', function () {
+      loadArsipTkaData();
+    });
+
+    $(document).off('click', '#arsiptka_btnTambah').on('click', '#arsiptka_btnTambah', function () {
+      arsiptka_bukaModalTambah();
     });
 
     // Load Data
