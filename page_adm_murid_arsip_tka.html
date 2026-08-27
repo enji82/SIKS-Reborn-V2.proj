@@ -239,14 +239,12 @@
           placeholder="Berikan alasan keputusan verifikasi..."></textarea>
       </div>
     </div>
-    <div class="modal-footer modal-footer-sultan justify-content-between p-3 flex-shrink-0"
-      style="background: var(--bg-putih-sultan); border-top:1px solid rgba(0,0,0,0.08);">
+    <div class="modal-verifikasi-footer" id="arsiptka_verifFooter">
       <button type="button" class="modal-btn-batal" data-dismiss="modal">
-        <i class="fas fa-times mr-2"></i>BATAL
-      </button>
-      <button type="submit" class="modal-btn-simpan">
-        <i class="fas fa-save mr-2"></i>SIMPAN VERIFIKASI
-      </button>
+        <i class="fas fa-times mr-2"></i>BATAL</button>
+      <button type="submit" id="arsiptka_btnSimpanVerif" class="modal-verifikasi-btn-verifikasi"
+        form="arsiptka_formVerif">
+        <i class="fas fa-check mr-2"></i>VERIFIKASI</button>
     </div>
   </form>
 </div>
@@ -792,19 +790,39 @@
       $('#arsiptka_verif_status').val(raw.status || '');
       $('#arsiptka_verif_catatan').val(raw.catatan || '');
 
-      $('#global_modalFormSize').removeClass('modal-xl modal-lg').addClass('modal-md');
-      $('#global_modalFormHeader').removeClass('modal-header-sultan-primary modal-header-sultan-warning modal-header-sultan-danger modal-header-sultan-success modal-header-sultan-info modal-header-sultan-dark modal-header-tambah-edit modal-header-edit modal-header-hapus').addClass('modal-header-sultan-primary');
-      $('#global_modalFormTitle').html('<i class="fas fa-clipboard-check mr-3 shadow-sm"></i> VERIFIKASI ARSIP SERTIFIKAT TKA');
-      $('#global_modalFormBody, #global_modalFormFooter').hide();
-      $('#arsiptka_formVerif').appendTo('#global_modalFormSize .modal-content');
+      $('#arsiptka_btnSimpanVerif').prop('disabled', false).html('<i class="fas fa-check mr-2"></i>VERIFIKASI');
+      arsiptka_cekStatusVerif(raw.status);
 
-      $('#global_modalForm').off('hidden.bs.modal.arsiptka').on('hidden.bs.modal.arsiptka', function () {
-        $('#arsiptka_formVerif').appendTo('#arsiptka_templates');
-        $('#global_modalFormBody, #global_modalFormFooter').show();
+      var defaultUrl = raw.url_file || '';
+
+      Sultan.modal.verifikasi({
+        title: 'VERIFIKASI ARSIP SERTIFIKAT TKA',
+        url: defaultUrl,
+        isImage: false,
+        formHtml: $('#arsiptka_formVerif').show()
       });
 
-      $('#global_modalForm').modal('show');
+      $('#arsiptka_verifFooter').appendTo('#global_verifikasiFooterArea').show();
+      $('#global_verifikasiFooterArea').show();
+
+      $('#global_modalVerifikasi').off('hidden.bs.modal.arsiptkaverif').on('hidden.bs.modal.arsiptkaverif', function () {
+        $('#arsiptka_verifFooter').appendTo('#arsiptka_formVerif');
+        $('#arsiptka_formVerif').appendTo('#arsiptka_templates');
+        $('#global_verifikasiFooterArea').hide();
+      });
     });
+
+    $(document).off('change', '#arsiptka_verif_status').on('change', '#arsiptka_verif_status', function () {
+      arsiptka_cekStatusVerif($(this).val());
+    });
+
+    function arsiptka_cekStatusVerif(val) {
+      if (val === 'Revisi' || val === 'Ditolak') {
+        $('#arsiptka_verif_catatan').attr('placeholder', 'Jelaskan alasan revisi/penolakan kepada user...').focus();
+      } else {
+        $('#arsiptka_verif_catatan').attr('placeholder', 'Catatan opsional (misal: Data sudah sesuai).');
+      }
+    }
 
     // Submit Verifikasi Form
     $(document).off('submit', '#arsiptka_formVerif').on('submit', '#arsiptka_formVerif', function (e) {
@@ -819,7 +837,7 @@
         Sultan.loading.tutup();
         var res = JSON.parse(resRaw);
         if (res.success) {
-          $('#global_modalForm').modal('hide');
+          $('#global_modalVerifikasi').modal('hide');
           Sultan.notif.sukses("Verifikasi berhasil disimpan.");
           loadArsipTkaData();
         } else {
