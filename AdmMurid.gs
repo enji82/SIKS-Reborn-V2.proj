@@ -44,6 +44,13 @@ function getOrCreateSheetAdmMurid(sheetName) {
         "Nama_File_Transkrip", "URL_File_Transkrip", "ID_File_Transkrip",
         "Status", "Catatan", "Tgl_Upload", "Uploader", "Tgl_Edit", "User_Edit", "Read_by"
       ]]);
+    } else if (sheetName === "Arsip_TKA") {
+      sheet.getRange(1, 1, 1, 16).setValues([[
+        "NPSN", "Nama_Sekolah", "Tahun_Ajaran",
+        "Jumlah_Murid_L", "Jumlah_Murid_P", "Jumlah_Total",
+        "Nama_File", "URL_File", "ID_File",
+        "Status", "Catatan", "Tgl_Upload", "Uploader", "Tgl_Edit", "User_Edit", "Read_by"
+      ]]);
     }
   }
   return sheet;
@@ -550,10 +557,12 @@ function admMurid_getDashboardData(npsnFilter, tahunFilter) {
     var shSpmb = getOrCreateSheetAdmMurid("Database_SPMB");
     var shIjazah = getOrCreateSheetAdmMurid("Database_Ijazah");
     var shArsip = getOrCreateSheetAdmMurid("Arsip_Ijazah");
+    var shArsipTka = getOrCreateSheetAdmMurid("Arsip_TKA");
     
     var spmbData = shSpmb.getDataRange().getDisplayValues();
     var ijazahData = shIjazah.getDataRange().getDisplayValues();
     var arsipData = shArsip.getDataRange().getDisplayValues();
+    var arsipTkaData = shArsipTka.getDataRange().getDisplayValues();
     
     var shSekolah = getSheet("USER_DB", "Data_Sekolah");
     var sekolahData = shSekolah ? shSekolah.getDataRange().getDisplayValues() : [];
@@ -592,7 +601,8 @@ function admMurid_getDashboardData(npsnFilter, tahunFilter) {
         kecamatan: s.kecamatan,
         spmb: { status: "Belum Unggah", fileUrl: "", tglUpload: "", detail: null },
         ijazah: { status: "Belum Unggah", fileUrl: "", tglUpload: "", detail: null },
-        arsip_ijazah: { status: "Belum Unggah", fileUrl: "", tglUpload: "", detail: null }
+        arsip_ijazah: { status: "Belum Unggah", fileUrl: "", tglUpload: "", detail: null },
+        arsip_tka: { status: "Belum Unggah", fileUrl: "", tglUpload: "", detail: null }
       };
     });
     
@@ -662,10 +672,32 @@ function admMurid_getDashboardData(npsnFilter, tahunFilter) {
         };
       }
     }
+
+    for (var i = 1; i < arsipTkaData.length; i++) {
+      var npsn = String(arsipTkaData[i][0] || "").trim();
+      var thn = String(arsipTkaData[i][2] || "").trim();
+      var status = String(arsipTkaData[i][9] || "Diproses").trim();
+      
+      if (targetTahun && targetTahun !== "SEMUA" && thn !== targetTahun) continue;
+      
+      if (schoolStatusMap[npsn]) {
+        schoolStatusMap[npsn].arsip_tka = {
+          status: status,
+          fileUrl: arsipTkaData[i][7],
+          tglUpload: arsipTkaData[i][11],
+          detail: {
+            muridL: parseInt(arsipTkaData[i][3] || 0),
+            muridP: parseInt(arsipTkaData[i][4] || 0),
+            total: parseInt(arsipTkaData[i][5] || 0)
+          }
+        };
+      }
+    }
     
     var spmbStats = { jumlahSekolah: listSekolah.length, sudahUnggah: 0, belumUnggah: 0, diproses: 0, disetujui: 0, revisi: 0, ditolak: 0, muridL: 0, muridP: 0, totalMurid: 0 };
     var ijazahStats = { jumlahSekolah: listSekolah.length, sudahUnggah: 0, belumUnggah: 0, diproses: 0, disetujui: 0, revisi: 0, ditolak: 0, muridL: 0, muridP: 0, totalMurid: 0 };
     var arsipStats = { jumlahSekolah: listSekolah.length, sudahUnggah: 0, belumUnggah: 0, diproses: 0, disetujui: 0, revisi: 0, ditolak: 0, muridL: 0, muridP: 0, totalMurid: 0 };
+    var arsipTkaStats = { jumlahSekolah: listSekolah.length, sudahUnggah: 0, belumUnggah: 0, diproses: 0, disetujui: 0, revisi: 0, ditolak: 0, muridL: 0, muridP: 0, totalMurid: 0 };
     
     Object.keys(schoolStatusMap).forEach(function(npsn) {
       var school = schoolStatusMap[npsn];
@@ -726,6 +758,25 @@ function admMurid_getDashboardData(npsnFilter, tahunFilter) {
           arsipStats.totalMurid += arsip.detail.total;
         }
       }
+
+      // Arsip TKA Stats
+      var arsipTka = school.arsip_tka;
+      if (arsipTka.status === "Belum Unggah") {
+        arsipTkaStats.belumUnggah++;
+      } else {
+        arsipTkaStats.sudahUnggah++;
+        var statKey = arsipTka.status.toLowerCase();
+        if (statKey === "disetujui") arsipTkaStats.disetujui++;
+        else if (statKey === "diproses" || statKey === "dicetak") arsipTkaStats.diproses++;
+        else if (statKey === "revisi") arsipTkaStats.revisi++;
+        else if (statKey === "ditolak") arsipTkaStats.ditolak++;
+        
+        if (arsipTka.detail) {
+          arsipTkaStats.muridL += arsipTka.detail.muridL;
+          arsipTkaStats.muridP += arsipTka.detail.muridP;
+          arsipTkaStats.totalMurid += arsipTka.detail.total;
+        }
+      }
     });
     
     var finalSchoolList = Object.keys(schoolStatusMap).map(function(k) { return schoolStatusMap[k]; });
@@ -736,6 +787,7 @@ function admMurid_getDashboardData(npsnFilter, tahunFilter) {
       spmbStats: spmbStats,
       ijazahStats: ijazahStats,
       arsipStats: arsipStats,
+      arsipTkaStats: arsipTkaStats,
       detailSekolah: finalSchoolList
     });
   } catch (e) {
@@ -1269,5 +1321,271 @@ function getNotifikasiArsipIjazah(role, unit) {
   } catch (e) {
     Logger.log("Error getNotifikasiArsipIjazah: " + e.message);
     return { count: 0, recent: [] };
+  }
+}
+
+function admMurid_tandaiNotifArsipIjazahDibaca(rowId, role) {
+  try {
+    var sheet = getOrCreateSheetAdmMurid("Arsip_Ijazah");
+    var rIdx = parseInt(rowId);
+    if (isNaN(rIdx)) return false;
+
+    var currentReadBy = String(sheet.getRange(rIdx, 19).getDisplayValue() || "").trim();
+    var readMark = (role === "Admin") ? "Admin" : "User";
+
+    if (currentReadBy === "") {
+      sheet.getRange(rIdx, 19).setValue(readMark);
+    } else {
+      var list = currentReadBy.split(",");
+      if (list.indexOf(readMark) === -1) {
+        list.push(readMark);
+        sheet.getRange(rIdx, 19).setValue(list.join(","));
+      }
+    }
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+function admMurid_getArsipTkaData(npsnFilter) {
+  try {
+    var sheet = getOrCreateSheetAdmMurid("Arsip_TKA");
+    var values = sheet.getDataRange().getDisplayValues();
+    var result = [];
+    var targetNpsn = String(npsnFilter || "").trim().toUpperCase();
+
+    for (var i = 1; i < values.length; i++) {
+      var rNpsn = String(values[i][0]).trim();
+      var rNama = String(values[i][1]).trim();
+      if (!rNpsn) continue;
+
+      if (!targetNpsn || targetNpsn === "SEMUA" || String(rNpsn).trim() === targetNpsn || rNama.toUpperCase() === targetNpsn) {
+        result.push({
+          rowId: i + 1,
+          npsn: values[i][0],
+          nama_sekolah: values[i][1],
+          tahun_ajaran: values[i][2],
+          jumlah_murid_l: values[i][3],
+          jumlah_murid_p: values[i][4],
+          jumlah_total: values[i][5],
+          nama_file: values[i][6],
+          url_file: values[i][7],
+          id_file: values[i][8],
+          status: values[i][9],
+          catatan: values[i][10],
+          tgl_upload: values[i][11],
+          uploader: values[i][12],
+          tgl_edit: values[i][13],
+          user_edit: values[i][14],
+          read_by: values[i][15] || ""
+        });
+      }
+    }
+    return JSON.stringify({ success: true, data: result });
+  } catch (e) {
+    return JSON.stringify({ success: false, message: e.message });
+  }
+}
+
+function admMurid_simpanArsipTka(payload) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+    var sheet = getOrCreateSheetAdmMurid("Arsip_TKA");
+    var now = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
+
+    var isEdit = payload.rowId ? true : false;
+    var urlFile = payload.url_file || "";
+    var idFile = payload.id_file || "";
+
+    // Unggah Scan TKA ke subfolder tahun ajaran
+    if (payload.fileBase64) {
+      if (isEdit && idFile) {
+        try { DriveApp.getFileById(idFile).setTrashed(true); } catch(err) {}
+      }
+      var subFolder = getOrCreateArsipSubFolder(FOLDER_CONFIG.ARSIP_TKA_DOCS, payload.tahun_ajaran);
+      var blob = Utilities.newBlob(Utilities.base64Decode(payload.fileBase64), payload.mimeType || "application/pdf", payload.nama_file);
+      var file = subFolder.createFile(blob);
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      urlFile = file.getUrl();
+      idFile = file.getId();
+    }
+
+    var jmlL = parseInt(payload.jumlah_murid_l || 0);
+    var jmlP = parseInt(payload.jumlah_murid_p || 0);
+    var jmlTotal = jmlL + jmlP;
+
+    if (isEdit) {
+      var row = parseInt(payload.rowId);
+      var currentStatus = String(sheet.getRange(row, 10).getValue()).trim();
+      if (currentStatus.toLowerCase() === "disetujui" && (payload.user_login || "").toLowerCase() !== "admin") {
+        return JSON.stringify({ success: false, message: "Arsip yang telah disetujui tidak dapat diedit." });
+      }
+      sheet.getRange(row, 3, 1, 4).setValues([[payload.tahun_ajaran, jmlL, jmlP, jmlTotal]]);
+      sheet.getRange(row, 7, 1, 3).setValues([[payload.nama_file || "", urlFile, idFile]]);
+      sheet.getRange(row, 10).setValue("Diproses");
+      sheet.getRange(row, 14, 1, 2).setValues([[now, payload.user_login]]);
+    } else {
+      // Cek duplikat
+      var existingData = sheet.getDataRange().getDisplayValues();
+      var targetNpsn = String(payload.npsn || "").trim();
+      var targetTa = String(payload.tahun_ajaran || "").trim();
+      for (var i = 1; i < existingData.length; i++) {
+        var rowNpsn = String(existingData[i][0] || "").trim();
+        var rowTa = String(existingData[i][2] || "").trim();
+        if (!rowNpsn || !rowTa) continue;
+        if (rowNpsn === targetNpsn && rowTa === targetTa) {
+          return JSON.stringify({ success: false, message: "Arsip TKA untuk Tahun Ajaran " + payload.tahun_ajaran + " sudah ada." });
+        }
+      }
+      sheet.appendRow([
+        payload.npsn, payload.nama_sekolah, payload.tahun_ajaran,
+        jmlL, jmlP, jmlTotal,
+        payload.nama_file || "", urlFile, idFile,
+        "Diproses", "",
+        now, payload.user_login, "", "", ""
+      ]);
+    }
+
+    try { invalidateNotifCacheForModule("arsip_tka", "admin", ""); } catch(ce) {}
+    return JSON.stringify({ success: true, message: "Arsip TKA berhasil disimpan." });
+  } catch (e) {
+    return JSON.stringify({ success: false, message: e.message });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function admMurid_hapusArsipTka(rowId) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+    var sheet = getOrCreateSheetAdmMurid("Arsip_TKA");
+    var row = parseInt(rowId);
+    var idFile = sheet.getRange(row, 9).getValue();
+
+    if (idFile) {
+      try { DriveApp.getFileById(idFile).setTrashed(true); } catch(err) {}
+    }
+    sheet.deleteRow(row);
+    try { invalidateNotifCacheForModule("arsip_tka", "admin", ""); } catch(ce) {}
+    return JSON.stringify({ success: true, message: "Arsip TKA berhasil dihapus." });
+  } catch (e) {
+    return JSON.stringify({ success: false, message: e.message });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function admMurid_verifikasiArsipTka(rowId, status, catatan, verifikator) {
+  try {
+    var sheet = getOrCreateSheetAdmMurid("Arsip_TKA");
+    var row = parseInt(rowId);
+
+    // Kolom 10=Status, 11=Catatan
+    sheet.getRange(row, 10, 1, 2).setValues([[status, catatan]]);
+
+    // Tandai Read_by Admin (kolom 16)
+    var currentReadBy = String(sheet.getRange(row, 16).getDisplayValue() || "").trim();
+    var list = currentReadBy === "" ? [] : currentReadBy.split(",");
+    if (list.indexOf("Admin") === -1) {
+      list.push("Admin");
+      sheet.getRange(row, 16).setValue(list.join(","));
+    }
+
+    try { invalidateNotifCacheForModule("arsip_tka", verifikator, ""); } catch(ce) {}
+    return JSON.stringify({ success: true, message: "Verifikasi Arsip TKA berhasil disimpan." });
+  } catch (e) {
+    return JSON.stringify({ success: false, message: e.message });
+  }
+}
+
+function getNotifikasiArsipTka(role, unit) {
+  try {
+    var rLower = String(role || "").toLowerCase();
+    var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
+    var notifList = [];
+    var unreadCount = 0;
+
+    var sheet = getOrCreateSheetAdmMurid("Arsip_TKA");
+    if (!sheet) return { count: 0, recent: [] };
+
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) return { count: 0, recent: [] };
+
+    var data = sheet.getDataRange().getDisplayValues();
+
+    for (var i = 1; i < data.length; i++) {
+      var rowNum = i + 1;
+      var status = String(data[i][9] || "Diproses").trim();
+      var isDiproses = (status === "Diproses" || status === "");
+      var isTarget = false;
+      var rNama = String(data[i][1] || "").trim();
+
+      if (isAdmin) {
+        isTarget = isDiproses;
+      } else {
+        isTarget = (rNama.toUpperCase() === String(unit).trim().toUpperCase() && !isDiproses);
+      }
+
+      if (isTarget) {
+        var isRead = false;
+        var readBy = String(data[i][15] || "").trim();
+        var readByList = readBy === "" ? [] : readBy.split(",");
+        if (isAdmin && readByList.indexOf("Admin") > -1) isRead = true;
+        if (!isAdmin && readByList.indexOf("User") > -1) isRead = true;
+
+        var stLower = status.toLowerCase();
+        var isDisetujui = stLower.includes("ok") || stLower.includes("setuju") || stLower.includes("valid") || stLower.includes("selesai");
+
+        if (isAdmin) {
+          if (!isRead) unreadCount++;
+        } else {
+          if (!(isDisetujui && isRead)) unreadCount++;
+        }
+
+        if (!(!isAdmin && isDisetujui && isRead)) {
+          notifList.push({
+            rowId: rowNum,
+            source: "ArsipTKA",
+            namaSd: rNama,
+            kriteria: "Arsip TKA " + data[i][2],
+            status: status,
+            waktu: data[i][11],
+            isRead: isRead
+          });
+        }
+      }
+    }
+
+    return { count: unreadCount, recent: notifList.slice(0, 5) };
+  } catch (e) {
+    Logger.log("Error getNotifikasiArsipTka: " + e.message);
+    return { count: 0, recent: [] };
+  }
+}
+
+function admMurid_tandaiNotifArsipTKADibaca(rowId, role) {
+  try {
+    var sheet = getOrCreateSheetAdmMurid("Arsip_TKA");
+    var rIdx = parseInt(rowId);
+    if (isNaN(rIdx)) return false;
+
+    var currentReadBy = String(sheet.getRange(rIdx, 16).getDisplayValue() || "").trim();
+    var readMark = (role === "Admin") ? "Admin" : "User";
+
+    if (currentReadBy === "") {
+      sheet.getRange(rIdx, 16).setValue(readMark);
+    } else {
+      var list = currentReadBy.split(",");
+      if (list.indexOf(readMark) === -1) {
+        list.push(readMark);
+        sheet.getRange(rIdx, 16).setValue(list.join(","));
+      }
+    }
+    return true;
+  } catch (e) {
+    return false;
   }
 }
