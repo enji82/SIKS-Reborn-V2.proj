@@ -761,22 +761,37 @@
 
     // Delete Click
     $(document).off('click', '.btn-arsip-delete').on('click', '.btn-arsip-delete', function () {
-      var id = $(this).data('id');
-      Sultan.konfirmasiHapus(function () {
-        Sultan.loading.tampil("Menghapus Berkas...");
-        google.script.run.withSuccessHandler(function (resRaw) {
-          Sultan.loading.tutup();
-          var res = JSON.parse(resRaw);
-          if (res.success) {
-            Sultan.notif.crud.hapus(true);
-            loadArsipTkaData();
-          } else {
-            Sultan.notif.crud.gagal(res.message);
-          }
-        }).withFailureHandler(function (err) {
-          Sultan.loading.tutup();
-          Sultan.notif.crud.gagal(err.message);
-        }).admMurid_hapusArsipTka(id);
+      var rowId = $(this).data('id');
+      var raw = ARSIPTKA_CACHE_DATA.find(function (item) { return item.rowId == rowId; });
+      if (!raw) return;
+
+      var dDate = new Date();
+      var kd = dDate.getFullYear() + "" + String(dDate.getMonth() + 1).padStart(2, '0') + "" + String(dDate.getDate()).padStart(2, '0');
+
+      Sultan.modal.konfirmasiHapus({
+        title: 'Hapus Arsip TKA',
+        kode: kd,
+        detail: {
+          'NAMA SEKOLAH': raw.nama_sekolah || '-',
+          'TAHUN AJARAN': raw.tahun_ajaran || '-',
+          'JUMLAH MURID': raw.jumlah_total || '0'
+        },
+        onConfirm: function () {
+          Sultan.notif.loading("Menghapus data...");
+          google.script.run.withSuccessHandler(function (resRaw) {
+            Sultan.notif.tutup();
+            var res = JSON.parse(resRaw);
+            if (res.success) {
+              Sultan.notif.crud.hapus();
+              loadArsipTkaData();
+            } else {
+              Sultan.notif.crud.gagal(res.message);
+            }
+          }).withFailureHandler(function (err) {
+            Sultan.notif.tutup();
+            Sultan.notif.crud.gagal(err.message);
+          }).admMurid_hapusArsipTka(rowId);
+        }
       });
     });
 
