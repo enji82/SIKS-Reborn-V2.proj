@@ -233,10 +233,16 @@
         </select>
       </div>
 
+      <div class="form-group mb-3" id="arsiptka_prevCatatanWrap" style="display:none;">
+        <label class="modal-verifikasi-form-label text-muted"><i class="fas fa-history mr-1"></i>Keterangan Verifikasi Sebelumnya</label>
+        <div class="modal-verifikasi-prev-catatan" id="arsiptka_prevCatatan"></div>
+      </div>
+
       <div class="form-group mb-0">
-        <label class="modal-verifikasi-form-label">Catatan Verifikasi</label>
+        <label class="modal-verifikasi-form-label">Catatan Admin <span id="arsiptka_verifWajibCatatan"
+            class="text-danger d-none">*</span></label>
         <textarea class="modal-verifikasi-textarea w-100" id="arsiptka_verif_catatan" rows="3"
-          placeholder="Berikan alasan keputusan verifikasi..."></textarea>
+          placeholder="Wajib diisi jika ditolak / direvisi..."></textarea>
       </div>
     </div>
     <div class="modal-verifikasi-footer" id="arsiptka_verifFooter">
@@ -788,7 +794,15 @@
       $('#arsiptka_vMuridP').text(raw.jumlah_murid_p || '0');
       $('#arsiptka_vTotalMurid').text(raw.jumlah_total || '0');
       $('#arsiptka_verif_status').val(raw.status || '');
-      $('#arsiptka_verif_catatan').val(raw.catatan || '');
+      var ketLama = (raw.catatan && raw.catatan !== "-") ? raw.catatan : "";
+      if (ketLama) {
+        $('#arsiptka_prevCatatan').text(ketLama);
+        $('#arsiptka_prevCatatanWrap').show();
+      } else {
+        $('#arsiptka_prevCatatan').text('');
+        $('#arsiptka_prevCatatanWrap').hide();
+      }
+      $('#arsiptka_verif_catatan').val('');
 
       $('#arsiptka_btnSimpanVerif').prop('disabled', false).html('<i class="fas fa-check mr-2"></i>VERIFIKASI');
       arsiptka_cekStatusVerif(raw.status);
@@ -819,8 +833,10 @@
     function arsiptka_cekStatusVerif(val) {
       if (val === 'Revisi' || val === 'Ditolak') {
         $('#arsiptka_verif_catatan').attr('placeholder', 'Jelaskan alasan revisi/penolakan kepada user...').focus();
+        $('#arsiptka_verifWajibCatatan').removeClass('d-none');
       } else {
         $('#arsiptka_verif_catatan').attr('placeholder', 'Catatan opsional (misal: Data sudah sesuai).');
+        $('#arsiptka_verifWajibCatatan').addClass('d-none');
       }
     }
 
@@ -829,23 +845,32 @@
       e.preventDefault();
       var rowId = $('#arsiptka_verif_rowId').val();
       var status = $('#arsiptka_verif_status').val();
-      var catatan = $('#arsiptka_verif_catatan').val();
-      var verifikator = userLogin.nama_lengkap || userLogin.username || "Admin";
+      var catatan = ($('#arsiptka_verif_catatan').val() || '').trim();
+      var verifikator = userLogin.nama_lengkap || userLogin.username || "Dinas Pendidikan";
 
-      Sultan.loading.tampil("Menyimpan Verifikasi...");
+      if (!status) { Sultan.alert('warning', 'Pilih Status', 'Tentukan status verifikasi.'); return; }
+      if ((status === 'Revisi' || status === 'Ditolak') && catatan === "") {
+        Sultan.alert('warning', 'Catatan Wajib', 'Mohon tulis alasan revisi/penolakan agar user mengerti.');
+        return;
+      }
+
+      var btn = $('#arsiptka_btnSimpanVerif');
+      var txt = btn.html();
+      btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i> Eksekusi...');
+
       google.script.run.withSuccessHandler(function (resRaw) {
-        Sultan.loading.tutup();
+        btn.prop('disabled', false).html(txt);
         var res = JSON.parse(resRaw);
         if (res.success) {
-          $('#global_modalVerifikasi').modal('hide');
-          Sultan.notif.sukses("Verifikasi berhasil disimpan.");
+          Sultan.modal.tutupVerifikasi();
+          Sultan.notif.crud.sukses('Keputusan ' + status + ' tersimpan!');
           loadArsipTkaData();
         } else {
-          Sultan.notif.gagal(res.message);
+          Sultan.notif.crud.gagal(res.message);
         }
       }).withFailureHandler(function (err) {
-        Sultan.loading.tutup();
-        Sultan.notif.gagal("Gagal menyimpan verifikasi: " + err.message);
+        btn.prop('disabled', false).html(txt);
+        Sultan.notif.crud.gagal(err.message);
       }).admMurid_verifikasiArsipTka(rowId, status, catatan, verifikator);
     });
 
