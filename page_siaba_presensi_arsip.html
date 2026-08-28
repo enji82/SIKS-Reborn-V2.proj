@@ -489,6 +489,7 @@
     var ARSIPSIABA_IS_LOADING = false; // GUARD: Mencegah load ganda
     var ARSIPSIABA_USER_AKTIF = "";
     var ARSIPSIABA_IS_ADMIN = false;
+    var ARSIPSIABA_USER_NPSN = "";
 
     var ARSIPSIABA_LIST_BELUM = [];
 
@@ -505,7 +506,8 @@
             // Tidak menggunakan checkUserRoleIsAdmin() karena fungsi global itu juga meloloskan
             // role "verifikator" dan "korwil" yang tidak berhak mengakses fitur ini.
             ARSIPSIABA_IS_ADMIN = (rStr === "admin" || rStr === "administrator" || rStr.startsWith("admin"));
-        } catch (e) { ARSIPSIABA_IS_ADMIN = false; }
+            ARSIPSIABA_USER_NPSN = user.npsn || user.username || "";
+        } catch (e) { ARSIPSIABA_IS_ADMIN = false; ARSIPSIABA_USER_NPSN = ""; }
 
         // Tampilkan Tombol UNGGAH ARSIP hanya untuk Admin
         if (ARSIPSIABA_IS_ADMIN) {
@@ -681,13 +683,20 @@
 
         var fTahun = $('#arsipsiaba_filterTahun').val() || "SEMUA";
         var fBulan = $('#arsipsiaba_filterBulan').val() || "SEMUA";
+        var tNpsnUser = String(ARSIPSIABA_USER_NPSN).trim().toUpperCase();
 
         var hasil = ARSIPSIABA_CACHE_DATA.filter(function (row) {
             var rTahun = String(row.tahun || "").trim();
             var rBulan = String(row.bulan || "").trim();
+            var rNpsn = String(row.npsn || "").trim().toUpperCase();
 
             if (fTahun !== "SEMUA" && fTahun !== "" && rTahun !== fTahun) return false;
             if (fBulan !== "SEMUA" && fBulan !== "" && rBulan !== fBulan) return false;
+
+            // Filter data sesuai user login jika bukan admin
+            if (!ARSIPSIABA_IS_ADMIN) {
+                if (tNpsnUser !== "" && rNpsn !== tNpsnUser) return false;
+            }
 
             return true;
         });
