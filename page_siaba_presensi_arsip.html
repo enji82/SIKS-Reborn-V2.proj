@@ -700,13 +700,38 @@
         arsipsiaba_renderTabel(hasil);
     }
 
+    function arsipsiaba_parseTimestamp(tsStr) {
+        if (!tsStr) return 0;
+        var parts = tsStr.trim().split(' ');
+        if (parts.length < 2) {
+            var dateParts = tsStr.split('-');
+            if (dateParts.length === 3) {
+                return new Date(dateParts[2], dateParts[1] - 1, dateParts[0]).getTime();
+            }
+            return 0;
+        }
+        var dateParts = parts[0].split('-');
+        var timeParts = parts[1].split(':');
+        if (dateParts.length === 3 && timeParts.length === 3) {
+            return new Date(
+                parseInt(dateParts[2], 10),
+                parseInt(dateParts[1], 10) - 1,
+                parseInt(dateParts[0], 10),
+                parseInt(timeParts[0], 10),
+                parseInt(timeParts[1], 10),
+                parseInt(timeParts[2], 10)
+            ).getTime();
+        }
+        return 0;
+    }
+
     function arsipsiaba_renderTabel(dataRows) {
         var dtArray = [];
 
         dataRows.sort(function (a, b) {
-            var unitA = String(a.unitKerja || "").toUpperCase().trim();
-            var unitB = String(b.unitKerja || "").toUpperCase().trim();
-            return unitA.localeCompare(unitB);
+            var timeA = Math.max(arsipsiaba_parseTimestamp(a.tglEdit), arsipsiaba_parseTimestamp(a.tglUnggah));
+            var timeB = Math.max(arsipsiaba_parseTimestamp(b.tglEdit), arsipsiaba_parseTimestamp(b.tglUnggah));
+            return timeB - timeA;
         });
 
         dataRows.forEach(function (row) {
