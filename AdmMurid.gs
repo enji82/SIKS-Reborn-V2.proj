@@ -475,7 +475,24 @@ function admMurid_verifikasiIjazah(rowId, status, catatan, verifikator) {
     var row = parseInt(rowId);
     var now = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
 
-    sheet.getRange(row, 13, 1, 2).setValues([[status, catatan]]);
+    // Dapatkan catatan lama
+    var oldCatatan = String(sheet.getRange(row, 14).getValue() || "").trim();
+    var newCatatan = "";
+    var dateLabel = now.split(" ")[0]; // Ambil dd-MM-yyyy saja
+    
+    if (catatan) {
+      var entry = "[" + dateLabel + " Admin]: " + catatan;
+      if (oldCatatan === "" || oldCatatan === "-") {
+        newCatatan = entry;
+      } else {
+        newCatatan = entry + "\n--------------------------------------------------\n" + oldCatatan;
+      }
+    } else {
+      newCatatan = oldCatatan;
+    }
+
+    sheet.getRange(row, 13).setValue(status);
+    sheet.getRange(row, 14).setValue(newCatatan);
     sheet.getRange(row, 19, 1, 2).setValues([[now, verifikator]]);
     
     // Set read_by: tandai sebagai sudah dibaca oleh Admin
@@ -520,7 +537,20 @@ function admMurid_ajukanKoreksiIjazah(rowId, alasan, pengaju) {
     var row = parseInt(rowId);
     var now = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
 
-    sheet.getRange(row, 13, 1, 2).setValues([["Pengajuan Koreksi", alasan]]);
+    // Dapatkan catatan lama
+    var oldCatatan = String(sheet.getRange(row, 14).getValue() || "").trim();
+    var dateLabel = now.split(" ")[0]; // Ambil dd-MM-yyyy saja
+    var entry = "[" + dateLabel + " Sekolah]: Mengajukan Koreksi - " + alasan;
+    
+    var newCatatan = "";
+    if (oldCatatan === "" || oldCatatan === "-") {
+      newCatatan = entry;
+    } else {
+      newCatatan = entry + "\n--------------------------------------------------\n" + oldCatatan;
+    }
+
+    sheet.getRange(row, 13).setValue("Pengajuan Koreksi");
+    sheet.getRange(row, 14).setValue(newCatatan);
     sheet.getRange(row, 17, 1, 2).setValues([[now, pengaju]]);
     
     // Reset read_by Admin agar notifikasi baru langsung terkirim ke Admin
