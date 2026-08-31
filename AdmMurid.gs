@@ -1385,12 +1385,12 @@ function admMurid_tandaiNotifArsipIjazahDibaca(rowId, role) {
     var readMark = (role === "Admin") ? "Admin" : "User";
 
     if (currentReadBy === "") {
-      sheet.getRange(rIdx, 19).setValue(readMark);
+      sheet.getRange(rIdx, 21).setValue(readMark);
     } else {
       var list = currentReadBy.split(",");
       if (list.indexOf(readMark) === -1) {
         list.push(readMark);
-        sheet.getRange(rIdx, 19).setValue(list.join(","));
+        sheet.getRange(rIdx, 21).setValue(list.join(","));
       }
     }
     return true;
@@ -1669,16 +1669,42 @@ function admMurid_tandaiNotifArsipTKADibaca(rowId, role) {
     var readMark = (role === "Admin") ? "Admin" : "User";
 
     if (currentReadBy === "") {
-      sheet.getRange(rIdx, 19).setValue(readMark);
+      sheet.getRange(rIdx, 21).setValue(readMark);
     } else {
       var list = currentReadBy.split(",");
       if (list.indexOf(readMark) === -1) {
         list.push(readMark);
-        sheet.getRange(rIdx, 19).setValue(list.join(","));
+        sheet.getRange(rIdx, 21).setValue(list.join(","));
       }
     }
     return true;
   } catch (e) {
     return false;
   }
+}
+
+/**
+ * Fungsi pembantu sekali jalan untuk memperbarui baris header (Baris 1) 
+ * pada sheet Arsip_TKA dan Arsip_Ijazah di Google Spreadsheet secara otomatis.
+ */
+function admMurid_setupHeaderSemuaArsip() {
+  var sheetTka = getOrCreateSheetAdmMurid("Arsip_TKA");
+  sheetTka.getRange(1, 1, 1, 21).setValues([[
+    "NPSN", "Nama_Sekolah", "Tahun_Ajaran",
+    "Jumlah_Murid_L", "Jumlah_Murid_P", "Jumlah_Total",
+    "Nama_File_Sertifikat", "URL_File_Sertifikat", "ID_File_Sertifikat",
+    "Nama_File_Daftar", "URL_File_Daftar", "ID_File_Daftar",
+    "Status", "Catatan", "Tgl_Upload", "Uploader", "Tgl_Edit", "User_Edit", "Tgl_Verif", "Verifikator", "Read_by"
+  ]]);
+
+  var sheetIjazah = getOrCreateSheetAdmMurid("Arsip_Ijazah");
+  sheetIjazah.getRange(1, 1, 1, 21).setValues([[
+    "NPSN", "Nama_Sekolah", "Tahun_Ajaran",
+    "Jumlah_Murid_L", "Jumlah_Murid_P", "Jumlah_Total",
+    "Nama_File_Ijazah", "URL_File_Ijazah", "ID_File_Ijazah",
+    "Nama_File_Transkrip", "URL_File_Transkrip", "ID_File_Transkrip",
+    "Status", "Catatan", "Tgl_Upload", "Uploader", "Tgl_Edit", "User_Edit", "Tgl_Verif", "Verifikator", "Read_by"
+  ]]);
+
+  Logger.log("Header Arsip_TKA dan Arsip_Ijazah berhasil diperbarui!");
 }
