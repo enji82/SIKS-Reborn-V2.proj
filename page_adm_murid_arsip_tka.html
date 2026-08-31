@@ -53,9 +53,10 @@
             <div id="arsiptka_infoCollapse" class="collapse">
               <div class="info-body">
                 <ul class="mb-0 pl-3 text-dark mt-2 sultan-list-info">
-                  <li>Halaman ini digunakan untuk menyimpan <b>arsip sertifikat TKA Kolektif</b>.</li>
-                  <li>File yang diunggah berformat <b class="text-sultan-danger">PDF</b> dengan ukuran maksimal <b>40 MB</b>.</li>
-                  <li>Klik tombol <b>+ Tambah</b> untuk mengunggah berkas scan PDF sertifikat TKA kolektif.</li>
+                  <li>Halaman ini digunakan untuk menyimpan <b>arsip sertifikat hasil TKA & daftar kolektif hasil TKA</b>.</li>
+                  <li>File Sertifikat Hasil TKA berformat <b class="text-sultan-danger">PDF</b> dengan ukuran maksimal <b>40 MB</b>.</li>
+                  <li>File Daftar Kolektif Hasil TKA berformat <b class="text-sultan-danger">PDF</b> dengan ukuran maksimal <b>1 MB</b>.</li>
+                  <li>Klik tombol <b>+ Tambah</b> untuk mengunggah kedua berkas PDF.</li>
                 </ul>
               </div>
             </div>
@@ -89,7 +90,7 @@
                       <th rowspan="2" class="text-left align-middle" style="min-width: 180px;">NAMA SEKOLAH</th>
                       <th rowspan="2" class="text-center align-middle">TAHUN AJARAN</th>
                       <th colspan="3" class="text-center align-middle bg-light text-maroon border-bottom-0">JUMLAH MURID</th>
-                      <th rowspan="2" class="text-center align-middle" style="min-width: 150px;">DOKUMEN</th>
+                      <th rowspan="2" class="text-center align-middle" style="min-width: 160px;">DOKUMEN</th>
                       <th rowspan="2" class="text-left align-middle">DIUNGGAH</th>
                       <th rowspan="2" class="text-left align-middle">DIUBAH</th>
                       <th rowspan="2" class="text-left align-middle">DIVERIFIKASI</th>
@@ -118,8 +119,10 @@
   <form id="arsiptka_form" novalidate>
     <div class="modal-body modal-body-sultan p-4">
       <input type="hidden" id="arsiptka_rowId">
-      <input type="hidden" id="arsiptka_urlFile">
-      <input type="hidden" id="arsiptka_idFile">
+      <input type="hidden" id="arsiptka_urlFileSertifikat">
+      <input type="hidden" id="arsiptka_idFileSertifikat">
+      <input type="hidden" id="arsiptka_urlFileDaftar">
+      <input type="hidden" id="arsiptka_idFileDaftar">
 
       <div class="row mb-3">
         <div class="col-md-6">
@@ -164,15 +167,30 @@
       </div>
 
       <div class="row">
-        <!-- UNGGAH SCAN CERTIFICATE -->
-        <div class="col-md-12 mb-3">
+        <!-- UNGGAH SCAN SERTIFIKAT TKA -->
+        <div class="col-md-6 mb-3">
           <div class="form-group border p-3 bg-white rounded shadow-sm sultan-upload-area mb-0">
             <label class="form-label-sultan small font-weight-bold text-muted text-uppercase"
-              id="arsiptka_labelFile"><i class="fas fa-file-pdf text-danger mr-1"></i> UNGGAH SERTIFIKAT TKA KOLEKTIF (MAX 40 MB) <span class="text-danger">*</span></label>
+              id="arsiptka_labelFileSertifikat"><i class="fas fa-file-pdf text-danger mr-1"></i> UNGGAH SERTIFIKAT HASIL TKA KOLEKTIF (MAX 40 MB) <span class="text-danger">*</span></label>
             <div class="custom-file">
               <input type="file" class="custom-file-input form-control-sultan border-maroon arsip-file-input"
-                id="arsiptka_file" accept=".pdf">
-              <label class="custom-file-label text-truncate" for="arsiptka_file">Pilih PDF Sertifikat TKA...</label>
+                id="arsiptka_file_sertifikat" accept=".pdf">
+              <label class="custom-file-label text-truncate" for="arsiptka_file_sertifikat">Pilih PDF Sertifikat Hasil TKA...</label>
+            </div>
+            <div class="small text-muted font-italic mt-1 file-hint-edit-arsip-tka" style="display:none; font-size:10px;">
+              Kosongkan jika tidak ada perubahan.</div>
+          </div>
+        </div>
+
+        <!-- UNGGAH SCAN DAFTAR KOLEKTIF TKA -->
+        <div class="col-md-6 mb-3">
+          <div class="form-group border p-3 bg-white rounded shadow-sm sultan-upload-area mb-0">
+            <label class="form-label-sultan small font-weight-bold text-muted text-uppercase"
+              id="arsiptka_labelFileDaftar"><i class="fas fa-file-pdf text-danger mr-1"></i> UNGGAH DAFTAR KOLEKTIF HASIL TKA (MAX 1 MB) <span class="text-danger">*</span></label>
+            <div class="custom-file">
+              <input type="file" class="custom-file-input form-control-sultan border-maroon arsip-file-input"
+                id="arsiptka_file_daftar" accept=".pdf">
+              <label class="custom-file-label text-truncate" for="arsiptka_file_daftar">Pilih PDF Daftar Kolektif TKA...</label>
             </div>
             <div class="small text-muted font-italic mt-1 file-hint-edit-arsip-tka" style="display:none; font-size:10px;">
               Kosongkan jika tidak ada perubahan.</div>
@@ -359,7 +377,7 @@
     }).getAdmSekolahMasterData("SEMUA");
 
     // Auto-calculate Total Murid
-    $(document).off('input', '.input-hitung-arsip-tka').on('input', '.input-hitung-arsip-tka', function () {
+    $(document).off('input change', '.input-hitung-arsip-tka').on('input change', '.input-hitung-arsip-tka', function () {
       hitungTotalMuridArsipTka();
     });
 
@@ -370,13 +388,14 @@
     }
 
     // File Input Styling Helper
-    $(document).off('change', '#arsiptka_file').on('change', '#arsiptka_file', function () {
-      var fileName = $(this).val().split('\\').pop();
-      if (fileName) {
-        $(this).next('.custom-file-label').addClass("selected font-weight-bold").css('color', 'var(--warna-maroon)').text(fileName);
-      } else {
-        $(this).next('.custom-file-label').removeClass("selected font-weight-bold").css('color', '').text('Pilih PDF Sertifikat TKA...');
-      }
+    $(document).off('change', '#arsiptka_file_sertifikat').on('change', '#arsiptka_file_sertifikat', function (e) {
+      var filename = e.target.files[0] ? e.target.files[0].name : "Pilih PDF Sertifikat Hasil TKA...";
+      $(this).next('.custom-file-label').html('<i class="fas fa-check mr-1" style="color: var(--sultan-aksi-success);"></i> ' + filename).css('color', 'var(--sultan-aksi-success)').addClass('font-weight-bold');
+    });
+
+    $(document).off('change', '#arsiptka_file_daftar').on('change', '#arsiptka_file_daftar', function (e) {
+      var filename = e.target.files[0] ? e.target.files[0].name : "Pilih PDF Daftar Kolektif TKA...";
+      $(this).next('.custom-file-label').html('<i class="fas fa-check mr-1" style="color: var(--sultan-aksi-success);"></i> ' + filename).css('color', 'var(--sultan-aksi-success)').addClass('font-weight-bold');
     });
 
     // Event Filter Handlers
@@ -419,10 +438,12 @@
             ARSIPTKA_TABEL_INSTANCE = SultanTable.init('#arsiptka_tabelUtama', {
               destroy: true,
               ordering: false,
+              pageLength: 10,
               columnDefs: [
-                { targets: [0, 1, 3, 4, 5, 6, 7], className: "text-center align-middle" },
-                { targets: 2, className: "text-left align-middle" },
-                { targets: [8, 9, 10], className: "text-left align-middle" }
+                { targets: 0, width: "1%", className: "col-sticky-left bg-white align-middle text-center text-nowrap" },
+                { targets: [1], width: "1%", className: "text-center align-middle" },
+                { targets: [2], width: "auto", className: "text-left align-middle" },
+                { targets: [3, 4, 5, 6, 7, 8, 9, 10], width: "1%", className: "text-center align-middle text-nowrap" }
               ]
             });
           }
@@ -498,10 +519,16 @@
 
         var btnAksi = '<div class="d-flex flex-nowrap justify-content-center" style="gap:5px;">' + btnV + btnP + btnH + '</div>';
 
-        var docLink = row.url_file
-          ? '<button type="button" class="sultan-btn-pdf btn-arsip-preview mr-1 mb-1 d-inline-block" data-url="' + row.url_file + '" data-title="Pratinjau Sertifikat TKA" style="font-size:11px;"><i class="fas fa-file-pdf mr-1 text-danger"></i> SERTIFIKAT TKA</button>'
+        var docSertifikat = row.url_file_sertifikat
+          ? '<button type="button" class="sultan-btn-pdf btn-arsip-preview mr-1 mb-1 d-inline-block" data-url="' + row.url_file_sertifikat + '" data-title="Pratinjau Sertifikat Hasil TKA" style="font-size:11px;"><i class="fas fa-file-pdf mr-1 text-danger"></i> SERTIFIKAT TKA</button>'
+          : '';
+        var docDaftar = row.url_file_daftar
+          ? '<button type="button" class="sultan-btn-pdf btn-arsip-preview mr-1 mb-1 d-inline-block" data-url="' + row.url_file_daftar + '" data-title="Pratinjau Daftar Kolektif Hasil TKA" style="font-size:11px;"><i class="fas fa-file-pdf mr-1 text-primary"></i> DAFTAR KOLEKTIF</button>'
+          : '';
+
+        var docLinks = (docSertifikat || docDaftar)
+          ? '<div class="d-flex flex-column">' + docSertifikat + docDaftar + '</div>'
           : '<span class="text-muted small">-</span>';
-        var docLinks = '<div class="d-flex flex-column">' + docLink + '</div>';
 
         var uploadBy = row.uploader
           ? '<div class="sultan-table-secondary"><span class="font-weight-bold text-dark">' + row.tgl_upload + '</span><span>' + row.uploader + '</span></div>'
@@ -604,8 +631,10 @@
       $('#arsiptka_form')[0].reset();
       arsiptka_repopulateSekolah();
       $('#arsiptka_rowId').val('');
-      $('#arsiptka_urlFile').val('');
-      $('#arsiptka_idFile').val('');
+      $('#arsiptka_urlFileSertifikat').val('');
+      $('#arsiptka_idFileSertifikat').val('');
+      $('#arsiptka_urlFileDaftar').val('');
+      $('#arsiptka_idFileDaftar').val('');
       $('#arsiptka_lbl_total').text('0');
 
       $('#arsiptka_btnSimpanForm')
@@ -614,12 +643,15 @@
         .html('<i class="fas fa-cloud-upload-alt mr-2"></i>SIMPAN &amp; UNGGAH')
         .show();
 
-      $('#arsiptka_labelFile').html('<i class="fas fa-file-pdf mr-1" style="color: var(--sultan-aksi-danger);"></i> UNGGAH SERTIFIKAT TKA KOLEKTIF (MAX 40 MB) <span class="text-danger">*</span>');
+      $('#arsiptka_labelFileSertifikat').html('<i class="fas fa-file-pdf mr-1" style="color: var(--sultan-aksi-danger);"></i> UNGGAH SERTIFIKAT HASIL TKA KOLEKTIF (MAX 40 MB) <span class="text-danger">*</span>');
+      $('#arsiptka_labelFileDaftar').html('<i class="fas fa-file-pdf mr-1" style="color: var(--sultan-aksi-danger);"></i> UNGGAH DAFTAR KOLEKTIF HASIL TKA (MAX 1 MB) <span class="text-danger">*</span>');
 
-      $('#arsiptka_form .arsip-file-input').next('.custom-file-label').removeClass("selected font-weight-bold").css('color', '').text('Pilih PDF Sertifikat TKA...');
+      $('#arsiptka_file_sertifikat').next('.custom-file-label').removeClass("selected font-weight-bold").css('color', '').text('Pilih PDF Sertifikat Hasil TKA...');
+      $('#arsiptka_file_daftar').next('.custom-file-label').removeClass("selected font-weight-bold").css('color', '').text('Pilih PDF Daftar Kolektif TKA...');
 
       $('.file-hint-edit-arsip-tka').hide();
-      $('#arsiptka_file').prop('required', true);
+      $('#arsiptka_file_sertifikat').prop('required', true);
+      $('#arsiptka_file_daftar').prop('required', true);
     }
 
     function arsiptka_kembalikanFormKeTemplate() {
@@ -637,7 +669,7 @@
 
       $('#global_modalFormSize').removeClass('modal-xl modal-md').addClass('modal-lg');
       $('#global_modalFormHeader').removeClass('modal-header-sultan-primary modal-header-sultan-warning modal-header-sultan-danger modal-header-sultan-success modal-header-sultan-info modal-header-sultan-dark modal-header-tambah-edit modal-header-edit modal-header-hapus').addClass('modal-header-tambah-edit');
-      $('#global_modalFormTitle').html('<i class="fas fa-plus-circle mr-3 shadow-sm"></i> UNGGAH ARSIP SERTIFIKAT TKA');
+      $('#global_modalFormTitle').html('<i class="fas fa-plus-circle mr-3 shadow-sm"></i> UNGGAH ARSIP TKA KOLEKTIF');
       $('#global_modalFormBody, #global_modalFormFooter').hide();
       $('#global_modalFormSize .modal-content > form').remove();
       $('#arsiptka_form').appendTo('#global_modalFormSize .modal-content');
@@ -655,10 +687,11 @@
       e.preventDefault();
 
       var rowId = $('#arsiptka_rowId').val();
-      var fileObj = $('#arsiptka_file')[0].files[0];
+      var fileSertifikatObj = $('#arsiptka_file_sertifikat')[0].files[0];
+      var fileDaftarObj = $('#arsiptka_file_daftar')[0].files[0];
 
-      if (!rowId && !fileObj) {
-        Sultan.alert('warning', 'Pilih Berkas', 'Silakan pilih berkas PDF Sertifikat TKA Kolektif terlebih dahulu.');
+      if (!rowId && (!fileSertifikatObj || !fileDaftarObj)) {
+        Sultan.alert('warning', 'Pilih Berkas', 'Silakan pilih kedua berkas (Sertifikat Hasil TKA & Daftar Kolektif TKA) terlebih dahulu.');
         return;
       }
 
@@ -672,8 +705,10 @@
         tahun_ajaran: $('#arsiptka_in_tahun').val(),
         jumlah_murid_l: $('#arsiptka_in_l').val(),
         jumlah_murid_p: $('#arsiptka_in_p').val(),
-        url_file: $('#arsiptka_urlFile').val(),
-        id_file: $('#arsiptka_idFile').val(),
+        url_file_sertifikat: $('#arsiptka_urlFileSertifikat').val(),
+        id_file_sertifikat: $('#arsiptka_idFileSertifikat').val(),
+        url_file_daftar: $('#arsiptka_urlFileDaftar').val(),
+        id_file_daftar: $('#arsiptka_idFileDaftar').val(),
         user_login: userLogin.nama_lengkap || userLogin.username || "Guest"
       };
 
@@ -681,29 +716,55 @@
       var txt = btn.html();
       btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i> MENGUNGGAH...');
 
-      var MAX_SIZE = 40 * 1024 * 1024; // 40 MB
+      var MAX_SIZE_SERTIFIKAT = 40 * 1024 * 1024; // 40 MB
+      var MAX_SIZE_DAFTAR = 1 * 1024 * 1024; // 1 MB
 
-      if (fileObj && fileObj.size > MAX_SIZE) {
+      if (fileSertifikatObj && fileSertifikatObj.size > MAX_SIZE_SERTIFIKAT) {
         btn.prop('disabled', false).html(txt);
-        Sultan.alert('warning', 'Berkas Terlalu Besar', 'File sertifikat tidak boleh lebih dari 40 MB.');
+        Sultan.alert('warning', 'Berkas Terlalu Besar', 'File Sertifikat Hasil TKA tidak boleh lebih dari 40 MB.');
+        return;
+      }
+      if (fileDaftarObj && fileDaftarObj.size > MAX_SIZE_DAFTAR) {
+        btn.prop('disabled', false).html(txt);
+        Sultan.alert('warning', 'Berkas Terlalu Besar', 'File Daftar Kolektif Hasil TKA tidak boleh lebih dari 1 MB.');
         return;
       }
 
-      if (fileObj) {
-        btn.html('<i class="fas fa-spinner fa-spin mr-2"></i> Membaca berkas...');
-        var reader = new FileReader();
-        reader.onload = function (evt) {
-          var base64 = evt.target.result.split(',')[1];
-          payload.fileBase64 = base64;
-          payload.nama_file = "Sertifikat_TKA_" + payload.tahun_ajaran.replace(/\//g, '-') + "_" + payload.nama_sekolah + ".pdf";
-          payload.mimeType = fileObj.type || "application/pdf";
-          sendArsipTkaPayload(payload, btn, txt);
-        };
-        reader.readAsDataURL(fileObj);
+      var uploadQueue = [];
+      if (fileSertifikatObj) uploadQueue.push({ file: fileSertifikatObj, type: 'sertifikat' });
+      if (fileDaftarObj) uploadQueue.push({ file: fileDaftarObj, type: 'daftar' });
+
+      if (uploadQueue.length > 0) {
+        processArsipTkaUploadQueue(uploadQueue, 0, payload, btn, txt);
       } else {
         sendArsipTkaPayload(payload, btn, txt);
       }
     });
+
+    function processArsipTkaUploadQueue(queue, idx, payload, btn, txt) {
+      if (idx >= queue.length) {
+        sendArsipTkaPayload(payload, btn, txt);
+        return;
+      }
+      var item = queue[idx];
+      btn.html('<i class="fas fa-spinner fa-spin mr-2"></i> Membaca berkas ' + (idx + 1) + '/' + queue.length + '...');
+
+      var reader = new FileReader();
+      reader.onload = function (evt) {
+        var base64 = evt.target.result.split(',')[1];
+        if (item.type === 'sertifikat') {
+          payload.fileSertifikatBase64 = base64;
+          payload.nama_file_sertifikat = "Sertifikat_Hasil_TKA_" + payload.tahun_ajaran.replace(/\//g, '-') + "_" + payload.nama_sekolah + ".pdf";
+          payload.mimeType_sertifikat = item.file.type || "application/pdf";
+        } else if (item.type === 'daftar') {
+          payload.fileDaftarBase64 = base64;
+          payload.nama_file_daftar = "Daftar_Kolektif_TKA_" + payload.tahun_ajaran.replace(/\//g, '-') + "_" + payload.nama_sekolah + ".pdf";
+          payload.mimeType_daftar = item.file.type || "application/pdf";
+        }
+        processArsipTkaUploadQueue(queue, idx + 1, payload, btn, txt);
+      };
+      reader.readAsDataURL(item.file);
+    }
 
     function sendArsipTkaPayload(payload, btn, txt) {
       var isEdit = !!payload.rowId;
@@ -742,8 +803,10 @@
       $('#arsiptka_in_l').val(raw.jumlah_murid_l);
       $('#arsiptka_in_p').val(raw.jumlah_murid_p);
       hitungTotalMuridArsipTka();
-      $('#arsiptka_urlFile').val(raw.url_file);
-      $('#arsiptka_idFile').val(raw.id_file);
+      $('#arsiptka_urlFileSertifikat').val(raw.url_file_sertifikat);
+      $('#arsiptka_idFileSertifikat').val(raw.id_file_sertifikat);
+      $('#arsiptka_urlFileDaftar').val(raw.url_file_daftar);
+      $('#arsiptka_idFileDaftar').val(raw.id_file_daftar);
 
       $('#arsiptka_btnSimpanForm')
         .removeClass('modal-btn-simpan')
@@ -751,9 +814,11 @@
         .html('<i class="fas fa-save mr-2"></i>PERBARUI &amp; UNGGAH')
         .show();
 
-      $('#arsiptka_labelFile').html('<i class="fas fa-file-pdf mr-1" style="color: var(--sultan-aksi-danger);"></i> Perbarui Sertifikat TKA (Kosongkan jika tidak ada perubahan)');
+      $('#arsiptka_labelFileSertifikat').html('<i class="fas fa-file-pdf mr-1" style="color: var(--sultan-aksi-danger);"></i> Perbarui Sertifikat Hasil TKA (Kosongkan jika tidak ada perubahan)');
+      $('#arsiptka_labelFileDaftar').html('<i class="fas fa-file-pdf mr-1" style="color: var(--sultan-aksi-danger);"></i> Perbarui Daftar Kolektif TKA (Kosongkan jika tidak ada perubahan)');
       $('.file-hint-edit-arsip-tka').show();
-      $('#arsiptka_file').prop('required', false);
+      $('#arsiptka_file_sertifikat').prop('required', false);
+      $('#arsiptka_file_daftar').prop('required', false);
 
       arsiptka_kembalikanFormKeTemplate();
       $('#global_modalFormSize').removeClass('modal-xl modal-md').addClass('modal-lg');
@@ -834,11 +899,16 @@
       $('#arsiptka_btnSimpanVerif').prop('disabled', false).html('<i class="fas fa-check mr-2"></i>VERIFIKASI');
       arsiptka_cekStatusVerif(raw.status);
 
-      var defaultUrl = raw.url_file || '';
+      var docsArr = [];
+      if (raw.url_file_sertifikat) docsArr.push({ label: 'Sertifikat Hasil TKA', url: raw.url_file_sertifikat, icon: 'fa-file-pdf' });
+      if (raw.url_file_daftar) docsArr.push({ label: 'Daftar Kolektif TKA', url: raw.url_file_daftar, icon: 'fa-list-alt' });
+
+      var defaultUrl = raw.url_file_sertifikat || raw.url_file_daftar || '';
 
       Sultan.modal.verifikasi({
-        title: 'VERIFIKASI ARSIP SERTIFIKAT TKA',
+        title: 'VERIFIKASI ARSIP TKA',
         url: defaultUrl,
+        docs: docsArr.length > 1 ? docsArr : undefined,
         isImage: false,
         formHtml: $('#arsiptka_formVerif').show()
       });
