@@ -954,7 +954,30 @@
         if (res.success) {
           Sultan.modal.tutupVerifikasi();
           Sultan.notif.crud.sukses('Keputusan ' + status + ' tersimpan!');
-          loadArsipData();
+
+          // Update cache lokal langsung tanpa perlu load ulang dari server
+          var targetItem = ARSIPIJAZAH_CACHE_DATA.find(function (item) { return String(item.rowId) === String(rowId); });
+          if (targetItem) {
+            targetItem.status = status;
+            var now = new Date();
+            var dStr = String(now.getDate()).padStart(2, '0') + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + now.getFullYear();
+            var tStr = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0') + ':' + String(now.getSeconds()).padStart(2, '0');
+            var fullNow = dStr + ' ' + tStr;
+
+            if (catatan) {
+              var entry = "[" + dStr + " Admin]: " + catatan;
+              if (!targetItem.catatan || targetItem.catatan === "" || targetItem.catatan === "-") {
+                targetItem.catatan = entry;
+              } else {
+                targetItem.catatan = entry + "\n--------------------------------------------------\n" + targetItem.catatan;
+              }
+            }
+            targetItem.tgl_verif = fullNow;
+            targetItem.verifikator = verifikator;
+            terapkanFilterLokalArsip();
+          } else {
+            loadArsipData();
+          }
         } else {
           Sultan.notif.crud.gagal(res.message);
         }
