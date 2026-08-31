@@ -1512,9 +1512,25 @@ function admMurid_verifikasiArsipTka(rowId, status, catatan, verifikator) {
   try {
     var sheet = getOrCreateSheetAdmMurid("Arsip_TKA");
     var row = parseInt(rowId);
+    var now = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
+    var dateLabel = now.split(" ")[0];
 
     // Kolom 10=Status, 11=Catatan
-    sheet.getRange(row, 10, 1, 2).setValues([[status, catatan]]);
+    var oldCatatan = String(sheet.getRange(row, 11).getValue() || "").trim();
+    var newCatatan = "";
+    if (catatan) {
+      var entry = "[" + dateLabel + " Admin]: " + catatan;
+      if (oldCatatan === "" || oldCatatan === "-") {
+        newCatatan = entry;
+      } else {
+        newCatatan = entry + "\n--------------------------------------------------\n" + oldCatatan;
+      }
+    } else {
+      newCatatan = oldCatatan;
+    }
+
+    sheet.getRange(row, 10).setValue(status);
+    sheet.getRange(row, 11).setValue(newCatatan);
 
     // Tandai Read_by Admin (kolom 16)
     var currentReadBy = String(sheet.getRange(row, 16).getDisplayValue() || "").trim();
