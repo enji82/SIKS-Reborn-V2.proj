@@ -434,10 +434,10 @@ function pppkpw_getDashboardData(unitFilter, tahun, forceRefresh) {
       unitMap[p.unit].total++;
       if (foundEntry) {
         unitMap[p.unit].sudah++;
-        var stL = foundEntry.status.toLowerCase();
-        if (stL === "diverifikasi") unitMap[p.unit].diverifikasi++;
-        else if (stL.indexOf("proses") !== -1) unitMap[p.unit].diproses++;
+        if (stL === "disetujui" || stL === "diverifikasi") unitMap[p.unit].diverifikasi++;
+        else if (stL === "revisi") unitMap[p.unit].revisi = (unitMap[p.unit].revisi || 0) + 1;
         else if (stL === "ditolak") unitMap[p.unit].ditolak++;
+        else unitMap[p.unit].diproses++;
         unitMap[p.unit].listSudah.push({ nama: p.nama, nip: p.nip, jabatan: p.jabatan, status: foundEntry.status });
       } else {
         unitMap[p.unit].belum++;
