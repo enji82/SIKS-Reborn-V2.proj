@@ -1,0 +1,294 @@
+<section class="content sultan-page-transition text-sm">
+  <div class="container-fluid">
+    <div class="row justify-content-center">
+      <div class="col-12">
+
+        <!-- FILTER BAR -->
+        <div class="sultan-filter-pill-container shadow-sm mb-4">
+          <div class="sultan-filter-item">
+            <select id="pppkpwdash_filterUnit" class="form-control" aria-label="Pilih Unit Kerja" disabled>
+              <option value="SEMUA">- Semua Unit -</option>
+            </select>
+            <i class="fas fa-chevron-down"></i>
+          </div>
+          <div class="sultan-filter-item">
+            <select id="pppkpwdash_filterTahun" class="form-control" aria-label="Pilih Tahun Ajaran">
+              <option value="2026/2027">2026/2027</option>
+              <option value="2027/2028">2027/2028</option>
+            </select>
+            <i class="fas fa-chevron-down"></i>
+          </div>
+          <div class="divider-vertical d-none d-md-block mx-2"></div>
+          <button type="button" id="pppkpwdash_btnRefresh" class="sultan-btn-refresh" title="Segarkan Data">
+            <i class="fas fa-sync-alt"></i>
+          </button>
+        </div>
+
+        <div id="pppkpwdash_dashboardState">
+          <!-- Row 1: Statistik Utama -->
+          <div id="pppkpwdash_metricRow1"></div>
+          <!-- Row 2: Detail Status -->
+          <div id="pppkpwdash_metricRow2"></div>
+          <!-- Lists Sudah / Belum -->
+          <div id="pppkpwdash_listsContainer"></div>
+
+          <!-- Tabel Rekapitulasi -->
+          <div class="row mb-4">
+            <div class="col-12 mt-2">
+              <div class="card-sultan shadow-sm border-0" style="border-radius: var(--radius-sultan) !important; overflow: hidden;">
+                <div class="card-header card-header-sultan-adaptive py-2 d-flex justify-content-between align-items-center">
+                  <h6 class="m-0 font-weight-bold text-maroon" style="font-size: 14px;">
+                    <i class="fas fa-table mr-2"></i>Rekapitulasi per Unit Kerja
+                  </h6>
+                </div>
+                <div class="card-body p-3">
+                  <div class="table-responsive sultan-scroll">
+                    <table id="pppkpwdash_tabelRekap" class="table table-premium table-sultan-compact mb-0 w-100 text-nowrap">
+                      <thead class="bg-light text-maroon text-uppercase font-weight-bold">
+                        <tr>
+                          <th class="text-left align-middle" style="min-width: 220px;">Unit Kerja</th>
+                          <th class="text-center align-middle">Total Pegawai</th>
+                          <th class="text-center align-middle">Sudah Unggah</th>
+                          <th class="text-center align-middle">Belum Unggah</th>
+                          <th class="text-center align-middle">Progress</th>
+                        </tr>
+                      </thead>
+                      <tbody id="pppkpwdash_tbodyRekap"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+var PPPKPWDASH_CACHE = null;
+var PPPKPWDASH_TABEL = null;
+
+$(document).ready(function () {
+  var userLogin = typeof getSesiUser === 'function' ? getSesiUser() : {};
+
+  // Render metric rows
+  $('#pppkpwdash_metricRow1').html(SultanUI.renderDashboardRow1('pppkpwdash', {
+    total: 'TOTAL PEGAWAI', sudah: 'SUDAH UNGGAH', belum: 'BELUM UNGGAH', progress: 'PROGRESS'
+  }));
+  var row2Cards = [
+    { key: 'Diverifikasi', label: 'DIVERIFIKASI', theme: 'metric-success', icon: 'fas fa-check-double' },
+    { key: 'Diproses',     label: 'DIPROSES',     theme: 'metric-info',    icon: 'fas fa-spinner fa-spin' },
+    { key: 'Ditolak',      label: 'DITOLAK',      theme: 'metric-maroon',  icon: 'fas fa-ban' }
+  ];
+  $('#pppkpwdash_metricRow2').html(SultanUI.renderDashboardRow2('pppkpwdash', row2Cards));
+  $('#pppkpwdash_listsContainer').html(SultanUI.renderDashboardLists('pppkpwdash', {
+    placeholderCari: 'Cari nama pegawai / unit...', hasCopySudah: true, hasCopyBelum: true
+  }));
+
+  // Init filter tahun dinamis
+  var now = new Date(); var yr = now.getFullYear(); var mo = now.getMonth();
+  var currentTA = (mo >= 6) ? yr + "/" + (yr + 1) : (yr - 1) + "/" + yr;
+  var htmlTahun = '';
+  for (var y = 2025; y <= yr + 1; y++) {
+    var ta = y + "/" + (y + 1);
+    htmlTahun += '<option value="' + ta + '"' + (ta === currentTA ? ' selected' : '') + '>' + ta + '</option>';
+  }
+  $('#pppkpwdash_filterTahun').html(htmlTahun);
+
+  // Filter unit berdasarkan role
+  if (userLogin.role !== 'Admin') {
+    var unitUser = userLogin.unit || '';
+    $('#pppkpwdash_filterUnit').html('<option value="' + unitUser + '">' + (unitUser || 'Unit Saya') + '</option>').prop('disabled', true);
+  } else {
+    $('#pppkpwdash_filterUnit').prop('disabled', false);
+  }
+
+  // Events
+  $('#pppkpwdash_btnRefresh').click(function () { loadDashboard(true); });
+  $('#pppkpwdash_filterUnit, #pppkpwdash_filterTahun').change(function () { loadDashboard(); });
+  $(document).off('click', '#pppkpwdash_btnSalinWa').on('click', '#pppkpwdash_btnSalinWa', pppkpwdash_salinBelumWA);
+  $(document).off('click', '#pppkpwdash_btnSalinSudahWa').on('click', '#pppkpwdash_btnSalinSudahWa', pppkpwdash_salinSudahWA);
+  $(document).off('keyup', '#pppkpwdash_inputCariSudah').on('keyup', '#pppkpwdash_inputCariSudah', function () {
+    var v = $(this).val().toLowerCase();
+    $('.pppkpwdash-item-sudah').each(function () { $(this).toggle($(this).text().toLowerCase().indexOf(v) > -1); });
+  });
+  $(document).off('keyup', '#pppkpwdash_inputCariBelum').on('keyup', '#pppkpwdash_inputCariBelum', function () {
+    var v = $(this).val().toLowerCase();
+    $('.pppkpwdash-item-belum').each(function () { $(this).toggle($(this).text().toLowerCase().indexOf(v) > -1); });
+  });
+
+  loadDashboard();
+
+  function loadDashboard(forceRefresh) {
+    var btn = $('#pppkpwdash_btnRefresh');
+    btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin text-maroon"></i>');
+
+    if (typeof SultanUI !== 'undefined') {
+      SultanUI.startLottery('#pppkpwdash_cardTotalSekolah, #pppkpwdash_cardSudah, #pppkpwdash_cardBelum, #pppkpwdash_cardDisetujui, #pppkpwdash_cardDiverifikasi, #pppkpwdash_cardDiproses, #pppkpwdash_cardDitolak', 3);
+      SultanUI.startLottery('#pppkpwdash_cardProgress', 2, '%');
+    }
+
+    var unitFilter = userLogin.role !== 'Admin' ? (userLogin.unit || '') : ($('#pppkpwdash_filterUnit').val() || 'SEMUA');
+    var tahun = $('#pppkpwdash_filterTahun').val();
+
+    google.script.run
+      .withSuccessHandler(function (resRaw) {
+        btn.prop('disabled', false).html('<i class="fas fa-sync-alt"></i>');
+        var res = JSON.parse(resRaw);
+        if (!res.success) { Sultan.notif.gagal(res.message || 'Gagal memuat data.'); return; }
+        PPPKPWDASH_CACHE = res;
+
+        // Isi dropdown unit jika admin
+        if (userLogin.role === 'Admin' && res.detailUnit) {
+          var sel = $('#pppkpwdash_filterUnit');
+          var curVal = sel.val() || 'SEMUA';
+          sel.empty().append('<option value="SEMUA">- Semua Unit -</option>');
+          res.detailUnit.forEach(function (u) {
+            sel.append($('<option>', { value: u.unit, text: u.unit }));
+          });
+          sel.val(curVal);
+        }
+
+        renderDashboard(res);
+      })
+      .withFailureHandler(function (err) {
+        btn.prop('disabled', false).html('<i class="fas fa-sync-alt"></i>');
+        Sultan.notif.gagal('Koneksi gagal: ' + err.message);
+      })
+      .pppkpw_getDashboardData(unitFilter, tahun, !!forceRefresh);
+  }
+});
+
+function pppkpwdash_animateValue(id, end, pct) {
+  if (typeof SultanUI !== 'undefined') SultanUI.stopLottery('#' + id);
+  var obj = document.getElementById(id);
+  if (!obj) return;
+  var startTime = null;
+  function step(ts) {
+    if (!startTime) startTime = ts;
+    var prog = Math.min((ts - startTime) / 800, 1);
+    obj.innerHTML = Math.floor(prog * end).toLocaleString('id-ID') + (pct ? '%' : '');
+    if (prog < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function renderDashboard(res) {
+  var totPeg   = res.totalPegawai || 0;
+  var totSudah = res.totalSudah   || 0;
+  var totBelum = res.totalBelum   || 0;
+  var totVerif = res.totalDiverifikasi || 0;
+  var totProses= res.totalDiproses     || 0;
+  var totTolak = res.totalDitolak      || 0;
+  var pct = totPeg > 0 ? Math.round((totSudah / totPeg) * 100) : 0;
+
+  pppkpwdash_animateValue('pppkpwdash_cardTotalSekolah', totPeg);
+  pppkpwdash_animateValue('pppkpwdash_cardSudah',        totSudah);
+  pppkpwdash_animateValue('pppkpwdash_cardBelum',        totBelum);
+  pppkpwdash_animateValue('pppkpwdash_cardProgress',     pct, true);
+  pppkpwdash_animateValue('pppkpwdash_cardDiverifikasi', totVerif);
+  pppkpwdash_animateValue('pppkpwdash_cardDiproses',     totProses);
+  pppkpwdash_animateValue('pppkpwdash_cardDitolak',      totTolak);
+
+  var pBar = $('#pppkpwdash_progressBar');
+  pBar.css('width', pct + '%').attr('aria-valuenow', pct);
+  $('#pppkpwdash_progressText').text(pct + '% Selesai');
+  if (pct < 30) pBar.css('background-color', '#d11a2a');
+  else if (pct < 70) pBar.css('background-color', '#ffc107');
+  else pBar.css('background-color', '#28a745');
+
+  $('#pppkpwdash_badgeSudah').text(totSudah);
+  $('#pppkpwdash_badgeBelum').text(totBelum);
+
+  // List Sudah
+  var units = res.detailUnit || [];
+  var uiSudah = '';
+  var cntSudah = 0;
+  units.forEach(function (u) {
+    (u.listSudah || []).forEach(function (p, idx) {
+      cntSudah++;
+      var stType = p.status.toLowerCase() === 'diverifikasi' ? 'success' : (p.status.toLowerCase().indexOf('proses') !== -1 ? 'info' : 'danger');
+      var extra = 'class="list-group-item pppkpwdash-item-sudah py-2 px-3 hover-sultan"';
+      uiSudah += SultanUI.renderListItem(cntSudah, p.nama, u.unit, 'NIP: ' + (p.nip || '-'), stType, extra);
+    });
+  });
+  if (!uiSudah) uiSudah = SultanUI.renderListEmptyWarning('Belum Ada Data', 'Belum ada pegawai yang mengunggah.');
+  $('#pppkpwdash_listSudah').html(uiSudah); $('#pppkpwdash_inputCariSudah').val('');
+
+  // List Belum
+  var uiBelum = '';
+  var cntBelum = 0;
+  units.forEach(function (u) {
+    (u.listBelum || []).forEach(function (p) {
+      cntBelum++;
+      var extra = 'class="list-group-item pppkpwdash-item-belum py-2 px-3 hover-sultan"';
+      uiBelum += SultanUI.renderListItem(cntBelum, p.nama, u.unit, 'NIP: ' + (p.nip || '-'), 'danger', extra);
+    });
+  });
+  if (!uiBelum) uiBelum = SultanUI.renderListEmptySuccess('Semua Sudah Unggah!', 'Tidak ada pegawai yang belum mengunggah.');
+  $('#pppkpwdash_listBelum').html(uiBelum); $('#pppkpwdash_inputCariBelum').val('');
+
+  // Tabel Rekap
+  var dtArray = [];
+  units.forEach(function (u) {
+    var pct2 = u.total > 0 ? Math.round((u.sudah / u.total) * 100) : 0;
+    var barColor = pct2 < 30 ? '#d11a2a' : (pct2 < 70 ? '#ffc107' : '#28a745');
+    var progressHtml = '<div class="progress" style="height:8px;"><div class="progress-bar" style="width:' + pct2 + '%;background-color:' + barColor + '"></div></div>' +
+                       '<small class="text-muted">' + pct2 + '%</small>';
+    dtArray.push([
+      '<div class="sultan-table-primary">' + u.unit + '</div>',
+      '<span class="font-weight-bold">' + u.total + '</span>',
+      u.sudah > 0 ? '<span class="badge badge-success">' + u.sudah + '</span>' : '<span class="text-muted">-</span>',
+      u.belum > 0 ? '<span class="badge badge-danger">'  + u.belum + '</span>' : '<span class="text-muted">-</span>',
+      progressHtml
+    ]);
+  });
+
+  if ($.fn.DataTable.isDataTable('#pppkpwdash_tabelRekap')) {
+    $('#pppkpwdash_tabelRekap').DataTable().destroy();
+  }
+  PPPKPWDASH_TABEL = SultanTable.init('#pppkpwdash_tabelRekap', {
+    destroy: true, ordering: false, pageLength: 15, autoWidth: false,
+    dom: "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
+         "<'row'<'col-sm-12'<'table-responsive sultan-scroll'tr>>>" +
+         "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+    columnDefs: [
+      { targets: 0, className: 'text-left align-middle' },
+      { targets: [1, 2, 3, 4], className: 'text-center align-middle' }
+    ],
+    language: { url: '//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json', emptyTable: 'Tidak ada data.' }
+  });
+  PPPKPWDASH_TABEL.clear().rows.add(dtArray).draw(false);
+}
+
+function pppkpwdash_salinBelumWA() {
+  var listEl = $('#pppkpwdash_listBelum .hover-sultan:visible');
+  if (listEl.length === 0) { Sultan.notif.info('Tidak ada pegawai yang belum unggah.'); return; }
+  var tahun = $('#pppkpwdash_filterTahun').val();
+  var teks = '*⚠️ PEGAWAI PPPK PW BELUM UNGGAH DRAFT PK*\n';
+  teks += 'Tahun: ' + tahun + '\nJumlah: ' + listEl.length + ' Pegawai\n=======================\n\n';
+  listEl.each(function (idx) {
+    var nama = $(this).find('.nama-asn, strong').first().text().trim() || $(this).text().trim().split('\n')[0];
+    teks += (idx + 1) + '. ' + nama + '\n';
+  });
+  teks += '\n_Mohon segera mengunggah melalui SIKS-Reborn._';
+  navigator.clipboard.writeText(teks).then(function () { Sultan.notif.sukses('Daftar berhasil disalin.'); })
+    .catch(function () { Sultan.alert('error', 'Gagal', 'Browser tidak mendukung Clipboard API.'); });
+}
+
+function pppkpwdash_salinSudahWA() {
+  var listEl = $('#pppkpwdash_listSudah .hover-sultan:visible');
+  if (listEl.length === 0) { Sultan.notif.info('Tidak ada data.'); return; }
+  var tahun = $('#pppkpwdash_filterTahun').val();
+  var teks = '✅ *PEGAWAI PPPK PW SUDAH UNGGAH DRAFT PK* ✅\nTahun: ' + tahun + '\nTotal: ' + listEl.length + ' Pegawai\n\n';
+  listEl.each(function (idx) {
+    var nama = $(this).find('.nama-asn, strong').first().text().trim() || $(this).text().trim().split('\n')[0];
+    teks += (idx + 1) + '. ' + nama + '\n';
+  });
+  navigator.clipboard.writeText(teks).then(function () { Sultan.notif.sukses('Daftar sudah unggah berhasil disalin.'); })
+    .catch(function () { Sultan.alert('error', 'Gagal', 'Browser tidak mendukung Clipboard API.'); });
+}
+</script>

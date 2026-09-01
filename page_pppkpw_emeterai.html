@@ -1,0 +1,199 @@
+<section class="content sultan-page-transition text-sm">
+  <div class="container-fluid">
+    <div class="row justify-content-center">
+      <div class="col-12">
+
+        <!-- INFO CARD -->
+        <div class="sultan-info-card">
+          <div class="card-body">
+            <div class="info-header" data-toggle="collapse" data-target="#pppkpwem_infoCollapse" aria-expanded="true">
+              <div class="info-title">
+                <div class="info-icon-circle"><i class="fas fa-info"></i></div>
+                <span>INFORMASI</span>
+              </div>
+              <i class="fas fa-chevron-up"></i>
+            </div>
+            <div id="pppkpwem_infoCollapse" class="collapse show">
+              <div class="info-body">
+                <ul class="mb-0 pl-3 sultan-list-info">
+                  <li>Halaman ini menampilkan <b>Draft Perjanjian Kerja yang sudah dibubuhkan E-meterai</b> oleh Admin.</li>
+                  <li>Klik tombol <span class="badge badge-sultan-primary px-2"><i class="fas fa-download mr-1"></i>Unduh</span> untuk mengunduh file PDF.</li>
+                  <li>Klik tombol <span class="badge badge-outline-info px-2"><i class="fas fa-eye mr-1"></i>Lihat</span> untuk membuka file di browser.</li>
+                  <li>Hubungi Admin jika dokumen Anda belum tersedia di halaman ini.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- FILTER BAR -->
+        <div class="sultan-filter-pill-container shadow-sm mb-4">
+          <div class="sultan-filter-item" style="flex:1;">
+            <input type="text" id="pppkpwem_inputCari" class="form-control" placeholder="&#xf002;  Cari nama file..." style="font-family: 'Font Awesome 5 Free', Arial, sans-serif;">
+          </div>
+          <div class="divider-vertical d-none d-md-block mx-2"></div>
+          <button type="button" id="pppkpwem_btnRefresh" class="sultan-btn-refresh" title="Segarkan Data">
+            <i class="fas fa-sync-alt"></i>
+          </button>
+        </div>
+
+        <!-- CARD TABEL -->
+        <div class="card-sultan">
+          <div class="card-header card-header-sultan-adaptive py-2 d-flex align-items-center justify-content-between">
+            <h6 class="m-0 font-weight-bold text-maroon" style="font-size:14px;">
+              <i class="fas fa-stamp mr-2"></i>Daftar Draft E-meterai
+            </h6>
+            <span id="pppkpwem_badgeJumlah" class="badge badge-maroon px-2 py-1" style="font-size:11px;">0 File</span>
+          </div>
+          <div class="card-body p-3">
+
+            <!-- Loading State -->
+            <div id="pppkpwem_loadingState">
+              <div class="sultan-loading-box sultan-page-transition">
+                <div class="sultan-spinner-icon"><i class="fas fa-circle-notch fa-spin"></i></div>
+                <h6 class="text-dark font-weight-bold sultan-loading-text mb-0" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;">Memuat Daftar File dari Google Drive...</h6>
+              </div>
+            </div>
+
+            <!-- Empty State -->
+            <div id="pppkpwem_emptyState" style="display:none;">
+              <div class="text-center py-5 text-muted">
+                <i class="fas fa-folder-open fa-4x mb-3 text-maroon opacity-50"></i>
+                <h5 class="font-weight-bold">Folder Masih Kosong</h5>
+                <p class="mb-0">Belum ada file E-meterai yang tersedia. Hubungi Admin untuk informasi lebih lanjut.</p>
+              </div>
+            </div>
+
+            <!-- Table State -->
+            <div id="pppkpwem_tableState" style="display:none;">
+              <div class="table-responsive sultan-scroll">
+                <table id="pppkpwem_tabelUtama" class="table table-hover table-premium table-sultan-compact text-nowrap mb-0 w-100" style="font-size:13px;">
+                  <thead class="thead-sultan-premium text-uppercase font-weight-bold">
+                    <tr>
+                      <th class="text-center align-middle" style="width:50px;">NO</th>
+                      <th class="text-left align-middle" style="min-width:280px;">NAMA FILE</th>
+                      <th class="text-center align-middle" style="min-width:100px;">UKURAN</th>
+                      <th class="text-center align-middle" style="min-width:150px;">TERAKHIR DIUBAH</th>
+                      <th class="text-center align-middle" style="min-width:160px;">AKSI</th>
+                    </tr>
+                  </thead>
+                  <tbody id="pppkpwem_tbody"></tbody>
+                </table>
+              </div>
+              <div id="pppkpwem_noResult" class="text-center py-3 text-muted d-none">
+                <i class="fas fa-search mr-1"></i> Tidak ada file yang cocok dengan pencarian.
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+var PPPKPWEM_DATA = [];
+
+$(document).ready(function () {
+  loadEMeteraiFiles();
+
+  $('#pppkpwem_btnRefresh').click(function () { loadEMeteraiFiles(); });
+
+  $('#pppkpwem_inputCari').on('keyup input', function () {
+    var val = $(this).val().toLowerCase().trim();
+    var rows = $('#pppkpwem_tbody tr');
+    var visible = 0;
+    rows.each(function () {
+      var txt = $(this).find('td:eq(1)').text().toLowerCase();
+      var show = !val || txt.indexOf(val) > -1;
+      $(this).toggle(show);
+      if (show) visible++;
+    });
+    if (val) {
+      $('#pppkpwem_noResult').toggleClass('d-none', visible > 0);
+    } else {
+      $('#pppkpwem_noResult').addClass('d-none');
+    }
+  });
+
+  function loadEMeteraiFiles() {
+    $('#pppkpwem_loadingState').show();
+    $('#pppkpwem_tableState').hide();
+    $('#pppkpwem_emptyState').hide();
+    $('#pppkpwem_btnRefresh').prop('disabled', true).html('<i class="fas fa-spinner fa-spin text-maroon"></i>');
+
+    google.script.run
+      .withSuccessHandler(function (resRaw) {
+        $('#pppkpwem_btnRefresh').prop('disabled', false).html('<i class="fas fa-sync-alt"></i>');
+        var res = JSON.parse(resRaw);
+        if (!res.success) {
+          Sultan.notif.gagal(res.message || 'Gagal memuat file.');
+          $('#pppkpwem_loadingState').hide();
+          $('#pppkpwem_emptyState').show();
+          return;
+        }
+        PPPKPWEM_DATA = res.data || [];
+        $('#pppkpwem_loadingState').hide();
+        if (PPPKPWEM_DATA.length === 0) {
+          $('#pppkpwem_emptyState').show();
+          $('#pppkpwem_badgeJumlah').text('0 File');
+          return;
+        }
+        renderTable(PPPKPWEM_DATA);
+        $('#pppkpwem_tableState').show();
+        $('#pppkpwem_badgeJumlah').text(PPPKPWEM_DATA.length + ' File');
+      })
+      .withFailureHandler(function (err) {
+        $('#pppkpwem_btnRefresh').prop('disabled', false).html('<i class="fas fa-sync-alt"></i>');
+        Sultan.notif.gagal('Gagal menghubungi server: ' + err.message);
+        $('#pppkpwem_loadingState').hide();
+        $('#pppkpwem_emptyState').show();
+      })
+      .pppkpw_getEMeteraiFiles();
+  }
+
+  function renderTable(data) {
+    var tbody = '';
+    data.forEach(function (f, idx) {
+      var ukuranKB = f.ukuran > 0 ? (f.ukuran / 1024).toFixed(0) + ' KB' : '-';
+      if (f.ukuran >= 1048576) ukuranKB = (f.ukuran / 1048576).toFixed(2) + ' MB';
+
+      // Ikon berdasarkan ekstensi
+      var ext = f.nama.split('.').pop().toLowerCase();
+      var iconClass = 'fas fa-file text-secondary';
+      if (ext === 'pdf') iconClass = 'fas fa-file-pdf text-danger';
+      else if (ext === 'docx' || ext === 'doc') iconClass = 'fas fa-file-word text-primary';
+      else if (ext === 'xlsx' || ext === 'xls') iconClass = 'fas fa-file-excel text-success';
+
+      tbody += '<tr>' +
+        '<td class="text-center align-middle font-weight-bold text-maroon">' + (idx + 1) + '</td>' +
+        '<td class="align-middle">' +
+          '<div class="d-flex align-items-center">' +
+            '<i class="' + iconClass + ' fa-lg mr-3" style="min-width:20px;"></i>' +
+            '<div>' +
+              '<div class="font-weight-bold text-dark" style="max-width:350px;white-space:normal;word-break:break-word;">' + f.nama + '</div>' +
+            '</div>' +
+          '</div>' +
+        '</td>' +
+        '<td class="text-center align-middle">' +
+          '<span class="badge badge-light text-dark border">' + ukuranKB + '</span>' +
+        '</td>' +
+        '<td class="text-center align-middle text-muted">' + (f.tanggal || '-') + '</td>' +
+        '<td class="text-center align-middle">' +
+          '<a href="' + f.url + '" target="_blank" class="btn btn-xs btn-outline-info mr-1" title="Lihat File">' +
+            '<i class="fas fa-eye mr-1"></i>Lihat' +
+          '</a>' +
+          '<a href="' + f.downloadUrl + '" class="btn btn-xs btn-sultan-primary" title="Unduh File" download>' +
+            '<i class="fas fa-download mr-1"></i>Unduh' +
+          '</a>' +
+        '</td>' +
+        '</tr>';
+    });
+    $('#pppkpwem_tbody').html(tbody);
+    $('#pppkpwem_inputCari').val('');
+    $('#pppkpwem_noResult').addClass('d-none');
+  }
+});
+</script>
