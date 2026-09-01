@@ -807,7 +807,27 @@ $(document).off('submit', '#pppkpwunggah_formVerif').on('submit', '#pppkpwunggah
       if (res.success) {
         $('#global_modalVerifikasi').modal('hide');
         Sultan.notif.crud.simpan(true);
-        pppkpwunggah_loadData();
+
+        // Update data lokal secara instan
+        var targetRow = PPPKPWUNGGAH_DATA.find(function (d) {
+          return String(d.rowId) === String(payload.rowId) && String(d.sheetName) === String(payload.sheetName);
+        });
+        if (targetRow) {
+          targetRow.status = payload.status;
+          targetRow.catatan = payload.catatan || '';
+          targetRow.verifikator = payload.verifikator || '';
+          var now = new Date();
+          var tglStr = String(now.getDate()).padStart(2, '0') + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + now.getFullYear() + ' ' + String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+          targetRow.tgl_verifikasi = tglStr;
+        }
+
+        // Render ulang tabel secara lokal tanpa full load data server
+        var statusFilter = $('#pppkpwunggah_filterStatus').val() || '';
+        var filtered = statusFilter
+          ? PPPKPWUNGGAH_DATA.filter(function (d) { return d.status === statusFilter; })
+          : PPPKPWUNGGAH_DATA;
+        pppkpwunggah_renderTable(filtered);
+
         if (typeof sultan_fetchNotifikasi === 'function') sultan_fetchNotifikasi();
       } else {
         Sultan.notif.crud.gagal(res.message);
