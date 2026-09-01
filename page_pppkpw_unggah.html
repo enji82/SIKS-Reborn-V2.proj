@@ -174,6 +174,51 @@
       </button>
     </div>
   </form>
+
+  <!-- Form Verifikasi -->
+  <form id="pppkpwunggah_formVerif" class="d-flex flex-column flex-grow-1 overflow-hidden m-0 p-0" novalidate>
+    <div class="px-4 pb-4 flex-grow-1 overflow-auto" style="padding-top: 15px !important;">
+      <input type="hidden" id="pppkpwunggah_v_rowid">
+      <input type="hidden" id="pppkpwunggah_v_sheetname">
+      
+      <h6 class="modal-verifikasi-section-title"><i class="fas fa-list-alt mr-2"></i> Detail Dokumen</h6>
+      <div class="sultan-detail-container mb-4">
+        <div class="sultan-detail-item"><label class="sultan-detail-label">NAMA PEGAWAI</label><div class="sultan-detail-value text-uppercase font-weight-bold text-maroon" id="pppkpwunggah_v_nama">-</div></div>
+        <div class="sultan-detail-item"><label class="sultan-detail-label">NIP</label><div class="sultan-detail-value font-weight-bold" id="pppkpwunggah_v_nip">-</div></div>
+        <div class="sultan-detail-item"><label class="sultan-detail-label">UNIT KERJA</label><div class="sultan-detail-value font-weight-bold text-dark" id="pppkpwunggah_v_unit">-</div></div>
+        <div class="sultan-detail-item"><label class="sultan-detail-label">JABATAN</label><div class="sultan-detail-value font-weight-bold text-secondary" id="pppkpwunggah_v_jabatan">-</div></div>
+        <div class="sultan-detail-item"><label class="sultan-detail-label">TAHUN KONTRAK</label><div class="sultan-detail-value font-weight-bold" id="pppkpwunggah_v_tahun">-</div></div>
+      </div>
+
+      <h6 class="modal-verifikasi-section-title"><i class="fas fa-check-circle mr-2"></i> Verifikasi</h6>
+      <div class="form-group mb-3">
+        <label class="modal-verifikasi-form-label">Keputusan Verifikasi <span class="text-danger">*</span></label>
+        <select class="modal-verifikasi-select font-weight-bold" id="pppkpwunggah_v_status" required>
+          <option value="">-- Pilih Keputusan --</option>
+          <option value="Diverifikasi">Diverifikasi</option>
+          <option value="Ditolak">Ditolak</option>
+          <option value="Diproses">Diproses (Kembalikan)</option>
+        </select>
+      </div>
+
+      <div class="form-group mb-3" id="pppkpwunggah_prevCatatanWrap" style="display:none;">
+        <label class="modal-verifikasi-form-label text-muted"><i class="fas fa-history mr-1"></i>Catatan Sebelumnya</label>
+        <div class="modal-verifikasi-prev-catatan" id="pppkpwunggah_prevCatatan"></div>
+      </div>
+
+      <div class="form-group mb-0">
+        <label class="modal-verifikasi-form-label">Catatan Admin <span id="pppkpwunggah_reqCatatan" class="text-danger" style="display:none;">*</span></label>
+        <textarea class="modal-verifikasi-textarea" id="pppkpwunggah_v_catatan" rows="3" placeholder="Tuliskan catatan perbaikan atau alasan penolakan..."></textarea>
+      </div>
+    </div>
+
+    <div class="modal-verifikasi-footer" id="pppkpwunggah_verifFooter">
+      <button type="button" class="modal-btn-batal" data-dismiss="modal"><i class="fas fa-times mr-2"></i>BATAL</button>
+      <button type="submit" id="pppkpwunggah_btnVerifikasi" class="modal-verifikasi-btn-verifikasi" form="pppkpwunggah_formVerif">
+        <i class="fas fa-check-circle mr-2"></i>SIMPAN VERIFIKASI
+      </button>
+    </div>
+  </form>
 </div>
 
 <script>
@@ -379,7 +424,7 @@ function pppkpwunggah_renderTable(data) {
     }
 
     var btnV = PPPKPWUNGGAH_IS_ADMIN
-      ? '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-primary pppkpwunggah-btn-verif" data-rowid="' + row.rowId + '" data-sheet="' + row.sheetName + '" data-nama="' + row.nama_pegawai + '" data-status="' + st + '" title="Verifikasi Dokumen"><i class="fas fa-clipboard-check"></i></button>'
+      ? '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-primary pppkpwunggah-btn-verif" data-row="' + encodeURIComponent(JSON.stringify(row)) + '" title="Verifikasi Dokumen"><i class="fas fa-clipboard-check"></i></button>'
       : '';
     var btnP = !isVerif
       ? '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning pppkpwunggah-btn-edit" data-row="' + encodeURIComponent(JSON.stringify(row)) + '" title="Edit Berkas"><i class="fas fa-edit"></i></button>'
@@ -671,39 +716,108 @@ function pppkpwunggah_bukaModalHapus(row) {
 }
 
 $(document).off('click', '.pppkpwunggah-btn-verif').on('click', '.pppkpwunggah-btn-verif', function () {
-  var rowId = $(this).data('rowid');
-  var sheet = $(this).data('sheet');
-  var nama  = $(this).data('nama');
-  var curSt = $(this).data('status');
+  var row = JSON.parse(decodeURIComponent($(this).data('row')));
+  pppkpwunggah_bukaModalVerif(row);
+});
 
-  var selectSt = '<select id="pppkpwunggah_verifStatus" class="form-control form-control-sm mt-2">' +
-    '<option value="Diverifikasi"' + (curSt === 'Diverifikasi' ? ' selected' : '') + '>Diverifikasi</option>' +
-    '<option value="Ditolak"' + (curSt === 'Ditolak' ? ' selected' : '') + '>Ditolak</option>' +
-    '<option value="Diproses"' + (curSt === 'Diproses' ? ' selected' : '') + '>Diproses (Kembalikan)</option>' +
-    '</select>';
+function pppkpwunggah_bukaModalVerif(row) {
+  var $form = $('#pppkpwunggah_formVerif');
+  $form[0].reset();
+  $form.removeClass('was-validated');
 
-  Sultan.alert('info', 'Verifikasi: ' + nama,
-    '<div class="text-left"><label class="font-weight-bold">Status Verifikasi:</label>' + selectSt +
-    '<label class="font-weight-bold mt-2">Catatan (opsional):</label>' +
-    '<textarea id="pppkpwunggah_verifCatatan" class="form-control form-control-sm mt-1" rows="2" placeholder="Tuliskan catatan perbaikan atau informasi untuk pengunggah..."></textarea></div>',
-    { showCancelButton: true, confirmButtonText: 'Simpan Verifikasi', cancelButtonText: 'Batal', icon: 'question' }
-  ).then(function (result) {
-    if (!result.isConfirmed) return;
-    var newSt  = document.getElementById('pppkpwunggah_verifStatus') ? document.getElementById('pppkpwunggah_verifStatus').value : 'Diverifikasi';
-    var catatan = document.getElementById('pppkpwunggah_verifCatatan') ? document.getElementById('pppkpwunggah_verifCatatan').value : '';
-    google.script.run
-      .withSuccessHandler(function (r) {
-        var res = JSON.parse(r);
-        if (res.success) { 
-          Sultan.notif.crud.sukses(res.message); 
-          pppkpwunggah_loadData(); 
-          if (typeof sultan_fetchNotifikasi === 'function') sultan_fetchNotifikasi();
-        }
-        else Sultan.notif.crud.gagal(res.message);
-      })
-      .withFailureHandler(function (err) { Sultan.notif.crud.gagal(err.message); })
-      .pppkpw_verifikasi({ rowId: rowId, sheetName: sheet, status: newSt, catatan: catatan, verifikator: PPPKPWUNGGAH_USER_LOGIN });
+  $('#pppkpwunggah_v_rowid').val(row.rowId);
+  $('#pppkpwunggah_v_sheetname').val(row.sheetName);
+  $('#pppkpwunggah_v_nama').text(row.nama_pegawai || '-');
+  $('#pppkpwunggah_v_nip').text(row.nip || '-');
+  $('#pppkpwunggah_v_unit').text(row.unit_kerja || '-');
+  $('#pppkpwunggah_v_jabatan').text(row.jabatan || '-');
+  $('#pppkpwunggah_v_tahun').text(row.tahun || '-');
+
+  var st = row.status || 'Diproses';
+  var catatanLama = row.catatan || '';
+  if (catatanLama) {
+    $('#pppkpwunggah_prevCatatan').text(catatanLama);
+    $('#pppkpwunggah_prevCatatanWrap').show();
+  } else {
+    $('#pppkpwunggah_prevCatatan').text('');
+    $('#pppkpwunggah_prevCatatanWrap').hide();
+  }
+
+  $('#pppkpwunggah_v_status').val(st === 'Diverifikasi' || st === 'Ditolak' ? st : '');
+  $('#pppkpwunggah_v_catatan').val('');
+  $('#pppkpwunggah_reqCatatan').hide();
+
+  if ($('#pppkpwunggah_v_status').val() === 'Ditolak') {
+    $('#pppkpwunggah_reqCatatan').show();
+    $('#pppkpwunggah_v_catatan').prop('required', true);
+  } else {
+    $('#pppkpwunggah_v_catatan').prop('required', false);
+  }
+
+  Sultan.modal.verifikasi({
+    title: 'VERIFIKASI DRAFT PERJANJIAN KERJA - ' + (row.nama_pegawai || ''),
+    url: row.url_file || ""
   });
+
+  $('#pppkpwunggah_formVerif').appendTo('#global_verifikasiFormArea');
+  $('#pppkpwunggah_verifFooter').appendTo('#global_verifikasiFooterArea');
+  $('#global_verifikasiFooterArea').show();
+
+  $('#global_modalVerifikasi').off('hidden.bs.modal.pppkpwverif').on('hidden.bs.modal.pppkpwverif', function () {
+    $('#pppkpwunggah_verifFooter').appendTo('#pppkpwunggah_formVerif');
+    $('#pppkpwunggah_formVerif').appendTo('#pppkpwunggah_templates');
+    $('#global_verifikasiFooterArea').hide();
+  });
+}
+
+$(document).off('change', '#pppkpwunggah_v_status').on('change', '#pppkpwunggah_v_status', function () {
+  var val = $(this).val();
+  if (val === 'Ditolak') {
+    $('#pppkpwunggah_reqCatatan').show();
+    $('#pppkpwunggah_v_catatan').prop('required', true);
+  } else {
+    $('#pppkpwunggah_reqCatatan').hide();
+    $('#pppkpwunggah_v_catatan').prop('required', false);
+  }
+});
+
+$(document).off('submit', '#pppkpwunggah_formVerif').on('submit', '#pppkpwunggah_formVerif', function (e) {
+  e.preventDefault();
+  var $form = $(this);
+  if (!$form[0].checkValidity()) {
+    $form.addClass('was-validated');
+    return;
+  }
+  var payload = {
+    rowId: $('#pppkpwunggah_v_rowid').val(),
+    sheetName: $('#pppkpwunggah_v_sheetname').val(),
+    status: $('#pppkpwunggah_v_status').val(),
+    catatan: $('#pppkpwunggah_v_catatan').val(),
+    verifikator: PPPKPWUNGGAH_USER_LOGIN
+  };
+
+  var btn = $('#pppkpwunggah_btnVerifikasi');
+  var txt = btn.html();
+  btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i> Memverifikasi...');
+
+  google.script.run
+    .withSuccessHandler(function (r) {
+      btn.prop('disabled', false).html(txt);
+      var res = JSON.parse(r);
+      if (res.success) {
+        $('#global_modalVerifikasi').modal('hide');
+        Sultan.notif.crud.simpan(true);
+        pppkpwunggah_loadData();
+        if (typeof sultan_fetchNotifikasi === 'function') sultan_fetchNotifikasi();
+      } else {
+        Sultan.notif.crud.gagal(res.message);
+      }
+    })
+    .withFailureHandler(function (err) {
+      btn.prop('disabled', false).html(txt);
+      Sultan.notif.crud.gagal(err.message);
+    })
+    .pppkpw_verifikasi(payload);
 });
 
 $(document).off('click', '.pppkpwunggah-btn-catatan').on('click', '.pppkpwunggah-btn-catatan', function () {
