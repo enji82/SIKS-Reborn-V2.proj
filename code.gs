@@ -80,7 +80,7 @@ const FOLDER_CONFIG = {
   SERAGAM_LAPORAN_PENYERAHAN_DOCS: "1S0VtdV7X7qvIqrRSkrW0q9FG3Z6b2BiB",
   SERAGAM_DOKUMENTASI_PENYERAHAN_DOCS: "1ZWHb-7x1jZMjN5jFyB9rSRH_Kil3IttZ",
   PPPK_PW_DOCS: "1u5tjw-muhroXrPGwlDyQvPmzAhviRpYT",
-  PPPK_PW_EMETERAI: "1rstky-J_TSuRiEbDWnHBUBFKei1qvlEy",
+  PPPK_PW_EMETERAI: "1DttLjGkQxQhB8BgM1wOYTPhEh2NYY6ln",
 };
 
 // ==========================================

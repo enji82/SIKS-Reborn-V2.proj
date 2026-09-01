@@ -598,17 +598,56 @@ function pppkpw_tandaiSemuaNotifDibaca(role, unit) {
 }
 
 /* -----------------------------------------------------------------------
-   9. E-METERAI
+   9. E-METERAI (FILE EXPLORER)
    ----------------------------------------------------------------------- */
 
-function pppkpw_getEMeteraiFiles() {
+function pppkpw_getEMeteraiFiles(folderId) {
+  return pppkpw_getEMeteraiExplorer(folderId);
+}
+
+function pppkpw_getEMeteraiExplorer(targetFolderId) {
   try {
-    var folder = DriveApp.getFolderById(KONFIG_PPPK_PW.FOLDER_EMETERAI_ID);
-    var files = folder.getFiles();
-    var result = [];
-    while (files.hasNext()) {
-      var f = files.next();
-      result.push({
+    var rootId = KONFIG_PPPK_PW.FOLDER_EMETERAI_ID;
+    var currentId = (targetFolderId && String(targetFolderId).trim() !== "" && targetFolderId !== "ROOT") ? targetFolderId : rootId;
+    var currentFolder = DriveApp.getFolderById(currentId);
+    var isRoot = (currentId === rootId);
+
+    // Ambil daftar folder tahun di root (untuk shortcut dropdown)
+    var rootFolder = isRoot ? currentFolder : DriveApp.getFolderById(rootId);
+    var rootSubfolders = rootFolder.getFolders();
+    var yearFolders = [];
+    while (rootSubfolders.hasNext()) {
+      var yf = rootSubfolders.next();
+      yearFolders.push({
+        id: yf.getId(),
+        name: yf.getName()
+      });
+    }
+    yearFolders.sort(function(a, b) { return b.name.localeCompare(a.name); });
+
+    // Ambil subfolder di current folder
+    var subfolderIter = currentFolder.getFolders();
+    var folders = [];
+    while (subfolderIter.hasNext()) {
+      var sub = subfolderIter.next();
+      var fileCount = 0;
+      var subFIter = sub.getFiles();
+      while (subFIter.hasNext()) { subFIter.next(); fileCount++; }
+      folders.push({
+        id: sub.getId(),
+        name: sub.getName(),
+        count: fileCount,
+        url: sub.getUrl()
+      });
+    }
+    folders.sort(function(a, b) { return b.name.localeCompare(a.name); });
+
+    // Ambil files di current folder
+    var fileIter = currentFolder.getFiles();
+    var files = [];
+    while (fileIter.hasNext()) {
+      var f = fileIter.next();
+      files.push({
         id: f.getId(),
         nama: f.getName(),
         url: f.getUrl(),
@@ -617,8 +656,33 @@ function pppkpw_getEMeteraiFiles() {
         tanggal: Utilities.formatDate(f.getLastUpdated(), "Asia/Jakarta", "dd-MM-yyyy HH:mm")
       });
     }
-    result.sort(function(a, b) { return b.tanggal.localeCompare(a.tanggal); });
-    return JSON.stringify({ success: true, data: result });
+    files.sort(function(a, b) { return a.nama.localeCompare(b.nama); });
+
+    // Parent ID jika bukan root
+    var parentId = null;
+    var parentName = null;
+    if (!isRoot) {
+      var parents = currentFolder.getParents();
+      if (parents.hasNext()) {
+        var p = parents.next();
+        parentId = p.getId();
+        parentName = p.getName();
+      }
+    }
+
+    return JSON.stringify({
+      success: true,
+      currentFolder: {
+        id: currentId,
+        name: isRoot ? "Draft E-meterai" : currentFolder.getName(),
+        isRoot: isRoot,
+        parentId: parentId,
+        parentName: parentName
+      },
+      yearFolders: yearFolders,
+      folders: folders,
+      files: files
+    });
   } catch(e) {
     return JSON.stringify({ success: false, message: e.message });
   }
