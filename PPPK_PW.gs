@@ -49,6 +49,26 @@ function pppkpw_getOrCreateSheet(tahun) {
   return sheet;
 }
 
+function pppkpw_formatFileName(namaPegawai, nip, unitKerja) {
+  var namaClean = String(namaPegawai || "").trim().replace(/[\\/:*?"<>|]/g, "");
+  var nipClean = String(nip || "").trim().replace(/[\\/:*?"<>|]/g, "");
+  var unitClean = String(unitKerja || "").trim().toUpperCase().replace(/[\\/:*?"<>|]/g, "");
+  return namaClean + "_" + nipClean + "_" + unitClean + "_SECANG.pdf";
+}
+
+function pppkpw_getOrCreateTargetFolder(tahun, unitKerja) {
+  var root = DriveApp.getFolderById(KONFIG_PPPK_PW.FOLDER_DOCS_ID);
+  var folderYearName = String(tahun || "Lainnya").replace(/\//g, "-");
+  var iterYear = root.getFoldersByName(folderYearName);
+  var yearFolder = iterYear.hasNext() ? iterYear.next() : root.createFolder(folderYearName);
+
+  var unitFolderName = String(unitKerja || "Lainnya").trim().toUpperCase();
+  var iterUnit = yearFolder.getFoldersByName(unitFolderName);
+  var unitFolder = iterUnit.hasNext() ? iterUnit.next() : yearFolder.createFolder(unitFolderName);
+
+  return unitFolder;
+}
+
 function pppkpw_getOrCreateYearFolder(tahun) {
   var root = DriveApp.getFolderById(KONFIG_PPPK_PW.FOLDER_DOCS_ID);
   var folderName = String(tahun || "Lainnya").replace(/\//g, "-");
@@ -227,13 +247,13 @@ function pppkpw_simpan(payload, fileData) {
       }
     }
 
-    var yearFolder = pppkpw_getOrCreateYearFolder(payload.tahun);
-    var namaFile = String(payload.nama_pegawai).trim() + " - " + String(payload.nip || "").trim() + ".pdf";
-    var iterFile = yearFolder.getFilesByName(namaFile);
+    var targetFolder = pppkpw_getOrCreateTargetFolder(payload.tahun, payload.unit_kerja);
+    var namaFile = pppkpw_formatFileName(payload.nama_pegawai, payload.nip, payload.unit_kerja);
+    var iterFile = targetFolder.getFilesByName(namaFile);
     while (iterFile.hasNext()) { try { iterFile.next().setTrashed(true); } catch(ex) {} }
 
     var blob = Utilities.newBlob(Utilities.base64Decode(fileData.data), "application/pdf", namaFile);
-    var file = yearFolder.createFile(blob);
+    var file = targetFolder.createFile(blob);
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     var fileUrl = file.getUrl();
 
@@ -290,10 +310,18 @@ function pppkpw_perbaiki(payload, fileData) {
           if (match && match[1]) DriveApp.getFileById(match[1]).setTrashed(true);
         } catch(ex) {}
       }
-      var yearFolder = pppkpw_getOrCreateYearFolder(payload.tahun || payload.sheetName);
-      namaFile = String(payload.nama_pegawai).trim() + " - " + String(payload.nip || "").trim() + ".pdf";
+      var unitKerja = payload.unit_kerja || sheet.getRange(r, 2).getValue();
+      var namaPegawai = payload.nama_pegawai || sheet.getRange(r, 3).getValue();
+      var nip = payload.nip || sheet.getRange(r, 4).getValue();
+      var tahun = payload.tahun || payload.sheetName || sheet.getRange(r, 6).getValue();
+
+      var targetFolder = pppkpw_getOrCreateTargetFolder(tahun, unitKerja);
+      namaFile = pppkpw_formatFileName(namaPegawai, nip, unitKerja);
+      var iterFile = targetFolder.getFilesByName(namaFile);
+      while (iterFile.hasNext()) { try { iterFile.next().setTrashed(true); } catch(ex) {} }
+
       var blob = Utilities.newBlob(Utilities.base64Decode(fileData.data), "application/pdf", namaFile);
-      var newFile = yearFolder.createFile(blob);
+      var newFile = targetFolder.createFile(blob);
       newFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
       newFileUrl = newFile.getUrl();
     }
