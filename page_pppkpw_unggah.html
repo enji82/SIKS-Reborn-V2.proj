@@ -546,15 +546,20 @@ function pppkpwunggah_prosesSimpan() {
     rowId: rowId, sheetName: $('#pppkpwunggah_sheetName').val()
   };
 
+  var $btn = $('#pppkpwunggah_btnSimpanForm');
+  var btnTxt = $btn.html();
+
   if (file) {
-    Sultan.loading.show(isEdit ? 'Menyimpan perubahan & mengunggah berkas...' : 'Mengunggah file ke Google Drive...');
+    $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i> MENGUNGGAH...');
+    Sultan.notif.loading(isEdit ? 'Menyimpan perubahan & mengunggah berkas...' : 'Mengunggah file ke Google Drive...');
     var reader = new FileReader();
     reader.onload = function (e) {
       var b64 = e.target.result.split(',')[1];
       var fileData = { data: b64, mimeType: 'application/pdf', nama_file: file.name };
       google.script.run
         .withSuccessHandler(function (r) {
-          Sultan.loading.hide();
+          $btn.prop('disabled', false).html(btnTxt);
+          Sultan.notif.tutup();
           var res = JSON.parse(r);
           if (res.success) {
             Sultan.notif.sukses(res.message);
@@ -564,15 +569,26 @@ function pppkpwunggah_prosesSimpan() {
             Sultan.notif.gagal(res.message);
           }
         })
-        .withFailureHandler(function (err) { Sultan.loading.hide(); Sultan.notif.gagal(err.message); })
+        .withFailureHandler(function (err) { 
+          $btn.prop('disabled', false).html(btnTxt);
+          Sultan.notif.tutup(); 
+          Sultan.notif.gagal(err.message); 
+        })
         [isEdit ? 'pppkpw_perbaiki' : 'pppkpw_simpan'](payload, fileData);
+    };
+    reader.onerror = function () {
+      $btn.prop('disabled', false).html(btnTxt);
+      Sultan.notif.tutup();
+      Sultan.notif.gagal('Gagal membaca file.');
     };
     reader.readAsDataURL(file);
   } else if (isEdit) {
-    Sultan.loading.show('Menyimpan perubahan...');
+    $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i> MENYIMPAN...');
+    Sultan.notif.loading('Menyimpan perubahan...');
     google.script.run
       .withSuccessHandler(function (r) {
-        Sultan.loading.hide();
+        $btn.prop('disabled', false).html(btnTxt);
+        Sultan.notif.tutup();
         var res = JSON.parse(r);
         if (res.success) {
           Sultan.notif.sukses(res.message);
@@ -582,7 +598,11 @@ function pppkpwunggah_prosesSimpan() {
           Sultan.notif.gagal(res.message);
         }
       })
-      .withFailureHandler(function (err) { Sultan.loading.hide(); Sultan.notif.gagal(err.message); })
+      .withFailureHandler(function (err) { 
+        $btn.prop('disabled', false).html(btnTxt);
+        Sultan.notif.tutup(); 
+        Sultan.notif.gagal(err.message); 
+      })
       .pppkpw_perbaiki(payload, null);
   }
 }
@@ -608,15 +628,15 @@ $(document).off('click', '.pppkpwunggah-btn-hapus').on('click', '.pppkpwunggah-b
     if (!result.isConfirmed) return;
     var kode = $('#pppkpwunggah_kodeHapus').val() || (document.getElementById('pppkpwunggah_kodeHapus') ? document.getElementById('pppkpwunggah_kodeHapus').value : '');
     if (!kode) { Sultan.notif.gagal('Kode keamanan tidak boleh kosong.'); return; }
-    Sultan.loading.show('Menghapus data...');
+    Sultan.notif.loading('Menghapus data...');
     google.script.run
       .withSuccessHandler(function (r) {
-        Sultan.loading.hide();
+        Sultan.notif.tutup();
         var res = JSON.parse(r);
         if (res.success) { Sultan.notif.sukses(res.message); pppkpwunggah_loadData(); }
         else Sultan.notif.gagal(res.message);
       })
-      .withFailureHandler(function (err) { Sultan.loading.hide(); Sultan.notif.gagal(err.message); })
+      .withFailureHandler(function (err) { Sultan.notif.tutup(); Sultan.notif.gagal(err.message); })
       .pppkpw_hapus(rowId, sheet, kode);
   });
 });
@@ -642,15 +662,15 @@ $(document).off('click', '.pppkpwunggah-btn-verif').on('click', '.pppkpwunggah-b
     if (!result.isConfirmed) return;
     var newSt  = document.getElementById('pppkpwunggah_verifStatus') ? document.getElementById('pppkpwunggah_verifStatus').value : 'Diverifikasi';
     var catatan = document.getElementById('pppkpwunggah_verifCatatan') ? document.getElementById('pppkpwunggah_verifCatatan').value : '';
-    Sultan.loading.show('Menyimpan verifikasi...');
+    Sultan.notif.loading('Menyimpan verifikasi...');
     google.script.run
       .withSuccessHandler(function (r) {
-        Sultan.loading.hide();
+        Sultan.notif.tutup();
         var res = JSON.parse(r);
         if (res.success) { Sultan.notif.sukses(res.message); pppkpwunggah_loadData(); }
         else Sultan.notif.gagal(res.message);
       })
-      .withFailureHandler(function (err) { Sultan.loading.hide(); Sultan.notif.gagal(err.message); })
+      .withFailureHandler(function (err) { Sultan.notif.tutup(); Sultan.notif.gagal(err.message); })
       .pppkpw_verifikasi({ rowId: rowId, sheetName: sheet, status: newSt, catatan: catatan, verifikator: PPPKPWUNGGAH_USER_LOGIN });
   });
 });
