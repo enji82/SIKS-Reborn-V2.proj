@@ -45,16 +45,8 @@
           </div>
         </div>
 
-        <!-- FILTER & NAV BAR -->
+        <!-- FILTER BAR -->
         <div class="sultan-filter-pill-container shadow-sm mb-4">
-          <!-- Dropdown Shortcut Tahun -->
-          <div class="sultan-filter-item" style="min-width: 220px;">
-            <select id="pppkpwem_selectTahun" class="form-control font-weight-bold text-maroon">
-              <option value="ROOT">📁 Semua Folder (Root)</option>
-            </select>
-            <i class="fas fa-chevron-down"></i>
-          </div>
-
           <!-- Realtime Search -->
           <div class="sultan-filter-item" style="flex:1;">
             <input type="text" id="pppkpwem_inputCari" class="form-control" placeholder="Cari nama pegawai, NIP, folder, atau berkas..." style="font-size:13px;">
@@ -68,17 +60,6 @@
 
         <!-- CARD TABEL EXPLORER -->
         <div class="card-sultan">
-          <div class="card-header card-header-sultan-adaptive py-2 d-flex align-items-center justify-content-between flex-wrap" style="gap:10px;">
-            <!-- Breadcrumb Navigation -->
-            <div class="d-flex align-items-center flex-wrap">
-              <span class="text-muted mr-2 font-weight-bold" style="font-size:12px;"><i class="fas fa-folder-tree mr-1 text-maroon"></i> LOKASI:</span>
-              <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-0 p-0 bg-transparent" id="pppkpwem_breadcrumb" style="font-size:13px;"></ol>
-              </nav>
-            </div>
-            <span id="pppkpwem_badgeJumlah" class="badge badge-maroon px-2 py-1" style="font-size:11px;">0 Item</span>
-          </div>
-          
           <div class="card-body p-3">
 
             <!-- Loading State -->
@@ -124,13 +105,6 @@ $(document).ready(function () {
 
   $(document).off('click', '#pppkpwem_btnRefresh').on('click', '#pppkpwem_btnRefresh', function () {
     pppkpwem_bukaFolder(PPPKPWEM_CURRENT_FOLDER, "", false);
-  });
-
-  // Shortcut dropdown tahun
-  $(document).off('change', '#pppkpwem_selectTahun').on('change', '#pppkpwem_selectTahun', function () {
-    var val = $(this).val();
-    var name = $(this).find(':selected').text();
-    pppkpwem_bukaFolder(val, name, true);
   });
 
   // Integrasi input cari ke DataTable
@@ -205,7 +179,6 @@ function pppkpwem_bukaFolder(folderId, folderName, resetStack) {
     }
   }
 
-  pppkpwem_renderBreadcrumb();
   pppkpwem_fetchData(folderId);
 }
 
@@ -219,29 +192,7 @@ function pppkpwem_navigasiKembali(parentId) {
   }
 }
 
-function pppkpwem_jumpBreadcrumb(folderId, folderName, index) {
-  if (index !== undefined && index >= 0) {
-    PPPKPWEM_FOLDER_STACK = PPPKPWEM_FOLDER_STACK.slice(0, index + 1);
-    var target = PPPKPWEM_FOLDER_STACK[index];
-    pppkpwem_bukaFolder(target.id, target.name, false);
-  } else {
-    pppkpwem_bukaFolder(folderId, folderName, false);
-  }
-}
 
-function pppkpwem_renderBreadcrumb() {
-  var html = '';
-  PPPKPWEM_FOLDER_STACK.forEach(function (f, idx) {
-    var isLast = (idx === PPPKPWEM_FOLDER_STACK.length - 1);
-    var icon = (idx === 0) ? '<i class="fas fa-home mr-1"></i>' : '<i class="fas fa-folder mr-1 text-warning"></i>';
-    if (isLast) {
-      html += '<li class="breadcrumb-item active font-weight-bold text-dark">' + icon + f.name + '</li>';
-    } else {
-      html += '<li class="breadcrumb-item"><span class="pppkpwem-breadcrumb-item" data-id="' + f.id + '" data-name="' + f.name + '" data-index="' + idx + '">' + icon + f.name + '</span></li>';
-    }
-  });
-  $('#pppkpwem_breadcrumb').html(html);
-}
 
 /* =======================================================================
    2. MEMUAT DATA DARI SERVER
@@ -261,20 +212,6 @@ function pppkpwem_fetchData(folderId) {
         $('#pppkpwem_tableState').show();
         return;
       }
-
-      // Update dropdown tahun jika list tersedia
-      if (res.yearFolders && res.yearFolders.length > 0 && PPPKPWEM_YEAR_LIST.length === 0) {
-        PPPKPWEM_YEAR_LIST = res.yearFolders;
-        var optHtml = '<option value="ROOT">📁 Semua Folder (Root)</option>';
-        res.yearFolders.forEach(function (yf) {
-          optHtml += '<option value="' + yf.id + '">📁 ' + yf.name + '</option>';
-        });
-        $('#pppkpwem_selectTahun').html(optHtml);
-      }
-
-      // Sinkronkan selected value di dropdown
-      var curVal = (res.currentFolder && !res.currentFolder.isRoot) ? res.currentFolder.id : "ROOT";
-      $('#pppkpwem_selectTahun').val(curVal);
 
       // Render Tabel
       pppkpwem_renderExplorerTable(res);
@@ -300,17 +237,16 @@ function pppkpwem_renderExplorerTable(res) {
   var folders = res.folders || [];
   var files = res.files || [];
   var totalItems = folders.length + files.length;
-  $('#pppkpwem_badgeJumlah').text(totalItems + ' Item');
 
   // 1. Baris Navigasi "Kembali" jika bukan root
   if (!isRoot) {
     var upRowName = 
-      '<div class="d-flex align-items-center text-maroon font-weight-bold">' +
-        '<i class="fas fa-level-up-alt fa-lg mr-3 text-secondary" style="transform:rotate(-90deg);"></i>' +
-        '<span>.. [Kembali ke Folder Atas]</span>' +
+      '<div class="d-flex align-items-center text-success font-weight-bold pppkpwem-btn-kembali" data-id="' + (parentId || 'ROOT') + '" style="cursor:pointer;">' +
+        '<i class="fas fa-level-up-alt fa-lg mr-3 text-success" style="transform:rotate(-90deg);"></i>' +
+        '<span>.. [Kembali ke Folder Sebelumnya]</span>' +
       '</div>';
     var upAction = 
-      '<button type="button" class="sultan-btn-pdf pppkpwem-btn-kembali" data-id="' + (parentId || 'ROOT') + '" title="Kembali">' +
+      '<button type="button" class="btn btn-sm btn-success pppkpwem-btn-kembali font-weight-bold px-3 py-1 shadow-sm" data-id="' + (parentId || 'ROOT') + '" title="Kembali ke Folder Sebelumnya" style="border-radius:6px; font-size:12px;">' +
         '<i class="fas fa-arrow-left mr-1"></i> KEMBALI' +
       '</button>';
 
