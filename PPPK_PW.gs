@@ -72,6 +72,10 @@ function pppkpw_isPppkPw(statusRaw) {
   return s === "PPPK PARUH WAKTU" || s === "PPPK PW" || s === "PPPKPW" || s.indexOf("PARUH") !== -1;
 }
 
+function pppkpw_normalizeUnitName(str) {
+  return String(str || "").trim().toUpperCase().replace(/\s+/g, " ").replace(/\b0+(\d+)\b/g, "$1");
+}
+
 /* -----------------------------------------------------------------------
    1. DATA INISIALISASI — Unit, Pegawai, NIP, Jabatan
    ----------------------------------------------------------------------- */
@@ -86,6 +90,7 @@ function pppkpw_getInitData(unitFilter) {
       if (lastRow >= 2) {
         // Ambil sampai kolom Z (26 kolom): C=2, E=4, H=7, T=19, Z=25
         var data = sheet.getRange(2, 1, lastRow - 1, 26).getDisplayValues();
+        var targetNorm = (unitFilter && unitFilter !== "SEMUA") ? pppkpw_normalizeUnitName(unitFilter) : "";
         data.forEach(function(row) {
           if (!row[0]) return;
           if (!pppkpw_isPppkPw(row[19])) return; // Kolom T
@@ -95,8 +100,8 @@ function pppkpw_getInitData(unitFilter) {
           var jabatan = String(row[25] || "").trim(); // Kolom Z
           if (!unit || !nama) return;
 
-          var targetUnit = String(unitFilter || "").trim().toUpperCase();
-          if (targetUnit && targetUnit !== "SEMUA" && unit.toUpperCase() !== targetUnit) return;
+          var unitNorm = pppkpw_normalizeUnitName(unit);
+          if (targetNorm && unitNorm !== targetNorm) return;
 
           if (unitList.indexOf(unit) === -1) unitList.push(unit);
           if (!pegawaiMap[unit]) pegawaiMap[unit] = [];
@@ -123,12 +128,13 @@ function pppkpw_getDaftarPegawai(unitKerja) {
     var lastRow = sheet.getLastRow();
     if (lastRow < 2) return JSON.stringify({ success: true, data: [] });
     var data = sheet.getRange(2, 1, lastRow - 1, 26).getDisplayValues();
-    var targetUnit = String(unitKerja || "").trim().toUpperCase();
+    var targetNorm = pppkpw_normalizeUnitName(unitKerja);
     data.forEach(function(row) {
       if (!row[0]) return;
       if (!pppkpw_isPppkPw(row[19])) return; // Kolom T
       var unit    = String(row[2] || "").trim(); // Kolom C
-      if (unit.toUpperCase() !== targetUnit) return;
+      var unitNorm = pppkpw_normalizeUnitName(unit);
+      if (targetNorm && unitNorm !== targetNorm) return;
       var nama    = String(row[4] || "").trim(); // Kolom E
       var nip     = String(row[7] || "").trim(); // Kolom H
       var jabatan = String(row[25] || "").trim(); // Kolom Z

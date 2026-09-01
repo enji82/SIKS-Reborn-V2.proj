@@ -345,8 +345,9 @@ function pppkpwunggah_initPage() {
       } else {
         $('#pppkpwunggah_in_unit_display').val(PPPKPWUNGGAH_USER_UNIT);
         $('#pppkpwunggah_in_unit_hidden').val(PPPKPWUNGGAH_USER_UNIT);
-        if (PPPKPWUNGGAH_USER_UNIT && res.pegawaiMap && res.pegawaiMap[PPPKPWUNGGAH_USER_UNIT]) {
-          pppkpwunggah_renderPegawaiOptions(res.pegawaiMap[PPPKPWUNGGAH_USER_UNIT]);
+        var listUser = pppkpwunggah_getPegawaiListForUnit(PPPKPWUNGGAH_USER_UNIT);
+        if (listUser && listUser.length > 0) {
+          pppkpwunggah_renderPegawaiOptions(listUser);
         }
       }
 
@@ -521,8 +522,11 @@ function pppkpwunggah_bukaModalTambah() {
     $('#pppkpwunggah_in_unit').addClass('d-none');
     $('#pppkpwunggah_in_unit_display').removeClass('d-none').val(PPPKPWUNGGAH_USER_UNIT);
     $('#pppkpwunggah_in_unit_hidden').val(PPPKPWUNGGAH_USER_UNIT);
-    if (PPPKPWUNGGAH_INIT_DATA && PPPKPWUNGGAH_INIT_DATA.pegawaiMap && PPPKPWUNGGAH_INIT_DATA.pegawaiMap[PPPKPWUNGGAH_USER_UNIT]) {
-      pppkpwunggah_renderPegawaiOptions(PPPKPWUNGGAH_INIT_DATA.pegawaiMap[PPPKPWUNGGAH_USER_UNIT]);
+    var list = pppkpwunggah_getPegawaiListForUnit(PPPKPWUNGGAH_USER_UNIT);
+    if (list && list.length > 0) {
+      pppkpwunggah_renderPegawaiOptions(list);
+    } else {
+      pppkpwunggah_loadPegawaiDropdown(PPPKPWUNGGAH_USER_UNIT);
     }
   }
 
@@ -568,12 +572,19 @@ function pppkpwunggah_bukaModalEdit(row) {
   $('#pppkpwunggah_in_tahun').val(row.tahun);
 
   // Render options pegawai dan pilih yang sesuai
-  if (PPPKPWUNGGAH_INIT_DATA && PPPKPWUNGGAH_INIT_DATA.pegawaiMap && PPPKPWUNGGAH_INIT_DATA.pegawaiMap[row.unit_kerja]) {
-    pppkpwunggah_renderPegawaiOptions(PPPKPWUNGGAH_INIT_DATA.pegawaiMap[row.unit_kerja]);
+  var listEdit = pppkpwunggah_getPegawaiListForUnit(row.unit_kerja);
+  if (listEdit && listEdit.length > 0) {
+    pppkpwunggah_renderPegawaiOptions(listEdit);
+    $('#pppkpwunggah_in_nama').val(row.nama_pegawai);
+    $('#pppkpwunggah_in_nip').val(row.nip);
+    $('#pppkpwunggah_in_jabatan').val(row.jabatan || '');
   } else {
-    $('#pppkpwunggah_in_nama').html('<option value="' + row.nama_pegawai + '" data-nip="' + row.nip + '" data-jabatan="' + (row.jabatan || '') + '" selected>' + row.nama_pegawai + '</option>');
+    pppkpwunggah_loadPegawaiDropdown(row.unit_kerja, function () {
+      $('#pppkpwunggah_in_nama').val(row.nama_pegawai);
+      $('#pppkpwunggah_in_nip').val(row.nip);
+      $('#pppkpwunggah_in_jabatan').val(row.jabatan || '');
+    });
   }
-  $('#pppkpwunggah_in_nama').val(row.nama_pegawai);
 
   if (row.url_file) {
     $('#pppkpwunggah_fileExisting').removeClass('d-none');
@@ -878,6 +889,28 @@ $(document).off('click', '.pppkpwunggah-btn-preview').on('click', '.pppkpwunggah
 /* =======================================================================
    7. HELPER FUNCTIONS
    ======================================================================= */
+function pppkpwunggah_normalizeUnit(str) {
+  return String(str || "").trim().toUpperCase().replace(/\s+/g, " ").replace(/\b0+(\d+)\b/g, "$1");
+}
+
+function pppkpwunggah_getPegawaiListForUnit(unitName) {
+  if (!PPPKPWUNGGAH_INIT_DATA || !PPPKPWUNGGAH_INIT_DATA.pegawaiMap) return [];
+  var map = PPPKPWUNGGAH_INIT_DATA.pegawaiMap;
+  if (unitName && map[unitName]) return map[unitName];
+
+  var target = pppkpwunggah_normalizeUnit(unitName);
+  var keys = Object.keys(map);
+  for (var i = 0; i < keys.length; i++) {
+    if (pppkpwunggah_normalizeUnit(keys[i]) === target) {
+      return map[keys[i]];
+    }
+  }
+  if (!PPPKPWUNGGAH_IS_ADMIN && keys.length === 1) {
+    return map[keys[0]];
+  }
+  return [];
+}
+
 function pppkpwunggah_renderPegawaiOptions(list) {
   var opts = '<option value="">- Pilih Pegawai -</option>';
   (list || []).forEach(function (p) {
@@ -888,21 +921,26 @@ function pppkpwunggah_renderPegawaiOptions(list) {
   $('#pppkpwunggah_in_jabatan').val('');
 }
 
-function pppkpwunggah_loadPegawaiDropdown(unit) {
+function pppkpwunggah_loadPegawaiDropdown(unit, callback) {
   if (!unit) {
     $('#pppkpwunggah_in_nama').html('<option value="">- Pilih Unit Kerja Terlebih Dahulu -</option>');
     $('#pppkpwunggah_in_nip').val('');
     $('#pppkpwunggah_in_jabatan').val('');
     return;
   }
-  if (PPPKPWUNGGAH_INIT_DATA && PPPKPWUNGGAH_INIT_DATA.pegawaiMap && PPPKPWUNGGAH_INIT_DATA.pegawaiMap[unit]) {
-    pppkpwunggah_renderPegawaiOptions(PPPKPWUNGGAH_INIT_DATA.pegawaiMap[unit]);
+  var list = pppkpwunggah_getPegawaiListForUnit(unit);
+  if (list && list.length > 0) {
+    pppkpwunggah_renderPegawaiOptions(list);
+    if (typeof callback === 'function') callback();
     return;
   }
   google.script.run
     .withSuccessHandler(function (r) {
       var res = JSON.parse(r);
-      if (res.success && res.data) pppkpwunggah_renderPegawaiOptions(res.data);
+      if (res.success && res.data) {
+        pppkpwunggah_renderPegawaiOptions(res.data);
+        if (typeof callback === 'function') callback();
+      }
     })
     .withFailureHandler(function (err) { Sultan.notif.gagal('Gagal memuat daftar pegawai: ' + err.message); })
     .pppkpw_getDaftarPegawai(unit);
