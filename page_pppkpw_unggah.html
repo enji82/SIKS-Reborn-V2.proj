@@ -81,13 +81,13 @@
                     <tr>
                       <th class="col-sticky-left text-center align-middle" style="z-index: 5; border-bottom: 3px solid #85144b !important;">AKSI</th>
                       <th class="text-center align-middle" style="border-bottom: 3px solid #85144b !important;">STATUS</th>
-                      <th class="text-left align-middle" style="min-width:200px; border-bottom: 3px solid #85144b !important;">NAMA PEGAWAI</th>
-                      <th class="text-left align-middle" style="min-width:160px; border-bottom: 3px solid #85144b !important;">JABATAN</th>
+                      <th class="text-left align-middle" style="border-bottom: 3px solid #85144b !important;">NAMA PEGAWAI</th>
+                      <th class="text-left align-middle" style="border-bottom: 3px solid #85144b !important;">JABATAN</th>
                       <th class="text-center align-middle" style="border-bottom: 3px solid #85144b !important;">TAHUN</th>
                       <th class="text-center align-middle" style="border-bottom: 3px solid #85144b !important;">DOKUMEN</th>
-                      <th class="text-left align-middle" style="min-width:150px; border-bottom: 3px solid #85144b !important;">DIUNGGAH</th>
-                      <th class="text-left align-middle" style="min-width:150px; border-bottom: 3px solid #85144b !important;">DIUBAH</th>
-                      <th class="text-left align-middle" style="min-width:150px; border-bottom: 3px solid #85144b !important;">DIVERIFIKASI</th>
+                      <th class="text-left align-middle" style="border-bottom: 3px solid #85144b !important;">DIUNGGAH</th>
+                      <th class="text-left align-middle" style="border-bottom: 3px solid #85144b !important;">DIUBAH</th>
+                      <th class="text-left align-middle" style="border-bottom: 3px solid #85144b !important;">DIVERIFIKASI</th>
                     </tr>
                   </thead>
                   <tbody id="pppkpwunggah_tbody"></tbody>
@@ -385,7 +385,7 @@ function pppkpwunggah_renderTable(data) {
       ? '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning pppkpwunggah-btn-edit" data-row="' + encodeURIComponent(JSON.stringify(row)) + '" title="Edit Berkas"><i class="fas fa-edit"></i></button>'
       : '<button type="button" class="sultan-btn-aksi" disabled style="opacity:0.5;" title="Terkunci (Sudah Diverifikasi)"><i class="fas fa-edit"></i></button>';
     var btnH = (PPPKPWUNGGAH_IS_ADMIN && !isVerif)
-      ? '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon pppkpwunggah-btn-hapus" data-rowid="' + row.rowId + '" data-sheet="' + row.sheetName + '" data-nama="' + row.nama_pegawai + '" title="Hapus Berkas"><i class="fas fa-trash-alt"></i></button>'
+      ? '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon pppkpwunggah-btn-hapus" data-row="' + encodeURIComponent(JSON.stringify(row)) + '" title="Hapus Berkas"><i class="fas fa-trash-alt"></i></button>'
       : (PPPKPWUNGGAH_IS_ADMIN ? '<button type="button" class="sultan-btn-aksi" disabled style="opacity:0.5;" title="Terkunci"><i class="fas fa-trash-alt"></i></button>' : '');
 
     var aksiHtml = '<div class="d-flex flex-nowrap justify-content-center" style="gap:5px;">' + btnV + btnP + btnH + '</div>';
@@ -418,13 +418,13 @@ function pppkpwunggah_renderTable(data) {
     PPPKPWUNGGAH_TABLE.destroy();
   }
   PPPKPWUNGGAH_TABLE = SultanTable.init('#pppkpwunggah_tabelUtama', {
-    destroy: true, ordering: false, pageLength: 15, autoWidth: false,
+    destroy: true, ordering: false, pageLength: 15, autoWidth: true,
     dom: "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
          "<'row'<'col-sm-12'<'table-responsive sultan-scroll'tr>>>" +
          "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
     columnDefs: [
       { targets: 0, width: "1%", className: "col-sticky-left bg-white align-middle text-center text-nowrap", orderable: false },
-      { targets: 1, width: "1%", className: "text-center align-middle" },
+      { targets: 1, width: "1%", className: "text-center align-middle text-nowrap" },
       { targets: [2, 3], className: "text-left align-middle" },
       { targets: [4, 5], width: "1%", className: "text-center align-middle text-nowrap" },
       { targets: [6, 7, 8], width: "1%", className: "text-left align-middle text-nowrap" }
@@ -432,6 +432,9 @@ function pppkpwunggah_renderTable(data) {
     language: { url: '//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json', emptyTable: 'Belum ada berkas Draft PK yang diunggah.' }
   });
   PPPKPWUNGGAH_TABLE.clear().rows.add(dtArray).draw(false);
+  setTimeout(function () {
+    if (PPPKPWUNGGAH_TABLE) PPPKPWUNGGAH_TABLE.columns.adjust();
+  }, 100);
 }
 
 /* =======================================================================
@@ -627,34 +630,45 @@ $(document).off('click', '.pppkpwunggah-btn-edit').on('click', '.pppkpwunggah-bt
 });
 
 $(document).off('click', '.pppkpwunggah-btn-hapus').on('click', '.pppkpwunggah-btn-hapus', function () {
-  var rowId = $(this).data('rowid');
-  var sheet = $(this).data('sheet');
-  var nama  = $(this).data('nama');
-  Sultan.alert('warning', 'Konfirmasi Hapus',
-    '<div class="text-left"><p>Anda akan menghapus data draft PK:</p><b>' + nama + '</b><br><small class="text-muted">(File di Google Drive juga akan dihapus)</small>' +
-    '<hr><label class="font-weight-bold">Kode Keamanan (YYYYMMDD hari ini):</label>' +
-    '<input type="text" id="pppkpwunggah_kodeHapus" class="form-control form-control-sm mt-1" placeholder="Contoh: 20260901" maxlength="8"></div>',
-    { showCancelButton: true, confirmButtonText: 'Ya, Hapus!', cancelButtonText: 'Batal', icon: 'warning' }
-  ).then(function (result) {
-    if (!result.isConfirmed) return;
-    var kode = $('#pppkpwunggah_kodeHapus').val() || (document.getElementById('pppkpwunggah_kodeHapus') ? document.getElementById('pppkpwunggah_kodeHapus').value : '');
-    if (!kode) { Sultan.notif.gagal('Kode keamanan tidak boleh kosong.'); return; }
-    var btnHapus = $('#global_swalConfirmBtn, .swal2-confirm');
-    btnHapus.prop('disabled', true);
-    google.script.run
-      .withSuccessHandler(function (r) {
-        var res = JSON.parse(r);
-        if (res.success) { 
-          Sultan.notif.crud.hapus(); 
-          pppkpwunggah_loadData(); 
-          if (typeof sultan_fetchNotifikasi === 'function') sultan_fetchNotifikasi();
-        }
-        else Sultan.notif.crud.gagal(res.message);
-      })
-      .withFailureHandler(function (err) { Sultan.notif.crud.gagal(err.message); })
-      .pppkpw_hapus(rowId, sheet, kode);
-  });
+  var row = JSON.parse(decodeURIComponent($(this).data('row')));
+  pppkpwunggah_bukaModalHapus(row);
 });
+
+function pppkpwunggah_bukaModalHapus(row) {
+  var dDate = new Date();
+  var kd = dDate.getFullYear() + "" + String(dDate.getMonth() + 1).padStart(2, '0') + "" + String(dDate.getDate()).padStart(2, '0');
+  
+  Sultan.modal.konfirmasiHapus({
+    title: 'HAPUS DRAFT PERJANJIAN KERJA',
+    kode: kd,
+    detail: {
+      'NAMA PEGAWAI': row.nama_pegawai + (row.nip ? ' (' + row.nip + ')' : ''),
+      'UNIT KERJA': row.unit_kerja || '-',
+      'JABATAN': row.jabatan || '-',
+      'TAHUN KONTRAK': row.tahun || '-'
+    },
+    onConfirm: function () {
+      Sultan.notif.loading("Menghapus berkas...");
+      google.script.run
+        .withSuccessHandler(function (r) {
+          Sultan.notif.tutup();
+          var res = JSON.parse(r);
+          if (res.success) { 
+            Sultan.notif.crud.hapus(); 
+            pppkpwunggah_loadData(); 
+            if (typeof sultan_fetchNotifikasi === 'function') sultan_fetchNotifikasi();
+          } else {
+            Sultan.notif.crud.gagal(res.message);
+          }
+        })
+        .withFailureHandler(function (err) {
+          Sultan.notif.tutup();
+          Sultan.notif.crud.gagal(err.message);
+        })
+        .pppkpw_hapus(row.rowId, row.sheetName, kd);
+    }
+  });
+}
 
 $(document).off('click', '.pppkpwunggah-btn-verif').on('click', '.pppkpwunggah-btn-verif', function () {
   var rowId = $(this).data('rowid');
