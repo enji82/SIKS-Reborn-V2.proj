@@ -4,19 +4,26 @@
    Folder PK : PPPK_PW_DOCS (Drive: 1u5tjw-muhroXrPGwlDyQvPmzAhviRpYT) — dikelompokkan per Tahun
    Folder EM : PPPK_PW_EMETERAI (Drive: 1rstky-J_TSuRiEbDWnHBUBFKei1qvlEy)
 
-   Sumber Pegawai : Master Data GTK (PTK_DB) — filter Status Kepegawaian = "PPPK PARUH WAKTU" / "PPPK PW"
-   Penamaan file  : <Nama Pegawai> - <NIP>.pdf
-   Kolom Sheet    : ID | Unit_Kerja | Nama_Pegawai | NIP | Tahun | Nama_File | URL_File | Status |
-                    Catatan | Tgl_Unggah | Pengunggah | Tgl_Diubah | Pengubah | Tgl_Verifikasi | Verifikator
+   Sumber Data Pegawai dari Sheet "Master Data GTK" (PTK_DB):
+     - Unit Kerja : Kolom C (Index 2)
+     - Nama       : Kolom E (Index 4)
+     - NIP        : Kolom H (Index 7)
+     - Status Peg : Kolom T (Index 19) — filter PPPK Paruh Waktu / PPPK PW
+     - Jabatan    : Kolom Z (Index 25)
+
+   Header Penyimpanan Sheet (PPPK_PW_DB):
+     [ID, Unit_Kerja, Nama_Pegawai, NIP, Jabatan, Tahun, Nama_File, URL_File,
+      Status, Catatan, Tgl_Unggah, Pengunggah, Tgl_Diubah, Pengubah,
+      Tgl_Verifikasi, Verifikator, Read_By]
    ====================================================================== */
 
 const KONFIG_PPPK_PW = {
   DB_KEY: "PPPK_PW_DB",
   get FOLDER_DOCS_ID() { return FOLDER_CONFIG.PPPK_PW_DOCS; },
   get FOLDER_EMETERAI_ID() { return FOLDER_CONFIG.PPPK_PW_EMETERAI; },
-  SHEET_HEADER: ["ID", "Unit_Kerja", "Nama_Pegawai", "NIP", "Tahun", "Nama_File",
+  SHEET_HEADER: ["ID", "Unit_Kerja", "Nama_Pegawai", "NIP", "Jabatan", "Tahun", "Nama_File",
                  "URL_File", "Status", "Catatan", "Tgl_Unggah", "Pengunggah",
-                 "Tgl_Diubah", "Pengubah", "Tgl_Verifikasi", "Verifikator"],
+                 "Tgl_Diubah", "Pengubah", "Tgl_Verifikasi", "Verifikator", "Read_By"],
   STATUS_PPPK_PW: ["PPPK PARUH WAKTU", "PPPK PW", "PPPKPW"]
 };
 
@@ -32,6 +39,12 @@ function pppkpw_getOrCreateSheet(tahun) {
     sheet = ss.insertSheet(sheetName);
     sheet.appendRow(KONFIG_PPPK_PW.SHEET_HEADER);
     sheet.getRange(1, 1, 1, KONFIG_PPPK_PW.SHEET_HEADER.length).setFontWeight("bold");
+  } else {
+    // Sinkronisasi header jika kolom Jabatan / Read_By belum ada di sheet existing
+    var headerCur = sheet.getRange(1, 1, 1, sheet.getLastColumn() || 1).getValues()[0];
+    if (headerCur.indexOf("Jabatan") === -1 || headerCur.indexOf("Read_By") === -1) {
+      sheet.getRange(1, 1, 1, KONFIG_PPPK_PW.SHEET_HEADER.length).setValues([KONFIG_PPPK_PW.SHEET_HEADER]).setFontWeight("bold");
+    }
   }
   return sheet;
 }
@@ -60,7 +73,7 @@ function pppkpw_isPppkPw(statusRaw) {
 }
 
 /* -----------------------------------------------------------------------
-   1. DATA INISIALISASI
+   1. DATA INISIALISASI — Unit, Pegawai, NIP, Jabatan
    ----------------------------------------------------------------------- */
 
 function pppkpw_getInitData(unitFilter) {
@@ -71,19 +84,23 @@ function pppkpw_getInitData(unitFilter) {
     if (sheet) {
       var lastRow = sheet.getLastRow();
       if (lastRow >= 2) {
-        var data = sheet.getRange(2, 1, lastRow - 1, 20).getDisplayValues();
+        // Ambil sampai kolom Z (26 kolom): C=2, E=4, H=7, T=19, Z=25
+        var data = sheet.getRange(2, 1, lastRow - 1, 26).getDisplayValues();
         data.forEach(function(row) {
           if (!row[0]) return;
-          if (!pppkpw_isPppkPw(row[19])) return;
-          var unit = String(row[2] || "").trim();
-          var nama = String(row[6] || "").trim();
-          var nip  = String(row[7] || "").trim();
+          if (!pppkpw_isPppkPw(row[19])) return; // Kolom T
+          var unit    = String(row[2] || "").trim(); // Kolom C
+          var nama    = String(row[4] || "").trim(); // Kolom E
+          var nip     = String(row[7] || "").trim(); // Kolom H
+          var jabatan = String(row[25] || "").trim(); // Kolom Z
           if (!unit || !nama) return;
+
           var targetUnit = String(unitFilter || "").trim().toUpperCase();
           if (targetUnit && targetUnit !== "SEMUA" && unit.toUpperCase() !== targetUnit) return;
+
           if (unitList.indexOf(unit) === -1) unitList.push(unit);
           if (!pegawaiMap[unit]) pegawaiMap[unit] = [];
-          pegawaiMap[unit].push({ nama: nama, nip: nip });
+          pegawaiMap[unit].push({ nama: nama, nip: nip, jabatan: jabatan });
         });
       }
     }
@@ -105,17 +122,18 @@ function pppkpw_getDaftarPegawai(unitKerja) {
     if (!sheet) return JSON.stringify({ success: true, data: [] });
     var lastRow = sheet.getLastRow();
     if (lastRow < 2) return JSON.stringify({ success: true, data: [] });
-    var data = sheet.getRange(2, 1, lastRow - 1, 20).getDisplayValues();
+    var data = sheet.getRange(2, 1, lastRow - 1, 26).getDisplayValues();
     var targetUnit = String(unitKerja || "").trim().toUpperCase();
     data.forEach(function(row) {
       if (!row[0]) return;
-      if (!pppkpw_isPppkPw(row[19])) return;
-      var unit = String(row[2] || "").trim();
+      if (!pppkpw_isPppkPw(row[19])) return; // Kolom T
+      var unit    = String(row[2] || "").trim(); // Kolom C
       if (unit.toUpperCase() !== targetUnit) return;
-      var nama = String(row[6] || "").trim();
-      var nip  = String(row[7] || "").trim();
+      var nama    = String(row[4] || "").trim(); // Kolom E
+      var nip     = String(row[7] || "").trim(); // Kolom H
+      var jabatan = String(row[25] || "").trim(); // Kolom Z
       if (!nama) return;
-      result.push({ nama: nama, nip: nip });
+      result.push({ nama: nama, nip: nip, jabatan: jabatan });
     });
     result.sort(function(a, b) { return a.nama.localeCompare(b.nama); });
     return JSON.stringify({ success: true, data: result });
@@ -125,7 +143,7 @@ function pppkpw_getDaftarPegawai(unitKerja) {
 }
 
 /* -----------------------------------------------------------------------
-   2. GET DATA
+   2. GET DATA — Daftar Berkas
    ----------------------------------------------------------------------- */
 
 function pppkpw_getData(unitFilter, tahun) {
@@ -148,13 +166,23 @@ function pppkpw_getData(unitFilter, tahun) {
         if (targetUnit && targetUnit !== "SEMUA" && rUnit !== targetUnit) continue;
         result.push({
           rowId: i + 1, sheetName: sheetName,
-          id: data[i][0], unit_kerja: data[i][1], nama_pegawai: data[i][2],
-          nip: data[i][3], tahun: data[i][4], nama_file: data[i][5],
-          url_file: data[i][6], status: data[i][7] || "Diproses",
-          catatan: data[i][8] || "", tgl_unggah: data[i][9] || "-",
-          pengunggah: data[i][10] || "-", tgl_diubah: data[i][11] || "-",
-          pengubah: data[i][12] || "-", tgl_verifikasi: data[i][13] || "-",
-          verifikator: data[i][14] || "-"
+          id: data[i][0],
+          unit_kerja:   data[i][1],
+          nama_pegawai: data[i][2],
+          nip:          data[i][3],
+          jabatan:      data[i][4] || "-",
+          tahun:        data[i][5],
+          nama_file:    data[i][6],
+          url_file:     data[i][7],
+          status:       data[i][8] || "Diproses",
+          catatan:      data[i][9] || "",
+          tgl_unggah:   data[i][10] || "-",
+          pengunggah:   data[i][11] || "-",
+          tgl_diubah:   data[i][12] || "-",
+          pengubah:     data[i][13] || "-",
+          tgl_verifikasi: data[i][14] || "-",
+          verifikator:  data[i][15] || "-",
+          read_by:      data[i][16] || ""
         });
       }
     });
@@ -175,7 +203,7 @@ function pppkpw_simpan(payload, fileData) {
     lock.waitLock(30000);
     if (!payload.unit_kerja) return JSON.stringify({ success: false, message: "Unit Kerja tidak boleh kosong." });
     if (!payload.nama_pegawai) return JSON.stringify({ success: false, message: "Nama Pegawai tidak boleh kosong." });
-    if (!payload.tahun) return JSON.stringify({ success: false, message: "Tahun tidak boleh kosong." });
+    if (!payload.tahun) return JSON.stringify({ success: false, message: "Tahun Kontrak tidak boleh kosong." });
     if (!fileData || !fileData.data) return JSON.stringify({ success: false, message: "File Draft PK wajib diunggah." });
 
     var estimatedSize = Math.round(fileData.data.length * 0.75);
@@ -186,10 +214,10 @@ function pppkpw_simpan(payload, fileData) {
     for (var i = 1; i < existingData.length; i++) {
       if (String(existingData[i][2] || "").trim().toLowerCase() === String(payload.nama_pegawai).trim().toLowerCase() &&
           String(existingData[i][3] || "").trim() === String(payload.nip || "").trim() &&
-          String(existingData[i][4] || "").trim() === String(payload.tahun).trim()) {
-        var stDup = String(existingData[i][7] || "").toLowerCase();
+          String(existingData[i][5] || "").trim() === String(payload.tahun).trim()) {
+        var stDup = String(existingData[i][8] || "").toLowerCase();
         if (stDup === "diverifikasi") return JSON.stringify({ success: false, message: "Dokumen " + payload.nama_pegawai + " sudah Diverifikasi, tidak dapat ditambah ulang." });
-        return JSON.stringify({ success: false, message: "Data untuk pegawai ini dan tahun ini sudah ada. Gunakan tombol Edit (\u270f\ufe0f)." });
+        return JSON.stringify({ success: false, message: "Data untuk pegawai ini dan tahun ini sudah ada. Gunakan tombol Edit." });
       }
     }
 
@@ -204,8 +232,22 @@ function pppkpw_simpan(payload, fileData) {
     var fileUrl = file.getUrl();
 
     var now = "'" + Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
-    sheet.appendRow([pppkpw_genId(), payload.unit_kerja, payload.nama_pegawai, payload.nip || "",
-      payload.tahun, namaFile, fileUrl, "Diproses", "", now, payload.user_login || "", "", "", "", ""]);
+    sheet.appendRow([
+      pppkpw_genId(),
+      payload.unit_kerja,
+      payload.nama_pegawai,
+      payload.nip || "",
+      payload.jabatan || "",
+      payload.tahun,
+      namaFile,
+      fileUrl,
+      "Diproses",
+      "",
+      now,
+      payload.user_login || "",
+      "", "", "", "",
+      "User"
+    ]);
 
     SpreadsheetApp.flush();
     pppkpw_invalidateCache(payload.tahun);
@@ -225,11 +267,11 @@ function pppkpw_perbaiki(payload, fileData) {
     lock.waitLock(20000);
     var sheet = pppkpw_getOrCreateSheet(payload.sheetName || payload.tahun);
     var r = parseInt(payload.rowId);
-    var oldUrl = sheet.getRange(r, 7).getValue();
+    var oldUrl = sheet.getRange(r, 8).getValue(); // Col H: URL_File
     var newFileUrl = oldUrl;
-    var namaFile = sheet.getRange(r, 6).getValue();
+    var namaFile = sheet.getRange(r, 7).getValue(); // Col G: Nama_File
 
-    var currentStatus = String(sheet.getRange(r, 8).getValue() || "").toLowerCase();
+    var currentStatus = String(sheet.getRange(r, 9).getValue() || "").toLowerCase(); // Col I: Status
     if (currentStatus === "diverifikasi") return JSON.stringify({ success: false, message: "Dokumen sudah Diverifikasi, tidak dapat diubah." });
 
     if (fileData && fileData.data) {
@@ -251,14 +293,16 @@ function pppkpw_perbaiki(payload, fileData) {
     }
 
     var now = "'" + Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
-    sheet.getRange(r, 6).setValue(namaFile);
-    sheet.getRange(r, 7).setValue(newFileUrl);
-    sheet.getRange(r, 8).setValue("Diproses");
-    sheet.getRange(r, 9).setValue("");
-    sheet.getRange(r, 12).setValue(now);
-    sheet.getRange(r, 13).setValue(payload.user_login || "");
-    sheet.getRange(r, 14).setValue("");
-    sheet.getRange(r, 15).setValue("");
+    sheet.getRange(r, 5).setValue(payload.jabatan || ""); // Col E: Jabatan
+    sheet.getRange(r, 7).setValue(namaFile);              // Col G: Nama_File
+    sheet.getRange(r, 8).setValue(newFileUrl);             // Col H: URL_File
+    sheet.getRange(r, 9).setValue("Diproses");            // Col I: Status
+    sheet.getRange(r, 10).setValue("");                   // Col J: Catatan
+    sheet.getRange(r, 13).setValue(now);                  // Col M: Tgl_Diubah
+    sheet.getRange(r, 14).setValue(payload.user_login || ""); // Col N: Pengubah
+    sheet.getRange(r, 15).setValue("");                   // Col O: Tgl_Verif
+    sheet.getRange(r, 16).setValue("");                   // Col P: Verifikator
+    sheet.getRange(r, 17).setValue("User");               // Col Q: Read_By
 
     SpreadsheetApp.flush();
     pppkpw_invalidateCache(payload.sheetName || payload.tahun);
@@ -282,7 +326,7 @@ function pppkpw_hapus(rowId, sheetName, securityCode) {
 
     var sheet = pppkpw_getOrCreateSheet(sheetName);
     var r = parseInt(rowId);
-    var urlDrive = sheet.getRange(r, 7).getValue();
+    var urlDrive = sheet.getRange(r, 8).getValue(); // Col H: URL_File
     if (urlDrive && urlDrive.indexOf("drive.google.com") !== -1) {
       try {
         var match = urlDrive.match(/\/d\/([a-zA-Z0-9_-]+)/) || urlDrive.match(/id=([a-zA-Z0-9_-]+)/);
@@ -309,10 +353,12 @@ function pppkpw_verifikasi(payload) {
     var sheet = pppkpw_getOrCreateSheet(payload.sheetName);
     var r = parseInt(payload.rowId);
     var now = "'" + Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
-    sheet.getRange(r, 8).setValue(payload.status);
-    sheet.getRange(r, 9).setValue(payload.catatan || "");
-    sheet.getRange(r, 14).setValue(now);
-    sheet.getRange(r, 15).setValue(payload.verifikator);
+    sheet.getRange(r, 9).setValue(payload.status);          // Col I: Status
+    sheet.getRange(r, 10).setValue(payload.catatan || "");   // Col J: Catatan
+    sheet.getRange(r, 15).setValue(now);                    // Col O: Tgl_Verif
+    sheet.getRange(r, 16).setValue(payload.verifikator);    // Col P: Verifikator
+    sheet.getRange(r, 17).setValue("Admin");                // Col Q: Read_By
+
     SpreadsheetApp.flush();
     pppkpw_invalidateCache(payload.sheetName);
     return JSON.stringify({ success: true, message: "Status berhasil diperbarui menjadi " + payload.status + "." });
@@ -338,17 +384,18 @@ function pppkpw_getDashboardData(unitFilter, tahun, forceRefresh) {
     if (sheet) {
       var lastRow = sheet.getLastRow();
       if (lastRow >= 2) {
-        var ptkData = sheet.getRange(2, 1, lastRow - 1, 20).getDisplayValues();
+        var ptkData = sheet.getRange(2, 1, lastRow - 1, 26).getDisplayValues();
         var targetUnit = String(unitFilter || "").trim().toUpperCase();
         ptkData.forEach(function(row) {
           if (!row[0]) return;
-          if (!pppkpw_isPppkPw(row[19])) return;
-          var unit = String(row[2] || "").trim();
+          if (!pppkpw_isPppkPw(row[19])) return; // Col T
+          var unit    = String(row[2] || "").trim(); // Col C
           if (targetUnit && targetUnit !== "SEMUA" && unit.toUpperCase() !== targetUnit) return;
-          var nama = String(row[6] || "").trim();
-          var nip  = String(row[7] || "").trim();
+          var nama    = String(row[4] || "").trim(); // Col E
+          var nip     = String(row[7] || "").trim(); // Col H
+          var jabatan = String(row[25] || "").trim(); // Col Z
           if (!nama) return;
-          allPegawai.push({ unit: unit, nama: nama, nip: nip });
+          allPegawai.push({ unit: unit, nama: nama, nip: nip, jabatan: jabatan });
         });
       }
     }
@@ -364,8 +411,9 @@ function pppkpw_getDashboardData(unitFilter, tahun, forceRefresh) {
       var rows = s.getDataRange().getDisplayValues();
       for (var i = 1; i < rows.length; i++) {
         if (!rows[i][0]) continue;
-        var key = String(rows[i][2] || "").trim().toLowerCase() + "|" + String(rows[i][3] || "").trim() + "|" + String(rows[i][4] || "").trim();
-        uploadedMap[key] = { status: String(rows[i][7] || "Diproses").trim(), tahun: sName };
+        // Key: nama|nip|tahun
+        var key = String(rows[i][2] || "").trim().toLowerCase() + "|" + String(rows[i][3] || "").trim() + "|" + String(rows[i][5] || "").trim();
+        uploadedMap[key] = { status: String(rows[i][8] || "Diproses").trim(), tahun: sName };
       }
     });
 
@@ -390,10 +438,10 @@ function pppkpw_getDashboardData(unitFilter, tahun, forceRefresh) {
         if (stL === "diverifikasi") unitMap[p.unit].diverifikasi++;
         else if (stL.indexOf("proses") !== -1) unitMap[p.unit].diproses++;
         else if (stL === "ditolak") unitMap[p.unit].ditolak++;
-        unitMap[p.unit].listSudah.push({ nama: p.nama, nip: p.nip, status: foundEntry.status });
+        unitMap[p.unit].listSudah.push({ nama: p.nama, nip: p.nip, jabatan: p.jabatan, status: foundEntry.status });
       } else {
         unitMap[p.unit].belum++;
-        unitMap[p.unit].listBelum.push({ nama: p.nama, nip: p.nip });
+        unitMap[p.unit].listBelum.push({ nama: p.nama, nip: p.nip, jabatan: p.jabatan });
       }
     });
 
@@ -431,7 +479,126 @@ function pppkpw_invalidateCache(tahun) {
 }
 
 /* -----------------------------------------------------------------------
-   8. E-METERAI
+   8. NOTIFIKASI
+   ----------------------------------------------------------------------- */
+
+function getNotifikasiPPPKPW(role, unit) {
+  try {
+    var rLower = String(role || "").toLowerCase();
+    var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
+    var notifList = [];
+    var unreadCount = 0;
+
+    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.PPPK_PW_DB);
+    var sheets = ss.getSheets();
+
+    sheets.forEach(function(sheet) {
+      var lastRow = sheet.getLastRow();
+      if (lastRow < 2) return;
+      var data = sheet.getDataRange().getDisplayValues();
+
+      for (var i = 1; i < data.length; i++) {
+        var rowNum = i + 1;
+        var rUnit   = String(data[i][1] || "").trim(); // Col B: Unit_Kerja
+        var rNama   = String(data[i][2] || "").trim(); // Col C: Nama_Pegawai
+        var rTahun  = String(data[i][5] || "").trim(); // Col F: Tahun
+        var status  = String(data[i][8] || "Diproses").trim(); // Col I: Status
+        var isDiproses = (status === "Diproses" || status === "");
+        var isTarget = false;
+
+        if (isAdmin) {
+          isTarget = isDiproses;
+        } else {
+          isTarget = (rUnit.toUpperCase() === String(unit || "").trim().toUpperCase() && !isDiproses);
+        }
+
+        if (isTarget) {
+          var isRead = false;
+          var readBy = String(data[i][16] || "").trim(); // Col Q: Read_By
+          var readByList = readBy === "" ? [] : readBy.split(",");
+          if (isAdmin && readByList.indexOf("Admin") > -1) isRead = true;
+          if (!isAdmin && readByList.indexOf("User") > -1) isRead = true;
+
+          var stLower = status.toLowerCase();
+          var isDisetujui = stLower.includes("ok") || stLower.includes("setuju") || stLower.includes("valid") || stLower.includes("verifikasi");
+
+          if (isAdmin) {
+            if (!isRead) unreadCount++;
+          } else {
+            if (!(isDisetujui && isRead)) {
+              unreadCount++;
+            }
+          }
+
+          if (!(!isAdmin && isDisetujui && isRead)) {
+            notifList.push({
+              rowId: rowNum,
+              sheetName: sheet.getName(),
+              source: "PPPK PW",
+              nama: rNama,
+              namaSd: rUnit,
+              kriteria: "Draft PK " + rTahun,
+              status: status,
+              waktu: (data[i][14] && !isDiproses) ? data[i][14] : data[i][10],
+              isRead: isRead
+            });
+          }
+        }
+      }
+    });
+
+    return {
+      count: unreadCount,
+      recent: notifList.slice(0, 5)
+    };
+  } catch(e) {
+    Logger.log("Error getNotifikasiPPPKPW: " + e.message);
+    return { count: 0, recent: [] };
+  }
+}
+
+function pppkpw_tandaiSemuaNotifDibaca(role, unit) {
+  try {
+    var rLower = String(role || "").toLowerCase();
+    var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
+    var readMark = isAdmin ? "Admin" : "User";
+
+    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.PPPK_PW_DB);
+    var sheets = ss.getSheets();
+
+    sheets.forEach(function(sheet) {
+      var lastRow = sheet.getLastRow();
+      if (lastRow < 2) return;
+      var data = sheet.getDataRange().getDisplayValues();
+
+      for (var i = 1; i < data.length; i++) {
+        var rUnit  = String(data[i][1] || "").trim();
+        var status = String(data[i][8] || "Diproses").trim();
+        var isDiproses = (status === "Diproses" || status === "");
+        var shouldMark = false;
+
+        if (isAdmin && isDiproses) shouldMark = true;
+        if (!isAdmin && rUnit.toUpperCase() === String(unit || "").trim().toUpperCase() && !isDiproses) shouldMark = true;
+
+        if (shouldMark) {
+          var currentReadBy = String(data[i][16] || "").trim();
+          var list = currentReadBy === "" ? [] : currentReadBy.split(",");
+          if (list.indexOf(readMark) === -1) {
+            list.push(readMark);
+            sheet.getRange(i + 1, 17).setValue(list.join(","));
+          }
+        }
+      }
+    });
+    SpreadsheetApp.flush();
+    return true;
+  } catch(e) {
+    return false;
+  }
+}
+
+/* -----------------------------------------------------------------------
+   9. E-METERAI
    ----------------------------------------------------------------------- */
 
 function pppkpw_getEMeteraiFiles() {

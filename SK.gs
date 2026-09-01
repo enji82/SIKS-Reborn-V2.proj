@@ -750,6 +750,7 @@ function getNotifikasiGlobal(role, unit) {
     callSafe('arsip_ijazah', getNotifikasiArsipIjazah, role, unit);
     callSafe('arsip_tka', getNotifikasiArsipTka, role, unit);
     callSafe('koreksi_ktp', getNotifikasiKoreksiKtp, role, unit);
+    callSafe('pppkpw', getNotifikasiPPPKPW, role, unit);
   } catch (err) {
     Logger.log("SULTAN Critical Error: " + err.message);
   }
@@ -798,6 +799,9 @@ function tandaiSemuaNotifGlobalDibaca(role, unit) {
     }
     if (typeof admMurid_tandaiSemuaNotifIjazahDibaca === 'function') {
       admMurid_tandaiSemuaNotifIjazahDibaca(role, unit);
+    }
+    if (typeof pppkpw_tandaiSemuaNotifDibaca === 'function') {
+      pppkpw_tandaiSemuaNotifDibaca(role, unit);
     }
     if (typeof admMurid_verifikasiArsipIjazah === 'function') {
       // Tandai semua arsip ijazah yang belum dibaca

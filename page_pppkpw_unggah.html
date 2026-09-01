@@ -84,6 +84,7 @@
                       <th class="text-left align-middle" style="min-width:180px; border-bottom: 3px solid #85144b !important;">UNIT KERJA</th>
                       <th class="text-left align-middle" style="min-width:180px; border-bottom: 3px solid #85144b !important;">NAMA PEGAWAI</th>
                       <th class="text-center align-middle" style="border-bottom: 3px solid #85144b !important;">NIP</th>
+                      <th class="text-left align-middle" style="min-width:160px; border-bottom: 3px solid #85144b !important;">JABATAN</th>
                       <th class="text-center align-middle" style="border-bottom: 3px solid #85144b !important;">TAHUN</th>
                       <th class="text-center align-middle" style="border-bottom: 3px solid #85144b !important;">DOKUMEN</th>
                       <th class="text-left align-middle" style="min-width:150px; border-bottom: 3px solid #85144b !important;">DIUNGGAH</th>
@@ -123,15 +124,19 @@
       </div>
 
       <div class="row mb-3">
-        <div class="col-md-8">
+        <div class="col-md-6">
           <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Nama Pegawai <span class="text-danger">*</span></label>
           <select id="pppkpwunggah_in_nama" class="form-control form-control-sultan border-maroon font-weight-bold" required>
             <option value="">- Pilih Pegawai -</option>
           </select>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
           <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">NIP</label>
-          <input type="text" id="pppkpwunggah_in_nip" class="form-control form-control-sultan" readonly placeholder="Otomatis dari pilihan">
+          <input type="text" id="pppkpwunggah_in_nip" class="form-control form-control-sultan" readonly placeholder="Otomatis">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Jabatan</label>
+          <input type="text" id="pppkpwunggah_in_jabatan" class="form-control form-control-sultan" readonly placeholder="Otomatis">
         </div>
       </div>
 
@@ -221,7 +226,7 @@ $(document).ready(function () {
   // Event input file change
   $(document).off('change', '#pppkpwunggah_in_file').on('change', '#pppkpwunggah_in_file', function () {
     var f = this.files[0];
-    var $label = $('#pppkpwunggah_namaFile');
+    var $label = $('#pppkpwunggah_form').find('#pppkpwunggah_namaFile');
     if (!f) { $label.text('Pilih file PDF Draft PK...'); return; }
     if (f.size > 1100000) {
       Sultan.notif.gagal('Ukuran file terlalu besar. Maksimal 1 MB.');
@@ -245,10 +250,13 @@ $(document).ready(function () {
     pppkpwunggah_loadPegawaiDropdown(unit);
   });
 
-  // Saat nama pegawai dipilih, auto-fill NIP
+  // Saat nama pegawai dipilih, auto-fill NIP dan Jabatan
   $(document).off('change', '#pppkpwunggah_in_nama').on('change', '#pppkpwunggah_in_nama', function () {
-    var nip = $(this).find(':selected').data('nip') || '';
-    $('#pppkpwunggah_in_nip').val(nip);
+    var $opt = $(this).find(':selected');
+    var nip = $opt.data('nip') || '';
+    var jabatan = $opt.data('jabatan') || '';
+    $('#pppkpwunggah_form').find('#pppkpwunggah_in_nip').val(nip);
+    $('#pppkpwunggah_form').find('#pppkpwunggah_in_jabatan').val(jabatan);
   });
 
   // Submit Form
@@ -395,6 +403,7 @@ function pppkpwunggah_renderTable(data) {
       '<div class="font-weight-bold text-wrap" style="font-size:13px; color:#800000;">' + (row.unit_kerja || '-') + '</div>',
       '<div class="font-weight-bold text-primary text-wrap" style="font-size:13px;">' + (row.nama_pegawai || '-') + '</div>',
       '<div class="text-center font-weight-bold text-dark">' + (row.nip || '-') + '</div>',
+      '<div class="font-weight-bold text-secondary text-wrap" style="font-size:12px;">' + (row.jabatan || '-') + '</div>',
       '<div class="text-center font-weight-bold text-dark">' + (row.tahun || '-') + '</div>',
       btnFile,
       unggahInfo, ubahInfo, verifInfo
@@ -412,9 +421,9 @@ function pppkpwunggah_renderTable(data) {
     columnDefs: [
       { targets: 0, width: "1%", className: "col-sticky-left bg-white align-middle text-center text-nowrap", orderable: false },
       { targets: 1, width: "1%", className: "text-center align-middle" },
-      { targets: [2, 3], className: "text-left align-middle" },
-      { targets: [4, 5, 6], width: "1%", className: "text-center align-middle text-nowrap" },
-      { targets: [7, 8, 9], width: "1%", className: "text-left align-middle text-nowrap" }
+      { targets: [2, 3, 5], className: "text-left align-middle" },
+      { targets: [4, 6, 7], width: "1%", className: "text-center align-middle text-nowrap" },
+      { targets: [8, 9, 10], width: "1%", className: "text-left align-middle text-nowrap" }
     ],
     language: { url: '//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json', emptyTable: 'Belum ada berkas Draft PK yang diunggah.' }
   });
@@ -432,6 +441,7 @@ function pppkpwunggah_bukaModalTambah() {
   $('#pppkpwunggah_sheetName').val('');
   $('#pppkpwunggah_oldUrl').val('');
   $('#pppkpwunggah_in_nip').val('');
+  $('#pppkpwunggah_in_jabatan').val('');
   $('#pppkpwunggah_namaFile').text('Pilih file PDF Draft PK...');
   $('#pppkpwunggah_fileExisting').addClass('d-none');
 
@@ -475,6 +485,7 @@ function pppkpwunggah_bukaModalEdit(row) {
   $('#pppkpwunggah_sheetName').val(row.sheetName);
   $('#pppkpwunggah_oldUrl').val(row.url_file);
   $('#pppkpwunggah_in_nip').val(row.nip);
+  $('#pppkpwunggah_in_jabatan').val(row.jabatan || '');
   $('#pppkpwunggah_namaFile').text('Pilih file PDF baru (kosongkan jika tidak ingin mengubah)...');
 
   if (PPPKPWUNGGAH_IS_ADMIN) {
@@ -492,7 +503,7 @@ function pppkpwunggah_bukaModalEdit(row) {
   if (PPPKPWUNGGAH_INIT_DATA && PPPKPWUNGGAH_INIT_DATA.pegawaiMap && PPPKPWUNGGAH_INIT_DATA.pegawaiMap[row.unit_kerja]) {
     pppkpwunggah_renderPegawaiOptions(PPPKPWUNGGAH_INIT_DATA.pegawaiMap[row.unit_kerja]);
   } else {
-    $('#pppkpwunggah_in_nama').html('<option value="' + row.nama_pegawai + '" data-nip="' + row.nip + '" selected>' + row.nama_pegawai + '</option>');
+    $('#pppkpwunggah_in_nama').html('<option value="' + row.nama_pegawai + '" data-nip="' + row.nip + '" data-jabatan="' + (row.jabatan || '') + '" selected>' + row.nama_pegawai + '</option>');
   }
   $('#pppkpwunggah_in_nama').val(row.nama_pegawai);
 
@@ -528,10 +539,11 @@ function pppkpwunggah_prosesSimpan() {
   var rowId = $('#pppkpwunggah_rowId').val();
   var isEdit = !!rowId;
 
-  var unit = PPPKPWUNGGAH_IS_ADMIN ? $('#pppkpwunggah_in_unit').val() : ($('#pppkpwunggah_in_unit_hidden').val() || PPPKPWUNGGAH_USER_UNIT);
-  var nama = $('#pppkpwunggah_in_nama').val();
-  var nip  = $('#pppkpwunggah_in_nip').val();
-  var tahun = $('#pppkpwunggah_in_tahun').val();
+  var unit    = PPPKPWUNGGAH_IS_ADMIN ? $('#pppkpwunggah_in_unit').val() : ($('#pppkpwunggah_in_unit_hidden').val() || PPPKPWUNGGAH_USER_UNIT);
+  var nama    = $('#pppkpwunggah_in_nama').val();
+  var nip     = $('#pppkpwunggah_in_nip').val();
+  var jabatan = $('#pppkpwunggah_in_jabatan').val();
+  var tahun   = $('#pppkpwunggah_in_tahun').val();
   var fileInput = $('#pppkpwunggah_in_file')[0];
   var file = fileInput && fileInput.files[0] ? fileInput.files[0] : null;
 
@@ -541,7 +553,7 @@ function pppkpwunggah_prosesSimpan() {
   if (!isEdit && !file) { Sultan.notif.gagal('File Draft PK wajib diunggah.'); return; }
 
   var payload = {
-    unit_kerja: unit, nama_pegawai: nama, nip: nip, tahun: tahun,
+    unit_kerja: unit, nama_pegawai: nama, nip: nip, jabatan: jabatan, tahun: tahun,
     user_login: PPPKPWUNGGAH_USER_LOGIN,
     rowId: rowId, sheetName: $('#pppkpwunggah_sheetName').val()
   };
@@ -563,6 +575,7 @@ function pppkpwunggah_prosesSimpan() {
             $('#global_modalForm').modal('hide');
             Sultan.notif.crud.simpan(isEdit);
             pppkpwunggah_loadData();
+            if (typeof sultan_fetchNotifikasi === 'function') sultan_fetchNotifikasi();
           } else {
             Sultan.notif.crud.gagal(res.message);
           }
@@ -588,6 +601,7 @@ function pppkpwunggah_prosesSimpan() {
           $('#global_modalForm').modal('hide');
           Sultan.notif.crud.simpan(true);
           pppkpwunggah_loadData();
+          if (typeof sultan_fetchNotifikasi === 'function') sultan_fetchNotifikasi();
         } else {
           Sultan.notif.crud.gagal(res.message);
         }
@@ -626,7 +640,11 @@ $(document).off('click', '.pppkpwunggah-btn-hapus').on('click', '.pppkpwunggah-b
     google.script.run
       .withSuccessHandler(function (r) {
         var res = JSON.parse(r);
-        if (res.success) { Sultan.notif.crud.hapus(); pppkpwunggah_loadData(); }
+        if (res.success) { 
+          Sultan.notif.crud.hapus(); 
+          pppkpwunggah_loadData(); 
+          if (typeof sultan_fetchNotifikasi === 'function') sultan_fetchNotifikasi();
+        }
         else Sultan.notif.crud.gagal(res.message);
       })
       .withFailureHandler(function (err) { Sultan.notif.crud.gagal(err.message); })
@@ -658,7 +676,11 @@ $(document).off('click', '.pppkpwunggah-btn-verif').on('click', '.pppkpwunggah-b
     google.script.run
       .withSuccessHandler(function (r) {
         var res = JSON.parse(r);
-        if (res.success) { Sultan.notif.crud.sukses(res.message); pppkpwunggah_loadData(); }
+        if (res.success) { 
+          Sultan.notif.crud.sukses(res.message); 
+          pppkpwunggah_loadData(); 
+          if (typeof sultan_fetchNotifikasi === 'function') sultan_fetchNotifikasi();
+        }
         else Sultan.notif.crud.gagal(res.message);
       })
       .withFailureHandler(function (err) { Sultan.notif.crud.gagal(err.message); })
@@ -679,16 +701,18 @@ $(document).off('click', '.pppkpwunggah-btn-catatan').on('click', '.pppkpwunggah
 function pppkpwunggah_renderPegawaiOptions(list) {
   var opts = '<option value="">- Pilih Pegawai -</option>';
   (list || []).forEach(function (p) {
-    opts += '<option value="' + p.nama + '" data-nip="' + p.nip + '">' + p.nama + '</option>';
+    opts += '<option value="' + p.nama + '" data-nip="' + (p.nip || '') + '" data-jabatan="' + (p.jabatan || '') + '">' + p.nama + '</option>';
   });
   $('#pppkpwunggah_in_nama').html(opts);
   $('#pppkpwunggah_in_nip').val('');
+  $('#pppkpwunggah_in_jabatan').val('');
 }
 
 function pppkpwunggah_loadPegawaiDropdown(unit) {
   if (!unit) {
     $('#pppkpwunggah_in_nama').html('<option value="">- Pilih Unit Kerja Terlebih Dahulu -</option>');
     $('#pppkpwunggah_in_nip').val('');
+    $('#pppkpwunggah_in_jabatan').val('');
     return;
   }
   if (PPPKPWUNGGAH_INIT_DATA && PPPKPWUNGGAH_INIT_DATA.pegawaiMap && PPPKPWUNGGAH_INIT_DATA.pegawaiMap[unit]) {
