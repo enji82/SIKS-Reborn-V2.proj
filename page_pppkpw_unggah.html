@@ -81,9 +81,7 @@
                     <tr>
                       <th class="col-sticky-left text-center align-middle" style="z-index: 5; border-bottom: 3px solid #85144b !important;">AKSI</th>
                       <th class="text-center align-middle" style="border-bottom: 3px solid #85144b !important;">STATUS</th>
-                      <th class="text-left align-middle" style="min-width:180px; border-bottom: 3px solid #85144b !important;">UNIT KERJA</th>
-                      <th class="text-left align-middle" style="min-width:180px; border-bottom: 3px solid #85144b !important;">NAMA PEGAWAI</th>
-                      <th class="text-center align-middle" style="border-bottom: 3px solid #85144b !important;">NIP</th>
+                      <th class="text-left align-middle" style="min-width:200px; border-bottom: 3px solid #85144b !important;">NAMA PEGAWAI</th>
                       <th class="text-left align-middle" style="min-width:160px; border-bottom: 3px solid #85144b !important;">JABATAN</th>
                       <th class="text-center align-middle" style="border-bottom: 3px solid #85144b !important;">TAHUN</th>
                       <th class="text-center align-middle" style="border-bottom: 3px solid #85144b !important;">DOKUMEN</th>
@@ -393,8 +391,14 @@ function pppkpwunggah_renderTable(data) {
     var aksiHtml = '<div class="d-flex flex-nowrap justify-content-center" style="gap:5px;">' + btnV + btnP + btnH + '</div>';
 
     var btnFile = row.url_file
-      ? '<a href="' + row.url_file + '" target="_blank" class="sultan-btn-pdf d-inline-block text-nowrap" style="font-size:12px;"><i class="fas fa-file-pdf text-danger mr-1"></i> LIHAT PK</a>'
+      ? '<button type="button" class="sultan-btn-pdf pppkpwunggah-btn-preview d-inline-block text-nowrap" data-url="' + row.url_file + '" data-nama="' + row.nama_pegawai + '" style="font-size:12px;"><i class="fas fa-file-pdf text-danger mr-1"></i> LIHAT PK</button>'
       : '<span class="text-muted small">-</span>';
+
+    var unitHtml = PPPKPWUNGGAH_IS_ADMIN ? '<div class="text-muted" style="font-size:12px; line-height: 1.2;">' + (row.unit_kerja || '-') + '</div>' : '';
+    var pegawaiCell = 
+      '<div class="font-weight-bold text-wrap" style="font-size:13px; color:#800000;">' + (row.nama_pegawai || '-') + '</div>' +
+      '<div class="text-muted" style="font-size:12px; line-height: 1.2;">' + (row.nip || '-') + '</div>' +
+      unitHtml;
 
     var unggahInfo = '<div style="line-height:1.2;font-size:13px;"><span class="d-block font-weight-bold text-dark">' + (row.tgl_unggah || '-') + '</span><span class="d-block text-muted">' + (row.pengunggah || '-') + '</span></div>';
     var ubahInfo   = '<div style="line-height:1.2;font-size:13px;"><span class="d-block font-weight-bold text-dark">' + (row.tgl_diubah || '-') + '</span><span class="d-block text-muted text-uppercase">' + (row.pengubah || '-') + '</span></div>';
@@ -402,9 +406,7 @@ function pppkpwunggah_renderTable(data) {
 
     dtArray.push([
       aksiHtml, badgeSt,
-      '<div class="font-weight-bold text-wrap" style="font-size:13px; color:#800000;">' + (row.unit_kerja || '-') + '</div>',
-      '<div class="font-weight-bold text-primary text-wrap" style="font-size:13px;">' + (row.nama_pegawai || '-') + '</div>',
-      '<div class="text-center font-weight-bold text-dark">' + (row.nip || '-') + '</div>',
+      pegawaiCell,
       '<div class="font-weight-bold text-secondary text-wrap" style="font-size:12px;">' + (row.jabatan || '-') + '</div>',
       '<div class="text-center font-weight-bold text-dark">' + (row.tahun || '-') + '</div>',
       btnFile,
@@ -423,9 +425,9 @@ function pppkpwunggah_renderTable(data) {
     columnDefs: [
       { targets: 0, width: "1%", className: "col-sticky-left bg-white align-middle text-center text-nowrap", orderable: false },
       { targets: 1, width: "1%", className: "text-center align-middle" },
-      { targets: [2, 3, 5], className: "text-left align-middle" },
-      { targets: [4, 6, 7], width: "1%", className: "text-center align-middle text-nowrap" },
-      { targets: [8, 9, 10], width: "1%", className: "text-left align-middle text-nowrap" }
+      { targets: [2, 3], className: "text-left align-middle" },
+      { targets: [4, 5], width: "1%", className: "text-center align-middle text-nowrap" },
+      { targets: [6, 7, 8], width: "1%", className: "text-left align-middle text-nowrap" }
     ],
     language: { url: '//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json', emptyTable: 'Belum ada berkas Draft PK yang diunggah.' }
   });
@@ -695,6 +697,16 @@ $(document).off('click', '.pppkpwunggah-btn-catatan').on('click', '.pppkpwunggah
   if (pesan) {
     Sultan.alert('info', 'Catatan Verifikator', '<div class="text-left p-2 rounded bg-light border"><i class="fas fa-comment-dots text-maroon mr-2"></i>' + pesan + '</div>');
   }
+});
+
+$(document).off('click', '.pppkpwunggah-btn-preview').on('click', '.pppkpwunggah-btn-preview', function () {
+  var url = $(this).data('url');
+  var nama = $(this).data('nama') || 'Dokumen';
+  if (!url) { Sultan.notif.info('URL berkas tidak tersedia.'); return; }
+  Sultan.modal.preview({
+    url: url,
+    title: 'Draft PK - ' + nama
+  });
 });
 
 /* =======================================================================
