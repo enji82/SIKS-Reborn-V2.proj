@@ -640,38 +640,29 @@ function pppkpw_getEMeteraiFiles(folderId) {
   return pppkpw_getEMeteraiExplorer(folderId);
 }
 
-function pppkpw_getEMeteraiExplorer(targetFolderId) {
+function pppkpw_getEMeteraiExplorer(targetFolderId, forceRefresh) {
   try {
     var rootId = KONFIG_PPPK_PW.FOLDER_EMETERAI_ID;
     var currentId = (targetFolderId && String(targetFolderId).trim() !== "" && targetFolderId !== "ROOT") ? targetFolderId : rootId;
+    
+    var cacheKey = "EMETERAI_FOLDER_" + currentId;
+    var cache = CacheService.getScriptCache();
+    if (!forceRefresh) {
+      var cached = cache.get(cacheKey);
+      if (cached) return cached;
+    }
+
     var currentFolder = DriveApp.getFolderById(currentId);
     var isRoot = (currentId === rootId);
-
-    // Ambil daftar folder tahun di root (untuk shortcut dropdown)
-    var rootFolder = isRoot ? currentFolder : DriveApp.getFolderById(rootId);
-    var rootSubfolders = rootFolder.getFolders();
-    var yearFolders = [];
-    while (rootSubfolders.hasNext()) {
-      var yf = rootSubfolders.next();
-      yearFolders.push({
-        id: yf.getId(),
-        name: yf.getName()
-      });
-    }
-    yearFolders.sort(function(a, b) { return b.name.localeCompare(a.name); });
 
     // Ambil subfolder di current folder
     var subfolderIter = currentFolder.getFolders();
     var folders = [];
     while (subfolderIter.hasNext()) {
       var sub = subfolderIter.next();
-      var fileCount = 0;
-      var subFIter = sub.getFiles();
-      while (subFIter.hasNext()) { subFIter.next(); fileCount++; }
       folders.push({
         id: sub.getId(),
         name: sub.getName(),
-        count: fileCount,
         url: sub.getUrl()
       });
     }
@@ -686,9 +677,7 @@ function pppkpw_getEMeteraiExplorer(targetFolderId) {
         id: f.getId(),
         nama: f.getName(),
         url: f.getUrl(),
-        downloadUrl: "https://drive.google.com/uc?export=download&id=" + f.getId(),
-        ukuran: f.getSize(),
-        tanggal: Utilities.formatDate(f.getLastUpdated(), "Asia/Jakarta", "dd-MM-yyyy HH:mm")
+        downloadUrl: "https://drive.google.com/uc?export=download&id=" + f.getId()
       });
     }
     files.sort(function(a, b) { return a.nama.localeCompare(b.nama); });
@@ -705,7 +694,7 @@ function pppkpw_getEMeteraiExplorer(targetFolderId) {
       }
     }
 
-    return JSON.stringify({
+    var resultObj = {
       success: true,
       currentFolder: {
         id: currentId,
@@ -714,10 +703,13 @@ function pppkpw_getEMeteraiExplorer(targetFolderId) {
         parentId: parentId,
         parentName: parentName
       },
-      yearFolders: yearFolders,
       folders: folders,
       files: files
-    });
+    };
+
+    var jsonStr = JSON.stringify(resultObj);
+    try { cache.put(cacheKey, jsonStr, 900); } catch(ce) {}
+    return jsonStr;
   } catch(e) {
     return JSON.stringify({ success: false, message: e.message });
   }

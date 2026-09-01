@@ -1,13 +1,5 @@
 <style>
   #pppkpwem_tabelUtama th, #pppkpwem_tabelUtama td { font-size: 13px !important; }
-  .pppkpwem-breadcrumb-item {
-    cursor: pointer;
-    color: #85144b;
-    font-weight: 600;
-  }
-  .pppkpwem-breadcrumb-item:hover {
-    text-decoration: underline;
-  }
   .pppkpwem-row-folder {
     cursor: pointer;
     background-color: #fffefb;
@@ -23,7 +15,7 @@
       <div class="col-12">
 
         <!-- INFO CARD -->
-        <div class="sultan-info-card">
+        <div class="sultan-info-card mb-3">
           <div class="card-body">
             <div class="info-header" data-toggle="collapse" data-target="#pppkpwem_infoCollapse" aria-expanded="false">
               <div class="info-title">
@@ -35,27 +27,14 @@
             <div id="pppkpwem_infoCollapse" class="collapse">
               <div class="info-body">
                 <ul class="mb-0 pl-3 sultan-list-info">
-                  <li>Halaman ini menampilkan <b>File Explorer Dokumen Draft E-meterai PPPK Paruh Waktu</b> dari Google Drive.</li>
-                  <li>Klik pada baris <b>📁 Folder Tahun</b> atau tombol <b>BUKA</b> untuk melihat berkas di dalam folder tersebut.</li>
-                  <li>Klik tombol <span class="badge badge-outline-danger px-2"><i class="fas fa-file-pdf mr-1"></i>LIHAT</span> untuk membuka pratinjau dokumen secara langsung.</li>
-                  <li>Klik tombol <span class="badge badge-sultan-primary px-2"><i class="fas fa-download mr-1"></i>UNDUH</span> untuk mengunduh dokumen ke perangkat Anda.</li>
+                  <li>Halaman ini menampilkan <b>Dokumen Draft E-meterai PPPK Paruh Waktu</b> dari Google Drive.</li>
+                  <li>Klik pada baris <b>📁 Folder Tahun</b> atau tombol <b>BUKA</b> untuk membuka isi berkas.</li>
+                  <li>Klik tombol <span class="badge badge-outline-danger px-2"><i class="fas fa-file-pdf mr-1"></i>LIHAT</span> untuk melihat pratinjau dokumen.</li>
+                  <li>Klik tombol <span class="badge badge-sultan-primary px-2"><i class="fas fa-download mr-1"></i>UNDUH</span> untuk mengunduh berkas ke perangkat Anda.</li>
                 </ul>
               </div>
             </div>
           </div>
-        </div>
-
-        <!-- FILTER BAR -->
-        <div class="sultan-filter-pill-container shadow-sm mb-4">
-          <!-- Realtime Search -->
-          <div class="sultan-filter-item" style="flex:1;">
-            <input type="text" id="pppkpwem_inputCari" class="form-control" placeholder="Cari nama pegawai, NIP, folder, atau berkas..." style="font-size:13px;">
-          </div>
-
-          <div class="divider-vertical d-none d-md-block mx-2"></div>
-          <button type="button" id="pppkpwem_btnRefresh" class="sultan-btn-refresh" title="Segarkan Data">
-            <i class="fas fa-sync-alt"></i>
-          </button>
         </div>
 
         <!-- CARD TABEL EXPLORER -->
@@ -66,7 +45,7 @@
             <div id="pppkpwem_loadingState">
               <div class="sultan-loading-box sultan-page-transition">
                 <div class="sultan-spinner-icon"><i class="fas fa-circle-notch fa-spin"></i></div>
-                <h6 class="text-dark font-weight-bold sultan-loading-text mb-0" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;">Memuat File Explorer dari Google Drive...</h6>
+                <h6 class="text-dark font-weight-bold sultan-loading-text mb-0" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;">Memuat Berkas dari Google Drive...</h6>
               </div>
             </div>
 
@@ -96,23 +75,12 @@
 
 <script>
 var PPPKPWEM_CURRENT_FOLDER = "ROOT";
-var PPPKPWEM_FOLDER_STACK   = []; // Riwayat folder: [{id, name}]
+var PPPKPWEM_FOLDER_STACK   = []; // [{id, name}]
 var PPPKPWEM_TABLE_INSTANCE = null;
-var PPPKPWEM_YEAR_LIST      = [];
+var PPPKPWEM_CACHE          = {}; // Instant client-side memory cache: { [folderId]: resData }
 
 $(document).ready(function () {
   pppkpwem_bukaFolder("ROOT", "Draft E-meterai", true);
-
-  $(document).off('click', '#pppkpwem_btnRefresh').on('click', '#pppkpwem_btnRefresh', function () {
-    pppkpwem_bukaFolder(PPPKPWEM_CURRENT_FOLDER, "", false);
-  });
-
-  // Integrasi input cari ke DataTable
-  $(document).off('keyup input', '#pppkpwem_inputCari').on('keyup input', '#pppkpwem_inputCari', function () {
-    if (PPPKPWEM_TABLE_INSTANCE) {
-      PPPKPWEM_TABLE_INSTANCE.search($(this).val()).draw();
-    }
-  });
 
   // Action Buka Folder (Klik Tombol atau Baris)
   $(document).off('click', '.pppkpwem-btn-buka-folder').on('click', '.pppkpwem-btn-buka-folder', function (e) {
@@ -135,14 +103,6 @@ $(document).ready(function () {
     pppkpwem_navigasiKembali(parentId);
   });
 
-  // Action Breadcrumb Click
-  $(document).off('click', '.pppkpwem-breadcrumb-item').on('click', '.pppkpwem-breadcrumb-item', function () {
-    var folderId = $(this).data('id');
-    var folderName = $(this).data('name');
-    var index = $(this).data('index');
-    pppkpwem_jumpBreadcrumb(folderId, folderName, index);
-  });
-
   // Action Preview Dokumen
   $(document).off('click', '.pppkpwem-btn-preview').on('click', '.pppkpwem-btn-preview', function (e) {
     e.stopPropagation();
@@ -159,18 +119,18 @@ $(document).ready(function () {
 });
 
 /* =======================================================================
-   1. NAVIGASI FILE EXPLORER
+   1. NAVIGASI FILE EXPLORER (INSTANT DENGAN MEMORY CACHE)
    ======================================================================= */
 function pppkpwem_bukaFolder(folderId, folderName, resetStack) {
-  PPPKPWEM_CURRENT_FOLDER = folderId || "ROOT";
+  folderId = folderId || "ROOT";
+  PPPKPWEM_CURRENT_FOLDER = folderId;
 
   if (resetStack) {
     PPPKPWEM_FOLDER_STACK = [{ id: "ROOT", name: "Draft E-meterai" }];
-    if (folderId && folderId !== "ROOT") {
+    if (folderId !== "ROOT") {
       PPPKPWEM_FOLDER_STACK.push({ id: folderId, name: folderName || "Folder" });
     }
   } else {
-    // Cek apakah sudah ada di stack
     var existingIdx = PPPKPWEM_FOLDER_STACK.findIndex(function (x) { return x.id === folderId; });
     if (existingIdx !== -1) {
       PPPKPWEM_FOLDER_STACK = PPPKPWEM_FOLDER_STACK.slice(0, existingIdx + 1);
@@ -179,6 +139,13 @@ function pppkpwem_bukaFolder(folderId, folderName, resetStack) {
     }
   }
 
+  // Cek memori cache lokal: jika sudah pernah diload, render SEKETIKA tanpa jeda loading!
+  if (PPPKPWEM_CACHE[folderId]) {
+    pppkpwem_renderExplorerTable(PPPKPWEM_CACHE[folderId]);
+    return;
+  }
+
+  // Jika belum ada di memori cache, ambil dari server
   pppkpwem_fetchData(folderId);
 }
 
@@ -192,19 +159,15 @@ function pppkpwem_navigasiKembali(parentId) {
   }
 }
 
-
-
 /* =======================================================================
    2. MEMUAT DATA DARI SERVER
    ======================================================================= */
-function pppkpwem_fetchData(folderId) {
+function pppkpwem_fetchData(folderId, forceRefresh) {
   $('#pppkpwem_loadingState').show();
   $('#pppkpwem_tableState').hide();
-  $('#pppkpwem_btnRefresh').prop('disabled', true).html('<i class="fas fa-spinner fa-spin text-maroon"></i>');
 
   google.script.run
     .withSuccessHandler(function (resRaw) {
-      $('#pppkpwem_btnRefresh').prop('disabled', false).html('<i class="fas fa-sync-alt"></i>');
       var res = JSON.parse(resRaw);
       if (!res.success) {
         Sultan.notif.gagal(res.message || 'Gagal membaca folder.');
@@ -213,18 +176,22 @@ function pppkpwem_fetchData(folderId) {
         return;
       }
 
-      // Render Tabel
+      // Simpan ke local cache memori browser
+      PPPKPWEM_CACHE[folderId] = res;
+      if (res.currentFolder && res.currentFolder.id) {
+        PPPKPWEM_CACHE[res.currentFolder.id] = res;
+      }
+
       pppkpwem_renderExplorerTable(res);
       $('#pppkpwem_loadingState').hide();
       $('#pppkpwem_tableState').show();
     })
     .withFailureHandler(function (err) {
-      $('#pppkpwem_btnRefresh').prop('disabled', false).html('<i class="fas fa-sync-alt"></i>');
       Sultan.notif.gagal('Gagal menghubungi server: ' + err.message);
       $('#pppkpwem_loadingState').hide();
       $('#pppkpwem_tableState').show();
     })
-    .pppkpw_getEMeteraiExplorer(folderId);
+    .pppkpw_getEMeteraiExplorer(folderId, !!forceRefresh);
 }
 
 /* =======================================================================
@@ -236,7 +203,6 @@ function pppkpwem_renderExplorerTable(res) {
   var parentId = res.currentFolder ? res.currentFolder.parentId : null;
   var folders = res.folders || [];
   var files = res.files || [];
-  var totalItems = folders.length + files.length;
 
   // 1. Baris Navigasi "Kembali" jika bukan root
   if (!isRoot) {
@@ -264,7 +230,6 @@ function pppkpwem_renderExplorerTable(res) {
         '<i class="fas fa-folder fa-2x mr-3 text-warning"></i>' +
         '<div>' +
           '<div class="font-weight-bold text-dark" style="font-size:13px;">' + f.name + '</div>' +
-          '<small class="text-muted"><i class="fas fa-file-pdf mr-1 text-danger"></i>' + f.count + ' Dokumen di dalam folder</small>' +
         '</div>' +
       '</div>';
 
@@ -324,9 +289,11 @@ function pppkpwem_renderExplorerTable(res) {
       { targets: 1, className: "text-left align-middle" },
       { targets: 2, width: "1%", className: "text-center align-middle text-nowrap" }
     ],
-    language: { url: '//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json', emptyTable: 'Folder ini kosong (belum ada subfolder atau dokumen).' }
+    language: { url: '//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json', emptyTable: 'Folder ini kosong (belum ada berkas).' }
   });
   PPPKPWEM_TABLE_INSTANCE.clear().rows.add(dtArray).draw(false);
+  $('#pppkpwem_loadingState').hide();
+  $('#pppkpwem_tableState').show();
   setTimeout(function () {
     if (PPPKPWEM_TABLE_INSTANCE) PPPKPWEM_TABLE_INSTANCE.columns.adjust();
   }, 100);
