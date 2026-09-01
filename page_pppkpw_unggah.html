@@ -164,6 +164,29 @@
           </div>
         </div>
       </div>
+
+      <!-- Baris 4: Opsi Penempelan E-meterai -->
+      <div class="row">
+        <div class="col-12">
+          <label class="form-label-sultan small font-weight-bold text-muted text-uppercase mb-2">
+            <i class="fas fa-stamp mr-1 text-maroon"></i> Opsi E-Meterai <span class="text-danger">*</span>
+          </label>
+          <div class="p-2 px-3 border rounded shadow-sm d-flex flex-column flex-sm-row justify-content-start" style="gap:20px; background-color: rgba(133, 20, 75, 0.03);">
+            <div class="custom-control custom-radio">
+              <input type="radio" id="pppkpwunggah_emeterai_kolektif" name="pppkpwunggah_in_emeterai" class="custom-control-input" value="Titip tempel e-meterai kolektif." checked>
+              <label class="custom-control-label font-weight-bold" for="pppkpwunggah_emeterai_kolektif" style="cursor:pointer; font-size:13px;">
+                Titip tempel e-meterai kolektif.
+              </label>
+            </div>
+            <div class="custom-control custom-radio">
+              <input type="radio" id="pppkpwunggah_emeterai_sendiri" name="pppkpwunggah_in_emeterai" class="custom-control-input" value="Tempel e-meterai sendiri.">
+              <label class="custom-control-label font-weight-bold" for="pppkpwunggah_emeterai_sendiri" style="cursor:pointer; font-size:13px;">
+                Tempel e-meterai sendiri.
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
     
     <div class="modal-footer modal-footer-tambah-edit justify-content-between">
@@ -452,8 +475,11 @@ function pppkpwunggah_renderTable(data) {
 
     var aksiHtml = '<div class="d-flex flex-nowrap justify-content-center" style="gap:5px;">' + btnV + btnP + btnH + '</div>';
 
+    var isTitip = String(row.opsi_emeterai || '').toLowerCase().indexOf('titip') !== -1;
+    var titipBadge = isTitip ? '<span class="ml-1 text-success font-weight-bold" title="Titip tempel e-meterai kolektif"><i class="fas fa-check-circle text-success" style="font-size:14px;"></i></span>' : '';
+
     var btnFile = row.url_file
-      ? '<button type="button" class="sultan-btn-pdf pppkpwunggah-btn-preview d-inline-block text-nowrap" data-url="' + row.url_file + '" data-nama="' + row.nama_pegawai + '" style="font-size:12px;"><i class="fas fa-file-pdf text-danger mr-1"></i> LIHAT PK</button>'
+      ? '<div class="d-inline-flex align-items-center"><button type="button" class="sultan-btn-pdf pppkpwunggah-btn-preview d-inline-block text-nowrap" data-url="' + row.url_file + '" data-nama="' + row.nama_pegawai + '" style="font-size:12px;"><i class="fas fa-file-pdf text-danger mr-1"></i> LIHAT PK</button>' + titipBadge + '</div>'
       : '<span class="text-muted small">-</span>';
 
     var unitHtml = PPPKPWUNGGAH_IS_ADMIN ? '<div class="text-muted" style="font-size:12px; line-height: 1.2;">' + (row.unit_kerja || '-') + '</div>' : '';
@@ -531,6 +557,7 @@ function pppkpwunggah_bukaModalTambah() {
   }
 
   $('#pppkpwunggah_in_tahun').val(PPPKPWUNGGAH_CURRENT_TA);
+  $('#pppkpwunggah_emeterai_kolektif').prop('checked', true);
   $('#pppkpwunggah_btnSimpanForm').html('<i class="fas fa-cloud-upload-alt mr-2"></i>SIMPAN &amp; UNGGAH');
 
   // Siapkan Global Modal & Bersihkan sisa form dari modul lain
@@ -587,6 +614,13 @@ function pppkpwunggah_bukaModalEdit(row) {
     });
   }
 
+  var opsi = row.opsi_emeterai || 'Titip tempel e-meterai kolektif.';
+  if (opsi.indexOf('sendiri') !== -1 || opsi.indexOf('Sendiri') !== -1) {
+    $('#pppkpwunggah_emeterai_sendiri').prop('checked', true);
+  } else {
+    $('#pppkpwunggah_emeterai_kolektif').prop('checked', true);
+  }
+
   if (row.url_file) {
     $('#pppkpwunggah_fileExisting').removeClass('d-none');
     $('#pppkpwunggah_linkExisting').attr('href', row.url_file);
@@ -633,8 +667,10 @@ function pppkpwunggah_prosesSimpan() {
   if (!tahun) { Sultan.notif.gagal('Pilih Tahun Kontrak terlebih dahulu.'); return; }
   if (!isEdit && !file) { Sultan.notif.gagal('File Draft PK wajib diunggah.'); return; }
 
+  var opsiEmeterai = $('input[name="pppkpwunggah_in_emeterai"]:checked').val() || 'Titip tempel e-meterai kolektif.';
   var payload = {
     unit_kerja: unit, nama_pegawai: nama, nip: nip, jabatan: jabatan, tahun: tahun,
+    opsi_emeterai: opsiEmeterai,
     user_login: PPPKPWUNGGAH_USER_LOGIN,
     rowId: rowId, sheetName: $('#pppkpwunggah_sheetName').val()
   };

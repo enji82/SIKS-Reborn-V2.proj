@@ -23,7 +23,7 @@ const KONFIG_PPPK_PW = {
   get FOLDER_EMETERAI_ID() { return FOLDER_CONFIG.PPPK_PW_EMETERAI; },
   SHEET_HEADER: ["ID", "Unit_Kerja", "Nama_Pegawai", "NIP", "Jabatan", "Tahun", "Nama_File",
                  "URL_File", "Status", "Catatan", "Tgl_Unggah", "Pengunggah",
-                 "Tgl_Diubah", "Pengubah", "Tgl_Verifikasi", "Verifikator", "Read_By"],
+                 "Tgl_Diubah", "Pengubah", "Tgl_Verifikasi", "Verifikator", "Read_By", "Opsi_Emeterai"],
   STATUS_PPPK_PW: ["PPPK PARUH WAKTU", "PPPK PW", "PPPKPW"]
 };
 
@@ -40,9 +40,9 @@ function pppkpw_getOrCreateSheet(tahun) {
     sheet.appendRow(KONFIG_PPPK_PW.SHEET_HEADER);
     sheet.getRange(1, 1, 1, KONFIG_PPPK_PW.SHEET_HEADER.length).setFontWeight("bold");
   } else {
-    // Sinkronisasi header jika kolom Jabatan / Read_By belum ada di sheet existing
+    // Sinkronisasi header jika kolom belum lengkap
     var headerCur = sheet.getRange(1, 1, 1, sheet.getLastColumn() || 1).getValues()[0];
-    if (headerCur.indexOf("Jabatan") === -1 || headerCur.indexOf("Read_By") === -1) {
+    if (headerCur.indexOf("Jabatan") === -1 || headerCur.indexOf("Read_By") === -1 || headerCur.indexOf("Opsi_Emeterai") === -1) {
       sheet.getRange(1, 1, 1, KONFIG_PPPK_PW.SHEET_HEADER.length).setValues([KONFIG_PPPK_PW.SHEET_HEADER]).setFontWeight("bold");
     }
   }
@@ -208,7 +208,8 @@ function pppkpw_getData(unitFilter, tahun) {
           pengubah:     data[i][13] || "-",
           tgl_verifikasi: data[i][14] || "-",
           verifikator:  data[i][15] || "-",
-          read_by:      data[i][16] || ""
+          read_by:      data[i][16] || "",
+          opsi_emeterai: data[i][17] || "Titip tempel e-meterai kolektif."
         });
       }
     });
@@ -272,7 +273,8 @@ function pppkpw_simpan(payload, fileData) {
       now,
       payload.user_login || "",
       "", "", "", "",
-      "User"
+      "User",
+      payload.opsi_emeterai || "Titip tempel e-meterai kolektif."
     ]);
 
     SpreadsheetApp.flush();
@@ -337,6 +339,9 @@ function pppkpw_perbaiki(payload, fileData) {
     sheet.getRange(r, 15).setValue("");                   // Col O: Tgl_Verif
     sheet.getRange(r, 16).setValue("");                   // Col P: Verifikator
     sheet.getRange(r, 17).setValue("User");               // Col Q: Read_By
+    if (payload.opsi_emeterai) {
+      sheet.getRange(r, 18).setValue(payload.opsi_emeterai); // Col R: Opsi_Emeterai
+    }
 
     SpreadsheetApp.flush();
     pppkpw_invalidateCache(payload.sheetName || payload.tahun);
