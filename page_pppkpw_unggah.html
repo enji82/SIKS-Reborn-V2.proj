@@ -169,17 +169,17 @@
       <div class="row">
         <div class="col-12">
           <label class="form-label-sultan small font-weight-bold text-muted text-uppercase mb-2">
-            <i class="fas fa-stamp mr-1 text-maroon"></i> Opsi E-Meterai <span class="text-danger">*</span>
+            <i class="fas fa-stamp mr-1 text-maroon"></i> Opsi E-Meterai (Pilih Salah Satu dari 2 Pilihan di bawah ini) <span class="text-danger">*</span>
           </label>
           <div class="p-2 px-3 border rounded shadow-sm d-flex flex-column flex-sm-row justify-content-start" style="gap:20px; background-color: rgba(133, 20, 75, 0.03);">
             <div class="custom-control custom-radio">
-              <input type="radio" id="pppkpwunggah_emeterai_kolektif" name="pppkpwunggah_in_emeterai" class="custom-control-input" value="Titip tempel e-meterai kolektif." checked>
+              <input type="radio" id="pppkpwunggah_emeterai_kolektif" name="pppkpwunggah_in_emeterai" class="custom-control-input" value="Titip tempel e-meterai kolektif (Rp. 10.000,-)" required>
               <label class="custom-control-label font-weight-bold" for="pppkpwunggah_emeterai_kolektif" style="cursor:pointer; font-size:13px;">
-                Titip tempel e-meterai kolektif.
+                Titip tempel e-meterai kolektif (Rp. 10.000,-)
               </label>
             </div>
             <div class="custom-control custom-radio">
-              <input type="radio" id="pppkpwunggah_emeterai_sendiri" name="pppkpwunggah_in_emeterai" class="custom-control-input" value="Tempel e-meterai sendiri.">
+              <input type="radio" id="pppkpwunggah_emeterai_sendiri" name="pppkpwunggah_in_emeterai" class="custom-control-input" value="Tempel e-meterai sendiri." required>
               <label class="custom-control-label font-weight-bold" for="pppkpwunggah_emeterai_sendiri" style="cursor:pointer; font-size:13px;">
                 Tempel e-meterai sendiri.
               </label>
@@ -557,7 +557,7 @@ function pppkpwunggah_bukaModalTambah() {
   }
 
   $('#pppkpwunggah_in_tahun').val(PPPKPWUNGGAH_CURRENT_TA);
-  $('#pppkpwunggah_emeterai_kolektif').prop('checked', true);
+  $('input[name="pppkpwunggah_in_emeterai"]').prop('checked', false);
   $('#pppkpwunggah_btnSimpanForm').html('<i class="fas fa-cloud-upload-alt mr-2"></i>SIMPAN &amp; UNGGAH');
 
   // Siapkan Global Modal & Bersihkan sisa form dari modul lain
@@ -614,11 +614,13 @@ function pppkpwunggah_bukaModalEdit(row) {
     });
   }
 
-  var opsi = row.opsi_emeterai || 'Titip tempel e-meterai kolektif.';
+  var opsi = row.opsi_emeterai || '';
   if (opsi.indexOf('sendiri') !== -1 || opsi.indexOf('Sendiri') !== -1) {
     $('#pppkpwunggah_emeterai_sendiri').prop('checked', true);
-  } else {
+  } else if (opsi.indexOf('kolektif') !== -1 || opsi.indexOf('Titip') !== -1) {
     $('#pppkpwunggah_emeterai_kolektif').prop('checked', true);
+  } else {
+    $('input[name="pppkpwunggah_in_emeterai"]').prop('checked', false);
   }
 
   if (row.url_file) {
@@ -667,7 +669,12 @@ function pppkpwunggah_prosesSimpan() {
   if (!tahun) { Sultan.notif.gagal('Pilih Tahun Kontrak terlebih dahulu.'); return; }
   if (!isEdit && !file) { Sultan.notif.gagal('File Draft PK wajib diunggah.'); return; }
 
-  var opsiEmeterai = $('input[name="pppkpwunggah_in_emeterai"]:checked').val() || 'Titip tempel e-meterai kolektif.';
+  var opsiEmeterai = $('input[name="pppkpwunggah_in_emeterai"]:checked').val();
+  if (!opsiEmeterai) {
+    Sultan.notif.gagal('Silakan pilih salah satu Opsi E-Meterai.');
+    return;
+  }
+
   var payload = {
     unit_kerja: unit, nama_pegawai: nama, nip: nip, jabatan: jabatan, tahun: tahun,
     opsi_emeterai: opsiEmeterai,
