@@ -434,6 +434,7 @@ function pppkpw_getDashboardData(unitFilter, tahun, forceRefresh) {
       unitMap[p.unit].total++;
       if (foundEntry) {
         unitMap[p.unit].sudah++;
+        var stL = String(foundEntry.status || "Diproses").toLowerCase();
         if (stL === "disetujui" || stL === "diverifikasi") unitMap[p.unit].diverifikasi++;
         else if (stL === "revisi") unitMap[p.unit].revisi = (unitMap[p.unit].revisi || 0) + 1;
         else if (stL === "ditolak") unitMap[p.unit].ditolak++;
