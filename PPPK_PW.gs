@@ -560,13 +560,17 @@ function pppkpw_getDashboardData(unitFilter, tahun, forceRefresh) {
   }
 }
 
-function pppkpw_invalidateCache(tahun) {
+function pppkpw_invalidateCache(tahun, unit) {
   try {
     var cache = CacheService.getScriptCache();
     ["ALL", "SEMUA"].forEach(function(u) {
       cache.remove("PPPKPW_DASH_" + (tahun || "ALL") + "_" + u);
       cache.remove("PPPKPW_DASH_ALL_" + u);
     });
+    if (typeof invalidateNotifCacheForModule === 'function') {
+      invalidateNotifCacheForModule("pppkpw", "admin", unit || "");
+      invalidateNotifCacheForModule("pppkpw", "user", unit || "");
+    }
   } catch(e) {}
 }
 
@@ -580,6 +584,7 @@ function getNotifikasiPPPKPW(role, unit) {
     var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
     var notifList = [];
     var unreadCount = 0;
+    var userUnitNorm = (unit && String(unit).trim() !== "") ? pppkpw_normalizeUnitName(unit) : "";
 
     var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.PPPK_PW_DB);
     var sheets = ss.getSheets();
@@ -590,53 +595,61 @@ function getNotifikasiPPPKPW(role, unit) {
       var data = sheet.getDataRange().getDisplayValues();
 
       for (var i = 1; i < data.length; i++) {
-        var rowNum = i + 1;
+        var rowId   = String(data[i][0] || "").trim(); // Col A: ID
         var rUnit   = String(data[i][1] || "").trim(); // Col B: Unit_Kerja
         var rNama   = String(data[i][2] || "").trim(); // Col C: Nama_Pegawai
         var rTahun  = String(data[i][5] || "").trim(); // Col F: Tahun
-        var status  = String(data[i][8] || "Diproses").trim(); // Col I: Status
-        var isDiproses = (status === "Diproses" || status === "");
-        var isTarget = false;
+        var status  = String(data[i][8] || "").trim(); // Col I: Status
 
+        // Abaikan baris kosong (ID dan Nama Pegawai kosong)
+        if (!rowId && !rNama) continue;
+
+        var stLower = status.toLowerCase();
+        // Hanya dianggap "Diproses" jika status eksplisit bernilai proses/pending atau kosong saat data nama ada
+        var isDiproses = (stLower === "diproses" || stLower === "proses" || stLower === "pending" || status === "");
+
+        var isTarget = false;
         if (isAdmin) {
+          // Admin hanya menerima notifikasi jika statusnya memang belum diverifikasi (masih Diproses)
           isTarget = isDiproses;
         } else {
-          isTarget = (rUnit.toUpperCase() === String(unit || "").trim().toUpperCase() && !isDiproses);
+          // User menerima notifikasi jika unit kerja cocok dan berkas sudah diverifikasi/direspons admin
+          var rUnitNorm = pppkpw_normalizeUnitName(rUnit);
+          isTarget = (userUnitNorm !== "" && rUnitNorm === userUnitNorm && !isDiproses);
         }
 
         if (isTarget) {
           var isRead = false;
           var readBy = String(data[i][16] || "").trim(); // Col Q: Read_By
           var readByList = readBy === "" ? [] : readBy.split(",");
-          if (isAdmin && readByList.indexOf("Admin") > -1) isRead = true;
-          if (!isAdmin && readByList.indexOf("User") > -1) isRead = true;
-
-          var stLower = status.toLowerCase();
-          var isDisetujui = stLower.includes("ok") || stLower.includes("setuju") || stLower.includes("valid") || stLower.includes("verifikasi");
-
+          
           if (isAdmin) {
+            if (readByList.indexOf("Admin") > -1) isRead = true;
             if (!isRead) unreadCount++;
           } else {
-            if (!(isDisetujui && isRead)) {
-              unreadCount++;
-            }
+            if (readByList.indexOf("User") > -1) isRead = true;
+            if (!isRead) unreadCount++;
           }
 
-          if (!(!isAdmin && isDisetujui && isRead)) {
-            notifList.push({
-              rowId: rowNum,
-              sheetName: sheet.getName(),
-              source: "PPPK PW",
-              nama: rNama,
-              namaSd: rUnit,
-              kriteria: "Draft PK " + rTahun,
-              status: status,
-              waktu: (data[i][14] && !isDiproses) ? data[i][14] : data[i][10],
-              isRead: isRead
-            });
-          }
+          notifList.push({
+            rowId: i + 1,
+            sheetName: sheet.getName(),
+            source: "PPPK PW",
+            nama: rNama,
+            namaSd: rUnit,
+            kriteria: "Draft PK " + (rTahun || sheet.getName()),
+            status: isDiproses ? "Diproses" : status,
+            waktu: (data[i][14] && !isDiproses) ? data[i][14] : (data[i][12] && data[i][12] !== "-" ? data[i][12] : data[i][10]),
+            isRead: isRead
+          });
         }
       }
+    });
+
+    // Urutkan notifikasi: yang belum dibaca lebih dulu, lalu berdasarkan row terbaru
+    notifList.sort(function(a, b) {
+      if (a.isRead !== b.isRead) return a.isRead ? 1 : -1;
+      return (b.rowId || 0) - (a.rowId || 0);
     });
 
     return {
@@ -669,6 +682,9 @@ function pppkpw_tandaiNotifDibaca(rowId, sheetName, role) {
       sheet.getRange(row, 17).setValue(list.join(","));
       SpreadsheetApp.flush();
     }
+    if (typeof invalidateNotifCacheForModule === 'function') {
+      invalidateNotifCacheForModule("pppkpw", role, "");
+    }
     return true;
   } catch(e) {
     return false;
@@ -680,6 +696,7 @@ function pppkpw_tandaiSemuaNotifDibaca(role, unit) {
     var rLower = String(role || "").toLowerCase();
     var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
     var readMark = isAdmin ? "Admin" : "User";
+    var userUnitNorm = (unit && String(unit).trim() !== "") ? pppkpw_normalizeUnitName(unit) : "";
 
     var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.PPPK_PW_DB);
     var sheets = ss.getSheets();
@@ -690,13 +707,17 @@ function pppkpw_tandaiSemuaNotifDibaca(role, unit) {
       var data = sheet.getDataRange().getDisplayValues();
 
       for (var i = 1; i < data.length; i++) {
+        var rowId  = String(data[i][0] || "").trim();
         var rUnit  = String(data[i][1] || "").trim();
-        var status = String(data[i][8] || "Diproses").trim();
-        var isDiproses = (status === "Diproses" || status === "");
+        var status = String(data[i][8] || "").trim();
+        if (!rowId && !data[i][2]) continue;
+
+        var stLower = status.toLowerCase();
+        var isDiproses = (stLower === "diproses" || stLower === "proses" || stLower === "pending" || status === "");
         var shouldMark = false;
 
         if (isAdmin && isDiproses) shouldMark = true;
-        if (!isAdmin && rUnit.toUpperCase() === String(unit || "").trim().toUpperCase() && !isDiproses) shouldMark = true;
+        if (!isAdmin && userUnitNorm !== "" && pppkpw_normalizeUnitName(rUnit) === userUnitNorm && !isDiproses) shouldMark = true;
 
         if (shouldMark) {
           var currentReadBy = String(data[i][16] || "").trim();
@@ -709,6 +730,9 @@ function pppkpw_tandaiSemuaNotifDibaca(role, unit) {
       }
     });
     SpreadsheetApp.flush();
+    if (typeof invalidateNotifCacheForModule === 'function') {
+      invalidateNotifCacheForModule("pppkpw", role, unit || "");
+    }
     return true;
   } catch(e) {
     return false;
