@@ -649,6 +649,32 @@ function getNotifikasiPPPKPW(role, unit) {
   }
 }
 
+function pppkpw_tandaiNotifDibaca(rowId, sheetName, role) {
+  try {
+    var rLower = String(role || "").toLowerCase();
+    var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
+    var readMark = isAdmin ? "Admin" : "User";
+
+    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.PPPK_PW_DB);
+    var sheet = sheetName ? ss.getSheetByName(sheetName) : ss.getSheets()[0];
+    if (!sheet) return false;
+
+    var row = parseInt(rowId, 10);
+    if (isNaN(row) || row < 2) return false;
+
+    var currentReadBy = String(sheet.getRange(row, 17).getDisplayValue() || "").trim();
+    var list = currentReadBy === "" ? [] : currentReadBy.split(",");
+    if (list.indexOf(readMark) === -1) {
+      list.push(readMark);
+      sheet.getRange(row, 17).setValue(list.join(","));
+      SpreadsheetApp.flush();
+    }
+    return true;
+  } catch(e) {
+    return false;
+  }
+}
+
 function pppkpw_tandaiSemuaNotifDibaca(role, unit) {
   try {
     var rLower = String(role || "").toLowerCase();
