@@ -257,13 +257,38 @@ var PPPKPWUNGGAH_USER_LOGIN = '';
 var PPPKPWUNGGAH_CURRENT_TA = '';
 
 $(document).ready(function () {
-  var userLogin = typeof getSesiUser === 'function' ? getSesiUser() : {};
-  PPPKPWUNGGAH_IS_ADMIN   = (typeof checkUserRoleIsAdmin === 'function' && checkUserRoleIsAdmin()) || (userLogin && String(userLogin.role || '').toLowerCase().includes('admin'));
-  PPPKPWUNGGAH_USER_UNIT  = (userLogin && (userLogin.unit || userLogin.nama_lengkap || userLogin.nama || userLogin.npsn)) || '';
-  // Jika user sekolah, gunakan Nama Sekolah (unit / nama_lengkap / nama) dan bukan angka NPSN (username)
+  // --- DETEKSI SESI USER (ROBUST: coba semua method) ---
+  var userLogin = null;
+  try {
+    if (typeof getSesiUser === 'function') {
+      userLogin = getSesiUser();
+    }
+    if (!userLogin) {
+      var raw = localStorage.getItem('siksUser');
+      if (raw && raw !== 'null' && raw !== 'undefined') {
+        var parsed = JSON.parse(raw);
+        if (typeof parsed === 'string') parsed = JSON.parse(parsed);
+        userLogin = parsed;
+      }
+    }
+  } catch(e) { userLogin = null; }
+  userLogin = userLogin || {};
+
+  var rawRole = String(userLogin.role || '').toLowerCase();
+  PPPKPWUNGGAH_IS_ADMIN = rawRole.includes('admin') || rawRole.includes('verifikator') || rawRole.includes('korwil');
+  // Fallback: gunakan checkUserRoleIsAdmin jika tersedia
+  if (!PPPKPWUNGGAH_IS_ADMIN && typeof checkUserRoleIsAdmin === 'function') {
+    PPPKPWUNGGAH_IS_ADMIN = checkUserRoleIsAdmin();
+  }
+
+  // Nama unit untuk user (sekolah)
+  PPPKPWUNGGAH_USER_UNIT  = (userLogin.unit || userLogin.nama_lengkap || userLogin.nama || '') || '';
+  // Jika user sekolah, gunakan Nama Sekolah dan bukan angka NPSN (username)
   PPPKPWUNGGAH_USER_LOGIN = PPPKPWUNGGAH_IS_ADMIN
     ? (userLogin.nama_lengkap || userLogin.nama || userLogin.username || 'Admin')
     : (userLogin.unit || userLogin.nama_lengkap || userLogin.nama || userLogin.username || 'User');
+
+  console.log('[PPPKPW] IS_ADMIN:', PPPKPWUNGGAH_IS_ADMIN, '| role:', rawRole, '| unit:', PPPKPWUNGGAH_USER_UNIT);
 
   // Init filter tahun
   var now = new Date(); var yr = now.getFullYear(); var mo = now.getMonth();
@@ -286,9 +311,12 @@ $(document).ready(function () {
 
   // Filter Unit setup
   if (!PPPKPWUNGGAH_IS_ADMIN) {
-    $('#pppkpwunggah_filterUnit').html('<option value="' + PPPKPWUNGGAH_USER_UNIT + '">' + (PPPKPWUNGGAH_USER_UNIT || 'Unit Saya') + '</option>').prop('disabled', true);
+    // User: tampilkan nama unit sekolah (bukan "Unit Saya")
+    var unitLabel = PPPKPWUNGGAH_USER_UNIT || 'Unit Saya';
+    $('#pppkpwunggah_filterUnit').html('<option value="' + PPPKPWUNGGAH_USER_UNIT + '">' + unitLabel + '</option>').prop('disabled', true);
   } else {
-    $('#pppkpwunggah_filterUnit').prop('disabled', false);
+    // Admin: tampilkan "Semua Unit Kerja", aktif, data diisi setelah server response
+    $('#pppkpwunggah_filterUnit').html('<option value="">- Semua Unit Kerja -</option>').prop('disabled', false);
   }
 
   // Event bindings
