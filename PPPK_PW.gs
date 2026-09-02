@@ -296,6 +296,11 @@ function pppkpw_simpan(payload, fileData) {
     var fileUrl = file.getUrl();
 
     var now = "'" + Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
+    var pengunggah = String(payload.user_login || "").trim();
+    if (!pengunggah || /^\d+$/.test(pengunggah)) {
+      pengunggah = payload.unit_kerja || pengunggah || "User";
+    }
+
     sheet.appendRow([
       pppkpw_genId(),
       payload.unit_kerja,
@@ -308,10 +313,10 @@ function pppkpw_simpan(payload, fileData) {
       "Diproses",
       "",
       now,
-      payload.user_login || "",
+      pengunggah,
       "", "", "", "",
       "User",
-      payload.opsi_emeterai || "Titip tempel e-meterai kolektif."
+      payload.opsi_emeterai || "Titip tempel e-meterai kolektif (Rp. 10.000,-)"
     ]);
 
     SpreadsheetApp.flush();
@@ -366,13 +371,18 @@ function pppkpw_perbaiki(payload, fileData) {
     }
 
     var now = "'" + Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
+    var pengubah = String(payload.user_login || "").trim();
+    if (!pengubah || /^\d+$/.test(pengubah)) {
+      pengubah = (payload.unit_kerja || sheet.getRange(r, 2).getValue() || pengubah || "User");
+    }
+
     sheet.getRange(r, 5).setValue(payload.jabatan || ""); // Col E: Jabatan
     sheet.getRange(r, 7).setValue(namaFile);              // Col G: Nama_File
     sheet.getRange(r, 8).setValue(newFileUrl);             // Col H: URL_File
     sheet.getRange(r, 9).setValue("Diproses");            // Col I: Status
     sheet.getRange(r, 10).setValue("");                   // Col J: Catatan
     sheet.getRange(r, 13).setValue(now);                  // Col M: Tgl_Diubah
-    sheet.getRange(r, 14).setValue(payload.user_login || ""); // Col N: Pengubah
+    sheet.getRange(r, 14).setValue(pengubah);             // Col N: Pengubah
     sheet.getRange(r, 15).setValue("");                   // Col O: Tgl_Verif
     sheet.getRange(r, 16).setValue("");                   // Col P: Verifikator
     sheet.getRange(r, 17).setValue("User");               // Col Q: Read_By
@@ -429,10 +439,15 @@ function pppkpw_verifikasi(payload) {
     var sheet = pppkpw_getOrCreateSheet(payload.sheetName);
     var r = parseInt(payload.rowId);
     var now = "'" + Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
+    var verifikator = String(payload.verifikator || "").trim();
+    if (!verifikator || /^\d+$/.test(verifikator)) {
+      verifikator = "Admin";
+    }
+
     sheet.getRange(r, 9).setValue(payload.status);          // Col I: Status
     sheet.getRange(r, 10).setValue(payload.catatan || "");   // Col J: Catatan
     sheet.getRange(r, 15).setValue(now);                    // Col O: Tgl_Verif
-    sheet.getRange(r, 16).setValue(payload.verifikator);    // Col P: Verifikator
+    sheet.getRange(r, 16).setValue(verifikator);            // Col P: Verifikator
     sheet.getRange(r, 17).setValue("Admin");                // Col Q: Read_By
 
     SpreadsheetApp.flush();

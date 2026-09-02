@@ -258,9 +258,12 @@ var PPPKPWUNGGAH_CURRENT_TA = '';
 
 $(document).ready(function () {
   var userLogin = typeof getSesiUser === 'function' ? getSesiUser() : {};
-  PPPKPWUNGGAH_IS_ADMIN   = (typeof checkUserRoleIsAdmin === 'function' && checkUserRoleIsAdmin()) || (userLogin.role === 'Admin');
-  PPPKPWUNGGAH_USER_UNIT  = userLogin.unit || userLogin.npsn || '';
-  PPPKPWUNGGAH_USER_LOGIN = userLogin.username || userLogin.nama_lengkap || 'User';
+  PPPKPWUNGGAH_IS_ADMIN   = (typeof checkUserRoleIsAdmin === 'function' && checkUserRoleIsAdmin()) || (userLogin && String(userLogin.role || '').toLowerCase().includes('admin'));
+  PPPKPWUNGGAH_USER_UNIT  = (userLogin && (userLogin.unit || userLogin.nama_lengkap || userLogin.nama || userLogin.npsn)) || '';
+  // Jika user sekolah, gunakan Nama Sekolah (unit / nama_lengkap / nama) dan bukan angka NPSN (username)
+  PPPKPWUNGGAH_USER_LOGIN = PPPKPWUNGGAH_IS_ADMIN
+    ? (userLogin.nama_lengkap || userLogin.nama || userLogin.username || 'Admin')
+    : (userLogin.unit || userLogin.nama_lengkap || userLogin.nama || userLogin.username || 'User');
 
   // Init filter tahun
   var now = new Date(); var yr = now.getFullYear(); var mo = now.getMonth();
@@ -859,12 +862,15 @@ $(document).off('submit', '#pppkpwunggah_formVerif').on('submit', '#pppkpwunggah
     $form.addClass('was-validated');
     return;
   }
+  var userVerif = typeof getSesiUser === 'function' ? getSesiUser() : {};
+  var verifikatorName = (userVerif && (userVerif.nama_lengkap || userVerif.nama)) || (PPPKPWUNGGAH_IS_ADMIN ? 'Admin' : PPPKPWUNGGAH_USER_LOGIN);
+
   var payload = {
     rowId: $('#pppkpwunggah_v_rowid').val(),
     sheetName: $('#pppkpwunggah_v_sheetname').val(),
     status: $('#pppkpwunggah_v_status').val(),
     catatan: $('#pppkpwunggah_v_catatan').val(),
-    verifikator: PPPKPWUNGGAH_USER_LOGIN
+    verifikator: verifikatorName
   };
 
   var btn = $('#pppkpwunggah_btnVerifikasi');
