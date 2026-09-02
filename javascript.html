@@ -58,34 +58,34 @@
      ============================================================= */
   var NotifSultan = {
     config: { warnaMaroon: '#800000', warnaHitam: '#343a40', warnaSukses: '#28a745', warnaGagal: '#dc3545', warnaWarning: '#ffc107', warnaBatal: '#6c757d' },
-    getTheme: () => {
-      const isDark = $('body').hasClass('dark-mode');
+    getTheme: function () {
+      var isDark = $('body').hasClass('dark-mode');
       return {
         bg: isDark ? '#1a1c1e' : '#fff',
         color: isDark ? '#f1f3f5' : '#343a40'
       };
     },
-    toast: (tipe, pesan) => {
-      const theme = NotifSultan.getTheme();
+    toast: function (tipe, pesan) {
+      var theme = NotifSultan.getTheme();
       Swal.mixin({
         toast: true, position: 'top-end', showConfirmButton: false, timer: 3000,
         timerProgressBar: true, background: theme.bg, color: theme.color,
-        didOpen: (toast) => {
+        didOpen: function (toast) {
           if (toast && toast.parentNode) {
             toast.parentNode.style.zIndex = '105000';
           }
         }
       })
-        .fire({ icon: tipe, title: `<span style="font-weight:600">${pesan}</span>` });
+        .fire({ icon: tipe, title: '<span style="font-weight:600">' + pesan + '</span>' });
     },
-    alert: (tipe, judul, pesan) => {
-      const theme = NotifSultan.getTheme();
-      let titleColor = theme.bg === '#fff' ? '#800000' : '#e9ecef';
+    alert: function (tipe, judul, pesan) {
+      var theme = NotifSultan.getTheme();
+      var titleColor = theme.bg === '#fff' ? '#800000' : '#e9ecef';
 
       return Swal.fire({
         icon: tipe,
-        title: `<h5 class="font-weight-bold" style="margin-top:10px; color:${titleColor}">${judul}</h5>`,
-        html: `<div class="text-muted" style="color:${theme.bg === '#fff' ? '#6c757d' : '#adb5bd'}">${pesan}</div>`,
+        title: '<h5 class="font-weight-bold" style="margin-top:10px; color:' + titleColor + '">' + judul + '</h5>',
+        html: '<div class="text-muted" style="color:' + (theme.bg === '#fff' ? '#6c757d' : '#adb5bd') + '">' + pesan + '</div>',
         width: '350px',
         confirmButtonText: 'OK',
         background: theme.bg,
@@ -96,23 +96,23 @@
           confirmButton: 'swal2-confirm-sultan'
         },
         buttonsStyling: false,
-        didOpen: (popup) => {
+        didOpen: function (popup) {
           if (popup && popup.parentNode) {
             popup.parentNode.style.zIndex = '105000';
           }
         }
       });
     },
-    loading: (pesan) => {
-      const theme = NotifSultan.getTheme();
+    loading: function (pesan) {
+      var theme = NotifSultan.getTheme();
       Swal.fire({
         width: '300px', title: '',
         background: theme.bg,
         color: theme.color,
-        html: `<div class="text-center p-3"><div class="spinner-border text-maroon" style="width: 3rem; height: 3rem;"></div><p class="mt-3 mb-0 font-weight-bold text-secondary">${pesan || 'Memproses...'}</p></div>`,
+        html: '<div class="text-center p-3"><div class="spinner-border text-maroon" style="width: 3rem; height: 3rem;"></div><p class="mt-3 mb-0 font-weight-bold text-secondary">' + (pesan || 'Memproses...') + '</p></div>',
         showConfirmButton: false, allowOutsideClick: false,
         customClass: { popup: 'card-sultan' },
-        didOpen: (popup) => {
+        didOpen: function (popup) {
           if (popup && popup.parentNode) {
             popup.parentNode.style.zIndex = '105000';
           }
@@ -126,16 +126,16 @@
      ============================================================= */
   var Sultan = {
     notif: {
-      sukses: (pesan) => NotifSultan.toast('success', pesan),
-      gagal: (pesan) => NotifSultan.toast('error', pesan),
-      info: (pesan) => NotifSultan.toast('info', pesan),
-      loading: (judul) => NotifSultan.loading(judul),
-      tutup: () => Swal.close(),
+      sukses: function (pesan) { NotifSultan.toast('success', pesan); },
+      gagal: function (pesan) { NotifSultan.toast('error', pesan); },
+      info: function (pesan) { NotifSultan.toast('info', pesan); },
+      loading: function (judul) { NotifSultan.loading(judul); },
+      tutup: function () { Swal.close(); },
       crud: {
-        sukses: (msg) => NotifSultan.toast('success', msg || 'Operasi berhasil!'),
-        simpan: (isUpdate) => NotifSultan.toast('success', isUpdate ? 'Perubahan data berhasil disimpan!' : 'Data baru berhasil ditambahkan!'),
-        hapus: () => NotifSultan.toast('success', 'Data telah berhasil dihapus dari sistem.'),
-        gagal: (err) => NotifSultan.alert('error', 'Gagal Memproses Data', err || 'Terjadi kendala teknis, silakan coba lagi.')
+        sukses: function (msg) { NotifSultan.toast('success', msg || 'Operasi berhasil!'); },
+        simpan: function (isUpdate) { NotifSultan.toast('success', isUpdate ? 'Perubahan data berhasil disimpan!' : 'Data baru berhasil ditambahkan!'); },
+        hapus: function () { NotifSultan.toast('success', 'Data telah berhasil dihapus dari sistem.'); },
+        gagal: function (err) { NotifSultan.alert('error', 'Gagal Memproses Data', err || 'Terjadi kendala teknis, silakan coba lagi.'); }
       }
     },
     alert: NotifSultan.alert,
@@ -515,6 +515,123 @@
       }
     }
   };
+
+  /* =============================================================
+     1.C SUPER HELPER: RENDER TABEL (ANTI-BLINK SULTAN)
+     ============================================================= */
+  var SultanTable = {
+    renderNative: function (targetId, columns, data, emptyText, onComplete) {
+      var $tabel = $(targetId);
+      if ($tabel.length === 0) return;
+
+      if ($.fn.DataTable.isDataTable(targetId)) {
+        $tabel.DataTable().destroy();
+      }
+      $tabel.empty();
+
+      $tabel.DataTable({
+        data: data || [],
+        columns: columns || [{ title: "Data" }],
+        ordering: false,
+        pageLength: 10,
+        autoWidth: false,
+        destroy: true,
+        language: {
+          url: "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json",
+          emptyTable: emptyText || "Tidak ada data."
+        },
+        dom: "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
+          "<'row'<'col-sm-12 table-responsive'tr>>" +
+          "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+        initComplete: function () {
+          var api = this.api();
+          $('[data-toggle="tooltip"]').tooltip();
+
+          var $scroll = $(this).closest('.sultan-scroll-container, .table-responsive, .sultan-scroll');
+          $scroll.attr('tabindex', '0');
+          $scroll.css('outline', 'none');
+
+          if (typeof onComplete === 'function') {
+            setTimeout(function () {
+              if ($.contains(document, $tabel[0])) {
+                try { api.columns.adjust(); } catch(e) {}
+              }
+              onComplete();
+            }, 50);
+          }
+        }
+      });
+    },
+
+    init: function (targetId, options) {
+      options = options || {};
+      var $tabel = $(targetId);
+      if ($tabel.length === 0) return null;
+
+      if ($.fn.DataTable.isDataTable(targetId)) {
+        $tabel.DataTable().clear().destroy();
+      }
+
+      if (!$tabel.hasClass('table-sultan-compact')) {
+        $tabel.addClass('table table-bordered table-premium table-sultan-compact w-100');
+      }
+
+      var defaultOptions = {
+        "destroy": true,
+        "ordering": false,
+        "pageLength": 10,
+        "autoWidth": false,
+        "deferRender": true,
+        "language": {
+          "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json",
+          "emptyTable": "Tidak ada data yang ditemukan."
+        },
+        "responsive": false,
+        "dom": "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
+          "<'row'<'col-sm-12'tr>>" +
+          "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+        "initComplete": function (settings, json) {
+          var api = this.api();
+          setTimeout(function () { 
+            if ($.contains(document, $tabel[0])) {
+              try { api.columns.adjust(); } catch(e) {}
+            }
+          }, 100);
+
+          var $scroll = $(this).closest('.sultan-scroll-container, .table-responsive, .sultan-scroll');
+          $scroll.attr('tabindex', '0');
+          $scroll.css('outline', 'none');
+
+          if (options.initComplete) {
+            options.initComplete.call(this, settings, json);
+          }
+        }
+      };
+
+      var finalOptions = $.extend(true, {}, defaultOptions, options);
+      finalOptions.responsive = false;
+      $tabel.removeClass('dt-responsive nowrap');
+
+      if (!finalOptions.dom || finalOptions.dom === defaultOptions.dom) {
+        finalOptions.dom = "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
+          "<'row'<'col-sm-12'<'table-responsive sultan-scroll'tr>>>" +
+          "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>";
+      }
+
+      finalOptions.destroy = true;
+      finalOptions.autoWidth = false;
+
+      if (options.initComplete) {
+        finalOptions.initComplete = defaultOptions.initComplete;
+      }
+
+      return $tabel.DataTable(finalOptions);
+    }
+  };
+
+  window.NotifSultan = NotifSultan;
+  window.Sultan = Sultan;
+  window.SultanTable = SultanTable;
 
   function toast(pesan, tipe) { NotifSultan.toast(tipe, pesan); }
   function tampilkanNotif(pesan, tipe) { NotifSultan.toast(tipe, pesan); }
@@ -1348,180 +1465,7 @@
       }
     }
     $('#page-breadcrumb').html(breadHtml);
-
   }
-
-  /* =============================================================
-     7. SUPER HELPER: RENDER TABEL (ANTI-BLINK SULTAN)
-     ============================================================= */
-  var SultanTable = {
-    renderNative: function (targetId, columns, data, emptyText, onComplete) {
-      var $tabel = $(targetId);
-      if ($tabel.length === 0) return;
-
-      if ($.fn.DataTable.isDataTable(targetId)) {
-        $tabel.DataTable().destroy();
-      }
-      $tabel.empty();
-
-      $tabel.DataTable({
-        data: data || [],
-        columns: columns || [{ title: "Data" }],
-        ordering: false,
-        pageLength: 10,
-        autoWidth: false,
-        destroy: true,
-        language: {
-          url: "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json",
-          emptyTable: emptyText || "Tidak ada data."
-        },
-        dom: "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
-          "<'row'<'col-sm-12 table-responsive'tr>>" +
-          "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
-        initComplete: function () {
-          var api = this.api();
-          $('[data-toggle="tooltip"]').tooltip();
-
-          // Make scroll container focusable for keypad (arrow key) scrolling
-          var $scroll = $(this).closest('.sultan-scroll-container, .table-responsive, .sultan-scroll');
-          $scroll.attr('tabindex', '0');
-          $scroll.css('outline', 'none');
-
-          if (typeof onComplete === 'function') {
-            setTimeout(function () {
-              if ($.contains(document, $tabel[0])) {
-                try { api.columns.adjust(); } catch(e) {}
-              }
-              onComplete();
-            }, 50);
-          }
-        }
-      });
-    },
-
-    /**
-     * Factory Method untuk Inisialisasi DataTables dengan Standar Sultan
-     * @param {string} targetId - ID tabel target
-     * @param {object} options - Opsi spesifik DataTable (data, columnDefs, dll)
-     * @returns {object} Instance DataTable
-     */
-    init: function (targetId, options) {
-      options = options || {};
-      var $tabel = $(targetId);
-      if ($tabel.length === 0) return null;
-
-      if ($.fn.DataTable.isDataTable(targetId)) {
-        $tabel.DataTable().clear().destroy();
-      }
-
-      // Memastikan class standar ada
-      if (!$tabel.hasClass('table-sultan-compact')) {
-        $tabel.addClass('table table-bordered table-premium table-sultan-compact w-100');
-      }
-
-      // ROLE-BASED ADAPTIVE TABLE: Deteksi role admin
-      var isAdminRole = checkUserRoleIsAdmin();
-      // var useResponsive = !isAdminRole; // Admin: tabel penuh. User: tabel lipat.
-      var useResponsive = false; // NONAKTIF SEMENTARA: Semua pengguna melihat tabel penuh
-
-      var sultanResponsiveConfig = {
-        details: {
-          renderer: function (api, rowIdx, columns) {
-            var data = $.map(columns, function (col, i) {
-              return col.hidden ?
-                '<tr data-dt-row="' + col.rowIndex + '" data-dt-column="' + col.columnIndex + '">' +
-                '<td class="font-weight-bold text-uppercase align-middle sultan-dtr-title" style="width: 150px; padding: 0.75rem 0.5rem;">' + col.title + '</td> ' +
-                '<td class="align-middle sultan-dtr-data" style="padding: 0.75rem 0.5rem;">' + col.data + '</td>' +
-                '</tr>' :
-                '';
-            }).join('');
-
-            return data ?
-              $('<div class="p-3 mb-2 rounded border sultan-dtr-container">').append(
-                $('<table class="table table-borderless table-sm mb-0 w-100">').append(data)
-              ) : false;
-          }
-        }
-      };
-
-      var defaultOptions = {
-        "destroy": true,
-        "ordering": false,
-        "pageLength": 10,
-        "autoWidth": false,
-        "deferRender": true,
-        "language": {
-          "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json",
-          "emptyTable": "Tidak ada data yang ditemukan."
-        },
-        "responsive": useResponsive ? sultanResponsiveConfig : false,
-        "dom": "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
-          "<'row'<'col-sm-12'tr>>" +
-          "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
-        "initComplete": function (settings, json) {
-          var api = this.api();
-          setTimeout(function () { 
-            if ($.contains(document, $tabel[0])) {
-              try { api.columns.adjust(); } catch(e) {}
-            }
-          }, 100);
-
-          // Make scroll container focusable for keypad (arrow key) scrolling
-          var $scroll = $(this).closest('.sultan-scroll-container, .table-responsive, .sultan-scroll');
-          $scroll.attr('tabindex', '0');
-          $scroll.css('outline', 'none');
-
-          if (options.initComplete) {
-            options.initComplete.call(this, settings, json);
-          }
-        }
-      };
-
-      // Menggabungkan opsi default dengan opsi spesifik modul
-      var finalOptions = $.extend(true, {}, defaultOptions, options);
-
-      // FIX: $.extend(true) can sometimes mangle function references in deeply nested objects.
-      // Re-assign responsive manually to ensure the renderer function stays intact.
-      if (useResponsive && options.responsive !== false) {
-          finalOptions.responsive = sultanResponsiveConfig;
-      } else if (!useResponsive) {
-          finalOptions.responsive = false;
-      }
-
-      // Tambahkan class khusus untuk responsive jika diaktifkan
-      if (finalOptions.responsive) {
-          $tabel.addClass('dt-responsive nowrap');
-      } else {
-          $tabel.removeClass('dt-responsive nowrap');
-      }
-
-      // Memastikan sultan-scroll selalu ada di dom jika tidak responsive
-      if (!finalOptions.dom || finalOptions.dom === defaultOptions.dom) {
-        var domRowTr = finalOptions.responsive 
-          ? "<'row'<'col-sm-12'tr>>" 
-          : "<'row'<'col-sm-12'<'table-responsive sultan-scroll'tr>>>";
-          
-        finalOptions.dom = "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
-          domRowTr +
-          "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>";
-      }
-
-      finalOptions.destroy = true;
-      finalOptions.autoWidth = false;
-
-      // Jika modul memiliki initComplete sendiri, kita sudah tangani di defaultOptions.
-      if (options.initComplete) {
-        finalOptions.initComplete = defaultOptions.initComplete;
-      }
-
-      return $tabel.DataTable(finalOptions);
-    }
-  };
-
-  window.SultanTable = SultanTable;
-  window.Sultan = Sultan;
-  window.NotifSultan = NotifSultan;
-
 
   function getBadgeSultan(status) {
     if (!status || status === "-" || status === "") {
