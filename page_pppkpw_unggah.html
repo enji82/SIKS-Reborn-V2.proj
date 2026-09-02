@@ -293,7 +293,8 @@ $(document).ready(function () {
 
   // Event bindings
   $(document).off('click', '#pppkpwunggah_btnRefresh').on('click', '#pppkpwunggah_btnRefresh', function () { pppkpwunggah_loadData(true); });
-  $(document).off('change', '#pppkpwunggah_filterUnit, #pppkpwunggah_filterTahun, #pppkpwunggah_filterStatus').on('change', '#pppkpwunggah_filterUnit, #pppkpwunggah_filterTahun, #pppkpwunggah_filterStatus', function () { pppkpwunggah_loadData(); });
+  $(document).off('change', '#pppkpwunggah_filterTahun').on('change', '#pppkpwunggah_filterTahun', function () { pppkpwunggah_loadData(); });
+  $(document).off('change', '#pppkpwunggah_filterUnit, #pppkpwunggah_filterStatus').on('change', '#pppkpwunggah_filterUnit, #pppkpwunggah_filterStatus', function () { pppkpwunggah_applyFilterLocal(false); });
   $(document).off('click', '#pppkpwunggah_btnTambah').on('click', '#pppkpwunggah_btnTambah', function () { pppkpwunggah_bukaModalTambah(); });
 
   // Event input file change
@@ -403,9 +404,8 @@ function pppkpwunggah_initPage() {
    2. MEMUAT DATA TABEL
    ======================================================================= */
 function pppkpwunggah_loadData(force) {
-  var unitFilter = PPPKPWUNGGAH_IS_ADMIN ? ($('#pppkpwunggah_filterUnit').val() || '') : PPPKPWUNGGAH_USER_UNIT;
+  var unitFilter = PPPKPWUNGGAH_IS_ADMIN ? '' : PPPKPWUNGGAH_USER_UNIT;
   var tahun = $('#pppkpwunggah_filterTahun').val() || '';
-  var statusFilter = $('#pppkpwunggah_filterStatus').val() || '';
 
   $('#pppkpwunggah_loadingState').show();
   $('#pppkpwunggah_tableState').hide();
@@ -418,11 +418,7 @@ function pppkpwunggah_loadData(force) {
       if (!res.success) { Sultan.notif.gagal(res.message); return; }
       PPPKPWUNGGAH_DATA = res.data || [];
 
-      var filtered = statusFilter
-        ? PPPKPWUNGGAH_DATA.filter(function (d) { return d.status === statusFilter; })
-        : PPPKPWUNGGAH_DATA;
-
-      pppkpwunggah_renderTable(filtered);
+      pppkpwunggah_applyFilterLocal(false);
       $('#pppkpwunggah_loadingState').hide();
       $('#pppkpwunggah_tableState').show();
     })
@@ -435,10 +431,30 @@ function pppkpwunggah_loadData(force) {
     .pppkpw_getData(unitFilter, tahun);
 }
 
+function pppkpwunggah_applyFilterLocal(keepPage) {
+  var unitFilter = PPPKPWUNGGAH_IS_ADMIN ? ($('#pppkpwunggah_filterUnit').val() || '') : PPPKPWUNGGAH_USER_UNIT;
+  var statusFilter = $('#pppkpwunggah_filterStatus').val() || '';
+
+  var filtered = PPPKPWUNGGAH_DATA;
+  if (unitFilter && unitFilter !== 'SEMUA') {
+    filtered = filtered.filter(function (d) {
+      return String(d.unit_kerja || '').trim().toLowerCase() === unitFilter.trim().toLowerCase();
+    });
+  }
+  if (statusFilter) {
+    filtered = filtered.filter(function (d) {
+      return String(d.status || '').trim().toLowerCase() === statusFilter.trim().toLowerCase();
+    });
+  }
+
+  pppkpwunggah_renderTable(filtered, keepPage);
+}
+
 /* =======================================================================
    3. RENDER TABEL UTAMA
    ======================================================================= */
-function pppkpwunggah_renderTable(data) {
+function pppkpwunggah_renderTable(data, keepPage) {
+  var currentPage = (keepPage && PPPKPWUNGGAH_TABLE) ? PPPKPWUNGGAH_TABLE.page() : 0;
   var dtArray = [];
   data.forEach(function (row) {
     var s = String(row.status || "Diproses").trim().toLowerCase();
@@ -519,7 +535,18 @@ function pppkpwunggah_renderTable(data) {
     ],
     language: { url: '//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json', emptyTable: 'Belum ada berkas Draft PK yang diunggah.' }
   });
-  PPPKPWUNGGAH_TABLE.clear().rows.add(dtArray).draw(false);
+
+  PPPKPWUNGGAH_TABLE.clear().rows.add(dtArray);
+  if (currentPage > 0) {
+    var pageInfo = PPPKPWUNGGAH_TABLE.page.info();
+    if (pageInfo && currentPage >= pageInfo.pages) {
+      currentPage = Math.max(0, pageInfo.pages - 1);
+    }
+    PPPKPWUNGGAH_TABLE.page(currentPage).draw(false);
+  } else {
+    PPPKPWUNGGAH_TABLE.draw(false);
+  }
+
   setTimeout(function () {
     if (PPPKPWUNGGAH_TABLE) PPPKPWUNGGAH_TABLE.columns.adjust();
   }, 100);
@@ -898,12 +925,8 @@ $(document).off('submit', '#pppkpwunggah_formVerif').on('submit', '#pppkpwunggah
           targetRow.tgl_verifikasi = tglStr;
         }
 
-        // Render ulang tabel secara lokal tanpa full load data server
-        var statusFilter = $('#pppkpwunggah_filterStatus').val() || '';
-        var filtered = statusFilter
-          ? PPPKPWUNGGAH_DATA.filter(function (d) { return d.status === statusFilter; })
-          : PPPKPWUNGGAH_DATA;
-        pppkpwunggah_renderTable(filtered);
+        // Render ulang tabel secara lokal tanpa full load data server dan tetap di halaman saat ini
+        pppkpwunggah_applyFilterLocal(true);
 
         if (typeof sultan_fetchNotifikasi === 'function') sultan_fetchNotifikasi();
       } else {
