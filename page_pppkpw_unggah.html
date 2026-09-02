@@ -247,12 +247,6 @@
 </div>
 
 <script>
-/* Alias lokal agar Sultan, SultanTable, NotifSultan selalu terbaca
-   ketika script ini dieksekusi via jQuery .html() inject (eval-scope) */
-var Sultan      = window.Sultan      || Sultan      || {};
-var SultanTable = window.SultanTable || SultanTable || {};
-var NotifSultan = window.NotifSultan || NotifSultan || {};
-
 var PPPKPWUNGGAH_DATA       = [];
 var PPPKPWUNGGAH_INITED     = false;
 var PPPKPWUNGGAH_INIT_DATA  = null;
@@ -969,7 +963,14 @@ $(document).off('click', '.pppkpwunggah-btn-catatan').on('click', '.pppkpwunggah
 $(document).off('click', '.pppkpwunggah-btn-preview').on('click', '.pppkpwunggah-btn-preview', function () {
   var url = $(this).data('url');
   var nama = $(this).data('nama') || 'Dokumen';
-  if (!url) { Sultan.notif.info('URL berkas tidak tersedia.'); return; }
+  if (!url) {
+    if (window.Sultan && window.Sultan.notif) {
+      window.Sultan.notif.info('URL berkas tidak tersedia.');
+    } else {
+      alert('URL berkas tidak tersedia.');
+    }
+    return;
+  }
   
   var finalUrl = url;
   var downloadUrl = url;
@@ -979,10 +980,29 @@ $(document).off('click', '.pppkpwunggah-btn-preview').on('click', '.pppkpwunggah
     downloadUrl = 'https://drive.google.com/uc?export=download&id=' + match[1];
   }
 
-  Sultan.modal.preview({
-    url: finalUrl,
-    title: 'Draft PK - ' + nama,
-    downloadUrl: downloadUrl
+  if (window.Sultan && window.Sultan.modal && typeof window.Sultan.modal.preview === 'function') {
+    window.Sultan.modal.preview({
+      url: finalUrl,
+      title: 'Draft PK - ' + nama,
+      downloadUrl: downloadUrl
+    });
+    return;
+  }
+
+  // Fallback langsung ke modal HTML jika helper belum siap
+  $('#global_modalPreviewIframe').hide().attr('src', '');
+  $('#global_modalPreviewImg').hide().attr('src', '');
+  $('#global_modalPreviewLoading').show().html('<div class="text-center"><i class="fas fa-circle-notch fa-spin fa-3x mb-3"></i><p>Memuat Dokumen...</p></div>');
+  $('#global_modalPreviewTitle').html('<i class="fas fa-file-pdf mr-2"></i> Draft PK - ' + nama);
+  if (downloadUrl && downloadUrl !== '#') {
+    $('#global_previewBtnUnduh').attr('href', downloadUrl).removeClass('d-none').show();
+  } else {
+    $('#global_previewBtnUnduh').addClass('d-none').hide();
+  }
+  $('#global_modalPreview').modal('show');
+  $('#global_modalPreviewIframe').attr('src', finalUrl).off('load').on('load', function () {
+    $('#global_modalPreviewLoading').hide();
+    $(this).show();
   });
 });
 
