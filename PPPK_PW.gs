@@ -213,7 +213,44 @@ function pppkpw_getData(unitFilter, tahun) {
         });
       }
     });
-    result.sort(function(a, b) { return b.tgl_unggah.localeCompare(a.tgl_unggah); });
+
+    function pppkpw_parseDateTime(dStr) {
+      if (!dStr || dStr === "-" || String(dStr).trim() === "") return 0;
+      try {
+        dStr = String(dStr).replace(/'/g, "").trim();
+        var p = dStr.split(" ");
+        if (!p[0]) return 0;
+        var dateParts = p[0].split(/[-/]/);
+        if (dateParts.length < 3) return 0;
+        var timeParts = p[1] ? p[1].split(":") : ["00", "00", "00"];
+        var year, month, day;
+        if (dateParts[0].length === 4) {
+          year = parseInt(dateParts[0], 10);
+          month = parseInt(dateParts[1], 10) - 1;
+          day = parseInt(dateParts[2], 10);
+        } else {
+          year = parseInt(dateParts[2], 10);
+          month = parseInt(dateParts[1], 10) - 1;
+          day = parseInt(dateParts[0], 10);
+        }
+        var hours = parseInt(timeParts[0] || 0, 10);
+        var minutes = parseInt(timeParts[1] || 0, 10);
+        var seconds = parseInt(timeParts[2] || 0, 10);
+        return new Date(year, month, day, hours, minutes, seconds).getTime() || 0;
+      } catch(e) {
+        return 0;
+      }
+    }
+
+    result.sort(function(a, b) {
+      var actA = Math.max(pppkpw_parseDateTime(a.tgl_unggah), pppkpw_parseDateTime(a.tgl_diubah), pppkpw_parseDateTime(a.tgl_verifikasi));
+      var actB = Math.max(pppkpw_parseDateTime(b.tgl_unggah), pppkpw_parseDateTime(b.tgl_diubah), pppkpw_parseDateTime(b.tgl_verifikasi));
+      if (actB === actA) {
+        return (b.rowId || 0) - (a.rowId || 0);
+      }
+      return actB - actA;
+    });
+
     return JSON.stringify({ success: true, data: result });
   } catch(e) {
     return JSON.stringify({ success: false, message: e.message });
