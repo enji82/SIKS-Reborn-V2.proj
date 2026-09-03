@@ -948,18 +948,18 @@
         var isLocked = (statusLower.includes('setuju') || statusLower.includes('acc') || statusLower.includes('valid'));
         
         var btnV = IS_ADMIN
-          ? `<button class="sultan-btn-aksi sultan-btn-aksi-primary btn-verif" data-payload='${JSON.stringify(row)}' title="Verifikasi Laporan"><i class="fas fa-clipboard-check"></i></button>`
+          ? `<button class="sultan-btn-aksi sultan-btn-aksi-primary btn-verif" data-payload='${JSON.stringify(row)}' data-toggle="tooltip" title="Verifikasi Data"><i class="fas fa-clipboard-check"></i></button>`
           : '';
         var btnP = (!isLocked && isOwner)
-          ? `<button class="sultan-btn-aksi sultan-btn-aksi-warning btn-edit" data-payload='${JSON.stringify(row)}' title="Unggah Ulang"><i class="fas fa-edit"></i></button>`
-          : `<button class="sultan-btn-aksi" disabled style="opacity:0.5;" title="Terkunci"><i class="fas fa-edit"></i></button>`;
+          ? `<button class="sultan-btn-aksi sultan-btn-aksi-warning btn-edit" data-payload='${JSON.stringify(row)}' data-toggle="tooltip" title="Unggah Ulang"><i class="fas fa-edit"></i></button>`
+          : `<button class="sultan-btn-aksi" disabled style="opacity:0.4; cursor:not-allowed;" title="Terkunci (Sudah Disetujui)"><i class="fas fa-edit"></i></button>`;
         var btnH = (!isLocked && isOwner)
-          ? `<button class="sultan-btn-aksi sultan-btn-aksi-maroon btn-delete" data-payload='${JSON.stringify(row)}' title="Hapus"><i class="fas fa-trash-alt"></i></button>`
-          : `<button class="sultan-btn-aksi" disabled style="opacity:0.5;" title="Terkunci"><i class="fas fa-trash-alt"></i></button>`;
+          ? `<button class="sultan-btn-aksi sultan-btn-aksi-maroon btn-delete" data-payload='${JSON.stringify(row)}' data-toggle="tooltip" title="Hapus Data"><i class="fas fa-trash-alt"></i></button>`
+          : `<button class="sultan-btn-aksi" disabled style="opacity:0.4; cursor:not-allowed;" title="Terkunci (Sudah Disetujui)"><i class="fas fa-trash-alt"></i></button>`;
 
-        var btnAksi = `<div class="d-flex flex-nowrap justify-content-center" style="gap:5px;">${btnV}${btnP}${btnH}</div>`;
+        var btnAksi = `<div class="d-flex flex-nowrap justify-content-center" style="gap:4px;">${btnV}${btnP}${btnH}</div>`;
 
-        var linkSp = row.url_file_sp ? `<button type="button" class="sultan-btn-pdf btn-preview-pdf" data-url="${row.url_file_sp}" data-nama="SP-${row.nama_sekolah}"><i class="fas fa-file-pdf mr-1"></i> LIHAT</button>` : '<span class="text-muted">-</span>';
+        var linkSp = row.url_file_sp ? `<button type="button" class="sultan-btn-pdf btn-preview-pdf" data-url="${row.url_file_sp}" data-nama="SP-${row.nama_sekolah}" data-toggle="tooltip" title="Lihat Dokumen"><i class="fas fa-file-pdf mr-1"></i> LIHAT</button>` : '<span class="text-muted">-</span>';
         
         // Render Multiple Photos
         var linkDok = '<span class="text-muted">-</span>';
@@ -974,24 +974,16 @@
           linkDok = `<div class="d-flex align-items-center justify-content-center flex-nowrap" style="gap:6px;">${photoLinks.join(' <span class="text-muted font-weight-normal" style="font-size: 10px;">|</span> ')}</div>`;
         }
 
-        var sekolahCell = `
-          <div class="font-weight-bold text-brand-maroon text-left text-wrap" style="font-size: 13px; line-height: 1.2;">${row.nama_sekolah}</div>
-          <div class="text-muted text-left small font-weight-normal">${row.npsn}</div>
-        `;
+        // Standardisasi Kolom NAMA SEKOLAH & NPSN
+        var sekolahCell = SultanUI.renderUnitSekolah(row.nama_sekolah, row.npsn);
 
-        var uploadBy = row.uploader 
-          ? `<div class="sultan-table-secondary"><span class="font-weight-bold text-dark">${row.tgl_upload}</span><span>${row.uploader}</span></div>` 
-          : '-';
+        // Standardisasi Kolom AUDIT LOG (DIUNGGAH, DIUBAH, DIVERIFIKASI)
+        var uploadBy = SultanUI.renderAuditCell(row.tgl_upload, row.uploader);
+        var editBy   = SultanUI.renderAuditCell(row.tgl_edit, row.user_edit);
+        var verifBy  = SultanUI.renderAuditCell(row.tgl_verif, row.user_verif);
 
-        var editBy = row.user_edit 
-          ? `<div class="sultan-table-secondary"><span class="font-weight-bold text-dark">${row.tgl_edit}</span><span>${row.user_edit}</span></div>` 
-          : '-';
-
-        var verifBy = row.user_verif
-          ? `<div class="sultan-table-secondary"><span class="font-weight-bold text-dark">${row.tgl_verif}</span><span>${row.user_verif}</span></div>` 
-          : '-';
-
-        var statusText = getStatusText(row.status, row.catatan);
+        // Standardisasi Kolom STATUS & BACA CATATAN
+        var statusText = SultanUI.renderBadgeStatus(row.status, row.catatan);
 
         // Parse detail_json to sum REKAP, DITERIMA, DISERAHKAN, and BELUM
         var dJson = {};

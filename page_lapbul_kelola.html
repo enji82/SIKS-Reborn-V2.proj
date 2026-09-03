@@ -1147,44 +1147,42 @@
         data.forEach(function (row) {
             var stButton = String(row.statusData || "Diproses").toLowerCase();
 
-            var badgeStatusData = lapbulkelola_buildBadgeStatus(row.statusData, row.keterangan);
-            var isLocked = (stButton.includes('ok') || stButton.includes('setuju') || stButton.includes('terima'));
-
+            var isDisetujui = (stButton.includes('ok') || stButton.includes('setuju') || stButton.includes('terima'));
             var safeNama = lapbulkelola_escapeJs(row.namaSekolah);
 
-            // VAKSIN DYNAMIC UI: Membedakan Aksi Admin dan User
-            var txtEdit = LAPBULKELOLA_IS_ADMIN ? "" : " Edit";
-            var txtHapus = LAPBULKELOLA_IS_ADMIN ? "" : " Hapus";
-            var marginIcon = LAPBULKELOLA_IS_ADMIN ? "" : "mr-1";
-
+            // Standardisasi Kolom AKSI
             var btnEdit = isLocked
-                ? `<button class="sultan-btn-aksi" disabled title="Terkunci"><i class="fas fa-pencil-alt"></i></button>`
-                : `<button class="sultan-btn-aksi sultan-btn-aksi-warning btn-aksi-edit" data-source="${row.source}" data-id="${row.rowId}" title="Edit Data"><i class="fas fa-pencil-alt"></i></button>`;
+                ? `<button class="sultan-btn-aksi" disabled style="opacity:0.4; cursor:not-allowed;" title="Terkunci (Sudah Disetujui)"><i class="fas fa-pencil-alt"></i></button>`
+                : `<button class="sultan-btn-aksi sultan-btn-aksi-warning btn-aksi-edit" data-source="${row.source}" data-id="${row.rowId}" data-toggle="tooltip" title="Edit Data"><i class="fas fa-pencil-alt"></i></button>`;
 
             var btnHapus = isLocked
-                ? `<button class="sultan-btn-aksi" disabled title="Terkunci"><i class="fas fa-trash-alt"></i></button>`
-                : `<button class="sultan-btn-aksi sultan-btn-aksi-maroon btn-aksi-hapus" data-source="${row.source}" data-id="${row.rowId}" data-nama="${safeNama}" data-bulan="${row.bulan}" data-tahun="${row.tahun}" title="Hapus Permanen"><i class="fas fa-trash-alt"></i></button>`;
+                ? `<button class="sultan-btn-aksi" disabled style="opacity:0.4; cursor:not-allowed;" title="Terkunci (Sudah Disetujui)"><i class="fas fa-trash-alt"></i></button>`
+                : `<button class="sultan-btn-aksi sultan-btn-aksi-maroon btn-aksi-hapus" data-source="${row.source}" data-id="${row.rowId}" data-nama="${safeNama}" data-bulan="${row.bulan}" data-tahun="${row.tahun}" data-toggle="tooltip" title="Hapus Data"><i class="fas fa-trash-alt"></i></button>`;
 
             var btnVerif = "";
             if (LAPBULKELOLA_IS_ADMIN) {
                 var safeFile = lapbulkelola_escapeJs(row.fileUrl || "");
-                btnVerif = `<button class="sultan-btn-aksi sultan-btn-aksi-primary btn-aksi-verif" data-source="${row.source}" data-id="${row.rowId}" data-nama="${safeNama}" data-bulan="${row.bulan}" data-tahun="${row.tahun}" data-file="${safeFile}" title="Verifikasi Laporan"><i class="fas fa-clipboard-check"></i></button>`;
+                btnVerif = `<button class="sultan-btn-aksi sultan-btn-aksi-primary btn-aksi-verif" data-source="${row.source}" data-id="${row.rowId}" data-nama="${safeNama}" data-bulan="${row.bulan}" data-tahun="${row.tahun}" data-file="${safeFile}" data-toggle="tooltip" title="Verifikasi Data"><i class="fas fa-clipboard-check"></i></button>`;
             }
+            var aksiHTML = `<div class="d-flex flex-nowrap justify-content-center" style="gap:4px;">${btnVerif}${btnEdit}${btnHapus}</div>`;
 
-            var aksiHTML = `<div class="d-flex justify-content-center" style="gap:2px;">${btnVerif}${btnEdit}${btnHapus}</div>`;
+            // Standardisasi Kolom STATUS & BACA CATATAN
+            var badgeStatusData = SultanUI.renderBadgeStatus(row.statusData, row.keterangan);
+
+            // Standardisasi Kolom NAMA SEKOLAH & NPSN
+            var uiUnit = SultanUI.renderUnitSekolah(row.namaSekolah, row.npsn);
+
+            // Standardisasi Kolom AUDIT LOG (DIUNGGAH, DIUBAH, DIVERIFIKASI)
+            var metaKirim = SultanUI.renderAuditCell(row.tglKirim, row.userKirim);
+            var metaEdit = SultanUI.renderAuditCell(row.tglEdit, row.userEdit);
+            var metaVerif = SultanUI.renderAuditCell(row.tglVerif, row.verifikator);
 
             var btnFile = '-';
             if (row.fileUrl && row.fileUrl.length > 5) {
                 var safeFile2 = lapbulkelola_escapeJs(row.fileUrl);
-                btnFile = `<button class="sultan-btn-pdf btn-preview-dokumen" data-url="${safeFile2}" title="Lihat Laporan"><i class="fas fa-file-pdf"></i> LIHAT</button>`;
+                btnFile = `<button class="sultan-btn-pdf btn-preview-dokumen" data-url="${safeFile2}" data-toggle="tooltip" title="Lihat Laporan"><i class="fas fa-file-pdf"></i> LIHAT</button>`;
             }
 
-            var metaKirim = `<div class="sultan-table-secondary"><span class="font-weight-bold text-adaptive-sultan">${row.tglKirim || '-'}</span><span>${lapbulkelola_escapeHtml(row.userKirim)}</span></div>`;
-            var metaEdit = `<div class="sultan-table-secondary"><span class="font-weight-bold text-adaptive-sultan">${row.tglEdit || '-'}</span><span>${lapbulkelola_escapeHtml(row.userEdit)}</span></div>`;
-            var metaVerif = `<div class="sultan-table-secondary"><span class="font-weight-bold text-adaptive-sultan">${row.tglVerif || '-'}</span><span>${lapbulkelola_escapeHtml(row.verifikator)}</span></div>`;
-
-            // VAKSIN LEBAR KOLOM: Menggunakan text-nowrap agar membentang 100%
-            var uiUnit = `<div class="sultan-table-primary">${lapbulkelola_escapeHtml(row.namaSekolah)}</div><div class="sultan-table-secondary">${lapbulkelola_escapeHtml(row.npsn || '-')}</div>`;
             var uiPeriode = `<div class="sultan-table-primary text-center">${lapbulkelola_escapeHtml(row.bulan)}</div><div class="sultan-table-secondary text-center">${lapbulkelola_escapeHtml(row.tahun)}</div>`;
 
             var listBulan = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
