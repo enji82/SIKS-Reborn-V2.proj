@@ -123,9 +123,9 @@ function perbaikiKategoriBpe() {
  */
 function efileGetSharedDaftarPtk(npsnFilter) {
   var sheets = [
-    { dbKey: "PTK_DB",      sheetName: "Master Data GTK",      jenjang: "SD",   namaCol: 6,  nipCol: 7,  statusCol: 19, tugasCol: 25, colCount: 26, nikCol: 10 },
-    { dbKey: "PTK_PAUD_DB", sheetName: "Master Data GTK PAUD", jenjang: "PAUD", namaCol: 7,  nipCol: 8,  statusCol: 20, tugasCol: -1, colCount: 26, nikCol: 11 },
-    { dbKey: "PTK_DB",      sheetName: "Master Data GTK SDS",  jenjang: "SDS",  namaCol: 6,  nipCol: 7,  statusCol: 19, tugasCol: 20, colCount: 26, nikCol: 10 }
+    { dbKey: "PTK_DB",      sheetName: "Master Data GTK",      jenjang: "SD",   namaCol: 6, namaNoGelarCol: 4, nipCol: 7,  statusCol: 19, tugasCol: 25, colCount: 26, nikCol: 10 },
+    { dbKey: "PTK_PAUD_DB", sheetName: "Master Data GTK PAUD", jenjang: "PAUD", namaCol: 7, namaNoGelarCol: 5, nipCol: 8,  statusCol: 20, tugasCol: -1, colCount: 26, nikCol: 11 },
+    { dbKey: "PTK_DB",      sheetName: "Master Data GTK SDS",  jenjang: "SDS",  namaCol: 6, namaNoGelarCol: 4, nipCol: 7,  statusCol: 19, tugasCol: 20, colCount: 26, nikCol: 10 }
   ];
   var result = [];
   var targetNpsn = String(npsnFilter || "").trim().toUpperCase();
@@ -149,15 +149,19 @@ function efileGetSharedDaftarPtk(npsnFilter) {
           var matchUnit = (!filterIsNpsn && rUnit === targetNpsn);
           if (!matchNpsn && !matchUnit) return;
         }
-        var nama = String(row[s.namaCol] || "").trim();
+        var namaLengkap = String(row[s.namaCol] || "").trim();
+        var namaNoGelar = (s.namaNoGelarCol !== -1 && s.namaNoGelarCol < readCol) ? String(row[s.namaNoGelarCol] || "").trim() : "";
+        var namaBersih = namaNoGelar || namaLengkap;
         var nip  = String(row[s.nipCol]  || "").trim();
         var nik  = s.nikCol !== undefined ? String(row[s.nikCol] || "").trim().replace(/'/g, "") : "";
-        if (!nama) return;
+        if (!namaLengkap && !namaBersih) return;
         result.push({
           id_ptk:     String(row[0]).trim(),
           npsn:       rNpsn,
           unit:       String(row[2] || "").trim(),
-          nama:       nama,
+          nama:       namaBersih,
+          nama_no_gelar: namaBersih,
+          nama_lengkap: namaLengkap || namaBersih,
           nip:        nip,
           nik:        nik,
           jenjang:    s.jenjang,

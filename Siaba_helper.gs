@@ -303,9 +303,9 @@ function getMasterPegawaiUnified(options) {
   }
 
   var sheets = [
-    { dbKey: "PTK_DB",      sheetName: "Master Data GTK",      jenjang: "SD",   namaCol: 6, nipCol: 7, nikCol: 10, statusCol: 19, tugasCol: 25, nuptkCol: 26, hpCol: 18, alamatCol: 16, colCount: 27 },
-    { dbKey: "PTK_PAUD_DB", sheetName: "Master Data GTK PAUD", jenjang: "PAUD", namaCol: 7, nipCol: 8, nikCol: 11, statusCol: 20, tugasCol: -1, nuptkCol: 25, hpCol: 19, alamatCol: 17, colCount: 27 },
-    { dbKey: "PTK_DB",      sheetName: "Master Data GTK SDS",  jenjang: "SDS",  namaCol: 6, nipCol: 7, nikCol: 10, statusCol: 19, tugasCol: 20, nuptkCol: 24, hpCol: 18, alamatCol: 16, colCount: 27 }
+    { dbKey: "PTK_DB",      sheetName: "Master Data GTK",      jenjang: "SD",   namaCol: 6, namaNoGelarCol: 4, nipCol: 7, nikCol: 10, statusCol: 19, tugasCol: 25, nuptkCol: 26, hpCol: 18, alamatCol: 16, colCount: 27 },
+    { dbKey: "PTK_PAUD_DB", sheetName: "Master Data GTK PAUD", jenjang: "PAUD", namaCol: 7, namaNoGelarCol: 5, nipCol: 8, nikCol: 11, statusCol: 20, tugasCol: -1, nuptkCol: 25, hpCol: 19, alamatCol: 17, colCount: 27 },
+    { dbKey: "PTK_DB",      sheetName: "Master Data GTK SDS",  jenjang: "SDS",  namaCol: 6, namaNoGelarCol: 4, nipCol: 7, nikCol: 10, statusCol: 19, tugasCol: 20, nuptkCol: 24, hpCol: 18, alamatCol: 16, colCount: 27 }
   ];
 
   var result = [];
@@ -325,7 +325,9 @@ function getMasterPegawaiUnified(options) {
         if (!row[0]) return;
         var rNpsn = String(row[1] || "").trim().toUpperCase();
         var rUnit = String(row[2] || "").trim();
-        var nama  = String(row[s.namaCol] || "").trim();
+        var namaLengkap = String(row[s.namaCol] || "").trim();
+        var namaNoGelar = (s.namaNoGelarCol !== -1 && s.namaNoGelarCol < readCol) ? String(row[s.namaNoGelarCol] || "").trim() : "";
+        var namaBersih = namaNoGelar || namaLengkap;
         var nip   = String(row[s.nipCol]  || "").trim();
         var nik   = s.nikCol !== -1 && s.nikCol < readCol ? String(row[s.nikCol] || "").trim().replace(/'/g, "") : "";
         var status = String(row[s.statusCol] || "").trim();
@@ -334,7 +336,7 @@ function getMasterPegawaiUnified(options) {
         var hp     = (s.hpCol !== -1 && s.hpCol < readCol) ? String(row[s.hpCol] || "").trim() : "";
         var alamat = (s.alamatCol !== -1 && s.alamatCol < readCol) ? String(row[s.alamatCol] || "").trim() : "";
 
-        if (!nama) return;
+        if (!namaLengkap && !namaBersih) return;
 
         // Filter NPSN
         if (filterNpsn && filterNpsn !== "SEMUA" && rNpsn !== filterNpsn) return;
@@ -357,7 +359,10 @@ function getMasterPegawaiUnified(options) {
           id_ptk: String(row[0]).trim(),
           npsn: rNpsn,
           unit: rUnit,
-          nama: nama,
+          nama: namaBersih, // Default: Nama Tanpa Gelar untuk menghemat ruang tabel/modal
+          nama_tanpa_gelar: namaBersih,
+          nama_lengkap: namaLengkap || namaBersih,
+          nama_dengan_gelar: namaLengkap || namaBersih,
           nip: nip,
           nik: nik,
           jenjang: s.jenjang,
@@ -384,7 +389,7 @@ function getMasterPegawaiUnified(options) {
 /**
  * Mendapatkan seluruh data Pegawai (ASN) dari database.
  * Digunakan untuk autocomplete atau pencarian data pegawai (Lupa, Salah, Lokasi Upacara, Cuti).
- * Terintegrasi dengan getMasterPegawaiUnified dengan fallback otomatis ke database SIABA lama.
+ * Nama disajikan tanpa gelar untuk efisiensi tabel, serta menyertakan nama_dengan_gelar untuk keperluan form cuti.
  */
 function getDatabasePegawai() {
   try {
@@ -394,7 +399,9 @@ function getDatabasePegawai() {
         return {
           unit: item.unit,
           nip: item.nip,
-          nama: item.nama,
+          nama: item.nama_tanpa_gelar || item.nama, // Nama tanpa gelar
+          nama_tanpa_gelar: item.nama_tanpa_gelar || item.nama,
+          nama_dengan_gelar: item.nama_dengan_gelar || item.nama_lengkap || item.nama,
           npsn: item.npsn,
           status: item.status,
           jabatan: item.jabatan,

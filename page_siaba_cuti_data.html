@@ -811,15 +811,25 @@
         btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i> Proses...');
 
         var finalNpsn = CUTI_USER_NPSN;
+        var inputNama = formAktif.find('#cuti_inputNama').val();
+        var inputNip = formAktif.find('#cuti_inputNIP').val();
+
+        // Cari data pegawai untuk mendapatkan nama bergelar resmi dan NPSN
+        var pgwCuti = CUTI_DB_PEGAWAI_CUTI.find(p => (String(p.nama).trim() === String(inputNama).trim() || String(p.nama_tanpa_gelar).trim() === String(inputNama).trim() || String(p.nama_dengan_gelar).trim() === String(inputNama).trim()) && String(p.nip).trim() === String(inputNip).trim());
+        var pgwAsn = CUTI_DB_PEGAWAI.find(p => (String(p.nama).trim() === String(inputNama).trim() || String(p.nama_tanpa_gelar).trim() === String(inputNama).trim() || String(p.nama_dengan_gelar).trim() === String(inputNama).trim()) && String(p.nip).trim() === String(inputNip).trim());
+        
+        // Nama untuk form cuti & cetak PDF: gunakan nama bergelar jika ada
+        var finalNamaCuti = (pgwCuti && pgwCuti.nama_dengan_gelar) ? pgwCuti.nama_dengan_gelar : ((pgwAsn && pgwAsn.nama_dengan_gelar) ? pgwAsn.nama_dengan_gelar : inputNama);
+
         if (CUTI_IS_ADMIN) {
-            var inputNama = formAktif.find('#cuti_inputNama').val();
-            var inputNip = formAktif.find('#cuti_inputNIP').val();
-            var pgw = CUTI_DB_PEGAWAI.find(p => String(p.nama).trim() === String(inputNama).trim() && String(p.nip).trim() === String(inputNip).trim());
-            if (pgw) finalNpsn = pgw.npsn;
+            if (pgwAsn && pgwAsn.npsn) finalNpsn = pgwAsn.npsn;
         }
 
         var payload = {
-            rowBaris: formAktif.find('#cuti_editRowId').val(), unit: formAktif.find('#cuti_inputUnit').val(), nama: formAktif.find('#cuti_inputNama').val(), nip: formAktif.find('#cuti_inputNIP').val(),
+            rowBaris: formAktif.find('#cuti_editRowId').val(), 
+            unit: formAktif.find('#cuti_inputUnit').val(), 
+            nama: finalNamaCuti, // Menggunakan nama dengan gelar untuk dokumen/form cuti
+            nip: formAktif.find('#cuti_inputNIP').val(),
             jenisCuti: formAktif.find('#cuti_inputJenisCuti').val(), tglPengajuan: formAktif.find('#cuti_inputTglPengajuan').val(), tglMulai: formAktif.find('#cuti_inputTglMulai').val(), tglSelesai: formAktif.find('#cuti_inputTglSelesai').val(),
             jumlahHari: formAktif.find('#cuti_inputJumlahHari').val(), alasan: formAktif.find('#cuti_inputAlasan').val(), alamat: formAktif.find('#cuti_inputAlamat').val(), hp: formAktif.find('#cuti_inputHP').val(),
             userInput: CUTI_USER_AKTIF, npsn: finalNpsn

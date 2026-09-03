@@ -50,9 +50,9 @@ function admPtk_getDaftarPtk(npsnFilter) {
      CATATAN: filter bisa berupa NPSN angka ATAU nama unit/sekolah (dari user.unit sesi login).
      Gunakan try/catch per-sheet agar error satu jenjang tidak mempengaruhi lainnya. */
   var sheets = [
-    { dbKey: "PTK_DB",      sheetName: "Master Data GTK",      jenjang: "SD",   namaCol: 6,  nipCol: 7,  statusCol: 19, tugasCol: 25, colCount: 26 },
-    { dbKey: "PTK_PAUD_DB", sheetName: "Master Data GTK PAUD", jenjang: "PAUD", namaCol: 7,  nipCol: 8,  statusCol: 20, tugasCol: -1, colCount: 26 },
-    { dbKey: "PTK_DB",      sheetName: "Master Data GTK SDS",  jenjang: "SDS",  namaCol: 6,  nipCol: 7,  statusCol: 19, tugasCol: 20, colCount: 26 }
+    { dbKey: "PTK_DB",      sheetName: "Master Data GTK",      jenjang: "SD",   namaCol: 6, namaNoGelarCol: 4, nipCol: 7,  statusCol: 19, tugasCol: 25, colCount: 26 },
+    { dbKey: "PTK_PAUD_DB", sheetName: "Master Data GTK PAUD", jenjang: "PAUD", namaCol: 7, namaNoGelarCol: 5, nipCol: 8,  statusCol: 20, tugasCol: -1, colCount: 26 },
+    { dbKey: "PTK_DB",      sheetName: "Master Data GTK SDS",  jenjang: "SDS",  namaCol: 6, namaNoGelarCol: 4, nipCol: 7,  statusCol: 19, tugasCol: 20, colCount: 26 }
   ];
   var result = [];
   var targetNpsn = String(npsnFilter || "").trim().toUpperCase();
@@ -78,19 +78,23 @@ function admPtk_getDaftarPtk(npsnFilter) {
           var matchUnit = (!filterIsNpsn && rUnit === targetNpsn);
           if (!matchNpsn && !matchUnit) return;
         }
-        var nama = String(row[s.namaCol] || "").trim();
+        var namaLengkap = String(row[s.namaCol] || "").trim();
+        var namaNoGelar = (s.namaNoGelarCol !== -1 && s.namaNoGelarCol < readCol) ? String(row[s.namaNoGelarCol] || "").trim() : "";
+        var namaBersih = namaNoGelar || namaLengkap;
         var nip  = String(row[s.nipCol]  || "").trim();
-        if (!nama) return;
+        if (!namaLengkap && !namaBersih) return;
         result.push({
           id:         String(row[0]).trim(),
           npsn:       rNpsn,
           unit:       String(row[2] || "").trim(),
-          nama:       nama,
+          nama:       namaBersih,
+          nama_no_gelar: namaBersih,
+          nama_lengkap: namaLengkap || namaBersih,
           nip:        nip,
           jenjang:    s.jenjang,
           status_peg: String(row[s.statusCol] || "").trim(),
           tugas:      (s.tugasCol !== -1 && s.tugasCol < readCol) ? String(row[s.tugasCol] || "").trim() : "",
-          folderKey:  nip ? (nama + " - " + nip) : nama
+          folderKey:  nip ? (namaBersih + " - " + nip) : namaBersih
         });
       });
     } catch(sheetErr) {

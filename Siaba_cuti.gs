@@ -26,13 +26,15 @@ function getDatabaseCutiOptions() {
           return {
             nip: String(p.nip || "").trim(),
             unit: String(p.unit || "").trim(),
-            nama: String(p.nama || "").trim(),
+            nama: String(p.nama_tanpa_gelar || p.nama || "").trim(),
+            nama_tanpa_gelar: String(p.nama_tanpa_gelar || p.nama || "").trim(),
+            nama_dengan_gelar: String(p.nama_dengan_gelar || p.nama_lengkap || p.nama || "").trim(),
             status: String(p.status || "PNS/PPPK").trim(),
             alamat: String(p.alamat || "").trim(),
             hp: String(p.hp || "").trim()
           };
         }).filter(function(item) {
-          return item.nip && item.nama;
+          return item.nip && (item.nama || item.nama_dengan_gelar);
         });
 
         if (resUnified.length > 0) {
