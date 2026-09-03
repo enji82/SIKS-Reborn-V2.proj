@@ -153,7 +153,7 @@ function tpg_savePerbaikan(formData) {
     var props = PropertiesService.getScriptProperties();
     var status = props.getProperty('TPG_PG_IS_ADD_OPEN');
     var isAddOpen = (status === null ? true : (status === 'true'));
-    if (!isAddOpen) {
+    if (!isAddOpen && !formData.isAdmin) {
        return { status: 'error', message: 'Penambahan data saat ini sedang ditutup oleh Admin.' };
     }
 
@@ -255,7 +255,7 @@ function tpg_updatePerbaikan(formData) {
     var props = PropertiesService.getScriptProperties();
     var editStatus = props.getProperty('TPG_PG_IS_EDIT_OPEN');
     var isEditOpen = (editStatus === null ? true : (editStatus === 'true'));
-    if (!isEditOpen) {
+    if (!isEditOpen && !formData.isAdmin) {
        return { status: 'error', message: 'Perubahan data saat ini sedang ditutup oleh Admin.' };
     }
 

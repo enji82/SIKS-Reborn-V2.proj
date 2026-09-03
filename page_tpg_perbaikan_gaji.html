@@ -524,28 +524,43 @@
         });
 
 
-        $('#tpg_pg_btnToggleAdd').click(function () {
+        $('#tpg_pg_btnToggleAdd').off('click').on('click', function () {
             tpgPg_triggerToggleAccess('add', globalTpgPgIsAddOpen);
         });
 
-        $('#tpg_pg_btnToggleEdit').click(function () {
+        $('#tpg_pg_btnToggleEdit').off('click').on('click', function () {
             tpgPg_triggerToggleAccess('edit', globalTpgPgIsEditOpen);
         });
 
         function tpgPg_triggerToggleAccess(type, currentStatus) {
             var isAdmin = checkUserRoleIsAdmin();
-            if (!isAdmin) return;
-            Sultan.notif.loading('Mengubah status akses...');
+            if (!isAdmin) {
+                Sultan.notif.gagal('Hanya Admin yang dapat mengubah status akses.');
+                return;
+            }
+
+            var labelAksi = type === 'add' ? 'Tambah Data' : 'Edit Data';
+            var $btn = (type === 'add') ? $('#tpg_pg_btnToggleAdd') : $('#tpg_pg_btnToggleEdit');
+            var originalHtml = $btn.html();
+            $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Memproses...');
+
+            Sultan.notif.loading('Mengubah status akses ' + labelAksi + '...');
             google.script.run
                 .withSuccessHandler(function(res) {
-                    if (res.status === 'success') {
-                        Sultan.notif.sukses('Status akses berhasil diubah.');
+                    $btn.prop('disabled', false).html(originalHtml);
+                    Sultan.notif.tutup();
+                    if (res && res.status === 'success') {
+                        if (type === 'add') globalTpgPgIsAddOpen = res.newStatus;
+                        if (type === 'edit') globalTpgPgIsEditOpen = res.newStatus;
+                        Sultan.notif.sukses('Akses ' + labelAksi + ' berhasil ' + (res.newStatus ? 'dibuka' : 'ditutup') + '.');
                         tpgPg_loadData();
                     } else {
-                        Sultan.notif.gagal(res.message);
+                        Sultan.notif.gagal(res ? res.message : 'Gagal mengubah status akses.');
                     }
                 })
                 .withFailureHandler(function(err) {
+                    $btn.prop('disabled', false).html(originalHtml);
+                    Sultan.notif.tutup();
                     Sultan.notif.gagal(err.message || err);
                 })
                 .tpgPg_toggleAccess(isAdmin, type, currentStatus);
@@ -588,22 +603,30 @@
                         $('#tpg_pg_btnToggleAdd').removeClass('d-none');
                         $('#tpg_pg_btnToggleEdit').removeClass('d-none');
                         if (globalTpgPgIsAddOpen) {
-                            $('#tpg_pg_btnToggleAdd').removeClass('btn-outline-danger btn-danger').addClass('btn-outline-success').html('<i class="fas fa-unlock mr-1"></i> TAMBAH DIBUKA');
+                            $('#tpg_pg_btnToggleAdd').removeClass('btn-outline-danger btn-danger').addClass('btn-outline-success').html('<i class="fas fa-unlock mr-1"></i> TAMBAH DIBUKA').attr('title', 'Status: Akses Tambah Dibuka untuk Sekolah. Klik untuk menutup.');
                         } else {
-                            $('#tpg_pg_btnToggleAdd').removeClass('btn-outline-success btn-success').addClass('btn-outline-danger').html('<i class="fas fa-lock mr-1"></i> TAMBAH DITUTUP');
+                            $('#tpg_pg_btnToggleAdd').removeClass('btn-outline-success btn-success').addClass('btn-outline-danger').html('<i class="fas fa-lock mr-1"></i> TAMBAH DITUTUP').attr('title', 'Status: Akses Tambah Ditutup untuk Sekolah. Klik untuk membuka.');
                         }
 
                         if (globalTpgPgIsEditOpen) {
-                            $('#tpg_pg_btnToggleEdit').removeClass('btn-outline-danger btn-danger').addClass('btn-outline-success').html('<i class="fas fa-unlock mr-1"></i> EDIT DIBUKA');
+                            $('#tpg_pg_btnToggleEdit').removeClass('btn-outline-danger btn-danger').addClass('btn-outline-success').html('<i class="fas fa-unlock mr-1"></i> EDIT DIBUKA').attr('title', 'Status: Akses Edit Dibuka untuk Sekolah. Klik untuk menutup.');
                         } else {
-                            $('#tpg_pg_btnToggleEdit').removeClass('btn-outline-success btn-success').addClass('btn-outline-danger').html('<i class="fas fa-lock mr-1"></i> EDIT DITUTUP');
+                            $('#tpg_pg_btnToggleEdit').removeClass('btn-outline-success btn-success').addClass('btn-outline-danger').html('<i class="fas fa-lock mr-1"></i> EDIT DITUTUP').attr('title', 'Status: Akses Edit Ditutup untuk Sekolah. Klik untuk membuka.');
                         }
+                    } else {
+                        $('#tpg_pg_btnToggleAdd').addClass('d-none');
+                        $('#tpg_pg_btnToggleEdit').addClass('d-none');
                     }
 
-                    if (globalTpgPgIsAddOpen) {
+                    if (globalTpgPgIsAddOpen || isAdmin) {
                         $('#tpg_pg_btnTambah').prop('disabled', false).html('<i class="fas fa-plus"></i> TAMBAH DATA').removeClass('btn-secondary').addClass('sultan-btn-tambah');
+                        if (isAdmin && !globalTpgPgIsAddOpen) {
+                            $('#tpg_pg_btnTambah').attr('title', 'Akses user sekolah ditutup, namun Admin tetap dapat menambah data');
+                        } else {
+                            $('#tpg_pg_btnTambah').removeAttr('title');
+                        }
                     } else {
-                        $('#tpg_pg_btnTambah').prop('disabled', true).html('<i class="fas fa-lock"></i> DITUTUP').removeClass('sultan-btn-tambah').addClass('btn btn-secondary font-weight-bold');
+                        $('#tpg_pg_btnTambah').prop('disabled', true).html('<i class="fas fa-lock"></i> DITUTUP').removeClass('sultan-btn-tambah').addClass('btn btn-secondary font-weight-bold').attr('title', 'Penambahan data sedang ditutup oleh Admin');
                     }
 
                     tpgPg_renderTable();
@@ -1114,7 +1137,8 @@
             bulanTpg: bulanTpg,
             nilaiSalur: nilaiSalur,
             ubahDokumen: ubahDokumen,
-            userLogin: getSesiUser() ? getSesiUser().nama : 'Unknown'
+            userLogin: getSesiUser() ? getSesiUser().nama : 'Unknown',
+            isAdmin: checkUserRoleIsAdmin()
         };
 
         if (file) {
