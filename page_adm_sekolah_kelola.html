@@ -457,9 +457,11 @@ function admsekolahkelola_renderTabel(dataRows) {
         var btnH = `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon admsekolahkelola-btn-hapus" data-id="${id}" ${isDisetujui ? 'disabled style="opacity:0.4; cursor:not-allowed;" title="Terkunci (Sudah Disetujui)"' : 'data-toggle="tooltip" title="Hapus Berkas"'}><i class="fas fa-trash-alt"></i></button>`;
         var aksi = `<div class="d-flex flex-nowrap justify-content-center" style="gap:4px;">${btnV}${btnP}${btnH}</div>`;
 
-        var sek = ADMSEKOLAHKELOLA_MASTER_SEKOLAH.find(p => String(p.npsn).trim() === String(r.npsn).trim());
-        var unit = sek ? sek.nama : r.npsn;
-        var txtPtk = SultanUI.renderUnitSekolah(unit, r.npsn);
+        var rawNpsn = String(r.npsn || "").trim();
+        var sek = ADMSEKOLAHKELOLA_MASTER_SEKOLAH.find(p => String(p.npsn).trim() === rawNpsn || String(p.nama || "").trim().toUpperCase() === rawNpsn.toUpperCase());
+        var unitNama = sek ? sek.nama : (r.nama_sekolah && r.nama_sekolah !== "Unknown" ? r.nama_sekolah : rawNpsn);
+        var unitNpsn = sek ? sek.npsn : (rawNpsn !== unitNama ? rawNpsn : "-");
+        var txtPtk = SultanUI.renderUnitSekolah(unitNama, unitNpsn);
 
         var txtKat = `<div class="font-weight-bold text-primary text-wrap" style="font-size:13px;">${admsekolahkelola_escapeHtml(r.nama_kategori)}</div>`;
         
@@ -502,7 +504,8 @@ function admsekolahkelola_bukaModalTambah() {
         // Sembunyikan container pilih sekolah untuk user biasa agar tidak membingungkan
         $('#admsekolahkelola_pilih_sekolah_container').hide();
 
-        var sek = ADMSEKOLAHKELOLA_MASTER_SEKOLAH.find(s => String(s.npsn).trim() === String(ADMSEKOLAHKELOLA_NPSN_TERKUNCI).trim());
+        var lockVal = String(ADMSEKOLAHKELOLA_NPSN_TERKUNCI).trim();
+        var sek = ADMSEKOLAHKELOLA_MASTER_SEKOLAH.find(s => String(s.npsn).trim() === lockVal || String(s.nama || "").trim().toUpperCase() === lockVal.toUpperCase());
         if (sek) {
             var jjgRaw = String(sek.jenjang || "").toUpperCase();
             var jjgVal = "SD";
@@ -512,8 +515,8 @@ function admsekolahkelola_bukaModalTambah() {
             
             // Set Jenjang secara otomatis dan trigger change agar dropdown Sekolah ter-populate
             $('#admsekolahkelola_in_jenjang').val(jjgVal).trigger('change');
-            // Set Sekolah secara otomatis dan trigger change agar container upload dan tombol aktif
-            $('#admsekolahkelola_in_sekolah').val(ADMSEKOLAHKELOLA_NPSN_TERKUNCI).trigger('change');
+            // Set Sekolah secara otomatis dengan NPSN resmi dan trigger change agar container upload dan tombol aktif
+            $('#admsekolahkelola_in_sekolah').val(sek.npsn).trigger('change');
         } else {
             // Fallback jika tidak ditemukan di master data sekolah (tambahkan opsi manual agar val() bisa diset)
             $('#admsekolahkelola_in_sekolah').empty().append($('<option>', {value: ADMSEKOLAHKELOLA_NPSN_TERKUNCI, text: ADMSEKOLAHKELOLA_NPSN_TERKUNCI}));
@@ -606,8 +609,10 @@ function admsekolahkelola_submitBatchUpload(e) {
     if (!npsn) { Sultan.alert('warning', 'Pilih Sekolah', 'Anda belum memilih sekolah.'); return; }
     if (!$form[0].checkValidity()) { $form.addClass('was-validated'); return; }
 
-    var sekData = ADMSEKOLAHKELOLA_MASTER_SEKOLAH.find(p => String(p.npsn).trim() === npsn);
+    var sekData = ADMSEKOLAHKELOLA_MASTER_SEKOLAH.find(p => String(p.npsn).trim() === npsn || String(p.nama || "").trim().toUpperCase() === npsn.toUpperCase());
     if(!sekData) sekData = { npsn: npsn, nama: npsn };
+    // Pastikan nilai npsn yang dikirim ke backend adalah kode npsn angka/resmi
+    npsn = sekData.npsn || npsn;
     var filePromises = []; var rowEls = $form.find('.admsekolahkelola-upload-row');
     var tracker = {}; var hasDup = false; var dupMsg = "";
 
