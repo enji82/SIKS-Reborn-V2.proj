@@ -104,31 +104,63 @@ function pppkpw_getInitData(unitFilter) {
   try {
     var unitList = [];
     var pegawaiMap = {};
-    var sheet = getSheet("PTK_DB", "Master Data GTK");
-    if (sheet) {
-      var lastRow = sheet.getLastRow();
-      if (lastRow >= 2) {
-        // Ambil sampai kolom Z (26 kolom): C=2, E=4, H=7, T=19, Z=25
-        var data = sheet.getRange(2, 1, lastRow - 1, 26).getDisplayValues();
-        var targetNorm = (unitFilter && unitFilter !== "SEMUA") ? pppkpw_normalizeUnitName(unitFilter) : "";
-        data.forEach(function(row) {
-          if (!row[0]) return;
-          if (!pppkpw_isPppkPw(row[19])) return; // Kolom T
-          var unit    = String(row[2] || "").trim(); // Kolom C
-          var nama    = String(row[4] || "").trim(); // Kolom E
-          var nip     = String(row[7] || "").trim(); // Kolom H
-          var jabatan = String(row[25] || "").trim(); // Kolom Z
-          if (!unit || !nama) return;
 
-          var unitNorm = pppkpw_normalizeUnitName(unit);
-          if (targetNorm && unitNorm !== targetNorm) return;
+    // 1. Coba ambil dari Master Data Pegawai Terpadu (PPPK Paruh Waktu)
+    var successUnified = false;
+    try {
+      if (typeof getMasterPegawaiUnified === "function") {
+        var listPw = getMasterPegawaiUnified({ jenisPegawai: "PPPK_PW" });
+        if (Array.isArray(listPw) && listPw.length > 0) {
+          var targetNorm = (unitFilter && unitFilter !== "SEMUA") ? pppkpw_normalizeUnitName(unitFilter) : "";
+          listPw.forEach(function(p) {
+            var unit = String(p.unit || "").trim();
+            var nama = String(p.nama || "").trim();
+            var nip  = String(p.nip || "").trim();
+            var jabatan = String(p.tugas || p.jabatan || "").trim();
+            if (!unit || !nama) return;
 
-          if (unitList.indexOf(unit) === -1) unitList.push(unit);
-          if (!pegawaiMap[unit]) pegawaiMap[unit] = [];
-          pegawaiMap[unit].push({ nama: nama, nip: nip, jabatan: jabatan });
-        });
+            var unitNorm = pppkpw_normalizeUnitName(unit);
+            if (targetNorm && unitNorm !== targetNorm) return;
+
+            if (unitList.indexOf(unit) === -1) unitList.push(unit);
+            if (!pegawaiMap[unit]) pegawaiMap[unit] = [];
+            pegawaiMap[unit].push({ nama: nama, nip: nip, jabatan: jabatan });
+          });
+          successUnified = unitList.length > 0;
+        }
+      }
+    } catch (eUnified) {
+      Logger.log("pppkpw_getInitData unified warning: " + eUnified.message);
+    }
+
+    // 2. Fallback langsung ke sheet jika helper terpadu kosong
+    if (!successUnified) {
+      var sheet = getSheet("PTK_DB", "Master Data GTK");
+      if (sheet) {
+        var lastRow = sheet.getLastRow();
+        if (lastRow >= 2) {
+          var data = sheet.getRange(2, 1, lastRow - 1, 26).getDisplayValues();
+          var targetNorm2 = (unitFilter && unitFilter !== "SEMUA") ? pppkpw_normalizeUnitName(unitFilter) : "";
+          data.forEach(function(row) {
+            if (!row[0]) return;
+            if (!pppkpw_isPppkPw(row[19])) return; // Kolom T
+            var unit    = String(row[2] || "").trim(); // Kolom C
+            var nama    = String(row[4] || "").trim(); // Kolom E
+            var nip     = String(row[7] || "").trim(); // Kolom H
+            var jabatan = String(row[25] || "").trim(); // Kolom Z
+            if (!unit || !nama) return;
+
+            var unitNorm = pppkpw_normalizeUnitName(unit);
+            if (targetNorm2 && unitNorm !== targetNorm2) return;
+
+            if (unitList.indexOf(unit) === -1) unitList.push(unit);
+            if (!pegawaiMap[unit]) pegawaiMap[unit] = [];
+            pegawaiMap[unit].push({ nama: nama, nip: nip, jabatan: jabatan });
+          });
+        }
       }
     }
+
     unitList.sort();
     Object.keys(pegawaiMap).forEach(function(u) {
       pegawaiMap[u].sort(function(a, b) { return a.nama.localeCompare(b.nama); });
@@ -143,6 +175,24 @@ function pppkpw_getInitData(unitFilter) {
 function pppkpw_getDaftarPegawai(unitKerja) {
   try {
     var result = [];
+
+    // 1. Coba dari helper master data terpadu
+    try {
+      if (typeof getMasterPegawaiUnified === "function") {
+        var listPw = getMasterPegawaiUnified({ filterUnit: unitKerja, jenisPegawai: "PPPK_PW" });
+        if (Array.isArray(listPw) && listPw.length > 0) {
+          result = listPw.map(function(p) {
+            return { nama: p.nama, nip: p.nip, jabatan: (p.tugas || p.jabatan || "") };
+          });
+          result.sort(function(a, b) { return a.nama.localeCompare(b.nama); });
+          return JSON.stringify({ success: true, data: result });
+        }
+      }
+    } catch (eUnified) {
+      Logger.log("pppkpw_getDaftarPegawai unified warning: " + eUnified.message);
+    }
+
+    // 2. Fallback jika helper belum tersedia
     var sheet = getSheet("PTK_DB", "Master Data GTK");
     if (!sheet) return JSON.stringify({ success: true, data: [] });
     var lastRow = sheet.getLastRow();

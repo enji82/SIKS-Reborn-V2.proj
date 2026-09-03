@@ -18,14 +18,37 @@ const KONFIG_CUTI = {
 
 function getDatabaseCutiOptions() {
   try {
+    // 1. Ambil data dari Master Data Pegawai Terpadu (ASN)
+    try {
+      var allPegawai = getMasterPegawaiUnified({ jenisPegawai: "ASN_ONLY" });
+      if (Array.isArray(allPegawai) && allPegawai.length > 0) {
+        var resUnified = allPegawai.map(function(p) {
+          return {
+            nip: String(p.nip || "").trim(),
+            unit: String(p.unit || "").trim(),
+            nama: String(p.nama || "").trim(),
+            status: String(p.status || "PNS/PPPK").trim(),
+            alamat: String(p.alamat || "").trim(),
+            hp: String(p.hp || "").trim()
+          };
+        }).filter(function(item) {
+          return item.nip && item.nama;
+        });
+
+        if (resUnified.length > 0) {
+          return JSON.stringify(resUnified);
+        }
+      }
+    } catch (eUnified) {
+      Logger.log("getDatabaseCutiOptions unified warning: " + eUnified.message);
+    }
+
+    // 2. Fallback ke sheet Database Cuti jika terjadi kendala
     var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_DB);
-    
     var data = sheet.getDataRange().getDisplayValues();
     if (data.length < 2) return JSON.stringify([]);
     
     var headers = data[0].map(function(h) { return String(h).toLowerCase().trim(); });
-    
-    // Cari index kolom dinamis, fallback ke index lama jika tidak ditemukan
     var idxAlamat = headers.findIndex(function(h) { return h.includes("alamat"); });
     if (idxAlamat === -1) idxAlamat = 8; 
     var idxHp = headers.findIndex(function(h) { 

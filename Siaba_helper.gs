@@ -257,10 +257,157 @@ function getLookupFilters() {
 }
 
 /**
+ * ======================================================================
+ * MASTER DATA PEGAWAI TERPADU (SINGLE SOURCE OF TRUTH)
+ * ======================================================================
+ * Mengambil data pegawai dari PTK_DB (Master Data GTK SDN, Master Data GTK SDS)
+ * dan PTK_PAUD_DB (Master Data GTK PAUD).
+ *
+ * @param {Object} options
+ *   - filterUnit    : String nama unit/sekolah atau "SEMUA"
+ *   - filterNpsn    : String NPSN sekolah atau "SEMUA"
+ *   - jenisPegawai  : "SEMUA" | "ASN_ONLY" | "PPPK_PW" | "GURU_TPG"
+ *   - jenjang       : "SEMUA" | "SD" | "PAUD" | "SDS"
+ * @return {Array<Object>}
+ */
+function getMasterPegawaiUnified(options) {
+  var opts = options || {};
+  var filterUnit = String(opts.filterUnit || "").trim().toUpperCase();
+  var filterNpsn = String(opts.filterNpsn || "").trim().toUpperCase();
+  var jenisPegawai = String(opts.jenisPegawai || "SEMUA").trim().toUpperCase();
+  var filterJenjang = String(opts.jenjang || "SEMUA").trim().toUpperCase();
+
+  // Helper normalisasi nama unit (hilangkan spasi ganda & leading zero)
+  function normUnit(u) {
+    return String(u || "").trim().toUpperCase().replace(/\s+/g, " ").replace(/\b0+(\d+)\b/g, "$1");
+  }
+
+  // Helper cek apakah status termasuk ASN (PNS, CPNS, PPPK, PPPK Paruh Waktu)
+  function isAsnStatus(statusRaw) {
+    var s = String(statusRaw || "").trim().toUpperCase();
+    if (!s) return false;
+    return s.indexOf("PNS") !== -1 || s.indexOf("CPNS") !== -1 || s.indexOf("PPPK") !== -1;
+  }
+
+  // Helper cek PPPK Paruh Waktu
+  function isPppkPwStatus(statusRaw) {
+    var s = String(statusRaw || "").trim().toUpperCase().replace(/\s+/g, " ");
+    return s === "PPPK PARUH WAKTU" || s === "PPPK PW" || s === "PPPKPW" || s.indexOf("PARUH") !== -1;
+  }
+
+  // Helper cek ASN Guru / TPG
+  function isGuruTpgStatus(statusRaw) {
+    var allowed = ["CPNS", "PNS", "PPPK", "PPPK PARUH WAKTU", "PPPK PW"];
+    var s = String(statusRaw || "").trim().toUpperCase();
+    return allowed.some(function(al) { return s.indexOf(al) !== -1; });
+  }
+
+  var sheets = [
+    { dbKey: "PTK_DB",      sheetName: "Master Data GTK",      jenjang: "SD",   namaCol: 6, nipCol: 7, nikCol: 10, statusCol: 19, tugasCol: 25, nuptkCol: 26, hpCol: 18, alamatCol: 16, colCount: 27 },
+    { dbKey: "PTK_PAUD_DB", sheetName: "Master Data GTK PAUD", jenjang: "PAUD", namaCol: 7, nipCol: 8, nikCol: 11, statusCol: 20, tugasCol: -1, nuptkCol: 25, hpCol: 19, alamatCol: 17, colCount: 27 },
+    { dbKey: "PTK_DB",      sheetName: "Master Data GTK SDS",  jenjang: "SDS",  namaCol: 6, nipCol: 7, nikCol: 10, statusCol: 19, tugasCol: 20, nuptkCol: 24, hpCol: 18, alamatCol: 16, colCount: 27 }
+  ];
+
+  var result = [];
+
+  sheets.forEach(function(s) {
+    if (filterJenjang !== "SEMUA" && s.jenjang !== filterJenjang) return;
+    try {
+      var sheet = getSheet(s.dbKey, s.sheetName);
+      if (!sheet) return;
+      var lastRow = sheet.getLastRow();
+      if (lastRow < 2) return;
+      var maxCol = sheet.getLastColumn();
+      var readCol = Math.min(maxCol, s.colCount);
+      var data = sheet.getRange(2, 1, lastRow - 1, readCol).getDisplayValues();
+
+      data.forEach(function(row) {
+        if (!row[0]) return;
+        var rNpsn = String(row[1] || "").trim().toUpperCase();
+        var rUnit = String(row[2] || "").trim();
+        var nama  = String(row[s.namaCol] || "").trim();
+        var nip   = String(row[s.nipCol]  || "").trim();
+        var nik   = s.nikCol !== -1 && s.nikCol < readCol ? String(row[s.nikCol] || "").trim().replace(/'/g, "") : "";
+        var status = String(row[s.statusCol] || "").trim();
+        var tugas  = (s.tugasCol !== -1 && s.tugasCol < readCol) ? String(row[s.tugasCol] || "").trim() : "";
+        var nuptk  = (s.nuptkCol !== -1 && s.nuptkCol < readCol) ? String(row[s.nuptkCol] || "").trim() : "";
+        var hp     = (s.hpCol !== -1 && s.hpCol < readCol) ? String(row[s.hpCol] || "").trim() : "";
+        var alamat = (s.alamatCol !== -1 && s.alamatCol < readCol) ? String(row[s.alamatCol] || "").trim() : "";
+
+        if (!nama) return;
+
+        // Filter NPSN
+        if (filterNpsn && filterNpsn !== "SEMUA" && rNpsn !== filterNpsn) return;
+
+        // Filter Unit
+        if (filterUnit && filterUnit !== "SEMUA") {
+          var targetUnitNorm = normUnit(filterUnit);
+          var rowUnitNorm = normUnit(rUnit);
+          if (rowUnitNorm !== targetUnitNorm && rowUnitNorm.indexOf(targetUnitNorm) === -1 && targetUnitNorm.indexOf(rowUnitNorm) === -1) {
+            return;
+          }
+        }
+
+        // Filter Jenis Pegawai
+        if (jenisPegawai === "ASN_ONLY" && !isAsnStatus(status)) return;
+        if (jenisPegawai === "PPPK_PW" && !isPppkPwStatus(status)) return;
+        if (jenisPegawai === "GURU_TPG" && !isGuruTpgStatus(status)) return;
+
+        result.push({
+          id_ptk: String(row[0]).trim(),
+          npsn: rNpsn,
+          unit: rUnit,
+          nama: nama,
+          nip: nip,
+          nik: nik,
+          jenjang: s.jenjang,
+          status: status,
+          status_peg: status,
+          tugas: tugas,
+          jabatan: tugas,
+          nuptk: nuptk,
+          hp: hp,
+          alamat: alamat
+        });
+      });
+    } catch (sheetErr) {
+      Logger.log("getMasterPegawaiUnified skip sheet [" + s.sheetName + "]: " + sheetErr.message);
+    }
+  });
+
+  if (result.length > 0) {
+    result.sort(function(a, b) { return a.nama.localeCompare(b.nama); });
+  }
+  return result;
+}
+
+/**
  * Mendapatkan seluruh data Pegawai (ASN) dari database.
- * Digunakan untuk autocomplete atau pencarian data pegawai.
+ * Digunakan untuk autocomplete atau pencarian data pegawai (Lupa, Salah, Lokasi Upacara, Cuti).
+ * Terintegrasi dengan getMasterPegawaiUnified dengan fallback otomatis ke database SIABA lama.
  */
 function getDatabasePegawai() {
+  try {
+    var listAsn = getMasterPegawaiUnified({ jenisPegawai: "ASN_ONLY" });
+    if (Array.isArray(listAsn) && listAsn.length > 0) {
+      return listAsn.map(function(item) {
+        return {
+          unit: item.unit,
+          nip: item.nip,
+          nama: item.nama,
+          npsn: item.npsn,
+          status: item.status,
+          jabatan: item.jabatan,
+          hp: item.hp,
+          alamat: item.alamat
+        };
+      });
+    }
+  } catch (errUnified) {
+    Logger.log("getDatabasePegawai unified fallback warning: " + errUnified.message);
+  }
+
+  // Fallback cadangan ke database sheet SIABA terdahulu jika terjadi kendala akses PTK_DB
   const targets = [
     { db: "SIABA_CUTI_DB", sheet: "Database_ASN" },
     { db: "SIABA_PNS_DB", sheet: "Database" },
@@ -289,17 +436,14 @@ function getDatabasePegawai() {
       }
       
       if (result.length > 0) {
-        // Sortir nama secara alfabetis (A-Z) agar rapi di dropdown
         result.sort(function(a, b) {
-          var nA = a.nama.toUpperCase();
-          var nB = b.nama.toUpperCase();
-          return (nA < nB) ? -1 : (nA > nB) ? 1 : 0;
+          return a.nama.localeCompare(b.nama);
         });
-        Logger.log("getDatabasePegawai: Berhasil memuat " + result.length + " data dari " + t.db + " (" + t.sheet + ").");
+        Logger.log("getDatabasePegawai fallback: Berhasil memuat " + result.length + " data dari " + t.db + " (" + t.sheet + ").");
         return result;
       }
     } catch (e) {
-      Logger.log("getDatabasePegawai warning (" + t.db + " - " + t.sheet + "): " + e.message);
+      Logger.log("getDatabasePegawai fallback warning (" + t.db + " - " + t.sheet + "): " + e.message);
     }
   }
   

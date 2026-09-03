@@ -196,23 +196,48 @@ function removeDetailPesertaBySpt_(sheetDetail, targetSpt, rowsToAppend) {
    ---------------------------------------------------------------------- */
 function cariPegawaiDatabase(keyword) {
   try {
-      var sheet = getSheet(KONFIG_DINAS.DB_KEY, "Database"); 
-      if(!sheet) return JSON.stringify([]);
+    var k = String(keyword || "").toLowerCase().trim();
+    if (!k) return JSON.stringify([]);
 
-      var data = sheet.getDataRange().getDisplayValues();
-      var result = []; 
-      var k = keyword.toLowerCase();
-
-      for(var i=1; i<data.length; i++) {
-        var nip = String(data[i][1]).toLowerCase(); 
-        var nama = String(data[i][2]).toLowerCase();
-        
-        if(nama.includes(k) || nip.includes(k)) {
-           result.push({ unit: data[i][0], nip: data[i][1], nama: data[i][2] });
-           if(result.length >= 10) break;
+    // 1. Prioritaskan pencarian dari Master Data Pegawai Terpadu (ASN)
+    try {
+      var allPegawai = getMasterPegawaiUnified({ jenisPegawai: "ASN_ONLY" });
+      if (Array.isArray(allPegawai) && allPegawai.length > 0) {
+        var resultUnified = [];
+        for (var idx = 0; idx < allPegawai.length; idx++) {
+          var p = allPegawai[idx];
+          var pNama = String(p.nama || "").toLowerCase();
+          var pNip = String(p.nip || "").toLowerCase();
+          if (pNama.includes(k) || pNip.includes(k)) {
+            resultUnified.push({ unit: p.unit, nip: p.nip, nama: p.nama });
+            if (resultUnified.length >= 10) break;
+          }
+        }
+        if (resultUnified.length > 0) {
+          return JSON.stringify(resultUnified);
         }
       }
-      return JSON.stringify(result);
+    } catch (eUnified) {
+      Logger.log("cariPegawaiDatabase unified warning: " + eUnified.message);
+    }
+
+    // 2. Fallback ke sheet lokal Database jika belum ada
+    var sheet = getSheet(KONFIG_DINAS.DB_KEY, "Database"); 
+    if (!sheet) return JSON.stringify([]);
+
+    var data = sheet.getDataRange().getDisplayValues();
+    var result = []; 
+
+    for (var i = 1; i < data.length; i++) {
+      var nip = String(data[i][1]).toLowerCase(); 
+      var nama = String(data[i][2]).toLowerCase();
+      
+      if (nama.includes(k) || nip.includes(k)) {
+        result.push({ unit: data[i][0], nip: data[i][1], nama: data[i][2] });
+        if (result.length >= 10) break;
+      }
+    }
+    return JSON.stringify(result);
   } catch(e) { return JSON.stringify([]); }
 }
 

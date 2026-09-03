@@ -30,6 +30,28 @@ function tpgPg_ensureSheet() {
 // 2. Fetch ASN Data
 function tpg_getGuruOptions(unitKerja) {
   try {
+    // 1. Ambil dari Master Data Pegawai Terpadu
+    try {
+      if (typeof getMasterPegawaiUnified === "function") {
+        var listGuru = getMasterPegawaiUnified({ filterUnit: unitKerja, jenisPegawai: "GURU_TPG" });
+        if (Array.isArray(listGuru) && listGuru.length > 0) {
+          var resUnified = listGuru.map(function(g) {
+            return {
+              nama: g.nama,
+              nip: g.nip,
+              statusPegawai: g.status,
+              nuptk: g.nuptk
+            };
+          });
+          resUnified.sort(function(a, b) { return a.nama.localeCompare(b.nama); });
+          return { status: 'success', data: resUnified };
+        }
+      }
+    } catch (eUnified) {
+      Logger.log("tpg_getGuruOptions unified warning: " + eUnified.message);
+    }
+
+    // 2. Fallback jika pembacaan helper belum tersedia
     var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.PTK_DB);
     var sheet = ss.getSheetByName("Master Data GTK");
     if (!sheet) return { status: 'error', message: 'Sheet Master Data GTK tidak ditemukan' };
