@@ -129,14 +129,14 @@
 </section>
 
 <div id="tpg_pg_templates" style="display:none;">
-    <form id="tpg_pg_formUtama">
+    <form id="tpg_pg_formUtama" novalidate>
         <div class="modal-body modal-body-sultan p-4">
             <input type="hidden" id="tpg_pg_inputIdData">
             <div class="form-group">
                 <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Unit Kerja <span
                         class="text-danger">*</span></label>
                 <select class="form-control form-control-sultan font-weight-bold text-maroon bg-light"
-                    id="tpg_pg_inputUnit" required disabled>
+                    id="tpg_pg_inputUnit" required>
                     <option value="">- Memuat Data... -</option>
                 </select>
             </div>
@@ -151,10 +151,8 @@
                 <div class="col-md-4 mb-3 mb-md-0">
                     <div class="form-group mb-0">
                         <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">NIP</label>
-                        <select class="form-control form-control-sultan bg-light" id="tpg_pg_inputNip" required
-                            disabled>
-                            <option value="">- Otomatis -</option>
-                        </select>
+                        <input type="text" id="tpg_pg_inputNip" class="form-control form-control-sultan bg-light"
+                            readonly placeholder="- Otomatis -">
                     </div>
                 </div>
                 <div class="col-md-4 mb-3 mb-md-0">
@@ -251,8 +249,7 @@
                 <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Unggah SK KP/KGB atau Leger Gaji<span
                         class="text-danger">*</span></label>
                 <div class="custom-file file-upload-sultan">
-                    <input type="file" class="custom-file-input" id="tpg_pg_inputDokumen" accept="application/pdf"
-                        required>
+                    <input type="file" class="custom-file-input" id="tpg_pg_inputDokumen" accept="application/pdf">
                     <label class="custom-file-label" for="tpg_pg_inputDokumen">Pilih File PDF...</label>
                 </div>
                 <small class="form-text text-muted">Format PDF maksimal 1 MB.</small>
@@ -287,9 +284,6 @@
                 DATA</button>
         </div>
     </form>
-</div>
-</div>
-<div id="tpg_pg_templates" style="display: none;">
     <form id="tpg_pg_formVerif" class="d-flex flex-column flex-grow-1 overflow-hidden m-0 p-0">
         <div class="px-4 pb-4 flex-grow-1 overflow-auto" style="padding-top: 15px !important;">
             <input type="hidden" id="tpg_pg_verifIdData">
@@ -505,7 +499,10 @@
         });
 
         // Submit Form Tambah/Edit
-        $('#tpg_pg_modalForm').on('submit', '#tpg_pg_formTambahEdit', tpgPg_submitForm);
+        $(document).off('submit', '#tpg_pg_formUtama').on('submit', '#tpg_pg_formUtama', function (e) {
+            e.preventDefault();
+            tpgPg_submitForm();
+        });
 
         // Submit Form Verifikasi
         $(document).off('submit', '#tpg_pg_formVerif').on('submit', '#tpg_pg_formVerif', tpgPg_submitVerifikasi);
@@ -818,7 +815,6 @@
 
         $('#global_modalForm').off('hidden.bs.modal.tpg').on('hidden.bs.modal.tpg', function () {
             $('#tpg_pg_formUtama').appendTo('#tpg_pg_templates');
-            $('#tpg_pg_formUtama').off('submit');
             $('#global_modalFormBody, #global_modalFormFooter').show();
         });
 
@@ -885,14 +881,14 @@
         $('#tpg_pg_inputNama').off('change').on('change', function () {
             const selectedNip = $(this).val();
             if (selectedNip) {
-                const selectedGuru = tpgPgGuruList.find(g => g.nip === selectedNip);
+                const selectedGuru = tpgPgGuruList.find(g => String(g.nip).trim() === String(selectedNip).trim());
                 if (selectedGuru) {
-                    $('#tpg_pg_inputNip').html('<option value="' + selectedGuru.nip + '">' + selectedGuru.nip + '</option>').val(selectedGuru.nip);
-                    $('#tpg_pg_inputStatusPeg').val(selectedGuru.statusPegawai);
-                    $('#tpg_pg_inputNUPTK').val(selectedGuru.nuptk);
+                    $('#tpg_pg_inputNip').val(selectedGuru.nip || '');
+                    $('#tpg_pg_inputStatusPeg').val(selectedGuru.statusPegawai || '');
+                    $('#tpg_pg_inputNUPTK').val(selectedGuru.nuptk || '');
                 }
             } else {
-                $('#tpg_pg_inputNip').html('<option value="">- Otomatis -</option>');
+                $('#tpg_pg_inputNip').val('');
                 $('#tpg_pg_inputStatusPeg').val('');
                 $('#tpg_pg_inputNUPTK').val('');
             }
@@ -926,10 +922,8 @@
         $('#tpg_pg_checkUbahDokumen').off('change').on('change', function () {
             if ($(this).is(':checked')) {
                 $('#tpg_pg_uploadContainer').slideDown();
-                $('#tpg_pg_inputDokumen').prop('required', true);
             } else {
                 $('#tpg_pg_uploadContainer').slideUp();
-                $('#tpg_pg_inputDokumen').prop('required', false);
             }
         });
 
@@ -938,15 +932,10 @@
             if (url) window.open(url, '_blank');
         });
 
-        $('#tpg_pg_formUtama').off('submit').on('submit', function (e) {
-            e.preventDefault();
-            tpgPg_submitForm(mode);
-        });
-
         function tpgPg_checkTransferMatch() {
             const gajiPokok = $('#tpg_pg_inputGajiPokok').val();
             const nilaiSalur = $('#tpg_pg_inputNilaiSalur').val();
-            if (gajiPokok && nilaiSalur && gajiPokok === nilaiSalur) {
+            if (gajiPokok && nilaiSalur && Number(gajiPokok) === Number(nilaiSalur)) {
                 $('#tpg_pg_validasiTransfer').slideDown();
             } else {
                 $('#tpg_pg_validasiTransfer').slideUp();
@@ -961,12 +950,15 @@
 
             if (rowData) {
                 $('#tpg_pg_inputIdData').val(rowData.id);
-                $('#tpg_pg_inputJenisSK').val(rowData.jenisSK);
-                $('#tpg_pg_inputTMT').val(rowData.tmt);
-                $('#tpg_pg_inputGajiPokok').val(rowData.gajiPokok);
-                $('#tpg_pg_inputNoSktpg').val(rowData.noSktpg);
-                $('#tpg_pg_inputBulanTpg').val(rowData.bulanTpg);
-                $('#tpg_pg_inputNilaiSalur').val(rowData.nilaiSalur);
+                $('#tpg_pg_inputNip').val(rowData.nip || '');
+                $('#tpg_pg_inputStatusPeg').val(rowData.statusPegawai || '');
+                $('#tpg_pg_inputNUPTK').val(rowData.nuptk || '');
+                $('#tpg_pg_inputJenisSK').val(rowData.jenisSK || '');
+                $('#tpg_pg_inputTMT').val(rowData.tmt || '');
+                $('#tpg_pg_inputGajiPokok').val(rowData.gajiPokok || '');
+                $('#tpg_pg_inputNoSktpg').val(rowData.noSktpg || '');
+                $('#tpg_pg_inputBulanTpg').val(rowData.bulanTpg || '');
+                $('#tpg_pg_inputNilaiSalur').val(rowData.nilaiSalur || '');
                 tpgPg_checkTransferMatch();
 
                 // Populate Nama dropdown and select the current user
@@ -976,18 +968,20 @@
                     $('#tpg_pg_dokumenLamaContainer').show();
                     $('#tpg_pg_inputDokumenLamaUrl').val(rowData.dokumenUrl);
                     $('#tpg_pg_uploadContainer').hide();
-                    $('#tpg_pg_inputDokumen').prop('required', false);
+                    $('#tpg_pg_checkUbahDokumen').prop('checked', false);
                 } else {
                     $('#tpg_pg_dokumenLamaContainer').hide();
                     $('#tpg_pg_uploadContainer').show();
-                    $('#tpg_pg_inputDokumen').prop('required', true);
                 }
             }
         } else {
             btnSimpan.removeClass('modal-btn-perbarui').addClass('modal-btn-simpan').html('<i class="fas fa-save mr-2"></i>SIMPAN DATA');
+            $('#tpg_pg_inputIdData').val('');
+            $('#tpg_pg_inputNip').val('');
+            $('#tpg_pg_inputStatusPeg').val('');
+            $('#tpg_pg_inputNUPTK').val('');
             $('#tpg_pg_dokumenLamaContainer').hide();
             $('#tpg_pg_uploadContainer').show();
-            $('#tpg_pg_inputDokumen').prop('required', true);
         }
 
         $('#global_modalForm').modal('show');
@@ -1009,7 +1003,7 @@
                     selectNama.prop('disabled', false);
 
                     if (selectNamaAsn) {
-                        const guru = tpgPgGuruList.find(g => g.nama === selectNamaAsn);
+                        const guru = tpgPgGuruList.find(g => String(g.nama).trim().toLowerCase() === String(selectNamaAsn).trim().toLowerCase());
                         if (guru) {
                             selectNama.val(guru.nip).trigger('change');
                         }
@@ -1024,31 +1018,102 @@
             .tpg_getGuruOptions(unitKerja);
     }
 
-    function tpgPg_submitForm(mode) {
-        const btnSubmit = $('#tpg_pg_btnSimpan');
-        const defaultText = btnSubmit.html();
-        Sultan.notif.loading('Menyimpan Perbaikan Gaji...');
+    function tpgPg_submitForm() {
+        const idData = $('#tpg_pg_inputIdData').val();
+        const mode = idData ? 'edit' : 'tambah';
 
-        const nip = $('#tpg_pg_inputNama').val();
-        const guru = tpgPgGuruList.find(g => g.nip === nip);
+        const unitKerja = $('#tpg_pg_inputUnit').val();
+        if (!unitKerja) {
+            Sultan.notif.info('Unit Kerja wajib dipilih.');
+            return;
+        }
+
+        const selectedNip = $('#tpg_pg_inputNama').val();
+        if (!selectedNip) {
+            Sultan.notif.info('Nama ASN wajib dipilih.');
+            $('#tpg_pg_inputNama').focus();
+            return;
+        }
+
+        const jenisSK = $('#tpg_pg_inputJenisSK').val();
+        if (!jenisSK) {
+            Sultan.notif.info('Jenis SK wajib dipilih.');
+            $('#tpg_pg_inputJenisSK').focus();
+            return;
+        }
+
+        const tmt = $('#tpg_pg_inputTMT').val();
+        if (!tmt) {
+            Sultan.notif.info('TMT KP/KGB wajib diisi.');
+            $('#tpg_pg_inputTMT').focus();
+            return;
+        }
+
+        const gajiPokok = $('#tpg_pg_inputGajiPokok').val();
+        if (!gajiPokok) {
+            Sultan.notif.info('Gaji Pokok wajib diisi.');
+            $('#tpg_pg_inputGajiPokok').focus();
+            return;
+        }
+
+        const noSktpg = $('#tpg_pg_inputNoSktpg').val();
+        if (!noSktpg) {
+            Sultan.notif.info('Nomor SKTPG wajib diisi.');
+            $('#tpg_pg_inputNoSktpg').focus();
+            return;
+        }
+
+        const bulanTpg = $('#tpg_pg_inputBulanTpg').val();
+        if (!bulanTpg) {
+            Sultan.notif.info('Bulan Pembayaran TPG Terakhir wajib dipilih.');
+            $('#tpg_pg_inputBulanTpg').focus();
+            return;
+        }
+
+        const nilaiSalur = $('#tpg_pg_inputNilaiSalur').val();
+        if (!nilaiSalur) {
+            Sultan.notif.info('Nilai Salur Bruto wajib diisi.');
+            $('#tpg_pg_inputNilaiSalur').focus();
+            return;
+        }
 
         let fileInput = document.getElementById('tpg_pg_inputDokumen');
-        let file = fileInput.files[0];
+        let file = (fileInput && fileInput.files) ? fileInput.files[0] : null;
+        const ubahDokumen = $('#tpg_pg_checkUbahDokumen').is(':checked');
+
+        if (mode === 'tambah' && !file) {
+            Sultan.notif.info('Dokumen SK KP/KGB atau Leger Gaji wajib diunggah.');
+            return;
+        }
+
+        if (mode === 'edit' && ubahDokumen && !file) {
+            Sultan.notif.info('Harap pilih dokumen PDF baru yang ingin diunggah.');
+            return;
+        }
+
+        const guru = tpgPgGuruList.find(g => String(g.nip).trim() === String(selectedNip).trim());
+        const namaAsn = guru ? guru.nama : ($('#tpg_pg_inputNama option:selected').text() || '');
+        const nipVal = guru ? guru.nip : ($('#tpg_pg_inputNip').val() || selectedNip || '');
+
+        const btnSubmit = $('#tpg_pg_btnSimpan');
+        const defaultText = btnSubmit.html();
+        btnSubmit.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i>Menyimpan...');
+        Sultan.notif.loading('Menyimpan Perbaikan Gaji...');
 
         let formData = {
-            id: $('#tpg_pg_inputIdData').val(),
-            unitKerja: $('#tpg_pg_inputUnit').val(),
-            namaAsn: guru ? guru.nama : '',
-            nip: guru ? guru.nip : '',
+            id: idData,
+            unitKerja: unitKerja,
+            namaAsn: namaAsn,
+            nip: nipVal,
             statusPegawai: $('#tpg_pg_inputStatusPeg').val(),
             nuptk: $('#tpg_pg_inputNUPTK').val(),
-            jenisSK: $('#tpg_pg_inputJenisSK').val(),
-            tmt: $('#tpg_pg_inputTMT').val(),
-            gajiPokok: $('#tpg_pg_inputGajiPokok').val(),
-            noSktpg: $('#tpg_pg_inputNoSktpg').val(),
-            bulanTpg: $('#tpg_pg_inputBulanTpg').val(),
-            nilaiSalur: $('#tpg_pg_inputNilaiSalur').val(),
-            ubahDokumen: $('#tpg_pg_checkUbahDokumen').is(':checked'),
+            jenisSK: jenisSK,
+            tmt: tmt,
+            gajiPokok: gajiPokok,
+            noSktpg: noSktpg,
+            bulanTpg: bulanTpg,
+            nilaiSalur: nilaiSalur,
+            ubahDokumen: ubahDokumen,
             userLogin: getSesiUser() ? getSesiUser().nama : 'Unknown'
         };
 
@@ -1061,6 +1126,11 @@
                 formData.fileData = data;
                 tpgPg_sendDataToServer(mode, formData, btnSubmit, defaultText);
             };
+            reader.onerror = function () {
+                btnSubmit.prop('disabled', false).html(defaultText);
+                Sultan.notif.tutup();
+                Sultan.notif.gagal('Gagal membaca file dokumen.');
+            };
             reader.readAsDataURL(file);
         } else {
             tpgPg_sendDataToServer(mode, formData, btnSubmit, defaultText);
@@ -1070,6 +1140,7 @@
     function tpgPg_sendDataToServer(mode, formData, btnSubmit, defaultText) {
         google.script.run
             .withSuccessHandler(function (response) {
+                btnSubmit.prop('disabled', false).html(defaultText);
                 Sultan.notif.tutup();
                 if (response.status === 'success') {
                     $('#global_modalForm').modal('hide');
@@ -1089,6 +1160,7 @@
                 }
             })
             .withFailureHandler(function (error) {
+                btnSubmit.prop('disabled', false).html(defaultText);
                 Sultan.notif.tutup();
                 Sultan.notif.crud.gagal(error.message || error);
             })
