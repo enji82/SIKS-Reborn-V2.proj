@@ -73,13 +73,13 @@
                           <tr>
                             <th class="col-sticky-left text-center align-middle" style="z-index: 5; border-bottom: 3px solid #85144b !important;">AKSI</th>
                             <th class="text-center align-middle" style="border-bottom: 3px solid #85144b !important;">STATUS</th>
-                            <th class="text-left align-middle" style="min-width: 200px; border-bottom: 3px solid #85144b !important;">IDENTITAS PTK</th>
+                            <th class="text-left align-middle" style="min-width: 200px; border-bottom: 3px solid #85144b !important;">NAMA PTK</th>
                             <th class="text-left align-middle" style="border-bottom: 3px solid #85144b !important;">KATEGORI BERKAS</th>
                             <th class="text-center align-middle" style="border-bottom: 3px solid #85144b !important;">TAHUN</th>
                             <th class="text-center align-middle" style="border-bottom: 3px solid #85144b !important;">PERIODE/TMT</th>
                             <th class="text-center align-middle" style="border-bottom: 3px solid #85144b !important;">DOKUMEN</th>
-                            <th class="text-left align-middle" style="border-bottom: 3px solid #85144b !important;">WAKTU UPLOAD</th>
-                            <th class="text-left align-middle" style="border-bottom: 3px solid #85144b !important;">WAKTU EDIT</th>
+                            <th class="text-left align-middle" style="border-bottom: 3px solid #85144b !important;">DIKIRIM</th>
+                            <th class="text-left align-middle" style="border-bottom: 3px solid #85144b !important;">DIUBAH</th>
                             <th class="text-left align-middle" style="border-bottom: 3px solid #85144b !important;">VERIFIKASI</th>
                           </tr>
                         </thead>
@@ -856,10 +856,9 @@ function efilekelola_renderTabel(dataRows) {
         var aksi = `<div class="d-flex flex-nowrap justify-content-center" style="gap:5px;">${btnV}${btnP}${btnH}</div>`;
 
         var ptk = EFILEKELOLA_MASTER_PTK.find(p => String(p.id_ptk).trim() === String(r.id_ptk).trim());
-        var unit = (ptk && ptk.unit) ? ptk.unit : (r.unit ? r.unit : r.npsn);
+        var unit = (ptk && ptk.unit) ? ptk.unit : (r.unit ? r.unit : (r.npsn || '-'));
         var nip = (ptk && ptk.nip && String(ptk.nip).trim() !== "") ? ptk.nip : (r.nip && String(r.nip).trim() !== "" ? r.nip : "-");
-        var txtPtk = `<div class="font-weight-bold text-dark text-uppercase text-wrap" style="font-size:13px;">${efilekelola_escapeHtml(r.nama)}</div><div class="text-muted" style="font-size:13px;">${efilekelola_escapeHtml(nip)}</div>`;
-        if (EFILEKELOLA_IS_ADMIN) txtPtk += `<div class="text-danger font-weight-bold text-uppercase mt-1" style="font-size:13px;">${efilekelola_escapeHtml(unit)}</div>`;
+        var txtPtk = `<div class="text-left" style="text-align:left !important;"><div class="font-weight-bold text-dark text-wrap" style="font-size:13px;">${efilekelola_escapeHtml(r.nama)}</div><div class="text-muted" style="font-size:13px;">${efilekelola_escapeHtml(nip)}</div><div class="text-danger font-weight-bold mt-1 text-wrap" style="font-size:12px;">${efilekelola_escapeHtml(unit)}</div></div>`;
 
         var txtKat = `<div class="font-weight-bold text-primary text-wrap" style="font-size:13px;">${efilekelola_escapeHtml(r.nama_kategori)}</div>`;
         
@@ -867,14 +866,18 @@ function efilekelola_renderTabel(dataRows) {
         var btnFile = `<button type="button" class="sultan-btn-pdf efilekelola-btn-preview" data-url="${r.url}" style="font-size:13px;"><i class="fas ${fi} mr-1"></i> LIHAT</button>`;
 
         var badge = efilekelola_buildBadgeStatus(r.status, r.catatan);
-        var metaW = `<div style="line-height:1.2;font-size:13px;"><span class="d-block font-weight-bold text-dark">${r.tgl_upload}</span><span class="d-block text-muted">${efilekelola_escapeHtml(r.uploader)}</span></div>`;
+
+        var uUpload = (r.uploader && r.uploader !== "-") ? String(r.uploader).toLowerCase() : "-";
+        var uEdit = (r.user_edit && r.user_edit !== "-") ? String(r.user_edit).toLowerCase() : "";
+        var uVerif = (r.verifikator && r.verifikator !== "-") ? String(r.verifikator).toLowerCase() : "-";
+
+        var metaW = `<div class="text-left sultan-table-secondary" style="text-align:left !important;line-height:1.2;font-size:13px;"><span class="d-block font-weight-bold text-dark">${r.tgl_upload || '-'}</span><span class="d-block text-muted">${efilekelola_escapeHtml(uUpload)}</span></div>`;
         
         var tglEditDisp = (r.tgl_edit && r.tgl_edit !== "-") ? r.tgl_edit : "-";
-        var userEditDisp = (r.user_edit && r.user_edit !== "-") ? efilekelola_toProperCase(r.user_edit) : "";
-        var metaE = `<div style="line-height:1.2;font-size:13px;"><span class="d-block font-weight-bold text-dark">${tglEditDisp}</span><span class="d-block text-muted">${efilekelola_escapeHtml(userEditDisp)}</span></div>`;
+        var metaE = `<div class="text-left sultan-table-secondary" style="text-align:left !important;line-height:1.2;font-size:13px;"><span class="d-block font-weight-bold text-dark">${tglEditDisp}</span><span class="d-block text-muted">${efilekelola_escapeHtml(uEdit)}</span></div>`;
         
-        var verifName = (r.verifikator && r.verifikator !== "-") ? efilekelola_toProperCase(r.verifikator) : "-";
-        var metaV = `<div style="line-height:1.2;font-size:13px;"><span class="d-block font-weight-bold text-dark">${r.tgl_verif}</span><span class="d-block text-muted">${efilekelola_escapeHtml(verifName)}</span></div>`;
+        var tglVerifDisp = (r.tgl_verif && r.tgl_verif !== "-") ? r.tgl_verif : "-";
+        var metaV = `<div class="text-left sultan-table-secondary" style="text-align:left !important;line-height:1.2;font-size:13px;"><span class="d-block font-weight-bold text-dark">${tglVerifDisp}</span><span class="d-block text-muted">${efilekelola_escapeHtml(uVerif)}</span></div>`;
 
         var teksPeriode = r.periode || "-";
         if (teksPeriode.match(/^\d{4}-\d{2}-\d{2}$/)) {
