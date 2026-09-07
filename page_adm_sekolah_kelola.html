@@ -387,20 +387,45 @@ $(document).ready(function() {
 });
 
 function admsekolahkelola_initMasterData() {
-    if (ADMSEKOLAHKELOLA_IS_ADMIN) { $('#admsekolahkelola_filterContainer').show(); $('#admsekolahkelola_filterSekolah').empty().append('<option value="SEMUA">- Semua Sekolah -</option>').prop('disabled', false).removeClass('bg-light text-maroon font-weight-bold'); } 
-    else if (!ADMSEKOLAHKELOLA_NPSN_TERKUNCI) { $('#admsekolahkelola_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-ban mb-2"></i><br>Akses ditolak.</span>'); return; }
+    if (ADMSEKOLAHKELOLA_IS_ADMIN) { 
+        $('#admsekolahkelola_filterContainer').show(); 
+        $('#admsekolahkelola_filterSekolah').empty().append('<option value="SEMUA">- Semua Sekolah -</option>').prop('disabled', false).removeClass('bg-light text-maroon font-weight-bold'); 
+    } else if (!ADMSEKOLAHKELOLA_NPSN_TERKUNCI) { 
+        $('#admsekolahkelola_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-ban mb-2"></i><br>Akses ditolak.</span>'); 
+        return; 
+    }
 
     google.script.run.withSuccessHandler(function(json) {
-        var res = JSON.parse(json); if(!res.success) { $('#admsekolahkelola_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>' + admsekolahkelola_escapeHtml(res.message) + '</span>'); return; }
-        ADMSEKOLAHKELOLA_MASTER_KAT = res.kategori || []; ADMSEKOLAHKELOLA_MASTER_SEKOLAH = res.sekolah || [];
-        if (!ADMSEKOLAHKELOLA_IS_ADMIN && ADMSEKOLAHKELOLA_MASTER_SEKOLAH.length > 0) {
+        var res = JSON.parse(json); 
+        if(!res.success) { 
+            $('#admsekolahkelola_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>' + admsekolahkelola_escapeHtml(res.message) + '</span>'); 
+            return; 
+        }
+        ADMSEKOLAHKELOLA_MASTER_KAT = res.kategori || []; 
+        ADMSEKOLAHKELOLA_MASTER_SEKOLAH = res.sekolah || [];
+
+        if (!ADMSEKOLAHKELOLA_IS_ADMIN) {
+             // Resolusi NPSN terkunci jika sesi menyimpan nama sekolah atau unit
+             var lockVal = String(ADMSEKOLAHKELOLA_NPSN_TERKUNCI || "").trim().toUpperCase();
+             var foundSek = ADMSEKOLAHKELOLA_MASTER_SEKOLAH.find(function(s) {
+                 return String(s.npsn).trim().toUpperCase() === lockVal || String(s.nama || "").trim().toUpperCase() === lockVal;
+             });
+             if (foundSek && foundSek.npsn) {
+                 ADMSEKOLAHKELOLA_NPSN_TERKUNCI = foundSek.npsn;
+             }
+
              $('#admsekolahkelola_filterContainer').show(); 
-             var unitName = ADMSEKOLAHKELOLA_MASTER_SEKOLAH[0].nama || ADMSEKOLAHKELOLA_NPSN_TERKUNCI;
+             var unitName = foundSek ? foundSek.nama : ADMSEKOLAHKELOLA_NPSN_TERKUNCI;
              $('#admsekolahkelola_filterSekolah').empty().append($('<option>', {value: ADMSEKOLAHKELOLA_NPSN_TERKUNCI, text: unitName})).prop('disabled', true); 
         }
-        var hk = '<option value="SEMUA">- Semua Kategori -</option>'; ADMSEKOLAHKELOLA_MASTER_KAT.forEach(function(k) { hk += `<option value="${k.idKat}">${k.namaKat}</option>`; }); $('#admsekolahkelola_filterKategori').html(hk);
-        $('#admsekolahkelola_btnTambah').prop('disabled', false); admsekolahkelola_tarikDataServer();
-    }).withFailureHandler(function(){ $('#admsekolahkelola_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Terputus.</span>'); }).getAdmSekolahMasterData(ADMSEKOLAHKELOLA_IS_ADMIN ? "" : ADMSEKOLAHKELOLA_NPSN_TERKUNCI);
+        var hk = '<option value="SEMUA">- Semua Kategori -</option>'; 
+        ADMSEKOLAHKELOLA_MASTER_KAT.forEach(function(k) { hk += `<option value="${k.idKat}">${k.namaKat}</option>`; }); 
+        $('#admsekolahkelola_filterKategori').html(hk);
+        $('#admsekolahkelola_btnTambah').prop('disabled', false); 
+        admsekolahkelola_tarikDataServer();
+    }).withFailureHandler(function(){ 
+        $('#admsekolahkelola_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Terputus.</span>'); 
+    }).getAdmSekolahMasterData(ADMSEKOLAHKELOLA_IS_ADMIN ? "" : ADMSEKOLAHKELOLA_NPSN_TERKUNCI);
 }
 
 function admsekolahkelola_tarikDataServer() {
@@ -438,14 +463,38 @@ function admsekolahkelola_initDataTables() {
 
 function admsekolahkelola_terapkanFilterLokal() {
     if (!ADMSEKOLAHKELOLA_TABEL_INSTANCE) return;
-    var fS = $('#admsekolahkelola_filterStatus').val().toLowerCase(); var fK = $('#admsekolahkelola_filterKategori').val(); var fN = ADMSEKOLAHKELOLA_IS_ADMIN ? $('#admsekolahkelola_filterSekolah').val() : "";
+    var fS = $('#admsekolahkelola_filterStatus').val().toLowerCase(); 
+    var fK = $('#admsekolahkelola_filterKategori').val(); 
+    var fN = ADMSEKOLAHKELOLA_IS_ADMIN ? $('#admsekolahkelola_filterSekolah').val() : "";
+    
+    // Cari nama sekolah dari fN jika admin memilih sekolah tertentu
+    var filterNama = "";
+    if (ADMSEKOLAHKELOLA_IS_ADMIN && fN !== "SEMUA" && fN !== "") {
+        var sObj = ADMSEKOLAHKELOLA_MASTER_SEKOLAH.find(function(s){ return String(s.npsn).trim() === String(fN).trim(); });
+        if (sObj && sObj.nama) filterNama = sObj.nama.trim().toUpperCase();
+    }
+
     var hasil = ADMSEKOLAHKELOLA_CACHE_DATA.filter(function(r) {
-        var st = String(r.status || "").toLowerCase(); var rn = String(r.npsn || "");
-        if (ADMSEKOLAHKELOLA_IS_ADMIN && fN !== "SEMUA" && fN !== "" && rn !== fN) return false;
+        var st = String(r.status || "").toLowerCase(); 
+        var rn = String(r.npsn || "").trim().toUpperCase();
+        var rnm = String(r.nama_sekolah || "").trim().toUpperCase();
+        
+        if (ADMSEKOLAHKELOLA_IS_ADMIN && fN !== "SEMUA" && fN !== "") {
+            var fnUp = String(fN).trim().toUpperCase();
+            var matchSekolah = (rn === fnUp) || (filterNama && (rnm === filterNama || rn === filterNama));
+            if (!matchSekolah) return false;
+        }
         if (fK !== "SEMUA" && fK !== "" && String(r.id_kategori) !== fK) return false;
-        if (fS !== "semua" && fS !== "") { var ns = "diproses"; if (st.includes('setuju') || st.includes('ok')) ns = "disetujui"; else if (st.includes('revisi')) ns = "revisi"; else if (st.includes('tolak')) ns = "ditolak"; if (ns !== fS) return false; }
+        if (fS !== "semua" && fS !== "") { 
+            var ns = "diproses"; 
+            if (st.includes('setuju') || st.includes('ok')) ns = "disetujui"; 
+            else if (st.includes('revisi')) ns = "revisi"; 
+            else if (st.includes('tolak')) ns = "ditolak"; 
+            if (ns !== fS) return false; 
+        }
         return true;
-    }); admsekolahkelola_renderTabel(hasil);
+    }); 
+    admsekolahkelola_renderTabel(hasil);
 }
 
 function admsekolahkelola_renderTabel(dataRows) {

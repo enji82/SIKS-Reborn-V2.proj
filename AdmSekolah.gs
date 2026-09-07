@@ -145,14 +145,19 @@ function getAdmSekolahData(npsnFilter) {
     var shSekolah = getSheet("USER_DB", "Data_Sekolah");
     var dataSekolah = shSekolah ? shSekolah.getDataRange().getDisplayValues() : [];
     var sekolahMap = {}; 
+    var nameToNpsnMap = {};
     for(var j=1; j<dataSekolah.length; j++) {
         var npsn = String(dataSekolah[j][0]).trim();
+        var sNama = String(dataSekolah[j][2]).trim();
         if(npsn) {
             sekolahMap[npsn] = {
-                nama: dataSekolah[j][2],
+                nama: sNama,
                 jenjang: dataSekolah[j][1],
                 status: dataSekolah[j][3]
             };
+            if(sNama) {
+                nameToNpsnMap[sNama.toUpperCase()] = npsn;
+            }
         }
     }
     
@@ -162,18 +167,41 @@ function getAdmSekolahData(npsnFilter) {
     
     var data = sheet.getDataRange().getDisplayValues();
     var result = [];
-    var targetNpsn = String(npsnFilter || "").trim().toUpperCase();
+    var rawTarget = String(npsnFilter || "").trim().toUpperCase();
+    var targetNpsn = "";
+    var targetNama = "";
+
+    if (rawTarget && rawTarget !== "SEMUA") {
+        if (sekolahMap[rawTarget]) {
+            targetNpsn = rawTarget;
+            targetNama = (sekolahMap[rawTarget].nama || "").toUpperCase();
+        } else if (nameToNpsnMap[rawTarget]) {
+            targetNpsn = nameToNpsnMap[rawTarget];
+            targetNama = rawTarget;
+        } else {
+            targetNpsn = rawTarget;
+            targetNama = rawTarget;
+        }
+    }
     
     // Asumsi header: [0] NPSN, [1] ID_Kategori, [2] Nama_Kategori, [3] Tahun, [4] File_Name, [5] URL, [6] Status, [7] Catatan, [8] Tgl_Upload, [9] Uploader, [10] Tgl_Verif, [11] Verifikator, [12] Periode
     for(var i=1; i<data.length; i++) {
         var rNpsn = String(data[i][0]).trim().toUpperCase();
-        var infoSekolah = sekolahMap[rNpsn] || { nama: "Unknown", jenjang: "-", status: "-" };
+        var infoSekolah = sekolahMap[rNpsn] || { nama: (nameToNpsnMap[rNpsn] ? rNpsn : "Unknown"), jenjang: "-", status: "-" };
+        var rSekolahNama = (infoSekolah.nama || "").toUpperCase();
         
-        if (targetNpsn === "" || targetNpsn === "SEMUA" || rNpsn === targetNpsn) {
+        var isMatch = false;
+        if (!targetNpsn || targetNpsn === "SEMUA") {
+            isMatch = true;
+        } else if (rNpsn === targetNpsn || (targetNama && rNpsn === targetNama) || (targetNama && rSekolahNama === targetNama) || (targetNpsn && rSekolahNama === targetNpsn)) {
+            isMatch = true;
+        }
+
+        if (isMatch) {
             result.push({
                 rowId: i + 1, 
-                npsn: rNpsn,
-                nama_sekolah: infoSekolah.nama,
+                npsn: (infoSekolah.nama !== "Unknown" && sekolahMap[rNpsn]) ? rNpsn : (nameToNpsnMap[rNpsn] || rNpsn),
+                nama_sekolah: infoSekolah.nama !== "Unknown" ? infoSekolah.nama : rNpsn,
                 id_kategori: data[i][1], 
                 nama_kategori: data[i][2],
                 tahun: data[i][3], 
@@ -348,6 +376,19 @@ function perbaikiAdmSekolahData(payload, fileData) {
 
     return JSON.stringify({ success: true, message: "Perbaikan dokumen berhasil disimpan." });
   } catch(e) { return JSON.stringify({ success: false, message: e.message }); } finally { lock.releaseLock(); }
+}
+
+function perbaruiAdmSekolah(payload, fileData) {
+  var p = payload || {};
+  var f = fileData;
+  if (!f && p.file) {
+    f = {
+      data: p.file.fileBase64,
+      mimeType: p.file.mimeType
+    };
+    p.nama_file = p.file.nama_file;
+  }
+  return perbaikiAdmSekolahData(p, f);
 }
 
 function hapusAdmSekolahData(rowId, securityCode) {
