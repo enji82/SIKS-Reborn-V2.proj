@@ -470,10 +470,50 @@
             SDKELAS_TABEL_INSTANCE.page.len(currLen).page(currPage).draw('page');
 
             $(tableClone).find('[style*="display: none"]').remove();
-            $(tableClone).find('th, td').css({ 'border': '1px solid #000000', 'border-collapse': 'collapse', 'font-family': 'Satoshi, Arial, sans-serif' });
-            $(tableClone).find('.opacity-50').css('color', '#cccccc');
+            
+            // Tambah kolom NO.
+            var $theadTrs = $(tableClone).find('thead tr');
+            $($theadTrs[0]).prepend('<th rowspan="2" style="border: 0.5pt solid windowtext; vertical-align: middle; text-align: center;">NO.</th>');
+            
+            $(tableClone).find('tbody tr').each(function(index, tr) {
+                $(tr).prepend('<td style="border: 0.5pt solid windowtext; text-align: center; vertical-align: middle;">' + (index + 1) + '</td>');
+                
+                // Menghapus NPSN sehingga hanya 1 baris (Nama Sekolah saja)
+                var $namaSekolahCell = $(tr).find('td').eq(1);
+                var htmlContent = $namaSekolahCell.html();
+                if (htmlContent) {
+                    var parts = htmlContent.split('<br>');
+                    $namaSekolahCell.html(parts[0].trim());
+                }
+            });
 
-            var htmlData = tableClone.outerHTML;
+            var $tfootTr = $(tableClone).find('tfoot tr');
+            $tfootTr.find('th').eq(0).attr('colspan', '2');
+            
+            // Styling border tipis dan perataan teks
+            $(tableClone).find('th, td').css({ 'border': '0.5pt solid windowtext', 'border-collapse': 'collapse', 'font-family': 'Satoshi, Arial, sans-serif' });
+            $(tableClone).find('.opacity-50').css('color', '#cccccc');
+            
+            $(tableClone).find('tbody tr').each(function() {
+                $(this).find('td').eq(1).css({'text-align': 'left', 'vertical-align': 'middle'}); // Nama Sekolah
+                $(this).find('td').eq(2).css({'text-align': 'left', 'vertical-align': 'middle'}); // Bulan
+                $(this).find('td:gt(2)').css({'text-align': 'center', 'vertical-align': 'middle'}); // Sisanya tengah
+            });
+
+            // Judul dan tanggal
+            var bulanIndo = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+            var d = new Date();
+            var tglStr = String(d.getDate()).padStart(2, '0') + ' ' + bulanIndo[d.getMonth()] + ' ' + d.getFullYear();
+
+            var titleHtml = '<table style="border:none;">' + 
+                '<tr><th colspan="26" style="font-size:14pt; font-weight:bold; text-align:center; border:none;">JUMLAH MURID SD MENURUT KELAS</th></tr>' +
+                '<tr><th colspan="26" style="font-size:14pt; font-weight:bold; text-align:center; border:none;">KORWIL DISDIKBUD KECAMATAN SECANG</th></tr>' +
+                '<tr><th colspan="26" style="font-size:14pt; font-weight:bold; text-align:center; border:none;">PER ' + tglStr + '</th></tr>' +
+                '<tr><th colspan="26" style="border:none;"></th></tr>' +
+                '<tr><th colspan="26" style="border:none;"></th></tr>' +
+                '</table>';
+
+            var htmlData = titleHtml + tableClone.outerHTML;
             var template = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"></head><body>' + htmlData + '<' + '/body><' + '/html>';
             var blob = new Blob([template], { type: 'application/vnd.ms-excel' });
             var url = URL.createObjectURL(blob);
