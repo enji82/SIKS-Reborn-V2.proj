@@ -103,8 +103,8 @@ function getDataMuridSDAgama() {
   // DK-EB (Total) = 18
   // Total sampai kolom EB (Kolom ke 132)
   
-  // Ambil 132 kolom
-  var data = sheet.getRange(4, 1, lastRow - 3, 132).getDisplayValues();
+  // Ambil 125 kolom (dikurangi 7 kolom ROM)
+  var data = sheet.getRange(4, 1, lastRow - 3, 125).getDisplayValues();
   return data;
 }
 
