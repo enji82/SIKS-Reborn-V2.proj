@@ -604,7 +604,6 @@
                     }
                 }
             },
-
             "footerCallback": function (row, data, start, end, display) {
                 var api = this.api();
                 if (api.data().length === 0) return;
@@ -617,42 +616,13 @@
                     return isNaN(num) ? 0 : num;
                 };
 
-                var totalArr = [];
                 for (var i = 4; i <= 64; i++) {
                     var sum = api.column(i, { search: 'applied' }).data().reduce(function (a, b) {
                         return extractNumber(a) + extractNumber(b);
                     }, 0);
-                    totalArr.push(sum);
+                    var txtVal = (sum === 0) ? '-' : sum.toLocaleString('id-ID');
+                    $(api.column(i).footer()).html(txtVal);
                 }
-
-                var footHtml = '<th class="text-left pl-3 align-middle py-1 col-sticky-left sultan-total-row" style="z-index:40;">TOTAL KESELURUHAN</th>';
-                footHtml += '<th class="text-center py-1 sultan-total-row">-</th>'; // Bulan
-                footHtml += '<th class="text-center py-1 sultan-total-row">-</th>'; // Thn
-                footHtml += '<th class="text-center py-1 sultan-total-row">-</th>'; // Rombel
-
-                for (var c = 4; c <= 64; c++) {
-                    var val = totalArr[c - 4];
-                    var txtVal = (val === 0) ? '-' : val.toLocaleString('id-ID');
-
-                    var className = "text-center py-1 font-weight-bold sultan-total-row";
-                    if (c >= 4 && c <= 13) {
-                        className += " sultan-cell-k1";
-                    } else if (c >= 14 && c <= 23) {
-                        className += " sultan-cell-k2";
-                    } else if (c >= 24 && c <= 33) {
-                        className += " sultan-cell-k3";
-                    } else if (c >= 34 && c <= 43) {
-                        className += " sultan-cell-k4";
-                    } else if (c >= 44 && c <= 53) {
-                        className += " sultan-cell-k5";
-                    } else if (c >= 54 && c <= 63) {
-                        className += " sultan-cell-k6";
-                    }
-
-                    footHtml += '<th class="' + className + '">' + txtVal + '</th>';
-                }
-
-                $(api.table().footer()).find('tr').html(footHtml);
             }
         });
     }
@@ -834,10 +804,18 @@
                 wsData.push(newRow);
             });
 
-            var footHtml = $(SDROMBEL_TABEL_INSTANCE.table().footer()).find('th');
             var footerRow = ['TOTAL KESELURUHAN', ''];
-            for (var i = 1; i < footHtml.length; i++) {
-                footerRow.push($(footHtml[i]).text().trim());
+            for (var i = 1; i < visibleCols.length; i++) {
+                var colIdx = visibleCols[i];
+                if (colIdx >= 1 && colIdx <= 3) {
+                    footerRow.push('-');
+                } else if (colIdx >= 4 && colIdx <= 64) {
+                    var sum = 0;
+                    dtArray.forEach(function(row) {
+                        sum += parseInt(String(row[colIdx]).replace(/[^0-9]/g, ''), 10) || 0;
+                    });
+                    footerRow.push(sum === 0 ? '-' : sum.toLocaleString('id-ID'));
+                }
             }
             wsData.push(footerRow);
             
@@ -845,6 +823,18 @@
 
             var ws = XLSX.utils.aoa_to_sheet(wsData);
             ws['!merges'] = merges;
+            
+            // Atur lebar kolom (Column Widths)
+            ws['!cols'] = [];
+            ws['!cols'].push({ wpx: 40 }); // NO
+            ws['!cols'].push({ wpx: 200 }); // NAMA SEKOLAH
+            for (var i = 1; i < visibleCols.length; i++) {
+                var colIdx = visibleCols[i];
+                if (colIdx === 1) ws['!cols'].push({ wpx: 80 }); // BLN
+                else if (colIdx === 2) ws['!cols'].push({ wpx: 50 }); // THN
+                else if (colIdx === 3) ws['!cols'].push({ wpx: 60 }); // ROMBEL
+                else ws['!cols'].push({ wpx: 40 }); // L, P, JML
+            }
             
             var range = XLSX.utils.decode_range(ws['!ref']);
 
