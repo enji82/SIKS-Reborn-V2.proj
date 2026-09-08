@@ -699,6 +699,29 @@
         });
 
         SDROMBEL_TABEL_INSTANCE.clear().rows.add(dtArray).draw(false);
+
+        // --- Dynamic Column Hiding Logic ---
+        var hideCols = [];
+        var showCols = [];
+        // Classes 0 to 5 (Kelas 1 to 6)
+        for (var kelasIdx = 0; kelasIdx < 6; kelasIdx++) {
+            var baseCol = 4 + (kelasIdx * 10);
+            var sumA = 0, sumB = 0, sumC = 0;
+            
+            dtArray.forEach(function(row) {
+                sumA += parseInt(row[baseCol+2], 10) || 0;
+                sumB += parseInt(row[baseCol+5], 10) || 0;
+                sumC += parseInt(row[baseCol+8], 10) || 0;
+            });
+            
+            if (sumA === 0) hideCols.push(baseCol, baseCol+1, baseCol+2); else showCols.push(baseCol, baseCol+1, baseCol+2);
+            if (sumB === 0) hideCols.push(baseCol+3, baseCol+4, baseCol+5); else showCols.push(baseCol+3, baseCol+4, baseCol+5);
+            if (sumC === 0) hideCols.push(baseCol+6, baseCol+7, baseCol+8); else showCols.push(baseCol+6, baseCol+7, baseCol+8);
+        }
+        
+        if (hideCols.length > 0) SDROMBEL_TABEL_INSTANCE.columns(hideCols).visible(false, false);
+        if (showCols.length > 0) SDROMBEL_TABEL_INSTANCE.columns(showCols).visible(true, false);
+        SDROMBEL_TABEL_INSTANCE.columns.adjust().draw(false);
     }
 
     function sdrombel_exportExcel() {
@@ -707,27 +730,163 @@
         btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Mengekspor...');
 
         setTimeout(function () {
-            var info = SDROMBEL_TABEL_INSTANCE.page.info();
-            var currLen = info.length; var currPage = info.page;
-            SDROMBEL_TABEL_INSTANCE.page.len(-1).draw('page');
+            function getThinBorder() {
+                return {
+                    top: { style: 'thin', color: { auto: 1 } },
+                    bottom: { style: 'thin', color: { auto: 1 } },
+                    left: { style: 'thin', color: { auto: 1 } },
+                    right: { style: 'thin', color: { auto: 1 } }
+                };
+            }
 
-            var tableClone = document.getElementById('sdrombel_tabelUtama').cloneNode(true);
-            SDROMBEL_TABEL_INSTANCE.page.len(currLen).page(currPage).draw('page');
+            var bulanIndo = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+            var d = new Date();
+            var tglStr = String(d.getDate()).padStart(2, '0') + ' ' + bulanIndo[d.getMonth()] + ' ' + d.getFullYear();
 
-            $(tableClone).find('[style*="display: none"]').remove();
-            $(tableClone).find('th, td').css({ 'border': '1px solid #000000', 'border-collapse': 'collapse', 'font-family': 'Satoshi, Arial, sans-serif' });
-            $(tableClone).find('.opacity-50').css('color', '#cccccc');
+            var visibleCols = [];
+            for (var c = 0; c < 65; c++) {
+                if (SDROMBEL_TABEL_INSTANCE.column(c).visible()) {
+                    visibleCols.push(c);
+                }
+            }
 
-            var htmlData = tableClone.outerHTML;
-            var template = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"></head><body>' + htmlData + '</body></html>';
-            var blob = new Blob([template], { type: 'application/vnd.ms-excel' });
-            var url = URL.createObjectURL(blob);
+            var wsData = [];
+            wsData.push(['JUMLAH MURID SD MENURUT ROMBEL']);
+            wsData.push(['KORWIL DISDIKBUD KECAMATAN SECANG']);
+            wsData.push(['PER ' + tglStr]);
+            wsData.push([]);
+            wsData.push([]);
 
-            var a = document.createElement('a'); a.href = url;
-            a.download = 'Rekap_Jumlah_Murid_SD_Rombel.xls';
-            document.body.appendChild(a); a.click();
+            var headerR5 = ['NO.', 'NAMA SEKOLAH', 'BLN', 'THN', 'ROMBEL'];
+            var headerR6 = ['', '', '', '', ''];
+            var headerR7 = ['', '', '', '', ''];
+            
+            var merges = [
+                { s: {r: 0, c: 0}, e: {r: 0, c: visibleCols.length} },
+                { s: {r: 1, c: 0}, e: {r: 1, c: visibleCols.length} },
+                { s: {r: 2, c: 0}, e: {r: 2, c: visibleCols.length} },
+                { s: {r: 5, c: 0}, e: {r: 7, c: 0} }, // NO.
+                { s: {r: 5, c: 1}, e: {r: 7, c: 1} }, // NAMA
+                { s: {r: 5, c: 2}, e: {r: 7, c: 2} }, // BLN
+                { s: {r: 5, c: 3}, e: {r: 7, c: 3} }, // THN
+                { s: {r: 5, c: 4}, e: {r: 7, c: 4} }  // ROMBEL
+            ];
 
-            document.body.removeChild(a); URL.revokeObjectURL(url);
+            var currExcelCol = 5; 
+            
+            for (var k = 0; k < 6; k++) {
+                var kelasStartCol = currExcelCol;
+                var rombels = [
+                    { name: 'ROMBEL A', idx: 4 + k*10 },
+                    { name: 'ROMBEL B', idx: 4 + k*10 + 3 },
+                    { name: 'ROMBEL C', idx: 4 + k*10 + 6 }
+                ];
+                
+                rombels.forEach(function(r) {
+                    if (visibleCols.indexOf(r.idx) !== -1) {
+                        headerR5.push(currExcelCol === kelasStartCol ? 'KELAS ' + (k+1) : ''); 
+                        headerR5.push('', ''); 
+                        
+                        headerR6.push(r.name);
+                        headerR6.push('', ''); 
+                        
+                        headerR7.push('L', 'P', 'JML');
+                        
+                        merges.push({ s: {r: 6, c: currExcelCol}, e: {r: 6, c: currExcelCol + 2} });
+                        currExcelCol += 3;
+                    }
+                });
+                
+                headerR5.push(currExcelCol === kelasStartCol ? 'KELAS ' + (k+1) : '');
+                headerR6.push('JML');
+                headerR7.push(''); 
+                merges.push({ s: {r: 6, c: currExcelCol}, e: {r: 7, c: currExcelCol} });
+                
+                if (currExcelCol > kelasStartCol) {
+                    merges.push({ s: {r: 5, c: kelasStartCol}, e: {r: 5, c: currExcelCol} });
+                }
+                
+                currExcelCol += 1; 
+            }
+            
+            headerR5.push('TOTAL');
+            headerR6.push('');
+            headerR7.push('');
+            merges.push({ s: {r: 5, c: currExcelCol}, e: {r: 7, c: currExcelCol} });
+
+            wsData.push(headerR5, headerR6, headerR7);
+
+            var dtArray = SDROMBEL_TABEL_INSTANCE.rows({ search: 'applied' }).data().toArray();
+            
+            dtArray.forEach(function(row, index) {
+                var newRow = [index + 1]; // NO.
+                
+                var namaSekolahHtml = row[0] || "";
+                var namaSekolah = namaSekolahHtml.split('<br>')[0].trim();
+                namaSekolah = $('<div>').html(namaSekolah).text();
+                newRow.push(namaSekolah);
+                
+                for (var i = 1; i < visibleCols.length; i++) {
+                    var colIdx = visibleCols[i];
+                    newRow.push($('<div>').html(row[colIdx] || "").text().trim());
+                }
+                
+                wsData.push(newRow);
+            });
+
+            var footHtml = $(SDROMBEL_TABEL_INSTANCE.table().footer()).find('th');
+            var footerRow = ['TOTAL KESELURUHAN', ''];
+            for (var i = 1; i < footHtml.length; i++) {
+                footerRow.push($(footHtml[i]).text().trim());
+            }
+            wsData.push(footerRow);
+            
+            merges.push({ s: {r: wsData.length - 1, c: 0}, e: {r: wsData.length - 1, c: 1} });
+
+            var ws = XLSX.utils.aoa_to_sheet(wsData);
+            ws['!merges'] = merges;
+            
+            var range = XLSX.utils.decode_range(ws['!ref']);
+
+            for (var R = 0; R <= range.e.r; R++) {
+                for (var C = 0; C <= range.e.c; C++) {
+                    var cellAddr = XLSX.utils.encode_cell({ r: R, c: C });
+                    
+                    if (!ws[cellAddr]) ws[cellAddr] = { t: 'z', v: '' };
+                    if (!ws[cellAddr].s) ws[cellAddr].s = {};
+                    
+                    ws[cellAddr].s.font = { name: 'Arial', sz: 11 };
+
+                    if (R >= 0 && R <= 2) { 
+                        ws[cellAddr].s.font = { name: 'Arial', sz: 14, bold: true };
+                        ws[cellAddr].s.alignment = { horizontal: 'center', vertical: 'center' };
+                    } else if (R >= 5 && R <= 7) { 
+                        ws[cellAddr].s.font.bold = true;
+                        ws[cellAddr].s.border = getThinBorder();
+                        ws[cellAddr].s.alignment = { horizontal: 'center', vertical: 'center' };
+                    } else if (R >= 8) { 
+                        ws[cellAddr].s.border = getThinBorder();
+                        ws[cellAddr].s.alignment = { vertical: 'center' };
+                        
+                        if (R === range.e.r) { 
+                            ws[cellAddr].s.font.bold = true;
+                        }
+
+                        if (C === 1 || C === 2) { 
+                            ws[cellAddr].s.alignment.horizontal = 'left';
+                        } else {
+                            ws[cellAddr].s.alignment.horizontal = 'center';
+                        }
+                    }
+                }
+            }
+
+            var wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Jumlah Murid Rombel");
+            
+            var filename = "JUMLAH MURID SD MENURUT ROMBEL - " + tglStr + ".xlsx";
+            XLSX.writeFile(wb, filename);
+
             btn.prop('disabled', false).html(txt);
             Sultan.notif.sukses('Data berhasil diunduh ke Excel.');
         }, 200);
