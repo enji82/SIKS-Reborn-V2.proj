@@ -468,69 +468,102 @@
             var currLen = info.length; var currPage = info.page;
             SDKELAS_TABEL_INSTANCE.page.len(-1).draw('page');
 
-            var tableClone = document.getElementById('sdkelas_tabelUtama').cloneNode(true);
-            SDKELAS_TABEL_INSTANCE.page.len(currLen).page(currPage).draw('page');
+            function getThinBorder() {
+                return {
+                    top: { style: 'thin', color: { auto: 1 } },
+                    bottom: { style: 'thin', color: { auto: 1 } },
+                    left: { style: 'thin', color: { auto: 1 } },
+                    right: { style: 'thin', color: { auto: 1 } }
+                };
+            }
 
-            $(tableClone).find('[style*="display: none"]').remove();
-            
-            // Tambah kolom NO.
-            var $theadTrs = $(tableClone).find('thead tr');
-            $($theadTrs[0]).prepend('<th rowspan="2">NO.</th>');
-            
-            $(tableClone).find('tbody tr').each(function(index, tr) {
-                $(tr).prepend('<td>' + (index + 1) + '</td>');
-                
-                // Menghapus NPSN sehingga hanya 1 baris (Nama Sekolah saja)
-                var $namaSekolahCell = $(tr).find('td').eq(1);
-                var htmlContent = $namaSekolahCell.html();
-                if (htmlContent) {
-                    var parts = htmlContent.split('<br>');
-                    $namaSekolahCell.html(parts[0].trim());
-                }
-            });
-
-            var $tfootTr = $(tableClone).find('tfoot tr');
-            $tfootTr.find('th').eq(0).attr('colspan', '2');
-
-            // Judul dan tanggal
             var bulanIndo = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
             var d = new Date();
             var tglStr = String(d.getDate()).padStart(2, '0') + ' ' + bulanIndo[d.getMonth()] + ' ' + d.getFullYear();
 
-            var titleRows = 
-                '<tr><th colspan="26">JUMLAH MURID SD MENURUT KELAS</th></tr>' +
-                '<tr><th colspan="26">KORWIL DISDIKBUD KECAMATAN SECANG</th></tr>' +
-                '<tr><th colspan="26">PER ' + tglStr + '</th></tr>' +
-                '<tr><th colspan="26"></th></tr>' +
-                '<tr><th colspan="26"></th></tr>';
-            $(tableClone).find('thead').prepend(titleRows);
+            var wsData = [];
+            
+            // Judul (Row 0, 1, 2)
+            wsData.push(['JUMLAH MURID SD MENURUT KELAS']);
+            wsData.push(['KORWIL DISDIKBUD KECAMATAN SECANG']);
+            wsData.push(['PER ' + tglStr]);
+            wsData.push([]); // Row 3
+            wsData.push([]); // Row 4
 
-            // Generate worksheet dari tabel
-            var ws = XLSX.utils.table_to_sheet(tableClone);
-            var range = XLSX.utils.decode_range(ws['!ref']);
+            // Header Tabel (Row 5 & 6)
+            wsData.push([
+                'NO.', 'NAMA SEKOLAH', 'BLN', 'THN', 'ROMBEL',
+                'KELAS 1', '', '', 'KELAS 2', '', '', 'KELAS 3', '', '',
+                'KELAS 4', '', '', 'KELAS 5', '', '', 'KELAS 6', '', '',
+                'JUMLAH TOTAL', '', ''
+            ]);
+            wsData.push([
+                '', '', '', '', '',
+                'L', 'P', 'JML', 'L', 'P', 'JML', 'L', 'P', 'JML',
+                'L', 'P', 'JML', 'L', 'P', 'JML', 'L', 'P', 'JML',
+                'L', 'P', 'TOTAL'
+            ]);
 
-            function getThinBorder() {
-                return {
-                    top: { style: 'thin', color: { rgb: '000000' } },
-                    bottom: { style: 'thin', color: { rgb: '000000' } },
-                    left: { style: 'thin', color: { rgb: '000000' } },
-                    right: { style: 'thin', color: { rgb: '000000' } }
-                };
+            // Data Tabel (Row 7 dst)
+            var dtData = SDKELAS_TABEL_INSTANCE.rows({ search: 'applied' }).data().toArray();
+            dtData.forEach(function(row, index) {
+                var newRow = [index + 1]; // NO.
+                
+                // Index 0: Nama Sekolah
+                var namaSekolahHtml = row[0] || "";
+                var namaSekolah = namaSekolahHtml.split('<br>')[0].trim();
+                namaSekolah = $('<div>').html(namaSekolah).text(); // hilangkan sisa tag HTML jika ada
+                newRow.push(namaSekolah);
+                
+                // Index 1 sampai 24 (Bln, Thn, Rombel, Kelas 1-6, Total)
+                for(var i = 1; i <= 24; i++) {
+                    newRow.push($('<div>').html(row[i] || "").text().trim());
+                }
+                
+                wsData.push(newRow);
+            });
+
+            // Footer
+            var footHtml = $(SDKELAS_TABEL_INSTANCE.table().footer()).find('th');
+            var footerRow = ['TOTAL KESELURUHAN', ''];
+            for (var i = 1; i < footHtml.length; i++) {
+                footerRow.push($(footHtml[i]).text().trim());
             }
+            wsData.push(footerRow);
+
+            var ws = XLSX.utils.aoa_to_sheet(wsData);
+
+            // Merge Cells
+            ws['!merges'] = [
+                // Title
+                { s: {r: 0, c: 0}, e: {r: 0, c: 25} },
+                { s: {r: 1, c: 0}, e: {r: 1, c: 25} },
+                { s: {r: 2, c: 0}, e: {r: 2, c: 25} },
+                // Header (Vertical merges untuk NO, NAMA SEKOLAH, BLN, THN, ROMBEL)
+                { s: {r: 5, c: 0}, e: {r: 6, c: 0} },
+                { s: {r: 5, c: 1}, e: {r: 6, c: 1} },
+                { s: {r: 5, c: 2}, e: {r: 6, c: 2} },
+                { s: {r: 5, c: 3}, e: {r: 6, c: 3} },
+                { s: {r: 5, c: 4}, e: {r: 6, c: 4} },
+                // Header (Horizontal merges untuk KELAS 1-6 dan TOTAL)
+                { s: {r: 5, c: 5}, e: {r: 5, c: 7} },
+                { s: {r: 5, c: 8}, e: {r: 5, c: 10} },
+                { s: {r: 5, c: 11}, e: {r: 5, c: 13} },
+                { s: {r: 5, c: 14}, e: {r: 5, c: 16} },
+                { s: {r: 5, c: 17}, e: {r: 5, c: 19} },
+                { s: {r: 5, c: 20}, e: {r: 5, c: 22} },
+                { s: {r: 5, c: 23}, e: {r: 5, c: 25} },
+                // Footer merge
+                { s: {r: wsData.length - 1, c: 0}, e: {r: wsData.length - 1, c: 1} }
+            ];
+
+            var range = XLSX.utils.decode_range(ws['!ref']);
 
             for (var R = 0; R <= range.e.r; R++) {
                 for (var C = 0; C <= range.e.c; C++) {
                     var cellAddr = XLSX.utils.encode_cell({ r: R, c: C });
                     
-                    // Jika cell kosong/tersembunyi karena merge, buat cell dummy agar border tetap tergambar
-                    if (!ws[cellAddr]) {
-                        if (R >= 5) {
-                            ws[cellAddr] = { t: 'z', v: '' };
-                        } else {
-                            continue;
-                        }
-                    }
-
+                    if (!ws[cellAddr]) ws[cellAddr] = { t: 'z', v: '' };
                     if (!ws[cellAddr].s) ws[cellAddr].s = {};
                     
                     ws[cellAddr].s.font = { name: 'Arial', sz: 11 };
