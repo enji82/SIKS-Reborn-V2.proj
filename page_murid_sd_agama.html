@@ -814,11 +814,94 @@
             arrRow.push(sdagama_escapeHtml(row[4] || "-")); // Thn
             arrRow.push(sdagama_escapeHtml(row[5] || "-")); // Rombel
 
-            for (var c = 6; c <= 131; c++) {
-                if ((c - 6) % 18 === 0) continue; // Skip ROM column
-                var val = (row[c] === undefined || row[c] === null || String(row[c]).trim() === "" || String(row[c]).trim() === "0" || String(row[c]).trim() === "-") ? "0" : String(row[c]).trim();
-                arrRow.push(sdagama_escapeHtml(val));
+            // Terdapat 7 grup (6 Kelas + 1 Grand Total). Setiap grup di sheet asal terdiri dari 18 kolom:
+            // [ROM (dilewati), Islam L, Islam P, Kristen L, Kristen P, Katolik L, Katolik P, Hindu L, Hindu P, Buddha L, Buddha P, Konghucu L, Konghucu P, Penghayat L, Penghayat P, Total L, Total P, Total JML]
+            var grandTotL = 0;
+            var grandTotP = 0;
+
+            for (var g = 0; g < 6; g++) {
+                var baseCol = 6 + (g * 18);
+                // baseCol + 0 adalah ROM (dilewati)
+                var kTotL = 0;
+                var kTotP = 0;
+
+                // 7 Agama x 2 (L, P) = 14 kolom
+                for (var a = 0; a < 7; a++) {
+                    var idxL = baseCol + 1 + (a * 2);
+                    var idxP = idxL + 1;
+
+                    var rawL = row[idxL];
+                    var rawP = row[idxP];
+
+                    var valL = (rawL === undefined || rawL === null || String(rawL).trim() === "" || String(rawL).trim() === "0" || String(rawL).trim() === "-") ? 0 : parseInt(String(rawL).replace(/[^0-9]/g, '')) || 0;
+                    var valP = (rawP === undefined || rawP === null || String(rawP).trim() === "" || String(rawP).trim() === "0" || String(rawP).trim() === "-") ? 0 : parseInt(String(rawP).replace(/[^0-9]/g, '')) || 0;
+
+                    kTotL += valL;
+                    kTotP += valP;
+
+                    arrRow.push(valL === 0 ? "0" : String(valL));
+                    arrRow.push(valP === 0 ? "0" : String(valP));
+                }
+
+                grandTotL += kTotL;
+                grandTotP += kTotP;
+
+                // Kolom Total Kelas: L, P, JML
+                var rawSheetTotL = row[baseCol + 15];
+                var rawSheetTotP = row[baseCol + 16];
+                var rawSheetTotJML = row[baseCol + 17];
+
+                var valSheetTotL = parseInt(String(rawSheetTotL || "").replace(/[^0-9]/g, '')) || 0;
+                var valSheetTotP = parseInt(String(rawSheetTotP || "").replace(/[^0-9]/g, '')) || 0;
+                var valSheetTotJML = parseInt(String(rawSheetTotJML || "").replace(/[^0-9]/g, '')) || 0;
+
+                var finalTotL = valSheetTotL > 0 ? valSheetTotL : kTotL;
+                var finalTotP = valSheetTotP > 0 ? valSheetTotP : kTotP;
+                var finalTotJML = valSheetTotJML > 0 ? valSheetTotJML : (finalTotL + finalTotP);
+
+                arrRow.push(finalTotL === 0 ? "0" : String(finalTotL));
+                arrRow.push(finalTotP === 0 ? "0" : String(finalTotP));
+                arrRow.push(finalTotJML === 0 ? "0" : String(finalTotJML));
             }
+
+            // Grup ke-7: GRAND TOTAL
+            var baseColGT = 6 + (6 * 18);
+            var gtRelL = 0;
+            var gtRelP = 0;
+
+            for (var a = 0; a < 7; a++) {
+                var idxL = baseColGT + 1 + (a * 2);
+                var idxP = idxL + 1;
+
+                var rawL = row[idxL];
+                var rawP = row[idxP];
+
+                var valL = (rawL === undefined || rawL === null || String(rawL).trim() === "" || String(rawL).trim() === "0" || String(rawL).trim() === "-") ? 0 : parseInt(String(rawL).replace(/[^0-9]/g, '')) || 0;
+                var valP = (rawP === undefined || rawP === null || String(rawP).trim() === "" || String(rawP).trim() === "0" || String(rawP).trim() === "-") ? 0 : parseInt(String(rawP).replace(/[^0-9]/g, '')) || 0;
+
+                gtRelL += valL;
+                gtRelP += valP;
+
+                // Jika di sheet Grand Total per agama terisi, gunakan nilainya; jika 0/kosong tapi ada penjumlahan kelas, tetap tampilkan
+                arrRow.push(valL === 0 ? "0" : String(valL));
+                arrRow.push(valP === 0 ? "0" : String(valP));
+            }
+
+            var rawGTL = row[baseColGT + 15];
+            var rawGTP = row[baseColGT + 16];
+            var rawGTJML = row[baseColGT + 17];
+
+            var valGTL = parseInt(String(rawGTL || "").replace(/[^0-9]/g, '')) || 0;
+            var valGTP = parseInt(String(rawGTP || "").replace(/[^0-9]/g, '')) || 0;
+            var valGTJML = parseInt(String(rawGTJML || "").replace(/[^0-9]/g, '')) || 0;
+
+            var finalGTL = valGTL > 0 ? valGTL : (gtRelL > 0 ? gtRelL : grandTotL);
+            var finalGTP = valGTP > 0 ? valGTP : (gtRelP > 0 ? gtRelP : grandTotP);
+            var finalGTJML = valGTJML > 0 ? valGTJML : (finalGTL + finalGTP);
+
+            arrRow.push(finalGTL === 0 ? "0" : String(finalGTL));
+            arrRow.push(finalGTP === 0 ? "0" : String(finalGTP));
+            arrRow.push(finalGTJML === 0 ? "0" : String(finalGTJML));
 
             dtArray.push(arrRow);
         });
