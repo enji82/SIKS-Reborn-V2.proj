@@ -1,0 +1,288 @@
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+
+<style>
+  .sultan-alert {
+      padding: 14px 18px;
+      border-radius: 12px;
+      margin-bottom: 14px;
+      border: 1px solid transparent;
+      display: flex;
+      align-items: flex-start;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+  }
+  .alert-soft-danger  { background-color: rgba(220,53,69,0.07)!important; border-color: rgba(220,53,69,0.15)!important; color:#c62828!important; }
+  .alert-soft-warning { background-color: rgba(255,193,7,0.08)!important; border-color: rgba(255,193,7,0.18)!important; color:#e65100!important; }
+  .alert-soft-info    { background-color: rgba(23,162,184,0.08)!important; border-color: rgba(23,162,184,0.18)!important; color:#00838f!important; }
+  .alert-soft-success { background-color: rgba(40,167,69,0.07)!important; border-color: rgba(40,167,69,0.15)!important; color:#2e7d32!important; }
+  .dark-mode .alert-soft-danger  { background-color:rgba(239,83,80,0.1)!important; border-color:rgba(239,83,80,0.22)!important; color:#ef5350!important; }
+  .dark-mode .alert-soft-warning { background-color:rgba(255,202,40,0.09)!important; border-color:rgba(255,202,40,0.22)!important; color:#ffd54f!important; }
+  .dark-mode .alert-soft-info    { background-color:rgba(79,195,247,0.1)!important; border-color:rgba(79,195,247,0.22)!important; color:#4fc3f7!important; }
+  .dark-mode .alert-soft-success { background-color:rgba(102,187,106,0.1)!important; border-color:rgba(102,187,106,0.22)!important; color:#81c784!important; }
+</style>
+
+<section class="content sultan-page-transition">
+  <div class="container-fluid">
+
+    <!-- Loading State -->
+    <div id="sdsPageLoading" class="text-center py-5">
+      <i class="fas fa-spinner fa-spin fa-2x text-muted mb-3"></i>
+      <p class="text-muted">Memuat data Dashboard SD Swasta...</p>
+    </div>
+
+    <!-- Main Content -->
+    <div id="wrapperSDS" style="display:none;">
+
+      <!-- Header Section -->
+      <div class="d-flex align-items-center mb-4">
+        <div class="mr-3 shadow-sm" style="width:6px;height:28px;border-radius:3px;background-color:#1a237e;"></div>
+        <div>
+          <h5 class="font-weight-bold mb-0 text-uppercase" style="letter-spacing:1px;">Rekapitulasi SD Swasta</h5>
+          <small class="text-muted">Data Pendidik &amp; Tenaga Kependidikan Sekolah Dasar Swasta</small>
+        </div>
+      </div>
+
+      <!-- Row 1: KPI Cards -->
+      <div class="row">
+        <div class="col-lg-2 col-md-4 col-6 mb-4">
+          <div class="sultan-metric-card metric-maroon">
+            <div class="inner"><h3 id="sds_jml_sekolah">0</h3><p>Sekolah</p></div>
+            <div class="icon"><i class="fas fa-building"></i></div>
+          </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-6 mb-4">
+          <div class="sultan-metric-card metric-dark">
+            <div class="inner"><h3 id="sds_jml_pns">0</h3><p>PNS/PPPK</p></div>
+            <div class="icon"><i class="fas fa-user-shield"></i></div>
+          </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-6 mb-4">
+          <div class="sultan-metric-card metric-success">
+            <div class="inner"><h3 id="sds_jml_gty">0</h3><p>GTY</p></div>
+            <div class="icon"><i class="fas fa-chalkboard-teacher"></i></div>
+          </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-6 mb-4">
+          <div class="sultan-metric-card metric-info">
+            <div class="inner"><h3 id="sds_jml_pty">0</h3><p>PTY</p></div>
+            <div class="icon"><i class="fas fa-user-cog"></i></div>
+          </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-6 mb-4">
+          <div class="sultan-metric-card metric-dark">
+            <div class="inner"><h3 id="sds_jml_gtt">0</h3><p>GTT</p></div>
+            <div class="icon"><i class="fas fa-user"></i></div>
+          </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-6 mb-4">
+          <div class="sultan-metric-card metric-dark">
+            <div class="inner"><h3 id="sds_jml_ptt">0</h3><p>PTT</p></div>
+            <div class="icon"><i class="fas fa-users"></i></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 2: Chart & Insights -->
+      <div class="row">
+        <div class="col-lg-8 mb-4">
+          <div class="card-sultan h-100 p-4">
+            <h6 class="font-weight-bold text-sultan-utama mb-3 text-uppercase">
+              <i class="fas fa-chart-pie mr-2"></i>Komposisi Status Kerja Yayasan (SDS)
+            </h6>
+            <div style="position:relative;height:260px;" class="d-flex align-items-center justify-content-center">
+              <canvas id="sdsChartKepegawaian" style="max-height:260px;"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-4 mb-4">
+          <div class="card-sultan h-100 p-4">
+            <h6 class="font-weight-bold text-sultan-utama mb-3 text-uppercase">
+              <i class="fas fa-lightbulb mr-2"></i>Analisis Operasional Yayasan
+            </h6>
+            <div id="sdsInsightAlerts" class="sultan-scroll" style="max-height:260px;overflow-y:auto;">
+              <div class="text-muted text-center py-5"><i class="fas fa-spinner fa-spin mr-2"></i>Menganalisis data...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 3: Ringkasan Statistik -->
+      <div class="row">
+        <div class="col-12 mb-4">
+          <div class="card-sultan p-4">
+            <h6 class="font-weight-bold text-sultan-utama mb-3 text-uppercase">
+              <i class="fas fa-table mr-2"></i>Ringkasan Statistik SD Swasta
+            </h6>
+            <div class="table-responsive">
+              <table class="table table-sm table-striped table-hover table-sultan-compact mb-0">
+                <thead class="thead-sultan-premium">
+                  <tr>
+                    <th>Kategori Kepegawaian</th>
+                    <th class="text-center">Jumlah</th>
+                    <th class="text-center">Persentase</th>
+                    <th class="text-center">Keterangan</th>
+                  </tr>
+                </thead>
+                <tbody id="sdsRingkasanTbody">
+                  <tr><td colspan="4" class="text-center text-muted py-3"><i class="fas fa-spinner fa-spin mr-2"></i>Memuat data...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /wrapperSDS -->
+  </div>
+</section>
+
+<script>
+// ======================================================================
+// DASHBOARD SD SWASTA — ISOLASI VARIABEL
+// ======================================================================
+var DASHS_IS_ADMIN  = false;
+var DASHS_USER_NPSN = "";
+var SDS_CHART_KEP   = null;
+
+$(document).ready(function() {
+  try {
+    var user = getSesiUser() || {};
+    DASHS_IS_ADMIN  = (user.role || "").toLowerCase().includes("admin");
+    DASHS_USER_NPSN = user.npsn || user.username || "";
+  } catch(e) { DASHS_IS_ADMIN = false; DASHS_USER_NPSN = ""; }
+
+  sdsGatekeeper();
+
+  $(document).off('change.dashsds', '#sultan_darkModeToggle').on('change.dashsds', '#sultan_darkModeToggle', function() {
+    setTimeout(sdsApplyChartTheme, 100);
+  });
+});
+
+function sdsGatekeeper() {
+  if (typeof SultanUI !== 'undefined') {
+    SultanUI.startLottery('#sds_jml_sekolah, #sds_jml_pns, #sds_jml_gty, #sds_jml_pty, #sds_jml_gtt, #sds_jml_ptt', 3);
+  }
+
+  if (DASHS_IS_ADMIN) {
+    $('#sdsPageLoading').hide();
+    $('#wrapperSDS').fadeIn();
+    google.script.run.withSuccessHandler(function(res) { sdsCalculate(res, true); }).getDataKeadaanGTKSDS();
+  } else {
+    if (!DASHS_USER_NPSN) {
+      $('#sdsPageLoading').hide();
+      Sultan.alert('error', 'Akses Ditolak', 'NPSN tidak ditemukan pada sesi login Anda.');
+      return;
+    }
+    google.script.run.withSuccessHandler(function(res) {
+      $('#sdsPageLoading').hide();
+      if (!res || !Array.isArray(res)) res = [];
+      var myData = res.filter(function(r) {
+        return String(r && r[1] || "").trim().toUpperCase() === String(DASHS_USER_NPSN).trim().toUpperCase();
+      });
+      $('#wrapperSDS').fadeIn();
+      if (myData.length > 0) {
+        sdsCalculate(myData, false);
+      } else {
+        $('#sdsInsightAlerts').html('<div class="sultan-alert alert-soft-info"><i class="fas fa-info-circle fa-lg mr-3 mt-1"></i><div><span class="font-weight-bold d-block">Tidak Ada Data</span>Data SD Swasta tidak ditemukan untuk sekolah Anda.</div></div>');
+        ['sds_jml_sekolah','sds_jml_pns','sds_jml_gty','sds_jml_pty','sds_jml_gtt','sds_jml_ptt'].forEach(function(id){ $('#'+id).text('0'); });
+        $('#sdsRingkasanTbody').html('<tr><td colspan="4" class="text-center text-muted py-3">Tidak ada data untuk sekolah Anda.</td></tr>');
+      }
+    }).getDataKeadaanGTKSDS();
+  }
+}
+
+function sdsCalculate(data, isAdmin) {
+  if (!data || data.length === 0) {
+    ['sds_jml_sekolah','sds_jml_pns','sds_jml_gty','sds_jml_pty','sds_jml_gtt','sds_jml_ptt'].forEach(function(id){ $('#'+id).text('0'); });
+    return;
+  }
+  var s = { school: isAdmin ? data.length : 1, pns:0, gty:0, pty:0, gtt:0, ptt:0 };
+  data.forEach(function(row) {
+    var ks_gty = parseInt(row[21])||0, guru_gty = parseInt(row[22])||0;
+    var tendik_pty = parseInt(row[23])||0, guru_gtt = parseInt(row[24])||0, tendik_ptt = parseInt(row[25])||0;
+    s.gty += (ks_gty + guru_gty);
+    s.pty += tendik_pty;
+    s.gtt += guru_gtt;
+    s.ptt += tendik_ptt;
+  });
+
+  sdsAnimate("sds_jml_sekolah", s.school);
+  sdsAnimate("sds_jml_pns", s.pns);
+  sdsAnimate("sds_jml_gty", s.gty);
+  sdsAnimate("sds_jml_pty", s.pty);
+  sdsAnimate("sds_jml_gtt", s.gtt);
+  sdsAnimate("sds_jml_ptt", s.ptt);
+
+  sdsRenderVisual(s, isAdmin);
+}
+
+function sdsRenderVisual(s, isAdmin) {
+  var isDark = $('body').hasClass('dark-mode');
+  var textColor = isDark ? '#ffffff' : '#333333';
+  var totalPTK = s.gty + s.pty + s.gtt + s.ptt;
+
+  // Insights
+  var html = "";
+  var gtyRatio = totalPTK > 0 ? (s.gty / totalPTK) * 100 : 0;
+  if (gtyRatio >= 50) {
+    html += `<div class="sultan-alert alert-soft-success"><i class="fas fa-check-circle fa-lg mr-3 mt-1"></i><div><span class="font-weight-bold d-block" style="font-size:13px;">Stabilitas PTK Yayasan</span>Sebesar <strong>${gtyRatio.toFixed(1)}%</strong> pendidik adalah Guru Tetap Yayasan (GTY) ${isAdmin ? '' : 'di sekolah Anda'}.</div></div>`;
+  } else {
+    html += `<div class="sultan-alert alert-soft-warning"><i class="fas fa-exclamation-circle fa-lg mr-3 mt-1"></i><div><span class="font-weight-bold d-block" style="font-size:13px;">Rasio Guru Tetap Rendah</span>GTY hanya sebesar <strong>${gtyRatio.toFixed(1)}%</strong> ${isAdmin ? '' : 'di sekolah Anda'}.</div></div>`;
+  }
+  var totalTendik = s.pty + s.ptt;
+  var avgTendik = s.school > 0 ? (totalTendik / s.school) : 0;
+  html += `<div class="sultan-alert alert-soft-info"><i class="fas fa-info-circle fa-lg mr-3 mt-1"></i><div><span class="font-weight-bold d-block" style="font-size:13px;">${isAdmin ? 'Administrasi Pendukung' : 'Staff Kependidikan'}</span>${isAdmin ? `Rata-rata <strong>${avgTendik.toFixed(1)}</strong> staff PTY/PTT per sekolah Swasta.` : `Sekolah Anda didukung <strong>${totalTendik}</strong> staff kependidikan.`}</div></div>`;
+
+  if (totalPTK === 0) {
+    html += `<div class="sultan-alert alert-soft-warning"><i class="fas fa-exclamation-triangle fa-lg mr-3 mt-1"></i><div><span class="font-weight-bold d-block" style="font-size:13px;">Data Kosong</span>Belum ada data PTK yang tercatat untuk ${isAdmin ? 'SD Swasta' : 'sekolah Anda'}.</div></div>`;
+  }
+  $('#sdsInsightAlerts').html(html);
+
+  // Chart
+  if (SDS_CHART_KEP) SDS_CHART_KEP.destroy();
+  SDS_CHART_KEP = new Chart(document.getElementById('sdsChartKepegawaian').getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels: ['GTY (Tetap)','PTY (Tendik Tetap)','GTT (Honorer)','PTT (Tendik Honorer)'],
+      datasets: [{ data:[s.gty,s.pty,s.gtt,s.ptt], backgroundColor:['#2e7d32','#1a237e','#ffd54f','#757575'], borderWidth:isDark?2:1, borderColor:isDark?'#1e1e2d':'#ffffff' }]
+    },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{ color:textColor, font:{weight:'bold',size:11} } } } }
+  });
+
+  // Tabel Ringkasan
+  var rows = [
+    { label:'Guru Tetap Yayasan (GTY)', jumlah:s.gty, ket:'Guru & KS tetap yayasan' },
+    { label:'Pegawai Tetap Yayasan (PTY)', jumlah:s.pty, ket:'Tenaga kependidikan tetap' },
+    { label:'Guru Tidak Tetap (GTT)', jumlah:s.gtt, ket:'Honorer / kontrak' },
+    { label:'Pegawai Tidak Tetap (PTT)', jumlah:s.ptt, ket:'Tenaga kependidikan honorer' }
+  ];
+  var tbodyHtml = '';
+  rows.forEach(function(r) {
+    var pct = totalPTK > 0 ? ((r.jumlah / totalPTK) * 100).toFixed(1) : '0.0';
+    tbodyHtml += `<tr><td class="font-weight-bold">${r.label}</td><td class="text-center"><strong>${r.jumlah}</strong></td><td class="text-center">${pct}%</td><td class="text-center text-muted">${r.ket}</td></tr>`;
+  });
+  tbodyHtml += `<tr class="table-secondary font-weight-bold"><td><strong>TOTAL PTK</strong></td><td class="text-center"><strong>${totalPTK}</strong></td><td class="text-center">100%</td><td class="text-center text-muted">${s.school} Sekolah Swasta</td></tr>`;
+  $('#sdsRingkasanTbody').html(tbodyHtml);
+}
+
+function sdsAnimate(id, value) {
+  if (typeof SultanUI !== 'undefined') SultanUI.stopLottery('#' + id);
+  var $el = $('#' + id);
+  if ($el.length === 0) return;
+  $({ Counter: 0 }).animate({ Counter: value }, { duration:1000, easing:'swing', step:function(){ $el.text(Math.ceil(this.Counter)); }, complete:function(){ $el.text(value); } });
+}
+
+function sdsApplyChartTheme() {
+  var isDark = $('body').hasClass('dark-mode');
+  var textColor = isDark ? '#ffffff' : '#333333';
+  if (SDS_CHART_KEP) {
+    SDS_CHART_KEP.data.datasets[0].borderWidth = isDark ? 2 : 1;
+    SDS_CHART_KEP.data.datasets[0].borderColor = isDark ? '#1e1e2d' : '#ffffff';
+    if (SDS_CHART_KEP.options.plugins && SDS_CHART_KEP.options.plugins.legend) {
+      if (!SDS_CHART_KEP.options.plugins.legend.labels) SDS_CHART_KEP.options.plugins.legend.labels = {};
+      SDS_CHART_KEP.options.plugins.legend.labels.color = textColor;
+    }
+    SDS_CHART_KEP.update();
+  }
+}
+</script>

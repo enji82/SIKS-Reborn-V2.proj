@@ -1,0 +1,678 @@
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+
+<style>
+  .sultan-alert {
+      padding: 14px 18px;
+      border-radius: 12px;
+      margin-bottom: 14px;
+      border: 1px solid transparent;
+      display: flex;
+      align-items: flex-start;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+  }
+  .alert-soft-danger  { background-color: rgba(220,53,69,0.07)!important; border-color: rgba(220,53,69,0.15)!important; color:#c62828!important; }
+  .alert-soft-warning { background-color: rgba(255,193,7,0.08)!important; border-color: rgba(255,193,7,0.18)!important; color:#e65100!important; }
+  .alert-soft-info    { background-color: rgba(23,162,184,0.08)!important; border-color: rgba(23,162,184,0.18)!important; color:#00838f!important; }
+  .alert-soft-success { background-color: rgba(40,167,69,0.07)!important; border-color: rgba(40,167,69,0.15)!important; color:#2e7d32!important; }
+  .dark-mode .alert-soft-danger  { background-color:rgba(239,83,80,0.1)!important; border-color:rgba(239,83,80,0.22)!important; color:#ef5350!important; }
+  .dark-mode .alert-soft-warning { background-color:rgba(255,202,40,0.09)!important; border-color:rgba(255,202,40,0.22)!important; color:#ffd54f!important; }
+  .dark-mode .alert-soft-info    { background-color:rgba(79,195,247,0.1)!important; border-color:rgba(79,195,247,0.22)!important; color:#4fc3f7!important; }
+  .dark-mode .alert-soft-success { background-color:rgba(102,187,106,0.1)!important; border-color:rgba(102,187,106,0.22)!important; color:#81c784!important; }
+  .btn-outline-maroon { color:#800000; border-color:#800000; background-color:transparent; transition:all 0.2s ease-in-out; font-weight:600; }
+  .btn-outline-maroon:hover, .btn-outline-maroon.active { color:#fff!important; background-color:#800000!important; border-color:#800000!important; }
+  .dark-mode .btn-outline-maroon { color:#ff9999; border-color:#ff9999; }
+  .dark-mode .btn-outline-maroon:hover, .dark-mode .btn-outline-maroon.active { color:#1a1c1e!important; background-color:#ff9999!important; border-color:#ff9999!important; }
+  .dark-mode .bg-warning, .dark-mode .bg-warning i, .dark-mode .bg-warning .text-dark,
+  .dark-mode .bg-warning .fa-exclamation-triangle, .dark-mode .bg-warning .fa-running,
+  .dark-mode .bg-warning .fa-chalkboard-teacher, .dark-mode .bg-warning .fa-user-clock { color:#1a1c1e!important; }
+</style>
+
+<section class="content sultan-page-transition">
+  <div class="container-fluid">
+
+    <!-- Loading State -->
+    <div id="sdnPageLoading" class="text-center py-5">
+      <i class="fas fa-spinner fa-spin fa-2x text-muted mb-3"></i>
+      <p class="text-muted">Memuat data Dashboard SD Negeri...</p>
+    </div>
+
+    <!-- Main Content -->
+    <div id="wrapperSDN" style="display:none;">
+
+      <!-- Header Section -->
+      <div class="d-flex align-items-center mb-4">
+        <div class="bg-maroon mr-3 shadow-sm" style="width:6px;height:28px;border-radius:3px;"></div>
+        <div>
+          <h5 class="font-weight-bold mb-0 text-uppercase" style="letter-spacing:1px;">Rekapitulasi SD Negeri</h5>
+          <small class="text-muted">Data Pendidik &amp; Tenaga Kependidikan Sekolah Dasar Negeri</small>
+        </div>
+      </div>
+
+      <!-- Row 1: KPI Summary Cards -->
+      <div class="row">
+        <div class="col-lg-2 col-md-4 col-6 mb-4">
+          <div class="sultan-metric-card metric-maroon">
+            <div class="inner"><h3 id="sdn_jml_sekolah">0</h3><p>Sekolah</p></div>
+            <div class="icon"><i class="fas fa-building"></i></div>
+          </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-6 mb-4">
+          <div class="sultan-metric-card metric-dark">
+            <div class="inner"><h3 id="sdn_jml_pns">0</h3><p>Total PNS</p></div>
+            <div class="icon"><i class="fas fa-id-card"></i></div>
+          </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-6 mb-4">
+          <div class="sultan-metric-card metric-gold">
+            <div class="inner"><h3 id="sdn_jml_pppk">0</h3><p>Total PPPK</p></div>
+            <div class="icon"><i class="fas fa-user-tie"></i></div>
+          </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-6 mb-4">
+          <div class="sultan-metric-card metric-info">
+            <div class="inner"><h3 id="sdn_jml_pppk_pw">0</h3><p>PPPK PW</p></div>
+            <div class="icon"><i class="fas fa-user-clock"></i></div>
+          </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-6 mb-4">
+          <div class="sultan-metric-card metric-dark">
+            <div class="inner"><h3 id="sdn_jml_nonasn">0</h3><p>Non ASN</p></div>
+            <div class="icon"><i class="fas fa-users"></i></div>
+          </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-6 mb-4">
+          <div class="sultan-metric-card metric-success">
+            <div class="inner"><h3 id="sdn_total_ptk">0</h3><p>Total PTK</p></div>
+            <div class="icon"><i class="fas fa-chart-line"></i></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 2: Chart & Insights -->
+      <div class="row">
+        <div class="col-lg-8 mb-4">
+          <div class="card-sultan h-100 p-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h6 class="font-weight-bold text-sultan-utama m-0 text-uppercase">
+                <i class="fas fa-chart-pie mr-2"></i>Visualisasi Analitik Kepegawaian (SDN)
+              </h6>
+              <div class="btn-group btn-group-sm">
+                <button type="button" class="btn btn-outline-maroon active" id="btnSdnChartKepegawaian" onclick="toggleSdnChart('kepegawaian')">Status Kerja</button>
+                <button type="button" class="btn btn-outline-maroon" id="btnSdnChartJabatan" onclick="toggleSdnChart('jabatan')">Jabatan</button>
+              </div>
+            </div>
+            <div style="position:relative;height:260px;" class="d-flex align-items-center justify-content-center">
+              <canvas id="sdnChartKepegawaian" style="max-height:260px;"></canvas>
+              <canvas id="sdnChartJabatan" style="display:none;max-height:260px;"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-4 mb-4">
+          <div class="card-sultan h-100 p-4">
+            <h6 class="font-weight-bold text-sultan-utama mb-3 text-uppercase">
+              <i class="fas fa-lightbulb mr-2"></i>Analisis &amp; Anomali Operasional
+            </h6>
+            <div id="sdnInsightAlerts" class="sultan-scroll" style="max-height:260px;overflow-y:auto;">
+              <div class="text-muted text-center py-5"><i class="fas fa-spinner fa-spin mr-2"></i>Menganalisis data...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 3: Analisis Kebutuhan Guru -->
+      <div class="row mb-4" id="sdnKebutuhanRow" style="display:none;">
+        <div class="col-12">
+          <div class="card-sultan p-4">
+            <h6 class="font-weight-bold text-sultan-utama mb-3 text-uppercase">
+              <i class="fas fa-balance-scale mr-2"></i>Analisis Kebutuhan &amp; Formasi Guru (SD Negeri)
+            </h6>
+            <div id="sdnKebutuhanLoading" class="text-center text-muted py-3">
+              <i class="fas fa-spinner fa-spin mr-2"></i>Memuat analisis kebutuhan guru...
+            </div>
+            <div id="sdnKebutuhanContent" style="display:none;">
+              <div class="row">
+                <div class="col-md-3 mb-3">
+                  <div class="card-sultan p-3 h-100" style="border-top:3px solid #17a2b8;">
+                    <div class="d-flex align-items-center mb-2">
+                      <div class="bg-info text-white rounded-circle d-flex align-items-center justify-content-center mr-3 shadow-sm" style="width:40px;height:40px;"><i class="fas fa-user-tie"></i></div>
+                      <div>
+                        <small class="text-muted font-weight-bold text-uppercase d-block" style="font-size:10px;letter-spacing:0.5px;">Kepala Sekolah</small>
+                        <h5 class="font-weight-bold mb-0 text-info" id="keb_ks_selisih">0</h5>
+                      </div>
+                    </div>
+                    <div class="d-flex justify-content-between text-muted mt-2 pt-2 border-top" style="font-size:11px;">
+                      <span>Butuh: <strong class="text-dark" id="keb_ks_butuh">0</strong></span>
+                      <span>Riil: <strong class="text-dark" id="keb_ks_riil">0</strong></span>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                  <div class="card-sultan p-3 h-100" style="border-top:3px solid #28a745;">
+                    <div class="d-flex align-items-center mb-2">
+                      <div class="bg-success text-white rounded-circle d-flex align-items-center justify-content-center mr-3 shadow-sm" style="width:40px;height:40px;"><i class="fas fa-chalkboard-teacher"></i></div>
+                      <div>
+                        <small class="text-muted font-weight-bold text-uppercase d-block" style="font-size:10px;letter-spacing:0.5px;">Guru Kelas</small>
+                        <h5 class="font-weight-bold mb-0 text-success" id="keb_gk_selisih">0</h5>
+                      </div>
+                    </div>
+                    <div class="d-flex justify-content-between text-muted mt-2 pt-2 border-top" style="font-size:11px;">
+                      <span>Butuh: <strong class="text-dark" id="keb_gk_butuh">0</strong></span>
+                      <span>Riil: <strong class="text-dark" id="keb_gk_riil">0</strong></span>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                  <div class="card-sultan p-3 h-100" style="border-top:3px solid #ffc107;">
+                    <div class="d-flex align-items-center mb-2">
+                      <div class="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center mr-3 shadow-sm" style="width:40px;height:40px;"><i class="fas fa-running text-dark"></i></div>
+                      <div>
+                        <small class="text-muted font-weight-bold text-uppercase d-block" style="font-size:10px;letter-spacing:0.5px;">Guru PJOK</small>
+                        <h5 class="font-weight-bold mb-0 text-warning" id="keb_pjok_selisih">0</h5>
+                      </div>
+                    </div>
+                    <div class="d-flex justify-content-between text-muted mt-2 pt-2 border-top" style="font-size:11px;">
+                      <span>Butuh: <strong class="text-dark" id="keb_pjok_butuh">0</strong></span>
+                      <span>Riil: <strong class="text-dark" id="keb_pjok_riil">0</strong></span>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                  <div class="card-sultan p-3 h-100" style="border-top:3px solid #6f42c1;">
+                    <div class="d-flex align-items-center mb-2">
+                      <div class="rounded-circle d-flex align-items-center justify-content-center mr-3 shadow-sm" style="width:40px;height:40px;background-color:#6f42c1!important;"><i class="fas fa-book-reader text-white"></i></div>
+                      <div>
+                        <small class="text-muted font-weight-bold text-uppercase d-block" style="font-size:10px;letter-spacing:0.5px;">Guru PAI</small>
+                        <h5 class="font-weight-bold mb-0" id="keb_pai_selisih" style="color:#6f42c1!important;">0</h5>
+                      </div>
+                    </div>
+                    <div class="d-flex justify-content-between text-muted mt-2 pt-2 border-top" style="font-size:11px;">
+                      <span>Butuh: <strong class="text-dark" id="keb_pai_butuh">0</strong></span>
+                      <span>Riil: <strong class="text-dark" id="keb_pai_riil">0</strong></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 4: Collapsible Rincian Jabatan -->
+      <div class="mb-4">
+        <button class="btn btn-outline-maroon btn-block font-weight-bold uppercase py-2 shadow-sm d-flex align-items-center justify-content-center"
+                type="button" data-toggle="collapse" data-target="#sdnDetailsCollapse" aria-expanded="false" style="letter-spacing:0.5px;border-radius:8px;">
+          <i class="fas fa-eye mr-2"></i> Tampilkan / Sembunyikan Rincian Detail Jabatan
+        </button>
+        <div class="collapse mt-3" id="sdnDetailsCollapse">
+          <div class="row">
+            <div class="col-md-3 mb-3">
+              <div class="card-sultan p-3">
+                <div class="d-flex align-items-center">
+                  <div class="bg-maroon text-white rounded-circle d-flex align-items-center justify-content-center mr-3 shadow-sm" style="width:50px;height:50px;"><i class="fas fa-user-graduate fa-lg"></i></div>
+                  <div>
+                    <small class="text-muted font-weight-bold text-uppercase d-block" style="font-size:11px;letter-spacing:0.5px;">Kepala Sekolah</small>
+                    <h4 class="font-weight-bold mb-0" id="sdn_det_ks">0</h4>
+                    <small class="text-muted d-block" style="font-size:10px;margin-top:-2px;">PNS: <b id="sdn_det_ks_pns">0</b> | PPPK: <b id="sdn_det_ks_pppk">0</b></small>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3 mb-3">
+              <div class="card-sultan p-3">
+                <div class="d-flex align-items-center">
+                  <div class="bg-success text-white rounded-circle d-flex align-items-center justify-content-center mr-3 shadow-sm" style="width:50px;height:50px;"><i class="fas fa-chalkboard-teacher fa-lg"></i></div>
+                  <div>
+                    <small class="text-muted font-weight-bold text-uppercase d-block" style="font-size:11px;letter-spacing:0.5px;">Guru PNS</small>
+                    <h4 class="font-weight-bold mb-0" id="sdn_det_g_pns">0</h4>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3 mb-3">
+              <div class="card-sultan p-3">
+                <div class="d-flex align-items-center">
+                  <div class="bg-warning text-white rounded-circle d-flex align-items-center justify-content-center mr-3 shadow-sm" style="width:50px;height:50px;"><i class="fas fa-chalkboard-teacher fa-lg text-dark"></i></div>
+                  <div>
+                    <small class="text-muted font-weight-bold text-uppercase d-block" style="font-size:11px;letter-spacing:0.5px;">Guru PPPK</small>
+                    <h4 class="font-weight-bold mb-0" id="sdn_det_g_pppk">0</h4>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3 mb-3">
+              <div class="card-sultan p-3">
+                <div class="d-flex align-items-center">
+                  <div class="bg-info text-white rounded-circle d-flex align-items-center justify-content-center mr-3 shadow-sm" style="width:50px;height:50px;"><i class="fas fa-chalkboard-teacher fa-lg"></i></div>
+                  <div>
+                    <small class="text-muted font-weight-bold text-uppercase d-block" style="font-size:11px;letter-spacing:0.5px;">Guru PPPK PW</small>
+                    <h4 class="font-weight-bold mb-0" id="sdn_det_g_pppk_pw">0</h4>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md mb-3">
+              <div class="card-sultan p-3">
+                <div class="d-flex align-items-center">
+                  <div class="bg-danger text-white rounded-circle d-flex align-items-center justify-content-center mr-3 shadow-sm" style="width:50px;height:50px;"><i class="fas fa-chalkboard-teacher fa-lg"></i></div>
+                  <div>
+                    <small class="text-muted font-weight-bold text-uppercase d-block" style="font-size:11px;letter-spacing:0.5px;">Guru GTT (Non ASN)</small>
+                    <h4 class="font-weight-bold mb-0" id="sdn_det_g_gtt">0</h4>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md mb-3">
+              <div class="card-sultan p-3">
+                <div class="d-flex align-items-center">
+                  <div class="text-white rounded-circle d-flex align-items-center justify-content-center mr-3 shadow-sm" style="width:50px;height:50px;background-color:#1a237e!important;"><i class="fas fa-user-shield fa-lg"></i></div>
+                  <div>
+                    <small class="text-muted font-weight-bold text-uppercase d-block" style="font-size:11px;letter-spacing:0.5px;">Tendik PNS</small>
+                    <h4 class="font-weight-bold mb-0" id="sdn_det_t_pns">0</h4>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md mb-3">
+              <div class="card-sultan p-3">
+                <div class="d-flex align-items-center">
+                  <div class="bg-warning text-white rounded-circle d-flex align-items-center justify-content-center mr-3 shadow-sm" style="width:50px;height:50px;"><i class="fas fa-user-clock fa-lg text-dark"></i></div>
+                  <div>
+                    <small class="text-muted font-weight-bold text-uppercase d-block" style="font-size:11px;letter-spacing:0.5px;">Tendik PPPK</small>
+                    <h4 class="font-weight-bold mb-0" id="sdn_det_t_pppk">0</h4>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md mb-3">
+              <div class="card-sultan p-3">
+                <div class="d-flex align-items-center">
+                  <div class="bg-info text-white rounded-circle d-flex align-items-center justify-content-center mr-3 shadow-sm" style="width:50px;height:50px;"><i class="fas fa-user-clock fa-lg"></i></div>
+                  <div>
+                    <small class="text-muted font-weight-bold text-uppercase d-block" style="font-size:11px;letter-spacing:0.5px;">Tendik PPPK PW</small>
+                    <h4 class="font-weight-bold mb-0" id="sdn_det_t_pppk_pw">0</h4>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md mb-3">
+              <div class="card-sultan p-3">
+                <div class="d-flex align-items-center">
+                  <div class="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center mr-3 shadow-sm" style="width:50px;height:50px;"><i class="fas fa-users fa-lg"></i></div>
+                  <div>
+                    <small class="text-muted font-weight-bold text-uppercase d-block" style="font-size:11px;letter-spacing:0.5px;">Tendik PTT (Non ASN)</small>
+                    <h4 class="font-weight-bold mb-0" id="sdn_det_t_ptt">0</h4>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 5: Proyeksi Pensiun -->
+      <div class="mt-2">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <div class="d-flex align-items-center">
+            <div class="bg-danger mr-3 shadow-sm" style="width:6px;height:24px;border-radius:3px;"></div>
+            <h6 class="font-weight-bold mb-0 uppercase" style="letter-spacing:1px;">PROYEKSI PENSIUN SD NEGERI</h6>
+          </div>
+          <div class="btn-group btn-group-sm">
+            <button type="button" class="btn btn-outline-maroon active" id="btnSdnPensiunTahunIni" onclick="sdnTogglePensiunTahun(0)">Tahun Ini</button>
+            <button type="button" class="btn btn-outline-maroon" id="btnSdnPensiunTahunDepan" onclick="sdnTogglePensiunTahun(1)">Tahun Depan</button>
+          </div>
+        </div>
+        <div id="sdnPensiunLoading" class="text-center text-muted py-4">
+          <i class="fas fa-spinner fa-spin mr-2"></i>Memuat data proyeksi pensiun...
+        </div>
+        <div id="sdnPensiunContent" style="display:none;">
+          <div class="row">
+            <div class="col-md-6 mb-4">
+              <div class="card-sultan p-4 h-100" style="border-left:4px solid #c62828;">
+                <div class="d-flex align-items-center">
+                  <div class="bg-danger text-white rounded-circle d-flex align-items-center justify-content-center mr-3 shadow-sm" style="width:56px;height:56px;"><i class="fas fa-calendar-times fa-lg"></i></div>
+                  <div class="flex-grow-1">
+                    <small class="text-muted font-weight-bold text-uppercase d-block" style="font-size:11px;letter-spacing:0.5px;">Pensiun Tahun <span id="sdnPensiunTahunLabel">2026</span></small>
+                    <h3 class="font-weight-bold mb-0 text-danger" id="sdnPensiunTahunIni">0</h3>
+                    <small class="text-muted d-block" style="font-size:11px;margin-top:2px;">Guru/KS: <b id="sdnPensiunTahunGuru">0</b> &nbsp;|&nbsp; Tendik: <b id="sdnPensiunTahunTendik">0</b></small>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6 mb-4">
+              <div class="card-sultan p-4 h-100" style="border-left:4px solid #e65100;">
+                <div class="d-flex align-items-center">
+                  <div class="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center mr-3 shadow-sm" style="width:56px;height:56px;"><i class="fas fa-exclamation-triangle fa-lg"></i></div>
+                  <div class="flex-grow-1">
+                    <small class="text-muted font-weight-bold text-uppercase d-block" style="font-size:11px;letter-spacing:0.5px;">Pensiun Bulan <span id="sdnPensiunBulanLabel">Depan</span></small>
+                    <h3 class="font-weight-bold mb-0" style="color:#e65100;" id="sdnPensiunBulanDepan">0</h3>
+                    <small class="text-muted d-block" style="font-size:11px;margin-top:2px;">Guru/KS: <b id="sdnPensiunBulanGuru">0</b> &nbsp;|&nbsp; Tendik: <b id="sdnPensiunBulanTendik">0</b></small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-12 mb-4">
+              <div class="card-sultan p-4">
+                <h6 class="font-weight-bold text-sultan-utama mb-3 text-uppercase">
+                  <i class="fas fa-chart-bar mr-2"></i>Timeline Pensiun Per Bulan (<span id="sdnPensiunChartTahunLabel">2026</span>)
+                </h6>
+                <div style="position:relative;height:220px;">
+                  <canvas id="sdnChartPensiun" style="max-height:220px;"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="mb-4">
+            <button class="btn btn-outline-maroon btn-block font-weight-bold uppercase py-2 shadow-sm d-flex align-items-center justify-content-center"
+                    type="button" data-toggle="collapse" data-target="#sdnPensiunDetailCollapse" aria-expanded="false" style="letter-spacing:0.5px;border-radius:8px;">
+              <i class="fas fa-list-alt mr-2"></i> Tampilkan / Sembunyikan Daftar Nama Pensiun
+            </button>
+            <div class="collapse mt-3" id="sdnPensiunDetailCollapse">
+              <div class="card-sultan p-3">
+                <div class="sultan-scroll" style="max-height:400px;overflow-y:auto;">
+                  <table class="table table-sm table-striped table-hover table-premium table-sultan-compact mb-0">
+                    <thead class="thead-sultan-premium">
+                      <tr>
+                        <th class="text-center" style="width:40px;">No</th>
+                        <th>Nama Lengkap</th>
+                        <th>NIP</th>
+                        <th>Unit Kerja</th>
+                        <th class="text-center">Jabatan</th>
+                        <th class="text-center">Status</th>
+                        <th class="text-center">Tgl Lahir</th>
+                        <th class="text-center">BUP</th>
+                        <th class="text-center">Pensiun</th>
+                      </tr>
+                    </thead>
+                    <tbody id="sdnPensiunTabelBody">
+                      <tr><td colspan="9" class="text-center text-muted py-3">Memuat data...</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /wrapperSDN -->
+  </div>
+</section>
+
+<script>
+// ======================================================================
+// DASHBOARD SD NEGERI — ISOLASI VARIABEL
+// ======================================================================
+var DASHN_IS_ADMIN   = false;
+var DASHN_USER_NPSN  = "";
+var SDN_CHART_KEP    = null;
+var SDN_CHART_JAB    = null;
+var SDN_CHART_PEN    = null;
+var SDN_PEN_RAW      = null;
+var SDN_PEN_NPSN     = null;
+var SDN_PEN_OFFSET   = 0;
+var NAMA_BULAN_SDN   = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+var NAMA_BULAN_FULL_SDN = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+
+$(document).ready(function() {
+  try {
+    var user = getSesiUser() || {};
+    DASHN_IS_ADMIN  = (user.role || "").toLowerCase().includes("admin");
+    DASHN_USER_NPSN = user.npsn || user.username || "";
+  } catch(e) { DASHN_IS_ADMIN = false; DASHN_USER_NPSN = ""; }
+
+  sdnGatekeeper();
+
+  $(document).off('change.dashsdn', '#sultan_darkModeToggle').on('change.dashsdn', '#sultan_darkModeToggle', function() {
+    setTimeout(sdnApplyChartTheme, 100);
+  });
+});
+
+function sdnGatekeeper() {
+  if (typeof SultanUI !== 'undefined') {
+    SultanUI.startLottery('#sdn_jml_sekolah, #sdn_jml_pns, #sdn_jml_pppk, #sdn_jml_pppk_pw, #sdn_jml_nonasn, #sdn_total_ptk', 3);
+  }
+
+  if (DASHN_IS_ADMIN) {
+    $('#sdnPageLoading').hide();
+    $('#wrapperSDN, #sdnKebutuhanRow').fadeIn();
+    google.script.run.withSuccessHandler(function(res) { sdnCalculate(res, true); }).getDataKeadaanGTK();
+    google.script.run.withSuccessHandler(function(res) { sdnCalculatePensiun(res); }).getDataProyeksiPensiunSDN();
+    google.script.run.withSuccessHandler(function(res) { sdnCalculateKebutuhan(res, true); }).getDataKebutuhanGuru();
+  } else {
+    if (!DASHN_USER_NPSN) {
+      $('#sdnPageLoading').hide();
+      Sultan.alert('error', 'Akses Ditolak', 'NPSN tidak ditemukan pada sesi login Anda.');
+      return;
+    }
+    google.script.run.withSuccessHandler(function(res) {
+      $('#sdnPageLoading').hide();
+      if (!res || !Array.isArray(res)) res = [];
+      var myData = res.filter(function(r) {
+        return String(r && r[1] || "").trim().toUpperCase() === String(DASHN_USER_NPSN).trim().toUpperCase();
+      });
+      if (myData.length > 0) {
+        $('#wrapperSDN, #sdnKebutuhanRow').fadeIn();
+        sdnCalculate(myData, false);
+        google.script.run.withSuccessHandler(function(rp) { sdnCalculatePensiun(rp, DASHN_USER_NPSN); }).getDataProyeksiPensiunSDN();
+        google.script.run.withSuccessHandler(function(rk) { sdnCalculateKebutuhan(rk, false, DASHN_USER_NPSN); }).getDataKebutuhanGuru();
+      } else {
+        $('#wrapperSDN').fadeIn();
+        $('#sdnInsightAlerts').html('<div class="sultan-alert alert-soft-info"><i class="fas fa-info-circle fa-lg mr-3 mt-1"></i><div><span class="font-weight-bold d-block">Tidak Ada Data</span>Data SD Negeri tidak ditemukan untuk sekolah Anda.</div></div>');
+        ['sdn_jml_sekolah','sdn_jml_pns','sdn_jml_pppk','sdn_jml_pppk_pw','sdn_jml_nonasn','sdn_total_ptk'].forEach(function(id){ $('#'+id).text('0'); });
+        $('#sdnPensiunLoading').hide();
+        $('#sdnPensiunContent').show();
+        $('#sdnPensiunTabelBody').html('<tr><td colspan="9" class="text-center text-muted py-3">Tidak ada data pensiun untuk sekolah Anda.</td></tr>');
+      }
+    }).getDataKeadaanGTK();
+  }
+}
+
+function toggleSdnChart(type) {
+  if (type === 'kepegawaian') {
+    $('#btnSdnChartKepegawaian').addClass('active'); $('#btnSdnChartJabatan').removeClass('active');
+    $('#sdnChartKepegawaian').show(); $('#sdnChartJabatan').hide();
+  } else {
+    $('#btnSdnChartKepegawaian').removeClass('active'); $('#btnSdnChartJabatan').addClass('active');
+    $('#sdnChartKepegawaian').hide(); $('#sdnChartJabatan').show();
+  }
+}
+
+function sdnCalculate(data, isAdmin) {
+  if (!data || data.length === 0) { $('[id^="sdn_"]').text("0"); return; }
+  var stats = { jml_sekolah: isAdmin ? data.length : 1, ks:0, ks_pns:0, ks_pppk:0, g_pns:0, g_pppk:0, g_pppk_pw:0, g_gtt:0, t_pns:0, t_pppk:0, t_pppk_pw:0, t_ptt:0 };
+  data.forEach(function(row) {
+    if (!row) return;
+    var kp = parseInt(row[49])||0, kk = parseInt(row[53])||0;
+    stats.ks_pns += kp; stats.ks_pppk += kk; stats.ks += (kp+kk);
+    stats.g_pns     += parseInt(row[50])||0; stats.g_pppk    += parseInt(row[54])||0;
+    stats.g_pppk_pw += parseInt(row[57])||0; stats.g_gtt     += parseInt(row[60])||0;
+    stats.t_pns     += parseInt(row[51])||0; stats.t_pppk    += parseInt(row[55])||0;
+    stats.t_pppk_pw += parseInt(row[58])||0; stats.t_ptt     += parseInt(row[61])||0;
+  });
+  var total_pns    = stats.ks_pns + stats.g_pns + stats.t_pns;
+  var total_pppk   = stats.g_pppk + stats.t_pppk + stats.ks_pppk;
+  var total_pw     = stats.g_pppk_pw + stats.t_pppk_pw;
+  var total_nonasn = stats.g_gtt + stats.t_ptt;
+  var total_all    = total_pns + total_pppk + total_pw + total_nonasn;
+
+  sdnAnimate("sdn_jml_sekolah", stats.jml_sekolah); sdnAnimate("sdn_jml_pns", total_pns);
+  sdnAnimate("sdn_jml_pppk", total_pppk); sdnAnimate("sdn_jml_pppk_pw", total_pw);
+  sdnAnimate("sdn_jml_nonasn", total_nonasn); sdnAnimate("sdn_total_ptk", total_all);
+  sdnAnimate("sdn_det_ks", stats.ks); sdnAnimate("sdn_det_ks_pns", stats.ks_pns); sdnAnimate("sdn_det_ks_pppk", stats.ks_pppk);
+  sdnAnimate("sdn_det_g_pns", stats.g_pns); sdnAnimate("sdn_det_g_pppk", stats.g_pppk);
+  sdnAnimate("sdn_det_g_pppk_pw", stats.g_pppk_pw); sdnAnimate("sdn_det_g_gtt", stats.g_gtt);
+  sdnAnimate("sdn_det_t_pns", stats.t_pns); sdnAnimate("sdn_det_t_pppk", stats.t_pppk);
+  sdnAnimate("sdn_det_t_pppk_pw", stats.t_pppk_pw); sdnAnimate("sdn_det_t_ptt", stats.t_ptt);
+  sdnRenderCharts(total_pns, total_pppk, total_pw, total_nonasn, stats, total_all, isAdmin);
+}
+
+function sdnRenderCharts(pns, pppk, pw, nonasn, stats, totalAll, isAdmin) {
+  var isDark = $('body').hasClass('dark-mode');
+  var textColor = isDark ? '#ffffff' : '#333333';
+  var gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)';
+
+  // Insights
+  var html = "";
+  if (stats.jml_sekolah > stats.ks) {
+    html += `<div class="sultan-alert alert-soft-danger"><i class="fas fa-exclamation-triangle fa-lg mr-3 mt-1"></i><div><span class="font-weight-bold d-block" style="font-size:13px;">Kekosongan Kepala Sekolah</span>${isAdmin ? `Terdapat <strong>${stats.jml_sekolah - stats.ks} sekolah</strong> tanpa Kepala Sekolah definitif.` : 'Sekolah Anda tidak memiliki Kepala Sekolah definitif.'}</div></div>`;
+  } else {
+    html += `<div class="sultan-alert alert-soft-success"><i class="fas fa-check-circle fa-lg mr-3 mt-1"></i><div><span class="font-weight-bold d-block" style="font-size:13px;">Posisi Kepala Sekolah Terisi</span>${isAdmin ? 'Semua SD Negeri memiliki Kepala Sekolah definitif.' : 'Sekolah Anda memiliki Kepala Sekolah definitif.'}</div></div>`;
+  }
+  var nonAsnRatio = totalAll > 0 ? (nonasn / totalAll) * 100 : 0;
+  if (nonAsnRatio > 30) {
+    html += `<div class="sultan-alert alert-soft-warning"><i class="fas fa-user-shield fa-lg mr-3 mt-1"></i><div><span class="font-weight-bold d-block" style="font-size:13px;">Rasio Non-ASN Tinggi</span>Pegawai Non-ASN menyusun <strong>${nonAsnRatio.toFixed(1)}%</strong> dari total ${isAdmin ? 'SDN' : 'sekolah Anda'}.</div></div>`;
+  } else {
+    html += `<div class="sultan-alert alert-soft-success"><i class="fas fa-users-cog fa-lg mr-3 mt-1"></i><div><span class="font-weight-bold d-block" style="font-size:13px;">Kekuatan ASN Optimal</span>Persentase ASN (PNS &amp; PPPK) <strong>${(100-nonAsnRatio).toFixed(1)}%</strong> dari total pegawai.</div></div>`;
+  }
+  var totalTendik = stats.t_pns + stats.t_pppk + stats.t_ptt + (stats.t_pppk_pw||0);
+  var avgTendik   = stats.jml_sekolah > 0 ? (totalTendik / stats.jml_sekolah) : 0;
+  html += `<div class="sultan-alert alert-soft-info"><i class="fas fa-info-circle fa-lg mr-3 mt-1"></i><div><span class="font-weight-bold d-block" style="font-size:13px;">${isAdmin ? 'Rata-rata Tendik Pendukung' : 'Staff Kependidikan'}</span>${isAdmin ? `Rata-rata <strong>${avgTendik.toFixed(1)}</strong> Tendik per sekolah.` : `Sekolah Anda didukung <strong>${totalTendik}</strong> Tendik.`}</div></div>`;
+  $('#sdnInsightAlerts').html(html);
+
+  // Chart Kepegawaian
+  if (SDN_CHART_KEP) SDN_CHART_KEP.destroy();
+  SDN_CHART_KEP = new Chart(document.getElementById('sdnChartKepegawaian').getContext('2d'), {
+    type: 'doughnut',
+    data: { labels: ['PNS','PPPK','PPPK PW','Non ASN'], datasets: [{ data: [pns,pppk,pw,nonasn], backgroundColor: ['#c62828','#ffd54f','#4fc3f7','#757575'], borderWidth: isDark?2:1, borderColor: isDark?'#1e1e2d':'#ffffff' }] },
+    options: { responsive:true, maintainAspectRatio:false, plugins: { legend: { position:'bottom', labels: { color:textColor, font:{ weight:'bold', size:11 } } } } }
+  });
+
+  // Chart Jabatan
+  var totalGuru = stats.g_pns + stats.g_pppk + stats.g_pppk_pw + stats.g_gtt;
+  if (SDN_CHART_JAB) SDN_CHART_JAB.destroy();
+  SDN_CHART_JAB = new Chart(document.getElementById('sdnChartJabatan').getContext('2d'), {
+    type: 'bar',
+    data: { labels: ['Kepala Sekolah','Total Guru','Total Tendik'], datasets: [{ label:'Jumlah PTK', data: [stats.ks, totalGuru, totalTendik], backgroundColor: ['#800000','#2e7d32','#1a237e'], borderRadius:6 }] },
+    options: { indexAxis:'y', responsive:true, maintainAspectRatio:false, scales: { x:{ grid:{color:gridColor}, ticks:{color:textColor,font:{weight:'bold'}} }, y:{ grid:{display:false}, ticks:{color:textColor,font:{weight:'bold'}} } }, plugins: { legend:{display:false} } }
+  });
+}
+
+function sdnTogglePensiunTahun(offset) {
+  if (offset === 0) { $('#btnSdnPensiunTahunIni').addClass('active'); $('#btnSdnPensiunTahunDepan').removeClass('active'); }
+  else { $('#btnSdnPensiunTahunIni').removeClass('active'); $('#btnSdnPensiunTahunDepan').addClass('active'); }
+  sdnCalculatePensiun(undefined, undefined, offset);
+}
+
+function sdnCalculatePensiun(jsonStr, filterNpsn, tahunOffset) {
+  if (jsonStr !== undefined) SDN_PEN_RAW = jsonStr;
+  if (filterNpsn !== undefined) SDN_PEN_NPSN = filterNpsn;
+  if (tahunOffset !== undefined) SDN_PEN_OFFSET = tahunOffset;
+  var offset = SDN_PEN_OFFSET || 0;
+  $('#sdnPensiunLoading').hide();
+  var data = [];
+  try { data = typeof SDN_PEN_RAW === 'string' ? JSON.parse(SDN_PEN_RAW) : SDN_PEN_RAW; } catch(e) { data = []; }
+  if (!data || !Array.isArray(data) || data.length === 0) {
+    $('#sdnPensiunContent').show();
+    $('#sdnPensiunTabelBody').html('<tr><td colspan="9" class="text-center text-muted py-3">Tidak ada data pensiun.</td></tr>');
+    return;
+  }
+  if (SDN_PEN_NPSN) {
+    var nu = String(SDN_PEN_NPSN).trim().toUpperCase();
+    data = data.filter(function(d){ return String(d.unit||'').trim().toUpperCase().indexOf(nu) !== -1; });
+  }
+  var now = new Date(), tahunIni = now.getFullYear(), targetTahun = tahunIni + offset;
+  var bulanIni = now.getMonth(), bulanDepan = bulanIni + 1, tahunBulanDepan = targetTahun;
+  if (bulanDepan > 11) { bulanDepan = 0; tahunBulanDepan++; }
+  $('#sdnPensiunTahunLabel').text(targetTahun);
+  $('#sdnPensiunChartTahunLabel').text(targetTahun);
+  $('#sdnPensiunBulanLabel').text(NAMA_BULAN_FULL_SDN[bulanDepan] + ' ' + tahunBulanDepan);
+  function isGuruKS(jab) { var j = String(jab||'').toUpperCase(); return j.indexOf('GURU')!==-1||j.indexOf('KEPALA SEKOLAH')!==-1||j.indexOf('KS')!==-1; }
+  var listPensiun = [], perBulan = [0,0,0,0,0,0,0,0,0,0,0,0];
+  data.forEach(function(ptk) {
+    if (!ptk.tgl_lahir) return;
+    var p = ptk.tgl_lahir.split('-'); if (p.length < 3) return;
+    var tl = parseInt(p[0]), bl = parseInt(p[1])-1, dl = parseInt(p[2]);
+    if (isNaN(tl)||isNaN(bl)) return;
+    var bup = isGuruKS(ptk.jabatan) ? 60 : 58;
+    var tp = tl + bup, bp = bl + 1;
+    if (bp > 11) { bp = 0; tp++; }
+    if (tp === targetTahun) {
+      perBulan[bp]++;
+      listPensiun.push({ nama:ptk.nama, nip:ptk.nip||'-', unit:ptk.unit, jabatan:ptk.jabatan, status_peg:ptk.status_peg, tgl_lahir: dl+'/'+(bl+1<10?'0':'')+(bl+1)+'/'+tl, bup:bup, bulan_pensiun:bp, pensiun_label:NAMA_BULAN_FULL_SDN[bp]+' '+tp, isGuruKS:isGuruKS(ptk.jabatan) });
+    }
+  });
+  listPensiun.sort(function(a,b){ return a.bulan_pensiun - b.bulan_pensiun; });
+  var totalT = listPensiun.length, guruT = listPensiun.filter(function(p){ return p.isGuruKS; }).length;
+  var listBD = listPensiun.filter(function(p){ return p.bulan_pensiun===bulanDepan; });
+  var totalBD = listBD.length, guruBD = listBD.filter(function(p){ return p.isGuruKS; }).length;
+  sdnAnimate('sdnPensiunTahunIni', totalT); $('#sdnPensiunTahunGuru').text(guruT); $('#sdnPensiunTahunTendik').text(totalT-guruT);
+  sdnAnimate('sdnPensiunBulanDepan', totalBD); $('#sdnPensiunBulanGuru').text(guruBD); $('#sdnPensiunBulanTendik').text(totalBD-guruBD);
+  sdnRenderPensiunChart(perBulan, offset > 0 ? -1 : bulanIni);
+  var tHtml = '';
+  if (listPensiun.length === 0) { tHtml = '<tr><td colspan="9" class="text-center text-muted py-3">Tidak ada pensiun pada tahun '+targetTahun+'.</td></tr>'; }
+  else { listPensiun.forEach(function(p,i){ var ip=offset>0?false:(p.bulan_pensiun<bulanIni), im=offset>0?false:(p.bulan_pensiun===bulanIni); var rc=ip?'class="text-muted"':(im?'style="background-color:rgba(220,53,69,0.08);"':''); tHtml+='<tr '+rc+'><td class="text-center">'+(i+1)+'</td><td class="font-weight-bold">'+p.nama+'</td><td>'+p.nip+'</td><td>'+p.unit+'</td><td class="text-center">'+p.jabatan+'</td><td class="text-center"><span class="sultan-badge sultan-badge-'+(p.status_peg==='PNS'?'danger':'warning')+'">'+p.status_peg+'</span></td><td class="text-center">'+p.tgl_lahir+'</td><td class="text-center"><b>'+p.bup+'</b></td><td class="text-center">'+(ip?'<s>'+p.pensiun_label+'</s>':'<b>'+p.pensiun_label+'</b>')+'</td></tr>'; }); }
+  $('#sdnPensiunTabelBody').html(tHtml);
+  $('#sdnPensiunContent').fadeIn();
+}
+
+function sdnRenderPensiunChart(perBulan, bulanSekarang) {
+  var isDark = $('body').hasClass('dark-mode');
+  var textColor = isDark ? '#ffffff' : '#333333';
+  var gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)';
+  var bgColors = perBulan.map(function(_,i){ return i<bulanSekarang?(isDark?'#555555':'#bdbdbd'):(i===bulanSekarang?'#c62828':(i===bulanSekarang+1?'#e65100':'#800000')); });
+  if (SDN_CHART_PEN) SDN_CHART_PEN.destroy();
+  SDN_CHART_PEN = new Chart(document.getElementById('sdnChartPensiun').getContext('2d'), {
+    type: 'bar',
+    data: { labels: NAMA_BULAN_SDN, datasets: [{ label:'Jumlah Pensiun', data:perBulan, backgroundColor:bgColors, borderRadius:6, barPercentage:0.7 }] },
+    options: { responsive:true, maintainAspectRatio:false, scales: { x:{ grid:{display:false}, ticks:{color:textColor,font:{weight:'bold',size:12}} }, y:{ beginAtZero:true, grid:{color:gridColor}, ticks:{color:textColor,font:{weight:'bold'},stepSize:1,precision:0} } }, plugins: { legend:{display:false}, tooltip:{ callbacks:{ label:function(c){ return c.parsed.y+' orang'; } } } } }
+  });
+}
+
+function sdnCalculateKebutuhan(data, isAdmin, filterNpsn) {
+  $('#sdnKebutuhanLoading').hide();
+  if (!data || !Array.isArray(data) || data.length === 0) { $('#sdnKebutuhanRow').hide(); return; }
+  var filtered = filterNpsn ? data.filter(function(d){ return String(d[1]||'').trim().toUpperCase() === String(filterNpsn).trim().toUpperCase(); }) : data;
+  var s = { ks_butuh:0,ks_pns:0,ks_pppk:0,ks_selisih:0, gk_butuh:0,gk_pns:0,gk_pppk:0,gk_pw:0,gk_non_asn1:0,gk_non_asn2:0,gk_selisih:0, pjok_butuh:0,pjok_pns:0,pjok_pppk:0,pjok_pw:0,pjok_non_asn1:0,pjok_non_asn2:0,pjok_selisih:0, pai_butuh:0,pai_pns:0,pai_pppk:0,pai_pw:0,pai_non_asn1:0,pai_non_asn2:0,pai_selisih:0 };
+  filtered.forEach(function(row) {
+    if (!row) return;
+    s.ks_butuh+=parseInt(row[4])||0; s.ks_pns+=parseInt(row[5])||0; s.ks_pppk+=parseInt(row[6])||0; s.ks_selisih+=parseInt(row[7])||0;
+    s.gk_butuh+=parseInt(row[9])||0; s.gk_pns+=parseInt(row[10])||0; s.gk_pppk+=parseInt(row[11])||0; s.gk_pw+=parseInt(row[12])||0; s.gk_non_asn1+=parseInt(row[13])||0; s.gk_non_asn2+=parseInt(row[14])||0; s.gk_selisih+=parseInt(row[15])||0;
+    s.pjok_butuh+=parseInt(row[17])||0; s.pjok_pns+=parseInt(row[18])||0; s.pjok_pppk+=parseInt(row[19])||0; s.pjok_pw+=parseInt(row[20])||0; s.pjok_non_asn1+=parseInt(row[21])||0; s.pjok_non_asn2+=parseInt(row[22])||0; s.pjok_selisih+=parseInt(row[23])||0;
+    s.pai_butuh+=parseInt(row[25])||0; s.pai_pns+=parseInt(row[26])||0; s.pai_pppk+=parseInt(row[27])||0; s.pai_pw+=parseInt(row[28])||0; s.pai_non_asn1+=parseInt(row[29])||0; s.pai_non_asn2+=parseInt(row[30])||0; s.pai_selisih+=parseInt(row[31])||0;
+  });
+  function setKeb(id, val) { var pref = val>=0?'+':''; $('#keb_'+id+'_selisih').text(pref+val).removeClass('text-danger text-primary text-dark').addClass(val<0?'text-danger':(val>0?'text-primary':'text-dark')); }
+  var ks_r = s.ks_pns+s.ks_pppk, gk_r = s.gk_pns+s.gk_pppk+s.gk_pw+s.gk_non_asn1+s.gk_non_asn2, pjok_r = s.pjok_pns+s.pjok_pppk+s.pjok_pw+s.pjok_non_asn1+s.pjok_non_asn2, pai_r = s.pai_pns+s.pai_pppk+s.pai_pw+s.pai_non_asn1+s.pai_non_asn2;
+  $('#keb_ks_butuh').text(s.ks_butuh); $('#keb_ks_riil').text(ks_r); setKeb('ks', s.ks_selisih);
+  $('#keb_gk_butuh').text(s.gk_butuh); $('#keb_gk_riil').text(gk_r); setKeb('gk', s.gk_selisih);
+  $('#keb_pjok_butuh').text(s.pjok_butuh); $('#keb_pjok_riil').text(pjok_r); setKeb('pjok', s.pjok_selisih);
+  $('#keb_pai_butuh').text(s.pai_butuh); $('#keb_pai_riil').text(pai_r); setKeb('pai', s.pai_selisih);
+  $('#sdnKebutuhanContent').fadeIn();
+
+  // Anomali di insight panel
+  var anomali = "";
+  if (isAdmin) {
+    if (s.ks_selisih < 0)   anomali += `<div class="sultan-alert alert-soft-danger"><i class="fas fa-exclamation-triangle fa-lg mr-3 mt-1"></i><div><span class="font-weight-bold d-block" style="font-size:13px;">Kekurangan Kepala Sekolah</span>Kecamatan kekurangan <strong>${Math.abs(s.ks_selisih)} KS</strong> definitif.</div></div>`;
+    if (s.gk_selisih < 0)   anomali += `<div class="sultan-alert alert-soft-danger"><i class="fas fa-exclamation-circle fa-lg mr-3 mt-1"></i><div><span class="font-weight-bold d-block" style="font-size:13px;">Defisit Guru Kelas</span>Kekurangan <strong>${Math.abs(s.gk_selisih)} Guru Kelas</strong> di seluruh SDN.</div></div>`;
+    else if (s.gk_selisih > 0) anomali += `<div class="sultan-alert alert-soft-info"><i class="fas fa-info-circle fa-lg mr-3 mt-1"></i><div><span class="font-weight-bold d-block" style="font-size:13px;">Surplus Guru Kelas</span>Kelebihan formasi guru kelas <strong>${s.gk_selisih} orang</strong>.</div></div>`;
+    if (s.pjok_selisih < 0) anomali += `<div class="sultan-alert alert-soft-warning"><i class="fas fa-running fa-lg mr-3 mt-1"></i><div><span class="font-weight-bold d-block" style="font-size:13px;">Defisit Guru PJOK</span>Kekurangan <strong>${Math.abs(s.pjok_selisih)} Guru PJOK</strong>.</div></div>`;
+    if (s.pai_selisih < 0)  anomali += `<div class="sultan-alert alert-soft-warning"><i class="fas fa-book fa-lg mr-3 mt-1"></i><div><span class="font-weight-bold d-block" style="font-size:13px;">Defisit Guru PAI</span>Kekurangan <strong>${Math.abs(s.pai_selisih)} Guru PAI</strong>.</div></div>`;
+  } else {
+    if (s.ks_selisih < 0)   anomali += `<div class="sultan-alert alert-soft-danger"><i class="fas fa-exclamation-triangle fa-lg mr-3 mt-1"></i><div><span class="font-weight-bold d-block" style="font-size:13px;">Kekurangan Kepala Sekolah</span>Sekolah Anda kekurangan <strong>${Math.abs(s.ks_selisih)} KS</strong>.</div></div>`;
+    if (s.gk_selisih < 0)   anomali += `<div class="sultan-alert alert-soft-danger"><i class="fas fa-exclamation-circle fa-lg mr-3 mt-1"></i><div><span class="font-weight-bold d-block" style="font-size:13px;">Kekurangan Guru Kelas</span>Sekolah Anda kekurangan <strong>${Math.abs(s.gk_selisih)} Guru Kelas</strong>.</div></div>`;
+    if (s.pjok_selisih < 0) anomali += `<div class="sultan-alert alert-soft-warning"><i class="fas fa-running fa-lg mr-3 mt-1"></i><div><span class="font-weight-bold d-block" style="font-size:13px;">Kekurangan Guru PJOK</span>Sekolah Anda kekurangan <strong>${Math.abs(s.pjok_selisih)} Guru PJOK</strong>.</div></div>`;
+    if (s.pai_selisih < 0)  anomali += `<div class="sultan-alert alert-soft-warning"><i class="fas fa-book fa-lg mr-3 mt-1"></i><div><span class="font-weight-bold d-block" style="font-size:13px;">Kekurangan Guru PAI</span>Sekolah Anda kekurangan <strong>${Math.abs(s.pai_selisih)} Guru PAI</strong>.</div></div>`;
+  }
+  if (anomali) $('#sdnInsightAlerts').prepend(anomali);
+}
+
+function sdnAnimate(id, value) {
+  if (typeof SultanUI !== 'undefined') SultanUI.stopLottery('#' + id);
+  var $el = $('#' + id);
+  if ($el.length === 0) return;
+  $({ Counter: 0 }).animate({ Counter: value }, { duration:1000, easing:'swing', step:function(){ $el.text(Math.ceil(this.Counter)); }, complete:function(){ $el.text(value); } });
+}
+
+function sdnApplyChartTheme() {
+  var isDark = $('body').hasClass('dark-mode');
+  var textColor = isDark ? '#ffffff' : '#333333';
+  var gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)';
+  if (SDN_CHART_KEP) { SDN_CHART_KEP.data.datasets[0].borderWidth=isDark?2:1; SDN_CHART_KEP.data.datasets[0].borderColor=isDark?'#1e1e2d':'#ffffff'; if(SDN_CHART_KEP.options.plugins&&SDN_CHART_KEP.options.plugins.legend){if(!SDN_CHART_KEP.options.plugins.legend.labels)SDN_CHART_KEP.options.plugins.legend.labels={};SDN_CHART_KEP.options.plugins.legend.labels.color=textColor;} SDN_CHART_KEP.update(); }
+  if (SDN_CHART_JAB) { if(SDN_CHART_JAB.options.scales){if(SDN_CHART_JAB.options.scales.x){if(!SDN_CHART_JAB.options.scales.x.grid)SDN_CHART_JAB.options.scales.x.grid={};SDN_CHART_JAB.options.scales.x.grid.color=gridColor;if(!SDN_CHART_JAB.options.scales.x.ticks)SDN_CHART_JAB.options.scales.x.ticks={};SDN_CHART_JAB.options.scales.x.ticks.color=textColor;}if(SDN_CHART_JAB.options.scales.y){if(!SDN_CHART_JAB.options.scales.y.ticks)SDN_CHART_JAB.options.scales.y.ticks={};SDN_CHART_JAB.options.scales.y.ticks.color=textColor;}} SDN_CHART_JAB.update(); }
+  if (SDN_CHART_PEN) { if(SDN_CHART_PEN.options.scales){if(SDN_CHART_PEN.options.scales.x){if(!SDN_CHART_PEN.options.scales.x.ticks)SDN_CHART_PEN.options.scales.x.ticks={};SDN_CHART_PEN.options.scales.x.ticks.color=textColor;}if(SDN_CHART_PEN.options.scales.y){if(!SDN_CHART_PEN.options.scales.y.grid)SDN_CHART_PEN.options.scales.y.grid={};SDN_CHART_PEN.options.scales.y.grid.color=gridColor;if(!SDN_CHART_PEN.options.scales.y.ticks)SDN_CHART_PEN.options.scales.y.ticks={};SDN_CHART_PEN.options.scales.y.ticks.color=textColor;}} SDN_CHART_PEN.update(); }
+}
+</script>
