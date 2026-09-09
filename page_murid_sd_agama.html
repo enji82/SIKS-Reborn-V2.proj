@@ -643,35 +643,51 @@
             "language": { "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json", "emptyTable": "Tidak ada data Murid SD Agama untuk filter yang dipilih." },
 
             "createdRow": function (row, data, dataIndex) {
-                var tds = row.children;
-                for (var i = 0; i < tds.length; i++) {
-                    var cell = tds[i];
+                // Gunakan cell() untuk mengakses setiap kolom berdasarkan index kolom data asli (bukan DOM index)
+                var api = this.api();
+                
+                // Kolom 0 (Nama Sekolah) - sticky
+                var cell0 = api.cell(row, 0).node();
+                if (cell0) {
+                    cell0.classList.add('py-1');
+                    cell0.style.position = 'sticky';
+                    cell0.style.left = '0';
+                    cell0.style.zIndex = '2';
+                    cell0.style.backgroundColor = '#ffffff';
+                }
+
+                // Kolom 1, 2, 3
+                for (var s = 1; s <= 3; s++) {
+                    var cellS = api.cell(row, s).node();
+                    if (cellS) cellS.classList.add('py-1');
+                }
+
+                // Kolom data 4 s.d 129
+                for (var i = 4; i <= 129; i++) {
+                    var cell = api.cell(row, i).node();
+                    if (!cell) continue;
+
                     cell.classList.add('py-1');
                     var rawVal = cell.textContent.trim();
 
-                    if (i === 0) {
-                        cell.style.position = 'sticky'; cell.style.left = '0'; cell.style.zIndex = '2'; cell.style.backgroundColor = '#ffffff';
+                    if (i >= 4 && i <= 21) {
+                        cell.classList.add('sultan-cell-k1');
+                    } else if (i >= 22 && i <= 39) {
+                        cell.classList.add('sultan-cell-k2');
+                    } else if (i >= 40 && i <= 57) {
+                        cell.classList.add('sultan-cell-k3');
+                    } else if (i >= 58 && i <= 75) {
+                        cell.classList.add('sultan-cell-k4');
+                    } else if (i >= 76 && i <= 93) {
+                        cell.classList.add('sultan-cell-k5');
+                    } else if (i >= 94 && i <= 111) {
+                        cell.classList.add('sultan-cell-k6');
                     }
-                    else if (i >= 4) {
-                        if (i >= 4 && i <= 21) {
-                            cell.classList.add('sultan-cell-k1');
-                        } else if (i >= 22 && i <= 39) {
-                            cell.classList.add('sultan-cell-k2');
-                        } else if (i >= 40 && i <= 57) {
-                            cell.classList.add('sultan-cell-k3');
-                        } else if (i >= 58 && i <= 75) {
-                            cell.classList.add('sultan-cell-k4');
-                        } else if (i >= 76 && i <= 93) {
-                            cell.classList.add('sultan-cell-k5');
-                        } else if (i >= 94 && i <= 111) {
-                            cell.classList.add('sultan-cell-k6');
-                        }
 
-                        if (rawVal === "0" || rawVal === "-" || rawVal === "") {
-                            cell.innerHTML = '<span class="text-muted opacity-50">-</span>';
-                        } else {
-                            cell.classList.add('font-weight-bold');
-                        }
+                    if (rawVal === "0" || rawVal === "-" || rawVal === "") {
+                        cell.innerHTML = '<span class="text-muted opacity-50">-</span>';
+                    } else {
+                        cell.classList.add('font-weight-bold');
                     }
                 }
             },
@@ -688,43 +704,23 @@
                     return isNaN(num) ? 0 : num;
                 };
 
-                var totalArr = [];
+                // Kolom 1, 2, 3 tetap '-'
+                $(api.column(1).footer()).html('-');
+                $(api.column(2).footer()).html('-');
+                $(api.column(3).footer()).html('-');
+
+                // Kolom 4 s.d 129: hitung total dan masukkan langsung ke masing-masing cell footer kolom aslinya
                 for (var i = 4; i <= 129; i++) {
                     var sum = api.column(i, { search: 'applied' }).data().reduce(function (a, b) {
                         return extractNumber(a) + extractNumber(b);
                     }, 0);
-                    totalArr.push(sum);
-                }
 
-                var footHtml = '<tr class="sultan-total-row"><th class="text-left pl-3 align-middle py-1 col-sticky-left" style="z-index:40;">TOTAL KESELURUHAN</th>';
-                footHtml += '<th class="text-center py-1">-</th>'; // Bulan
-                footHtml += '<th class="text-center py-1">-</th>'; // Thn
-                footHtml += '<th class="text-center py-1">-</th>'; // Rombel
-
-                for (var c = 4; c <= 129; c++) {
-                    var val = totalArr[c - 4];
-                    var txtVal = (val === 0) ? '-' : val.toLocaleString('id-ID');
-
-                    var className = "text-center py-1 font-weight-bold";
-                    if (c >= 4 && c <= 21) {
-                        className += " sultan-cell-k1";
-                    } else if (c >= 22 && c <= 39) {
-                        className += " sultan-cell-k2";
-                    } else if (c >= 40 && c <= 57) {
-                        className += " sultan-cell-k3";
-                    } else if (c >= 58 && c <= 75) {
-                        className += " sultan-cell-k4";
-                    } else if (c >= 76 && c <= 93) {
-                        className += " sultan-cell-k5";
-                    } else if (c >= 94 && c <= 111) {
-                        className += " sultan-cell-k6";
+                    var txtVal = (sum === 0) ? '-' : sum.toLocaleString('id-ID');
+                    var footCell = api.column(i).footer();
+                    if (footCell) {
+                        $(footCell).html(txtVal);
                     }
-
-                    footHtml += '<th class="' + className + '">' + txtVal + '</th>';
                 }
-
-                footHtml += '</tr>';
-                $(api.table().footer()).html(footHtml);
             }
         });
     }
