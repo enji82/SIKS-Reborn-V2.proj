@@ -67,7 +67,7 @@
                                     <tr>
                                         <th rowspan="2"
                                             class="th-main align-middle text-maroon text-left px-3 py-1 col-sticky-left"
-                                            style="min-width:250px; border-right: 2px solid #dee2e6;">NAMA LEMBAGA</th>
+                                            style="border-right: 2px solid #dee2e6;">NAMA LEMBAGA</th>
                                         <th rowspan="2" class="th-main align-middle text-center px-2 py-1">JENJANG</th>
                                         <th rowspan="2" class="th-main align-middle text-center px-2 py-1">BULAN</th>
                                         <th rowspan="2" class="th-main align-middle text-center px-2 py-1">TAHUN</th>
@@ -422,9 +422,10 @@
         PAUDROMBEL_TABEL_INSTANCE.clear().rows.add(dtArray).draw(false);
     }
 
-    // VAKSIN EKSPOR EXCEL NATIVE
+    // VAKSIN EKSPOR EXCEL NATIVE SULTAN
     function paudrombel_exportExcel() {
         if (!PAUDROMBEL_TABEL_INSTANCE) { Sultan.alert('warning', 'Belum Ada Data', 'Silakan tunggu data dimuat terlebih dahulu.'); return; }
+        if (typeof XLSX === 'undefined') { Sultan.alert('error', 'Error', 'Modul Excel tidak ditemukan!'); return; }
 
         var btn = $('#paudrombel_btnExport'); var txt = btn.html();
         btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Mengekspor...');
@@ -434,25 +435,154 @@
             var currLen = info.length; var currPage = info.page;
             PAUDROMBEL_TABEL_INSTANCE.page.len(-1).draw('page');
 
-            var tableClone = document.getElementById('paudrombel_tabelUtama').cloneNode(true);
+            function getThinBorder() {
+                return {
+                    top: { style: 'thin', color: { auto: 1 } },
+                    bottom: { style: 'thin', color: { auto: 1 } },
+                    left: { style: 'thin', color: { auto: 1 } },
+                    right: { style: 'thin', color: { auto: 1 } }
+                };
+            }
+
+            var bulanIndo = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+            var d = new Date();
+            var tglStr = String(d.getDate()).padStart(2, '0') + ' ' + bulanIndo[d.getMonth()] + ' ' + d.getFullYear();
+
+            var wsData = [];
+
+            // Judul (Row 0, 1, 2)
+            wsData.push(['JUMLAH MURID PAUD MENURUT ROMBEL']);
+            wsData.push(['KORWIL DISDIKBUD KECAMATAN SECANG']);
+            wsData.push(['PER ' + tglStr]);
+            wsData.push([]); // Row 3
+            wsData.push([]); // Row 4
+
+            // Header Tabel (Row 5 & 6)
+            wsData.push([
+                'NO.', 'NAMA LEMBAGA', 'JENJANG', 'BLN', 'THN', 'ROMBEL',
+                'JUMLAH MENURUT USIA', '', '', '', '', '', '', '',
+                'JUMLAH MENURUT KELAS', '', ''
+            ]);
+            wsData.push([
+                '', '', '', '', '', '',
+                '0-1 TH', '1-2 TH', '2-3 TH', '3-4 TH', '4-5 TH', '5-6 TH', '>6 TH', 'TOTAL',
+                'KELAS A', 'KELAS B', 'TOTAL'
+            ]);
+
+            // Data Tabel (Row 7 dst)
+            var dtArray = PAUDROMBEL_TABEL_INSTANCE.rows({ search: 'applied' }).data().toArray();
+            dtArray.forEach(function (row, index) {
+                var newRow = [index + 1]; // NO.
+
+                // Nama Lembaga (ambil nama tanpa NPSN)
+                var namaHtml = row[0] || "";
+                var namaLembaga = namaHtml.split('<br>')[0].trim();
+                namaLembaga = $('<div>').html(namaLembaga).text().trim();
+                newRow.push(namaLembaga);
+
+                // Jenjang (1), Bln (2), Thn (3), Rombel (4), Usia (5..12), Kelas (13..15)
+                for (var i = 1; i <= 15; i++) {
+                    newRow.push($('<div>').html(row[i] || "").text().trim());
+                }
+
+                wsData.push(newRow);
+            });
+
+            // Footer
+            var footHtml = $(PAUDROMBEL_TABEL_INSTANCE.table().footer()).find('th');
+            var footerRow = ['TOTAL KESELURUHAN', ''];
+            for (var i = 1; i < footHtml.length; i++) {
+                footerRow.push($(footHtml[i]).text().trim());
+            }
+            wsData.push(footerRow);
+
+            var ws = XLSX.utils.aoa_to_sheet(wsData);
+
+            // Merge Cells
+            var merges = [
+                // Title
+                { s: { r: 0, c: 0 }, e: { r: 0, c: 16 } },
+                { s: { r: 1, c: 0 }, e: { r: 1, c: 16 } },
+                { s: { r: 2, c: 0 }, e: { r: 2, c: 16 } },
+                // Header static vertical merges (NO, NAMA LEMBAGA, JENJANG, BLN, THN, ROMBEL)
+                { s: { r: 5, c: 0 }, e: { r: 6, c: 0 } },
+                { s: { r: 5, c: 1 }, e: { r: 6, c: 1 } },
+                { s: { r: 5, c: 2 }, e: { r: 6, c: 2 } },
+                { s: { r: 5, c: 3 }, e: { r: 6, c: 3 } },
+                { s: { r: 5, c: 4 }, e: { r: 6, c: 4 } },
+                { s: { r: 5, c: 5 }, e: { r: 6, c: 5 } },
+                // Header horizontal merges
+                { s: { r: 5, c: 6 }, e: { r: 5, c: 13 } }, // JUMLAH MENURUT USIA
+                { s: { r: 5, c: 14 }, e: { r: 5, c: 16 } }, // JUMLAH MENURUT KELAS
+                // Footer merge
+                { s: { r: wsData.length - 1, c: 0 }, e: { r: wsData.length - 1, c: 1 } }
+            ];
+            ws['!merges'] = merges;
+
+            // Lebar kolom dinamis menyesuaikan panjang nama lembaga terpanjang
+            var maxNamaLen = 15;
+            dtArray.forEach(function (r) {
+                var nameText = $('<div>').html(r[0] || '').text().split('(')[0].trim();
+                if (nameText.length > maxNamaLen) maxNamaLen = nameText.length;
+            });
+            var wNamaPx = Math.min(Math.max(maxNamaLen * 8, 200), 380);
+
+            var wscols = [
+                { wpx: 40 },       // NO
+                { wpx: wNamaPx },   // NAMA LEMBAGA
+                { wpx: 70 },       // JENJANG
+                { wpx: 70 },       // BLN
+                { wpx: 50 },       // THN
+                { wpx: 60 }        // ROMBEL
+            ];
+            // Usia (8 cols) & Kelas (3 cols)
+            for (var i = 6; i <= 16; i++) {
+                wscols.push({ wpx: 55 });
+            }
+            ws['!cols'] = wscols;
+
+            var range = XLSX.utils.decode_range(ws['!ref']);
+            for (var R = 0; R <= range.e.r; R++) {
+                for (var C = 0; C <= range.e.c; C++) {
+                    var cellAddr = XLSX.utils.encode_cell({ r: R, c: C });
+                    if (!ws[cellAddr]) ws[cellAddr] = { t: 'z', v: '' };
+                    if (!ws[cellAddr].s) ws[cellAddr].s = {};
+
+                    ws[cellAddr].s.font = { name: 'Arial', sz: 11 };
+
+                    if (R >= 0 && R <= 2) {
+                        ws[cellAddr].s.font = { name: 'Arial', sz: 14, bold: true };
+                        ws[cellAddr].s.alignment = { horizontal: 'center', vertical: 'center' };
+                    } else if (R >= 5 && R <= 6) {
+                        ws[cellAddr].s.font.bold = true;
+                        ws[cellAddr].s.border = getThinBorder();
+                        ws[cellAddr].s.alignment = { horizontal: 'center', vertical: 'center', wrapText: true };
+                    } else if (R >= 7) {
+                        ws[cellAddr].s.border = getThinBorder();
+                        ws[cellAddr].s.alignment = { vertical: 'center' };
+
+                        if (R === range.e.r) {
+                            ws[cellAddr].s.font.bold = true;
+                        }
+
+                        if (C === 1) {
+                            ws[cellAddr].s.alignment.horizontal = 'left';
+                        } else {
+                            ws[cellAddr].s.alignment.horizontal = 'center';
+                        }
+                    }
+                }
+            }
+
+            var wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "PAUD Menurut Rombel");
+
+            var filename = "JUMLAH MURID PAUD MENURUT ROMBEL - " + tglStr + ".xlsx";
+            XLSX.writeFile(wb, filename);
+
             PAUDROMBEL_TABEL_INSTANCE.page.len(currLen).page(currPage).draw('page');
-
-            $(tableClone).find('[style*="display: none"]').remove();
-            $(tableClone).find('th, td').css({ 'border': '1px solid #000000', 'border-collapse': 'collapse', 'font-family': 'Satoshi, Arial, sans-serif' });
-            $(tableClone).find('.opacity-50').css('color', '#cccccc');
-
-            var htmlData = tableClone.outerHTML;
-            var template = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"></head><body>' + htmlData + '</body></html>';
-            var blob = new Blob([template], { type: 'application/vnd.ms-excel' });
-            var url = URL.createObjectURL(blob);
-
-            var a = document.createElement('a'); a.href = url;
-            a.download = 'Rekap_PAUD_Rombel.xls';
-            document.body.appendChild(a); a.click();
-
-            document.body.removeChild(a); URL.revokeObjectURL(url);
             btn.prop('disabled', false).html(txt);
-            Sultan.notif.sukses('Data berhasil diunduh ke Excel.');
+            Sultan.notif.sukses('Data berhasil diunduh ke Excel (.xlsx).');
         }, 200);
     }
 
