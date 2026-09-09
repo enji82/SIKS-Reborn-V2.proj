@@ -774,6 +774,36 @@
         });
 
         SDAGAMA_TABEL_INSTANCE.clear().rows.add(dtArray).draw(false);
+
+        // --- Dynamic Column Hiding Logic (Agama yang totalnya kosong disembunyikan) ---
+        var hideCols = [];
+        var showCols = [];
+
+        // Loop untuk 7 grup (6 Kelas + 1 Jumlah)
+        for (var g = 0; g < 7; g++) {
+            var groupBase = 4 + (g * 18);
+            // Setiap grup ada 6 agama, masing-masing 3 kolom (L, P, JML)
+            for (var a = 0; a < 6; a++) {
+                var cL = groupBase + (a * 3);
+                var cP = cL + 1;
+                var cJml = cL + 2;
+
+                var sumJml = 0;
+                dtArray.forEach(function(row) {
+                    sumJml += parseInt(String(row[cJml]).replace(/[^0-9]/g, ''), 10) || 0;
+                });
+
+                if (sumJml === 0) {
+                    hideCols.push(cL, cP, cJml);
+                } else {
+                    showCols.push(cL, cP, cJml);
+                }
+            }
+        }
+
+        if (hideCols.length > 0) SDAGAMA_TABEL_INSTANCE.columns(hideCols).visible(false, false);
+        if (showCols.length > 0) SDAGAMA_TABEL_INSTANCE.columns(showCols).visible(true, false);
+        SDAGAMA_TABEL_INSTANCE.columns.adjust().draw(false);
     }
 
     function sdagama_exportExcel() {
@@ -814,179 +844,150 @@
                 { s: {r: 0, c: 0}, e: {r: 0, c: visibleCols.length} },
                 { s: {r: 1, c: 0}, e: {r: 1, c: visibleCols.length} },
                 { s: {r: 2, c: 0}, e: {r: 2, c: visibleCols.length} },
-                { s: {r: 5, c: 0}, e: {r: 7, c: 0} }, 
-                { s: {r: 5, c: 1}, e: {r: 7, c: 1} }, 
-                { s: {r: 5, c: 2}, e: {r: 7, c: 2} }, 
-                { s: {r: 5, c: 3}, e: {r: 7, c: 3} }, 
-                { s: {r: 5, c: 4}, e: {r: 7, c: 4} }  
+                { s: {r: 5, c: 0}, e: {r: 7, c: 0} }, // NO.
+                { s: {r: 5, c: 1}, e: {r: 7, c: 1} }, // NAMA
+                { s: {r: 5, c: 2}, e: {r: 7, c: 2} }, // BLN
+                { s: {r: 5, c: 3}, e: {r: 7, c: 3} }, // THN
+                { s: {r: 5, c: 4}, e: {r: 7, c: 4} }  // ROMBEL
             ];
 
-            var colIdx = 5;
-            for (var cls = 0; cls < 7; cls++) {
-                headerR5.push(classes[cls]);
-                for (var x = 1; x < 18; x++) headerR5.push('');
-                merges.push({ s: {r: 5, c: colIdx}, e: {r: 5, c: colIdx + 17} });
+            var currExcelCol = 5;
 
-                for (var rIdx = 0; rIdx < 6; rIdx++) {
-                    headerR6.push(religions[rIdx]);
-                    headerR6.push('');
-                    headerR6.push('');
-                    merges.push({ s: {r: 6, c: colIdx + (rIdx * 3)}, e: {r: 6, c: colIdx + (rIdx * 3) + 2} });
-                    
-                    headerR7.push('L');
-                    headerR7.push('P');
-                    headerR7.push('JML');
-                }
+            // Bangun kolom secara dinamis per grup dan per agama hanya jika visible
+            for (var g = 0; g < 7; g++) {
+                var groupStartCol = currExcelCol;
+                var hasVisibleAgamaInGroup = false;
 
-                colIdx += 18;
-            }
+                for (var a = 0; a < 6; a++) {
+                    var dtColIdx = 4 + (g * 18) + (a * 3);
+                    if (visibleCols.indexOf(dtColIdx) !== -1) {
+                        hasVisibleAgamaInGroup = true;
 
-            // Filter headers for visibility
-            var finalH5 = [], finalH6 = [], finalH7 = [];
-            visibleCols.forEach(function(c) {
-                finalH5.push(headerR5[c] || '');
-                finalH6.push(headerR6[c] || '');
-                finalH7.push(headerR7[c] || '');
-            });
+                        headerR5.push(currExcelCol === groupStartCol ? classes[g] : '');
+                        headerR5.push('', '');
 
-            wsData.push(finalH5);
-            wsData.push(finalH6);
-            wsData.push(finalH7);
+                        headerR6.push(religions[a]);
+                        headerR6.push('', '');
 
-            // Recompute merges for visible columns only
-            var finalMerges = [];
-            finalMerges.push({ s: {r: 0, c: 0}, e: {r: 0, c: visibleCols.length - 1} });
-            finalMerges.push({ s: {r: 1, c: 0}, e: {r: 1, c: visibleCols.length - 1} });
-            finalMerges.push({ s: {r: 2, c: 0}, e: {r: 2, c: visibleCols.length - 1} });
+                        headerR7.push('L', 'P', 'JML');
 
-            // Vertical merges for static columns
-            for (var v = 0; v < 5; v++) {
-                if (visibleCols.indexOf(v) > -1) {
-                    finalMerges.push({ s: {r: 5, c: visibleCols.indexOf(v)}, e: {r: 7, c: visibleCols.indexOf(v)} });
-                }
-            }
-
-            // Dynamic horizontal merges for Row 5
-            var startMerge = -1;
-            for (var c = 0; c < finalH5.length; c++) {
-                if (finalH5[c] !== '') {
-                    if (startMerge > -1 && c - 1 > startMerge) {
-                        finalMerges.push({ s: {r: 5, c: startMerge}, e: {r: 5, c: c - 1} });
+                        merges.push({ s: {r: 6, c: currExcelCol}, e: {r: 6, c: currExcelCol + 2} });
+                        currExcelCol += 3;
                     }
-                    startMerge = c;
-                } else if (c === finalH5.length - 1 && startMerge > -1 && finalH5[startMerge] !== '') {
-                    finalMerges.push({ s: {r: 5, c: startMerge}, e: {r: 5, c: c} });
+                }
+
+                if (hasVisibleAgamaInGroup && currExcelCol > groupStartCol) {
+                    merges.push({ s: {r: 5, c: groupStartCol}, e: {r: 5, c: currExcelCol - 1} });
                 }
             }
 
-            // Dynamic horizontal merges for Row 6
-            startMerge = -1;
-            for (var c = 0; c < finalH6.length; c++) {
-                if (c < visibleCols.indexOf(5) && finalH5[c] !== '') continue;
-                if (finalH6[c] !== '') {
-                    if (startMerge > -1 && c - 1 > startMerge) {
-                        finalMerges.push({ s: {r: 6, c: startMerge}, e: {r: 6, c: c - 1} });
-                    }
-                    startMerge = c;
-                } else if (c === finalH6.length - 1 && startMerge > -1 && finalH6[startMerge] !== '') {
-                    finalMerges.push({ s: {r: 6, c: startMerge}, e: {r: 6, c: c} });
-                }
-            }
+            wsData.push(headerR5);
+            wsData.push(headerR6);
+            wsData.push(headerR7);
 
             // Data rows
             var noIdx = 1;
-            SDAGAMA_TABEL_INSTANCE.rows({ search: 'applied' }).every(function () {
-                var d = this.data();
-                var rowData = [];
-                var htmlObj = $('<div>' + d[0] + '</div>');
-                var textName = htmlObj.contents().filter(function() { return this.nodeType === 3; }).text().trim();
-                
-                rowData.push(noIdx++);
-                rowData.push(textName);
-                rowData.push(String($('<div>' + d[1] + '</div>').text().trim()));
-                rowData.push(String($('<div>' + d[2] + '</div>').text().trim()));
-                rowData.push(parseInt($('<div>' + d[3] + '</div>').text().trim().replace(/\./g, '')) || 0);
+            var dtArray = SDAGAMA_TABEL_INSTANCE.rows({ search: 'applied' }).data().toArray();
+            dtArray.forEach(function (row) {
+                var newRow = [noIdx++];
 
-                for (var i = 4; i <= 129; i++) {
-                    var plainTxt = $('<div>' + d[i] + '</div>').text().trim().replace(/\./g, '');
-                    rowData.push(plainTxt === '-' ? 0 : (parseInt(plainTxt) || 0));
+                var namaSekolahHtml = row[0] || "";
+                var namaSekolah = namaSekolahHtml.split('<br>')[0].trim();
+                namaSekolah = $('<div>').html(namaSekolah).text().trim();
+                newRow.push(namaSekolah);
+
+                for (var i = 1; i < visibleCols.length; i++) {
+                    var colIdx = visibleCols[i];
+                    var rawCell = $('<div>').html(row[colIdx] || "").text().trim();
+                    if (colIdx >= 4) {
+                        var numVal = rawCell === '-' ? 0 : (parseInt(rawCell.replace(/[^0-9]/g, ''), 10) || 0);
+                        newRow.push(numVal);
+                    } else {
+                        newRow.push(rawCell);
+                    }
                 }
 
-                var finalRow = [];
-                visibleCols.forEach(function(c) {
-                    finalRow.push(c === 0 ? rowData[0] : rowData[c]);
-                });
-                wsData.push(finalRow);
+                wsData.push(newRow);
             });
 
             // Footer
-            var footRow = [];
-            footRow.push('TOTAL KESELURUHAN');
-            footRow.push('');
-            footRow.push('-');
-            footRow.push('-');
-            footRow.push('-');
-
-            var tfoot = $(SDAGAMA_TABEL_INSTANCE.table().footer());
-            var ths = tfoot.find('th');
-            for (var i = 4; i < ths.length; i++) {
-                var v = $(ths[i]).text().trim().replace(/\./g, '');
-                footRow.push(v === '-' ? 0 : (parseInt(v) || 0));
+            var footerRow = ['TOTAL KESELURUHAN', ''];
+            for (var i = 1; i < visibleCols.length; i++) {
+                var colIdx = visibleCols[i];
+                if (colIdx >= 1 && colIdx <= 3) {
+                    footerRow.push('-');
+                } else if (colIdx >= 4) {
+                    var sum = 0;
+                    dtArray.forEach(function(row) {
+                        sum += parseInt(String(row[colIdx]).replace(/[^0-9]/g, ''), 10) || 0;
+                    });
+                    footerRow.push(sum === 0 ? '-' : sum.toLocaleString('id-ID'));
+                }
             }
-
-            var finalFoot = [];
-            visibleCols.forEach(function(c) {
-                if (c === 0) finalFoot.push(footRow[0]);
-                else if (c === 1) finalFoot.push(footRow[1]);
-                else finalFoot.push(footRow[c]);
-            });
-            wsData.push(finalFoot);
-            finalMerges.push({ s: {r: wsData.length - 1, c: 0}, e: {r: wsData.length - 1, c: visibleCols.indexOf(1) > -1 ? visibleCols.indexOf(1) : 0} });
+            wsData.push(footerRow);
+            merges.push({ s: {r: wsData.length - 1, c: 0}, e: {r: wsData.length - 1, c: 1} });
 
             var ws = XLSX.utils.aoa_to_sheet(wsData);
-            ws['!merges'] = finalMerges;
+            ws['!merges'] = merges;
 
-            var wscols = [];
-            visibleCols.forEach(function(c) {
-                if (c === 0) wscols.push({wch: 5}); // NO
-                else if (c === 1) wscols.push({wch: 35}); // NAMA
-                else if (c === 2) wscols.push({wch: 10}); // BLN
-                else if (c === 3) wscols.push({wch: 6});  // THN
-                else if (c === 4) wscols.push({wch: 8});  // ROMBEL
-                else wscols.push({wch: 5}); // Others
-            });
+            // Lebar kolom
+            var wscols = [{ wpx: 40 }, { wpx: 220 }];
+            for (var i = 1; i < visibleCols.length; i++) {
+                var colIdx = visibleCols[i];
+                if (colIdx === 1) wscols.push({ wpx: 80 }); // BLN
+                else if (colIdx === 2) wscols.push({ wpx: 50 }); // THN
+                else if (colIdx === 3) wscols.push({ wpx: 60 }); // ROMBEL
+                else wscols.push({ wpx: 40 }); // L, P, JML
+            }
             ws['!cols'] = wscols;
 
-            var borderStyle = { style: 'thin', color: { rgb: '000000' } };
-            var range = XLSX.utils.decode_range(ws['!ref']);
-            for (var R = range.s.r; R <= range.e.r; ++R) {
-                for (var C = range.s.c; C <= range.e.c; ++C) {
-                    var cell_address = { c: C, r: R };
-                    var cell_ref = XLSX.utils.encode_cell(cell_address);
-                    if (!ws[cell_ref]) ws[cell_ref] = { t: 's', v: '' };
+            function getThinBorder() {
+                return {
+                    top: { style: 'thin', color: { auto: 1 } },
+                    bottom: { style: 'thin', color: { auto: 1 } },
+                    left: { style: 'thin', color: { auto: 1 } },
+                    right: { style: 'thin', color: { auto: 1 } }
+                };
+            }
 
-                    if (R < 3) {
-                        ws[cell_ref].s = {
-                            font: { name: 'Arial', sz: 12, bold: true },
-                            alignment: { horizontal: 'left', vertical: 'center' }
-                        };
-                    } else if (R >= 5) {
-                        ws[cell_ref].s = {
-                            font: { name: 'Arial', sz: 10, bold: (R < 8 || R === range.e.r) },
-                            border: { top: borderStyle, bottom: borderStyle, left: borderStyle, right: borderStyle },
-                            alignment: {
-                                horizontal: (C === visibleCols.indexOf(1) || C === visibleCols.indexOf(2)) ? 'left' : 'center',
-                                vertical: 'center',
-                                wrapText: true
-                            }
-                        };
+            var range = XLSX.utils.decode_range(ws['!ref']);
+            for (var R = 0; R <= range.e.r; R++) {
+                for (var C = 0; C <= range.e.c; C++) {
+                    var cellAddr = XLSX.utils.encode_cell({ r: R, c: C });
+                    if (!ws[cellAddr]) ws[cellAddr] = { t: 'z', v: '' };
+                    if (!ws[cellAddr].s) ws[cellAddr].s = {};
+
+                    ws[cellAddr].s.font = { name: 'Arial', sz: 11 };
+
+                    if (R >= 0 && R <= 2) {
+                        ws[cellAddr].s.font = { name: 'Arial', sz: 14, bold: true };
+                        ws[cellAddr].s.alignment = { horizontal: 'center', vertical: 'center' };
+                    } else if (R >= 5 && R <= 7) {
+                        ws[cellAddr].s.font.bold = true;
+                        ws[cellAddr].s.border = getThinBorder();
+                        ws[cellAddr].s.alignment = { horizontal: 'center', vertical: 'center', wrapText: true };
+                    } else if (R >= 8) {
+                        ws[cellAddr].s.border = getThinBorder();
+                        ws[cellAddr].s.alignment = { vertical: 'center' };
+
+                        if (R === range.e.r) {
+                            ws[cellAddr].s.font.bold = true;
+                        }
+
+                        if (C === 1) {
+                            ws[cellAddr].s.alignment.horizontal = 'left';
+                        } else {
+                            ws[cellAddr].s.alignment.horizontal = 'center';
+                        }
                     }
                 }
             }
 
             var wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Agama");
-            XLSX.writeFile(wb, 'Rekap_Jumlah_Murid_SD_Agama.xlsx');
+            XLSX.utils.book_append_sheet(wb, ws, "Jumlah Murid Agama");
+            
+            var filename = "JUMLAH MURID SD MENURUT AGAMA - " + tglStr + ".xlsx";
+            XLSX.writeFile(wb, filename);
 
             btn.prop('disabled', false).html(txt);
             Sultan.notif.sukses('Data berhasil diunduh ke Excel.');
