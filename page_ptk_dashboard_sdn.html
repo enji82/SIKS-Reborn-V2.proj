@@ -890,20 +890,45 @@ function sdnBzGetJabatanConfig(key) {
 function sdnBzUpdateTabBadges() {
   ['ks','gk','pjok','pai','pak'].forEach(function(k) {
     var c = sdnBzGetJabatanConfig(k);
-    var netSelisih = 0;
+    var totalKurang = 0;
+    var totalLebih  = 0;
+
     SDN_BEZETTING_DATA.forEach(function(row) {
       if (!row) return;
       var sel = parseInt(row[c.selisih]) || 0;
-      netSelisih += sel;
+      if (sel < 0) totalKurang += sel;
+      else if (sel > 0) totalLebih += sel;
     });
 
     var $b = $('#badge_bz_' + k);
-    if (netSelisih === 0) {
-      $b.text('-').attr('class', 'badge sdn-bz-tab-badge ml-1');
-    } else if (netSelisih < 0) {
-      $b.text(netSelisih).attr('class', 'badge sdn-bz-tab-badge sdn-bz-tab-badge-kurang ml-1');
+    var valTampil = 0;
+
+    if (SDN_BZ_FILTER_STATUS === 'KURANG') {
+      // Hanya tampilkan total kekurangan (orang defisit)
+      valTampil = totalKurang;
+      if (valTampil === 0) {
+        $b.text('-').attr('class', 'badge sdn-bz-tab-badge ml-1');
+      } else {
+        $b.text(valTampil).attr('class', 'badge sdn-bz-tab-badge sdn-bz-tab-badge-kurang ml-1');
+      }
+    } else if (SDN_BZ_FILTER_STATUS === 'LEBIH') {
+      // Hanya tampilkan total kelebihan (orang surplus)
+      valTampil = totalLebih;
+      if (valTampil === 0) {
+        $b.text('-').attr('class', 'badge sdn-bz-tab-badge ml-1');
+      } else {
+        $b.text('+' + valTampil).attr('class', 'badge sdn-bz-tab-badge sdn-bz-tab-badge-lebih ml-1');
+      }
     } else {
-      $b.text('+' + netSelisih).attr('class', 'badge sdn-bz-tab-badge sdn-bz-tab-badge-lebih ml-1');
+      // SEMUA MASALAH: tampilkan net selisih formasi
+      valTampil = totalKurang + totalLebih;
+      if (valTampil === 0) {
+        $b.text('-').attr('class', 'badge sdn-bz-tab-badge ml-1');
+      } else if (valTampil < 0) {
+        $b.text(valTampil).attr('class', 'badge sdn-bz-tab-badge sdn-bz-tab-badge-kurang ml-1');
+      } else {
+        $b.text('+' + valTampil).attr('class', 'badge sdn-bz-tab-badge sdn-bz-tab-badge-lebih ml-1');
+      }
     }
   });
 }
@@ -919,6 +944,9 @@ function sdnBzFilterStatus(status) {
   if (status === 'SEMUA') $('#btnSdnBzFilterSemua').addClass('active');
   else if (status === 'KURANG') $('#btnSdnBzFilterKurang').addClass('active');
   else if (status === 'LEBIH') $('#btnSdnBzFilterLebih').addClass('active');
+
+  // Perbarui badge tab secara dinamis sesuai pilihan filter
+  sdnBzUpdateTabBadges();
   sdnBzTerapkanFilter();
 }
 
