@@ -928,38 +928,12 @@ function sdnGatekeeper() {
     SultanUI.startLottery('#sdn_jml_sekolah, #sdn_jml_pns, #sdn_jml_pppk, #sdn_jml_pppk_pw, #sdn_jml_nonasn, #sdn_total_ptk', 3);
   }
 
-  if (DASHN_IS_ADMIN) {
-    $('#sdnPageLoading').hide();
-    $('#wrapperSDN, #sdnMatriksPegawaiRow, #sdnKebutuhanRow, #sdnBezettingDistribusiRow').fadeIn();
-    google.script.run.withSuccessHandler(function(res) { sdnCalculate(res, true); }).getDataKeadaanGTK();
-    google.script.run.withSuccessHandler(function(res) { sdnCalculatePensiun(res); }).getDataProyeksiPensiunSDN();
-    google.script.run.withSuccessHandler(function(res) { sdnProcessBezetting(res, true); }).getDataBezettingSDN();
-  } else {
-    if (!DASHN_USER_NPSN) {
-      $('#sdnPageLoading').hide();
-      Sultan.alert('error', 'Akses Ditolak', 'NPSN tidak ditemukan pada sesi login Anda.');
-      return;
-    }
-    google.script.run.withSuccessHandler(function(res) {
-      $('#sdnPageLoading').hide();
-      if (!res || !Array.isArray(res)) res = [];
-      var myData = res.filter(function(r) {
-        return String(r && r[1] || "").trim().toUpperCase() === String(DASHN_USER_NPSN).trim().toUpperCase();
-      });
-      if (myData.length > 0) {
-        $('#wrapperSDN, #sdnMatriksPegawaiRow, #sdnKebutuhanRow, #sdnBezettingDistribusiRow').fadeIn();
-        sdnCalculate(myData, false);
-        google.script.run.withSuccessHandler(function(rp) { sdnCalculatePensiun(rp, DASHN_USER_NPSN); }).getDataProyeksiPensiunSDN();
-        google.script.run.withSuccessHandler(function(rb) { sdnProcessBezetting(rb, false, DASHN_USER_NPSN); }).getDataBezettingSDN();
-      } else {
-        $('#wrapperSDN').fadeIn();
-        ['sdn_jml_sekolah','sdn_jml_pns','sdn_jml_pppk','sdn_jml_pppk_pw','sdn_jml_nonasn','sdn_total_ptk'].forEach(function(id){ $('#'+id).text('-'); });
-        $('#sdnPensiunLoading, #sdnBzLoading').hide();
-        $('#sdnPensiunContent').show();
-        $('#sdnPensiunTabelBody').html('<tr><td colspan="9" class="text-center text-muted py-3">Tidak ada data pensiun untuk sekolah Anda.</td></tr>');
-      }
-    }).getDataKeadaanGTK();
-  }
+  // Semua pengguna (Admin maupun Sekolah/Non-Admin) dapat melihat seluruh data secara agregat
+  $('#sdnPageLoading').hide();
+  $('#wrapperSDN, #sdnMatriksPegawaiRow, #sdnKebutuhanRow, #sdnBezettingDistribusiRow').fadeIn();
+  google.script.run.withSuccessHandler(function(res) { sdnCalculate(res, true); }).getDataKeadaanGTK();
+  google.script.run.withSuccessHandler(function(res) { sdnCalculatePensiun(res); }).getDataProyeksiPensiunSDN();
+  google.script.run.withSuccessHandler(function(res) { sdnProcessBezetting(res, true); }).getDataBezettingSDN();
 }
 
 function sdnCalculate(data, isAdmin) {
