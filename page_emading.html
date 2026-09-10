@@ -81,42 +81,97 @@
     color: #e5e7eb;
   }
 
-  /* MEDIA SECTION (DI TENGAH PARAGRAF) */
+  /* MEDIA SECTION & GALLERY (DI AWAL ATAU DI TENGAH PARAGRAF) */
   .koran-inline-media {
     margin: 14px 0 16px 0;
     border-radius: 8px;
     overflow: hidden;
-    background: #f1f3f5;
-  }
-  .dark-mode .koran-inline-media {
-    background: #282e39;
   }
   .koran-media-img {
     width: 100%;
     max-height: 320px;
     object-fit: cover;
     display: block;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+  }
+  .koran-media-img:hover {
+    transform: scale(1.01);
   }
 
-  /* ARTICLE BODY TEXT */
+  /* 2 FOTO SIDE BY SIDE */
+  .koran-gallery-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .koran-gallery-2 img {
+    height: 190px;
+    width: 100%;
+    object-fit: cover;
+    border-radius: 6px;
+  }
+
+  /* 3 FOTO COLLAGE */
+  .koran-gallery-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+    gap: 8px;
+  }
+  .koran-gallery-3 .gallery-item-main {
+    grid-column: 1 / -1;
+    height: 220px;
+    width: 100%;
+    object-fit: cover;
+    border-radius: 6px;
+  }
+  .koran-gallery-3 .gallery-item-sub {
+    height: 140px;
+    width: 100%;
+    object-fit: cover;
+    border-radius: 6px;
+  }
+
+  /* ARTICLE BODY TEXT (LEFT ALIGNED AGAR TIDAK TERPOTONG / JANGGAL) */
   .koran-body-text {
     font-size: 0.90rem;
     line-height: 1.72;
     color: #2c3038;
-    text-align: justify;
+    text-align: left;
     margin-bottom: 14px;
     flex-grow: 1;
+    word-break: break-word;
   }
   .dark-mode .koran-body-text {
     color: #d1d5db;
   }
+  .koran-body-text p {
+    margin-bottom: 10px;
+  }
+  .koran-body-text ul, .koran-body-text ol {
+    padding-left: 20px;
+    margin-bottom: 10px;
+  }
+  .koran-body-text blockquote {
+    border-left: 3px solid var(--warna-maroon, #800000);
+    padding-left: 12px;
+    margin: 10px 0;
+    color: #6c757d;
+    font-style: italic;
+  }
+  .dark-mode .koran-body-text blockquote {
+    border-left-color: var(--sultan-aksi-utama, #ff7b7b);
+    color: #a0aec0;
+  }
 
-  /* DROP CAP FIRST LETTER */
+  /* DROP CAP FIRST LETTER (HANYA PADA PARAGRAF LEAD) */
   .koran-drop-cap::first-letter {
     font-family: "Georgia", "Times New Roman", serif;
     float: left;
-    font-size: 2.8rem;
-    line-height: 0.82;
+    font-size: 2.6rem;
+    line-height: 0.85;
     font-weight: 700;
     margin-right: 8px;
     margin-top: 2px;
@@ -362,43 +417,114 @@
         var headlineClass = isHeadline ? 'koran-headline' : '';
         var isOwnerOrAdmin = (curRole === 'admin') || (curUser && curUser === art.userLogin);
 
-        // Media Foto (untuk disisipkan di tengah teks berita)
+        // Kumpulkan daftar foto (mendukung s.d. 3 foto)
+        var listFoto = [];
+        if (art.fotoList && Array.isArray(art.fotoList) && art.fotoList.length > 0) {
+          listFoto = art.fotoList;
+        } else if (art.fotoUrl) {
+          var splitF = String(art.fotoUrl).split(/\s*,\s*|\s*\|\s*|\n+/);
+          listFoto = splitF.filter(function(f) { return f && f.trim().length > 0; });
+        }
+
+        // Susun HTML Galeri Foto Koran (1 Foto, 2 Foto Side-by-Side, 3 Foto Trio Collage)
         var fotoHtml = '';
-        if (art.fotoUrl) {
-          var displayImgUrl = konversiDriveImageUrl(art.fotoUrl);
+        if (listFoto.length === 1) {
+          var fUrl1 = konversiDriveImageUrl(listFoto[0]);
           fotoHtml = `
             <div class="koran-inline-media shadow-sm">
-              <img src="${displayImgUrl}" class="koran-media-img" alt="${art.judul}" loading="lazy" referrerpolicy="no-referrer" onerror="handleImageError(this, '${art.fotoUrl}')">
+              <img src="${fUrl1}" class="koran-media-img" alt="${art.judul}" loading="lazy" referrerpolicy="no-referrer" onerror="handleImageError(this, '${listFoto[0]}')">
+            </div>
+          `;
+        } else if (listFoto.length === 2) {
+          var f1 = konversiDriveImageUrl(listFoto[0]);
+          var f2 = konversiDriveImageUrl(listFoto[1]);
+          fotoHtml = `
+            <div class="koran-inline-media shadow-sm">
+              <div class="koran-gallery-2">
+                <img src="${f1}" alt="Dokumentasi 1" loading="lazy" referrerpolicy="no-referrer" onerror="handleImageError(this, '${listFoto[0]}')">
+                <img src="${f2}" alt="Dokumentasi 2" loading="lazy" referrerpolicy="no-referrer" onerror="handleImageError(this, '${listFoto[1]}')">
+              </div>
+            </div>
+          `;
+        } else if (listFoto.length >= 3) {
+          var g1 = konversiDriveImageUrl(listFoto[0]);
+          var g2 = konversiDriveImageUrl(listFoto[1]);
+          var g3 = konversiDriveImageUrl(listFoto[2]);
+          fotoHtml = `
+            <div class="koran-inline-media shadow-sm">
+              <div class="koran-gallery-3">
+                <img src="${g1}" class="gallery-item-main" alt="Dokumentasi Utama" loading="lazy" referrerpolicy="no-referrer" onerror="handleImageError(this, '${listFoto[0]}')">
+                <img src="${g2}" class="gallery-item-sub" alt="Dokumentasi 2" loading="lazy" referrerpolicy="no-referrer" onerror="handleImageError(this, '${listFoto[1]}')">
+                <img src="${g3}" class="gallery-item-sub" alt="Dokumentasi 3" loading="lazy" referrerpolicy="no-referrer" onerror="handleImageError(this, '${listFoto[2]}')">
+              </div>
             </div>
           `;
         }
 
-        // Susun Teks Berita: Tempatkan foto di tengah paragraf
+        // Posisi Foto: Di Awal atau Di Tengah Paragraf
+        var posisiFoto = (art.posisiFoto || 'awal').toLowerCase();
+
+        // Susun Isi Berita (Mendukung Rich Text HTML atau Plain Text)
         var isiRaw = (art.isi || '').trim();
-        var paragrafList = isiRaw.split(/\n\s*\n|\r\n\r\n/);
-        // Jika split double newline hanya menghasilkan 1 item tapi ada newline biasa:
-        if (paragrafList.length === 1 && isiRaw.indexOf('\n') !== -1) {
-          paragrafList = isiRaw.split(/\n|\r\n/);
-        }
-        // Bersihkan whitespace tiap paragraf
-        paragrafList = paragrafList.map(function(p) { return p.trim(); }).filter(function(p) { return p.length > 0; });
+        var bodyIsiHtml = '';
 
-        var paragrafAwalHtml = '';
-        var paragrafSisaHtml = '';
+        // Cek apakah isi berupa format HTML (ada tag <p>, <div>, <ul>, <h3> dll)
+        var isHtml = /<[a-z][\s\S]*>/i.test(isiRaw);
 
-        if (paragrafList.length > 0) {
-          // Paragraf 1 sebagai lead / pembuka dengan drop cap huruf koran
-          paragrafAwalHtml = `<p class="koran-drop-cap mb-3">${paragrafList[0]}</p>`;
-
-          // Jika ada lebih dari 1 paragraf, sisa paragraf ditaruh setelah foto
-          if (paragrafList.length > 1) {
-            var sisa = paragrafList.slice(1);
-            paragrafSisaHtml = sisa.map(function(p) {
-              return `<p class="mb-3">${p}</p>`;
-            }).join('');
-          }
+        if (posisiFoto === 'awal') {
+          // JIKA POSISI DI AWAL: Tampilkan foto di atas teks
+          var isiKonten = isHtml ? isiRaw : `<div style="white-space: pre-line;">${isiRaw}</div>`;
+          bodyIsiHtml = `
+            ${fotoHtml}
+            <div class="koran-body-text">
+              ${isiKonten}
+            </div>
+          `;
         } else {
-          paragrafAwalHtml = `<p class="mb-3">${isiRaw}</p>`;
+          // JIKA POSISI DI TENGAH PARAGRAF:
+          if (isHtml) {
+            // Jika HTML, kita pisahkan tag paragraf pembuka
+            var matchP = isiRaw.match(/(<p[\s\S]*?<\/p>|<div[\s\S]*?<\/div>)/i);
+            if (matchP && matchP.index === 0) {
+              var pAwal = matchP[0];
+              var pSisa = isiRaw.substring(pAwal.length);
+              bodyIsiHtml = `
+                <div class="koran-body-text">
+                  ${pAwal}
+                  ${fotoHtml}
+                  ${pSisa}
+                </div>
+              `;
+            } else {
+              bodyIsiHtml = `
+                <div class="koran-body-text">
+                  ${fotoHtml}
+                  ${isiRaw}
+                </div>
+              `;
+            }
+          } else {
+            // Jika Plain Text, pisahkan paragraf pertama
+            var paragrafList = isiRaw.split(/\n\s*\n|\r\n\r\n/);
+            if (paragrafList.length > 1) {
+              var lead = `<p class="koran-drop-cap mb-3">${paragrafList[0]}</p>`;
+              var sisa = paragrafList.slice(1).map(function(p) { return `<p class="mb-3">${p.trim()}</p>`; }).join('');
+              bodyIsiHtml = `
+                <div class="koran-body-text">
+                  ${lead}
+                  ${fotoHtml}
+                  ${sisa}
+                </div>
+              `;
+            } else {
+              bodyIsiHtml = `
+                <div class="koran-body-text">
+                  ${fotoHtml}
+                  <div style="white-space: pre-line;">${isiRaw}</div>
+                </div>
+              `;
+            }
+          }
         }
 
         // Media Video (Embed YouTube jika ada)
@@ -474,17 +600,8 @@
                 </div>
               </div>
 
-              <!-- ISI BERITA DENGAN FOTO DI TENGAH TEKS (KORAN STYLE) -->
-              <div class="koran-body-text">
-                <!-- Paragraf Pembuka -->
-                ${paragrafAwalHtml}
-
-                <!-- Media Foto di Tengah Paragraf -->
-                ${fotoHtml}
-
-                <!-- Paragraf Lanjutan / Sisa -->
-                ${paragrafSisaHtml}
-              </div>
+              <!-- ISI BERITA & FOTO (POSISI SESUAI PILIHAN PENULIS: AWAL ATAU TENGAH) -->
+              ${bodyIsiHtml}
 
               <!-- VIDEO JIKA TERSEDIA -->
               ${videoHtml}

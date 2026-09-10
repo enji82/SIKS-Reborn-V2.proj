@@ -101,13 +101,22 @@ function getDaftarArtikelEmading(filterObj) {
       var pengunggah = String(row[4] || "Anonim").trim();
       var userLogin = String(row[5] || "").trim();
       var unitKerja = String(row[6] || "-").trim();
-      var fotoUrl = String(row[7] || "").trim();
-      if (fotoUrl && (fotoUrl.indexOf('drive.google.com') > -1)) {
-        var matchId = fotoUrl.match(/id=([a-zA-Z0-9_-]+)/) || fotoUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
-        if (matchId && matchId[1]) {
-          fotoUrl = "https://lh3.googleusercontent.com/d/" + matchId[1] + "=w1200";
-        }
+      var rawFoto = String(row[7] || "").trim();
+      var fotoList = [];
+      if (rawFoto) {
+        var splitFotos = rawFoto.split(/\s*,\s*|\s*\|\s*|\n+/);
+        fotoList = splitFotos.map(function(f) {
+          f = f.trim();
+          if (f && f.indexOf('drive.google.com') > -1) {
+            var matchId = f.match(/id=([a-zA-Z0-9_-]+)/) || f.match(/\/d\/([a-zA-Z0-9_-]+)/);
+            if (matchId && matchId[1]) {
+              return "https://lh3.googleusercontent.com/d/" + matchId[1] + "=w1200";
+            }
+          }
+          return f;
+        }).filter(function(f) { return f.length > 0; });
       }
+
       var videoUrl = String(row[8] || "").trim();
       var lampiranUrl = String(row[9] || "").trim();
       var lampiranNama = String(row[10] || "").trim();
@@ -116,6 +125,7 @@ function getDaftarArtikelEmading(filterObj) {
       var jmlSuka = parseInt(row[13]) || 0;
       var jmlKomentar = parseInt(row[14]) || 0;
       var tags = String(row[15] || "").trim();
+      var posisiFoto = String(row[16] || "awal").trim().toLowerCase() || "awal";
 
       // Filter status jika bukan 'SEMUA'
       if (statusFilter !== "SEMUA" && status !== statusFilter) {
@@ -149,7 +159,9 @@ function getDaftarArtikelEmading(filterObj) {
         pengunggah: pengunggah,
         userLogin: userLogin, // untuk identifikasi otorisasi edit/hapus
         unitKerja: unitKerja,
-        fotoUrl: fotoUrl,
+        fotoUrl: fotoList[0] || "",
+        fotoList: fotoList,
+        posisiFoto: posisiFoto,
         videoUrl: videoUrl,
         lampiranUrl: lampiranUrl,
         lampiranNama: lampiranNama,
@@ -180,12 +192,22 @@ function getDetailArtikelEmading(idArtikel) {
     for (var i = 1; i < data.length; i++) {
       if (String(data[i][0]).trim() === cleanId) {
         var rawFoto = String(row[7] || "").trim();
-        if (rawFoto && (rawFoto.indexOf('drive.google.com') > -1)) {
-          var mId = rawFoto.match(/id=([a-zA-Z0-9_-]+)/) || rawFoto.match(/\/d\/([a-zA-Z0-9_-]+)/);
-          if (mId && mId[1]) {
-            rawFoto = "https://lh3.googleusercontent.com/d/" + mId[1] + "=w1200";
-          }
+        var fotoList = [];
+        if (rawFoto) {
+          var splitFotos = rawFoto.split(/\s*,\s*|\s*\|\s*|\n+/);
+          fotoList = splitFotos.map(function(f) {
+            f = f.trim();
+            if (f && f.indexOf('drive.google.com') > -1) {
+              var mId = f.match(/id=([a-zA-Z0-9_-]+)/) || f.match(/\/d\/([a-zA-Z0-9_-]+)/);
+              if (mId && mId[1]) {
+                return "https://lh3.googleusercontent.com/d/" + mId[1] + "=w1200";
+              }
+            }
+            return f;
+          }).filter(function(f) { return f.length > 0; });
         }
+
+        // Posisi foto: awal atau tengah (disimpan di tags atau ekstensi field jika ada)
         return JSON.stringify({
           rowBaris: i + 1,
           id: row[0],
@@ -195,7 +217,9 @@ function getDetailArtikelEmading(idArtikel) {
           pengunggah: row[4],
           userLogin: row[5],
           unitKerja: row[6],
-          fotoUrl: rawFoto,
+          fotoUrl: fotoList[0] || "",
+          fotoList: fotoList,
+          posisiFoto: String(row[16] || "awal").toLowerCase(), // jika ada kolom 17 atau fallback awal
           videoUrl: row[8],
           lampiranUrl: row[9],
           lampiranNama: row[10],
@@ -226,21 +250,44 @@ function simpanArtikelEmading(payload) {
 
     var targetFolder = DriveApp.getFolderById(KONFIG_EMADING.FOLDER_ID);
 
-    // 1. Upload Foto Utama jika ada file baru dikirim
-    var fotoUrl = payload.existingFotoUrl || "";
-    if (payload.fotoFile && payload.fotoFile.data) {
-      try {
-        var extFoto = payload.fotoFile.name.split('.').pop();
-        var timeStampStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyyMMdd_HHmmss");
-        var namaFoto = "FOTO_MADING_" + timeStampStr + "." + extFoto;
-        var blobFoto = Utilities.newBlob(Utilities.base64Decode(payload.fotoFile.data), payload.fotoFile.mimeType, namaFoto);
-        var fileFotoDrive = targetFolder.createFile(blobFoto);
-        fileFotoDrive.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-        fotoUrl = "https://lh3.googleusercontent.com/d/" + fileFotoDrive.getId() + "=w1200";
-      } catch (errFoto) {
-        Logger.log("Gagal upload foto mading: " + errFoto.message);
+    // 1. Upload Foto (Mendukung hingga 3 foto)
+    var listFotoUrl = [];
+
+    // Ambil existing foto jika ada
+    if (payload.existingFotoUrls && Array.isArray(payload.existingFotoUrls)) {
+      listFotoUrl = payload.existingFotoUrls.filter(function(url) { return url && url.trim().length > 0; });
+    } else if (payload.existingFotoUrl) {
+      listFotoUrl = [payload.existingFotoUrl.trim()];
+    }
+
+    // Upload file foto baru jika dikirim
+    var filesToUpload = [];
+    if (payload.fotoFiles && Array.isArray(payload.fotoFiles)) {
+      filesToUpload = payload.fotoFiles;
+    } else if (payload.fotoFile && payload.fotoFile.data) {
+      filesToUpload = [payload.fotoFile];
+    }
+
+    for (var fIdx = 0; fIdx < filesToUpload.length; fIdx++) {
+      var fItem = filesToUpload[fIdx];
+      if (fItem && fItem.data) {
+        try {
+          var extFoto = (fItem.name || "foto.jpg").split('.').pop();
+          var timeStampStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyyMMdd_HHmmss") + "_" + (fIdx + 1);
+          var namaFoto = "FOTO_MADING_" + timeStampStr + "." + extFoto;
+          var blobFoto = Utilities.newBlob(Utilities.base64Decode(fItem.data), fItem.mimeType || "image/jpeg", namaFoto);
+          var fileFotoDrive = targetFolder.createFile(blobFoto);
+          fileFotoDrive.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+          var lh3Url = "https://lh3.googleusercontent.com/d/" + fileFotoDrive.getId() + "=w1200";
+          listFotoUrl.push(lh3Url);
+        } catch (errFoto) {
+          Logger.log("Gagal upload foto ke-" + (fIdx + 1) + ": " + errFoto.message);
+        }
       }
     }
+
+    var fotoUrlMerged = listFotoUrl.join(", ");
+    var posisiFoto = (payload.posisiFoto || "awal").toLowerCase();
 
     // 2. Upload Lampiran Berkas Dokumen (PDF, Docx, Zip dll) jika ada
     var lampiranUrl = payload.existingLampiranUrl || "";
@@ -288,18 +335,19 @@ function simpanArtikelEmading(payload) {
         return JSON.stringify({ error: "Artikel tidak ditemukan untuk diupdate." });
       }
 
-      // Update kolom: Judul, Isi, Kategori, Pengunggah, UnitKerja, FotoUrl, VideoUrl, LampiranUrl, LampiranNama, Tags
+      // Update kolom: Judul, Isi, Kategori, Pengunggah, UnitKerja, FotoUrl, VideoUrl, LampiranUrl, LampiranNama, Tags, PosisiFoto
       sheet.getRange(rowIndex, 2).setValue(payload.judul);
       sheet.getRange(rowIndex, 3).setValue(payload.isi);
       sheet.getRange(rowIndex, 4).setValue(payload.kategori);
       sheet.getRange(rowIndex, 5).setValue(payload.pengunggah);
-      if (fotoUrl) sheet.getRange(rowIndex, 8).setValue(fotoUrl);
+      if (fotoUrlMerged) sheet.getRange(rowIndex, 8).setValue(fotoUrlMerged);
       sheet.getRange(rowIndex, 9).setValue(videoUrl);
       if (lampiranUrl) {
         sheet.getRange(rowIndex, 10).setValue(lampiranUrl);
         sheet.getRange(rowIndex, 11).setValue(lampiranNama);
       }
       sheet.getRange(rowIndex, 16).setValue(payload.tags || "");
+      sheet.getRange(rowIndex, 17).setValue(posisiFoto);
 
       return JSON.stringify({ success: true, message: "Sukses: Artikel berhasil diperbarui!", id: idArtikel });
 
@@ -315,7 +363,7 @@ function simpanArtikelEmading(payload) {
         payload.pengunggah || "Anonim",
         payload.userLogin || "",
         payload.unitKerja || "-",
-        fotoUrl,
+        fotoUrlMerged,
         videoUrl,
         lampiranUrl,
         lampiranNama,
@@ -323,7 +371,8 @@ function simpanArtikelEmading(payload) {
         statusPublikasi, // Dipublikasikan langsung
         0, // Suka awal
         0, // Komentar awal
-        payload.tags || ""
+        payload.tags || "",
+        posisiFoto
       ];
 
       sheet.appendRow(newRow);
