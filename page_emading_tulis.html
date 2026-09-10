@@ -504,6 +504,39 @@
           }
         }
       });
+
+      // Tangani event paste agar membersihkan gambar base64 / style inline raksasa yang bisa melebihi limit sel 50000 karakter
+      $('#emading_editorContent').on('paste', function (e) {
+        e.preventDefault();
+        var clipboardData = (e.originalEvent || e).clipboardData;
+        var html = clipboardData.getData('text/html');
+        var text = clipboardData.getData('text/plain');
+
+        if (html) {
+          // Bersihkan tag img (karena foto harus diupload via slot foto), script, iframe, dan style/class inline berlebih
+          var tempDiv = document.createElement('div');
+          tempDiv.innerHTML = html;
+
+          // Hapus gambar yang mungkin ikut ter-copy
+          $(tempDiv).find('img, script, style, iframe, meta, link').remove();
+
+          // Hapus atribut style berlebihan (terutama background hitam, dsb)
+          $(tempDiv).find('*').each(function () {
+            $(this).removeAttr('style').removeAttr('class');
+          });
+
+          var cleanHtml = tempDiv.innerHTML.trim();
+          if (cleanHtml && cleanHtml.length < 40000) {
+            document.execCommand('insertHTML', false, cleanHtml);
+            return;
+          }
+        }
+
+        // Fallback: paste sebagai plain text yang aman
+        if (text) {
+          document.execCommand('insertText', false, text);
+        }
+      });
     }
 
     function initFormHandlers() {

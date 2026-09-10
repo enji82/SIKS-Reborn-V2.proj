@@ -313,6 +313,13 @@ function simpanArtikelEmading(payload) {
     // Format Link Video jika YouTube agar menjadi embed standard
     var videoUrl = String(payload.videoUrl || "").trim();
 
+    // Sanitasi Isi Artikel: Hapus potensi embed base64 image yang tidak sengaja ter-paste ke teks
+    var isiArtikel = String(payload.isi || "");
+    isiArtikel = isiArtikel.replace(/src="data:image\/[^;]+;base64,[^"]+"/gi, 'src="" alt="gambar-dihapus"');
+    if (isiArtikel.length > 48000) {
+      isiArtikel = isiArtikel.substring(0, 48000);
+    }
+
     if (idArtikel) {
       // === MODE EDIT ARTIKEL ===
       var data = sheet.getDataRange().getDisplayValues();
@@ -337,7 +344,7 @@ function simpanArtikelEmading(payload) {
 
       // Update kolom: Judul, Isi, Kategori, Pengunggah, UnitKerja, FotoUrl, VideoUrl, LampiranUrl, LampiranNama, Tags, PosisiFoto
       sheet.getRange(rowIndex, 2).setValue(payload.judul);
-      sheet.getRange(rowIndex, 3).setValue(payload.isi);
+      sheet.getRange(rowIndex, 3).setValue(isiArtikel);
       sheet.getRange(rowIndex, 4).setValue(payload.kategori);
       sheet.getRange(rowIndex, 5).setValue(payload.pengunggah);
       if (fotoUrlMerged) sheet.getRange(rowIndex, 8).setValue(fotoUrlMerged);
@@ -358,7 +365,7 @@ function simpanArtikelEmading(payload) {
       var newRow = [
         newId,
         payload.judul,
-        payload.isi,
+        isiArtikel,
         payload.kategori || "Umum",
         payload.pengunggah || "Anonim",
         payload.userLogin || "",
