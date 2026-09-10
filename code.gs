@@ -45,6 +45,7 @@ const SPREADSHEET_IDS = {
   SERAGAM_GRATIS_DB: "1o_883fpui4Yow4Rz5DiwDciBxQo5SJIz23iimaBOn80",
   SIABA_LOKASI_UPACARA_DB: "1xEwfMDAuTZiEcEglJWfHYiG89mpstSRmoaracj_tgVs",
   PPPK_PW_DB: "1uIcRgqDbozFoI6_Lf24Ijlq0QbrQFwmcLTMYRzqTNrg",
+  EMADING_DB: "1OUIfYXgcI3aK6bz4woyQohG26cKJMK-KikLBr13Tbwk",
 };
 
 // 2. FOLDER CONFIG (Digunakan oleh semua file .gs lainnya)
@@ -81,6 +82,7 @@ const FOLDER_CONFIG = {
   SERAGAM_DOKUMENTASI_PENYERAHAN_DOCS: "1ZWHb-7x1jZMjN5jFyB9rSRH_Kil3IttZ",
   PPPK_PW_DOCS: "1u5tjw-muhroXrPGwlDyQvPmzAhviRpYT",
   PPPK_PW_EMETERAI: "1DttLjGkQxQhB8BgM1wOYTPhEh2NYY6ln",
+  EMADING_DOCS: "1bo3ni66ZZ7ybAgzVT8oMhkg0MXKOb9Dq",
 };
 
 // ==========================================
