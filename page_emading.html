@@ -49,6 +49,13 @@
     color: #ff8a80;
   }
 
+  .koran-article-actions .btn {
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+
   .koran-title {
     font-family: "Georgia", "Times New Roman", serif;
     font-size: 1.28rem;
@@ -408,14 +415,22 @@
       $('#emading_emptyFeed').addClass('d-none');
       $container.removeClass('d-none');
 
-      var uLogin = (typeof userLogin !== 'undefined' && userLogin) ? userLogin : null;
-      var curUser = uLogin ? (uLogin.username || uLogin.user) : '';
+      var uLogin = null;
+      if (typeof userLogin !== 'undefined' && userLogin) {
+        uLogin = userLogin;
+      } else {
+        try {
+          var stored = localStorage.getItem('siksUser');
+          if (stored) uLogin = JSON.parse(stored);
+        } catch (e) {}
+      }
+      var curUser = uLogin ? (uLogin.username || uLogin.user || '') : '';
       var curRole = uLogin ? (uLogin.role || '').toLowerCase() : '';
 
       data.forEach(function (art, index) {
         var isHeadline = (index === 0);
         var headlineClass = isHeadline ? 'koran-headline' : '';
-        var isOwnerOrAdmin = (curRole === 'admin') || (curUser && curUser === art.userLogin);
+        var isOwnerOrAdmin = (curRole === 'admin') || (curUser && String(curUser).toLowerCase() === String(art.userLogin).toLowerCase());
 
         // Kumpulkan daftar foto (mendukung s.d. 3 foto)
         var listFoto = [];
@@ -565,12 +580,12 @@
         var actionOwnerHtml = '';
         if (isOwnerOrAdmin) {
           actionOwnerHtml = `
-            <div class="btn-group btn-group-sm mr-2">
-              <button type="button" class="btn btn-outline-secondary btn-koran-edit" data-id="${art.id}" title="Edit Berita">
-                <i class="fas fa-edit text-warning"></i>
+            <div class="koran-article-actions ml-auto">
+              <button type="button" class="btn btn-xs btn-outline-warning btn-koran-edit px-2 py-1 mr-1" data-id="${art.id}" title="Edit Berita Ini">
+                <i class="fas fa-edit mr-1"></i>Edit
               </button>
-              <button type="button" class="btn btn-outline-secondary btn-koran-hapus" data-id="${art.id}" title="Takedown / Hapus">
-                <i class="fas fa-trash-alt text-danger"></i>
+              <button type="button" class="btn btn-xs btn-outline-danger btn-koran-hapus px-2 py-1" data-id="${art.id}" title="Hapus Berita Ini">
+                <i class="fas fa-trash-alt mr-1"></i>Hapus
               </button>
             </div>
           `;
