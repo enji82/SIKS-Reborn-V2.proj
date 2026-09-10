@@ -493,6 +493,44 @@
     var FOTO_FILES = [null, null, null]; // slot 1, slot 2, slot 3
     var LAMPIRAN_FILE_DATA = null;
 
+    /**
+     * Helper terpadu membaca sesi user aktif dan status admin di form tulis
+     */
+    function getAktifUserEmadingTulis() {
+      var u = null;
+      if (typeof getSesiUser === 'function') {
+        u = getSesiUser();
+      }
+      if (!u && typeof userLogin !== 'undefined' && userLogin) {
+        u = userLogin;
+      }
+      if (!u) {
+        try {
+          var stored = localStorage.getItem('siksUser');
+          if (stored && stored !== 'null' && stored !== 'undefined') {
+            u = JSON.parse(stored);
+            if (typeof u === 'string') u = JSON.parse(u);
+          }
+        } catch (e) {}
+      }
+
+      var username = u ? (u.username || u.user || u.nama_pegawai || u.nama || '') : '';
+      var role = u ? String(u.role || '').toLowerCase() : '';
+      var isAdmin = false;
+      if (typeof checkUserRoleIsAdmin === 'function') {
+        isAdmin = checkUserRoleIsAdmin();
+      } else {
+        isAdmin = role.includes('admin') || role.includes('verifikator') || role.includes('korwil') || role === 'superadmin';
+      }
+
+      return {
+        user: u,
+        username: username,
+        role: role,
+        isAdmin: isAdmin
+      };
+    }
+
     $(document).ready(function () {
       initEditorToolbar();
       initFormHandlers();
@@ -646,10 +684,11 @@
       });
 
       // Autofill nama pengunggah & unit kerja dari data session login
-      var uLogin = (typeof userLogin !== 'undefined' && userLogin) ? userLogin : null;
+      var sesi = getAktifUserEmadingTulis();
+      var uLogin = sesi.user;
       if (uLogin) {
-        var namaAsli = uLogin.nama || uLogin.nama_pegawai || uLogin.username || '';
-        var unitAsli = uLogin.unit_kerja || uLogin.sekolah || '';
+        var namaAsli = uLogin.nama_lengkap || uLogin.nama || uLogin.nama_pegawai || uLogin.username || '';
+        var unitAsli = uLogin.unit_kerja || uLogin.unit || uLogin.sekolah || '';
         if (!$('#emading_inputPengunggah').val()) {
           $('#emading_inputPengunggah').val(namaAsli);
         }
@@ -761,9 +800,9 @@
       var tags = $('#emading_inputTags').val().trim();
       var idArtikel = $('#emading_idArtikel').val().trim();
 
-      var uLogin = (typeof userLogin !== 'undefined' && userLogin) ? userLogin : null;
-      var curUser = uLogin ? (uLogin.username || uLogin.user) : 'anonim';
-      var curRole = uLogin ? (uLogin.role || '').toLowerCase() : '';
+      var sesi = getAktifUserEmadingTulis();
+      var curUser = sesi.username || 'anonim';
+      var curRole = sesi.isAdmin ? 'admin' : (sesi.role || '');
 
       // Kumpulkan existing foto URLs beserta mapping slotnya
       var existingFotoUrls = [];

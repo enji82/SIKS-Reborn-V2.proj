@@ -399,6 +399,44 @@
     }
 
     /**
+     * Helper terpadu membaca sesi user aktif dan status admin
+     */
+    function getAktifUserEmading() {
+      var u = null;
+      if (typeof getSesiUser === 'function') {
+        u = getSesiUser();
+      }
+      if (!u && typeof userLogin !== 'undefined' && userLogin) {
+        u = userLogin;
+      }
+      if (!u) {
+        try {
+          var stored = localStorage.getItem('siksUser');
+          if (stored && stored !== 'null' && stored !== 'undefined') {
+            u = JSON.parse(stored);
+            if (typeof u === 'string') u = JSON.parse(u);
+          }
+        } catch (e) {}
+      }
+
+      var username = u ? (u.username || u.user || u.nama_pegawai || u.nama || '') : '';
+      var role = u ? String(u.role || '').toLowerCase() : '';
+      var isAdmin = false;
+      if (typeof checkUserRoleIsAdmin === 'function') {
+        isAdmin = checkUserRoleIsAdmin();
+      } else {
+        isAdmin = role.includes('admin') || role.includes('verifikator') || role.includes('korwil') || role === 'superadmin';
+      }
+
+      return {
+        user: u,
+        username: username,
+        role: role,
+        isAdmin: isAdmin
+      };
+    }
+
+    /**
      * Merender daftar artikel dengan TAMPILAN KORAN (LANGSUNG DIBACA TANPA POPUP)
      */
     function renderFeedKoran(data) {
@@ -415,22 +453,15 @@
       $('#emading_emptyFeed').addClass('d-none');
       $container.removeClass('d-none');
 
-      var uLogin = null;
-      if (typeof userLogin !== 'undefined' && userLogin) {
-        uLogin = userLogin;
-      } else {
-        try {
-          var stored = localStorage.getItem('siksUser');
-          if (stored) uLogin = JSON.parse(stored);
-        } catch (e) {}
-      }
-      var curUser = uLogin ? (uLogin.username || uLogin.user || '') : '';
-      var curRole = uLogin ? (uLogin.role || '').toLowerCase() : '';
+      var sesi = getAktifUserEmading();
+      var curUser = sesi.username;
+      var curRole = sesi.role;
+      var isAdmin = sesi.isAdmin;
 
       data.forEach(function (art, index) {
         var isHeadline = (index === 0);
         var headlineClass = isHeadline ? 'koran-headline' : '';
-        var isOwnerOrAdmin = (curRole === 'admin') || (curUser && String(curUser).toLowerCase() === String(art.userLogin).toLowerCase());
+        var isOwnerOrAdmin = isAdmin || (curUser && String(curUser).toLowerCase() === String(art.userLogin).toLowerCase());
 
         // Kumpulkan daftar foto (mendukung s.d. 3 foto)
         var listFoto = [];
@@ -816,8 +847,8 @@
      * Cek apakah user saat ini sudah me-like artikel
      */
     function cekStatusLikeKoran(idArtikel) {
-      var uLogin = (typeof userLogin !== 'undefined' && userLogin) ? userLogin : null;
-      var curUser = uLogin ? (uLogin.username || uLogin.user) : 'anonim';
+      var sesi = getAktifUserEmading();
+      var curUser = sesi.username || 'anonim';
 
       google.script.run
         .withSuccessHandler(function (res) {
@@ -841,8 +872,8 @@
      * Toggle Like / Batal Like
      */
     function toggleLikeKoran(idArtikel) {
-      var uLogin = (typeof userLogin !== 'undefined' && userLogin) ? userLogin : null;
-      var curUser = uLogin ? (uLogin.username || uLogin.user) : 'anonim';
+      var sesi = getAktifUserEmading();
+      var curUser = sesi.username || 'anonim';
 
       google.script.run
         .withSuccessHandler(function (res) {
@@ -850,7 +881,7 @@
             var data = (typeof res === 'string') ? JSON.parse(res) : res;
             if (data.success) {
               $('#koran_count_like_' + idArtikel).text(data.totalSuka);
-              if (data.liked) {
+              if (data.status === 'liked') {
                 $('#koran_btn_like_' + idArtikel).removeClass('btn-outline-danger').addClass('btn-danger text-white');
                 $('#koran_icon_like_' + idArtikel).removeClass('far').addClass('fas');
                 $('#koran_label_like_' + idArtikel).text('Disukai');
@@ -892,12 +923,12 @@
         return;
       }
 
-      var uLogin = (typeof userLogin !== 'undefined' && userLogin) ? userLogin : null;
-      var curUser = uLogin ? (uLogin.username || uLogin.user) : '';
-      var curRole = uLogin ? (uLogin.role || '').toLowerCase() : '';
+      var sesi = getAktifUserEmading();
+      var curUser = sesi.username;
+      var canAdmin = sesi.isAdmin;
 
       list.forEach(function (k) {
-        var canDelete = (curRole === 'admin') || (curUser && curUser === k.userLogin);
+        var canDelete = canAdmin || (curUser && curUser.toLowerCase() === String(k.userLogin || '').toLowerCase());
         var delBtn = canDelete ? `<button type="button" class="btn btn-link text-danger p-0 ml-2 btn-hapus-komentar-koran" data-id="${k.idKomentar}" data-art="${idArtikel}" title="Hapus"><i class="fas fa-times"></i></button>` : '';
 
         var html = `
@@ -926,10 +957,11 @@
     }
 
     function kirimKomentarKoran(idArtikel, teks, onSuccess) {
-      var uLogin = (typeof userLogin !== 'undefined' && userLogin) ? userLogin : null;
-      var curName = uLogin ? (uLogin.nama || uLogin.nama_pegawai || uLogin.username) : 'Anonim';
-      var curUser = uLogin ? (uLogin.username || uLogin.user) : 'anonim';
-      var curUnit = uLogin ? (uLogin.unit_kerja || uLogin.sekolah || '-') : '-';
+      var sesi = getAktifUserEmading();
+      var uLogin = sesi.user;
+      var curName = uLogin ? (uLogin.nama_lengkap || uLogin.nama || uLogin.nama_pegawai || uLogin.username) : (sesi.username || 'Anonim');
+      var curUser = sesi.username || 'anonim';
+      var curUnit = uLogin ? (uLogin.unit_kerja || uLogin.unit || uLogin.sekolah || '-') : '-';
 
       var payload = {
         idArtikel: idArtikel,
@@ -961,9 +993,9 @@
     }
 
     function hapusKomentarKoran(idArtikel, idKom) {
-      var uLogin = (typeof userLogin !== 'undefined' && userLogin) ? userLogin : null;
-      var curUser = uLogin ? (uLogin.username || uLogin.user) : '';
-      var curRole = uLogin ? (uLogin.role || '').toLowerCase() : '';
+      var sesi = getAktifUserEmading();
+      var curUser = sesi.username || '';
+      var curRole = sesi.isAdmin ? 'admin' : (sesi.role || '');
 
       google.script.run
         .withSuccessHandler(function () {
@@ -993,9 +1025,9 @@
         },
         onConfirm: function () {
           Sultan.notif.loading("Menghapus artikel...");
-          var uLogin = (typeof userLogin !== 'undefined' && userLogin) ? userLogin : null;
-          var curUser = uLogin ? (uLogin.username || uLogin.user) : '';
-          var curRole = uLogin ? (uLogin.role || '').toLowerCase() : '';
+          var sesi = getAktifUserEmading();
+          var curUser = sesi.username;
+          var curRole = sesi.isAdmin ? 'admin' : (sesi.role || '');
 
           google.script.run
             .withSuccessHandler(function (res) {

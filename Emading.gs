@@ -383,10 +383,12 @@ function simpanArtikelEmading(payload) {
         if (String(data[i][0]).trim() === idArtikel) {
           rowIndex = i + 1;
           // Validasi Hak Akses: Hanya pembuat atau role admin yang berhak
-          var pembuat = String(data[i][5]).trim();
-          var userReq = String(payload.userLogin).trim();
-          var roleReq = String(payload.userRole).trim().toLowerCase();
-          if (roleReq !== "admin" && pembuat !== userReq) {
+          var pembuat = String(data[i][5] || "").trim().toLowerCase();
+          var userReq = String(payload.userLogin || "").trim().toLowerCase();
+          var roleReq = String(payload.userRole || "").trim().toLowerCase();
+          var isAdminRole = roleReq.indexOf("admin") !== -1 || roleReq.indexOf("verifikator") !== -1 || roleReq.indexOf("korwil") !== -1;
+
+          if (!isAdminRole && pembuat !== userReq) {
             return JSON.stringify({ error: "Anda tidak memiliki hak akses untuk mengedit artikel ini." });
           }
           break;
@@ -465,8 +467,11 @@ function hapusArtikelEmading(payload) {
 
     for (var i = 1; i < data.length; i++) {
       if (String(data[i][0]).trim() === idTarget) {
-        var pemilik = String(data[i][5]).trim();
-        if (userRole !== "admin" && pemilik !== userLogin) {
+        var pemilik = String(data[i][5] || "").trim().toLowerCase();
+        var userLoginLower = userLogin.toLowerCase();
+        var isAdminRole = userRole.indexOf("admin") !== -1 || userRole.indexOf("verifikator") !== -1 || userRole.indexOf("korwil") !== -1;
+
+        if (!isAdminRole && pemilik !== userLoginLower) {
           return JSON.stringify({ error: "Akses ditolak: Anda bukan pembuat artikel ini dan bukan Admin." });
         }
 
@@ -707,10 +712,12 @@ function hapusKomentarEmading(payload) {
     var idArtikel = "";
 
     for (var i = 1; i < data.length; i++) {
-      if (String(data[i][0]).trim() === idKom) {
-        var pemilik = String(data[i][3]).trim();
+        var pemilik = String(data[i][3] || "").trim().toLowerCase();
+        var userLoginLower = userLogin.toLowerCase();
+        var isAdminRole = userRole.indexOf("admin") !== -1 || userRole.indexOf("verifikator") !== -1 || userRole.indexOf("korwil") !== -1;
         idArtikel = String(data[i][1]).trim();
-        if (userRole !== "admin" && pemilik !== userLogin) {
+
+        if (!isAdminRole && pemilik !== userLoginLower) {
           return JSON.stringify({ error: "Anda tidak memiliki izin menghapus komentar ini." });
         }
         sheetKom.deleteRow(i + 1);
