@@ -102,6 +102,12 @@ function getDaftarArtikelEmading(filterObj) {
       var userLogin = String(row[5] || "").trim();
       var unitKerja = String(row[6] || "-").trim();
       var fotoUrl = String(row[7] || "").trim();
+      if (fotoUrl && (fotoUrl.indexOf('drive.google.com') > -1)) {
+        var matchId = fotoUrl.match(/id=([a-zA-Z0-9_-]+)/) || fotoUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
+        if (matchId && matchId[1]) {
+          fotoUrl = "https://lh3.googleusercontent.com/d/" + matchId[1] + "=w1200";
+        }
+      }
       var videoUrl = String(row[8] || "").trim();
       var lampiranUrl = String(row[9] || "").trim();
       var lampiranNama = String(row[10] || "").trim();
@@ -173,7 +179,13 @@ function getDetailArtikelEmading(idArtikel) {
 
     for (var i = 1; i < data.length; i++) {
       if (String(data[i][0]).trim() === cleanId) {
-        var row = data[i];
+        var rawFoto = String(row[7] || "").trim();
+        if (rawFoto && (rawFoto.indexOf('drive.google.com') > -1)) {
+          var mId = rawFoto.match(/id=([a-zA-Z0-9_-]+)/) || rawFoto.match(/\/d\/([a-zA-Z0-9_-]+)/);
+          if (mId && mId[1]) {
+            rawFoto = "https://lh3.googleusercontent.com/d/" + mId[1] + "=w1200";
+          }
+        }
         return JSON.stringify({
           rowBaris: i + 1,
           id: row[0],
@@ -183,7 +195,7 @@ function getDetailArtikelEmading(idArtikel) {
           pengunggah: row[4],
           userLogin: row[5],
           unitKerja: row[6],
-          fotoUrl: row[7],
+          fotoUrl: rawFoto,
           videoUrl: row[8],
           lampiranUrl: row[9],
           lampiranNama: row[10],
@@ -224,7 +236,7 @@ function simpanArtikelEmading(payload) {
         var blobFoto = Utilities.newBlob(Utilities.base64Decode(payload.fotoFile.data), payload.fotoFile.mimeType, namaFoto);
         var fileFotoDrive = targetFolder.createFile(blobFoto);
         fileFotoDrive.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-        fotoUrl = "https://drive.google.com/uc?export=view&id=" + fileFotoDrive.getId();
+        fotoUrl = "https://lh3.googleusercontent.com/d/" + fileFotoDrive.getId() + "=w1200";
       } catch (errFoto) {
         Logger.log("Gagal upload foto mading: " + errFoto.message);
       }

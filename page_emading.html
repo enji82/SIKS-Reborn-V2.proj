@@ -379,9 +379,10 @@
         // Media Foto
         var fotoHtml = '';
         if (art.fotoUrl) {
+          var displayImgUrl = konversiDriveImageUrl(art.fotoUrl);
           fotoHtml = `
             <div class="koran-media-wrap shadow-sm">
-              <img src="${art.fotoUrl}" class="koran-media-img" alt="${art.judul}" loading="lazy">
+              <img src="${displayImgUrl}" class="koran-media-img" alt="${art.judul}" loading="lazy" referrerpolicy="no-referrer" onerror="handleImageError(this, '${art.fotoUrl}')">
             </div>
           `;
         }
@@ -572,6 +573,38 @@
         if (art) konfirmasiHapusArtikel(art);
       });
     }
+
+    /**
+     * Konversi URL Foto Google Drive ke format direct render terbaik
+     */
+    function konversiDriveImageUrl(url) {
+      if (!url) return "";
+      var driveId = extractDriveId(url);
+      if (driveId) {
+        // Format thumbnail lh3.googleusercontent.com adalah format terandal untuk Google Apps Script
+        return "https://lh3.googleusercontent.com/d/" + driveId + "=w1200";
+      }
+      return url;
+    }
+
+    function extractDriveId(url) {
+      if (!url) return null;
+      var match = url.match(/id=([a-zA-Z0-9_-]+)/) || url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      return match ? match[1] : null;
+    }
+
+    window.handleImageError = function (imgEl, originalUrl) {
+      var driveId = extractDriveId(originalUrl);
+      if (driveId && !imgEl.getAttribute('data-fallback-tried')) {
+        imgEl.setAttribute('data-fallback-tried', '1');
+        // Coba alternatif kedua: Google Drive thumbnail API
+        imgEl.src = "https://drive.google.com/thumbnail?id=" + driveId + "&sz=w1200";
+      } else if (driveId && imgEl.getAttribute('data-fallback-tried') === '1') {
+        imgEl.setAttribute('data-fallback-tried', '2');
+        // Coba alternatif ketiga: export=view
+        imgEl.src = "https://drive.google.com/uc?export=view&id=" + driveId;
+      }
+    };
 
     /**
      * Konversi URL YouTube ke Embed Format
