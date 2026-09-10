@@ -125,7 +125,28 @@ function getDaftarArtikelEmading(filterObj) {
       var jmlSuka = parseInt(row[13]) || 0;
       var jmlKomentar = parseInt(row[14]) || 0;
       var tags = String(row[15] || "").trim();
-      var posisiFoto = String(row[16] || "awal").trim().toLowerCase() || "awal";
+      var rawPosisi = String(row[16] || "").trim();
+      var posisiFoto = "awal";
+      var posisiFotoList = ["awal", "tengah", "akhir"];
+      var posisiVideo = "akhir";
+
+      if (rawPosisi) {
+        if (rawPosisi.startsWith("{") && rawPosisi.endsWith("}")) {
+          try {
+            var metaPos = JSON.parse(rawPosisi);
+            if (metaPos.fotos && Array.isArray(metaPos.fotos)) {
+              posisiFotoList = metaPos.fotos;
+              posisiFoto = posisiFotoList[0] || "awal";
+            }
+            if (metaPos.video) {
+              posisiVideo = metaPos.video;
+            }
+          } catch(ePos) {}
+        } else {
+          posisiFoto = rawPosisi.toLowerCase();
+          posisiFotoList = [posisiFoto, "tengah", "akhir"];
+        }
+      }
 
       // Filter status jika bukan 'SEMUA'
       if (statusFilter !== "SEMUA" && status !== statusFilter) {
@@ -162,6 +183,8 @@ function getDaftarArtikelEmading(filterObj) {
         fotoUrl: fotoList[0] || "",
         fotoList: fotoList,
         posisiFoto: posisiFoto,
+        posisiFotoList: posisiFotoList,
+        posisiVideo: posisiVideo,
         videoUrl: videoUrl,
         lampiranUrl: lampiranUrl,
         lampiranNama: lampiranNama,
@@ -190,7 +213,8 @@ function getDetailArtikelEmading(idArtikel) {
     var cleanId = String(idArtikel).trim();
 
     for (var i = 1; i < data.length; i++) {
-      if (String(data[i][0]).trim() === cleanId) {
+      var row = data[i];
+      if (String(row[0]).trim() === cleanId) {
         var rawFoto = String(row[7] || "").trim();
         var fotoList = [];
         if (rawFoto) {
@@ -207,7 +231,29 @@ function getDetailArtikelEmading(idArtikel) {
           }).filter(function(f) { return f.length > 0; });
         }
 
-        // Posisi foto: awal atau tengah (disimpan di tags atau ekstensi field jika ada)
+        var rawPosisi = String(row[16] || "").trim();
+        var posisiFoto = "awal";
+        var posisiFotoList = ["awal", "tengah", "akhir"];
+        var posisiVideo = "akhir";
+
+        if (rawPosisi) {
+          if (rawPosisi.startsWith("{") && rawPosisi.endsWith("}")) {
+            try {
+              var metaPos = JSON.parse(rawPosisi);
+              if (metaPos.fotos && Array.isArray(metaPos.fotos)) {
+                posisiFotoList = metaPos.fotos;
+                posisiFoto = posisiFotoList[0] || "awal";
+              }
+              if (metaPos.video) {
+                posisiVideo = metaPos.video;
+              }
+            } catch(ePos) {}
+          } else {
+            posisiFoto = rawPosisi.toLowerCase();
+            posisiFotoList = [posisiFoto, "tengah", "akhir"];
+          }
+        }
+
         return JSON.stringify({
           rowBaris: i + 1,
           id: row[0],
@@ -219,7 +265,9 @@ function getDetailArtikelEmading(idArtikel) {
           unitKerja: row[6],
           fotoUrl: fotoList[0] || "",
           fotoList: fotoList,
-          posisiFoto: String(row[16] || "awal").toLowerCase(), // jika ada kolom 17 atau fallback awal
+          posisiFoto: posisiFoto,
+          posisiFotoList: posisiFotoList,
+          posisiVideo: posisiVideo,
           videoUrl: row[8],
           lampiranUrl: row[9],
           lampiranNama: row[10],
@@ -287,7 +335,14 @@ function simpanArtikelEmading(payload) {
     }
 
     var fotoUrlMerged = listFotoUrl.join(", ");
-    var posisiFoto = (payload.posisiFoto || "awal").toLowerCase();
+
+    // Susun metadata posisi (format JSON string untuk kolom 17)
+    var posisiFotoList = payload.posisiFotoList || [payload.posisiFoto || "awal", "tengah", "akhir"];
+    var posisiVideo = payload.posisiVideo || "akhir";
+    var posisiMetadataJson = JSON.stringify({
+      fotos: posisiFotoList,
+      video: posisiVideo
+    });
 
     // 2. Upload Lampiran Berkas Dokumen (PDF, Docx, Zip dll) jika ada
     var lampiranUrl = payload.existingLampiranUrl || "";
@@ -354,7 +409,7 @@ function simpanArtikelEmading(payload) {
         sheet.getRange(rowIndex, 11).setValue(lampiranNama);
       }
       sheet.getRange(rowIndex, 16).setValue(payload.tags || "");
-      sheet.getRange(rowIndex, 17).setValue(posisiFoto);
+      sheet.getRange(rowIndex, 17).setValue(posisiMetadataJson);
 
       return JSON.stringify({ success: true, message: "Sukses: Artikel berhasil diperbarui!", id: idArtikel });
 
@@ -379,7 +434,7 @@ function simpanArtikelEmading(payload) {
         0, // Suka awal
         0, // Komentar awal
         payload.tags || "",
-        posisiFoto
+        posisiMetadataJson
       ];
 
       sheet.appendRow(newRow);

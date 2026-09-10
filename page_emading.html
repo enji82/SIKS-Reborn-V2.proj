@@ -441,113 +441,74 @@
           listFoto = splitF.filter(function(f) { return f && f.trim().length > 0; });
         }
 
-        // Susun HTML Galeri Foto Koran (1 Foto, 2 Foto Side-by-Side, 3 Foto Trio Collage)
-        var fotoHtml = '';
-        if (listFoto.length === 1) {
-          var fUrl1 = konversiDriveImageUrl(listFoto[0]);
-          fotoHtml = `
-            <div class="koran-inline-media shadow-sm">
-              <img src="${fUrl1}" class="koran-media-img" alt="${art.judul}" loading="lazy" referrerpolicy="no-referrer" onerror="handleImageError(this, '${listFoto[0]}')">
-            </div>
-          `;
-        } else if (listFoto.length === 2) {
-          var f1 = konversiDriveImageUrl(listFoto[0]);
-          var f2 = konversiDriveImageUrl(listFoto[1]);
-          fotoHtml = `
-            <div class="koran-inline-media shadow-sm">
-              <div class="koran-gallery-2">
-                <img src="${f1}" alt="Dokumentasi 1" loading="lazy" referrerpolicy="no-referrer" onerror="handleImageError(this, '${listFoto[0]}')">
-                <img src="${f2}" alt="Dokumentasi 2" loading="lazy" referrerpolicy="no-referrer" onerror="handleImageError(this, '${listFoto[1]}')">
-              </div>
-            </div>
-          `;
-        } else if (listFoto.length >= 3) {
-          var g1 = konversiDriveImageUrl(listFoto[0]);
-          var g2 = konversiDriveImageUrl(listFoto[1]);
-          var g3 = konversiDriveImageUrl(listFoto[2]);
-          fotoHtml = `
-            <div class="koran-inline-media shadow-sm">
-              <div class="koran-gallery-3">
-                <img src="${g1}" class="gallery-item-main" alt="Dokumentasi Utama" loading="lazy" referrerpolicy="no-referrer" onerror="handleImageError(this, '${listFoto[0]}')">
-                <img src="${g2}" class="gallery-item-sub" alt="Dokumentasi 2" loading="lazy" referrerpolicy="no-referrer" onerror="handleImageError(this, '${listFoto[1]}')">
-                <img src="${g3}" class="gallery-item-sub" alt="Dokumentasi 3" loading="lazy" referrerpolicy="no-referrer" onerror="handleImageError(this, '${listFoto[2]}')">
-              </div>
-            </div>
-          `;
-        }
+        // Ambil konfigurasi posisi foto individual & posisi video
+        var posFotoList = art.posisiFotoList || [];
+        var defaultPos = (art.posisiFoto || 'awal').toLowerCase();
+        var posisiVideo = (art.posisiVideo || 'akhir').toLowerCase();
 
-        // Posisi Foto: Di Awal atau Di Tengah Paragraf
-        var posisiFoto = (art.posisiFoto || 'awal').toLowerCase();
+        // Kelompokkan foto berdasarkan posisi: 'awal', 'tengah', 'akhir'
+        var fotosAwal = [];
+        var fotosTengah = [];
+        var fotosAkhir = [];
 
-        // Susun Isi Berita (Mendukung Rich Text HTML atau Plain Text)
-        var isiRaw = (art.isi || '').trim();
-        var bodyIsiHtml = '';
-
-        // Cek apakah isi berupa format HTML (ada tag <p>, <div>, <ul>, <h3> dll)
-        var isHtml = /<[a-z][\s\S]*>/i.test(isiRaw);
-
-        if (posisiFoto === 'awal') {
-          // JIKA POSISI DI AWAL: Tampilkan foto di atas teks
-          var isiKonten = isHtml ? isiRaw : `<div style="white-space: pre-line;">${isiRaw}</div>`;
-          bodyIsiHtml = `
-            ${fotoHtml}
-            <div class="koran-body-text">
-              ${isiKonten}
-            </div>
-          `;
-        } else {
-          // JIKA POSISI DI TENGAH PARAGRAF:
-          if (isHtml) {
-            // Jika HTML, kita pisahkan tag paragraf pembuka
-            var matchP = isiRaw.match(/(<p[\s\S]*?<\/p>|<div[\s\S]*?<\/div>)/i);
-            if (matchP && matchP.index === 0) {
-              var pAwal = matchP[0];
-              var pSisa = isiRaw.substring(pAwal.length);
-              bodyIsiHtml = `
-                <div class="koran-body-text">
-                  ${pAwal}
-                  ${fotoHtml}
-                  ${pSisa}
-                </div>
-              `;
-            } else {
-              bodyIsiHtml = `
-                <div class="koran-body-text">
-                  ${fotoHtml}
-                  ${isiRaw}
-                </div>
-              `;
-            }
+        listFoto.forEach(function (fUrl, idx) {
+          var p = (posFotoList[idx] || (idx === 0 ? defaultPos : (idx === 1 ? 'tengah' : 'akhir'))).toLowerCase();
+          if (p === 'tengah') {
+            fotosTengah.push(fUrl);
+          } else if (p === 'akhir') {
+            fotosAkhir.push(fUrl);
           } else {
-            // Jika Plain Text, pisahkan paragraf pertama
-            var paragrafList = isiRaw.split(/\n\s*\n|\r\n\r\n/);
-            if (paragrafList.length > 1) {
-              var lead = `<p class="koran-drop-cap mb-3">${paragrafList[0]}</p>`;
-              var sisa = paragrafList.slice(1).map(function(p) { return `<p class="mb-3">${p.trim()}</p>`; }).join('');
-              bodyIsiHtml = `
-                <div class="koran-body-text">
-                  ${lead}
-                  ${fotoHtml}
-                  ${sisa}
+            fotosAwal.push(fUrl);
+          }
+        });
+
+        // Fungsi pembantu render galeri kelompok foto
+        function buatHtmlGaleriFoto(fotos) {
+          if (!fotos || fotos.length === 0) return '';
+          if (fotos.length === 1) {
+            var fUrl1 = konversiDriveImageUrl(fotos[0]);
+            return `
+              <div class="koran-inline-media shadow-sm">
+                <img src="${fUrl1}" class="koran-media-img" alt="${art.judul}" loading="lazy" referrerpolicy="no-referrer" onerror="handleImageError(this, '${fotos[0]}')">
+              </div>
+            `;
+          } else if (fotos.length === 2) {
+            var f1 = konversiDriveImageUrl(fotos[0]);
+            var f2 = konversiDriveImageUrl(fotos[1]);
+            return `
+              <div class="koran-inline-media shadow-sm">
+                <div class="koran-gallery-2">
+                  <img src="${f1}" alt="Dokumentasi 1" loading="lazy" referrerpolicy="no-referrer" onerror="handleImageError(this, '${fotos[0]}')">
+                  <img src="${f2}" alt="Dokumentasi 2" loading="lazy" referrerpolicy="no-referrer" onerror="handleImageError(this, '${fotos[1]}')">
                 </div>
-              `;
-            } else {
-              bodyIsiHtml = `
-                <div class="koran-body-text">
-                  ${fotoHtml}
-                  <div style="white-space: pre-line;">${isiRaw}</div>
+              </div>
+            `;
+          } else {
+            var g1 = konversiDriveImageUrl(fotos[0]);
+            var g2 = konversiDriveImageUrl(fotos[1]);
+            var g3 = konversiDriveImageUrl(fotos[2]);
+            return `
+              <div class="koran-inline-media shadow-sm">
+                <div class="koran-gallery-3">
+                  <img src="${g1}" class="gallery-item-main" alt="Dokumentasi Utama" loading="lazy" referrerpolicy="no-referrer" onerror="handleImageError(this, '${fotos[0]}')">
+                  <img src="${g2}" class="gallery-item-sub" alt="Dokumentasi 2" loading="lazy" referrerpolicy="no-referrer" onerror="handleImageError(this, '${fotos[1]}')">
+                  <img src="${g3}" class="gallery-item-sub" alt="Dokumentasi 3" loading="lazy" referrerpolicy="no-referrer" onerror="handleImageError(this, '${fotos[2]}')">
                 </div>
-              `;
-            }
+              </div>
+            `;
           }
         }
 
+        var htmlFotoAwal = buatHtmlGaleriFoto(fotosAwal);
+        var htmlFotoTengah = buatHtmlGaleriFoto(fotosTengah);
+        var htmlFotoAkhir = buatHtmlGaleriFoto(fotosAkhir);
+
         // Media Video (Embed YouTube jika ada)
-        var videoHtml = '';
+        var videoEmbedHtml = '';
         if (art.videoUrl) {
           var embedUrl = konversiUrlEmbed(art.videoUrl);
           if (embedUrl) {
-            videoHtml = `
+            videoEmbedHtml = `
               <div class="mb-3 rounded overflow-hidden shadow-sm">
                 <div class="embed-responsive embed-responsive-16by9">
                   <iframe class="embed-responsive-item" src="${embedUrl}" allowfullscreen></iframe>
@@ -556,6 +517,87 @@
             `;
           }
         }
+
+        // Susun slot video berdasarkan posisiVideo: 'awal', 'tengah', atau 'akhir'
+        var htmlVideoAwal = (posisiVideo === 'awal') ? videoEmbedHtml : '';
+        var htmlVideoTengah = (posisiVideo === 'tengah') ? videoEmbedHtml : '';
+        var htmlVideoAkhir = (posisiVideo === 'akhir') ? videoEmbedHtml : '';
+
+        // Gabungkan media di tiap slot
+        var mediaSlotAwal = `${htmlFotoAwal}${htmlVideoAwal}`;
+        var mediaSlotTengah = `${htmlFotoTengah}${htmlVideoTengah}`;
+        var mediaSlotAkhir = `${htmlFotoAkhir}${htmlVideoAkhir}`;
+
+        // Susun Isi Berita (Mendukung Rich Text HTML atau Plain Text)
+        var isiRaw = (art.isi || '').trim();
+        var bodyIsiHtml = '';
+        var isHtml = /<[a-z][\s\S]*>/i.test(isiRaw);
+
+        if (mediaSlotTengah) {
+          // Ada media di tengah paragraf
+          if (isHtml) {
+            var matchP = isiRaw.match(/(<p[\s\S]*?<\/p>|<div[\s\S]*?<\/div>)/i);
+            if (matchP && matchP.index === 0) {
+              var pAwal = matchP[0];
+              var pSisa = isiRaw.substring(pAwal.length);
+              bodyIsiHtml = `
+                ${mediaSlotAwal}
+                <div class="koran-body-text">
+                  ${pAwal}
+                  ${mediaSlotTengah}
+                  ${pSisa}
+                </div>
+                ${mediaSlotAkhir}
+              `;
+            } else {
+              bodyIsiHtml = `
+                ${mediaSlotAwal}
+                <div class="koran-body-text">
+                  ${mediaSlotTengah}
+                  ${isiRaw}
+                </div>
+                ${mediaSlotAkhir}
+              `;
+            }
+          } else {
+            var paragrafList = isiRaw.split(/\n\s*\n|\r\n\r\n/);
+            if (paragrafList.length > 1) {
+              var lead = `<p class="koran-drop-cap mb-3">${paragrafList[0]}</p>`;
+              var sisa = paragrafList.slice(1).map(function(p) { return `<p class="mb-3">${p.trim()}</p>`; }).join('');
+              bodyIsiHtml = `
+                ${mediaSlotAwal}
+                <div class="koran-body-text">
+                  ${lead}
+                  ${mediaSlotTengah}
+                  ${sisa}
+                </div>
+                ${mediaSlotAkhir}
+              `;
+            } else {
+              bodyIsiHtml = `
+                ${mediaSlotAwal}
+                <div class="koran-body-text">
+                  ${mediaSlotTengah}
+                  <div style="white-space: pre-line;">${isiRaw}</div>
+                </div>
+                ${mediaSlotAkhir}
+              `;
+            }
+          }
+        } else {
+          // Tidak ada media di tengah, susun Awal -> Isi Teks -> Akhir
+          var isiKonten = isHtml ? isiRaw : `<div style="white-space: pre-line;">${isiRaw}</div>`;
+          bodyIsiHtml = `
+            ${mediaSlotAwal}
+            <div class="koran-body-text">
+              ${isiKonten}
+            </div>
+            ${mediaSlotAkhir}
+          `;
+        }
+
+        // Variabel videoHtml di luar bodyIsiHtml kini tidak perlu di-render ulang
+        var videoHtml = '';
 
         // Berkas Dokumen Lampiran Resmi
         var lampiranHtml = '';
