@@ -444,10 +444,15 @@
         </div>
       </div>
 
-      <!-- ALASAN KENDALA TEKNIS -->
-      <div class="form-group mb-3">
-        <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Kategori Alasan Kendala Teknis <span class="text-danger">*</span></label>
-        <select id="admmuridijazah_cetak_alasan_kategori" class="form-control form-control-sultan border-maroon font-weight-bold" required>
+      <div class="row mb-3">
+        <div class="col-md-6">
+          <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Tanggal / Waktu Cetak <span class="text-danger">*</span></label>
+          <input type="datetime-local" id="admmuridijazah_cetak_waktu" class="form-control form-control-sultan border-maroon font-weight-bold" required>
+          <small class="text-muted">Bisa disesuaikan jika mencatat kejadian cetak ulang yang lalu.</small>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Kategori Kendala <span class="text-danger">*</span></label>
+          <select id="admmuridijazah_cetak_alasan_kategori" class="form-control form-control-sultan border-maroon font-weight-bold" required>
           <option value="Kertas Rusak / Terlipat / Sobek">Kertas Rusak / Terlipat / Sobek</option>
           <option value="Salah Tempel Foto Siswa">Salah Tempel Foto Siswa</option>
           <option value="Salah / Miring Stempel Sekolah">Salah / Miring Stempel Sekolah</option>
@@ -455,6 +460,7 @@
           <option value="Tinta Printer Macet / Bergaris">Tinta Printer Macet / Bergaris</option>
           <option value="Lainnya">Lainnya (Ketik Catatan Tambahan)</option>
         </select>
+        </div>
       </div>
 
       <div class="form-group mb-0">
@@ -1434,6 +1440,15 @@
       $('#admmuridijazah_cetak_alasan_kategori').val('Kertas Rusak / Terlipat / Sobek');
       $('#admmuridijazah_cetak_keterangan').val('');
 
+      // Inisialisasi default waktu cetak ke sekarang
+      var nowLocal = new Date();
+      var yr = nowLocal.getFullYear();
+      var mo = String(nowLocal.getMonth() + 1).padStart(2, '0');
+      var da = String(nowLocal.getDate()).padStart(2, '0');
+      var hr = String(nowLocal.getHours()).padStart(2, '0');
+      var mi = String(nowLocal.getMinutes()).padStart(2, '0');
+      $('#admmuridijazah_cetak_waktu').val(yr + '-' + mo + '-' + da + 'T' + hr + ':' + mi);
+
       // Tampilkan di Global Modal Form
       $('#global_modalFormSize').removeClass('modal-xl').addClass('modal-lg');
       $('#global_modalFormHeader').removeClass('modal-header-sultan-primary modal-header-sultan-warning modal-header-sultan-danger modal-header-sultan-success modal-header-sultan-info modal-header-sultan-dark modal-header-edit modal-header-tambah-edit modal-header-hapus');
@@ -1501,6 +1516,14 @@
       var kategoriAlasan = $('#admmuridijazah_cetak_alasan_kategori').val();
       var ketTambahan = ($('#admmuridijazah_cetak_keterangan').val() || '').trim();
       var finalAlasan = ketTambahan ? (kategoriAlasan + " - " + ketTambahan) : kategoriAlasan;
+      var rawWaktu = $('#admmuridijazah_cetak_waktu').val(); // format: YYYY-MM-DDTHH:mm
+
+      var customWaktu = "";
+      if (rawWaktu) {
+        var parts = rawWaktu.split('T');
+        var dParts = parts[0].split('-');
+        customWaktu = dParts[2] + '-' + dParts[1] + '-' + dParts[0] + ' ' + (parts[1] || '00:00') + ':00';
+      }
 
       var payload = {
         cetak_ijazah: cetakIjazah,
@@ -1508,7 +1531,8 @@
         cetak_transkrip: cetakTranskrip,
         lembar_transkrip: lembarTranskrip,
         alasan: finalAlasan,
-        operator: operator
+        operator: operator,
+        waktu_cetak: customWaktu
       };
 
       var btn = $('#admmuridijazah_btnSimpanCetakUlang');

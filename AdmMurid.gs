@@ -641,8 +641,10 @@ function admMurid_catatCetakUlangTeknis(rowId, payload) {
       try { logHistory = JSON.parse(rawLog); } catch(errLog) { logHistory = []; }
     }
 
+    var waktuFinal = String(payload.waktu_cetak || "").trim() || now;
+
     logHistory.unshift({
-      waktu: now,
+      waktu: waktuFinal,
       tipe: "Cetak Ulang Teknis",
       dokumen: dokumenLabel,
       lembar_ijazah: lembarIjazah,
