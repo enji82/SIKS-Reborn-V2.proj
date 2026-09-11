@@ -627,7 +627,7 @@ function admMurid_hapusIjazah(rowId) {
   }
 }
 
-function admMurid_verifikasiIjazah(rowId, status, catatan, verifikator) {
+function admMurid_verifikasiIjazah(rowId, status, catatan, verifikator, cetakDetail) {
   try {
     var sheet = getOrCreateSheetAdmMurid("Database_Ijazah");
     var row = parseInt(rowId);
@@ -654,17 +654,23 @@ function admMurid_verifikasiIjazah(rowId, status, catatan, verifikator) {
     sheet.getRange(row, 19, 1, 2).setValues([[now, verifikator]]);
     
     var stLower = String(status || "").toLowerCase();
-    // Jika status diubah menjadi "Dicetak", catat pencetakan perdana jika belum pernah dicetak
+    // Jika status diubah menjadi "Dicetak"
     if (stLower === "dicetak") {
       var currentCetakIjazah = parseInt(sheet.getRange(row, 25).getValue()) || 0;
+      var currentLembarIjazah = parseInt(sheet.getRange(row, 26).getValue()) || 0;
+      var currentCetakTranskrip = parseInt(sheet.getRange(row, 27).getValue()) || 0;
+      var currentLembarTranskrip = parseInt(sheet.getRange(row, 28).getValue()) || 0;
       var totalMurid = parseInt(sheet.getRange(row, 6).getValue()) || 0;
-      if (currentCetakIjazah === 0) {
-        var logAwal = [];
-        var rawLog = sheet.getRange(row, 29).getValue();
-        if (rawLog) {
-          try { logAwal = JSON.parse(rawLog); } catch(errLog) { logAwal = []; }
-        }
-        logAwal.unshift({
+
+      var logHistory = [];
+      var rawLog = sheet.getRange(row, 29).getValue();
+      if (rawLog) {
+        try { logHistory = JSON.parse(rawLog); } catch(errLog) { logHistory = []; }
+      }
+
+      // 1. Jika ini Cetak Perdana (belum pernah dicetak sama sekali)
+      if (currentCetakIjazah === 0 && currentCetakTranskrip === 0) {
+        logHistory.unshift({
           waktu: now,
           tipe: "Cetak Perdana",
           dokumen: "Ijazah & Transkrip",
@@ -674,10 +680,45 @@ function admMurid_verifikasiIjazah(rowId, status, catatan, verifikator) {
           operator: verifikator
         });
 
-        // Set Kolom 25 s/d 29: Jml_Cetak_Ijazah, Jml_Lembar_Ijazah, Jml_Cetak_Transkrip, Jml_Lembar_Transkrip, Log_Cetak
         sheet.getRange(row, 25, 1, 5).setValues([[
-          1, totalMurid, 1, totalMurid, JSON.stringify(logAwal)
+          1, totalMurid, 1, totalMurid, JSON.stringify(logHistory)
         ]]);
+      } else if (cetakDetail && typeof cetakDetail === 'object') {
+        // 2. Jika ini adalah Verifikasi Pencetakan Berkas Koreksi / Cetak Ulang
+        var cIjazah = cetakDetail.cetak_ijazah === true || cetakDetail.cetak_ijazah === "true";
+        var cTranskrip = cetakDetail.cetak_transkrip === true || cetakDetail.cetak_transkrip === "true";
+        var lIjazah = parseInt(cetakDetail.lembar_ijazah) || 0;
+        var lTranskrip = parseInt(cetakDetail.lembar_transkrip) || 0;
+        var rincianHal = String(cetakDetail.rincian_halaman || "").trim();
+        var tipeCetak = cetakDetail.tipe_cetak || "Cetak Ulang (Revisi Data)";
+
+        if (cIjazah || cTranskrip) {
+          var newCetakIj = currentCetakIjazah + (cIjazah ? 1 : 0);
+          var newLemIj = currentLembarIjazah + lIjazah;
+          var newCetakTr = currentCetakTranskrip + (cTranskrip ? 1 : 0);
+          var newLemTr = currentLembarTranskrip + lTranskrip;
+
+          var docParts = [];
+          if (cIjazah) docParts.push("Ijazah (" + lIjazah + " lbr)");
+          if (cTranskrip) docParts.push("Transkrip (" + lTranskrip + " lbr)");
+
+          var ketLog = (catatan ? catatan : "Pencetakan hasil perbaikan / cetak ulang data");
+          if (rincianHal) ketLog += " [Halaman: " + rincianHal + "]";
+
+          logHistory.unshift({
+            waktu: now,
+            tipe: tipeCetak,
+            dokumen: docParts.join(", "),
+            lembar_ijazah: lIjazah,
+            lembar_transkrip: lTranskrip,
+            alasan: ketLog,
+            operator: verifikator
+          });
+
+          sheet.getRange(row, 25, 1, 5).setValues([[
+            newCetakIj, newLemIj, newCetakTr, newLemTr, JSON.stringify(logHistory)
+          ]]);
+        }
       }
     }
 
@@ -794,7 +835,7 @@ function admMurid_catatCetakUlangTeknis(rowId, payload) {
   }
 }
 
-function admMurid_ajukanKoreksiIjazah(rowId, alasan, pengaju) {
+function admMurid_ajukanKoreksiIjazah(rowId, alasan, pengaju, jenisPengajuan) {
   try {
     var sheet = getOrCreateSheetAdmMurid("Database_Ijazah");
     var row = parseInt(rowId);
@@ -803,7 +844,9 @@ function admMurid_ajukanKoreksiIjazah(rowId, alasan, pengaju) {
     // Dapatkan catatan lama
     var oldCatatan = String(sheet.getRange(row, 14).getValue() || "").trim();
     var dateLabel = now.split(" ")[0]; // Ambil dd-MM-yyyy saja
-    var entry = "[" + dateLabel + " Sekolah]: Mengajukan Koreksi - " + alasan;
+    
+    var prefixStatus = (jenisPengajuan === "teknis") ? "Pengajuan Cetak Ulang (Teknis)" : "Pengajuan Koreksi";
+    var entry = "[" + dateLabel + " Sekolah]: " + (jenisPengajuan === "teknis" ? "Cetak Ulang Teknis - " : "Mengajukan Koreksi - ") + alasan;
     
     var newCatatan = "";
     if (oldCatatan === "" || oldCatatan === "-") {
@@ -812,7 +855,7 @@ function admMurid_ajukanKoreksiIjazah(rowId, alasan, pengaju) {
       newCatatan = entry + "\n--------------------------------------------------\n" + oldCatatan;
     }
 
-    sheet.getRange(row, 13).setValue("Pengajuan Koreksi");
+    sheet.getRange(row, 13).setValue(prefixStatus);
     sheet.getRange(row, 14).setValue(newCatatan);
     sheet.getRange(row, 17, 1, 2).setValues([[now, pengaju]]);
     
@@ -834,7 +877,7 @@ function admMurid_ajukanKoreksiIjazah(rowId, alasan, pengaju) {
     // Hapus cache notifikasi agar instan
     try { invalidateNotifCacheForModule("ijazah", "admin", ""); } catch(ce) {}
 
-    return JSON.stringify({ success: true, message: "Permohonan koreksi data berhasil diajukan." });
+    return JSON.stringify({ success: true, message: "Pengajuan cetak ulang berhasil dikirim ke Admin." });
   } catch (e) {
     return JSON.stringify({ success: false, message: e.message });
   }
