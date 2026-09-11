@@ -314,21 +314,81 @@ function admMurid_getIjazahData(npsnFilter) {
         var rawLembarTranskrip = parseInt(values[i][27]) || 0;
         var rawLogCetak = values[i][28] || "";
 
+        var rawCatatan = String(values[i][13] || "");
+
         // Auto-fix untuk data lama yang sudah berstatus Dicetak tapi fitur tracking baru dibuat
         if (stRowLower === "dicetak" && rawCetakIjazah === 0 && rawCetakTranskrip === 0) {
-          rawCetakIjazah = 1;
-          rawLembarIjazah = rowTotalMurid;
-          rawCetakTranskrip = 1;
-          rawLembarTranskrip = rowTotalMurid;
-          var autoLog = [{
-            waktu: values[i][18] || values[i][14] || "-",
-            tipe: "Cetak Perdana",
-            dokumen: "Ijazah & Transkrip",
-            lembar_ijazah: rowTotalMurid,
-            lembar_transkrip: rowTotalMurid,
-            alasan: "Pencetakan perdana dokumen (data historis sistem)",
-            operator: values[i][19] || "Admin"
-          }];
+          var autoLog = [];
+
+          // Cek apakah ada riwayat koreksi di masa lalu pada kolom Catatan
+          var catatanLines = rawCatatan.split(/\n-+\n|\n/);
+          var koreksiEntries = [];
+          for (var cIdx = 0; cIdx < catatanLines.length; cIdx++) {
+            var line = catatanLines[cIdx].trim();
+            if (line.indexOf("Mengajukan Koreksi") > -1 || line.indexOf("REVISI") > -1) {
+              koreksiEntries.push(line);
+            }
+          }
+
+          var jumlahKoreksi = koreksiEntries.length;
+          var tglPerdana = values[i][14] || "-"; // Waktu upload awal
+          var tglVerifAkhir = values[i][18] || values[i][16] || values[i][14] || "-";
+
+          // 1. Jika ada riwayat pengajuan koreksi yang lalu:
+          if (jumlahKoreksi > 0) {
+            rawCetakIjazah = 1 + jumlahKoreksi;
+            rawLembarIjazah = rowTotalMurid + jumlahKoreksi; // Estimasi 1 lembar per revisi
+            rawCetakTranskrip = 1;
+            rawLembarTranskrip = rowTotalMurid;
+
+            // Masukkan riwayat cetak ulang revisi (paling baru di atas)
+            for (var k = 0; k < koreksiEntries.length; k++) {
+              var kLine = koreksiEntries[k];
+              var kWaktu = tglVerifAkhir;
+              var matchDate = kLine.match(/\[(.*?) Sekolah\]/);
+              if (matchDate && matchDate[1]) {
+                kWaktu = matchDate[1] + " (Revisi)";
+              }
+              autoLog.push({
+                waktu: kWaktu,
+                tipe: "Cetak Ulang (Revisi Data)",
+                dokumen: "Ijazah (1 lbr)",
+                lembar_ijazah: 1,
+                lembar_transkrip: 0,
+                alasan: kLine.replace(/\[.*?\]/g, '').replace('Mengajukan Koreksi -', '').trim() || "Pembetulan data melalui proses upload ulang",
+                operator: values[i][19] || "Admin"
+              });
+            }
+
+            // Tambahkan entri cetak perdana di paling bawah riwayat
+            autoLog.push({
+              waktu: tglPerdana,
+              tipe: "Cetak Perdana",
+              dokumen: "Ijazah & Transkrip",
+              lembar_ijazah: rowTotalMurid,
+              lembar_transkrip: rowTotalMurid,
+              alasan: "Pencetakan perdana dokumen setelah disetujui",
+              operator: values[i][19] || "Admin"
+            });
+
+          } else {
+            // 2. Belum pernah revisi -> Cetak perdana 1x
+            rawCetakIjazah = 1;
+            rawLembarIjazah = rowTotalMurid;
+            rawCetakTranskrip = 1;
+            rawLembarTranskrip = rowTotalMurid;
+
+            autoLog.push({
+              waktu: tglVerifAkhir,
+              tipe: "Cetak Perdana",
+              dokumen: "Ijazah & Transkrip",
+              lembar_ijazah: rowTotalMurid,
+              lembar_transkrip: rowTotalMurid,
+              alasan: "Pencetakan perdana dokumen setelah disetujui",
+              operator: values[i][19] || "Admin"
+            });
+          }
+
           rawLogCetak = JSON.stringify(autoLog);
           try {
             sheet.getRange(i + 1, 25, 1, 5).setValues([[
