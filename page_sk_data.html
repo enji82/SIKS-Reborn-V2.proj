@@ -11,6 +11,36 @@
         background-color: #242526 !important;
         border-color: #3a3b3c !important;
     }
+
+    /* Freeze Kolom Pertama (Nama Sekolah) */
+    #tugas_tabelUtama th.col-sticky-left {
+        position: sticky !important;
+        left: 0 !important;
+        z-index: 25 !important;
+        background-color: #fff9e6 !important;
+    }
+    #tugas_tabelUtama td.col-sticky-left {
+        position: sticky !important;
+        left: 0 !important;
+        z-index: 10 !important;
+        background-color: #ffffff !important;
+        transition: background-color 0.2s ease;
+    }
+    #tugas_tabelUtama tbody tr:hover td.col-sticky-left {
+        background-color: #f8fafc !important;
+    }
+    .dark-mode #tugas_tabelUtama th.col-sticky-left {
+        background-color: #1e1e1e !important;
+        color: #f1f5f9 !important;
+        z-index: 25 !important;
+    }
+    .dark-mode #tugas_tabelUtama td.col-sticky-left {
+        background-color: #1e1e1e !important;
+        color: #f1f5f9 !important;
+    }
+    .dark-mode #tugas_tabelUtama tbody tr:hover td.col-sticky-left {
+        background-color: #2d2d2d !important;
+    }
 </style>
 <section class="content sultan-page-transition">
     <div class="container-fluid">
@@ -66,10 +96,10 @@
                                 class="table table-hover table-premium table-sultan-compact text-nowrap mb-0 w-100">
                                 <thead class="thead-sultan-premium text-uppercase font-weight-bold">
                                     <tr>
-                                        <th class="text-left align-middle" style="min-width: 220px;">NAMA SEKOLAH</th>
+                                        <th class="text-left align-middle col-sticky-left" style="min-width: 220px;">NAMA SEKOLAH</th>
                                         <th class="text-left align-middle" style="min-width: 260px;">DATA SK</th>
-                                        <th class="text-center align-middle" style="width: 120px;">STATUS</th>
                                         <th class="text-center align-middle" style="width: 100px;">DOKUMEN</th>
+                                        <th class="text-left align-middle" style="width: 120px;">STATUS</th>
                                         <th class="text-left align-middle" style="min-width: 180px;">AKTIVITAS</th>
                                         <th class="text-center align-middle col-sticky-right" style="width: 110px; z-index: 20;">AKSI</th>
                                     </tr>
@@ -457,10 +487,10 @@
                                 "<'row'<'col-sm-12'<'table-responsive sultan-scroll'tr>>>" +
                                 "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
                             "columnDefs": [
-                                { "targets": 0, "className": "text-left align-middle", "width": "22%" }, // Nama Sekolah
+                                { "targets": 0, "className": "text-left align-middle col-sticky-left", "width": "22%" }, // Nama Sekolah (Freeze)
                                 { "targets": 1, "className": "text-left align-middle", "width": "26%" }, // Data SK
-                                { "targets": 2, "className": "text-center align-middle text-nowrap", "width": "120px" }, // Status
-                                { "targets": 3, "className": "text-center align-middle text-nowrap", "width": "100px" }, // Dokumen
+                                { "targets": 2, "className": "text-center align-middle text-nowrap", "width": "100px" }, // Dokumen
+                                { "targets": 3, "className": "text-left align-middle text-nowrap", "width": "120px" }, // Status (Rata Kiri)
                                 { "targets": 4, "className": "text-left align-middle", "width": "18%" }, // Aktivitas
                                 { "targets": 5, "className": "text-center align-middle text-nowrap col-sticky-right", "width": "110px" } // Aksi di Kanan
                             ],
@@ -621,14 +651,15 @@
                 </div>
             `;
 
-            // 3. Kolom STATUS & BACA CATATAN
-            var badgeStatus = SultanUI.renderBadgeStatus(row.status, row.keterangan);
-
-            // 4. Kolom DOKUMEN PDF
+            // 3. Kolom DOKUMEN PDF (Ditukar sebelum Status)
             var btnFile = '<span class="text-muted small">-</span>';
             if (safeUrl.length > 5) {
                 btnFile = `<button class="sultan-btn-pdf" onclick="tugas_bukaPreview('${safeUrlJs}')" data-toggle="tooltip" title="Lihat Dokumen"><i class="fas fa-file-pdf mr-1"></i> LIHAT</button>`;
             }
+
+            // 4. Kolom STATUS & BACA CATATAN (Rata Kiri)
+            var rawBadge = SultanUI.renderBadgeStatus(row.status, row.keterangan);
+            var badgeStatus = `<div class="text-left d-inline-block">${rawBadge}</div>`;
 
             // 5. Kolom AKTIVITAS (Ringkas, bersih, tanpa ikon berlebih)
             var auditWaktu = "-";
@@ -664,21 +695,30 @@
                 </div>
             `;
 
-            // 6. Kolom AKSI (Di kanan)
+            // 6. Kolom AKSI (Di kanan - Edit & Hapus tidak aktif saat Disetujui)
             var groupAksi = SultanUI.renderTombolAksi({
                 id: id,
                 isAdmin: TUGAS_IS_ADMIN,
                 isDisetujui: isDisetujui,
+                allowEditDisetujui: false,
                 onVerif: 'tugas_bukaModalVerif',
-                onEdit: 'tugas_bukaModalEdit',
-                onHapus: 'tugas_bukaModalHapus'
+                onEdit: isDisetujui ? null : 'tugas_bukaModalEdit',
+                onHapus: isDisetujui ? null : 'tugas_bukaModalHapus',
+                extraButtons: isDisetujui ? `
+                    <button type="button" class="sultan-btn-aksi" disabled style="opacity: 0.4; cursor: not-allowed;" data-toggle="tooltip" title="Terkunci (Sudah Disetujui)">
+                        <i class="fas fa-pencil-alt"></i>
+                    </button>
+                    <button type="button" class="sultan-btn-aksi" disabled style="opacity: 0.4; cursor: not-allowed;" data-toggle="tooltip" title="Terkunci (Sudah Disetujui)">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                ` : ''
             });
 
             dtArray.push([
                 uiSekolah,
                 uiDataSk,
-                badgeStatus,
                 btnFile,
+                badgeStatus,
                 uiAktivitas,
                 groupAksi
             ]);
