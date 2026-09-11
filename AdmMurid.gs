@@ -885,6 +885,112 @@ function admMurid_ajukanKoreksiIjazah(rowId, alasan, pengaju, jenisPengajuan) {
 
 
 /* ==========================================
+   2b. AJUKAN KOREKSI REVISI DATA + UPLOAD FILE BARU
+   ========================================== */
+
+function admMurid_ajukanKoreksiDenganFile(payload) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+    var sheet = getOrCreateSheetAdmMurid("Database_Ijazah");
+    var row = parseInt(payload.rowId);
+    var now = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
+    var dateLabel = now.split(" ")[0];
+    var pengaju = payload.pengaju || "Sekolah";
+    var alasan = payload.alasan || "";
+    var namaSekolah = payload.nama_sekolah || "";
+
+    // Ambil data file yang sudah ada agar tidak dihapus jika tidak diganti
+    var urlIjazah      = String(sheet.getRange(row, 8).getValue()  || "").trim();
+    var idIjazah       = String(sheet.getRange(row, 9).getValue()  || "").trim();
+    var urlTranskrip   = String(sheet.getRange(row, 11).getValue() || "").trim();
+    var idTranskrip    = String(sheet.getRange(row, 12).getValue() || "").trim();
+    var urlTrKolektif  = String(sheet.getRange(row, 23).getValue() || "").trim();
+    var idTrKolektif   = String(sheet.getRange(row, 24).getValue() || "").trim();
+    var namaIjazah     = String(sheet.getRange(row, 7).getValue()  || "").trim();
+    var namaTranskrip  = String(sheet.getRange(row, 10).getValue() || "").trim();
+    var namaTrKolektif = String(sheet.getRange(row, 22).getValue() || "").trim();
+
+    // ---- Upload File Ijazah (jika dikirim) ----
+    if (payload.fileIjazahBase64) {
+      if (idIjazah) { try { DriveApp.getFileById(idIjazah).setTrashed(true); } catch(e) {} }
+      var pFolderIj = DriveApp.getFolderById(FOLDER_CONFIG.ADM_MURID_IJAZAH_DOCS);
+      var schoolFolderIj = pFolderIj.getFoldersByName(namaSekolah).hasNext()
+        ? pFolderIj.getFoldersByName(namaSekolah).next()
+        : pFolderIj.createFolder(namaSekolah);
+      var blobIj = Utilities.newBlob(Utilities.base64Decode(payload.fileIjazahBase64), payload.mimeType_ijazah || "application/pdf", payload.nama_file_ijazah);
+      var fileIj = schoolFolderIj.createFile(blobIj);
+      fileIj.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      urlIjazah  = fileIj.getUrl();
+      idIjazah   = fileIj.getId();
+      namaIjazah = payload.nama_file_ijazah;
+    }
+
+    // ---- Upload Word KOP Surat (jika dikirim) ----
+    if (payload.fileKopBase64) {
+      if (idTranskrip) { try { DriveApp.getFileById(idTranskrip).setTrashed(true); } catch(e) {} }
+      var pFolderKop = DriveApp.getFolderById(FOLDER_CONFIG.ADM_MURID_TRANSKRIP_DOCS);
+      var schoolFolderKop = pFolderKop.getFoldersByName(namaSekolah).hasNext()
+        ? pFolderKop.getFoldersByName(namaSekolah).next()
+        : pFolderKop.createFolder(namaSekolah);
+      var blobKop = Utilities.newBlob(Utilities.base64Decode(payload.fileKopBase64), payload.mimeType_kop || "application/vnd.openxmlformats-officedocument.wordprocessingml.document", payload.nama_file_kop);
+      var fileKop = schoolFolderKop.createFile(blobKop);
+      fileKop.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      urlTranskrip  = fileKop.getUrl();
+      idTranskrip   = fileKop.getId();
+      namaTranskrip = payload.nama_file_kop;
+    }
+
+    // ---- Upload Transkrip Kolektif (jika dikirim) ----
+    if (payload.fileTranskripBase64) {
+      if (idTrKolektif) { try { DriveApp.getFileById(idTrKolektif).setTrashed(true); } catch(e) {} }
+      var pFolderTr = DriveApp.getFolderById(FOLDER_CONFIG.ADM_MURID_TRANSKRIP_DOCS);
+      var schoolFolderTr = pFolderTr.getFoldersByName(namaSekolah).hasNext()
+        ? pFolderTr.getFoldersByName(namaSekolah).next()
+        : pFolderTr.createFolder(namaSekolah);
+      var blobTr = Utilities.newBlob(Utilities.base64Decode(payload.fileTranskripBase64), payload.mimeType_transkrip || "application/pdf", payload.nama_file_transkrip);
+      var fileTr = schoolFolderTr.createFile(blobTr);
+      fileTr.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      urlTrKolektif  = fileTr.getUrl();
+      idTrKolektif   = fileTr.getId();
+      namaTrKolektif = payload.nama_file_transkrip;
+    }
+
+    // ---- Update file URLs di sheet ----
+    sheet.getRange(row, 7, 1, 6).setValues([[namaIjazah, urlIjazah, idIjazah, namaTranskrip, urlTranskrip, idTranskrip]]);
+    sheet.getRange(row, 22, 1, 3).setValues([[namaTrKolektif, urlTrKolektif, idTrKolektif]]);
+
+    // ---- Update status & catatan ----
+    var oldCatatan = String(sheet.getRange(row, 14).getValue() || "").trim();
+    var entry = "[" + dateLabel + " Sekolah]: Mengajukan Koreksi Data + Upload File Baru - " + alasan;
+    var newCatatan = (oldCatatan === "" || oldCatatan === "-")
+      ? entry
+      : entry + "\n--------------------------------------------------\n" + oldCatatan;
+
+    sheet.getRange(row, 13).setValue("Pengajuan Koreksi");
+    sheet.getRange(row, 14).setValue(newCatatan);
+    sheet.getRange(row, 17, 1, 2).setValues([[now, pengaju]]);
+
+    // ---- Reset read_by agar notifikasi Admin muncul ----
+    var currentReadBy = String(sheet.getRange(row, 21).getDisplayValue() || "").trim();
+    var rList = currentReadBy === "" ? [] : currentReadBy.split(",");
+    var idxAdmin = rList.indexOf("Admin");
+    if (idxAdmin > -1) rList.splice(idxAdmin, 1);
+    if (rList.indexOf("User") === -1) rList.push("User");
+    sheet.getRange(row, 21).setValue(rList.join(","));
+
+    try { invalidateNotifCacheForModule("ijazah", "admin", ""); } catch(ce) {}
+
+    return JSON.stringify({ success: true, message: "Pengajuan koreksi data beserta file baru berhasil dikirim ke Admin." });
+  } catch (e) {
+    return JSON.stringify({ success: false, message: e.message });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+
+/* ==========================================
    3. DASHBOARD REKAPITULASI ADMINISTRASI MURID
    ========================================== */
 
@@ -1032,7 +1138,7 @@ function admMurid_getDashboardData(npsnFilter, tahunFilter) {
     }
     
     var spmbStats = { jumlahSekolah: listSekolah.length, sudahUnggah: 0, belumUnggah: 0, diproses: 0, disetujui: 0, revisi: 0, ditolak: 0, muridL: 0, muridP: 0, totalMurid: 0 };
-    var ijazahStats = { jumlahSekolah: listSekolah.length, sudahUnggah: 0, belumUnggah: 0, diproses: 0, disetujui: 0, revisi: 0, ditolak: 0, muridL: 0, muridP: 0, totalMurid: 0 };
+    var ijazahStats = { jumlahSekolah: listSekolah.length, sudahUnggah: 0, belumUnggah: 0, dicetak: 0, diproses: 0, pengajuanKoreksi: 0, disetujui: 0, revisi: 0, ditolak: 0, muridL: 0, muridP: 0, totalMurid: 0 };
     var arsipStats = { jumlahSekolah: listSekolah.length, sudahUnggah: 0, belumUnggah: 0, diproses: 0, disetujui: 0, revisi: 0, ditolak: 0, muridL: 0, muridP: 0, totalMurid: 0 };
     var arsipTkaStats = { jumlahSekolah: listSekolah.length, sudahUnggah: 0, belumUnggah: 0, diproses: 0, disetujui: 0, revisi: 0, ditolak: 0, muridL: 0, muridP: 0, totalMurid: 0 };
     
@@ -1066,7 +1172,9 @@ function admMurid_getDashboardData(npsnFilter, tahunFilter) {
         ijazahStats.sudahUnggah++;
         var statKey = ijazah.status.toLowerCase();
         if (statKey === "disetujui") ijazahStats.disetujui++;
-        else if (statKey === "diproses" || statKey === "dicetak") ijazahStats.diproses++;
+        else if (statKey === "dicetak") ijazahStats.dicetak++;
+        else if (statKey === "diproses") ijazahStats.diproses++;
+        else if (statKey === "pengajuan koreksi") ijazahStats.pengajuanKoreksi++;
         else if (statKey === "revisi") ijazahStats.revisi++;
         else if (statKey === "ditolak") ijazahStats.ditolak++;
         
