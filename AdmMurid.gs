@@ -336,10 +336,8 @@ function admMurid_getIjazahData(npsnFilter) {
 
           // 1. Jika ada riwayat pengajuan koreksi yang lalu:
           if (jumlahKoreksi > 0) {
-            rawCetakIjazah = 1 + jumlahKoreksi;
-            rawLembarIjazah = rowTotalMurid + jumlahKoreksi; // Estimasi 1 lembar per revisi
-            rawCetakTranskrip = 1;
-            rawLembarTranskrip = rowTotalMurid;
+            var jmlRevisiIjazah = 0;
+            var jmlRevisiTranskrip = 0;
 
             // Masukkan riwayat cetak ulang revisi (paling baru di atas)
             for (var k = 0; k < koreksiEntries.length; k++) {
@@ -347,18 +345,37 @@ function admMurid_getIjazahData(npsnFilter) {
               var kWaktu = tglVerifAkhir;
               var matchDate = kLine.match(/\[(.*?) Sekolah\]/);
               if (matchDate && matchDate[1]) {
-                kWaktu = matchDate[1] + " (Revisi)";
+                kWaktu = matchDate[1];
               }
+
+              var isTranskrip = kLine.toUpperCase().indexOf("TRANSKRIP") > -1;
+              var isIjazah = kLine.toUpperCase().indexOf("IJAZAH") > -1 || !isTranskrip; // default ijazah jika tidak disebutkan
+
+              if (isTranskrip) jmlRevisiTranskrip++;
+              if (isIjazah) jmlRevisiIjazah++;
+
+              var lbrIjazahEntry = isIjazah ? 1 : 0;
+              var lbrTranskripEntry = isTranskrip ? 1 : 0;
+
+              var namaDokText = [];
+              if (isIjazah) namaDokText.push("Ijazah (1 lbr)");
+              if (isTranskrip) namaDokText.push("Transkrip (1 lbr)");
+
               autoLog.push({
                 waktu: kWaktu,
                 tipe: "Cetak Ulang (Revisi Data)",
-                dokumen: "Ijazah (1 lbr)",
-                lembar_ijazah: 1,
-                lembar_transkrip: 0,
+                dokumen: namaDokText.join(", "),
+                lembar_ijazah: lbrIjazahEntry,
+                lembar_transkrip: lbrTranskripEntry,
                 alasan: kLine.replace(/\[.*?\]/g, '').replace('Mengajukan Koreksi -', '').trim() || "Pembetulan data melalui proses upload ulang",
                 operator: values[i][19] || "Admin"
               });
             }
+
+            rawCetakIjazah = 1 + jmlRevisiIjazah;
+            rawLembarIjazah = rowTotalMurid + jmlRevisiIjazah;
+            rawCetakTranskrip = 1 + jmlRevisiTranskrip;
+            rawLembarTranskrip = rowTotalMurid + jmlRevisiTranskrip;
 
             // Tambahkan entri cetak perdana di paling bawah riwayat
             autoLog.push({
