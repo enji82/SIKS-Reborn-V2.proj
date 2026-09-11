@@ -800,6 +800,15 @@
         var lembarIjazah = parseInt(row.jml_lembar_ijazah) || 0;
         var jmlCetakTranskrip = parseInt(row.jml_cetak_transkrip) || 0;
         var lembarTranskrip = parseInt(row.jml_lembar_transkrip) || 0;
+        var totalMuridRow = parseInt(row.jumlah_total) || 0;
+
+        // Fallback jika data berstatus Dicetak namun counter di spreadsheet belum terisi
+        if (statusLower.includes('cetak') && jmlCetakIjazah === 0 && jmlCetakTranskrip === 0) {
+          jmlCetakIjazah = 1;
+          lembarIjazah = totalMuridRow;
+          jmlCetakTranskrip = 1;
+          lembarTranskrip = totalMuridRow;
+        }
 
         var statCetakHtml = '<div class="d-flex flex-column" style="gap: 4px; font-size: 11px;">';
         if (jmlCetakIjazah > 0 || jmlCetakTranskrip > 0) {
@@ -1544,6 +1553,19 @@
 
       var tbody = $('#admmuridijazah_logTableBody');
       tbody.empty();
+
+      // Fallback jika data historis belum memiliki entri log_cetak
+      if ((!Array.isArray(logArr) || logArr.length === 0) && String(raw.status || '').toLowerCase().includes('cetak')) {
+        var tot = parseInt(raw.jumlah_total) || 0;
+        logArr = [{
+          waktu: raw.tgl_verif || raw.tgl_upload || '-',
+          tipe: 'Cetak Perdana',
+          lembar_ijazah: tot,
+          lembar_transkrip: tot,
+          alasan: 'Pencetakan perdana dokumen setelah disetujui (data historis sistem)',
+          operator: raw.verifikator || 'Admin'
+        }];
+      }
 
       if (!Array.isArray(logArr) || logArr.length === 0) {
         tbody.append('<tr><td colspan="6" class="text-center text-muted py-3">Belum ada riwayat cetak yang tersimpan.</td></tr>');

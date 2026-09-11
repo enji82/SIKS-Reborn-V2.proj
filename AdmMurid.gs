@@ -54,6 +54,11 @@ function getOrCreateSheetAdmMurid(sheetName) {
         "Status", "Catatan", "Tgl_Upload", "Uploader", "Tgl_Edit", "User_Edit", "Tgl_Verif", "Verifikator", "Read_by"
       ]]);
     }
+  } else if (sheetName === "Database_Ijazah" && sheet.getLastColumn() < 29) {
+    // Migrasi otomatis header jika sheet sudah ada tapi kolom baru belum ditulis
+    sheet.getRange(1, 25, 1, 5).setValues([[
+      "Jml_Cetak_Ijazah", "Jml_Lembar_Ijazah", "Jml_Cetak_Transkrip", "Jml_Lembar_Transkrip", "Log_Cetak"
+    ]]);
   }
   return sheet;
 }
@@ -272,7 +277,7 @@ function admMurid_getIjazahData(npsnFilter) {
       if (!rNpsn) continue;
 
       if (!targetNpsn || targetNpsn === "SEMUA" || String(rNpsn).trim() === targetNpsn || rNama.toUpperCase() === targetNpsn) {
-        result.push({
+        var rowItem = {
           rowId: i + 1,
           npsn: values[i][0],
           nama_sekolah: values[i][1],
@@ -297,13 +302,48 @@ function admMurid_getIjazahData(npsnFilter) {
           read_by: values[i][20] || "",
           nama_file_transkrip_kolektif: values[i][21] || "",
           url_file_transkrip_kolektif: values[i][22] || "",
-          id_file_transkrip_kolektif: values[i][23] || "",
-          jml_cetak_ijazah: parseInt(values[i][24]) || 0,
-          jml_lembar_ijazah: parseInt(values[i][25]) || 0,
-          jml_cetak_transkrip: parseInt(values[i][26]) || 0,
-          jml_lembar_transkrip: parseInt(values[i][27]) || 0,
-          log_cetak: values[i][28] || ""
-        });
+          id_file_transkrip_kolektif: values[i][23] || ""
+        };
+
+        var stRowLower = String(values[i][12] || "").toLowerCase();
+        var rowTotalMurid = parseInt(values[i][5]) || 0;
+
+        var rawCetakIjazah = parseInt(values[i][24]) || 0;
+        var rawLembarIjazah = parseInt(values[i][25]) || 0;
+        var rawCetakTranskrip = parseInt(values[i][26]) || 0;
+        var rawLembarTranskrip = parseInt(values[i][27]) || 0;
+        var rawLogCetak = values[i][28] || "";
+
+        // Auto-fix untuk data lama yang sudah berstatus Dicetak tapi fitur tracking baru dibuat
+        if (stRowLower === "dicetak" && rawCetakIjazah === 0 && rawCetakTranskrip === 0) {
+          rawCetakIjazah = 1;
+          rawLembarIjazah = rowTotalMurid;
+          rawCetakTranskrip = 1;
+          rawLembarTranskrip = rowTotalMurid;
+          var autoLog = [{
+            waktu: values[i][18] || values[i][14] || "-",
+            tipe: "Cetak Perdana",
+            dokumen: "Ijazah & Transkrip",
+            lembar_ijazah: rowTotalMurid,
+            lembar_transkrip: rowTotalMurid,
+            alasan: "Pencetakan perdana dokumen (data historis sistem)",
+            operator: values[i][19] || "Admin"
+          }];
+          rawLogCetak = JSON.stringify(autoLog);
+          try {
+            sheet.getRange(i + 1, 25, 1, 5).setValues([[
+              rawCetakIjazah, rawLembarIjazah, rawCetakTranskrip, rawLembarTranskrip, rawLogCetak
+            ]]);
+          } catch(eUpdate) {}
+        }
+
+        rowItem.jml_cetak_ijazah = rawCetakIjazah;
+        rowItem.jml_lembar_ijazah = rawLembarIjazah;
+        rowItem.jml_cetak_transkrip = rawCetakTranskrip;
+        rowItem.jml_lembar_transkrip = rawLembarTranskrip;
+        rowItem.log_cetak = rawLogCetak;
+
+        result.push(rowItem);
       }
     }
     return JSON.stringify({ success: true, data: result });
@@ -502,6 +542,7 @@ function admMurid_verifikasiIjazah(rowId, status, catatan, verifikator) {
     sheet.getRange(row, 14).setValue(newCatatan);
     sheet.getRange(row, 19, 1, 2).setValues([[now, verifikator]]);
     
+    var stLower = String(status || "").toLowerCase();
     // Jika status diubah menjadi "Dicetak", catat pencetakan perdana jika belum pernah dicetak
     if (stLower === "dicetak") {
       var currentCetakIjazah = parseInt(sheet.getRange(row, 25).getValue()) || 0;
