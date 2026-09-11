@@ -253,6 +253,18 @@
     font-weight: 600;
     font-size: 0.78rem;
     padding: 4px 12px;
+  /* Custom Form Placeholder Styling (Informative, Subtle, Italic) */
+  #emading_filterSearch::placeholder,
+  .input-isi-komentar::placeholder {
+    font-size: 0.84rem !important;
+    font-weight: 400 !important;
+    font-style: italic !important;
+    color: #8c98a4 !important;
+    opacity: 0.9 !important;
+  }
+  .dark-mode #emading_filterSearch::placeholder,
+  .dark-mode .input-isi-komentar::placeholder {
+    color: #6b7280 !important;
   }
 </style>
 
@@ -268,7 +280,11 @@
               <option value="">- Semua Kategori -</option>
               <option value="Pengumuman">Pengumuman</option>
               <option value="Kegiatan">Kegiatan</option>
+              <option value="KKG">KKG</option>
+              <option value="Kombel">Kombel</option>
               <option value="Prestasi">Prestasi</option>
+              <option value="Penghargaan">Penghargaan</option>
+              <option value="Lomba">Lomba</option>
               <option value="Inovasi">Inovasi Pembelajaran</option>
               <option value="Karya Guru & Siswa">Karya Guru & Siswa</option>
               <option value="Lainnya">Lainnya</option>
@@ -277,7 +293,7 @@
           </div>
 
           <div class="sultan-filter-item" style="min-width: 250px; flex-grow: 1;">
-            <input type="text" id="emading_filterSearch" class="form-control" placeholder="Cari berita koran, judul, penulis, kata kunci...">
+            <input type="text" id="emading_filterSearch" class="form-control" placeholder="Cari berita koran, judul, atau penulis...">
             <i class="fas fa-search"></i>
           </div>
 
@@ -720,8 +736,6 @@
                     (<span id="koran_count_komentar_${art.id}">${art.jmlKomentar || 0}</span>)
                   </button>
                 </div>
-
-                ${art.tags ? `<div class="text-muted small d-none d-sm-block"><i class="fas fa-tags mr-1"></i> ${art.tags}</div>` : ''}
               </div>
 
               <!-- COLLAPSIBLE KOMENTAR PEMBACA DI BAWAH ARTIKEL -->
@@ -1005,9 +1019,24 @@
       var curUser = sesi.username || '';
       var curRole = sesi.isAdmin ? 'admin' : (sesi.role || '');
 
+      Sultan.notif.loading("Menghapus komentar...");
+
       google.script.run
-        .withSuccessHandler(function () {
+        .withSuccessHandler(function (res) {
+          Sultan.notif.tutup();
+          try {
+            var data = (typeof res === 'string') ? JSON.parse(res) : res;
+            if (data.error) {
+              Sultan.alert('error', 'Gagal', data.error);
+              return;
+            }
+          } catch(e) {}
+          Sultan.notif.crud.sukses("Komentar berhasil dihapus");
           muatKomentarKoran(idArtikel);
+        })
+        .withFailureHandler(function (err) {
+          Sultan.notif.tutup();
+          Sultan.alert('error', 'Gagal', err.message || err);
         })
         .hapusKomentarEmading({
           idKomentar: idKom,
