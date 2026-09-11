@@ -514,8 +514,15 @@
         } catch (e) {}
       }
 
-      var username = u ? (u.username || u.user || u.nama_pegawai || u.nama || '') : '';
-      var role = u ? String(u.role || '').toLowerCase() : '';
+      // Fallback cadangan membaca DOM jika user login sudah tertera di UI navbar
+      var domName = $('#nav-user-name').text().trim() || $('.user-panel .info a').text().trim();
+      var domRole = $('#dropdown-user-role').text().trim().toLowerCase();
+
+      var username = (u && (u.username || u.user)) ? (u.username || u.user) : (domName || '');
+      var namaLengkap = (u && (u.nama_lengkap || u.nama || u.nama_pegawai || u.username)) ? (u.nama_lengkap || u.nama || u.nama_pegawai || u.username) : (domName || 'Pengguna');
+      var unitKerja = (u && (u.unit_kerja || u.unit || u.sekolah)) ? (u.unit_kerja || u.unit || u.sekolah) : '-';
+      var role = (u && u.role) ? String(u.role).toLowerCase() : (domRole || '');
+
       var isAdmin = false;
       if (typeof checkUserRoleIsAdmin === 'function') {
         isAdmin = checkUserRoleIsAdmin();
@@ -526,6 +533,8 @@
       return {
         user: u,
         username: username,
+        namaLengkap: namaLengkap,
+        unitKerja: unitKerja,
         role: role,
         isAdmin: isAdmin
       };
@@ -685,16 +694,13 @@
 
       // Autofill nama pengunggah & unit kerja dari data session login
       var sesi = getAktifUserEmadingTulis();
-      var uLogin = sesi.user;
-      if (uLogin) {
-        var namaAsli = uLogin.nama_lengkap || uLogin.nama || uLogin.nama_pegawai || uLogin.username || '';
-        var unitAsli = uLogin.unit_kerja || uLogin.unit || uLogin.sekolah || '';
-        if (!$('#emading_inputPengunggah').val()) {
-          $('#emading_inputPengunggah').val(namaAsli);
-        }
-        if (!$('#emading_inputUnitKerja').val()) {
-          $('#emading_inputUnitKerja').val(unitAsli);
-        }
+      var namaAsli = sesi.namaLengkap || '';
+      var unitAsli = (sesi.unitKerja !== '-') ? sesi.unitKerja : '';
+      if (!$('#emading_inputPengunggah').val() && namaAsli) {
+        $('#emading_inputPengunggah').val(namaAsli);
+      }
+      if (!$('#emading_inputUnitKerja').val() && unitAsli) {
+        $('#emading_inputUnitKerja').val(unitAsli);
       }
 
       // Submit Form

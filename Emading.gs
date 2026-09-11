@@ -712,6 +712,7 @@ function hapusKomentarEmading(payload) {
     var idArtikel = "";
 
     for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === idKom) {
         var pemilik = String(data[i][3] || "").trim().toLowerCase();
         var userLoginLower = userLogin.toLowerCase();
         var isAdminRole = userRole.indexOf("admin") !== -1 || userRole.indexOf("verifikator") !== -1 || userRole.indexOf("korwil") !== -1;
