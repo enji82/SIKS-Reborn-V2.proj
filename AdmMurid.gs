@@ -316,69 +316,117 @@ function admMurid_getIjazahData(npsnFilter) {
 
         var rawCatatan = String(values[i][13] || "");
 
-        // Auto-fix untuk data lama yang sudah berstatus Dicetak tapi fitur tracking baru dibuat
-        if (stRowLower === "dicetak" && rawCetakIjazah === 0 && rawCetakTranskrip === 0) {
-          var autoLog = [];
+        // Deteksi riwayat pengajuan koreksi sekolah di masa lalu dari kolom Catatan
+        var catatanLines = rawCatatan.split(/\n-+\n|\n/);
+        var koreksiEntries = [];
+        for (var cIdx = 0; cIdx < catatanLines.length; cIdx++) {
+          var cLine = catatanLines[cIdx].trim();
+          if (cLine.indexOf("Mengajukan Koreksi") > -1 || cLine.indexOf("REVISI") > -1) {
+            koreksiEntries.push(cLine);
+          }
+        }
 
-          // Cek apakah ada riwayat koreksi di masa lalu pada kolom Catatan
-          var catatanLines = rawCatatan.split(/\n-+\n|\n/);
-          var koreksiEntries = [];
-          for (var cIdx = 0; cIdx < catatanLines.length; cIdx++) {
-            var line = catatanLines[cIdx].trim();
-            if (line.indexOf("Mengajukan Koreksi") > -1 || line.indexOf("REVISI") > -1) {
-              koreksiEntries.push(line);
+        // Hitung berapa kali revisi untuk masing-masing dokumen
+        var jmlRevisiIjazah = 0;
+        var jmlRevisiTranskrip = 0;
+        var tglVerifAkhir = values[i][18] || values[i][16] || values[i][14] || "-";
+        var tglPerdana = values[i][14] || "-";
+
+        var koreksiLogs = [];
+        for (var k = 0; k < koreksiEntries.length; k++) {
+          var kLine = koreksiEntries[k];
+          var kWaktu = tglVerifAkhir;
+          var matchDate = kLine.match(/\[(.*?) Sekolah\]/);
+          if (matchDate && matchDate[1]) {
+            kWaktu = matchDate[1];
+          }
+
+          var upperKLine = kLine.toUpperCase();
+          var isTranskrip = upperKLine.indexOf("TRANSKRIP") > -1;
+          var isIjazah = upperKLine.indexOf("IJAZAH") > -1;
+
+          // Jika catatan tidak menyebutkan secara spesifik tapi ada revisi, hitung transkrip & ijazah atau transkrip
+          if (!isTranskrip && !isIjazah) {
+            if (upperKLine.indexOf("KOP") > -1) {
+              isTranskrip = true;
+            } else {
+              isIjazah = true;
             }
           }
 
-          var jumlahKoreksi = koreksiEntries.length;
-          var tglPerdana = values[i][14] || "-"; // Waktu upload awal
-          var tglVerifAkhir = values[i][18] || values[i][16] || values[i][14] || "-";
+          if (isTranskrip) jmlRevisiTranskrip++;
+          if (isIjazah) jmlRevisiIjazah++;
 
-          // 1. Jika ada riwayat pengajuan koreksi yang lalu:
-          if (jumlahKoreksi > 0) {
-            var jmlRevisiIjazah = 0;
-            var jmlRevisiTranskrip = 0;
+          var lbrIjazahEntry = isIjazah ? 1 : 0;
+          var lbrTranskripEntry = isTranskrip ? 1 : 0;
 
-            // Masukkan riwayat cetak ulang revisi (paling baru di atas)
-            for (var k = 0; k < koreksiEntries.length; k++) {
-              var kLine = koreksiEntries[k];
-              var kWaktu = tglVerifAkhir;
-              var matchDate = kLine.match(/\[(.*?) Sekolah\]/);
-              if (matchDate && matchDate[1]) {
-                kWaktu = matchDate[1];
-              }
+          var namaDokText = [];
+          if (isIjazah) namaDokText.push("Ijazah (1 lbr)");
+          if (isTranskrip) namaDokText.push("Transkrip (1 lbr)");
 
-              var isTranskrip = kLine.toUpperCase().indexOf("TRANSKRIP") > -1;
-              var isIjazah = kLine.toUpperCase().indexOf("IJAZAH") > -1 || !isTranskrip; // default ijazah jika tidak disebutkan
+          koreksiLogs.push({
+            waktu: kWaktu,
+            tipe: "Cetak Ulang (Revisi Data)",
+            dokumen: namaDokText.join(", "),
+            lembar_ijazah: lbrIjazahEntry,
+            lembar_transkrip: lbrTranskripEntry,
+            alasan: kLine.replace(/\[.*?\]/g, '').replace('Mengajukan Koreksi -', '').trim() || "Pembetulan data melalui proses upload ulang",
+            operator: values[i][19] || "Admin"
+          });
+        }
 
-              if (isTranskrip) jmlRevisiTranskrip++;
-              if (isIjazah) jmlRevisiIjazah++;
+        // Sinkronisasi otomatis untuk data yang sudah berstatus Dicetak
+        if (stRowLower.indexOf("cetak") > -1) {
+          var targetMinCetakIjazah = 1 + jmlRevisiIjazah;
+          var targetMinCetakTranskrip = 1 + jmlRevisiTranskrip;
+          var needUpdateSheet = false;
 
-              var lbrIjazahEntry = isIjazah ? 1 : 0;
-              var lbrTranskripEntry = isTranskrip ? 1 : 0;
+          // Periksa apakah counter di database masih 0 atau belum memperhitungkan koreksi
+          if (rawCetakIjazah < targetMinCetakIjazah) {
+            rawCetakIjazah = targetMinCetakIjazah;
+            rawLembarIjazah = rowTotalMurid + jmlRevisiIjazah;
+            needUpdateSheet = true;
+          }
+          if (rawCetakTranskrip < targetMinCetakTranskrip) {
+            rawCetakTranskrip = targetMinCetakTranskrip;
+            rawLembarTranskrip = rowTotalMurid + jmlRevisiTranskrip;
+            needUpdateSheet = true;
+          }
 
-              var namaDokText = [];
-              if (isIjazah) namaDokText.push("Ijazah (1 lbr)");
-              if (isTranskrip) namaDokText.push("Transkrip (1 lbr)");
+          // Periksa / lengkapi log_cetak
+          var currentLog = [];
+          if (rawLogCetak) {
+            try { currentLog = JSON.parse(rawLogCetak); } catch(errP) { currentLog = []; }
+          }
 
-              autoLog.push({
-                waktu: kWaktu,
-                tipe: "Cetak Ulang (Revisi Data)",
-                dokumen: namaDokText.join(", "),
-                lembar_ijazah: lbrIjazahEntry,
-                lembar_transkrip: lbrTranskripEntry,
-                alasan: kLine.replace(/\[.*?\]/g, '').replace('Mengajukan Koreksi -', '').trim() || "Pembetulan data melalui proses upload ulang",
+          var hasRevisiInLog = currentLog.some(function(lg) {
+            return String(lg.tipe || '').indexOf('Revisi') > -1;
+          });
+
+          if (koreksiLogs.length > 0 && !hasRevisiInLog) {
+            // Sisipkan log koreksi ke dalam log cetak
+            var combinedLog = koreksiLogs.concat(currentLog);
+            // Jika belum ada cetak perdana, tambahkan di akhir
+            var hasPerdana = combinedLog.some(function(lg) {
+              return String(lg.tipe || '').indexOf('Perdana') > -1;
+            });
+            if (!hasPerdana) {
+              combinedLog.push({
+                waktu: tglPerdana,
+                tipe: "Cetak Perdana",
+                dokumen: "Ijazah & Transkrip",
+                lembar_ijazah: rowTotalMurid,
+                lembar_transkrip: rowTotalMurid,
+                alasan: "Pencetakan perdana dokumen setelah disetujui",
                 operator: values[i][19] || "Admin"
               });
             }
-
-            rawCetakIjazah = 1 + jmlRevisiIjazah;
-            rawLembarIjazah = rowTotalMurid + jmlRevisiIjazah;
-            rawCetakTranskrip = 1 + jmlRevisiTranskrip;
-            rawLembarTranskrip = rowTotalMurid + jmlRevisiTranskrip;
-
-            // Tambahkan entri cetak perdana di paling bawah riwayat
-            autoLog.push({
+            rawLogCetak = JSON.stringify(combinedLog);
+            needUpdateSheet = true;
+          } else if (currentLog.length === 0) {
+            // Jika log kosong sama sekali
+            var initialLog = koreksiLogs.slice();
+            initialLog.push({
               waktu: tglPerdana,
               tipe: "Cetak Perdana",
               dokumen: "Ijazah & Transkrip",
@@ -387,31 +435,17 @@ function admMurid_getIjazahData(npsnFilter) {
               alasan: "Pencetakan perdana dokumen setelah disetujui",
               operator: values[i][19] || "Admin"
             });
-
-          } else {
-            // 2. Belum pernah revisi -> Cetak perdana 1x
-            rawCetakIjazah = 1;
-            rawLembarIjazah = rowTotalMurid;
-            rawCetakTranskrip = 1;
-            rawLembarTranskrip = rowTotalMurid;
-
-            autoLog.push({
-              waktu: tglVerifAkhir,
-              tipe: "Cetak Perdana",
-              dokumen: "Ijazah & Transkrip",
-              lembar_ijazah: rowTotalMurid,
-              lembar_transkrip: rowTotalMurid,
-              alasan: "Pencetakan perdana dokumen setelah disetujui",
-              operator: values[i][19] || "Admin"
-            });
+            rawLogCetak = JSON.stringify(initialLog);
+            needUpdateSheet = true;
           }
 
-          rawLogCetak = JSON.stringify(autoLog);
-          try {
-            sheet.getRange(i + 1, 25, 1, 5).setValues([[
-              rawCetakIjazah, rawLembarIjazah, rawCetakTranskrip, rawLembarTranskrip, rawLogCetak
-            ]]);
-          } catch(eUpdate) {}
+          if (needUpdateSheet) {
+            try {
+              sheet.getRange(i + 1, 25, 1, 5).setValues([[
+                rawCetakIjazah, rawLembarIjazah, rawCetakTranskrip, rawLembarTranskrip, rawLogCetak
+              ]]);
+            } catch(eUpdate) {}
+          }
         }
 
         rowItem.jml_cetak_ijazah = rawCetakIjazah;

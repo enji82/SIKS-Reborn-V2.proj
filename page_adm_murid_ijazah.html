@@ -809,12 +809,38 @@
         var lembarTranskrip = parseInt(row.jml_lembar_transkrip) || 0;
         var totalMuridRow = parseInt(row.jumlah_total) || 0;
 
-        // Fallback jika data berstatus Dicetak namun counter di spreadsheet belum terisi
-        if (statusLower.includes('cetak') && jmlCetakIjazah === 0 && jmlCetakTranskrip === 0) {
-          jmlCetakIjazah = 1;
-          lembarIjazah = totalMuridRow;
-          jmlCetakTranskrip = 1;
-          lembarTranskrip = totalMuridRow;
+        // Parsing riwayat koreksi dari catatan untuk memastikan data sinkron
+        var rowCatatanStr = String(row.catatan || "");
+        var revCountIjazah = 0;
+        var revCountTranskrip = 0;
+        if (rowCatatanStr.indexOf("Mengajukan Koreksi") > -1 || rowCatatanStr.indexOf("REVISI") > -1) {
+          var lines = rowCatatanStr.split(/\n-+\n|\n/);
+          for (var li = 0; li < lines.length; li++) {
+            var lText = lines[li].trim();
+            if (lText.indexOf("Mengajukan Koreksi") > -1 || lText.indexOf("REVISI") > -1) {
+              var uText = lText.toUpperCase();
+              var isT = uText.indexOf("TRANSKRIP") > -1;
+              var isI = uText.indexOf("IJAZAH") > -1;
+              if (!isT && !isI) {
+                if (uText.indexOf("KOP") > -1) isT = true;
+                else isI = true;
+              }
+              if (isT) revCountTranskrip++;
+              if (isI) revCountIjazah++;
+            }
+          }
+        }
+
+        // Jika dokumen sudah berstatus Dicetak, minimal sudah cetak perdana 1x + cetak revisi
+        if (statusLower.includes('cetak')) {
+          if (jmlCetakIjazah < (1 + revCountIjazah)) {
+            jmlCetakIjazah = 1 + revCountIjazah;
+            lembarIjazah = totalMuridRow + revCountIjazah;
+          }
+          if (jmlCetakTranskrip < (1 + revCountTranskrip)) {
+            jmlCetakTranskrip = 1 + revCountTranskrip;
+            lembarTranskrip = totalMuridRow + revCountTranskrip;
+          }
         }
 
         var statCetakHtml = '<div class="d-flex flex-column" style="gap: 4px; font-size: 11px;">';
@@ -1579,6 +1605,58 @@
       var tbody = $('#admmuridijazah_logTableBody');
       tbody.empty();
 
+      // Jika logArr belum memuat riwayat revisi padahal di catatan ada pengajuan koreksi
+      var rawCatatanModal = String(raw.catatan || "");
+      var modalKoreksiEntries = [];
+      if (rawCatatanModal.indexOf("Mengajukan Koreksi") > -1 || rawCatatanModal.indexOf("REVISI") > -1) {
+        var cLines = rawCatatanModal.split(/\n-+\n|\n/);
+        for (var cli = 0; cli < cLines.length; cli++) {
+          var clText = cLines[cli].trim();
+          if (clText.indexOf("Mengajukan Koreksi") > -1 || clText.indexOf("REVISI") > -1) {
+            modalKoreksiEntries.push(clText);
+          }
+        }
+      }
+
+      var hasRevisiLogged = logArr.some(function(lg) {
+        return String(lg.tipe || '').toLowerCase().includes('revisi');
+      });
+
+      if (modalKoreksiEntries.length > 0 && !hasRevisiLogged) {
+        var revLogs = [];
+        var totMurid = parseInt(raw.jumlah_total) || 0;
+        for (var mi = 0; mi < modalKoreksiEntries.length; mi++) {
+          var mLine = modalKoreksiEntries[mi];
+          var mWaktu = raw.tgl_verif || raw.tgl_upload || '-';
+          var mMatch = mLine.match(/\[(.*?) Sekolah\]/);
+          if (mMatch && mMatch[1]) mWaktu = mMatch[1];
+
+          var mUpper = mLine.toUpperCase();
+          var mIsT = mUpper.indexOf("TRANSKRIP") > -1;
+          var mIsI = mUpper.indexOf("IJAZAH") > -1;
+          if (!mIsT && !mIsI) {
+            if (mUpper.indexOf("KOP") > -1) mIsT = true;
+            else mIsI = true;
+          }
+
+          var docDesc = [];
+          if (mIsI) docDesc.push("Ijazah (1 lbr)");
+          if (mIsT) docDesc.push("Transkrip (1 lbr)");
+
+          revLogs.push({
+            waktu: mWaktu,
+            tipe: "Cetak Ulang (Revisi Data)",
+            dokumen: docDesc.join(", "),
+            lembar_ijazah: mIsI ? 1 : 0,
+            lembar_transkrip: mIsT ? 1 : 0,
+            alasan: mLine.replace(/\[.*?\]/g, '').replace('Mengajukan Koreksi -', '').trim() || "Pembetulan data melalui proses upload ulang",
+            operator: raw.verifikator || "Admin"
+          });
+        }
+        // Gabungkan riwayat revisi di paling atas, kemudian riwayat lainnya
+        logArr = revLogs.concat(logArr);
+      }
+
       // Fallback jika data historis belum memiliki entri log_cetak
       if ((!Array.isArray(logArr) || logArr.length === 0) && String(raw.status || '').toLowerCase().includes('cetak')) {
         var tot = parseInt(raw.jumlah_total) || 0;
@@ -1590,6 +1668,22 @@
           alasan: 'Pencetakan perdana dokumen setelah disetujui (data historis sistem)',
           operator: raw.verifikator || 'Admin'
         }];
+      } else if (Array.isArray(logArr) && logArr.length > 0 && String(raw.status || '').toLowerCase().includes('cetak')) {
+        // Pastikan ada entri cetak perdana di akhir
+        var hasPerdanaLogged = logArr.some(function(lg) {
+          return String(lg.tipe || '').toLowerCase().includes('perdana');
+        });
+        if (!hasPerdanaLogged) {
+          var tot = parseInt(raw.jumlah_total) || 0;
+          logArr.push({
+            waktu: raw.tgl_upload || raw.tgl_verif || '-',
+            tipe: 'Cetak Perdana',
+            lembar_ijazah: tot,
+            lembar_transkrip: tot,
+            alasan: 'Pencetakan perdana dokumen setelah disetujui (data historis sistem)',
+            operator: raw.verifikator || 'Admin'
+          });
+        }
       }
 
       if (!Array.isArray(logArr) || logArr.length === 0) {
