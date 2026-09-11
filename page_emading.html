@@ -419,8 +419,15 @@
         } catch (e) {}
       }
 
-      var username = u ? (u.username || u.user || u.nama_pegawai || u.nama || '') : '';
-      var role = u ? String(u.role || '').toLowerCase() : '';
+      // Fallback cadangan membaca DOM jika user login sudah tertera di UI navbar
+      var domName = $('#nav-user-name').text().trim() || $('.user-panel .info a').text().trim();
+      var domRole = $('#dropdown-user-role').text().trim().toLowerCase();
+
+      var username = (u && (u.username || u.user)) ? (u.username || u.user) : (domName || '');
+      var namaLengkap = (u && (u.nama_lengkap || u.nama || u.nama_pegawai || u.username)) ? (u.nama_lengkap || u.nama || u.nama_pegawai || u.username) : (domName || 'Pengguna');
+      var unitKerja = (u && (u.unit_kerja || u.unit || u.sekolah)) ? (u.unit_kerja || u.unit || u.sekolah) : '-';
+      var role = (u && u.role) ? String(u.role).toLowerCase() : (domRole || '');
+
       var isAdmin = false;
       if (typeof checkUserRoleIsAdmin === 'function') {
         isAdmin = checkUserRoleIsAdmin();
@@ -431,6 +438,8 @@
       return {
         user: u,
         username: username,
+        namaLengkap: namaLengkap,
+        unitKerja: unitKerja,
         role: role,
         isAdmin: isAdmin
       };
@@ -958,10 +967,9 @@
 
     function kirimKomentarKoran(idArtikel, teks, onSuccess) {
       var sesi = getAktifUserEmading();
-      var uLogin = sesi.user;
-      var curName = uLogin ? (uLogin.nama_lengkap || uLogin.nama || uLogin.nama_pegawai || uLogin.username) : (sesi.username || 'Anonim');
-      var curUser = sesi.username || 'anonim';
-      var curUnit = uLogin ? (uLogin.unit_kerja || uLogin.unit || uLogin.sekolah || '-') : '-';
+      var curName = sesi.namaLengkap || 'Pengguna SIKS';
+      var curUser = sesi.username || 'user';
+      var curUnit = sesi.unitKerja || '-';
 
       var payload = {
         idArtikel: idArtikel,
