@@ -59,6 +59,7 @@
                   <li>File yang diunggah wajib berformat sesuai ketentuan (<b class="text-sultan-danger">PDF / Word</b>) dengan ukuran maksimal masing-masing <b>10 MB</b>.</li>
                   <li>Apabila status laporan sudah <b class="text-success">Disetujui</b> atau <b style="color: #6f42c1;">Dicetak</b>, tombol <b>Edit</b> dan <b>Hapus</b> otomatis terkunci demi integritas data cetak fisik.</li>
                   <li>Jika terdapat kesalahan data pada berkas yang telah terkunci, silakan klik tombol <b class="text-danger"><i class="fas fa-unlock"></i> Ajukan Koreksi</b> untuk mengisi alasan perbaikan, yang akan otomatis membuka kembali akses edit data Anda.</li>
+                  <li>Untuk kendala teknis lapangan (kertas sobek/rusak, salah foto, salah stempel, salah tanda tangan), Admin dapat mencatat melalui tombol <b style="color: #6f42c1;"><i class="fas fa-print"></i> Cetak Ulang Teknis</b> tanpa perlu mengunggah ulang berkas. Detail frekuensi dan jumlah lembar tercatat otomatis pada kolom <b>Statistik Cetak</b>.</li>
                 </ul>
               </div>
             </div>
@@ -94,6 +95,7 @@
                       <th colspan="3" class="text-center align-middle bg-light text-maroon border-bottom-0">PENGAJU
                         IJAZAH KELAS 6</th>
                       <th rowspan="2" class="text-center align-middle" style="min-width: 150px;">DOKUMEN</th>
+                      <th rowspan="2" class="text-center align-middle" style="min-width: 150px;">STATISTIK CETAK</th>
                       <th rowspan="2" class="text-left align-middle">DIUNGGAH</th>
                       <th rowspan="2" class="text-left align-middle">DIUBAH</th>
                       <th rowspan="2" class="text-left align-middle">DIVERIFIKASI</th>
@@ -365,6 +367,151 @@
       </button>
     </div>
   </form>
+
+  <!-- FORM CETAK ULANG TEKNIS (ADMIN) -->
+  <form id="admmuridijazah_formCetakUlang" novalidate>
+    <div class="modal-body modal-body-sultan p-4" style="max-height: 70vh; overflow-y: auto;">
+      <input type="hidden" id="admmuridijazah_cetak_rowId">
+      <input type="hidden" id="admmuridijazah_cetak_totalMurid">
+
+      <div class="alert alert-info border-0 shadow-sm p-3 mb-4 d-flex align-items-center" style="border-radius:10px; background: rgba(23, 162, 184, 0.15);">
+        <i class="fas fa-info-circle fa-2x mr-3 text-info"></i>
+        <div class="small text-dark" style="line-height:1.4;">
+          Gunakan formulir ini untuk mencatat <b>cetak ulang kendala teknis lapangan</b> (kertas rusak/sobek, salah foto, salah stempel/TTD). <b>Tidak perlu upload berkas baru</b>.
+        </div>
+      </div>
+
+      <div class="sultan-detail-container mb-4">
+        <div class="sultan-detail-item">
+          <label class="sultan-detail-label">NAMA SEKOLAH</label>
+          <div class="sultan-detail-value text-uppercase" id="admmuridijazah_cNamaSd">-</div>
+        </div>
+        <div class="sultan-detail-item border-0 mb-0">
+          <label class="sultan-detail-label">TOTAL SISWA DIAJUKAN</label>
+          <div class="sultan-detail-value text-maroon font-weight-bold" id="admmuridijazah_cTotalMurid">0 Siswa</div>
+        </div>
+      </div>
+
+      <!-- PILIHAN DOKUMEN YANG DICETAK ULANG -->
+      <div class="form-group mb-3">
+        <label class="form-label-sultan small font-weight-bold text-muted text-uppercase mb-2">Pilih Dokumen Yang Dicetak Ulang <span class="text-danger">*</span></label>
+        <div class="d-flex flex-column" style="gap: 10px;">
+          <!-- Checkbox Ijazah -->
+          <div class="custom-control custom-checkbox sultan-checkbox-wrapper p-2 rounded border" style="background: #fafafa;">
+            <input type="checkbox" class="custom-control-input chk-cetak-doc" id="chk_cetak_ijazah" data-target="#wrap_lembar_ijazah" checked>
+            <label class="custom-control-label font-weight-bold text-dark ml-2" for="chk_cetak_ijazah" style="cursor: pointer;">
+              <i class="fas fa-graduation-cap text-maroon mr-1"></i> CETAK ULANG IJAZAH
+            </label>
+          </div>
+          <div id="wrap_lembar_ijazah" class="mt-2 pl-3 border-left" style="border-left-color: var(--warna-maroon) !important; border-width: 3px !important;">
+            <div class="row align-items-center">
+              <div class="col-md-6 mb-2">
+                <label class="small font-weight-bold text-muted mb-1">Cakupan Lembar</label>
+                <select id="admmuridijazah_cetak_cakupan_ijazah" class="form-control form-control-sm form-control-sultan border-maroon select-cakupan-lembar" data-input="#admmuridijazah_cetak_lembar_ijazah">
+                  <option value="sebagian">Sebagian Lembar Saja</option>
+                  <option value="semua">Semua Lembar (Sesuai Jumlah Siswa)</option>
+                </select>
+              </div>
+              <div class="col-md-6 mb-2">
+                <label class="small font-weight-bold text-muted mb-1">Jumlah Lembar Ijazah <span class="text-danger">*</span></label>
+                <input type="number" id="admmuridijazah_cetak_lembar_ijazah" class="form-control form-control-sm form-control-sultan border-maroon font-weight-bold text-center" min="1" value="1">
+              </div>
+            </div>
+          </div>
+
+          <!-- Checkbox Transkrip -->
+          <div class="custom-control custom-checkbox sultan-checkbox-wrapper p-2 rounded border" style="background: #fafafa;">
+            <input type="checkbox" class="custom-control-input chk-cetak-doc" id="chk_cetak_transkrip" data-target="#wrap_lembar_transkrip">
+            <label class="custom-control-label font-weight-bold text-dark ml-2" for="chk_cetak_transkrip" style="cursor: pointer;">
+              <i class="fas fa-file-alt text-info mr-1"></i> CETAK ULANG TRANSKRIP
+            </label>
+          </div>
+          <div id="wrap_lembar_transkrip" class="mt-2 pl-3 border-left" style="display: none; border-left-color: var(--warna-maroon) !important; border-width: 3px !important;">
+            <div class="row align-items-center">
+              <div class="col-md-6 mb-2">
+                <label class="small font-weight-bold text-muted mb-1">Cakupan Lembar</label>
+                <select id="admmuridijazah_cetak_cakupan_transkrip" class="form-control form-control-sm form-control-sultan border-maroon select-cakupan-lembar" data-input="#admmuridijazah_cetak_lembar_transkrip">
+                  <option value="sebagian">Sebagian Lembar Saja</option>
+                  <option value="semua">Semua Lembar (Sesuai Jumlah Siswa)</option>
+                </select>
+              </div>
+              <div class="col-md-6 mb-2">
+                <label class="small font-weight-bold text-muted mb-1">Jumlah Lembar Transkrip <span class="text-danger">*</span></label>
+                <input type="number" id="admmuridijazah_cetak_lembar_transkrip" class="form-control form-control-sm form-control-sultan border-maroon font-weight-bold text-center" min="1" value="1">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ALASAN KENDALA TEKNIS -->
+      <div class="form-group mb-3">
+        <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Kategori Alasan Kendala Teknis <span class="text-danger">*</span></label>
+        <select id="admmuridijazah_cetak_alasan_kategori" class="form-control form-control-sultan border-maroon font-weight-bold" required>
+          <option value="Kertas Rusak / Terlipat / Sobek">Kertas Rusak / Terlipat / Sobek</option>
+          <option value="Salah Tempel Foto Siswa">Salah Tempel Foto Siswa</option>
+          <option value="Salah / Miring Stempel Sekolah">Salah / Miring Stempel Sekolah</option>
+          <option value="Salah Tanda Tangan Kepala Sekolah">Salah Tanda Tangan Kepala Sekolah</option>
+          <option value="Tinta Printer Macet / Bergaris">Tinta Printer Macet / Bergaris</option>
+          <option value="Lainnya">Lainnya (Ketik Catatan Tambahan)</option>
+        </select>
+      </div>
+
+      <div class="form-group mb-0">
+        <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Catatan Tambahan / Keterangan (Opsional)</label>
+        <textarea id="admmuridijazah_cetak_keterangan" class="form-control form-control-sultan border-maroon" rows="2" placeholder="Contoh: Nama siswa yang dicetak ulang: Budi Santoso (NISN 12345)..."></textarea>
+      </div>
+
+    </div>
+    <div class="modal-footer modal-footer-tambah-edit justify-content-between">
+      <button type="button" class="modal-btn-batal" data-dismiss="modal">
+        <i class="fas fa-times mr-2"></i>BATAL
+      </button>
+      <button type="submit" id="admmuridijazah_btnSimpanCetakUlang" class="modal-btn-simpan" style="background: #6f42c1 !important;">
+        <i class="fas fa-print mr-2"></i>SIMPAN & CATAT CETAK ULANG
+      </button>
+    </div>
+  </form>
+
+  <!-- MODAL DETAIL RIWAYAT CETAK -->
+  <div id="admmuridijazah_modalLogCetakContent">
+    <div class="modal-body modal-body-sultan p-4" style="max-height: 70vh; overflow-y: auto;">
+      <div class="sultan-detail-container mb-3">
+        <div class="sultan-detail-item">
+          <label class="sultan-detail-label">NAMA SEKOLAH</label>
+          <div class="sultan-detail-value text-uppercase" id="admmuridijazah_logNamaSd">-</div>
+        </div>
+        <div class="sultan-detail-item border-0 mb-0">
+          <label class="sultan-detail-label">TOTAL SISWA</label>
+          <div class="sultan-detail-value text-maroon font-weight-bold" id="admmuridijazah_logTotalMurid">0 Siswa</div>
+        </div>
+      </div>
+
+      <h6 class="modal-verifikasi-section-title mb-2"><i class="fas fa-history mr-2"></i> RIWAYAT PENCATATAN CETAK</h6>
+      <div class="table-responsive sultan-scroll">
+        <table class="table table-sm table-hover table-bordered mb-0" style="font-size: 12px;">
+          <thead class="bg-light text-dark font-weight-bold text-center">
+            <tr>
+              <th style="width: 40px;">NO</th>
+              <th style="width: 130px;">WAKTU</th>
+              <th style="width: 120px;">TIPE</th>
+              <th>DOKUMEN & LEMBAR</th>
+              <th>ALASAN / KETERANGAN</th>
+              <th style="width: 110px;">OPERATOR</th>
+            </tr>
+          </thead>
+          <tbody id="admmuridijazah_logTableBody">
+            <tr><td colspan="6" class="text-center text-muted py-3">Belum ada riwayat cetak.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modal-footer modal-footer-tambah-edit justify-content-end">
+      <button type="button" class="modal-btn-batal" data-dismiss="modal">
+        <i class="fas fa-times mr-2"></i>TUTUP
+      </button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -535,7 +682,7 @@
                 { targets: 0, width: "1%", className: "col-sticky-left bg-white align-middle text-center text-nowrap" },
                 { targets: [1], width: "1%", className: "text-center align-middle" },
                 { targets: [2], width: "auto", className: "text-left align-middle" },
-                { targets: [3, 4, 5, 6, 7, 8, 9, 10], width: "1%", className: "text-center align-middle text-nowrap" }
+                { targets: [3, 4, 5, 6, 7, 8, 9, 10, 11], width: "1%", className: "text-center align-middle text-nowrap" }
               ],
               language: { url: "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json", emptyTable: "Belum ada permohonan ijazah yang diunggah." }
             });
@@ -611,6 +758,12 @@
         var btnV = ADMMURIDIJAZAH_IS_ADMIN
           ? '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-primary btn-verif" data-id="' + row.rowId + '" data-toggle="tooltip" title="Verifikasi Data"><i class="fas fa-clipboard-check"></i></button>'
           : '';
+        
+        // Tombol Cetak Ulang Teknis (Hanya untuk Admin saat dokumen sudah pernah/berstatus Dicetak)
+        var btnCetakUlang = (ADMMURIDIJAZAH_IS_ADMIN && (statusLower.includes('cetak') || (row.jml_cetak_ijazah > 0 || row.jml_cetak_transkrip > 0)))
+          ? '<button type="button" class="sultan-btn-aksi btn-cetak-ulang" data-id="' + row.rowId + '" style="background: rgba(111, 66, 193, 0.12); color: #6f42c1; border-color: rgba(111, 66, 193, 0.3);" data-toggle="tooltip" title="Cetak Ulang Teknis (Kertas Rusak/Salah Stempel/TTD dll)"><i class="fas fa-print"></i></button>'
+          : '';
+
         var btnP = !isLocked
           ? '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning btn-edit" data-id="' + row.rowId + '" data-toggle="tooltip" title="Edit Berkas"><i class="fas fa-edit"></i></button>'
           : '<button type="button" class="sultan-btn-aksi" disabled style="opacity:0.4; cursor:not-allowed;" title="Terkunci"><i class="fas fa-edit"></i></button>';
@@ -624,7 +777,7 @@
           ? '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon btn-delete" data-id="' + row.rowId + '" data-toggle="tooltip" title="Hapus Berkas"><i class="fas fa-trash-alt"></i></button>'
           : '<button type="button" class="sultan-btn-aksi" disabled style="opacity:0.4; cursor:not-allowed;" title="Terkunci"><i class="fas fa-trash-alt"></i></button>';
 
-        var btnAksi = '<div class="d-flex flex-nowrap justify-content-center" style="gap:4px;">' + btnV + btnP + btnH + '</div>';
+        var btnAksi = '<div class="d-flex flex-nowrap justify-content-center" style="gap:4px;">' + btnV + btnCetakUlang + btnP + btnH + '</div>';
 
         // Standardisasi Kolom STATUS & BACA CATATAN
         var badgeStatus = SultanUI.renderBadgeStatus(row.status, row.catatan);
@@ -642,6 +795,34 @@
         var docTranskripKolektifLink = row.url_file_transkrip_kolektif ? '<button type="button" class="sultan-btn-pdf btn-preview mb-1 d-inline-block" data-url="' + row.url_file_transkrip_kolektif + '" data-title="Pratinjau Transkrip Kolektif" style="font-size:11px;"><i class="fas fa-file-pdf mr-1 text-info"></i> TRANSKRIP</button>' : '<span class="text-muted small">-</span>';
         var docLinks = '<div class="d-flex flex-column">' + docIjazahLink + docTranskripLink + docTranskripKolektifLink + '</div>';
 
+        // Render Kolom STATISTIK CETAK
+        var jmlCetakIjazah = parseInt(row.jml_cetak_ijazah) || 0;
+        var lembarIjazah = parseInt(row.jml_lembar_ijazah) || 0;
+        var jmlCetakTranskrip = parseInt(row.jml_cetak_transkrip) || 0;
+        var lembarTranskrip = parseInt(row.jml_lembar_transkrip) || 0;
+
+        var statCetakHtml = '<div class="d-flex flex-column" style="gap: 4px; font-size: 11px;">';
+        if (jmlCetakIjazah > 0 || jmlCetakTranskrip > 0) {
+          statCetakHtml += '<div class="d-flex align-items-center justify-content-between p-1 rounded" style="background: rgba(111, 66, 193, 0.08); border: 1px solid rgba(111, 66, 193, 0.2);">' +
+            '<span class="font-weight-bold" style="color: #6f42c1;"><i class="fas fa-graduation-cap mr-1"></i>IJAZAH:</span>' +
+            '<span class="badge badge-pill badge-light font-weight-bold ml-2 text-dark" style="border: 1px solid #ddd;">' + jmlCetakIjazah + 'x | ' + lembarIjazah + ' lbr</span>' +
+          '</div>';
+
+          statCetakHtml += '<div class="d-flex align-items-center justify-content-between p-1 rounded" style="background: rgba(23, 162, 184, 0.08); border: 1px solid rgba(23, 162, 184, 0.2);">' +
+            '<span class="font-weight-bold text-info"><i class="fas fa-file-alt mr-1"></i>TRANSKRIP:</span>' +
+            '<span class="badge badge-pill badge-light font-weight-bold ml-2 text-dark" style="border: 1px solid #ddd;">' + jmlCetakTranskrip + 'x | ' + lembarTranskrip + ' lbr</span>' +
+          '</div>';
+
+          statCetakHtml += '<div class="text-center mt-1">' +
+            '<button type="button" class="btn btn-xs btn-outline-secondary btn-lihat-log-cetak py-0 px-2 rounded-pill" data-id="' + row.rowId + '" style="font-size: 10px; font-weight: 600;">' +
+              '<i class="fas fa-history mr-1"></i>Riwayat Cetak' +
+            '</button>' +
+          '</div>';
+        } else {
+          statCetakHtml += '<span class="text-muted opacity-50 text-center font-italic">Belum Dicetak</span>';
+        }
+        statCetakHtml += '</div>';
+
         var formatZero = function (val) {
           var n = parseInt(val) || 0;
           return n === 0 ? '<span class="text-muted opacity-50">-</span>' : n;
@@ -656,6 +837,7 @@
           formatZero(row.jumlah_murid_p),
           '<span class="font-weight-bold text-maroon">' + (parseInt(row.jumlah_total) || '-') + '</span>',
           docLinks,
+          statCetakHtml,
           uploadBy,
           editBy,
           verifBy
@@ -1210,6 +1392,199 @@
         btn.prop('disabled', false).html(txt);
         Sultan.notif.crud.gagal(err.message);
       }).admMurid_ajukanKoreksiIjazah(rowId, gabunganAlasan, pengaju);
+    });
+
+    // ==========================================
+    // AKSI CETAK ULANG TEKNIS (ADMIN)
+    // ==========================================
+    $(document).off('click', '.btn-cetak-ulang').on('click', '.btn-cetak-ulang', function () {
+      var rowId = $(this).data('id');
+      var raw = ADMMURIDIJAZAH_CACHE_DATA.find(function (item) { return item.rowId == rowId; });
+      if (!raw) return;
+
+      var totalMurid = parseInt(raw.jumlah_total) || 1;
+
+      // Reset Form Cetak Ulang
+      $('#admmuridijazah_formCetakUlang')[0].reset();
+      $('#admmuridijazah_cetak_rowId').val(rowId);
+      $('#admmuridijazah_cetak_totalMurid').val(totalMurid);
+      $('#admmuridijazah_cNamaSd').text(raw.nama_sekolah || '-');
+      $('#admmuridijazah_cTotalMurid').text(totalMurid + ' Siswa');
+
+      // Default checkbox & lembar
+      $('#chk_cetak_ijazah').prop('checked', true);
+      $('#wrap_lembar_ijazah').show();
+      $('#admmuridijazah_cetak_cakupan_ijazah').val('sebagian');
+      $('#admmuridijazah_cetak_lembar_ijazah').val(1).prop('readonly', false);
+
+      $('#chk_cetak_transkrip').prop('checked', false);
+      $('#wrap_lembar_transkrip').hide();
+      $('#admmuridijazah_cetak_cakupan_transkrip').val('sebagian');
+      $('#admmuridijazah_cetak_lembar_transkrip').val(1).prop('readonly', false);
+
+      $('#admmuridijazah_cetak_alasan_kategori').val('Kertas Rusak / Terlipat / Sobek');
+      $('#admmuridijazah_cetak_keterangan').val('');
+
+      // Tampilkan di Global Modal Form
+      $('#global_modalFormSize').removeClass('modal-xl').addClass('modal-lg');
+      $('#global_modalFormHeader').removeClass('modal-header-sultan-primary modal-header-sultan-warning modal-header-sultan-danger modal-header-sultan-success modal-header-sultan-info modal-header-sultan-dark modal-header-edit modal-header-tambah-edit modal-header-hapus');
+      $('#global_modalFormHeader').css('background', '#6f42c1');
+      $('#global_modalFormTitle').html('<i class="fas fa-print mr-3 shadow-sm"></i> CATAT CETAK ULANG TEKNIS');
+      $('#global_modalFormBody, #global_modalFormFooter').hide();
+      $('#admmuridijazah_formCetakUlang').appendTo('#global_modalFormSize .modal-content');
+
+      $('#global_modalForm').off('hidden.bs.modal.admmuridijazahcetakulang').on('hidden.bs.modal.admmuridijazahcetakulang', function () {
+        $('#global_modalFormHeader').css('background', '');
+        $('#admmuridijazah_formCetakUlang').appendTo('#admmuridijazah_templates');
+        $('#global_modalFormBody, #global_modalFormFooter').show();
+      });
+
+      $('#global_modalForm').modal('show');
+    });
+
+    // Checkbox Dokumen Cetak Ulang Switch
+    $(document).off('change', '.chk-cetak-doc').on('change', '.chk-cetak-doc', function () {
+      var target = $(this).data('target');
+      if ($(this).is(':checked')) {
+        $(target).slideDown('fast');
+      } else {
+        $(target).slideUp('fast');
+      }
+    });
+
+    // Switch Cakupan Lembar Cetak Ulang (Sebagian vs Semua)
+    $(document).off('change', '.select-cakupan-lembar').on('change', '.select-cakupan-lembar', function () {
+      var inputTarget = $(this).data('input');
+      var totalMurid = parseInt($('#admmuridijazah_cetak_totalMurid').val()) || 1;
+      if ($(this).val() === 'semua') {
+        $(inputTarget).val(totalMurid).prop('readonly', true);
+      } else {
+        $(inputTarget).val(1).prop('readonly', false).focus();
+      }
+    });
+
+    // Submit Form Cetak Ulang Teknis
+    $(document).off('submit', '#admmuridijazah_formCetakUlang').on('submit', '#admmuridijazah_formCetakUlang', function (e) {
+      e.preventDefault();
+      var rowId = $('#admmuridijazah_cetak_rowId').val();
+      var operator = userLogin.nama_lengkap || userLogin.username || "Admin";
+
+      var cetakIjazah = $('#chk_cetak_ijazah').is(':checked');
+      var cetakTranskrip = $('#chk_cetak_transkrip').is(':checked');
+
+      if (!cetakIjazah && !cetakTranskrip) {
+        Sultan.alert('warning', 'Pilih Dokumen', 'Pilih minimal satu dokumen (Ijazah atau Transkrip) yang dicetak ulang.');
+        return;
+      }
+
+      var lembarIjazah = cetakIjazah ? (parseInt($('#admmuridijazah_cetak_lembar_ijazah').val()) || 0) : 0;
+      var lembarTranskrip = cetakTranskrip ? (parseInt($('#admmuridijazah_cetak_lembar_transkrip').val()) || 0) : 0;
+
+      if (cetakIjazah && lembarIjazah <= 0) {
+        Sultan.alert('warning', 'Jumlah Lembar', 'Masukkan jumlah lembar ijazah yang valid (minimal 1).');
+        return;
+      }
+      if (cetakTranskrip && lembarTranskrip <= 0) {
+        Sultan.alert('warning', 'Jumlah Lembar', 'Masukkan jumlah lembar transkrip yang valid (minimal 1).');
+        return;
+      }
+
+      var kategoriAlasan = $('#admmuridijazah_cetak_alasan_kategori').val();
+      var ketTambahan = ($('#admmuridijazah_cetak_keterangan').val() || '').trim();
+      var finalAlasan = ketTambahan ? (kategoriAlasan + " - " + ketTambahan) : kategoriAlasan;
+
+      var payload = {
+        cetak_ijazah: cetakIjazah,
+        lembar_ijazah: lembarIjazah,
+        cetak_transkrip: cetakTranskrip,
+        lembar_transkrip: lembarTranskrip,
+        alasan: finalAlasan,
+        operator: operator
+      };
+
+      var btn = $('#admmuridijazah_btnSimpanCetakUlang');
+      var txt = btn.html();
+      btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i> Menyimpan...');
+
+      google.script.run.withSuccessHandler(function (resRaw) {
+        btn.prop('disabled', false).html(txt);
+        var res = JSON.parse(resRaw);
+        if (res.success) {
+          $('#global_modalForm').modal('hide');
+          Sultan.notif.crud.sukses('Cetak ulang teknis berhasil dicatat!');
+          loadIjazahData();
+        } else {
+          Sultan.notif.crud.gagal(res.message);
+        }
+      }).withFailureHandler(function (err) {
+        btn.prop('disabled', false).html(txt);
+        Sultan.notif.crud.gagal(err.message);
+      }).admMurid_catatCetakUlangTeknis(rowId, payload);
+    });
+
+    // ==========================================
+    // MODAL LIHAT RIWAYAT LOG CETAK
+    // ==========================================
+    $(document).off('click', '.btn-lihat-log-cetak').on('click', '.btn-lihat-log-cetak', function () {
+      var rowId = $(this).data('id');
+      var raw = ADMMURIDIJAZAH_CACHE_DATA.find(function (item) { return item.rowId == rowId; });
+      if (!raw) return;
+
+      $('#admmuridijazah_logNamaSd').text(raw.nama_sekolah || '-');
+      $('#admmuridijazah_logTotalMurid').text((raw.jumlah_total || 0) + ' Siswa');
+
+      var logArr = [];
+      if (raw.log_cetak) {
+        try {
+          logArr = typeof raw.log_cetak === 'string' ? JSON.parse(raw.log_cetak) : raw.log_cetak;
+        } catch (e) {
+          logArr = [];
+        }
+      }
+
+      var tbody = $('#admmuridijazah_logTableBody');
+      tbody.empty();
+
+      if (!Array.isArray(logArr) || logArr.length === 0) {
+        tbody.append('<tr><td colspan="6" class="text-center text-muted py-3">Belum ada riwayat cetak yang tersimpan.</td></tr>');
+      } else {
+        logArr.forEach(function (log, idx) {
+          var badgeTipe = log.tipe === 'Cetak Perdana'
+            ? '<span class="badge badge-success px-2 py-1"><i class="fas fa-check mr-1"></i>Perdana</span>'
+            : '<span class="badge px-2 py-1" style="background:#6f42c1; color:#fff;"><i class="fas fa-redo mr-1"></i>Ulang Teknis</span>';
+
+          var detailLembar = [];
+          if (log.lembar_ijazah > 0) detailLembar.push('<b>Ijazah:</b> ' + log.lembar_ijazah + ' lbr');
+          if (log.lembar_transkrip > 0) detailLembar.push('<b>Transkrip:</b> ' + log.lembar_transkrip + ' lbr');
+          var lembarText = detailLembar.length > 0 ? detailLembar.join(' | ') : (log.dokumen || '-');
+
+          var tr = '<tr>' +
+            '<td class="text-center font-weight-bold">' + (idx + 1) + '</td>' +
+            '<td class="text-center font-weight-bold text-muted">' + (log.waktu || '-') + '</td>' +
+            '<td class="text-center">' + badgeTipe + '</td>' +
+            '<td>' + lembarText + '</td>' +
+            '<td>' + (log.alasan || '-') + '</td>' +
+            '<td class="text-center font-weight-bold text-dark">' + (log.operator || '-') + '</td>' +
+          '</tr>';
+          tbody.append(tr);
+        });
+      }
+
+      // Tampilkan di Global Modal Form
+      $('#global_modalFormSize').removeClass('modal-md').addClass('modal-lg');
+      $('#global_modalFormHeader').removeClass('modal-header-sultan-primary modal-header-sultan-warning modal-header-sultan-danger modal-header-sultan-success modal-header-sultan-info modal-header-sultan-dark modal-header-edit modal-header-tambah-edit modal-header-hapus');
+      $('#global_modalFormHeader').css('background', '#343a40');
+      $('#global_modalFormTitle').html('<i class="fas fa-history mr-3 shadow-sm"></i> RIWAYAT PENCATATAN CETAK');
+      $('#global_modalFormBody, #global_modalFormFooter').hide();
+      $('#admmuridijazah_modalLogCetakContent').appendTo('#global_modalFormSize .modal-content');
+
+      $('#global_modalForm').off('hidden.bs.modal.admmuridijazahlogcetak').on('hidden.bs.modal.admmuridijazahlogcetak', function () {
+        $('#global_modalFormHeader').css('background', '');
+        $('#admmuridijazah_modalLogCetakContent').appendTo('#admmuridijazah_templates');
+        $('#global_modalFormBody, #global_modalFormFooter').show();
+      });
+
+      $('#global_modalForm').modal('show');
     });
   });
 </script>

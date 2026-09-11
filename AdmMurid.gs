@@ -28,13 +28,14 @@ function getOrCreateSheetAdmMurid(sheetName) {
         "Tgl_Upload", "Uploader", "Tgl_Edit", "User_Edit", "Tgl_Verif", "Verifikator", "Read_by"
       ]]);
     } else if (sheetName === "Database_Ijazah") {
-      sheet.getRange(1, 1, 1, 24).setValues([[
+      sheet.getRange(1, 1, 1, 29).setValues([[
         "NPSN", "Nama_Sekolah", "Tahun_Ajaran", 
         "Jumlah_Murid_L", "Jumlah_Murid_P", "Jumlah_Total", 
         "Nama_File_Ijazah", "URL_File_Ijazah", "ID_File_Ijazah", 
         "Nama_File_Transkrip", "URL_File_Transkrip", "ID_File_Transkrip", 
         "Status", "Catatan", "Tgl_Upload", "Uploader", "Tgl_Edit", "User_Edit", "Tgl_Verif", "Verifikator", "Read_by",
-        "Nama_File_Transkrip_Kolektif", "URL_File_Transkrip_Kolektif", "ID_File_Transkrip_Kolektif"
+        "Nama_File_Transkrip_Kolektif", "URL_File_Transkrip_Kolektif", "ID_File_Transkrip_Kolektif",
+        "Jml_Cetak_Ijazah", "Jml_Lembar_Ijazah", "Jml_Cetak_Transkrip", "Jml_Lembar_Transkrip", "Log_Cetak"
       ]]);
     } else if (sheetName === "Arsip_Ijazah") {
       sheet.getRange(1, 1, 1, 21).setValues([[
@@ -296,7 +297,12 @@ function admMurid_getIjazahData(npsnFilter) {
           read_by: values[i][20] || "",
           nama_file_transkrip_kolektif: values[i][21] || "",
           url_file_transkrip_kolektif: values[i][22] || "",
-          id_file_transkrip_kolektif: values[i][23] || ""
+          id_file_transkrip_kolektif: values[i][23] || "",
+          jml_cetak_ijazah: parseInt(values[i][24]) || 0,
+          jml_lembar_ijazah: parseInt(values[i][25]) || 0,
+          jml_cetak_transkrip: parseInt(values[i][26]) || 0,
+          jml_lembar_transkrip: parseInt(values[i][27]) || 0,
+          log_cetak: values[i][28] || ""
         });
       }
     }
@@ -496,12 +502,38 @@ function admMurid_verifikasiIjazah(rowId, status, catatan, verifikator) {
     sheet.getRange(row, 14).setValue(newCatatan);
     sheet.getRange(row, 19, 1, 2).setValues([[now, verifikator]]);
     
+    // Jika status diubah menjadi "Dicetak", catat pencetakan perdana jika belum pernah dicetak
+    if (stLower === "dicetak") {
+      var currentCetakIjazah = parseInt(sheet.getRange(row, 25).getValue()) || 0;
+      var totalMurid = parseInt(sheet.getRange(row, 6).getValue()) || 0;
+      if (currentCetakIjazah === 0) {
+        var logAwal = [];
+        var rawLog = sheet.getRange(row, 29).getValue();
+        if (rawLog) {
+          try { logAwal = JSON.parse(rawLog); } catch(errLog) { logAwal = []; }
+        }
+        logAwal.unshift({
+          waktu: now,
+          tipe: "Cetak Perdana",
+          dokumen: "Ijazah & Transkrip",
+          lembar_ijazah: totalMurid,
+          lembar_transkrip: totalMurid,
+          alasan: "Pencetakan perdana dokumen setelah disetujui",
+          operator: verifikator
+        });
+
+        // Set Kolom 25 s/d 29: Jml_Cetak_Ijazah, Jml_Lembar_Ijazah, Jml_Cetak_Transkrip, Jml_Lembar_Transkrip, Log_Cetak
+        sheet.getRange(row, 25, 1, 5).setValues([[
+          1, totalMurid, 1, totalMurid, JSON.stringify(logAwal)
+        ]]);
+      }
+    }
+
     // Set read_by: tandai sebagai sudah dibaca oleh Admin
     // (verifikator adalah Admin/Korwil, sehingga badge sidebar Admin akan hilang)
     var currentReadBy = String(sheet.getRange(row, 21).getDisplayValue() || "").trim();
     var list = currentReadBy === "" ? [] : currentReadBy.split(",");
     
-    var stLower = status.toLowerCase();
     if (stLower === "diproses" || stLower === "") {
       // Jika status dikembalikan ke Diproses, hapus "Admin" dari read_by agar Admin mendapatkan notifikasi lagi
       var idxAdmin = list.indexOf("Admin");
@@ -529,6 +561,82 @@ function admMurid_verifikasiIjazah(rowId, status, catatan, verifikator) {
     return JSON.stringify({ success: true, message: "Verifikasi Cetak Ijazah berhasil disimpan." });
   } catch (e) {
     return JSON.stringify({ success: false, message: e.message });
+  }
+}
+
+function admMurid_catatCetakUlangTeknis(rowId, payload) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+    var sheet = getOrCreateSheetAdmMurid("Database_Ijazah");
+    var row = parseInt(rowId);
+    var now = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
+
+    var cetakIjazah = payload.cetak_ijazah === true || payload.cetak_ijazah === "true";
+    var cetakTranskrip = payload.cetak_transkrip === true || payload.cetak_transkrip === "true";
+    var lembarIjazah = parseInt(payload.lembar_ijazah) || 0;
+    var lembarTranskrip = parseInt(payload.lembar_transkrip) || 0;
+    var alasan = String(payload.alasan || "").trim();
+    var operator = String(payload.operator || "Admin").trim();
+
+    var currentJmlCetakIjazah = parseInt(sheet.getRange(row, 25).getValue()) || 0;
+    var currentLembarIjazah = parseInt(sheet.getRange(row, 26).getValue()) || 0;
+    var currentJmlCetakTranskrip = parseInt(sheet.getRange(row, 27).getValue()) || 0;
+    var currentLembarTranskrip = parseInt(sheet.getRange(row, 28).getValue()) || 0;
+
+    var newJmlCetakIjazah = currentJmlCetakIjazah + (cetakIjazah ? 1 : 0);
+    var newLembarIjazah = currentLembarIjazah + lembarIjazah;
+    var newJmlCetakTranskrip = currentJmlCetakTranskrip + (cetakTranskrip ? 1 : 0);
+    var newLembarTranskrip = currentLembarTranskrip + lembarTranskrip;
+
+    var listDokumen = [];
+    if (cetakIjazah && lembarIjazah > 0) listDokumen.push("Ijazah (" + lembarIjazah + " lbr)");
+    if (cetakTranskrip && lembarTranskrip > 0) listDokumen.push("Transkrip (" + lembarTranskrip + " lbr)");
+    var dokumenLabel = listDokumen.length > 0 ? listDokumen.join(", ") : "Dokumen Ijazah/Transkrip";
+
+    var logHistory = [];
+    var rawLog = sheet.getRange(row, 29).getValue();
+    if (rawLog) {
+      try { logHistory = JSON.parse(rawLog); } catch(errLog) { logHistory = []; }
+    }
+
+    logHistory.unshift({
+      waktu: now,
+      tipe: "Cetak Ulang Teknis",
+      dokumen: dokumenLabel,
+      lembar_ijazah: lembarIjazah,
+      lembar_transkrip: lembarTranskrip,
+      alasan: alasan,
+      operator: operator
+    });
+
+    // Simpan ke spreadsheet baris terkait
+    sheet.getRange(row, 25, 1, 5).setValues([[
+      newJmlCetakIjazah,
+      newLembarIjazah,
+      newJmlCetakTranskrip,
+      newLembarTranskrip,
+      JSON.stringify(logHistory)
+    ]]);
+
+    // Pastikan status tetap "Dicetak"
+    sheet.getRange(row, 13).setValue("Dicetak");
+
+    return JSON.stringify({
+      success: true,
+      message: "Pencatatan cetak ulang teknis berhasil disimpan.",
+      data: {
+        jml_cetak_ijazah: newJmlCetakIjazah,
+        jml_lembar_ijazah: newLembarIjazah,
+        jml_cetak_transkrip: newJmlCetakTranskrip,
+        jml_lembar_transkrip: newLembarTranskrip,
+        log_cetak: JSON.stringify(logHistory)
+      }
+    });
+  } catch (e) {
+    return JSON.stringify({ success: false, message: e.message });
+  } finally {
+    lock.releaseLock();
   }
 }
 
