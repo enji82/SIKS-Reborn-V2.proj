@@ -1,3 +1,47 @@
+<style>
+    /* Freeze Kolom Pertama (Pegawai / NIP) */
+    #lokUpa_tabelUtama th.col-sticky-left {
+        position: sticky !important;
+        left: 0 !important;
+        z-index: 25 !important;
+        background-color: #fff9e6 !important;
+    }
+    #lokUpa_tabelUtama td.col-sticky-left {
+        position: sticky !important;
+        left: 0 !important;
+        z-index: 10 !important;
+        background-color: #ffffff !important;
+        transition: background-color 0.2s ease;
+    }
+    .dark-mode #lokUpa_tabelUtama th.col-sticky-left {
+        background-color: #1e1e1e !important;
+        color: #f1f5f9 !important;
+        z-index: 25 !important;
+    }
+    .dark-mode #lokUpa_tabelUtama td.col-sticky-left {
+        background-color: #1e1e1e !important;
+        color: #f1f5f9 !important;
+    }
+
+    /* Penyelarasan Hover Baris & Kolom Sticky (Terang & Gelap) */
+    #lokUpa_tabelUtama tbody tr:hover,
+    #lokUpa_tabelUtama tbody tr:hover > td,
+    #lokUpa_tabelUtama tbody tr:hover td.col-sticky-left {
+        background-color: var(--sultan-table-hover, #ffe8e8) !important;
+    }
+    .dark-mode #lokUpa_tabelUtama tbody tr:hover,
+    .dark-mode #lokUpa_tabelUtama tbody tr:hover > td,
+    .dark-mode #lokUpa_tabelUtama tbody tr:hover td.col-sticky-left {
+        background-color: var(--sultan-table-hover-dm, #3a3a3a) !important;
+    }
+
+    /* Distribusi Jarak Antar Kolom yang Merata & Seimbang (Equal Spacing) */
+    #lokUpa_tabelUtama th,
+    #lokUpa_tabelUtama td {
+        padding-left: 16px !important;
+        padding-right: 16px !important;
+    }
+</style>
 <section class="content">
     <div class="container-fluid">
         <div class="row justify-content-center">
@@ -91,18 +135,14 @@
                         <div id="lokUpa_loadingState"></div>
 
                         <div id="lokUpa_tableState" style="display:none;">
-                            <table id="lokUpa_tabelUtama" class="table table-premium table-sultan-compact w-100 text-nowrap">
-                                <thead class="thead-sultan-premium">
+                            <table id="lokUpa_tabelUtama" class="table table-hover table-premium table-sultan-compact mb-0 w-100">
+                                <thead class="thead-sultan-premium text-uppercase font-weight-bold">
                                     <tr>
-                                        <th class="text-center sultan-sticky-col">AKSI</th>
-                                        <th class="text-center">STATUS</th>
-                                        <th>NAMA PTK</th>
-                                        <th class="text-center">TANGGAL</th>
-                                        <th>ACARA</th>
-                                        <th>LOKASI UPACARA</th>
-                                        <th>DIKIRIM</th>
-                                        <th>DIUBAH</th>
-                                        <th>VERIFIKASI</th>
+                                        <th class="text-left align-middle col-sticky-left" style="width: 26%;">PEGAWAI / NIP</th>
+                                        <th class="text-left align-middle" style="width: 34%;">RINCIAN UPACARA</th>
+                                        <th class="text-left align-middle text-nowrap" style="width: 13%;">STATUS</th>
+                                        <th class="text-left align-middle text-nowrap" style="width: 14%;">AKTIVITAS</th>
+                                        <th class="text-center align-middle text-nowrap col-sticky-right" style="width: 13%; z-index: 20;">AKSI</th>
                                     </tr>
                                 </thead>
                                 <tbody id="lokUpa_tbody"></tbody>
@@ -515,9 +555,11 @@
                                    "<'row'<'col-sm-12'<'sultan-scroll-container sultan-scroll'tr>>>" +
                                    "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
                             "columnDefs": [
-                                { "targets": 0, "className": "text-center align-middle text-nowrap sultan-sticky-col" },
-                                { "targets": 1, "className": "text-center align-middle text-nowrap" },
-                                { "targets": [2, 3, 4, 5, 6, 7, 8], "className": "align-middle" }
+                                { "targets": 0, "className": "text-left align-middle col-sticky-left", "width": "26%" },
+                                { "targets": 1, "className": "text-left align-middle", "width": "34%" },
+                                { "targets": 2, "className": "text-left align-middle text-nowrap", "width": "13%" },
+                                { "targets": 3, "className": "text-left align-middle text-nowrap", "width": "14%" },
+                                { "targets": 4, "className": "text-center align-middle text-nowrap col-sticky-right", "width": "13%" }
                             ],
                             "language": { "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json", "emptyTable": "Tidak ada data Lokasi Upacara." }
                         });
@@ -612,47 +654,99 @@
             LOKUPA_DATA_MASTER[row.rowBaris] = row;
             var id = String(row.rowBaris);
 
-            var statusBadge = lokUpa_buildBadgeStatus(row.status, row.ket);
-
             var statusLower = String(row.status || '').toLowerCase();
-            var isLocked = (statusLower.includes('ok') || statusLower.includes('setuju') || statusLower.includes('disetujui'));
+            var isApproved = (statusLower.includes('ok') || statusLower.includes('setuju') || statusLower.includes('disetujui'));
+            var isLocked = isApproved;
             var attrDis = isLocked ? 'disabled style="cursor:not-allowed; opacity:0.6; filter: grayscale(100%);"' : '';
 
-            var btnAdmin = LOKUPA_IS_ADMIN ? `<button class="sultan-btn-aksi sultan-btn-aksi-primary lokUpa-verif-btn" data-id="${id}" title="Verifikasi"><i class="fas fa-clipboard-check"></i></button>` : '';
-            var btnEdit = `<button class="sultan-btn-aksi sultan-btn-aksi-warning lokUpa-edit-btn" data-id="${id}" title="Edit" ${attrDis}><i class="fas fa-pencil-alt"></i></button>`;
-            var btnHapus = `<button class="sultan-btn-aksi sultan-btn-aksi-maroon lokUpa-hapus-btn" data-id="${id}" title="Hapus" ${attrDis}><i class="fas fa-trash-alt"></i></button>`;
-
-            var aksiHTML = `<div class="d-flex justify-content-center" style="gap:2px;">${btnAdmin}${btnEdit}${btnHapus}</div>`;
-
-            var nipFormatted = (row.nip && String(row.nip).trim() !== "") ? _esc(row.nip) : '-';
+            // 1. Kolom PEGAWAI / NIP (Sticky Left)
+            var nipClean = (row.nip && String(row.nip).trim() !== "") ? _esc(row.nip) : '-';
             var unitFormatted = (row.unit && String(row.unit).trim() !== "") ? _esc(row.unit) : '-';
-            var uiNama = `<div class="text-left" style="text-align:left !important;"><div class="sultan-table-primary font-weight-bold text-dark text-wrap">${_esc(row.nama)}</div><div class="sultan-table-secondary text-muted">${nipFormatted}</div><div class="sultan-table-secondary text-danger font-weight-bold mt-1">${unitFormatted}</div></div>`;
+            var uiNama = `
+                <div class="text-left">
+                    <div class="sultan-table-primary font-weight-bold" style="color: #800000; font-size: 12.5px; line-height: 1.2;">${_esc(row.nama)}</div>
+                    <div class="sultan-table-secondary text-muted" style="font-size: 11px; margin-top: 2px;">${nipClean}</div>
+                    <div class="text-secondary font-weight-semibold" style="font-size: 10.5px; margin-top: 2px;">${unitFormatted}</div>
+                </div>
+            `;
 
+            // 2. Kolom RINCIAN UPACARA (Acara, Tanggal bersih, Lokasi)
             var rawTgl = (row.tanggal || "").replace(/'/g, "");
             var uiTgl = lokUpa_formatTanggalIndo(rawTgl);
+            var uiRincian = `
+                <div class="text-left">
+                    <div class="font-weight-bold text-dark" style="font-size: 12px; line-height: 1.3;">
+                        <i class="fas fa-flag text-maroon mr-1"></i>${_esc(row.acara || '-')}
+                    </div>
+                    <div class="text-dark font-weight-bold mt-1" style="font-size: 11px; line-height: 1.2;">
+                        ${uiTgl}
+                    </div>
+                    <div class="text-muted mt-1" style="font-size: 11px; line-height: 1.2;">
+                        <i class="fas fa-map-marker-alt text-muted mr-1"></i>${_esc(row.lokasi || '-')}
+                    </div>
+                </div>
+            `;
 
-            var uKirim = (row.userInput || '-').toLowerCase();
-            var uEdit = (row.userEdit || '-').toLowerCase();
-            var uVerif = (row.adminVerif || '-').toLowerCase();
+            // 3. Kolom STATUS (Standar SultanUI)
+            var statusBadge = SultanUI.renderBadgeStatus(row.status, row.ket, {
+                unit: row.unit || row.nama,
+                dokumen: 'Lokasi Upacara ' + (row.nama || ''),
+                verifikator: row.adminVerif,
+                waktu: row.tglVerif
+            });
 
-            var metaKirim = `<div class="text-left sultan-table-secondary" style="text-align:left !important;"><span class="font-weight-bold text-dark d-block">${row.tglKirim || '-'}</span><span class="text-muted d-block">${_cleanText(uKirim)}</span></div>`;
-            var metaEdit = `<div class="text-left sultan-table-secondary" style="text-align:left !important;"><span class="font-weight-bold text-dark d-block">${row.tglEdit || '-'}</span><span class="text-muted d-block">${_cleanText(uEdit)}</span></div>`;
-            var metaVerif = `<div class="text-left sultan-table-secondary" style="text-align:left !important;"><span class="font-weight-bold text-dark d-block">${row.tglVerif || '-'}</span><span class="text-muted d-block">${_cleanText(uVerif)}</span></div>`;
+            // 4. Kolom AKTIVITAS (Audit Trail Cerdas Satu Kolom)
+            var auditWaktu = "-";
+            var auditUser = "-";
+            var auditLabel = "Dikirim";
+
+            if (row.tglVerif && String(row.tglVerif).trim() !== "" && String(row.tglVerif).trim() !== "-") {
+                auditLabel = "Verif";
+                auditWaktu = row.tglVerif;
+                auditUser = row.adminVerif || "-";
+            } else if (row.tglEdit && String(row.tglEdit).trim() !== "" && String(row.tglEdit).trim() !== "-") {
+                auditLabel = "Diubah";
+                auditWaktu = row.tglEdit;
+                auditUser = row.userEdit || "-";
+            } else if (row.tglKirim && String(row.tglKirim).trim() !== "" && String(row.tglKirim).trim() !== "-") {
+                auditLabel = "Dikirim";
+                auditWaktu = row.tglKirim;
+                auditUser = row.userInput || "-";
+            }
+
+            var tooltipAudit = SultanUI.escapeHtml(
+                `Dikirim: ${row.tglKirim || '-'} (${row.userInput || '-'})\n` +
+                `Diubah: ${row.tglEdit || '-'} (${row.userEdit || '-'})\n` +
+                `Verifikasi: ${row.tglVerif || '-'} (${row.adminVerif || '-'})`
+            );
+
+            var uiAktivitas = `
+                <div class="text-left" data-toggle="tooltip" data-placement="top" title="${tooltipAudit}">
+                    <div class="font-weight-bold text-dark" style="font-size: 11.5px; line-height: 1.2;">${SultanUI.escapeHtml(auditWaktu)}</div>
+                    <div class="text-muted text-lowercase" style="font-size: 11px; line-height: 1.2;">
+                        <span class="font-weight-semibold text-secondary">${auditLabel}:</span> ${SultanUI.escapeHtml(auditUser).toLowerCase()}
+                    </div>
+                </div>
+            `;
+
+            // 5. Kolom AKSI (Sticky Right)
+            var btnAdmin = LOKUPA_IS_ADMIN ? `<button class="sultan-btn-aksi sultan-btn-aksi-primary lokUpa-verif-btn" data-id="${id}" title="Verifikasi Data"><i class="fas fa-clipboard-check"></i></button>` : '';
+            var btnEdit = `<button class="sultan-btn-aksi sultan-btn-aksi-warning lokUpa-edit-btn" data-id="${id}" title="Edit Data" ${attrDis}><i class="fas fa-pencil-alt"></i></button>`;
+            var btnHapus = `<button class="sultan-btn-aksi sultan-btn-aksi-maroon lokUpa-hapus-btn" data-id="${id}" title="Hapus Data" ${attrDis}><i class="fas fa-trash-alt"></i></button>`;
+
+            var aksiHTML = `<div class="d-flex justify-content-center" style="gap:4px;">${btnAdmin}${btnEdit}${btnHapus}</div>`;
 
             dtArray.push([
-                aksiHTML,
-                statusBadge,
                 uiNama,
-                `<div class="text-center font-weight-bold">${uiTgl}</div>`,
-                _esc(row.acara),
-                _esc(row.lokasi),
-                metaKirim,
-                metaEdit,
-                metaVerif
+                uiRincian,
+                statusBadge,
+                uiAktivitas,
+                aksiHTML
             ]);
         });
 
         LOKUPA_TABEL_INSTANCE.clear().rows.add(dtArray).draw(false);
+        $('[data-toggle="tooltip"]').tooltip();
 
         if ($('#lokUpa_tableState').is(':hidden')) {
             SultanUI.hideLoading('#lokUpa_loadingState');
