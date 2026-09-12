@@ -1,3 +1,47 @@
+<style>
+    /* Freeze Kolom Pertama (Pegawai / NIP) */
+    #unggahcuti_tabelUtama th.col-sticky-left {
+        position: sticky !important;
+        left: 0 !important;
+        z-index: 25 !important;
+        background-color: #fff9e6 !important;
+    }
+    #unggahcuti_tabelUtama td.col-sticky-left {
+        position: sticky !important;
+        left: 0 !important;
+        z-index: 10 !important;
+        background-color: #ffffff !important;
+        transition: background-color 0.2s ease;
+    }
+    .dark-mode #unggahcuti_tabelUtama th.col-sticky-left {
+        background-color: #1e1e1e !important;
+        color: #f1f5f9 !important;
+        z-index: 25 !important;
+    }
+    .dark-mode #unggahcuti_tabelUtama td.col-sticky-left {
+        background-color: #1e1e1e !important;
+        color: #f1f5f9 !important;
+    }
+
+    /* Penyelarasan Hover Baris & Kolom Sticky (Terang & Gelap) */
+    #unggahcuti_tabelUtama tbody tr:hover,
+    #unggahcuti_tabelUtama tbody tr:hover > td,
+    #unggahcuti_tabelUtama tbody tr:hover td.col-sticky-left {
+        background-color: var(--sultan-table-hover, #ffe8e8) !important;
+    }
+    .dark-mode #unggahcuti_tabelUtama tbody tr:hover,
+    .dark-mode #unggahcuti_tabelUtama tbody tr:hover > td,
+    .dark-mode #unggahcuti_tabelUtama tbody tr:hover td.col-sticky-left {
+        background-color: var(--sultan-table-hover-dm, #3a3a3a) !important;
+    }
+
+    /* Distribusi Jarak Antar Kolom yang Merata & Seimbang (Equal Spacing) */
+    #unggahcuti_tabelUtama th,
+    #unggahcuti_tabelUtama td {
+        padding-left: 16px !important;
+        padding-right: 16px !important;
+    }
+</style>
 <section class="content sultan-page-transition">
     <div class="container-fluid">
         <div class="row justify-content-center">
@@ -103,23 +147,15 @@
 
                         <div id="unggahcuti_tableState" style="display: none;">
                             <table id="unggahcuti_tabelUtama"
-                                class="table table-hover table-premium table-sultan-compact mb-0 text-nowrap"
-                                style="font-size: 13px !important;">
-                                <thead class="thead-sultan-premium">
+                                class="table table-hover table-premium table-sultan-compact mb-0 w-100">
+                                <thead class="thead-sultan-premium text-uppercase font-weight-bold">
                                     <tr>
-                                        <th class="text-center align-middle col-sticky-left">AKSI</th>
-                                        <th class="text-left align-middle">STATUS</th>
-                                        <th class="text-left align-middle">NAMA ASN / NIP</th>
-                                        <th class="text-center align-middle" style="text-align:center !important;">JENIS
-                                            CUTI</th>
-                                        <th class="text-center align-middle">TGL MULAI</th>
-                                        <th class="text-center align-middle">TGL SELESAI</th>
-                                        <th class="text-center align-middle">HARI</th>
-                                        <th class="text-center align-middle">FILE PDF</th>
-                                        <th class="text-center align-middle">TGL AJUAN</th>
-                                        <th class="text-left align-middle">TGL UNGGAH</th>
-                                        <th class="text-left align-middle">TGL UBAH</th>
-                                        <th class="text-left align-middle">VERIFIKATOR</th>
+                                        <th class="text-left align-middle col-sticky-left" style="width: 26%;">PEGAWAI / NIP</th>
+                                        <th class="text-left align-middle" style="width: 26%;">RINCIAN CUTI</th>
+                                        <th class="text-center align-middle text-nowrap" style="width: 10%;">DOKUMEN</th>
+                                        <th class="text-left align-middle text-nowrap" style="width: 12%;">STATUS</th>
+                                        <th class="text-left align-middle text-nowrap" style="width: 13%;">AKTIVITAS</th>
+                                        <th class="text-center align-middle text-nowrap col-sticky-right" style="width: 13%; z-index: 20;">AKSI</th>
                                     </tr>
                                 </thead>
                                 <tbody></tbody>
@@ -421,10 +457,12 @@
                             "<'row'<'col-sm-12'<'table-responsive sultan-scroll'tr>>>" +
                             "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
                         "columnDefs": [
-                            { "targets": 0, "className": "text-center align-middle text-nowrap col-sticky-left" },
-                            { "targets": 1, "className": "text-left align-middle" },
-                            { "targets": 2, "className": "text-left align-middle" },
-                            { "targets": [3, 4, 5, 6, 7, 8, 9, 10, 11], "className": "align-middle text-nowrap" }
+                            { "targets": 0, "className": "text-left align-middle col-sticky-left", "width": "26%" },
+                            { "targets": 1, "className": "text-left align-middle", "width": "26%" },
+                            { "targets": 2, "className": "text-center align-middle text-nowrap", "width": "10%" },
+                            { "targets": 3, "className": "text-left align-middle text-nowrap", "width": "12%" },
+                            { "targets": 4, "className": "text-left align-middle text-nowrap", "width": "13%" },
+                            { "targets": 5, "className": "text-center align-middle text-nowrap col-sticky-right", "width": "13%" }
                         ],
                         "language": { "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json", "emptyTable": "Tidak ada pengajuan cuti untuk diunggah." }
                     });
@@ -532,54 +570,124 @@
             var id = String(row.rowBaris);
             UNGGAHCUTI_DATA_MASTER[id] = row;
 
-            var st = row.statusUnggah;
-            var badgeStatus = unggahcuti_buildBadgeStatus(st, row.ket, id);
+            var st = String(row.statusUnggah || "");
+            var isApproved = (st.toLowerCase().includes("setuju") || st.toLowerCase().includes("ok") || st.toLowerCase().includes("acc"));
+            var isLocked = (isApproved || st.toLowerCase().includes("batal"));
 
+            // 1. Kolom PEGAWAI / NIP (Sticky Kiri)
+            var nipClean = (row.nip && String(row.nip).trim() !== "") ? unggahcuti_escapeHtml(row.nip) : '-';
+            var unitFormatted = (row.unit && String(row.unit).trim() !== "") ? unggahcuti_escapeHtml(row.unit) : '-';
+            var uiPegawai = `
+                <div class="text-left">
+                    <div class="sultan-table-primary font-weight-bold" style="color: #800000; font-size: 12.5px; line-height: 1.2;">${unggahcuti_escapeHtml(row.nama)}</div>
+                    <div class="sultan-table-secondary text-muted" style="font-size: 11px; margin-top: 2px;">${nipClean}</div>
+                    <div class="text-secondary font-weight-semibold" style="font-size: 10.5px; margin-top: 2px;">${unitFormatted}</div>
+                </div>
+            `;
+
+            // 2. Kolom RINCIAN CUTI
             var j = String(row.jenis || "").toLowerCase();
-            var jenisSingkat = `<div style="text-align:center !important;"><span class="badge badge-cuti-ct">CT</span></div>`;
-            if (j.includes("sakit")) jenisSingkat = `<div style="text-align:center !important;"><span class="badge badge-cuti-cs">CS</span></div>`;
-            else if (j.includes("penting")) jenisSingkat = `<div style="text-align:center !important;"><span class="badge badge-cuti-cap">CAP</span></div>`;
-            else if (j.includes("melahirkan")) jenisSingkat = `<div style="text-align:center !important;"><span class="badge badge-cuti-cm">CM</span></div>`;
-            else if (j.includes("besar")) jenisSingkat = `<div style="text-align:center !important;"><span class="badge badge-cuti-cb">CB</span></div>`;
-            else if (j.includes("luar") || j.includes("tanggungan")) jenisSingkat = `<div style="text-align:center !important;"><span class="badge badge-cuti-cltn">CLTN</span></div>`;
+            var jenisSingkat = `<span class="badge badge-cuti-ct">CT</span>`;
+            if (j.includes("sakit")) jenisSingkat = `<span class="badge badge-cuti-cs">CS</span>`;
+            else if (j.includes("penting")) jenisSingkat = `<span class="badge badge-cuti-cap">CAP</span>`;
+            else if (j.includes("melahirkan")) jenisSingkat = `<span class="badge badge-cuti-cm">CM</span>`;
+            else if (j.includes("besar")) jenisSingkat = `<span class="badge badge-cuti-cb">CB</span>`;
+            else if (j.includes("luar") || j.includes("tanggungan")) jenisSingkat = `<span class="badge badge-cuti-cltn">CLTN</span>`;
 
+            var jmlHari = row.jumlah ? `${unggahcuti_escapeHtml(row.jumlah)} Hari` : '0 Hari';
+            var badgeHari = `<span class="sultan-badge sultan-badge-info font-weight-bold px-2 py-0" style="font-size: 10.5px;">${jmlHari}</span>`;
+
+            var rentangTgl = (row.tglMulai && row.tglSelesai)
+                ? `${unggahcuti_escapeHtml(row.tglMulai)} s/d ${unggahcuti_escapeHtml(row.tglSelesai)}`
+                : (row.tglMulai ? unggahcuti_escapeHtml(row.tglMulai) : '-');
+
+            var uiRincianCuti = `
+                <div class="text-left">
+                    <div class="d-flex align-items-center" style="gap: 6px;">
+                        ${jenisSingkat}
+                        ${badgeHari}
+                    </div>
+                    <div class="font-weight-bold text-dark mt-1" style="font-size: 11.5px; line-height: 1.2;">
+                        ${rentangTgl}
+                    </div>
+                </div>
+            `;
+
+            // 3. Kolom DOKUMEN (Tengah)
             var btnFile = '<span class="text-muted small">-</span>';
             if (row.fileUrl && row.fileUrl.length > 5) {
-                btnFile = `<div style="text-align:center !important;"><button type="button" class="sultan-btn-pdf unggahcuti-btn-preview" data-id="${id}"><i class="fas fa-file-pdf mr-1"></i> LIHAT</button></div>`;
-            } else {
-                btnFile = `<div style="text-align:center !important;"><span class="text-muted small">-</span></div>`;
+                btnFile = `<button type="button" class="sultan-btn-pdf unggahcuti-btn-preview" data-id="${id}" title="Pratinjau Dokumen PDF"><i class="fas fa-file-pdf mr-1"></i> LIHAT</button>`;
             }
 
-            var btnAction = "";
+            // 4. Kolom STATUS (SultanUI Standar)
+            var badgeStatus = SultanUI.renderBadgeStatus(row.statusUnggah || 'Belum Unggah', row.ket, {
+                unit: row.unit || row.nama,
+                dokumen: 'Surat Cuti ' + (row.nama || ''),
+                verifikator: row.verifikator,
+                waktu: row.tglVerif
+            });
+
+            // 5. Kolom AKTIVITAS (Audit Trail Cerdas)
+            var auditWaktu = "-";
+            var auditUser = "-";
+            var auditLabel = "Diunggah";
+
+            if (row.tglVerif && String(row.tglVerif).trim() !== "" && String(row.tglVerif).trim() !== "-") {
+                auditLabel = "Verif";
+                auditWaktu = row.tglVerif;
+                auditUser = row.verifikator || "-";
+            } else if (row.tglEdit && String(row.tglEdit).trim() !== "" && String(row.tglEdit).trim() !== "-") {
+                auditLabel = "Diubah";
+                auditWaktu = row.tglEdit;
+                auditUser = row.userEdit || "-";
+            } else if (row.tglUnggah && String(row.tglUnggah).trim() !== "" && String(row.tglUnggah).trim() !== "-") {
+                auditLabel = "Diunggah";
+                auditWaktu = row.tglUnggah;
+                auditUser = row.userUnggah || "-";
+            }
+
+            var tooltipAudit = SultanUI.escapeHtml(
+                `Diunggah: ${row.tglUnggah || '-'} (${row.userUnggah || '-'})\n` +
+                `Diubah: ${row.tglEdit || '-'} (${row.userEdit || '-'})\n` +
+                `Verifikasi: ${row.tglVerif || '-'} (${row.verifikator || '-'})`
+            );
+
+            var uiAktivitas = `
+                <div class="text-left" data-toggle="tooltip" data-placement="top" title="${tooltipAudit}">
+                    <div class="font-weight-bold text-dark" style="font-size: 11.5px; line-height: 1.2;">${SultanUI.escapeHtml(auditWaktu)}</div>
+                    <div class="text-muted text-lowercase" style="font-size: 11px; line-height: 1.2;">
+                        <span class="font-weight-semibold text-secondary">${auditLabel}:</span> ${SultanUI.escapeHtml(auditUser).toLowerCase()}
+                    </div>
+                </div>
+            `;
+
+            // 6. Kolom AKSI (Sticky Kanan)
+            var btnUpload = "";
             var btnVer = "";
 
-            var isLocked = (st.toLowerCase().includes("setuju") || st.toLowerCase().includes("ok") || st.toLowerCase().includes("acc") || st.toLowerCase().includes("batal"));
             if (!isLocked) {
-                btnAction = `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon unggahcuti-btn-upload" data-id="${id}" title="Unggah PDF"><i class="fas fa-file-upload"></i></button>`;
+                btnUpload = `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon unggahcuti-btn-upload" data-id="${id}" title="Unggah PDF"><i class="fas fa-file-upload"></i></button>`;
             } else {
-                btnAction = `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-success disabled" disabled style="cursor:not-allowed; opacity:0.6; filter: grayscale(100%);"><i class="fas fa-check-circle"></i></button>`;
+                btnUpload = `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-success disabled" disabled style="cursor:not-allowed; opacity:0.6; filter: grayscale(100%);" title="Terkunci (Sudah Disetujui)"><i class="fas fa-check-circle"></i></button>`;
             }
 
             if (UNGGAHCUTI_IS_ADMIN && row.fileUrl && row.fileUrl.length > 5) {
-                btnVer = `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-verif unggahcuti-btn-verif" data-id="${id}" title="Verifikasi"><i class="fas fa-clipboard-check"></i></button>`;
+                btnVer = `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-verif unggahcuti-btn-verif" data-id="${id}" title="Verifikasi Dokumen"><i class="fas fa-clipboard-check"></i></button>`;
             }
-            var aksiHTML = `<div class="d-flex flex-nowrap justify-content-center" style="gap:4px;">${btnVer}${btnAction}</div>`;
-
-            var txtUnitHtml = UNGGAHCUTI_IS_ADMIN ? `<div class="data-tersier mt-1 text-left">${unggahcuti_escapeHtml(row.unit || '-')}</div>` : '';
-            var uiNama = `<div class="sultan-table-primary text-left">${unggahcuti_escapeHtml(row.nama)}</div><div class="sultan-table-secondary text-left">${unggahcuti_escapeHtml(row.nip)}</div>${txtUnitHtml}`;
-
-            var metaKirim = `<div class="sultan-table-secondary"><span class="font-weight-bold text-dark">${row.tglUnggah || '-'}</span><span>${unggahcuti_escapeHtml(row.userUnggah)}</span></div>`;
-            var metaUbah = `<div class="sultan-table-secondary"><span class="font-weight-bold text-dark">${row.tglEdit || '-'}</span><span>${unggahcuti_escapeHtml(row.userEdit)}</span></div>`;
-            var metaVerif = `<div class="sultan-table-secondary"><span class="font-weight-bold text-dark">${row.tglVerif || '-'}</span><span>${unggahcuti_escapeHtml(row.verifikator)}</span></div>`;
+            var aksiHTML = `<div class="d-flex flex-nowrap justify-content-center" style="gap:4px;">${btnVer}${btnUpload}</div>`;
 
             dtArray.push([
-                aksiHTML, badgeStatus, uiNama, jenisSingkat,
-                row.tglMulai, row.tglSelesai, (row.jumlah || '0'),
-                btnFile, (row.tglAjuan || '-'), metaKirim, metaUbah, metaVerif
+                uiPegawai,
+                uiRincianCuti,
+                btnFile,
+                badgeStatus,
+                uiAktivitas,
+                aksiHTML
             ]);
         });
 
         UNGGAHCUTI_TABEL_INSTANCE.clear().rows.add(dtArray).draw(false);
+        $('[data-toggle="tooltip"]').tooltip();
         setTimeout(function () { UNGGAHCUTI_TABEL_INSTANCE.columns.adjust(); }, 50);
     }
 
