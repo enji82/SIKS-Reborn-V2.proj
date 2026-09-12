@@ -1,3 +1,47 @@
+<style>
+    /* Freeze Kolom Pertama (Pegawai / NIP) */
+    #cuti_tabelUtama th.col-sticky-left {
+        position: sticky !important;
+        left: 0 !important;
+        z-index: 25 !important;
+        background-color: #fff9e6 !important;
+    }
+    #cuti_tabelUtama td.col-sticky-left {
+        position: sticky !important;
+        left: 0 !important;
+        z-index: 10 !important;
+        background-color: #ffffff !important;
+        transition: background-color 0.2s ease;
+    }
+    .dark-mode #cuti_tabelUtama th.col-sticky-left {
+        background-color: #1e1e1e !important;
+        color: #f1f5f9 !important;
+        z-index: 25 !important;
+    }
+    .dark-mode #cuti_tabelUtama td.col-sticky-left {
+        background-color: #1e1e1e !important;
+        color: #f1f5f9 !important;
+    }
+
+    /* Penyelarasan Hover Baris & Kolom Sticky (Terang & Gelap) */
+    #cuti_tabelUtama tbody tr:hover,
+    #cuti_tabelUtama tbody tr:hover > td,
+    #cuti_tabelUtama tbody tr:hover td.col-sticky-left {
+        background-color: var(--sultan-table-hover, #ffe8e8) !important;
+    }
+    .dark-mode #cuti_tabelUtama tbody tr:hover,
+    .dark-mode #cuti_tabelUtama tbody tr:hover > td,
+    .dark-mode #cuti_tabelUtama tbody tr:hover td.col-sticky-left {
+        background-color: var(--sultan-table-hover-dm, #3a3a3a) !important;
+    }
+
+    /* Distribusi Jarak Antar Kolom yang Merata & Seimbang (Equal Spacing) */
+    #cuti_tabelUtama th,
+    #cuti_tabelUtama td {
+        padding-left: 16px !important;
+        padding-right: 16px !important;
+    }
+</style>
 <section class="content">
     <div class="container-fluid">
         <div class="row justify-content-center">
@@ -105,21 +149,14 @@
                         <div id="cuti_tableState" style="display: none;">
                             <table id="cuti_tabelUtama"
                                 class="table table-hover table-premium table-sultan-compact mb-0 w-100">
-                                <thead class="thead-sultan-premium">
+                                <thead class="thead-sultan-premium text-uppercase font-weight-bold">
                                     <tr>
-                                        <th class="text-center align-middle col-sticky-left">AKSI</th>
-                                        <th class="text-left align-middle">STATUS</th>
-                                        <th class="text-left align-middle" style="text-align:left !important;">NAMA PTK
-                                        </th>
-                                        <th class="text-center align-middle">JENIS</th>
-                                        <th class="text-center align-middle">TGL MULAI</th>
-                                        <th class="text-center align-middle">TGL SELESAI</th>
-                                        <th class="text-center align-middle">HARI</th>
-                                        <th class="text-center align-middle" style="text-align:center !important;">UNDUH
-                                            FORM</th>
-                                        <th class="text-left align-middle">DIKIRIM</th>
-                                        <th class="text-left align-middle">DIUBAH</th>
-                                        <th class="text-left align-middle">VERIFIKASI</th>
+                                        <th class="text-left align-middle col-sticky-left" style="width: 26%;">PEGAWAI / NIP</th>
+                                        <th class="text-left align-middle" style="width: 26%;">RINCIAN CUTI</th>
+                                        <th class="text-center align-middle text-nowrap" style="width: 10%;">DOKUMEN</th>
+                                        <th class="text-left align-middle text-nowrap" style="width: 12%;">STATUS</th>
+                                        <th class="text-left align-middle text-nowrap" style="width: 13%;">AKTIVITAS</th>
+                                        <th class="text-center align-middle text-nowrap col-sticky-right" style="width: 13%; z-index: 20;">AKSI</th>
                                     </tr>
                                 </thead>
                                 <tbody></tbody>
@@ -524,11 +561,14 @@
                                 "<'row'<'col-sm-12'<'table-responsive sultan-scroll'tr>>>" +
                                 "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
                             "columnDefs": [
-                                { "targets": 0, "width": "1%", "className": "text-center align-middle text-nowrap col-sticky-left" },
-                                { "targets": [2, 3, 4, 5, 6], "width": "1%", "className": "text-center align-middle text-nowrap" },
-                                { "targets": [8, 9, 10], "width": "12%", "className": "text-left align-middle text-nowrap" },
-                                { "targets": 1, "width": "auto", "className": "text-left align-middle" }
+                                { "targets": 0, "className": "text-left align-middle col-sticky-left", "width": "26%" },
+                                { "targets": 1, "className": "text-left align-middle", "width": "26%" },
+                                { "targets": 2, "className": "text-center align-middle text-nowrap", "width": "10%" },
+                                { "targets": 3, "className": "text-left align-middle text-nowrap", "width": "12%" },
+                                { "targets": 4, "className": "text-left align-middle text-nowrap", "width": "13%" },
+                                { "targets": 5, "className": "text-center align-middle text-nowrap col-sticky-right", "width": "13%" }
                             ],
+                            "order": [[4, "desc"]],
                             "language": { "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json", "emptyTable": "Tidak ada data Pengajuan Cuti." }
                         });
                     }
@@ -615,6 +655,18 @@
             CUTI_ROW_DATA[row.rowBaris] = row;
             var safeId = String(row.rowBaris);
 
+            // 1. Kolom PEGAWAI / NIP (Freeze Left)
+            var nipFormatted = (row.nip && String(row.nip).trim() !== "") ? cuti_escapeHtml(row.nip) : '-';
+            var unitFormatted = (row.unit && String(row.unit).trim() !== "") ? cuti_escapeHtml(row.unit) : '-';
+            var uiPegawai = `
+                <div class="text-left">
+                    <div class="sultan-table-primary font-weight-bold" style="color: #800000; font-size: 12.5px; line-height: 1.2;">${cuti_escapeHtml(row.nama)}</div>
+                    <div class="sultan-table-secondary text-muted" style="font-size: 11px; margin-top: 2px;">${nipFormatted}</div>
+                    <div class="text-secondary font-weight-semibold" style="font-size: 10.5px; margin-top: 2px;">${unitFormatted}</div>
+                </div>
+            `;
+
+            // 2. Kolom RINCIAN CUTI
             var j = String(row.jenis || "").toLowerCase();
             var jenisSingkat = `<span class="badge badge-cuti-ct">CT</span>`;
             if (j.includes("sakit")) jenisSingkat = `<span class="badge badge-cuti-cs">CS</span>`;
@@ -623,49 +675,106 @@
             else if (j.includes("besar")) jenisSingkat = `<span class="badge badge-cuti-cb">CB</span>`;
             else if (j.includes("luar") || j.includes("tanggungan")) jenisSingkat = `<span class="badge badge-cuti-cltn">CLTN</span>`;
 
+            var jmlHari = row.jumlah ? `${cuti_escapeHtml(row.jumlah)} Hari` : '-';
+            var badgeHari = `<span class="sultan-badge sultan-badge-info font-weight-bold px-2 py-0" style="font-size: 10.5px;">${jmlHari}</span>`;
+
+            var rentangTgl = (row.tglMulai && row.tglSelesai) 
+                ? `${cuti_escapeHtml(row.tglMulai)} s/d ${cuti_escapeHtml(row.tglSelesai)}`
+                : (row.tglMulai ? cuti_escapeHtml(row.tglMulai) : '-');
+
+            var uiRincianCuti = `
+                <div class="text-left">
+                    <div class="d-flex align-items-center" style="gap: 6px;">
+                        ${jenisSingkat}
+                        ${badgeHari}
+                    </div>
+                    <div class="font-weight-bold text-dark mt-1" style="font-size: 11.5px; line-height: 1.2;">
+                        <i class="far fa-calendar-alt text-maroon mr-1"></i>${rentangTgl}
+                    </div>
+                </div>
+            `;
+
+            // 3. Kolom DOKUMEN FORMULIR
             var stButton = String(row.status || "").toLowerCase();
-            var isApproved = (stButton.includes("setuju") || stButton.includes("ok") || stButton.includes("acc") || stButton.includes("batal"));
-
-            var badgeStatus = cuti_renderBadgeSultan(row.status, row.ket);
-            var attrDis = isApproved ? 'disabled style="cursor:not-allowed; opacity:0.6; filter: grayscale(100%);"' : '';
-
-            var btnFile = '-';
+            var isApproved = (stButton.includes("setuju") || stButton.includes("ok") || stButton.includes("acc"));
+            var btnFile = '<span class="text-muted small">-</span>';
             if (row.fileUrl && row.fileUrl.length > 5) {
-                if (isApproved) { btnFile = `<div style="text-align:center !important;"><button type="button" class="sultan-btn-pdf cuti-btn-preview" data-id="${safeId}"><i class="fas fa-file-pdf"></i> DOKUMEN</button></div>`; }
-                else if (CUTI_IS_ADMIN) { btnFile = `<div style="text-align:center !important;"><button type="button" class="sultan-btn-pdf cuti-btn-preview" data-id="${safeId}"><i class="fas fa-eye"></i> PREVIEW</button></div>`; }
-            } else {
-                btnFile = `<div style="text-align:center !important;">-</div>`;
+                if (isApproved) {
+                    btnFile = `<button type="button" class="sultan-btn-pdf cuti-btn-preview" data-id="${safeId}" data-toggle="tooltip" title="Lihat Formulir Cuti"><i class="fas fa-file-pdf mr-1"></i> LIHAT</button>`;
+                } else if (CUTI_IS_ADMIN) {
+                    btnFile = `<button type="button" class="sultan-btn-pdf cuti-btn-preview" data-id="${safeId}" data-toggle="tooltip" title="Pratinjau Dokumen"><i class="fas fa-eye mr-1"></i> PREVIEW</button>`;
+                }
             }
 
-            var btnVerif = CUTI_IS_ADMIN ? `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-verif cuti-btn-verif" data-id="${safeId}" title="Verifikasi"><i class="fas fa-clipboard-check"></i></button>` : '';
-            var btnDetail = `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning cuti-btn-edit" data-id="${safeId}" title="Edit/Detail" ${attrDis}><i class="fas fa-pencil-alt"></i></button>`;
-            
+            // 4. Kolom STATUS & BACA CATATAN (Standar Terpusat SultanUI)
+            var badgeStatus = SultanUI.renderBadgeStatus(row.status, row.ket, {
+                unit: row.unit || row.nama,
+                dokumen: 'Cuti ' + (row.nama || ''),
+                verifikator: row.verifikator,
+                waktu: row.tglVerif
+            });
+
+            // 5. Kolom AKTIVITAS (Audit Trail Cerdas)
+            var auditWaktu = "-";
+            var auditUser = "-";
+            var auditLabel = "Diunggah";
+
+            if (row.tglVerif && String(row.tglVerif).trim() !== "" && String(row.tglVerif).trim() !== "-") {
+                auditLabel = "Verif";
+                auditWaktu = row.tglVerif;
+                auditUser = row.verifikator || "-";
+            } else if (row.tglEdit && String(row.tglEdit).trim() !== "" && String(row.tglEdit).trim() !== "-") {
+                auditLabel = "Diubah";
+                auditWaktu = row.tglEdit;
+                auditUser = row.userEdit || "-";
+            } else if (row.tglInput && String(row.tglInput).trim() !== "" && String(row.tglInput).trim() !== "-") {
+                auditLabel = "Diunggah";
+                auditWaktu = row.tglInput;
+                auditUser = row.userInput || "-";
+            }
+
+            var tooltipAudit = SultanUI.escapeHtml(
+                `Diunggah: ${row.tglInput || '-'} (${row.userInput || '-'})\n` +
+                `Diubah: ${row.tglEdit || '-'} (${row.userEdit || '-'})\n` +
+                `Verifikasi: ${row.tglVerif || '-'} (${row.verifikator || '-'})`
+            );
+
+            var uiAktivitas = `
+                <div class="text-left" data-toggle="tooltip" data-placement="top" title="${tooltipAudit}">
+                    <div class="font-weight-bold text-dark" style="font-size: 11.5px; line-height: 1.2;">${SultanUI.escapeHtml(auditWaktu)}</div>
+                    <div class="text-muted text-lowercase" style="font-size: 11px; line-height: 1.2;">
+                        <span class="font-weight-semibold text-secondary">${auditLabel}:</span> ${SultanUI.escapeHtml(auditUser).toLowerCase()}
+                    </div>
+                </div>
+            `;
+
+            // 6. Kolom AKSI (Di kanan - Kunci saat Disetujui/Batal)
+            var isLocked = (isApproved || stButton.includes("batal"));
+            var attrDis = isLocked ? 'disabled style="opacity:0.4; cursor:not-allowed;"' : '';
+
+            var btnVerif = CUTI_IS_ADMIN ? `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-primary cuti-btn-verif" data-id="${safeId}" data-toggle="tooltip" title="Verifikasi Pengajuan"><i class="fas fa-clipboard-check"></i></button>` : '';
             var btnBatal = '';
-            if (stButton === 'disetujui' || stButton.includes('setuju')) {
-                btnBatal = `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-danger cuti-btn-ajukan-batal" data-id="${safeId}" title="Ajukan Pembatalan Cuti"><i class="fas fa-times"></i></button>`;
+            if (isApproved && !stButton.includes("usul batal")) {
+                btnBatal = `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-danger cuti-btn-ajukan-batal" data-id="${safeId}" data-toggle="tooltip" title="Ajukan Pembatalan Cuti"><i class="fas fa-undo"></i></button>`;
             }
 
-            var btnHapus = `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon cuti-btn-hapus" data-id="${safeId}" data-nama="${cuti_escapeHtml(row.nama)}" title="Hapus" ${attrDis}><i class="fas fa-trash-alt"></i></button>`;
-            var groupAksi = `<div class="d-flex flex-nowrap justify-content-center" style="gap:5px;">${btnVerif}${btnBatal}${btnDetail}${btnHapus}</div>`;
+            var btnDetail = isLocked
+                ? `<button type="button" class="sultan-btn-aksi" disabled style="opacity:0.4; cursor:not-allowed;" data-toggle="tooltip" title="Terkunci (Sudah Disetujui)"><i class="fas fa-pencil-alt"></i></button>`
+                : `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning cuti-btn-edit" data-id="${safeId}" data-toggle="tooltip" title="Edit Data"><i class="fas fa-pencil-alt"></i></button>`;
 
-            var nipFormatted = (row.nip && String(row.nip).trim() !== "") ? cuti_escapeHtml(row.nip) : '-';
-            var unitFormatted = (row.unit && String(row.unit).trim() !== "") ? cuti_escapeHtml(row.unit) : '-';
-            var uiNama = `<div class="text-left" style="text-align:left !important;"><div class="sultan-table-primary font-weight-bold text-dark text-wrap">${cuti_escapeHtml(row.nama)}</div><div class="sultan-table-secondary text-muted">${nipFormatted}</div><div class="sultan-table-secondary text-danger font-weight-bold mt-1">${unitFormatted}</div></div>`;
+            var btnHapus = isLocked
+                ? `<button type="button" class="sultan-btn-aksi" disabled style="opacity:0.4; cursor:not-allowed;" data-toggle="tooltip" title="Terkunci (Sudah Disetujui)"><i class="fas fa-trash-alt"></i></button>`
+                : `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon cuti-btn-hapus" data-id="${safeId}" data-nama="${cuti_escapeHtml(row.nama)}" data-toggle="tooltip" title="Hapus Data"><i class="fas fa-trash-alt"></i></button>`;
 
-            var uKirim = (row.userInput || '-').toLowerCase();
-            var uEdit = (row.userEdit || '-').toLowerCase();
-            var uVerif = (row.verifikator || '-').toLowerCase();
-
-            var metaKirim = `<div class="text-left sultan-table-secondary" style="text-align:left !important;"><span class="font-weight-bold text-dark d-block">${cuti_escapeHtml(row.tglInput) || '-'}</span><span class="text-muted d-block">${cuti_escapeHtml(uKirim)}</span></div>`;
-            var metaEdit = `<div class="text-left sultan-table-secondary" style="text-align:left !important;"><span class="font-weight-bold text-dark d-block">${cuti_escapeHtml(row.tglEdit) || '-'}</span><span class="text-muted d-block">${cuti_escapeHtml(uEdit)}</span></div>`;
-            var metaVerif = `<div class="text-left sultan-table-secondary" style="text-align:left !important;"><span class="font-weight-bold text-dark d-block">${cuti_escapeHtml(row.tglVerif) || '-'}</span><span class="text-muted d-block">${cuti_escapeHtml(uVerif)}</span></div>`;
+            var groupAksi = `<div class="d-flex flex-nowrap justify-content-center" style="gap:4px;">${btnVerif}${btnBatal}${btnDetail}${btnHapus}</div>`;
 
             dtArray.push([
-                groupAksi,
-                badgeStatus, uiNama, jenisSingkat,
-                cuti_escapeHtml(row.tglMulai), cuti_escapeHtml(row.tglSelesai),
-                `<span class="sultan-badge sultan-badge-info px-2">${row.jumlah || '0'}</span>`,
-                btnFile, metaKirim, metaEdit, metaVerif
+                uiPegawai,
+                uiRincianCuti,
+                btnFile,
+                badgeStatus,
+                uiAktivitas,
+                groupAksi
             ]);
         });
 
