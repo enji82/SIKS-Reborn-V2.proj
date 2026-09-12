@@ -1,3 +1,81 @@
+<style>
+    /* Freeze Kolom Pertama (Pegawai / NIP) */
+    #lupa_tabelUtama th.col-sticky-left {
+        position: sticky !important;
+        left: 0 !important;
+        z-index: 25 !important;
+        background-color: #fff9e6 !important;
+    }
+    #lupa_tabelUtama td.col-sticky-left {
+        position: sticky !important;
+        left: 0 !important;
+        z-index: 10 !important;
+        background-color: #ffffff !important;
+        transition: background-color 0.2s ease;
+    }
+    .dark-mode #lupa_tabelUtama th.col-sticky-left {
+        background-color: #1e1e1e !important;
+        color: #f1f5f9 !important;
+        z-index: 25 !important;
+    }
+    .dark-mode #lupa_tabelUtama td.col-sticky-left {
+        background-color: #1e1e1e !important;
+        color: #f1f5f9 !important;
+    }
+
+    /* Penyelarasan Hover Baris & Kolom Sticky (Terang & Gelap) */
+    #lupa_tabelUtama tbody tr:hover,
+    #lupa_tabelUtama tbody tr:hover > td,
+    #lupa_tabelUtama tbody tr:hover td.col-sticky-left {
+        background-color: var(--sultan-table-hover, #ffe8e8) !important;
+    }
+    .dark-mode #lupa_tabelUtama tbody tr:hover,
+    .dark-mode #lupa_tabelUtama tbody tr:hover > td,
+    .dark-mode #lupa_tabelUtama tbody tr:hover td.col-sticky-left {
+        background-color: var(--sultan-table-hover-dm, #3a3a3a) !important;
+    }
+
+    /* Distribusi Jarak Antar Kolom yang Merata & Seimbang (Equal Spacing) */
+    #lupa_tabelUtama th,
+    #lupa_tabelUtama td {
+        padding-left: 16px !important;
+        padding-right: 16px !important;
+    }
+
+    /* Badge Tag Jenis Presensi Sebaris */
+    .lupa-badge-datang {
+        background-color: rgba(255, 193, 7, 0.15) !important;
+        color: #b45309 !important;
+        border: 1px solid rgba(245, 158, 11, 0.3) !important;
+        font-size: 10.5px !important;
+        font-weight: 700 !important;
+        border-radius: 50px !important;
+        padding: 2px 8px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+    }
+    .dark-mode .lupa-badge-datang {
+        background-color: rgba(245, 158, 11, 0.2) !important;
+        color: #fde68a !important;
+        border-color: rgba(245, 158, 11, 0.4) !important;
+    }
+    .lupa-badge-pulang {
+        background-color: rgba(99, 102, 241, 0.12) !important;
+        color: #4338ca !important;
+        border: 1px solid rgba(99, 102, 241, 0.3) !important;
+        font-size: 10.5px !important;
+        font-weight: 700 !important;
+        border-radius: 50px !important;
+        padding: 2px 8px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+    }
+    .dark-mode .lupa-badge-pulang {
+        background-color: rgba(99, 102, 241, 0.2) !important;
+        color: #c7d2fe !important;
+        border-color: rgba(99, 102, 241, 0.4) !important;
+    }
+</style>
 <section class="content">
     <div class="container-fluid">
         <div class="row justify-content-center">
@@ -100,20 +178,14 @@
                         <div id="lupa_tableState" style="display: none;">
                             <table id="lupa_tabelUtama"
                                 class="table table-premium table-sultan-compact mb-0 w-100 text-nowrap">
-                                <thead class="thead-sultan-premium">
+                                <thead class="thead-sultan-premium text-uppercase font-weight-bold">
                                     <tr>
-                                        <th class="sultan-sticky-col text-center align-middle" style="width: 1%;">AKSI
-                                        </th>
-                                        <th class="text-left align-middle">STATUS</th>
-                                        <th class="text-left align-middle">NAMA PTK</th>
-                                        <th class="text-center align-middle">TANGGAL</th>
-                                        <th class="text-center align-middle">JAM</th>
-                                        <th class="text-center align-middle">JENIS</th>
-                                        <th class="text-center align-middle">KUMULATIF</th>
-                                        <th class="text-center align-middle">LIHAT</th>
-                                        <th class="text-left align-middle">DIKIRIM</th>
-                                        <th class="text-left align-middle">DIUBAH</th>
-                                        <th class="text-left align-middle">VERIFIKASI</th>
+                                        <th class="text-left align-middle col-sticky-left" style="width: 24%;">PEGAWAI / NIP</th>
+                                        <th class="text-left align-middle" style="width: 25%;">DATA PRESENSI</th>
+                                        <th class="text-center align-middle" style="width: 10%;">DOKUMEN</th>
+                                        <th class="text-left align-middle" style="width: 13%;">STATUS</th>
+                                        <th class="text-left align-middle" style="width: 15%;">AKTIVITAS</th>
+                                        <th class="text-center align-middle col-sticky-right" style="width: 13%; z-index: 20;">AKSI</th>
                                     </tr>
                                 </thead>
                                 <tbody></tbody>
@@ -576,37 +648,107 @@
             var id = String(row.rowBaris);
             var rawTgl = (row.tanggal || "").replace(/'/g, "");
             var uiTgl = lupa_formatTanggalIndo(rawTgl);
+            var safeJam = lupa_escapeHtml((row.jam || "").substring(0, 5));
 
+            // 1. Kolom PEGAWAI / NIP (Freeze Left)
+            var nipFormatted = (row.nip && String(row.nip).trim() !== "") ? lupa_escapeHtml(row.nip) : '-';
+            var unitFormatted = (row.unit && String(row.unit).trim() !== "") ? lupa_escapeHtml(row.unit) : '-';
+            var uiPegawai = `
+                <div class="text-left">
+                    <div class="sultan-table-primary font-weight-bold" style="color: #800000; font-size: 12.5px; line-height: 1.2;">${lupa_escapeHtml(row.nama)}</div>
+                    <div class="sultan-table-secondary text-muted" style="font-size: 11px; margin-top: 2px;">NIP: ${nipFormatted}</div>
+                    <div class="text-secondary font-weight-semibold" style="font-size: 10.5px; margin-top: 2px;">${unitFormatted}</div>
+                </div>
+            `;
+
+            // 2. Kolom DATA PRESENSI
             var badgeJenis = (row.jenis || "").includes('Datang')
-                ? '<span class="badge-sultan-datang"><i class="fas fa-sun mr-1"></i>Datang</span>'
-                : '<span class="badge-sultan-pulang"><i class="fas fa-moon mr-1"></i>Pulang</span>';
+                ? '<span class="lupa-badge-datang"><i class="fas fa-sun mr-1"></i>Datang</span>'
+                : '<span class="lupa-badge-pulang"><i class="fas fa-moon mr-1"></i>Pulang</span>';
 
-            var badgeStatus = lupa_buildBadgeStatus(row.status, row.ket);
+            var kumulatifText = row.komulatif ? `Ke-${lupa_escapeHtml(row.komulatif)} dari 5` : '-';
+            var uiDataPresensi = `
+                <div class="text-left">
+                    <div class="font-weight-bold text-dark" style="font-size: 12px; line-height: 1.2;">
+                        ${uiTgl} <span class="text-muted font-weight-normal">&bull; ${safeJam} WIB</span>
+                    </div>
+                    <div class="d-flex align-items-center mt-1" style="gap: 6px;">
+                        ${badgeJenis}
+                        <span class="text-muted" style="font-size: 11px;">(<b>${kumulatifText}</b>)</span>
+                    </div>
+                </div>
+            `;
 
-            var isLocked = (String(row.status).toLowerCase().includes('ok') || String(row.status).toLowerCase().includes('setuju'));
-            var attrDis = isLocked ? 'disabled style="cursor:not-allowed; opacity:0.6; filter: grayscale(100%);"' : '';
+            // 3. Kolom DOKUMEN PDF
+            var btnFile = '<span class="text-muted small">-</span>';
+            if (row.fileUrl && String(row.fileUrl).trim().length > 5) {
+                btnFile = `<button class="sultan-btn-pdf lupa-btn-preview" data-id="${id}" data-toggle="tooltip" title="Lihat Surat Pernyataan"><i class="fas fa-file-pdf mr-1"></i> LIHAT</button>`;
+            }
 
-            var btnAdmin = LUPA_IS_ADMIN ? `<button class="sultan-btn-aksi sultan-btn-aksi-verif lupa-btn-verif" data-id="${id}" title="Verifikasi"><i class="fas fa-clipboard-check"></i></button>` : '';
-            var btnEdit = `<button class="sultan-btn-aksi sultan-btn-aksi-warning lupa-btn-edit" data-id="${id}" title="Edit" ${attrDis}><i class="fas fa-pencil-alt"></i></button>`;
-            var btnHapus = `<button class="sultan-btn-aksi sultan-btn-aksi-maroon lupa-btn-hapus" data-id="${id}" title="Hapus" ${attrDis}><i class="fas fa-trash-alt"></i></button>`;
+            // 4. Kolom STATUS & BACA CATATAN (Standar Terpusat SultanUI)
+            var badgeStatus = SultanUI.renderBadgeStatus(row.status, row.ket, {
+                unit: row.unit || row.nama,
+                dokumen: 'Lupa Presensi ' + (row.tanggal || ''),
+                verifikator: row.adminVerif,
+                waktu: row.tglVerif
+            });
+
+            // 5. Kolom AKTIVITAS (Audit Trail Cerdas)
+            var auditWaktu = "-";
+            var auditUser = "-";
+            var auditLabel = "Diunggah";
+
+            if (row.tglVerif && String(row.tglVerif).trim() !== "" && String(row.tglVerif).trim() !== "-") {
+                auditLabel = "Verif";
+                auditWaktu = row.tglVerif;
+                auditUser = row.adminVerif || "-";
+            } else if (row.tglEdit && String(row.tglEdit).trim() !== "" && String(row.tglEdit).trim() !== "-") {
+                auditLabel = "Diubah";
+                auditWaktu = row.tglEdit;
+                auditUser = row.userEdit || "-";
+            } else if (row.tglKirim && String(row.tglKirim).trim() !== "" && String(row.tglKirim).trim() !== "-") {
+                auditLabel = "Diunggah";
+                auditWaktu = row.tglKirim;
+                auditUser = row.userInput || "-";
+            }
+
+            var tooltipAudit = SultanUI.escapeHtml(
+                `Diunggah: ${row.tglKirim || '-'} (${row.userInput || '-'})\n` +
+                `Diubah: ${row.tglEdit || '-'} (${row.userEdit || '-'})\n` +
+                `Verifikasi: ${row.tglVerif || '-'} (${row.adminVerif || '-'})`
+            );
+
+            var uiAktivitas = `
+                <div class="text-left" data-toggle="tooltip" data-placement="top" title="${tooltipAudit}">
+                    <div class="font-weight-bold text-dark" style="font-size: 11.5px; line-height: 1.2;">${SultanUI.escapeHtml(auditWaktu)}</div>
+                    <div class="text-muted text-lowercase" style="font-size: 11px; line-height: 1.2;">
+                        <span class="font-weight-semibold text-secondary">${auditLabel}:</span> ${SultanUI.escapeHtml(auditUser).toLowerCase()}
+                    </div>
+                </div>
+            `;
+
+            // 6. Kolom AKSI (Di kanan - Kunci saat Disetujui)
+            var stCheck = String(row.status || "").toLowerCase();
+            var isLocked = (stCheck.includes('ok') || stCheck.includes('setuju') || stCheck.includes('valid') || stCheck.includes('terima'));
+
+            var btnAdmin = LUPA_IS_ADMIN ? `<button class="sultan-btn-aksi sultan-btn-aksi-primary lupa-btn-verif" data-id="${id}" data-toggle="tooltip" title="Verifikasi Pengajuan"><i class="fas fa-clipboard-check"></i></button>` : '';
+            var btnEdit = isLocked
+                ? `<button class="sultan-btn-aksi" disabled style="opacity:0.4; cursor:not-allowed;" data-toggle="tooltip" title="Terkunci (Sudah Disetujui)"><i class="fas fa-pencil-alt"></i></button>`
+                : `<button class="sultan-btn-aksi sultan-btn-aksi-warning lupa-btn-edit" data-id="${id}" data-toggle="tooltip" title="Edit Data"><i class="fas fa-pencil-alt"></i></button>`;
+            var btnHapus = isLocked
+                ? `<button class="sultan-btn-aksi" disabled style="opacity:0.4; cursor:not-allowed;" data-toggle="tooltip" title="Terkunci (Sudah Disetujui)"><i class="fas fa-trash-alt"></i></button>`
+                : `<button class="sultan-btn-aksi sultan-btn-aksi-maroon lupa-btn-hapus" data-id="${id}" data-toggle="tooltip" title="Hapus Data"><i class="fas fa-trash-alt"></i></button>`;
 
             var aksiHTML = `<div class="d-flex flex-nowrap justify-content-center" style="gap:4px;">${btnAdmin}${btnEdit}${btnHapus}</div>`;
 
-            var btnFile = (row.fileUrl && row.fileUrl.length > 5) ? `<button class="sultan-btn-pdf lupa-btn-preview" data-id="${id}"><i class="fas fa-file-pdf mr-1"></i> LIHAT</button>` : '-';
-
-            var nipFormatted = (row.nip && String(row.nip).trim() !== "") ? lupa_escapeHtml(row.nip) : '-';
-            var unitFormatted = (row.unit && String(row.unit).trim() !== "") ? lupa_escapeHtml(row.unit) : '-';
-            var uiNama = `<div class="text-left" style="text-align:left !important;"><div class="sultan-table-primary font-weight-bold text-dark text-wrap">${lupa_escapeHtml(row.nama)}</div><div class="sultan-table-secondary text-muted">${nipFormatted}</div><div class="sultan-table-secondary text-danger font-weight-bold mt-1">${unitFormatted}</div></div>`;
-
-            var uKirim = (row.userInput || '-').toLowerCase();
-            var uEdit = (row.userEdit || '-').toLowerCase();
-            var uVerif = (row.adminVerif || '-').toLowerCase();
-
-            var metaKirim = `<div class="text-left sultan-table-secondary" style="text-align:left !important;"><span class="font-weight-bold text-dark d-block">${row.tglKirim || '-'}</span><span class="text-muted d-block">${lupa_cleanText(uKirim)}</span></div>`;
-            var metaEdit = `<div class="text-left sultan-table-secondary" style="text-align:left !important;"><span class="font-weight-bold text-dark d-block">${row.tglEdit || '-'}</span><span class="text-muted d-block">${lupa_cleanText(uEdit)}</span></div>`;
-            var metaVerif = `<div class="text-left sultan-table-secondary" style="text-align:left !important;"><span class="font-weight-bold text-dark d-block">${row.tglVerif || '-'}</span><span class="text-muted d-block">${lupa_cleanText(uVerif)}</span></div>`;
-
-            dtArray.push([aksiHTML, badgeStatus, uiNama, uiTgl, lupa_escapeHtml((row.jam || "").substring(0, 5)), badgeJenis, (row.komulatif || '-'), btnFile, metaKirim, metaEdit, metaVerif]);
+            dtArray.push([
+                uiPegawai,
+                uiDataPresensi,
+                btnFile,
+                badgeStatus,
+                uiAktivitas,
+                aksiHTML
+            ]);
         });
 
         if (isFirstLoad) {
@@ -618,17 +760,15 @@
                     "<'row'<'col-sm-12'<'sultan-scroll-container sultan-scroll'tr>>>" +
                     "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
                 "columnDefs": [
-                    { "targets": 0, "className": "sultan-sticky-col text-center align-middle" }, // AKSI
-                    { "targets": 1, "className": "text-left align-middle" }, // STATUS
-                    { "targets": 2, "className": "text-left align-middle" }, // NAMA ASN
-                    { "targets": [3, 4, 5, 6, 7], "className": "text-center align-middle text-nowrap" }, // TGL, JAM, JENIS, KUM, LIHAT
-                    { "targets": [8, 9, 10], "className": "text-left align-middle" } // KIRIM, UBAH, VERIF
+                    { "targets": 0, "className": "text-left align-middle col-sticky-left", "width": "24%" },
+                    { "targets": 1, "className": "text-left align-middle", "width": "25%" },
+                    { "targets": 2, "className": "text-center align-middle text-nowrap", "width": "10%" },
+                    { "targets": 3, "className": "text-left align-middle text-nowrap", "width": "13%" },
+                    { "targets": 4, "className": "text-left align-middle text-nowrap", "width": "15%" },
+                    { "targets": 5, "className": "text-center align-middle text-nowrap col-sticky-right", "width": "13%" }
                 ],
-                "language": { "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json", "emptyTable": "Tidak ada riwayat Lupa Presensi." },
-                "createdRow": function (row, data, dataIndex) {
-                    var tds = row.children;
-                    if (tds[0]) tds[0].className = 'sultan-sticky-col text-center align-middle';
-                }
+                "order": [[4, "desc"]],
+                "language": { "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json", "emptyTable": "Tidak ada riwayat Lupa Presensi." }
             });
 
             SultanUI.hideLoading('#lupa_loadingState');
