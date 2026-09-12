@@ -545,8 +545,9 @@ var SultanUI = {
      * STANDARISASI KOLOM: BADGE STATUS & BACA CATATAN
      * @param {string} status - Status dokumen (misal: "Disetujui", "Revisi", "Ditolak", "Diproses", "Dicetak")
      * @param {string} catatan - Keterangan/catatan verifikator (jika ada)
+     * @param {Object} [opsiMetadata] - Konteks opsional untuk modal popup { unit, noSk, verifikator, waktu }
      */
-    renderBadgeStatus: function(status, catatan) {
+    renderBadgeStatus: function(status, catatan, opsiMetadata = {}) {
         var s = String(status || "Diproses").toLowerCase();
         var style = 'sultan-badge-warning';
         var icon = 'clock';
@@ -576,18 +577,32 @@ var SultanUI = {
 
         var badgeHtml = `<span class="sultan-badge ${style}"><i class="fas fa-${icon} mr-1"></i>${label}</span>`;
 
-        // Aturan Universal Baca Catatan: Tampilkan tombol jika ada catatan valid
+        // Aturan Universal Baca Catatan: Tampilkan icon indicator inline jika ada catatan valid
         if (catatan && String(catatan).trim().length > 2 && String(catatan).trim() !== "-") {
             var safeCatatan = SultanUI.escapeHtml(catatan);
-            badgeHtml += `
-                <div class="mt-1 text-center">
-                    <button type="button" class="sultan-btn-note" data-pesan="${safeCatatan}" title="Baca Catatan Verifikasi">
-                        <i class="fas fa-comment-dots mr-1"></i> Baca Catatan
-                    </button>
-                </div>`;
+            var previewKet = String(catatan).trim();
+            if (previewKet.length > 60) previewKet = previewKet.substring(0, 60) + '...';
+            var safePreview = SultanUI.escapeHtml(previewKet);
+
+            var meta = typeof opsiMetadata === 'object' && opsiMetadata !== null ? opsiMetadata : {};
+            var attrUnit = meta.unit || meta.sekolah ? `data-unit="${SultanUI.escapeHtml(meta.unit || meta.sekolah)}"` : '';
+            var attrNoSk = meta.noSk || meta.dokumen ? `data-nosk="${SultanUI.escapeHtml(meta.noSk || meta.dokumen)}"` : '';
+            var attrVerif = meta.verifikator ? `data-verifikator="${SultanUI.escapeHtml(meta.verifikator)}"` : '';
+            var attrWaktu = meta.waktu || meta.tglVerval ? `data-waktu="${SultanUI.escapeHtml(meta.waktu || meta.tglVerval)}"` : '';
+
+            var btnCatatan = `
+                <button type="button" class="sultan-btn-note sultan-btn-note-inline"
+                    data-pesan="${safeCatatan}"
+                    ${attrUnit} ${attrNoSk} ${attrVerif} ${attrWaktu}
+                    data-toggle="tooltip" data-placement="top" title="Catatan: ${safePreview}">
+                    <i class="fas fa-comment-dots"></i>
+                </button>
+            `;
+
+            return `<div class="text-left d-inline-flex align-items-center">${badgeHtml}${btnCatatan}</div>`;
         }
 
-        return badgeHtml;
+        return `<div class="text-left d-inline-flex align-items-center">${badgeHtml}</div>`;
     },
 
     /**
