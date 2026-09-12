@@ -157,13 +157,11 @@
       const noDokumen = opsi.noSk || opsi.dokumen || '';
       const verifikator = opsi.verifikator || '';
       const waktuVerval = opsi.waktu || opsi.tglVerval || '';
-      const onPerbaiki = opsi.onPerbaiki || null;
-      const rowId = opsi.rowId || null;
 
       let subheaderHtml = '';
       if (unitKerja || noDokumen) {
         subheaderHtml = `
-          <div class="sultan-catatan-subtitle" style="font-size: 0.78rem; opacity: 0.9; margin-top: 4px; color: #ffe8e8;">
+          <div class="sultan-catatan-subtitle" style="font-size: 0.8rem; opacity: 0.9; margin-top: 3px; color: #ffe8e8; font-weight: 500;">
             ${unitKerja ? `<span class="font-weight-bold">${SultanUI.escapeHtml(unitKerja)}</span>` : ''}
             ${unitKerja && noDokumen ? ' &bull; ' : ''}
             ${noDokumen ? `<span>${SultanUI.escapeHtml(noDokumen)}</span>` : ''}
@@ -174,41 +172,28 @@
       let metaAuditHtml = '';
       if (verifikator || waktuVerval) {
         metaAuditHtml = `
-          <div class="mt-2 pt-2 border-top text-muted" style="font-size: 0.75rem; border-color: rgba(0,0,0,0.06) !important;">
-            <i class="fas fa-user-check mr-1 text-primary"></i> 
-            <span>Oleh: <b>${SultanUI.escapeHtml(verifikator || 'Verifikator Dinas')}</b></span>
+          <div class="mt-3 pt-2 border-top text-muted d-flex align-items-center" style="font-size: 0.76rem; border-color: rgba(0,0,0,0.08) !important;">
+            <i class="fas fa-user-check mr-2 text-primary"></i> 
+            <span>Oleh: <b class="text-dark">${SultanUI.escapeHtml(verifikator || 'Verifikator Dinas')}</b></span>
             ${waktuVerval ? `<span class="ml-2 text-secondary">(${SultanUI.escapeHtml(waktuVerval)})</span>` : ''}
           </div>
         `;
       }
 
-      let btnPerbaikiHtml = '';
-      if (typeof onPerbaiki === 'function' || (typeof window[onPerbaiki] === 'function' && rowId)) {
-        btnPerbaikiHtml = `
-          <button type="button" class="sultan-btn-perbaiki-catatan mr-auto" id="sultan_btnPerbaikiCatatan" style="background: #e74a3b; color: #fff; border: none; padding: 6px 16px; border-radius: 50px; font-size: 0.8rem; font-weight: 700; cursor: pointer; box-shadow: 0 2px 6px rgba(231,74,59,0.3); transition: all 0.2s ease;">
-            <i class="fas fa-pencil-alt mr-1"></i> Perbaiki Sekarang
-          </button>
-        `;
-      }
-
       const modalHtml = `
-        <div class="sultan-catatan-header">
-          <h4 class="sultan-catatan-title">${judul}</h4>
+        <div class="sultan-catatan-header" style="background: linear-gradient(135deg, var(--warna-maroon) 0%, #5a0000 100%); padding: 16px 22px; text-align: left;">
+          <h4 class="sultan-catatan-title" style="color: #ffffff; font-size: 1.1rem; font-weight: 700; margin: 0;">${judul}</h4>
           ${subheaderHtml}
         </div>
-        <div class="sultan-catatan-body">
-          <div class="sultan-catatan-card">
-            <div class="sultan-catatan-text" id="sultan_teksCatatanPopup">${safePesan}</div>
+        <div class="sultan-catatan-body" style="padding: 20px 22px 14px 22px; text-align: left;">
+          <div class="sultan-catatan-card" style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 12px; padding: 16px 18px;">
+            <div class="sultan-catatan-text" id="sultan_teksCatatanPopup" style="font-size: 1.05rem; font-weight: 600; line-height: 1.6; color: #1a1c1e; word-break: break-word;">${safePesan}</div>
             ${metaAuditHtml}
           </div>
         </div>
-        <div class="sultan-catatan-footer">
-          ${btnPerbaikiHtml}
-          <button type="button" class="sultan-btn-salin-catatan" id="sultan_btnSalinCatatan">
-            <i class="far fa-copy"></i> <span>Salin</span>
-          </button>
-          <button type="button" class="sultan-btn-tutup-catatan" onclick="Swal.close()">
-            Mengerti
+        <div class="sultan-catatan-footer" style="display: flex; align-items: center; justify-content: flex-end; padding: 6px 22px 18px 22px;">
+          <button type="button" class="sultan-btn-tutup-catatan" onclick="Swal.close()" style="min-width: 100px; padding: 8px 28px; border-radius: 50px; font-weight: 700; font-size: 0.9rem; letter-spacing: 0.5px;">
+            OK
           </button>
         </div>
       `;
@@ -218,7 +203,7 @@
         showConfirmButton: false,
         showCloseButton: true,
         background: theme.bg,
-        width: '560px',
+        width: '500px',
         customClass: {
           popup: 'sultan-modal-catatan sultan-premium-modal',
           container: 'sultan-swal-container'
@@ -227,54 +212,6 @@
           if (popup && popup.parentNode) {
             popup.parentNode.style.zIndex = '105000';
           }
-          // Handler tombol langsung perbaiki catatan
-          $(popup).find('#sultan_btnPerbaikiCatatan').off('click').on('click', function () {
-            Swal.close();
-            if (typeof onPerbaiki === 'function') {
-              onPerbaiki(rowId);
-            } else if (typeof window[onPerbaiki] === 'function') {
-              window[onPerbaiki](rowId);
-            }
-          });
-
-          // Handler tombol salin catatan
-          $(popup).find('#sultan_btnSalinCatatan').off('click').on('click', function () {
-            var $btn = $(this);
-            var teks = $('#sultan_teksCatatanPopup').text();
-            if (navigator.clipboard && window.isSecureContext) {
-              navigator.clipboard.writeText(teks).then(berhasil, gagal);
-            } else {
-              var textArea = document.createElement("textarea");
-              textArea.value = teks;
-              textArea.style.position = "fixed";
-              textArea.style.left = "-999999px";
-              textArea.style.top = "-999999px";
-              document.body.appendChild(textArea);
-              textArea.focus();
-              textArea.select();
-              try {
-                document.execCommand('copy');
-                berhasil();
-              } catch (err) {
-                gagal();
-              }
-              document.body.removeChild(textArea);
-            }
-
-            function berhasil() {
-              $btn.html('<i class="fas fa-check text-success"></i> <span class="text-success">Tersalin!</span>');
-              setTimeout(function () {
-                $btn.html('<i class="far fa-copy"></i> <span>Salin Catatan</span>');
-              }, 2000);
-            }
-
-            function gagal() {
-              $btn.html('<i class="fas fa-times text-danger"></i> <span class="text-danger">Gagal</span>');
-              setTimeout(function () {
-                $btn.html('<i class="far fa-copy"></i> <span>Salin Catatan</span>');
-              }, 2000);
-            }
-          });
         }
       });
     },
