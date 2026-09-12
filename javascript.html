@@ -43,9 +43,20 @@
     // ================================================================
     $(document).on('click', '.sultan-btn-note[data-pesan]', function (e) {
       e.stopImmediatePropagation();
-      var pesan = $(this).attr('data-pesan');
+      var $this = $(this);
+      var pesan = $this.attr('data-pesan');
       if (!pesan || !pesan.trim()) return;
-      Sultan.bacaCatatan(pesan);
+
+      var opsi = {
+        unit: $this.attr('data-unit') || '',
+        noSk: $this.attr('data-nosk') || '',
+        verifikator: $this.attr('data-verifikator') || '',
+        waktu: $this.attr('data-waktu') || '',
+        rowId: $this.attr('data-rowid') || '',
+        onPerbaiki: $this.attr('data-onperbaiki') || ''
+      };
+
+      Sultan.bacaCatatan(pesan, opsi);
     });
   });
 </script>
@@ -142,19 +153,59 @@
       const theme = NotifSultan.getTheme();
       const judul = opsi.judul || 'Catatan Verifikasi';
       const safePesan = String(pesan || 'Tidak ada catatan.').trim();
+      const unitKerja = opsi.unit || opsi.sekolah || '';
+      const noDokumen = opsi.noSk || opsi.dokumen || '';
+      const verifikator = opsi.verifikator || '';
+      const waktuVerval = opsi.waktu || opsi.tglVerval || '';
+      const onPerbaiki = opsi.onPerbaiki || null;
+      const rowId = opsi.rowId || null;
+
+      let subheaderHtml = '';
+      if (unitKerja || noDokumen) {
+        subheaderHtml = `
+          <div class="sultan-catatan-subtitle" style="font-size: 0.78rem; opacity: 0.9; margin-top: 4px; color: #ffe8e8;">
+            ${unitKerja ? `<span class="font-weight-bold">${SultanUI.escapeHtml(unitKerja)}</span>` : ''}
+            ${unitKerja && noDokumen ? ' &bull; ' : ''}
+            ${noDokumen ? `<span>${SultanUI.escapeHtml(noDokumen)}</span>` : ''}
+          </div>
+        `;
+      }
+
+      let metaAuditHtml = '';
+      if (verifikator || waktuVerval) {
+        metaAuditHtml = `
+          <div class="mt-2 pt-2 border-top text-muted" style="font-size: 0.75rem; border-color: rgba(0,0,0,0.06) !important;">
+            <i class="fas fa-user-check mr-1 text-primary"></i> 
+            <span>Oleh: <b>${SultanUI.escapeHtml(verifikator || 'Verifikator Dinas')}</b></span>
+            ${waktuVerval ? `<span class="ml-2 text-secondary">(${SultanUI.escapeHtml(waktuVerval)})</span>` : ''}
+          </div>
+        `;
+      }
+
+      let btnPerbaikiHtml = '';
+      if (typeof onPerbaiki === 'function' || (typeof window[onPerbaiki] === 'function' && rowId)) {
+        btnPerbaikiHtml = `
+          <button type="button" class="sultan-btn-perbaiki-catatan mr-auto" id="sultan_btnPerbaikiCatatan" style="background: #e74a3b; color: #fff; border: none; padding: 6px 16px; border-radius: 50px; font-size: 0.8rem; font-weight: 700; cursor: pointer; box-shadow: 0 2px 6px rgba(231,74,59,0.3); transition: all 0.2s ease;">
+            <i class="fas fa-pencil-alt mr-1"></i> Perbaiki Sekarang
+          </button>
+        `;
+      }
 
       const modalHtml = `
         <div class="sultan-catatan-header">
           <h4 class="sultan-catatan-title">${judul}</h4>
+          ${subheaderHtml}
         </div>
         <div class="sultan-catatan-body">
           <div class="sultan-catatan-card">
             <div class="sultan-catatan-text" id="sultan_teksCatatanPopup">${safePesan}</div>
+            ${metaAuditHtml}
           </div>
         </div>
         <div class="sultan-catatan-footer">
+          ${btnPerbaikiHtml}
           <button type="button" class="sultan-btn-salin-catatan" id="sultan_btnSalinCatatan">
-            <i class="far fa-copy"></i> <span>Salin Catatan</span>
+            <i class="far fa-copy"></i> <span>Salin</span>
           </button>
           <button type="button" class="sultan-btn-tutup-catatan" onclick="Swal.close()">
             Mengerti
@@ -176,6 +227,16 @@
           if (popup && popup.parentNode) {
             popup.parentNode.style.zIndex = '105000';
           }
+          // Handler tombol langsung perbaiki catatan
+          $(popup).find('#sultan_btnPerbaikiCatatan').off('click').on('click', function () {
+            Swal.close();
+            if (typeof onPerbaiki === 'function') {
+              onPerbaiki(rowId);
+            } else if (typeof window[onPerbaiki] === 'function') {
+              window[onPerbaiki](rowId);
+            }
+          });
+
           // Handler tombol salin catatan
           $(popup).find('#sultan_btnSalinCatatan').off('click').on('click', function () {
             var $btn = $(this);
