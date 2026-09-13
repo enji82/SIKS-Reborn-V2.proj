@@ -620,30 +620,96 @@ var SultanUI = {
     },
 
     /**
-     * STANDARISASI KOLOM: METADATA AUDIT LOG (DIUNGGAH, DIUBAH, DIVERIFIKASI)
-     * @param {string} waktu - Waktu/tanggal log
-     * @param {string} user - Nama user pelaksana
-     * @param {string} emptyText - Teks pengganti jika kosong (default: '-')
+     * STANDARISASI KOLOM: SEL 2 BARIS (TEKS UTAMA & KETERANGAN/SUB)
+     * @param {string} teksUtama - Teks baris atas (bold/highlight)
+     * @param {string} teksSub - Teks baris bawah (keterangan/tanggal)
+     * @param {Object} [opsi] - Opsi tambahan
+     * @param {string} [opsi.warnaUtama] - Warna teks atas (default: var(--warna-maroon))
+     * @param {string} [opsi.align='left'] - Perataan teks ('left'|'center'|'right')
      */
-    renderAuditCell: function(waktu, user, emptyText = '-') {
-        var w = waktu && String(waktu).trim() !== "" && String(waktu).trim() !== "-" ? String(waktu).trim() : "";
-        var u = user && String(user).trim() !== "" && String(user).trim() !== "-" ? String(user).trim() : "";
+    renderCellDuaBaris: function(teksUtama, teksSub, opsi = {}) {
+        var align = opsi.align || 'left';
+        var styleUtama = opsi.warnaUtama ? `style="color: ${opsi.warnaUtama}; font-size: 12.5px;"` : 'style="font-size: 12.5px;"';
+        var utama = SultanUI.escapeHtml(teksUtama || '-');
+        var sub = teksSub != null && String(teksSub).trim() !== "" ? SultanUI.escapeHtml(teksSub) : '-';
+        return `
+            <div class="text-${align}">
+                <div class="sultan-table-primary font-weight-bold" ${styleUtama}>${utama}</div>
+                <div class="sultan-table-secondary text-muted" style="font-size: 11.5px; margin-top: 2px;">${sub}</div>
+            </div>
+        `;
+    },
 
-        if (!w && !u) {
+    /**
+     * STANDARISASI KOLOM: TOMBOL DOKUMEN (PDF / LIHAT BERKAS)
+     * @param {string} url - URL file / ID
+     * @param {Object} [opsi] - Konfigurasi tombol
+     * @param {string} [opsi.label='LIHAT'] - Label teks tombol
+     * @param {string} [opsi.icon='fa-file-pdf'] - Ikon FontAwesome
+     * @param {string} [opsi.onClick] - Fungsi onclick global (misal: 'tugas_bukaPreview')
+     * @param {string} [opsi.tooltip='Lihat Dokumen'] - Teks tooltip
+     */
+    renderDokumenPdf: function(url, opsi = {}) {
+        if (!url || String(url).trim().length < 5) {
+            return '<div class="text-center"><span class="text-muted small">-</span></div>';
+        }
+        var label = opsi.label || 'LIHAT';
+        var icon = opsi.icon || 'fa-file-pdf';
+        var tooltip = opsi.tooltip || 'Lihat Dokumen';
+        var safeUrl = String(url).replace(/'/g, "%27").replace(/"/g, "%22");
+        
+        var clickAttr = opsi.onClick 
+            ? `onclick="${opsi.onClick}('${safeUrl}')"` 
+            : `onclick="window.open('${safeUrl}', '_blank')"`;
+
+        return `
+            <div class="text-center">
+                <button type="button" class="sultan-btn-pdf" ${clickAttr} data-toggle="tooltip" title="${SultanUI.escapeHtml(tooltip)}">
+                    <i class="fas ${icon} mr-1"></i> ${SultanUI.escapeHtml(label)}
+                </button>
+            </div>
+        `;
+    },
+
+    /**
+     * STANDARISASI KOLOM: METADATA AUDIT LOG (DIUNGGAH, DIUBAH, DIVERIFIKASI)
+     * Mendukung pemanggilan sederhana (waktu, user) atau pemanggilan terstruktur (opsi)
+     * @param {string|Object} waktuOrOptions - Waktu/tanggal log ATAU objek { waktu, user, label, tooltip }
+     * @param {string} [user] - Nama user pelaksana (jika argumen 1 string)
+     * @param {string} [emptyText='-'] - Teks pengganti jika kosong
+     */
+    renderAuditCell: function(waktuOrOptions, user, emptyText = '-') {
+        var w = "", u = "", label = "", customTooltip = "";
+        if (typeof waktuOrOptions === 'object' && waktuOrOptions !== null) {
+            w = waktuOrOptions.waktu || "";
+            u = waktuOrOptions.user || "";
+            label = waktuOrOptions.label || "";
+            customTooltip = waktuOrOptions.tooltip || "";
+        } else {
+            w = waktuOrOptions || "";
+            u = user || "";
+        }
+
+        var cleanW = String(w || "").trim();
+        var cleanU = String(u || "").trim();
+
+        if ((!cleanW || cleanW === "-") && (!cleanU || cleanU === "-")) {
             return `<div class="text-left text-muted font-italic" style="font-size: 11px;">${emptyText}</div>`;
         }
 
-        var wkt = w || '-';
-        var usr = u || '-';
+        var wkt = cleanW || '-';
+        var usr = cleanU || '-';
+        var labelHtml = label ? `<span class="font-weight-semibold text-secondary">${SultanUI.escapeHtml(label)}:</span> ` : '';
+        var tooltipAttr = customTooltip ? `data-toggle="tooltip" data-placement="top" title="${SultanUI.escapeHtml(customTooltip)}"` : '';
 
         return `
-            <div class="sultan-table-secondary text-left">
-                <span class="d-block font-weight-bold text-dark text-left" style="font-size: 11.5px; line-height: 1.2;">
-                    ${wkt}
-                </span>
-                <span class="d-block text-muted text-lowercase text-truncate text-left" style="font-size: 11px; line-height: 1.2; max-width: 180px;" title="${SultanUI.escapeHtml(usr).toLowerCase()}">
-                    ${SultanUI.escapeHtml(usr).toLowerCase()}
-                </span>
+            <div class="text-left" ${tooltipAttr}>
+                <div class="font-weight-bold text-dark text-left" style="font-size: 11.5px; line-height: 1.2;">
+                    ${SultanUI.escapeHtml(wkt)}
+                </div>
+                <div class="text-muted text-lowercase text-truncate text-left" style="font-size: 11px; line-height: 1.2; max-width: 180px;">
+                    ${labelHtml}${SultanUI.escapeHtml(usr).toLowerCase()}
+                </div>
             </div>
         `;
     },
