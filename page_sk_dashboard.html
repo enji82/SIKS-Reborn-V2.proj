@@ -1,30 +1,306 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 
-
-<section class="content">
+<section class="content sultan-page-transition">
     <div class="container-fluid">
 
-        <div id="dashsk_filterBarArea"></div>
+        <!-- ================================================================ -->
+        <!-- VIEW 1: USER / MODE UNIT (STATUS BERJALAN & MULTI-YEAR GRID)     -->
+        <!-- ================================================================ -->
+        <div id="dashsk_viewUser" class="d-none py-3">
 
-        <!-- Row 1: Statistik Utama (4 Cards) - Rendered Dynamically -->
-        <div id="dashsk_metricRow1"></div>
+            <!-- Filter Bar Mode Unit -->
+            <div class="sultan-filter-bar-balanced mb-4">
+                <div class="filter-controls-group">
+                    <!-- Segmented Switcher Mode -->
+                    <div class="sultan-segmented-switch">
+                        <button type="button" class="sultan-segmented-btn active" data-mode="unit">
+                            <i class="fas fa-school"></i> Unit
+                        </button>
+                        <button type="button" class="sultan-segmented-btn" data-mode="rekap">
+                            <i class="fas fa-chart-pie"></i> Rekap
+                        </button>
+                    </div>
 
-        <!-- Row 2: Status Detil (5 Columns) - Rendered Dynamically -->
-        <div id="dashsk_metricRow2"></div>
+                    <div class="divider-vertical d-none d-md-block mx-1"></div>
 
-        <!-- Row 4: Sudah Unggah & Belum Unggah Lists - Rendered Dynamically -->
-        <div id="dashsk_listsContainer"></div>
+                    <!-- Filter Jenjang (Admin: Fleksibel, User: Terkunci/Hidden) -->
+                    <div class="sultan-filter-item" id="dashsk_wrapperUserJenjang">
+                        <select id="dashsk_filterUserJenjang" class="form-control">
+                            <option value="">Semua Jenjang</option>
+                            <option value="SD">SD</option>
+                            <option value="TK">TK</option>
+                            <option value="KB">KB</option>
+                            <option value="SPS">SPS</option>
+                        </select>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+
+                    <!-- Filter Nama Sekolah (Pilihan sekolah untuk Admin, terkunci untuk User) -->
+                    <div class="sultan-filter-item" id="dashsk_wrapperUserSekolah" style="min-width: 220px; max-width: 340px;">
+                        <select id="dashsk_filterUserSekolah" class="form-control">
+                            <option value="">Pilih Sekolah...</option>
+                        </select>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+
+                    <button type="button" id="dashsk_btnRefreshUser" class="sultan-btn-refresh" title="Refresh Riwayat SK Sekolah">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+
+                <div class="filter-meta-group d-none d-sm-flex align-items-center">
+                    <span class="sync-badge-modern shadow-xs" id="dashsk_userSchoolBadge">
+                        <span class="sync-dot"></span>
+                        <span id="dashsk_userSchoolName" class="font-weight-bold">Memuat Satuan...</span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- 1. KARTU STATUS SEMESTER BERJALAN -->
+            <div class="lapbul-status-banner p-3 p-md-4 mb-4">
+                <div class="row align-items-center">
+                    <div class="col-md-7 mb-3 mb-md-0">
+                        <div class="d-flex align-items-center">
+                            <div class="rounded-circle p-3 mr-3 d-flex align-items-center justify-content-center" id="dashsk_userCurrentIconBox" style="width: 54px; height: 54px; background: rgba(255,255,255,0.08);">
+                                <i class="fas fa-circle-notch fa-spin fa-lg" id="dashsk_userCurrentIcon"></i>
+                            </div>
+                            <div>
+                                <span class="small font-weight-bold text-muted text-uppercase d-block mb-1" id="dashsk_userCurrentPeriod">Periode: -</span>
+                                <h5 class="font-weight-bold mb-1" id="dashsk_userCurrentTitle">Memeriksa Status SK...</h5>
+                                <p class="small text-muted mb-0" id="dashsk_userCurrentDesc">Sistem sedang memeriksa status SK Pembagian Tugas semester berjalan satuan pendidikan Anda.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-5 text-md-right text-left">
+                        <div id="dashsk_userCurrentAction">
+                            <!-- Tombol aksi cepat via JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. MULTI-YEAR CARD GRID (Riwayat SK Tiap Tahun Ajaran) -->
+            <div class="mb-3 d-flex justify-content-between align-items-center">
+                <h6 class="font-weight-bold text-sultan-utama m-0 text-uppercase" style="letter-spacing: 0.5px;">
+                    <i class="fas fa-history mr-2"></i>Riwayat SK per Tahun Ajaran
+                </h6>
+                <span class="text-muted small">Klik pada status semester untuk melihat berkas & catatan</span>
+            </div>
+
+            <div class="row" id="dashsk_userMultiYearContainer">
+                <div class="col-12 py-5">
+                    <div class="sultan-loading-box sultan-page-transition">
+                        <div class="sultan-spinner-icon">
+                            <i class="fas fa-circle-notch fa-spin"></i>
+                        </div>
+                        <h6 class="text-muted font-weight-bold sultan-loading-text mb-0" style="letter-spacing: 0.5px; text-transform: uppercase; font-size: 11px;">Memuat Riwayat SK...</h6>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ================================================================ -->
+        <!-- VIEW 2: ADMIN / MODE REKAP (REKAP KECAMATAN & DAFTAR BELUM UNGGAH)-->
+        <!-- ================================================================ -->
+        <div id="dashsk_viewAdmin" class="d-none py-3">
+
+            <!-- Filter Bar Mode Rekap -->
+            <div class="sultan-filter-bar-balanced mb-4">
+                <div class="filter-controls-group">
+                    <!-- Segmented Switcher Mode -->
+                    <div class="sultan-segmented-switch">
+                        <button type="button" class="sultan-segmented-btn" data-mode="unit">
+                            <i class="fas fa-school"></i> Unit
+                        </button>
+                        <button type="button" class="sultan-segmented-btn active" data-mode="rekap">
+                            <i class="fas fa-chart-pie"></i> Rekap
+                        </button>
+                    </div>
+
+                    <div class="divider-vertical d-none d-md-block mx-1"></div>
+
+                    <!-- Filter Tahun Ajaran -->
+                    <div class="sultan-filter-item">
+                        <select id="dashsk_dashTahun" class="form-control"></select>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+
+                    <!-- Filter Semester -->
+                    <div class="sultan-filter-item">
+                        <select id="dashsk_dashSemester" class="form-control">
+                            <option value="Ganjil">Semester Ganjil</option>
+                            <option value="Genap">Semester Genap</option>
+                        </select>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+
+                    <div class="divider-vertical d-none d-md-block mx-1"></div>
+
+                    <button type="button" id="dashsk_btnRefreshRekap" class="sultan-btn-refresh" title="Refresh Rekap Data">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+
+                <div class="filter-meta-group d-none d-sm-flex align-items-center">
+                    <span class="sync-badge-modern shadow-xs" id="dashsk_syncBadge">
+                        <span class="sync-dot"></span>
+                        <span id="dashsk_syncTime">Data Sinkron</span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- 1. METRIK UTAMA (Row 1 - Terpusat SultanUI) -->
+            <div id="dashsk_metricRow1" class="mb-3"></div>
+
+            <!-- 2. STATUS DETIL 5 KOLOM (Row 2 - Terpusat SultanUI) -->
+            <div id="dashsk_metricRow2" class="mb-4"></div>
+
+            <!-- 3. ROW 3: KOMPOSISI KRITERIA & DAFTAR BELUM UNGGAH -->
+            <div class="row mb-4">
+                <!-- Breakdown Kriteria SK (SK Awal vs SK Perubahan) -->
+                <div class="col-lg-5 mb-4 mb-lg-0">
+                    <div class="card card-sultan h-100 shadow-sm border-0">
+                        <div class="card-header bg-transparent border-0 pt-3 pb-0 d-flex justify-content-between align-items-center">
+                            <h6 class="font-weight-bold text-sultan-utama mb-0 text-uppercase" style="letter-spacing: 0.5px; font-size: 0.85rem;">
+                                <i class="fas fa-chart-pie mr-2"></i>Kategori Berkas SK
+                            </h6>
+                            <span class="badge badge-light px-2 py-1 small font-weight-bold" id="dashsk_lblPeriodeKategori">-</span>
+                        </div>
+                        <div class="card-body d-flex flex-column justify-content-around py-3">
+                            <div class="row align-items-center">
+                                <div class="col-6 text-center border-right">
+                                    <div class="text-muted small text-uppercase font-weight-bold mb-1">SK Awal</div>
+                                    <h2 class="font-weight-bold text-maroon mb-0" id="dashsk_countAwal">0</h2>
+                                    <small class="text-muted" id="dashsk_pctAwal">0% dari total</small>
+                                </div>
+                                <div class="col-6 text-center">
+                                    <div class="text-muted small text-uppercase font-weight-bold mb-1">SK Perubahan</div>
+                                    <h2 class="font-weight-bold text-info mb-0" id="dashsk_countPerubahan">0</h2>
+                                    <small class="text-muted" id="dashsk_pctPerubahan">0% dari total</small>
+                                </div>
+                            </div>
+                            <div class="p-3 bg-adaptive-sultan rounded-lg mt-3" style="font-size: 0.82rem;">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span><i class="fas fa-check-circle text-success mr-2"></i>SK Awal Disetujui</span>
+                                    <strong id="dashsk_statAwalValid">0</strong>
+                                </div>
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span><i class="fas fa-spinner text-warning mr-2"></i>SK Awal Diproses</span>
+                                    <strong id="dashsk_statAwalProses">0</strong>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span><i class="fas fa-edit text-info mr-2"></i>SK Perubahan Disetujui</span>
+                                    <strong id="dashsk_statUbahValid">0</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Daftar Belum Unggah -->
+                <div class="col-lg-7">
+                    <div class="sultan-list-card-modern h-100 d-flex flex-column shadow-sm">
+                        <div class="card-header-modern bg-soft-maroon d-flex justify-content-between align-items-center">
+                            <span class="font-weight-bold text-maroon small text-uppercase">
+                                <i class="fas fa-exclamation-triangle mr-2"></i>Daftar Sekolah Belum Unggah SK
+                            </span>
+                            <div class="d-flex align-items-center">
+                                <span id="dashsk_countBelumLapor" class="badge-count-modern bg-maroon text-white mr-2">0</span>
+                                <button type="button" class="sultan-btn-wa-circular shadow-sm" id="dashsk_btnSalinDaftarWA" title="Salin daftar belum unggah ke WhatsApp">
+                                    <i class="fab fa-whatsapp"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="search-box-modern">
+                            <div class="sultan-search-pill-wrapper">
+                                <i class="fas fa-search search-icon"></i>
+                                <input type="text" id="dashsk_inputCariBelum" class="search-input-pill" placeholder="Cari nama sekolah belum lapor...">
+                            </div>
+                        </div>
+                        <div class="card-body p-0 flex-fill">
+                            <ul id="dashsk_listBelumContainer" class="list-group list-group-flush small sultan-scroll" style="max-height: 240px; overflow-y: auto;">
+                                <li class="list-group-item bg-transparent text-center text-muted py-4">
+                                    <i class="fas fa-circle-notch fa-spin"></i> Memuat data...
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. DAFTAR SUDAH UNGGAH & BELUM UNGGAH CONTAINER LENGKAP -->
+            <div id="dashsk_listsContainer"></div>
+
+        </div>
 
     </div>
 </section>
 
+<!-- ================================================================ -->
+<!-- MODAL DETAIL SK KHUSUS USER                                      -->
+<!-- ================================================================ -->
+<div class="modal fade" id="dashsk_modalDetailSK" tabindex="-1" role="dialog" data-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content border-0 shadow-lg modal-content-sultan" style="border-radius: 18px;">
+            <div class="modal-header modal-header-sultan-primary py-3">
+                <h5 class="modal-title font-weight-bold" id="dashsk_modalDetailTitle">
+                    <i class="fas fa-file-signature mr-2"></i> Detail SK Pembagian Tugas
+                </h5>
+                <button type="button" class="close text-white opacity-100" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body modal-body-sultan p-4">
+                <div class="text-center mb-3">
+                    <div id="dashsk_modalDetailStatusBadge" class="d-inline-block mb-2"></div>
+                    <h5 class="font-weight-bold mb-1" id="dashsk_modalDetailSekolah">-</h5>
+                    <p class="text-muted small mb-0" id="dashsk_modalDetailPeriode">-</p>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-borderless small mb-0">
+                        <tbody>
+                            <tr>
+                                <td class="text-muted" style="width: 38%;">Kriteria SK</td>
+                                <td class="font-weight-bold" id="dashsk_modalDetailKriteria">: -</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Nomor SK</td>
+                                <td class="font-weight-bold" id="dashsk_modalDetailNoSk">: -</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Tanggal SK</td>
+                                <td class="font-weight-bold" id="dashsk_modalDetailTglSk">: -</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Waktu Unggah</td>
+                                <td class="font-weight-bold" id="dashsk_modalDetailWaktu">: -</td>
+                            </tr>
+                            <tr id="dashsk_modalDetailBoxCatatan">
+                                <td class="text-muted">Catatan Admin</td>
+                                <td class="text-danger font-weight-bold" id="dashsk_modalDetailCatatan">: -</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer modal-footer-sultan p-3 border-top-0 d-flex justify-content-between">
+                <div id="dashsk_modalDetailBtnFile"></div>
+                <button type="button" class="sultan-btn-aksi-batal px-4" data-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ================================================================ -->
+<!-- MODAL BELUM LAPOR (UNTUK SALIN TEKS / FILTER BESAR)              -->
+<!-- ================================================================ -->
 <div class="modal fade" id="dashsk_modalBelumLapor" tabindex="-1" role="dialog" data-backdrop="static">
     <div class="modal-dialog modal-md modal-dialog-centered" role="document">
         <div class="modal-content border-0 shadow-lg modal-content-sultan">
-            <div class="modal-header modal-header-sultan-primary py-3"
-                style="background: linear-gradient(135deg, #85144b 0%, #a11c5c 100%);">
+            <div class="modal-header modal-header-sultan-primary py-3" style="background: linear-gradient(135deg, #85144b 0%, #a11c5c 100%);">
                 <h5 class="modal-title font-weight-bold">
-                    <i class="fas fa-list-ul mr-2 shadow-sm"></i> DAFTAR BELUM LAPOR
+                    <i class="fas fa-list-ul mr-2 shadow-sm"></i> DAFTAR BELUM UNGGAH SK
                 </h5>
                 <button type="button" class="close text-white opacity-100" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
@@ -33,31 +309,25 @@
 
             <div class="p-3 border-bottom bg-adaptive-sultan">
                 <div class="d-flex align-items-center justify-content-between mb-3">
-                    <div class="small text-muted font-weight-bold text-uppercase" id="dashsk_lblPeriodeBelum_Container"
-                        style="letter-spacing: 1px;">
+                    <div class="small text-muted font-weight-bold text-uppercase" id="dashsk_lblPeriodeBelum_Container" style="letter-spacing: 1px;">
                         PERIODE: <span id="dashsk_lblPeriodeBelum" class="text-maroon">...</span>
                     </div>
-                    <button class="btn btn-xs sultan-btn-aksi-batal rounded-pill px-3 shadow-sm"
-                        id="dashsk_btnSalinDaftarModal" style="border-width: 1px;">
+                    <button class="btn btn-xs sultan-btn-aksi-batal rounded-pill px-3 shadow-sm" id="dashsk_btnSalinDaftarModal" style="border-width: 1px;">
                         <i class="fas fa-copy mr-1"></i> SALIN DAFTAR
                     </button>
                 </div>
                 <div class="input-group input-group-sm">
                     <div class="input-group-prepend">
-                        <span class="input-group-text bg-adaptive-sultan border-right-0"><i
-                                class="fas fa-search text-muted"></i></span>
+                        <span class="input-group-text bg-adaptive-sultan border-right-0"><i class="fas fa-search text-muted"></i></span>
                     </div>
-                    <input type="text" id="dashsk_inputCariBelumModal"
-                        class="form-control form-control-sultan border-left-0 font-weight-bold"
-                        placeholder="Cari nama sekolah...">
+                    <input type="text" id="dashsk_inputCariBelumModal" class="form-control form-control-sultan border-left-0 font-weight-bold" placeholder="Cari nama sekolah...">
                 </div>
             </div>
 
             <div class="modal-body modal-body-sultan p-0">
                 <div class="table-responsive sultan-scroll" style="max-height: 450px;">
                     <table class="table table-borderless mb-0">
-                        <thead class="bg-adaptive-sultan text-adaptive-sultan uppercase small font-weight-bold"
-                            style="border-bottom: 2px solid var(--dm-border);">
+                        <thead class="bg-adaptive-sultan text-adaptive-sultan uppercase small font-weight-bold" style="border-bottom: 2px solid var(--dm-border);">
                             <tr>
                                 <th class="px-4 py-2 text-center" style="width: 70px;">NO</th>
                                 <th class="py-2">NAMA SATUAN PENDIDIKAN / LEMBAGA</th>
@@ -74,512 +344,682 @@
     </div>
 </div>
 
-<!-- CSS tersentralisasi di css_sultan.html Section 18.17 -->
-
+<!-- ================================================================ -->
+<!-- JAVASCRIPT LOGIC MODERN DUA MODE                                 -->
+<!-- ================================================================ -->
 <script>
     /* =================================================================
-       ISOLASI VARIABEL GLOBAL & PENGAMAN SINTAKSIS (ES5 BULLETPROOF)
+       ISOLASI VARIABEL GLOBAL & PENGAMAN SINTAKSIS (ES5 COMPLIANT)
        ================================================================= */
-    // ISOLASI STATE KE WINDOW (Tetap bertahan saat re-injeksi)
-    window.DASHSK_CHART_INSTANCE = window.DASHSK_CHART_INSTANCE || null;
-    window.DASHSK_LIST_BELUM_CACHE = window.DASHSK_LIST_BELUM_CACHE || [];
-    window.DASHSK_LIST_SUDAH_CACHE = window.DASHSK_LIST_SUDAH_CACHE || [];
-    window.DASHSK_IS_FETCHING = window.DASHSK_IS_FETCHING || false;
-    window.DASHSK_LAST_FETCH_TIME = window.DASHSK_LAST_FETCH_TIME || 0;
-    window.DASHSK_CACHE_DATA = window.DASHSK_CACHE_DATA || null;
-    window.DASHSK_LAST_INIT = window.DASHSK_LAST_INIT || 0;
-
-    var DASHSK_USER_IS_ADMIN = false;
-    var DASHSK_IS_INIT = true; 
+    var DASHSK_IS_ADMIN = false;
+    var DASHSK_USER_NPSN = "";
+    var DASHSK_USER_SEKOLAH = "";
+    var DASHSK_ACTIVE_VIEW = "rekap"; // 'unit' atau 'rekap'
+    var DASHSK_MASTER_SEKOLAH = []; // Cache master sekolah untuk dropdown
+    var DASHSK_ALL_DATA_SK = []; // Seluruh data transaksi SK
+    var DASHSK_CACHE_REKAP = null; // Cache metrik rekap
+    var DASHSK_LIST_BELUM_CACHE = [];
+    var DASHSK_LIST_SUDAH_CACHE = [];
+    var DASHSK_IS_INIT = true;
 
     $(document).ready(function () {
-        // PENGAMAN STARTUP: Cegah pemanggilan data ganda jika ready terpicu berkali-kali dalam < 1 detik
-        var now = new Date().getTime();
-        var isRecentInit = (window.DASHSK_LAST_INIT && (now - window.DASHSK_LAST_INIT < 1000));
-        window.DASHSK_LAST_INIT = now;
+        console.log("SIKS-LOG: Inisialisasi UI Dashboard SK Modern 2-Mode...");
 
-        console.log("SIKS-LOG: Inisialisasi UI Dashboard SK...");
-
-        // Render filter bar secara dinamis (VAKSINASI COMPLIANCE)
-        var filtersConfig = [
-            { id: 'dashsk_filterTahun', placeholder: '- Memuat TA... -', disabled: true },
-            { id: 'dashsk_filterSemester', placeholder: '- Memuat Semester... -', disabled: true }
-        ];
-        var extraButtons = `
-            <div class="divider-vertical d-none d-md-block mx-3" style="width: 2px; height: 26px; background-color: currentColor; opacity: 0.2; border-radius: 10px;"></div>
-            <button type="button" id="dashsk_btnRefresh" class="sultan-btn-refresh" title="Refresh Data" disabled>
-                <i class="fas fa-sync-alt"></i>
-            </button>
-            <div class="ml-auto d-none d-md-block"></div>
-        `;
-        $('#dashsk_filterBarArea').html(SultanUI.renderFilterBar(filtersConfig, extraButtons));
-
-        // Render metric rows secara dinamis (Terpusat lewat SultanUI)
-        $('#dashsk_metricRow1').html(SultanUI.renderDashboardRow1('dashsk', { sudah: 'SUDAH UNGGAH', belum: 'BELUM UNGGAH' }));
-        // Baris kedua menggunakan parameter default (JML DOKUMEN, DIPROSES, DISETUJUI, REVISI, DITOLAK)
-        $('#dashsk_metricRow2').html(SultanUI.renderDashboardRow2('dashsk'));
-        $('#dashsk_listsContainer').html(SultanUI.renderDashboardLists('dashsk', { placeholderCari: 'Cari NPSN atau nama sekolah...', hasCopyBelum: true }));
-
+        // 1. Identifikasi Sesi User
         try {
-            var user = typeof getSesiUser === 'function' ? getSesiUser() : {};
-            DASHSK_USER_IS_ADMIN = (user.role || "").toLowerCase().indexOf("admin") !== -1;
-        } catch (e) { DASHSK_USER_IS_ADMIN = false; }
-
-        // LANGKAH 1: Selalu isi filter (karena DOM mungkin baru)
-        dashsk_initFilterDefault();
-        
-        // LANGKAH 2: Manajemen Load Data (Smart Cache & Session-Aware)
-        if (window.DASHSK_IS_FETCHING) {
-            console.log("SIKS-LOG: Request berjalan, memasang spinner...");
-            dashsk_applyLoadingUI(); 
-        } else if (window.DASHSK_CACHE_DATA && isRecentInit) {
-            console.log("SIKS-LOG: Menggunakan data cache (Mencegah Flash 0).");
-            dashsk_renderDashboard(window.DASHSK_CACHE_DATA);
-        } else {
-            dashsk_loadDataDashboard();
+            var user = (typeof getSesiUser === 'function') ? getSesiUser() : {};
+            DASHSK_IS_ADMIN = (user.role || "").toLowerCase().indexOf("admin") !== -1 || (user.role || "").toLowerCase().indexOf("verifikator") !== -1;
+            DASHSK_USER_NPSN = user.npsn || user.username || "";
+            DASHSK_USER_SEKOLAH = user.unit || user.nama_lengkap || user.fullname || user.nama || "";
+        } catch (e) {
+            DASHSK_IS_ADMIN = false;
+            DASHSK_USER_NPSN = "";
+            DASHSK_USER_SEKOLAH = "";
         }
 
-        // LANGKAH 3: Pasang event listener lainnya (non-filter)
-        $(document).off('click', '#dashsk_btnRefresh').on('click', '#dashsk_btnRefresh', function (e) {
-            e.preventDefault();
-            dashsk_loadDataDashboard();
+        // 2. Pasang Event Listener Segmented Switcher (Unit vs Rekap)
+        $(document).off('click', '.sultan-segmented-btn').on('click', '.sultan-segmented-btn', function () {
+            var mode = $(this).data('mode');
+            if (mode) {
+                dashsk_switchMode(mode);
+            }
         });
 
+        // 3. Render Komponen Visual Terpusat SultanUI untuk Mode Rekap
+        if (typeof SultanUI !== 'undefined') {
+            $('#dashsk_metricRow1').html(SultanUI.renderDashboardRow1('dashsk', { sudah: 'SUDAH UNGGAH', belum: 'BELUM UNGGAH' }));
+            $('#dashsk_metricRow2').html(SultanUI.renderDashboardRow2('dashsk'));
+            $('#dashsk_listsContainer').html(SultanUI.renderDashboardLists('dashsk', { placeholderCari: 'Cari NPSN atau nama sekolah...', hasCopyBelum: true }));
+        }
+
+        // 4. Inisialisasi Dropdown Filter Tahun Ajaran & Semester
+        dashsk_initFilterDefault();
+
+        // 5. Setup View Awal Berdasarkan Role
+        if (DASHSK_IS_ADMIN) {
+            DASHSK_ACTIVE_VIEW = 'rekap';
+            dashsk_switchMode('rekap');
+            dashsk_loadMasterDanData(function () {
+                dashsk_loadDataRekap();
+                dashsk_setupUserDropdown();
+            });
+        } else {
+            DASHSK_ACTIVE_VIEW = 'unit';
+            dashsk_switchMode('unit');
+            // Kunci tampilan sekolah ke unit milik user
+            $('#dashsk_wrapperUserJenjang').addClass('d-none');
+            $('#dashsk_wrapperUserSekolah').addClass('d-none');
+            $('#dashsk_userSchoolName').text(DASHSK_USER_SEKOLAH || "Sekolah Anda");
+            dashsk_loadMasterDanData(function () {
+                dashsk_renderModeUnit(DASHSK_USER_SEKOLAH);
+                // Pre-fetch di latar belakang agar saat klik 'Rekap', data instan muncul
+                setTimeout(function () { dashsk_loadDataRekap(true); }, 300);
+            });
+        }
+
+        // 6. Event Listeners Interaktif
+        $(document).off('click', '#dashsk_btnRefreshRekap').on('click', '#dashsk_btnRefreshRekap', function (e) {
+            e.preventDefault();
+            dashsk_loadDataRekap();
+        });
+
+        $(document).off('click', '#dashsk_btnRefreshUser').on('click', '#dashsk_btnRefreshUser', function (e) {
+            e.preventDefault();
+            var targetSekolah = DASHSK_IS_ADMIN ? ($('#dashsk_filterUserSekolah').val() || DASHSK_USER_SEKOLAH) : DASHSK_USER_SEKOLAH;
+            dashsk_loadMasterDanData(function () {
+                dashsk_renderModeUnit(targetSekolah);
+            });
+        });
+
+        $(document).off('change', '#dashsk_dashTahun, #dashsk_dashSemester').on('change', '#dashsk_dashTahun, #dashsk_dashSemester', function () {
+            dashsk_loadDataRekap();
+        });
+
+        // Filter User Mode untuk Admin
+        $(document).off('change', '#dashsk_filterUserJenjang').on('change', '#dashsk_filterUserJenjang', function () {
+            dashsk_filterSekolahDropdown();
+        });
+
+        $(document).off('change', '#dashsk_filterUserSekolah').on('change', '#dashsk_filterUserSekolah', function () {
+            var selectedUnit = $(this).val();
+            if (selectedUnit) {
+                $('#dashsk_userSchoolName').text(selectedUnit);
+                dashsk_renderModeUnit(selectedUnit);
+            }
+        });
+
+        // Pencarian Cepat List Sudah & Belum Lapor
         $(document).off('keyup', '#dashsk_inputCariSudah').on('keyup', '#dashsk_inputCariSudah', dashsk_filterSudah);
         $(document).off('keyup', '#dashsk_inputCariBelum').on('keyup', '#dashsk_inputCariBelum', dashsk_filterBelum);
         $(document).off('keyup', '#dashsk_inputCariBelumModal').on('keyup', '#dashsk_inputCariBelumModal', dashsk_filterBelumModal);
-        $(document).off('click', '#dashsk_btnSalinWa, #dashsk_btnSalinDaftarModal').on('click', '#dashsk_btnSalinWa, #dashsk_btnSalinDaftarModal', dashsk_copyListBelum);
-        $(document).off('click', '#dashsk_btnModalBelum').on('click', '#dashsk_btnModalBelum', function() {
-            dashsk_showModalBelum();
-        });
 
-        // No charts to refresh on dark mode toggle anymore
-        $(document).off('change.dashskTheme', '#sultan_darkModeToggle');
+        // Salin WhatsApp Daftar Belum Lapor
+        $(document).off('click', '#dashsk_btnSalinDaftarWA, #dashsk_btnSalinDaftarModal, #dashsk_btnSalinBelum').on('click', '#dashsk_btnSalinDaftarWA, #dashsk_btnSalinDaftarModal, #dashsk_btnSalinBelum', function (e) {
+            e.preventDefault();
+            dashsk_salinBelumLaporKeWA();
+        });
     });
 
-    // Fungsi Global untuk memasang listener filter (dipanggil setelah load pertama sukses)
-    function dashsk_attachFilterListeners() {
-        var loadTimeout;
-        $(document).off('change', '#dashsk_filterTahun, #dashsk_filterSemester').on('change', '#dashsk_filterTahun, #dashsk_filterSemester', function() {
-            clearTimeout(loadTimeout);
-            loadTimeout = setTimeout(function () {
-                dashsk_loadDataDashboard();
-            }, 200);
-        });
-    }
+    /* =================================================================
+       PENGALIHAN MODE TAMPILAN (UNIT VS REKAP)
+       ================================================================= */
+    function dashsk_switchMode(mode) {
+        DASHSK_ACTIVE_VIEW = mode;
+        $('.sultan-segmented-btn').removeClass('active');
+        $('.sultan-segmented-btn[data-mode="' + mode + '"]').addClass('active');
 
-    function dashsk_initFilterDefault() {
-        var now = new Date();
-        var curMonth = now.getMonth();
-        var curYear = now.getFullYear();
-
-        var htmlTahun = '';
-        for (var y = 2021; y <= curYear + 1; y++) {
-            var ta = y + "/" + (y + 1);
-            htmlTahun += '<option value="' + ta + '">' + ta + '</option>';
-        }
-        $('#dashsk_filterTahun').html(htmlTahun).prop('disabled', false);
-
-        var htmlSmt = `
-            <option value="">Semua Semester</option>
-            <option value="Semester 1">Semester 1</option>
-            <option value="Semester 2">Semester 2</option>
-        `;
-        $('#dashsk_filterSemester').html(htmlSmt).prop('disabled', false);
-
-        var defSemester = (curMonth >= 6) ? "Semester 1" : "Semester 2";
-        var defTahun = (curMonth >= 6) ? curYear + "/" + (curYear + 1) : (curYear - 1) + "/" + curYear;
-
-        $('#dashsk_filterSemester').val(defSemester);
-        if ($('#dashsk_filterTahun option[value="' + defTahun + '"]').length > 0) {
-            $('#dashsk_filterTahun').val(defTahun);
+        if (mode === 'unit') {
+            $('#dashsk_viewAdmin').addClass('d-none');
+            $('#dashsk_viewUser').removeClass('d-none');
+            var currentUnit = DASHSK_IS_ADMIN ? ($('#dashsk_filterUserSekolah').val() || DASHSK_USER_SEKOLAH) : DASHSK_USER_SEKOLAH;
+            if (DASHSK_ALL_DATA_SK.length > 0) {
+                dashsk_renderModeUnit(currentUnit);
+            }
+        } else {
+            $('#dashsk_viewUser').addClass('d-none');
+            $('#dashsk_viewAdmin').removeClass('d-none');
+            if (DASHSK_CACHE_REKAP) {
+                dashsk_renderRekapUI(DASHSK_CACHE_REKAP);
+            } else {
+                dashsk_loadDataRekap();
+            }
         }
     }
 
     /* =================================================================
-       FETCH DATA SERVER DENGAN PENGAMAN DOUBLE LOAD
+       FETCH MASTER SEKOLAH & DATA TRANSAKSI SK
        ================================================================= */
-    function dashsk_loadDataDashboard() {
-        if (window.DASHSK_IS_FETCHING) return;
+    function dashsk_loadMasterDanData(callback) {
+        google.script.run.withSuccessHandler(function (dataSK) {
+            DASHSK_ALL_DATA_SK = dataSK || [];
+            
+            // Dapatkan Master Sekolah dari database
+            google.script.run.withSuccessHandler(function (mapUnit) {
+                var list = [];
+                if (mapUnit && typeof mapUnit === 'object') {
+                    for (var u in mapUnit) {
+                        if (mapUnit.hasOwnProperty(u)) {
+                            list.push({ nama: u, npsn: mapUnit[u] });
+                        }
+                    }
+                }
+                // Jika kosong, ekstrak dari data SK yang ada
+                if (list.length === 0 && DASHSK_ALL_DATA_SK.length > 0) {
+                    var sSet = new Set();
+                    DASHSK_ALL_DATA_SK.forEach(function (r) {
+                        if (r.namaSd) sSet.add(r.namaSd.trim());
+                    });
+                    sSet.forEach(function (name) {
+                        list.push({ nama: name, npsn: "" });
+                    });
+                }
+                list.sort(function (a, b) { return a.nama.localeCompare(b.nama); });
+                DASHSK_MASTER_SEKOLAH = list;
 
-        var currentTime = new Date().getTime();
-        if (currentTime - window.DASHSK_LAST_FETCH_TIME < 2000) {
-            console.log("SIKS-LOG: Blokir Double Load (Jeda < 2s).");
+                if (typeof callback === 'function') callback();
+            }).withFailureHandler(function () {
+                if (typeof callback === 'function') callback();
+            }).getMappingUnitNpsn();
+
+        }).withFailureHandler(function () {
+            Sultan.alert('error', 'Gagal', 'Tidak dapat memuat transaksi SK dari server.');
+            if (typeof callback === 'function') callback();
+        }).getDaftarSK();
+    }
+
+    /* =================================================================
+       INIT FILTER DEFAULT TAHUN AJARAN & SEMESTER
+       ================================================================= */
+    function dashsk_initFilterDefault() {
+        var now = new Date();
+        var currentYear = now.getFullYear();
+        var currentMonth = now.getMonth() + 1; // 1 - 12
+
+        // Logika Tahun Ajaran: Juli-Desember = Year/(Year+1), Januari-Juni = (Year-1)/Year
+        var taNow = (currentMonth >= 7) ? `${currentYear}/${currentYear + 1}` : `${currentYear - 1}/${currentYear}`;
+        var smtNow = (currentMonth >= 7) ? "Ganjil" : "Genap";
+
+        var selectTahun = $('#dashsk_dashTahun');
+        selectTahun.empty();
+
+        var baseYear = (currentMonth >= 7) ? currentYear : currentYear - 1;
+        // Tambahkan opsi 5 tahun ajaran (termasuk 1 tahun ke depan)
+        for (var i = 1; i >= -3; i--) {
+            var yStart = baseYear + i;
+            var taStr = `${yStart}/${yStart + 1}`;
+            selectTahun.append(`<option value="${taStr}">${taStr}</option>`);
+        }
+        selectTahun.val(taNow);
+        $('#dashsk_dashSemester').val(smtNow);
+    }
+
+    /* =================================================================
+       SETUP DROPDOWN SEKOLAH UNTUK ADMIN DI MODE UNIT
+       ================================================================= */
+    function dashsk_setupUserDropdown() {
+        if (!DASHSK_IS_ADMIN) return;
+        $('#dashsk_wrapperUserJenjang').removeClass('d-none');
+        $('#dashsk_wrapperUserSekolah').removeClass('d-none');
+        dashsk_filterSekolahDropdown();
+    }
+
+    function dashsk_filterSekolahDropdown() {
+        var jenjang = ($('#dashsk_filterUserJenjang').val() || "").toUpperCase();
+        var select = $('#dashsk_filterUserSekolah');
+        select.empty();
+
+        var filtered = DASHSK_MASTER_SEKOLAH.filter(function (s) {
+            if (!jenjang) return true;
+            var sName = s.nama.toUpperCase();
+            if (jenjang === 'SD') return sName.indexOf('SD') !== -1;
+            if (jenjang === 'TK') return sName.indexOf('TK') !== -1;
+            if (jenjang === 'KB') return sName.indexOf('KB') !== -1;
+            if (jenjang === 'SPS') return sName.indexOf('SPS') !== -1;
+            return true;
+        });
+
+        if (filtered.length === 0) {
+            select.append('<option value="">Tidak ada sekolah</option>');
             return;
         }
-        window.DASHSK_LAST_FETCH_TIME = currentTime;
 
-        console.log("SIKS-LOG: Menjalankan request server...");
-        window.DASHSK_IS_FETCHING = true;
-        
-        dashsk_applyLoadingUI();
+        filtered.forEach(function (s) {
+            select.append(`<option value="${dashsk_escapeHtml(s.nama)}">${dashsk_escapeHtml(s.nama)}</option>`);
+        });
 
-        var th = $('#dashsk_filterTahun').val();
-        var sm = $('#dashsk_filterSemester').val();
+        var first = filtered[0].nama;
+        select.val(first);
+        $('#dashsk_userSchoolName').text(first);
+        dashsk_renderModeUnit(first);
+    }
 
-        google.script.run
-            .withSuccessHandler(function (data) {
-                window.DASHSK_CACHE_DATA = data; // Simpan ke cache global
-                window.DASHSK_IS_FETCHING = false;
-                dashsk_removeLoadingUI();
+    /* =================================================================
+       RENDER VIEW 1: MODE UNIT / SEKOLAH (PERSONAL TIMELINE)
+       ================================================================= */
+    function dashsk_renderModeUnit(targetSekolah) {
+        var unitName = (targetSekolah || "").trim();
+        if (!unitName) {
+            $('#dashsk_userMultiYearContainer').html(SultanUI.emptyState('Pilih Sekolah', 'Silakan pilih sekolah untuk melihat riwayat SK Pembagian Tugas.', 'fa-school'));
+            return;
+        }
 
-                // Pastikan teks tengah donut terupdate di sini juga sebagai pengaman
-                if (data.totalMasuk !== undefined) {
-                    $('#dashsk_chartTotalCenter').text(data.totalMasuk);
+        $('#dashsk_userSchoolName').text(unitName);
+
+        // Filter data SK hanya untuk unit ini
+        var userSK = DASHSK_ALL_DATA_SK.filter(function (r) {
+            return String(r.namaSd || "").trim().toUpperCase() === unitName.toUpperCase();
+        });
+
+        // 1. Hitung Status Semester Berjalan
+        var now = new Date();
+        var cYear = now.getFullYear();
+        var cMonth = now.getMonth() + 1;
+        var taCurrent = (cMonth >= 7) ? `${cYear}/${cYear + 1}` : `${cYear - 1}/${cYear}`;
+        var smtCurrent = (cMonth >= 7) ? "Ganjil" : "Genap";
+
+        var currentSKList = userSK.filter(function (r) {
+            return String(r.tahun || "").trim() === taCurrent && String(r.semester || "").trim().toLowerCase() === smtCurrent.toLowerCase();
+        });
+
+        // Cari SK Perubahan atau SK Awal terbaru
+        var skTerbaru = currentSKList.length > 0 ? currentSKList[0] : null;
+
+        var statusClass = "text-muted";
+        var statusIcon = "fas fa-question-circle";
+        var statusTitle = "Belum Unggah SK";
+        var statusDesc = `Sekolah Anda belum mengunggah SK Pembagian Tugas untuk TA ${taCurrent} Semester ${smtCurrent}.`;
+        var actionBtnHtml = `
+            <a href="#" class="sultan-btn sultan-btn-maroon px-4 py-2 shadow-sm font-weight-bold" data-page="sk_data">
+                <i class="fas fa-upload mr-2"></i> Unggah SK Sekarang
+            </a>
+        `;
+
+        if (skTerbaru) {
+            var st = String(skTerbaru.status || "").toLowerCase();
+            if (st === 'disetujui') {
+                statusClass = "text-success";
+                statusIcon = "fas fa-check-circle";
+                statusTitle = "SK Sudah Disetujui";
+                statusDesc = `SK Pembagian Tugas (${skTerbaru.kriteria || 'SK Awal'}) telah diverifikasi dan disetujui oleh admin.`;
+                actionBtnHtml = `
+                    <button type="button" class="sultan-btn sultan-btn-outline-success px-4 py-2 shadow-sm font-weight-bold" onclick="dashsk_bukaDetailSK('${skTerbaru.rowBaris}')">
+                        <i class="fas fa-eye mr-2"></i> Lihat Berkas SK
+                    </button>
+                `;
+            } else if (st === 'diproses' || st === '') {
+                statusClass = "text-warning";
+                statusIcon = "fas fa-hourglass-half";
+                statusTitle = "SK Sedang Diproses";
+                statusDesc = `Berkas SK Pembagian Tugas telah dikirim pada ${skTerbaru.tglUnggah || '-'} dan sedang menunggu verifikasi admin.`;
+                actionBtnHtml = `
+                    <button type="button" class="sultan-btn sultan-btn-outline-warning px-4 py-2 shadow-sm font-weight-bold" onclick="dashsk_bukaDetailSK('${skTerbaru.rowBaris}')">
+                        <i class="fas fa-file-alt mr-2"></i> Cek Berkas
+                    </button>
+                `;
+            } else if (st === 'revisi') {
+                statusClass = "text-warning";
+                statusIcon = "fas fa-exclamation-triangle";
+                statusTitle = "Perlu Perbaikan / Revisi";
+                statusDesc = `Catatan Admin: ${skTerbaru.keterangan || 'Silakan perbaiki berkas SK sesuai catatan.'}`;
+                actionBtnHtml = `
+                    <a href="#" class="sultan-btn sultan-btn-aksi-hapus px-4 py-2 shadow-sm font-weight-bold" data-page="sk_data">
+                        <i class="fas fa-edit mr-2"></i> Perbaiki SK Sekarang
+                    </a>
+                `;
+            } else if (st === 'ditolak') {
+                statusClass = "text-danger";
+                statusIcon = "fas fa-times-circle";
+                statusTitle = "Pengajuan SK Ditolak";
+                statusDesc = `Alasan: ${skTerbaru.keterangan || 'Pengajuan ditolak oleh dinas.'}`;
+                actionBtnHtml = `
+                    <a href="#" class="sultan-btn sultan-btn-maroon px-4 py-2 shadow-sm font-weight-bold" data-page="sk_data">
+                        <i class="fas fa-redo mr-2"></i> Unggah Ulang SK
+                    </a>
+                `;
+            }
+        }
+
+        $('#dashsk_userCurrentPeriod').text(`PERIODE BERJALAN: TA ${taCurrent} - SEMESTER ${smtCurrent.toUpperCase()}`);
+        $('#dashsk_userCurrentTitle').text(statusTitle);
+        $('#dashsk_userCurrentDesc').text(statusDesc);
+        $('#dashsk_userCurrentIconBox').html(`<i class="${statusIcon} ${statusClass} fa-2x"></i>`);
+        $('#dashsk_userCurrentAction').html(actionBtnHtml);
+
+        // 2. Susun Riwayat Multi-Tahun Ajaran
+        var mapTahunAjaran = {};
+        // Kumpulkan semua tahun ajaran yang ada di data SK atau generate minimal 3 TA terakhir
+        var baseYear = (cMonth >= 7) ? cYear : cYear - 1;
+        for (var i = 0; i >= -2; i--) {
+            var yStart = baseYear + i;
+            var taStr = `${yStart}/${yStart + 1}`;
+            mapTahunAjaran[taStr] = { Ganjil: [], Genap: [] };
+        }
+
+        userSK.forEach(function (r) {
+            var ta = String(r.tahun || "").trim();
+            var smt = String(r.semester || "").trim();
+            if (smt.toLowerCase().indexOf('ganjil') !== -1) smt = 'Ganjil';
+            else if (smt.toLowerCase().indexOf('genap') !== -1) smt = 'Genap';
+
+            if (ta && (smt === 'Ganjil' || smt === 'Genap')) {
+                if (!mapTahunAjaran[ta]) {
+                    mapTahunAjaran[ta] = { Ganjil: [], Genap: [] };
+                }
+                mapTahunAjaran[ta][smt].push(r);
+            }
+        });
+
+        var sortedTA = Object.keys(mapTahunAjaran).sort().reverse();
+        var cardsHtml = "";
+
+        sortedTA.forEach(function (ta) {
+            var smtGanjil = mapTahunAjaran[ta].Ganjil;
+            var smtGenap = mapTahunAjaran[ta].Genap;
+
+            var renderSemesterItem = function (list, smtLabel) {
+                if (!list || list.length === 0) {
+                    return `
+                        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                            <span class="small font-weight-bold text-muted">${smtLabel}</span>
+                            <span class="badge badge-secondary px-2 py-1 font-weight-normal" style="opacity: 0.7;">Belum Ada Berkas</span>
+                        </div>
+                    `;
                 }
 
-                dashsk_renderDashboard(data);
-                
-                // LANGKAH TERAKHIR: Pasang listener filter hanya setelah sukses pertama kali
-                dashsk_attachFilterListeners();
-            })
-            .withFailureHandler(function (err) {
-                window.DASHSK_IS_FETCHING = false;
-                dashsk_removeLoadingUI();
-                Sultan.alert('error', 'Koneksi Terputus', err.message);
-            })
-            .getDashboardSK(th, sm);
-    }
+                // Ambil berkas terbaru di semester ini
+                var item = list[0];
+                var st = String(item.status || "").toLowerCase();
+                var badgeClass = "badge-secondary";
+                var badgeLabel = item.status || "Diproses";
 
-    // Fungsi Baru: Pasang UI Loading ke DOM
-    // Fungsi Baru: Pasang UI Loading ke DOM
-    function dashsk_applyLoadingUI() {
-        if (typeof SultanUI !== 'undefined') {
-            var selLottery = '#dashsk_cardTotalSekolah, #dashsk_cardSudah, #dashsk_cardBelum, #dashsk_cardProgress, ' +
-                             '#dashsk_cardTotalDokumen, #dashsk_cardDiproses, #dashsk_cardDisetujui, #dashsk_cardRevisi, #dashsk_cardDitolak';
-            SultanUI.startLottery(selLottery, 3);
-        }
+                if (st === 'disetujui') badgeClass = "badge-success";
+                else if (st === 'diproses' || st === '') badgeClass = "badge-warning text-dark";
+                else if (st === 'revisi') badgeClass = "badge-warning";
+                else if (st === 'ditolak') badgeClass = "badge-danger";
 
-        // List Container Spinner
-        var listLoading = `<li class="list-group-item text-center text-muted py-4"><i class="fas fa-spinner fa-spin mr-2"></i> Memuat daftar...</li>`;
-        $('#dashsk_listSudah').html(listLoading);
-        $('#dashsk_listBelum').html(listLoading);
+                return `
+                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom hover-card" style="cursor: pointer;" onclick="dashsk_bukaDetailSK('${item.rowBaris}')">
+                        <div>
+                            <span class="small font-weight-bold d-block text-dark">${smtLabel}</span>
+                            <span class="text-muted" style="font-size: 11px;">${dashsk_escapeHtml(item.kriteria || 'SK Awal')} • ${item.noSk || '-'}</span>
+                        </div>
+                        <span class="badge ${badgeClass} px-2 py-1 shadow-xs">${badgeLabel}</span>
+                    </div>
+                `;
+            };
 
-        $('.card-sultan').css('opacity', '0.85');
-        $('#dashsk_btnRefresh').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
-    }
-
-    // Fungsi Baru: Bersihkan UI Loading dari DOM
-    function dashsk_removeLoadingUI() {
-        DASHSK_IS_INIT = false;
-        $('.card-sultan').css('opacity', '1');
-        $('#dashsk_btnRefresh').prop('disabled', false).html('<i class="fas fa-sync-alt"></i>');
-    }
-
-    function dashsk_renderDashboard(data) {
-        if (data.error) { Sultan.notif.gagal(data.error); return; }
-
-        var totalSekolah = data.totalSekolah || 0;
-        var belumLaporCount = data.belumLaporCount || 0;
-        var sudahUnggah = totalSekolah - belumLaporCount;
-        if (sudahUnggah < 0) sudahUnggah = 0;
-
-        // Animate Statistik Utama (Row 1)
-        dashsk_animateValue("dashsk_cardTotalSekolah", totalSekolah);
-        dashsk_animateValue("dashsk_cardSudah", sudahUnggah);
-        dashsk_animateValue("dashsk_cardBelum", belumLaporCount);
-        dashsk_animateValue("dashsk_cardProgress", data.progress, "%");
-
-        // Animate Status Cards (Row 2)
-        dashsk_animateValue("dashsk_cardTotalDokumen", data.totalMasuk || 0);
-        dashsk_animateValue("dashsk_cardDiproses", data.proses || data.diproses || 0);
-        dashsk_animateValue("dashsk_cardDisetujui", data.disetujui || 0);
-        dashsk_animateValue("dashsk_cardRevisi", data.revisi || 0);
-        dashsk_animateValue("dashsk_cardDitolak", data.ditolak || 0);
-
-        // Update Detail Awal vs Perubahan (Jml Dokumen & Disetujui & Status lainnya)
-        var infoTotal = 'Awal: ' + (data.totalAwal || 0) + ' | Perb: ' + (data.totalPerubahan || 0);
-        var infoValid = 'Awal: ' + (data.validAwal || 0) + ' | Perb: ' + (data.validPerubahan || 0);
-        var infoProses = 'Awal: ' + (data.prosesAwal || 0) + ' | Perb: ' + (data.prosesPerubahan || 0);
-        var infoRevisi = 'Awal: ' + (data.revisiAwal || 0) + ' | Perb: ' + (data.revisiPerubahan || 0);
-        var infoTolak = 'Awal: ' + (data.tolakAwal || 0) + ' | Perb: ' + (data.tolakPerubahan || 0);
-
-        $('#dashsk_infoTotalDetail').html(infoTotal);
-        $('#dashsk_infoValidDetail').html(infoValid);
-        $('#dashsk_infoProsesDetail').html(infoProses);
-        $('#dashsk_infoRevisiDetail').html(infoRevisi);
-        $('#dashsk_infoTolakDetail').html(infoTolak);
-
-        // Update Progress Bar (Row 3)
-        var progressVal = parseFloat(data.progress) || 0;
-        var progressColor = 'hsl(' + (progressVal * 1.2) + ', 80%, 45%)';
-        $('#dashsk_progressBar').css({
-            'width': progressVal + '%',
-            'background-color': progressColor
+            cardsHtml += `
+                <div class="col-xl-4 col-md-6 mb-4">
+                    <div class="card card-sultan h-100 shadow-sm border-0">
+                        <div class="card-header bg-transparent border-0 pt-3 pb-2 d-flex justify-content-between align-items-center">
+                            <h6 class="font-weight-bold text-sultan-utama mb-0">
+                                <i class="fas fa-calendar-alt mr-2 text-maroon"></i>TA ${ta}
+                            </h6>
+                            <span class="badge badge-light px-2 py-1 small font-weight-bold">${userSK.length > 0 ? 'Tersinkron' : '-'}</span>
+                        </div>
+                        <div class="card-body py-2">
+                            ${renderSemesterItem(smtGanjil, 'Semester Ganjil')}
+                            ${renderSemesterItem(smtGenap, 'Semester Genap')}
+                        </div>
+                        <div class="card-footer bg-transparent border-0 pt-0 pb-3 text-right">
+                            <small class="text-muted" style="font-size: 10px;">Total ${smtGanjil.length + smtGenap.length} dokumen diunggah</small>
+                        </div>
+                    </div>
+                </div>
+            `;
         });
-        $('#dashsk_progressText').text(progressVal + '% Selesai');
 
-        // Update lists (Row 4)
-        DASHSK_LIST_BELUM_CACHE = data.belumLaporList || [];
-        $('#dashsk_badgeBelum').text(DASHSK_LIST_BELUM_CACHE.length);
-        dashsk_renderBelumList(DASHSK_LIST_BELUM_CACHE);
-
-        DASHSK_LIST_SUDAH_CACHE = data.sudahLaporList || [];
-        $('#dashsk_badgeSudah').text(DASHSK_LIST_SUDAH_CACHE.length);
-        dashsk_renderSudahList(DASHSK_LIST_SUDAH_CACHE);
+        $('#dashsk_userMultiYearContainer').html(cardsHtml);
     }
 
-    function dashsk_renderBelumList(list) {
-        var elBody = $('#dashsk_listBelum');
-        var elModal = $('#dashsk_listBelumBodyModal');
-        elBody.empty(); elModal.empty();
+    /* =================================================================
+       BUKA MODAL DETAIL SK
+       ================================================================= */
+    function dashsk_bukaDetailSK(rowBaris) {
+        var item = DASHSK_ALL_DATA_SK.find(function (r) {
+            return String(r.rowBaris) === String(rowBaris);
+        });
 
-        if (list.length === 0) {
-            elBody.html(SultanUI.renderListEmptySuccess('Nihil! Semua Sudah Lapor.', 'Tidak ada sekolah yang belum mengunggah berkas.'));
-            var trHtml = '<tr><td class="text-center p-5 text-success font-weight-bold bg-adaptive-sultan"><i class="fas fa-check-circle fa-3x mb-2"></i><br>Nihil! Semua Sudah Lapor.</td></tr>';
-            elModal.html(trHtml);
+        if (!item) {
+            Sultan.notif.info('Data SK tidak ditemukan.');
             return;
         }
 
-        var html = "";
-        list.forEach(function (item, i) {
-            html += SultanUI.renderListItem(i + 1, item.nama, item.npsn, '', 'belum');
-        });
-        elBody.html(html);
+        $('#dashsk_modalDetailSekolah').text(item.namaSd || '-');
+        $('#dashsk_modalDetailPeriode').text(`TA ${item.tahun || '-'} - ${item.semester || '-'}`);
+        $('#dashsk_modalDetailKriteria').text(`: ${item.kriteria || 'SK Awal'}`);
+        $('#dashsk_modalDetailNoSk').text(`: ${item.noSk || '-'}`);
+        $('#dashsk_modalDetailTglSk').text(`: ${item.tglSk || '-'}`);
+        $('#dashsk_modalDetailWaktu').text(`: ${item.tglUnggah || '-'}`);
 
-        var modalHtml = "";
-        list.forEach(function (item, i) {
-            modalHtml += `<tr class="animated fadeIn border-bottom bg-transparent" style="border-bottom: 1px solid var(--dm-border) !important;">
-                <td class="px-4 py-2 align-middle text-center" style="width: 70px; min-width: 70px;">
-                    <div class="d-inline-flex align-items-center justify-content-center bg-adaptive-sultan border rounded-circle font-weight-bold text-muted shadow-xs" style="width:28px; height:28px; font-size: 11px;">${i + 1}</div>
-                </td>
-                <td class="py-2 align-middle pr-4">
-                    <h6 class="text-adaptive-sultan font-weight-bold mb-0" style="font-size: 0.85rem; line-height: 1.2;">${item.nama}</h6>
-                    <small class="text-muted" style="font-size: 0.7rem; line-height: 1.1;">NPSN: ${item.npsn}</small>
-                </td>
-            </tr>`;
-        });
-        elModal.html(modalHtml);
-    }
+        var st = String(item.status || "").toLowerCase();
+        var badgeHtml = `<span class="badge badge-warning px-3 py-1 font-weight-bold">${item.status || 'Diproses'}</span>`;
+        if (st === 'disetujui') badgeHtml = `<span class="badge badge-success px-3 py-1 font-weight-bold">DISETUJUI</span>`;
+        else if (st === 'revisi') badgeHtml = `<span class="badge badge-warning px-3 py-1 font-weight-bold">REVISI</span>`;
+        else if (st === 'ditolak') badgeHtml = `<span class="badge badge-danger px-3 py-1 font-weight-bold">DITOLAK</span>`;
+        $('#dashsk_modalDetailStatusBadge').html(badgeHtml);
 
-    function dashsk_renderSudahList(list) {
-        var elBody = $('#dashsk_listSudah');
-        elBody.empty();
-
-        if (list.length === 0) {
-            elBody.html(SultanUI.renderListEmptyWarning('Belum Ada Data', 'Belum ada sekolah yang mengunggah berkas.'));
-            return;
+        if (item.keterangan && item.keterangan.trim() !== '') {
+            $('#dashsk_modalDetailBoxCatatan').show();
+            $('#dashsk_modalDetailCatatan').text(`: ${item.keterangan}`);
+        } else {
+            $('#dashsk_modalDetailBoxCatatan').hide();
         }
 
-        var html = "";
-        list.forEach(function (item, i) {
-            var statusType = 'success';
+        if (item.fileUrl && item.fileUrl.trim() !== '') {
+            $('#dashsk_modalDetailBtnFile').html(`
+                <a href="${item.fileUrl}" target="_blank" class="sultan-btn sultan-btn-maroon px-3 py-2">
+                    <i class="fas fa-file-pdf mr-2"></i> Buka Berkas PDF
+                </a>
+            `);
+        } else {
+            $('#dashsk_modalDetailBtnFile').empty();
+        }
 
-            if (item.status === 'Revisi') {
-                statusType = 'warning';
-            } else if (item.status === 'Diproses') {
-                statusType = 'info';
-            } else if (item.status === 'Disetujui') {
-                statusType = 'success';
+        $('#dashsk_modalDetailSK').modal('show');
+    }
+
+    /* =================================================================
+       FETCH & RENDER VIEW 2: MODE REKAP / ADMIN (ANALISIS MAKRO)
+       ================================================================= */
+    function dashsk_loadDataRekap(isQuiet) {
+        var ta = $('#dashsk_dashTahun').val();
+        var smt = $('#dashsk_dashSemester').val();
+
+        if (!ta || !smt) return;
+
+        if (!isQuiet) {
+            var btn = $('#dashsk_btnRefreshRekap');
+            btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin" style="color: var(--sultan-aksi-utama);"></i>');
+            $('#dashsk_syncTime').text('Menyinkronkan...');
+        }
+
+        google.script.run.withSuccessHandler(function (resStats) {
+            if (!isQuiet) {
+                $('#dashsk_btnRefreshRekap').prop('disabled', false).html('<i class="fas fa-sync-alt"></i>');
+                var timeNow = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+                $('#dashsk_syncTime').text(`Sinkron ${timeNow}`);
             }
 
-            html += SultanUI.renderListItem(i + 1, item.nama, item.npsn, '', statusType);
+            DASHSK_CACHE_REKAP = resStats;
+            dashsk_renderRekapUI(resStats);
+
+        }).withFailureHandler(function () {
+            if (!isQuiet) {
+                $('#dashsk_btnRefreshRekap').prop('disabled', false).html('<i class="fas fa-sync-alt"></i>');
+                $('#dashsk_syncTime').text('Gagal Sinkron');
+            }
+        }).getDashboardSK(ta, smt);
+    }
+
+    function dashsk_renderRekapUI(stats) {
+        if (!stats) return;
+
+        var ta = $('#dashsk_dashTahun').val();
+        var smt = $('#dashsk_dashSemester').val();
+        $('#dashsk_lblPeriodeKategori').text(`${ta} - ${smt}`);
+
+        // Update Metrik Row 1 & Row 2
+        var totalMasuk = stats.totalMasuk || 0;
+        var sudahLapor = (stats.masterCount ? (stats.masterCount - (stats.belumLaporCount || 0)) : (totalMasuk));
+        var totalSekolah = stats.masterCount || (sudahLapor + (stats.belumLaporCount || 0));
+        var progress = totalSekolah > 0 ? Math.round((sudahLapor / totalSekolah) * 100) : 0;
+
+        $('#dashsk_metricTotalSekolah').text(totalSekolah);
+        $('#dashsk_metricSudahLapor').text(sudahLapor);
+        $('#dashsk_metricBelumLapor').text(stats.belumLaporCount || 0);
+        $('#dashsk_metricProgress').text(progress + '%');
+
+        $('#dashsk_metricRow2_total').text(totalMasuk);
+        $('#dashsk_metricRow2_proses').text(stats.diproses || 0);
+        $('#dashsk_metricRow2_disetujui').text(stats.disetujui || 0);
+        $('#dashsk_metricRow2_revisi').text(stats.revisi || 0);
+        $('#dashsk_metricRow2_ditolak').text(stats.ditolak || 0);
+
+        // Update Kategori Awal vs Perubahan
+        var cntAwal = stats.totalAwal || 0;
+        var cntUbah = stats.totalPerubahan || 0;
+        var sumKategori = cntAwal + cntUbah;
+        var pctAwal = sumKategori > 0 ? Math.round((cntAwal / sumKategori) * 100) : 0;
+        var pctUbah = sumKategori > 0 ? (100 - pctAwal) : 0;
+
+        $('#dashsk_countAwal').text(cntAwal);
+        $('#dashsk_pctAwal').text(`${pctAwal}% dari total dokumen`);
+        $('#dashsk_countPerubahan').text(cntUbah);
+        $('#dashsk_pctPerubahan').text(`${pctUbah}% dari total dokumen`);
+
+        $('#dashsk_statAwalValid').text(stats.validAwal || 0);
+        $('#dashsk_statAwalProses').text(stats.prosesAwal || 0);
+        $('#dashsk_statUbahValid').text(stats.validPerubahan || 0);
+
+        // Update Daftar Belum Lapor
+        DASHSK_LIST_BELUM_CACHE = stats.belumLaporList || [];
+        $('#dashsk_countBelumLapor').text(DASHSK_LIST_BELUM_CACHE.length);
+        dashsk_renderListBelum(DASHSK_LIST_BELUM_CACHE);
+
+        // Update Daftar Sudah Lapor
+        DASHSK_LIST_SUDAH_CACHE = stats.recent || [];
+        dashsk_renderListSudah(DASHSK_LIST_SUDAH_CACHE);
+    }
+
+    function dashsk_renderListBelum(list) {
+        var container = $('#dashsk_listBelumContainer');
+        container.empty();
+
+        if (!list || list.length === 0) {
+            container.html(`
+                <li class="list-group-item bg-transparent text-center text-success py-4">
+                    <i class="fas fa-check-double fa-2x mb-2"></i><br>
+                    <strong>Luar Biasa!</strong> Semua sekolah telah mengunggah SK.
+                </li>
+            `);
+            return;
+        }
+
+        list.forEach(function (name, idx) {
+            container.append(`
+                <li class="list-group-item bg-transparent d-flex align-items-center justify-content-between py-2 px-3 border-bottom">
+                    <span class="text-truncate mr-2"><span class="text-muted mr-2">${idx + 1}.</span>${dashsk_escapeHtml(name)}</span>
+                    <span class="badge badge-danger-soft small font-weight-bold">Belum</span>
+                </li>
+            `);
         });
-        elBody.html(html);
+    }
+
+    function dashsk_renderListSudah(list) {
+        var tbody = $('#dashsk_listSudahBody');
+        tbody.empty();
+
+        if (!list || list.length === 0) {
+            tbody.html(`
+                <tr>
+                    <td colspan="5" class="text-center py-4 text-muted">Belum ada sekolah yang mengunggah SK pada periode ini.</td>
+                </tr>
+            `);
+            return;
+        }
+
+        list.forEach(function (r, idx) {
+            var st = String(r.status || "").toLowerCase();
+            var badgeClass = "badge-secondary";
+            if (st === 'disetujui') badgeClass = "badge-success";
+            else if (st === 'diproses' || st === '') badgeClass = "badge-warning text-dark";
+            else if (st === 'revisi') badgeClass = "badge-warning";
+            else if (st === 'ditolak') badgeClass = "badge-danger";
+
+            tbody.append(`
+                <tr>
+                    <td class="text-center font-weight-bold">${idx + 1}</td>
+                    <td class="font-weight-bold">${dashsk_escapeHtml(r.namaSd || '-')}</td>
+                    <td><span class="badge badge-light px-2 py-1">${dashsk_escapeHtml(r.kriteria || 'SK Awal')}</span></td>
+                    <td><span class="badge ${badgeClass} px-2 py-1">${dashsk_escapeHtml(r.status || 'Diproses')}</span></td>
+                    <td class="text-muted small">${dashsk_escapeHtml(r.tglUnggah || '-')}</td>
+                </tr>
+            `);
+        });
+    }
+
+    /* =================================================================
+       FILTER & UTILITIES PENCARIAN
+       ================================================================= */
+    function dashsk_filterBelum() {
+        var q = ($('#dashsk_inputCariBelum').val() || "").toLowerCase();
+        var filtered = DASHSK_LIST_BELUM_CACHE.filter(function (s) {
+            return s.toLowerCase().indexOf(q) !== -1;
+        });
+        dashsk_renderListBelum(filtered);
     }
 
     function dashsk_filterSudah() {
-        var val = $('#dashsk_inputCariSudah').val().toLowerCase();
-        $("#dashsk_listSudah .list-group-item").filter(function () {
-            $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
+        var q = ($('#dashsk_inputCariSudah').val() || "").toLowerCase();
+        var filtered = DASHSK_LIST_SUDAH_CACHE.filter(function (r) {
+            return (r.namaSd || "").toLowerCase().indexOf(q) !== -1 || (r.kriteria || "").toLowerCase().indexOf(q) !== -1;
         });
-    }
-
-    function dashsk_filterBelum() {
-        var val = $('#dashsk_inputCariBelum').val().toLowerCase();
-        $("#dashsk_listBelum .list-group-item").filter(function () {
-            $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
-        });
-    }
-
-    function dashsk_filterBelumLangsung() {
-        var val = $('#dashsk_cariBelumLangsung').val().toLowerCase();
-        $("#dashsk_listBelum .list-group-item").filter(function () {
-            $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
-        });
+        dashsk_renderListSudah(filtered);
     }
 
     function dashsk_filterBelumModal() {
-        var val = $('#dashsk_inputCariBelumModal').val().toLowerCase();
-        $("#dashsk_listBelumBodyModal tr").filter(function () {
-            $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
+        var q = ($('#dashsk_inputCariBelumModal').val() || "").toLowerCase();
+        var tbody = $('#dashsk_listBelumBodyModal');
+        tbody.empty();
+        var filtered = DASHSK_LIST_BELUM_CACHE.filter(function (s) { return s.toLowerCase().indexOf(q) !== -1; });
+        filtered.forEach(function (name, idx) {
+            tbody.append(`<tr><td class="text-center font-weight-bold">${idx + 1}</td><td>${dashsk_escapeHtml(name)}</td></tr>`);
         });
     }
 
-    function dashsk_showModalBelum() {
-        var th = $('#dashsk_filterTahun').val() || "Semua Tahun";
-        var sm = $('#dashsk_filterSemester').val() || "Semua Semester";
-        $('#dashsk_lblPeriodeBelum').text(sm + " - TA " + th);
-        $('#dashsk_inputCariBelumModal').val("");
-        dashsk_filterBelumModal();
-        $('#dashsk_modalBelumLapor').modal('show');
-    }
-
-    function dashsk_renderTimeline(list) {
-        var el = $('#dashsk_timelineContainer');
-        el.empty();
-
-        if (!list || list.length === 0) {
-            el.html('<div class="text-center p-5 text-muted small"><i class="fas fa-inbox fa-3x mb-2 opacity-30"></i><br>Belum ada aktivitas.</div>');
+    function dashsk_salinBelumLaporKeWA() {
+        if (!DASHSK_LIST_BELUM_CACHE || DASHSK_LIST_BELUM_CACHE.length === 0) {
+            Sultan.notif.info('Tidak ada sekolah yang belum lapor untuk disalin.');
             return;
         }
 
-        list.forEach(function (item, idx) {
-            var icon = 'check-circle'; var color = 'success';
-            var s = String(item.status).toLowerCase();
+        var ta = $('#dashsk_dashTahun').val() || '-';
+        var smt = $('#dashsk_dashSemester').val() || '-';
+        var text = `*DAFTAR SEKOLAH BELUM UNGGAH SK PEMBAGIAN TUGAS*\n`;
+        text += `Periode: TA ${ta} - Semester ${smt}\n`;
+        text += `Jumlah: ${DASHSK_LIST_BELUM_CACHE.length} Sekolah\n\n`;
 
-            if (s.indexOf('revisi') !== -1) { icon = 'sync-alt'; color = 'info'; }
-            if (s.indexOf('tolak') !== -1) { icon = 'times-circle'; color = 'danger'; }
-            if (s.indexOf('proses') !== -1) { icon = 'clock'; color = 'warning'; }
+        DASHSK_LIST_BELUM_CACHE.forEach(function (name, i) {
+            text += `${i + 1}. ${name}\n`;
+        });
 
-            var statusClass = 'badge-sultan-' + s.replace(' ', '-');
-            if (s.indexOf('revisi') !== -1) statusClass = 'badge-sultan-revisi';
-            if (s.indexOf('tolak') !== -1) statusClass = 'badge-sultan-ditolak';
-            if (s.indexOf('proses') !== -1) statusClass = 'badge-sultan-diproses';
-            if (s.indexOf('setuju') !== -1 || s.indexOf('aman') !== -1) statusClass = 'badge-sultan-disetujui';
+        text += `\n_Mohon kepada Bapak/Ibu Kepala Sekolah / Operator untuk segera mengunggah SK melalui portal SIKS-Reborn._`;
 
-            var statusProper = String(item.status).charAt(0).toUpperCase() + String(item.status).slice(1).toLowerCase();
-
-            var html = '<div class="list-group-item px-3 py-3 border-0 border-bottom bg-transparent animated fadeIn" style="animation-delay: ' + (idx * 50) + 'ms">' +
-                '<div class="d-flex flex-wrap align-items-center w-100">' +
-                '<!-- Bagian 1: Nama Sekolah (Aligned Column) -->' +
-                '<div class="mb-1 mb-md-0" style="flex: 0 0 55%; max-width: 55%; min-width: 150px;">' +
-                '<h6 class="mb-0 font-weight-bold text-adaptive-sultan text-truncate" style="font-size: 0.85rem; line-height: 1.4;" title="' + (item.sekolah || item.nama_sekolah) + '">' + (item.sekolah || item.nama_sekolah) + '</h6>' +
-                '</div>' +
-                '<!-- Bagian 2: Status (Aligned Column) -->' +
-                '<div class="mb-1 mb-md-0" style="flex: 0 0 20%; min-width: 100px;">' +
-                '<span class="' + statusClass + '" style="font-size: 0.75rem; text-transform: none !important; font-weight: 700; white-space: nowrap;">' +
-                '<i class="fas fa-' + icon + ' mr-1"></i> ' + statusProper + '</span>' +
-                '</div>' +
-                '<!-- Bagian 3: Waktu (Mendorong ke kanan) -->' +
-                '<div class="ml-auto text-right" style="flex: 0 0 20%; min-width: 110px;">' +
-                '<small class="text-muted" style="font-size: 0.7rem; white-space: nowrap;"><i class="far fa-clock mr-1"></i>' + (item.waktu || item.tanggal) + '</small>' +
-                '</div>' +
-                '</div>' +
-                '</div>';
-            el.append(html);
+        navigator.clipboard.writeText(text).then(function () {
+            Sultan.alert('success', 'Berhasil Disalin!', 'Daftar sekolah belum lapor siap ditempel (paste) ke WhatsApp.');
+        }).catch(function () {
+            Sultan.notif.warning('Gagal menyalin teks ke clipboard secara otomatis.');
         });
     }
 
-    function dashsk_renderChart(data) {
-        if (typeof Chart === 'undefined') return;
-
-        var ctx = document.getElementById('dashsk_chartStatus').getContext('2d');
-        if (window.DASHSK_CHART_INSTANCE) window.DASHSK_CHART_INSTANCE.destroy();
-
-        var isDM = $('body').hasClass('dark-mode');
-        var totalData = data.disetujui + data.diproses + data.revisi + data.ditolak;
-        var emptyColor = isDM ? '#343a40' : '#e9ecef';
-        var finalData = totalData === 0 ? [0.1, 0, 0, 0] : [data.disetujui, data.diproses, data.revisi, data.ditolak];
-        var finalColors = totalData === 0 ? [emptyColor, '#ffc107', '#17a2b8', '#dc3545'] : ['#28a745', '#ffc107', '#17a2b8', '#dc3545'];
-
-        window.DASHSK_CHART_INSTANCE = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: ['Disetujui', 'Diproses', 'Revisi', 'Ditolak'],
-                datasets: [{
-                    data: finalData,
-                    backgroundColor: finalColors,
-                    borderWidth: 0,
-                    hoverOffset: 8
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '70%',
-                plugins: {
-                    legend: { display: false },
-                    tooltip: { enabled: (totalData > 0) }
-                },
-                animation: { animateScale: true, animateRotate: true }
-            }
-        });
-    }
-
-    function dashsk_copyListBelum() {
-        var th = $('#dashsk_filterTahun').val() || "-";
-        var sm = ($('#dashsk_filterSemester').val() || "SEMESTER 1").toUpperCase();
-        var txt = "";
-
-        if ($('#dashsk_modalBelumLapor').hasClass('show')) {
-            // Modal copy button: Belum Lapor only
-            var searchVal = $('#dashsk_inputCariBelumModal').val().toLowerCase();
-            var itemsBelum = DASHSK_LIST_BELUM_CACHE.filter(function(item) {
-                return item.nama.toLowerCase().indexOf(searchVal) > -1 || item.npsn.toLowerCase().indexOf(searchVal) > -1;
-            });
-
-            if (itemsBelum.length === 0) { Sultan.notif.info("Tidak ada data untuk disalin."); return; }
-
-            txt = "*INFORMASI SK PEMBAGIAN TUGAS*\nTAHUN AJARAN: " + th + "\nPERIODE: " + sm + "\n=======================\n\n";
-            txt += "*⚠️ BELUM UNGGAH (" + itemsBelum.length + "):*\n";
-            itemsBelum.forEach(function (item, i) {
-                txt += (i + 1) + ". " + item.nama + "\n";
-            });
-            txt += "\n_Mohon segera menindaklanjuti melalui SIKS-Reborn._";
-        } else {
-            // Main page copy button: Belum Lapor AND Revisi
-            var searchVal = $('#dashsk_inputCariBelum').val().toLowerCase();
-            
-            var itemsBelum = DASHSK_LIST_BELUM_CACHE.filter(function(item) {
-                return item.nama.toLowerCase().indexOf(searchVal) > -1 || item.npsn.toLowerCase().indexOf(searchVal) > -1;
-            });
-
-            var itemsRevisi = (window.DASHSK_LIST_SUDAH_CACHE || []).filter(function(item) {
-                return item.status === 'Revisi' && (item.nama.toLowerCase().indexOf(searchVal) > -1 || item.npsn.toLowerCase().indexOf(searchVal) > -1);
-            });
-
-            if (itemsBelum.length === 0 && itemsRevisi.length === 0) { Sultan.notif.info("Tidak ada data untuk disalin."); return; }
-
-            txt = "*INFORMASI SK PEMBAGIAN TUGAS*\nTAHUN AJARAN: " + th + "\nPERIODE: " + sm + "\n=======================\n\n";
-
-            if (itemsBelum.length > 0) {
-                txt += "*⚠️ BELUM UNGGAH (" + itemsBelum.length + "):*\n";
-                itemsBelum.forEach(function (item, i) {
-                    txt += (i + 1) + ". " + item.nama + "\n";
-                });
-                txt += "\n";
-            }
-
-            if (itemsRevisi.length > 0) {
-                txt += "*✍️ PERLU REVISI (" + itemsRevisi.length + "):*\n";
-                itemsRevisi.forEach(function (item, i) {
-                    txt += (i + 1) + ". " + item.nama + "\n";
-                });
-                txt += "\n";
-            }
-
-            txt += "_Mohon segera menindaklanjuti melalui SIKS-Reborn._";
-        }
-
-        navigator.clipboard.writeText(txt).then(function () {
-            Sultan.notif.sukses('Daftar berhasil disalin!');
-        });
-    }
-
-    function dashsk_animateValue(id, endValue, suffix = "") {
-        if (typeof SultanUI !== 'undefined') {
-            SultanUI.stopLottery('#' + id);
-        }
-        var obj = document.getElementById(id);
-        if (!obj) return;
-        var start = 0; var end = parseInt(endValue);
-        if (isNaN(end)) end = 0;
-
-        if (end === 0) { obj.innerHTML = "0" + (suffix ? `<small class="ml-1">${suffix}</small>` : ''); return; }
-
-        var duration = 1200;
-        var startTime = null;
-
-        function step(timestamp) {
-            if (!startTime) startTime = timestamp;
-            var progress = Math.min((timestamp - startTime) / duration, 1);
-            var curVal = Math.floor(progress * (end - start) + start);
-            obj.innerHTML = curVal + (suffix ? `<small class="ml-1">${suffix}</small>` : '');
-            if (progress < 1) {
-                window.requestAnimationFrame(step);
-            }
-        }
-        window.requestAnimationFrame(step);
+    function dashsk_escapeHtml(text) {
+        if (!text) return '';
+        return String(text)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
     }
 </script>
