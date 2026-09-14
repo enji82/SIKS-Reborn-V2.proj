@@ -647,81 +647,123 @@
         });
     }
 
-    // Poin 2: Kartu Status Bulan Berjalan
+    // Poin 2: Kartu Status Target Pengiriman (Laporan dilaporkan paling lambat tgl 10 bulan berikutnya)
     function dashlapbul_renderStatusBulanBerjalan(tahun, dataList) {
         var mthsFull = ['januari', 'februari', 'maret', 'april', 'mei', 'juni', 'juli', 'agustus', 'september', 'oktober', 'november', 'desember'];
         var mthsCap = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
         var now = new Date();
-        var curMonthIdx = now.getMonth(); // 0-11
-        var curMonthName = mthsCap[curMonthIdx];
-        var curMonthKey = mthsFull[curMonthIdx];
-
-        $('#dashlapbul_userCurrentPeriod').text('Periode Berjalan: ' + curMonthName + ' ' + tahun);
-
-        // Cari data bulan berjalan
-        var dataCurrentMonth = null;
-        if (dataList && dataList.length > 0) {
-            dataList.forEach(function(r) {
-                if (String(r.tahun || "").trim() === String(tahun) && String(r.bulan || "").trim().toLowerCase() === curMonthKey) {
-                    dataCurrentMonth = r;
-                }
-            });
+        // Aturan: Laporan bulan N dikirim di bulan N+1 (maksimal tanggal 10 bulan berikutnya).
+        // Contoh: Tanggal 14 September -> Target wajib lapor adalah bulan Agustus.
+        var targetMonthIdx = now.getMonth() - 1;
+        var targetYear = now.getFullYear();
+        if (targetMonthIdx < 0) {
+            targetMonthIdx = 11;
+            targetYear = targetYear - 1;
         }
 
-        var iconBox = $('#dashlapbul_userCurrentIconBox');
-        var iconElem = $('#dashlapbul_userCurrentIcon');
-        var titleElem = $('#dashlapbul_userCurrentTitle');
-        var descElem = $('#dashlapbul_userCurrentDesc');
-        var actionElem = $('#dashlapbul_userCurrentAction').empty();
+        var targetMonthName = mthsCap[targetMonthIdx];
+        var targetMonthKey = mthsFull[targetMonthIdx];
 
-        if (dataCurrentMonth) {
-            var st = String(dataCurrentMonth.statusData || "Diproses");
-            var stLower = st.toLowerCase();
-            var fileUrl = dataCurrentMonth.fileUrl || dataCurrentMonth.urlFile || "";
-            var catatan = dataCurrentMonth.catatanVerifikator || dataCurrentMonth.catatan || "";
+        // Format bulan batas pengiriman (Bulan saat ini tanggal 10)
+        var nextMonthName = mthsCap[now.getMonth()];
+        var deadlineStr = "10 " + nextMonthName + " " + now.getFullYear();
 
-            if (stLower.includes('verif') || stLower.includes('setuju') || stLower.includes('ok') || stLower.includes('valid')) {
-                // DISETUJUI
-                iconBox.css('background', 'rgba(34, 197, 94, 0.15)').css('color', '#22c55e');
-                iconElem.attr('class', 'fas fa-check-circle fa-lg');
-                titleElem.html('<span class="text-success">Laporan ' + curMonthName + ' Disetujui</span>');
-                descElem.text('Laporan bulanan Anda telah diperiksa dan disetujui oleh verifikator.');
+        $('#dashlapbul_userCurrentPeriod').html('Target Pelaporan: <strong>' + targetMonthName + ' ' + targetYear + '</strong> <span class="mx-1">•</span> <span class="text-warning"><i class="fas fa-clock mr-1"></i>Batas Unggah: ' + deadlineStr + '</span>');
 
-                if (fileUrl) {
-                    actionElem.html('<a href="' + fileUrl + '" target="_blank" class="sultan-btn sultan-btn-sm sultan-btn-aksi-utama px-3 font-weight-bold"><i class="fas fa-file-pdf mr-1"></i> Lihat Berkas</a>');
-                } else {
-                    actionElem.html('<span class="badge badge-success px-3 py-2 font-weight-bold" style="border-radius: 8px;">VALID</span>');
-                }
-            } else if (stLower.includes('tolak') || stLower.includes('revisi') || stLower.includes('perbaiki') || stLower.includes('salah')) {
-                // PERLU REVISI / DITOLAK
-                iconBox.css('background', 'rgba(239, 68, 68, 0.15)').css('color', '#ef4444');
-                iconElem.attr('class', 'fas fa-exclamation-triangle fa-lg');
-                titleElem.html('<span class="text-danger">Laporan ' + curMonthName + ' Perlu Revisi</span>');
-                descElem.text(catatan ? 'Catatan: ' + catatan : 'Terdapat perbaikan pada berkas laporan bulan ini. Mohon perbaiki.');
+        // Jika targetYear sama dengan tahun saat ini yang sedang di-load
+        var currentDataList = (targetYear === tahun) ? dataList : (DASHLAPBUL_USER_REKAP_TAHUN[targetYear] || []);
 
-                actionElem.html('<button type="button" class="sultan-btn sultan-btn-sm sultan-btn-aksi-batal px-3 font-weight-bold" onclick="$(\'[data-page=\\\'lapbul_kelola\\\']\').first().click();"><i class="fas fa-edit mr-1"></i> Perbaiki Sekarang</button>');
-            } else {
-                // MENUNGGU VERIFIKASI / DIPROSES
-                iconBox.css('background', 'rgba(234, 179, 8, 0.15)').css('color', '#eab308');
-                iconElem.attr('class', 'fas fa-clock fa-lg');
-                titleElem.html('<span class="text-warning">Menunggu Verifikasi</span>');
-                descElem.text('Laporan sudah terkirim ke dinas dan sedang dalam antrean verifikasi.');
-
-                actionElem.html('<span class="badge badge-warning text-dark px-3 py-2 font-weight-bold" style="border-radius: 8px;"><i class="fas fa-spinner fa-spin mr-1"></i> Sedang Diproses</span>');
+        // Fungsi pembantu untuk render konten banner
+        var applyBannerContent = function(list) {
+            var dataTargetMonth = null;
+            if (list && list.length > 0) {
+                list.forEach(function(r) {
+                    if (String(r.tahun || "").trim() === String(targetYear) && String(r.bulan || "").trim().toLowerCase() === targetMonthKey) {
+                        dataTargetMonth = r;
+                    }
+                });
             }
-        } else {
-            // BELUM LAPOR
-            iconBox.css('background', 'rgba(244, 63, 94, 0.15)').css('color', '#f43f5e');
-            iconElem.attr('class', 'fas fa-clipboard-list fa-lg');
-            titleElem.html('<span class="text-danger">Belum Mengirim Laporan ' + curMonthName + '</span>');
-            descElem.text('Satuan pendidikan Anda belum mengirimkan berkas laporan untuk bulan ini.');
 
-            actionElem.html('<button type="button" class="sultan-btn sultan-btn-sm sultan-btn-aksi-utama px-3 font-weight-bold" onclick="$(\'[data-page=\\\'lapbul_kelola\\\']\').first().click();"><i class="fas fa-upload mr-1"></i> Kirim Laporan Sekarang</button>');
+            var iconBox = $('#dashlapbul_userCurrentIconBox');
+            var iconElem = $('#dashlapbul_userCurrentIcon');
+            var titleElem = $('#dashlapbul_userCurrentTitle');
+            var descElem = $('#dashlapbul_userCurrentDesc');
+            var actionElem = $('#dashlapbul_userCurrentAction').empty();
+
+            if (dataTargetMonth) {
+                var st = String(dataTargetMonth.statusData || "Diproses");
+                var stLower = st.toLowerCase();
+                var fileUrl = dataTargetMonth.fileUrl || dataTargetMonth.urlFile || "";
+                var catatan = dataTargetMonth.keterangan || dataTargetMonth.catatanVerifikator || dataTargetMonth.catatan || "";
+                var tglKirim = dataTargetMonth.tglKirim || dataTargetMonth.timestamp || dataTargetMonth.tanggalUpload || "-";
+
+                if (stLower.includes('ok') || stLower.includes('setuju') || stLower.includes('valid') || stLower.includes('terima')) {
+                    // 1. DISETUJUI (Hijau - check-circle)
+                    iconBox.css('background', 'rgba(34, 197, 94, 0.15)').css('color', '#22c55e');
+                    iconElem.attr('class', 'fas fa-check-circle fa-lg');
+                    titleElem.html('<span class="text-success">Laporan ' + targetMonthName + ' Disetujui</span>');
+                    descElem.text('Laporan bulanan Anda telah diperiksa dan disetujui oleh verifikator dinas.');
+
+                    if (fileUrl) {
+                        actionElem.html('<a href="' + fileUrl + '" target="_blank" class="sultan-btn sultan-btn-sm sultan-btn-aksi-utama px-3 font-weight-bold"><i class="fas fa-file-pdf mr-1"></i> Buka Dokumen</a>');
+                    } else {
+                        actionElem.html('<span class="badge badge-success px-3 py-2 font-weight-bold" style="border-radius: 8px;"><i class="fas fa-check-circle mr-1"></i>Disetujui</span>');
+                    }
+                } else if (stLower.includes('revisi')) {
+                    // 2. REVISI (Biru Muda / Info - sync-alt)
+                    iconBox.css('background', 'rgba(56, 189, 248, 0.15)').css('color', '#0284c7');
+                    iconElem.attr('class', 'fas fa-sync-alt fa-lg');
+                    titleElem.html('<span class="text-info">Laporan ' + targetMonthName + ' Perlu Revisi</span>');
+                    descElem.text(catatan && catatan !== "-" ? 'Catatan: ' + catatan : 'Terdapat perbaikan pada berkas laporan bulan ' + targetMonthName + '. Mohon segera perbaiki.');
+
+                    actionElem.html('<button type="button" class="sultan-btn sultan-btn-sm sultan-btn-aksi-batal px-3 font-weight-bold" onclick="$(\'[data-page=\\\'lapbul_kelola\\\']\').first().click();"><i class="fas fa-edit mr-1"></i> Perbaiki Laporan</button>');
+                } else if (stLower.includes('tolak')) {
+                    // 3. DITOLAK (Merah - times-circle)
+                    iconBox.css('background', 'rgba(239, 68, 68, 0.15)').css('color', '#ef4444');
+                    iconElem.attr('class', 'fas fa-times-circle fa-lg');
+                    titleElem.html('<span class="text-danger">Laporan ' + targetMonthName + ' Ditolak</span>');
+                    descElem.text(catatan && catatan !== "-" ? 'Alasan: ' + catatan : 'Laporan bulan ' + targetMonthName + ' ditolak oleh dinas. Silakan unggah kembali.');
+
+                    actionElem.html('<button type="button" class="sultan-btn sultan-btn-sm sultan-btn-aksi-batal px-3 font-weight-bold" onclick="$(\'[data-page=\\\'lapbul_kelola\\\']\').first().click();"><i class="fas fa-upload mr-1"></i> Unggah Ulang</button>');
+                } else {
+                    // 4. DIPROSES / MENUNGGU VERIFIKASI (Kuning / Warning - clock)
+                    iconBox.css('background', 'rgba(234, 179, 8, 0.15)').css('color', '#eab308');
+                    iconElem.attr('class', 'fas fa-clock fa-lg');
+                    titleElem.html('<span class="text-warning">Laporan ' + targetMonthName + ' Sedang Diproses</span>');
+                    descElem.text('Laporan dikirim pada ' + tglKirim + ' dan sedang dalam antrean verifikasi dinas.');
+
+                    actionElem.html('<span class="badge badge-warning text-dark px-3 py-2 font-weight-bold" style="border-radius: 8px;"><i class="fas fa-clock mr-1"></i> Diproses</span>');
+                }
+            } else {
+                // BELUM LAPOR
+                var isPassedDeadline = (now.getDate() > 10);
+                var statusText = isPassedDeadline ? 'Terlambat Mengirim Laporan ' + targetMonthName : 'Belum Mengirim Laporan ' + targetMonthName;
+                var descWarning = isPassedDeadline ? 'Batas waktu pengiriman (tanggal ' + deadlineStr + ') telah terlewat. Mohon segera kirimkan laporan Anda.' : 'Batas akhir pengiriman laporan adalah tanggal ' + deadlineStr + '.';
+
+                iconBox.css('background', 'rgba(244, 63, 94, 0.15)').css('color', '#f43f5e');
+                iconElem.attr('class', 'fas fa-exclamation-circle fa-lg');
+                titleElem.html('<span class="text-danger">' + statusText + '</span>');
+                descElem.text(descWarning);
+
+                actionElem.html('<button type="button" class="sultan-btn sultan-btn-sm sultan-btn-aksi-utama px-3 font-weight-bold" onclick="$(\'[data-page=\\\'lapbul_kelola\\\']\').first().click();"><i class="fas fa-upload mr-1"></i> Unggah Laporan Sekarang</button>');
+            }
+        };
+
+        if (targetYear !== tahun && (!DASHLAPBUL_USER_REKAP_TAHUN[targetYear] || DASHLAPBUL_USER_REKAP_TAHUN[targetYear].length === 0)) {
+            Lapbul_GetGlobalData(targetYear, DASHLAPBUL_USER_NPSN, false, function(resTarget) {
+                var dTarget = (resTarget && !resTarget.error) ? resTarget : [];
+                DASHLAPBUL_USER_REKAP_TAHUN[targetYear] = dTarget;
+                applyBannerContent(dTarget);
+            }, function() {
+                applyBannerContent([]);
+            });
+        } else {
+            applyBannerContent(currentDataList);
         }
     }
 
-    // Render Grid 12 Kotak untuk 1 Kartu Tahun Tertentu
+    // Render Grid 12 Kotak untuk 1 Kartu Tahun Tertentu (Status Terpusat: Diproses, Disetujui, Revisi, Ditolak)
     function dashlapbul_renderYearGridCard(targetTahun, dataList) {
         var mthsFull = ['januari', 'februari', 'maret', 'april', 'mei', 'juni', 'juli', 'agustus', 'september', 'oktober', 'november', 'desember'];
         var mthsDisplay = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
@@ -753,27 +795,37 @@
             var iconClass = "";
             var statusLabel = "";
 
+            // Aturan Waktu: Bulan di masa depan (belum waktunya dilaporkan)
             var isFuture = false;
             if (parseInt(targetTahun) > currentYear) {
                 isFuture = true;
-            } else if (parseInt(targetTahun) === currentYear && idx > currentMonthIdx) {
+            } else if (parseInt(targetTahun) === currentYear && idx >= currentMonthIdx) {
+                // Bulan berjalan belum dilaporkan sampai bulan berikutnya
                 isFuture = true;
             }
 
             if (dataBulan) {
                 var st = String(dataBulan.statusData || "").toLowerCase();
-                if (st.includes('verif') || st.includes('setuju') || st.includes('ok') || st.includes('valid')) {
+                if (st.includes('ok') || st.includes('setuju') || st.includes('valid') || st.includes('terima')) {
+                    // 1. Disetujui: Hijau dengan check-circle
                     boxClass = "lapbul-month-approved";
                     iconClass = "fas fa-check-circle";
                     statusLabel = "Disetujui";
-                } else if (st.includes('tolak') || st.includes('revisi') || st.includes('perbaiki') || st.includes('x') || st.includes('salah')) {
+                } else if (st.includes('revisi')) {
+                    // 2. Revisi: Biru dengan sync-alt
+                    boxClass = "lapbul-month-revisi";
+                    iconClass = "fas fa-sync-alt";
+                    statusLabel = "Revisi";
+                } else if (st.includes('tolak')) {
+                    // 3. Ditolak: Merah dengan times-circle
                     boxClass = "lapbul-month-rejected";
                     iconClass = "fas fa-times-circle";
-                    statusLabel = "Perlu Revisi / Ditolak";
+                    statusLabel = "Ditolak";
                 } else {
+                    // 4. Diproses: Kuning dengan clock
                     boxClass = "lapbul-month-pending";
-                    iconClass = "fas fa-spinner fa-spin";
-                    statusLabel = "Menunggu Verifikasi";
+                    iconClass = "fas fa-clock";
+                    statusLabel = "Diproses";
                 }
             } else {
                 if (isFuture) {
@@ -782,7 +834,7 @@
                     statusLabel = "Belum Waktunya";
                 } else {
                     boxClass = "lapbul-month-missed";
-                    iconClass = "fas fa-circle-notch";
+                    iconClass = "fas fa-exclamation-circle";
                     statusLabel = "Belum Lapor";
                 }
             }
@@ -806,42 +858,52 @@
 
         if (dataBulan) {
             var st = String(dataBulan.statusData || "Diproses");
-            var badgeClass = "badge-info";
-            var stLower = st.toLowerCase();
-            if (stLower.includes('verif') || stLower.includes('setuju') || stLower.includes('ok')) badgeClass = "badge-success";
-            else if (stLower.includes('tolak') || stLower.includes('revisi')) badgeClass = "badge-danger";
-
-            var tglKirim = dataBulan.timestamp || dataBulan.tanggalUpload || "-";
             var fileUrl = dataBulan.fileUrl || dataBulan.urlFile || "";
-            var catatan = dataBulan.catatanVerifikator || dataBulan.catatan || "-";
+            var catatan = dataBulan.keterangan || dataBulan.catatanVerifikator || dataBulan.catatan || "";
+            var tglKirim = dataBulan.tglKirim || dataBulan.timestamp || dataBulan.tanggalUpload || "-";
+            var tglVerif = dataBulan.tglVerif || "-";
+            var verifikator = dataBulan.verifikator || "-";
+            var namaSekolah = dataBulan.namaSekolah || DASHLAPBUL_USER_SEKOLAH;
+
+            // Gunakan Standar Terpusat SultanUI untuk badge status
+            var badgeStatusHtml = SultanUI.renderBadgeStatus(st, catatan, {
+                unit: namaSekolah,
+                dokumen: capBln + ' ' + tahun,
+                verifikator: verifikator,
+                waktu: tglVerif
+            });
 
             var html = `
                 <div class="text-center mb-4">
-                    <div class="small text-muted text-uppercase font-weight-bold">Status Verifikasi</div>
-                    <span class="badge ${badgeClass} px-3 py-2 mt-1" style="font-size: 13px; border-radius: 8px;">
-                        ${st}
-                    </span>
+                    <div class="small text-muted text-uppercase font-weight-bold mb-2">Status Verifikasi</div>
+                    <div class="d-flex justify-content-center align-items-center">
+                        ${badgeStatusHtml}
+                    </div>
                 </div>
                 <div class="p-3 bg-light rounded-lg small mb-3 border">
                     <div class="d-flex justify-content-between mb-2">
                         <span class="text-muted">Tanggal Pengiriman:</span>
-                        <span class="font-weight-bold text-dark">${tglKirim}</span>
+                        <span class="font-weight-bold text-dark"><i class="fas fa-calendar-day mr-1 text-muted"></i>${tglKirim}</span>
                     </div>
                     <div class="d-flex justify-content-between mb-2">
                         <span class="text-muted">Nama Sekolah:</span>
-                        <span class="font-weight-bold text-dark">${dataBulan.namaSekolah || DASHLAPBUL_USER_SEKOLAH}</span>
+                        <span class="font-weight-bold text-dark">${namaSekolah}</span>
                     </div>
-                    <div class="d-flex justify-content-between">
+                    <div class="d-flex justify-content-between mb-2">
                         <span class="text-muted">Periode Laporan:</span>
                         <span class="font-weight-bold text-dark">${capBln} ${tahun}</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted">Verifikator:</span>
+                        <span class="font-weight-bold text-dark">${verifikator} ${tglVerif !== "-" ? '(' + tglVerif + ')' : ''}</span>
                     </div>
                 </div>
             `;
 
-            if (catatan && catatan !== "-") {
+            if (catatan && String(catatan).trim().length > 2 && String(catatan).trim() !== "-") {
                 html += `
-                    <div class="alert alert-warning p-3 rounded-lg small">
-                        <strong><i class="fas fa-sticky-note mr-1"></i> Catatan Verifikator:</strong><br>
+                    <div class="alert alert-warning p-3 rounded-lg small mb-0">
+                        <strong><i class="fas fa-comment-dots mr-1"></i> Catatan Verifikator:</strong><br>
                         ${catatan}
                     </div>
                 `;
