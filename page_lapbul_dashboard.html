@@ -4,9 +4,57 @@
     <div class="container-fluid">
 
         <!-- ================================================================ -->
-        <!-- VIEW 1: KHUSUS USER SEKOLAH (STATUS BERJALAN & MULTI-YEAR GRID)  -->
+        <!-- VIEW 1: USER / MODE UNIT (STATUS BERJALAN & MULTI-YEAR GRID)     -->
         <!-- ================================================================ -->
         <div id="dashlapbul_viewUser" class="d-none py-3">
+
+            <!-- Filter Bar Mode Unit (Switcher Mode & Dropdown Sekolah Khusus Admin) -->
+            <div class="sultan-filter-bar-balanced mb-4">
+                <div class="filter-controls-group">
+                    <!-- Segmented Switcher Mode -->
+                    <div class="sultan-segmented-switch">
+                        <button type="button" class="sultan-segmented-btn active" data-mode="unit">
+                            <i class="fas fa-school"></i> Unit
+                        </button>
+                        <button type="button" class="sultan-segmented-btn" data-mode="rekap">
+                            <i class="fas fa-chart-pie"></i> Rekap
+                        </button>
+                    </div>
+
+                    <div class="divider-vertical d-none d-md-block mx-1"></div>
+
+                    <!-- Filter Jenjang (Hanya aktif/tampil fleksibel untuk Admin, disembunyikan/terkunci untuk user biasa) -->
+                    <div class="sultan-filter-item" id="dashlapbul_wrapperUserJenjang">
+                        <select id="dashlapbul_filterUserJenjang" class="form-control">
+                            <option value="">Semua Jenjang</option>
+                            <option value="SD">SD</option>
+                            <option value="TK">TK</option>
+                            <option value="KB">KB</option>
+                            <option value="SPS">SPS</option>
+                        </select>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+
+                    <!-- Filter Nama Sekolah (Pilihan sekolah untuk Admin, terkunci untuk User) -->
+                    <div class="sultan-filter-item" id="dashlapbul_wrapperUserSekolah" style="min-width: 220px; max-width: 340px;">
+                        <select id="dashlapbul_filterUserSekolah" class="form-control">
+                            <option value="">Pilih Sekolah...</option>
+                        </select>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+
+                    <button type="button" id="dashlapbul_btnRefreshUser" class="sultan-btn-refresh" title="Refresh Riwayat Sekolah">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+
+                <div class="filter-meta-group d-none d-sm-flex align-items-center">
+                    <span class="sync-badge-modern shadow-xs" id="dashlapbul_userSchoolBadge">
+                        <span class="sync-dot"></span>
+                        <span id="dashlapbul_userSchoolName" class="font-weight-bold">Memuat Satuan...</span>
+                    </span>
+                </div>
+            </div>
 
             <!-- 1. KARTU STATUS BULAN BERJALAN -->
             <div class="lapbul-status-banner p-3 p-md-4 mb-4">
@@ -53,11 +101,23 @@
         </div>
 
         <!-- ================================================================ -->
-        <!-- VIEW 2: KHUSUS ADMIN (DENGAN SAKELAR TAMPILAN BARU & LAMA)         -->
+        <!-- VIEW 2: ADMIN / MODE REKAP (REKAP KECAMATAN & DAFTAR BELUM LAPOR) -->
         <!-- ================================================================ -->
         <div id="dashlapbul_viewAdmin" class="d-none">
             <div class="sultan-filter-bar-balanced mb-4">
                 <div class="filter-controls-group">
+                    <!-- Segmented Switcher Mode -->
+                    <div class="sultan-segmented-switch">
+                        <button type="button" class="sultan-segmented-btn" data-mode="unit">
+                            <i class="fas fa-school"></i> Unit
+                        </button>
+                        <button type="button" class="sultan-segmented-btn active" data-mode="rekap">
+                            <i class="fas fa-chart-pie"></i> Rekap
+                        </button>
+                    </div>
+
+                    <div class="divider-vertical d-none d-md-block mx-1"></div>
+
                     <div class="sultan-filter-item">
                         <select id="dashlapbul_dashTahun" class="form-control"></select>
                         <i class="fas fa-chevron-down"></i>
@@ -293,6 +353,8 @@
     var DASHLAPBUL_IS_ADMIN = false;
     var DASHLAPBUL_USER_NPSN = "";
     var DASHLAPBUL_USER_SEKOLAH = "";
+    var DASHLAPBUL_ACTIVE_VIEW = "rekap"; // 'unit' atau 'rekap'
+    var DASHLAPBUL_MASTER_SEKOLAH = []; // Cache master sekolah untuk dropdown
 
     var DASHLAPBUL_DASH_DATA = {
         sd: { ok: 0, pro: 0, rev: 0, no: 0, blm: 0 },
@@ -318,82 +380,204 @@
             DASHLAPBUL_USER_NPSN = "";
         }
 
-        // 2. Tampilkan View Sesuai Role
-        if (DASHLAPBUL_IS_ADMIN) {
-            $('#dashlapbul_viewAdmin').removeClass('d-none');
-            $('#dashlapbul_viewUser').addClass('d-none');
-
-            // Render Card Highlight Jenjang Minimal & Status Detil 5 Kolom via Helper Terpusat SultanUI
-            if (typeof SultanUI !== 'undefined') {
-                $('#dashlapbul_jenjangMinimalContainer').html(SultanUI.renderDashboardJenjangMinimal('dashlapbul'));
-                $('#dashlapbul_metricRow2').html(SultanUI.renderDashboardRow2Minimal('dashlapbul'));
+        // 2. Pasang event listener Segmented Switcher (Unit vs Rekap) di kedua view
+        $(document).off('click', '.sultan-segmented-btn').on('click', '.sultan-segmented-btn', function () {
+            var mode = $(this).data('mode');
+            if (mode) {
+                dashlapbul_switchMode(mode);
             }
+        });
 
+        // 3. Render komponen visual terpusat SultanUI untuk Admin
+        if (typeof SultanUI !== 'undefined') {
+            $('#dashlapbul_jenjangMinimalContainer').html(SultanUI.renderDashboardJenjangMinimal('dashlapbul'));
+            $('#dashlapbul_metricRow2').html(SultanUI.renderDashboardRow2Minimal('dashlapbul'));
+        }
+
+        // 4. Inisialisasi Master Sekolah untuk Filter Dropdown
+        Lapbul_GetMasterSekolah(function(master) {
+            DASHLAPBUL_MASTER_SEKOLAH = master || [];
+            dashlapbul_setupUserFilters();
+        });
+
+        // 5. Tampilkan View Awal Berdasarkan Role
+        if (DASHLAPBUL_IS_ADMIN) {
+            DASHLAPBUL_ACTIVE_VIEW = 'rekap';
+            dashlapbul_switchMode('rekap');
             dashlapbul_initFilter();
             dashlapbul_loadDashboard();
-
-            $(document).off('click', '#dashlapbul_btnCopySemuaHeader, #dashlapbul_modBtnCopySemua').on('click', '#dashlapbul_btnCopySemuaHeader, #dashlapbul_modBtnCopySemua', dashlapbul_copySemuaBelumLapor);
-
-            $(document).off('change', '#dashlapbul_dashTahun, #dashlapbul_dashBulan').on('change', '#dashlapbul_dashTahun, #dashlapbul_dashBulan', function () {
-                if (DASHLAPBUL_IS_INIT) return;
-                dashlapbul_loadDashboard();
-            });
-
-            $(document).off('click', '#dashlapbul_btnRefresh').on('click', '#dashlapbul_btnRefresh', function (e) {
-                e.preventDefault();
-                dashlapbul_loadDashboard();
-            });
-
-            $(document).off('click', '#dashlapbul_btnCopyUtama, #dashlapbul_btnCopyModal').on('click', '#dashlapbul_btnCopyUtama, #dashlapbul_btnCopyModal', dashlapbul_copySemuaBelumLapor);
-            $(document).off('keyup', '#dashlapbul_cariBelumModal').on('keyup', '#dashlapbul_cariBelumModal', dashlapbul_filterBelumModal);
-
-            $(document).off('click', '#dashlapbul_btnCopySd').on('click', '#dashlapbul_btnCopySd', function() { dashlapbul_copyBelumJenjang('sd'); });
-            $(document).off('click', '#dashlapbul_btnCopyTk').on('click', '#dashlapbul_btnCopyTk', function() { dashlapbul_copyBelumJenjang('tk'); });
-            $(document).off('click', '#dashlapbul_btnCopyKb').on('click', '#dashlapbul_btnCopyKb', function() { dashlapbul_copyBelumJenjang('kb'); });
-            $(document).off('click', '#dashlapbul_btnCopySps').on('click', '#dashlapbul_btnCopySps', function() { dashlapbul_copyBelumJenjang('sps'); });
-
-            $(document).off('keyup', '#dashlapbul_inputCariSd').on('keyup', '#dashlapbul_inputCariSd', function() { dashlapbul_filterLokal('Sd'); });
-            $(document).off('keyup', '#dashlapbul_inputCariTk').on('keyup', '#dashlapbul_inputCariTk', function() { dashlapbul_filterLokal('Tk'); });
-            $(document).off('keyup', '#dashlapbul_inputCariKb').on('keyup', '#dashlapbul_inputCariKb', function() { dashlapbul_filterLokal('Kb'); });
-            $(document).off('keyup', '#dashlapbul_inputCariSps').on('keyup', '#dashlapbul_inputCariSps', function() { dashlapbul_filterLokal('Sps'); });
-
-            $(document).off('click', '[id^="dashlapbul_countBelum"], .card-header-modern, .card-header[class*="bg-soft-"]').on('click', '[id^="dashlapbul_countBelum"], .card-header-modern, .card-header[class*="bg-soft-"]', function () {
-                var jenjang = '';
-                var headerText = $(this).text().trim().toUpperCase();
-                if (headerText.indexOf('SD') > -1) jenjang = 'sd';
-                else if (headerText.indexOf('TK') > -1) jenjang = 'tk';
-                else if (headerText.indexOf('KB') > -1) jenjang = 'kb';
-                else if (headerText.indexOf('SPS') > -1) jenjang = 'sps';
-
-                if (!jenjang) return;
-                
-                var list = DASHLAPBUL_GLOBAL_BELUM_LAPOR[jenjang] || [];
-                var $tbody = $('#dashlapbul_listBelumBodyModal').empty();
-                $('#dashlapbul_cariBelumModal').val('');
-                
-                var isDark = $('body').hasClass('dark-mode');
-                var idxBadgeClass = isDark ? 'dashlapbul-badge-idx' : 'badge-light border text-muted';
-                
-                if (list.length === 0) {
-                    $tbody.append('<tr><td class="text-center py-4 text-success font-weight-bold bg-transparent"><i class="fas fa-check-circle fa-lg mr-2"></i> Semua sekolah jenjang ini sudah lapor!</td></tr>');
-                } else {
-                    list.forEach(function (school, idx) {
-                        $tbody.append('<tr class="bg-transparent"><td class="py-2 px-3 font-weight-bold bg-transparent"><span class="badge ' + idxBadgeClass + ' mr-2" style="width:25px;">' + (idx + 1) + '</span>' + school + '</td></tr>');
-                    });
-                }
-                
-                $('#dashlapbul_modalBelumLapor .modal-title').html('<i class="fas fa-clipboard-list mr-2"></i> Daftar Belum Lapor - ' + jenjang.toUpperCase());
-                $('#dashlapbul_modalBelumLapor').modal('show');
-            });
-
         } else {
-            // TAMPILAN USER (SEKOLAH)
+            DASHLAPBUL_ACTIVE_VIEW = 'unit';
+            dashlapbul_switchMode('unit');
+        }
+
+        // 6. Bind Event Handler Admin & Modal Belum Lapor
+        $(document).off('click', '#dashlapbul_btnCopySemuaHeader, #dashlapbul_modBtnCopySemua').on('click', '#dashlapbul_btnCopySemuaHeader, #dashlapbul_modBtnCopySemua', dashlapbul_copySemuaBelumLapor);
+
+        $(document).off('change', '#dashlapbul_dashTahun, #dashlapbul_dashBulan').on('change', '#dashlapbul_dashTahun, #dashlapbul_dashBulan', function () {
+            if (DASHLAPBUL_IS_INIT) return;
+            dashlapbul_loadDashboard();
+        });
+
+        $(document).off('click', '#dashlapbul_btnRefresh').on('click', '#dashlapbul_btnRefresh', function (e) {
+            e.preventDefault();
+            dashlapbul_loadDashboard();
+        });
+
+        $(document).off('click', '#dashlapbul_btnRefreshUser').on('click', '#dashlapbul_btnRefreshUser', function (e) {
+            e.preventDefault();
+            DASHLAPBUL_USER_REKAP_TAHUN = {};
+            dashlapbul_loadUserMultiYear();
+        });
+
+        $(document).off('click', '#dashlapbul_btnCopyUtama, #dashlapbul_btnCopyModal').on('click', '#dashlapbul_btnCopyUtama, #dashlapbul_btnCopyModal', dashlapbul_copySemuaBelumLapor);
+        $(document).off('keyup', '#dashlapbul_cariBelumModal').on('keyup', '#dashlapbul_cariBelumModal', dashlapbul_filterBelumModal);
+
+        $(document).off('click', '#dashlapbul_btnCopySd').on('click', '#dashlapbul_btnCopySd', function() { dashlapbul_copyBelumJenjang('sd'); });
+        $(document).off('click', '#dashlapbul_btnCopyTk').on('click', '#dashlapbul_btnCopyTk', function() { dashlapbul_copyBelumJenjang('tk'); });
+        $(document).off('click', '#dashlapbul_btnCopyKb').on('click', '#dashlapbul_btnCopyKb', function() { dashlapbul_copyBelumJenjang('kb'); });
+        $(document).off('click', '#dashlapbul_btnCopySps').on('click', '#dashlapbul_btnCopySps', function() { dashlapbul_copyBelumJenjang('sps'); });
+
+        $(document).off('keyup', '#dashlapbul_inputCariSd').on('keyup', '#dashlapbul_inputCariSd', function() { dashlapbul_filterLokal('Sd'); });
+        $(document).off('keyup', '#dashlapbul_inputCariTk').on('keyup', '#dashlapbul_inputCariTk', function() { dashlapbul_filterLokal('Tk'); });
+        $(document).off('keyup', '#dashlapbul_inputCariKb').on('keyup', '#dashlapbul_inputCariKb', function() { dashlapbul_filterLokal('Kb'); });
+        $(document).off('keyup', '#dashlapbul_inputCariSps').on('keyup', '#dashlapbul_inputCariSps', function() { dashlapbul_filterLokal('Sps'); });
+
+        $(document).off('click', '[id^="dashlapbul_countBelum"], .card-header-modern, .card-header[class*="bg-soft-"]').on('click', '[id^="dashlapbul_countBelum"], .card-header-modern, .card-header[class*="bg-soft-"]', function () {
+            var jenjang = '';
+            var headerText = $(this).text().trim().toUpperCase();
+            if (headerText.indexOf('SD') > -1) jenjang = 'sd';
+            else if (headerText.indexOf('TK') > -1) jenjang = 'tk';
+            else if (headerText.indexOf('KB') > -1) jenjang = 'kb';
+            else if (headerText.indexOf('SPS') > -1) jenjang = 'sps';
+
+            if (!jenjang) return;
+            
+            var list = DASHLAPBUL_GLOBAL_BELUM_LAPOR[jenjang] || [];
+            var $tbody = $('#dashlapbul_listBelumBodyModal').empty();
+            $('#dashlapbul_cariBelumModal').val('');
+            
+            var isDark = $('body').hasClass('dark-mode');
+            var idxBadgeClass = isDark ? 'dashlapbul-badge-idx' : 'badge-light border text-muted';
+            
+            if (list.length === 0) {
+                $tbody.append('<tr><td class="text-center py-4 text-success font-weight-bold bg-transparent"><i class="fas fa-check-circle fa-lg mr-2"></i> Semua sekolah jenjang ini sudah lapor!</td></tr>');
+            } else {
+                list.forEach(function (school, idx) {
+                    $tbody.append('<tr class="bg-transparent"><td class="py-2 px-3 font-weight-bold bg-transparent"><span class="badge ' + idxBadgeClass + ' mr-2" style="width:25px;">' + (idx + 1) + '</span>' + school + '</td></tr>');
+                });
+            }
+            
+            $('#dashlapbul_modalBelumLapor .modal-title').html('<i class="fas fa-clipboard-list mr-2"></i> Daftar Belum Lapor - ' + jenjang.toUpperCase());
+            $('#dashlapbul_modalBelumLapor').modal('show');
+        });
+    });
+
+    // ======================================================================
+    // FUNGSI SWITCHER MODE: UNIT (SEKOLAH) VS REKAP (KECAMATAN)
+    // ======================================================================
+    function dashlapbul_switchMode(mode) {
+        DASHLAPBUL_ACTIVE_VIEW = mode;
+
+        // Update active class pada kedua switch segmented button
+        $('.sultan-segmented-btn').removeClass('active');
+        $(`.sultan-segmented-btn[data-mode="${mode}"]`).addClass('active');
+
+        if (mode === 'unit') {
             $('#dashlapbul_viewAdmin').addClass('d-none');
             $('#dashlapbul_viewUser').removeClass('d-none');
-
             dashlapbul_initUserView();
+        } else {
+            $('#dashlapbul_viewUser').addClass('d-none');
+            $('#dashlapbul_viewAdmin').removeClass('d-none');
+
+            if ($('#dashlapbul_dashTahun option').length === 0) {
+                dashlapbul_initFilter();
+            }
+            // Muat data rekap jika belum pernah dimuat
+            if (DASHLAPBUL_IS_INIT) {
+                dashlapbul_loadDashboard();
+            }
         }
-    });
+    }
+
+    // Konfigurasi dropdown Jenjang & Sekolah pada mode Unit
+    function dashlapbul_setupUserFilters() {
+        var $selJenjang = $('#dashlapbul_filterUserJenjang');
+        var $selSekolah = $('#dashlapbul_filterUserSekolah');
+
+        if (!DASHLAPBUL_IS_ADMIN) {
+            // JIKA USER SEKOLAH: Sembunyikan dropdown jenjang, dropdown sekolah disabled / tampilkan nama sekolahnya
+            $('#dashlapbul_wrapperUserJenjang').addClass('d-none');
+            $selSekolah.empty().append(`<option value="${DASHLAPBUL_USER_NPSN}">${DASHLAPBUL_USER_SEKOLAH || DASHLAPBUL_USER_NPSN}</option>`);
+            $selSekolah.prop('disabled', true);
+            $('#dashlapbul_userSchoolName').text(DASHLAPBUL_USER_SEKOLAH || DASHLAPBUL_USER_NPSN);
+        } else {
+            // JIKA ADMIN: Admin leluasa memilih jenjang & sekolah
+            $('#dashlapbul_wrapperUserJenjang').removeClass('d-none');
+            $selSekolah.prop('disabled', false);
+
+            dashlapbul_populateUserSekolahOptions("");
+
+            // Handler perubahan filter Jenjang
+            $selJenjang.off('change').on('change', function () {
+                var selectedJjg = $(this).val();
+                dashlapbul_populateUserSekolahOptions(selectedJjg);
+            });
+
+            // Handler perubahan filter Sekolah
+            $selSekolah.off('change').on('change', function () {
+                var chosenNpsn = $(this).val();
+                var chosenName = $(this).find('option:selected').text();
+
+                if (chosenNpsn) {
+                    DASHLAPBUL_USER_NPSN = chosenNpsn;
+                    DASHLAPBUL_USER_SEKOLAH = chosenName;
+                    $('#dashlapbul_userSchoolName').text(chosenName);
+                    DASHLAPBUL_USER_REKAP_TAHUN = {};
+                    dashlapbul_loadUserMultiYear();
+                }
+            });
+        }
+    }
+
+    function dashlapbul_populateUserSekolahOptions(filterJenjang) {
+        var $selSekolah = $('#dashlapbul_filterUserSekolah').empty();
+        var list = DASHLAPBUL_MASTER_SEKOLAH || [];
+
+        if (filterJenjang) {
+            list = list.filter(function (s) {
+                return String(s.jenjang || "").toUpperCase() === filterJenjang.toUpperCase();
+            });
+        }
+
+        // Urutkan nama sekolah secara alfabetis
+        list.sort(function (a, b) {
+            return String(a.namaSekolah || a.nama || "").localeCompare(String(b.namaSekolah || b.nama || ""));
+        });
+
+        if (list.length === 0) {
+            $selSekolah.append('<option value="">Tidak ada data sekolah</option>');
+            return;
+        }
+
+        list.forEach(function (s, idx) {
+            var npsn = s.npsn || s.id || "";
+            var nama = s.namaSekolah || s.nama || npsn;
+            var jjg = s.jenjang ? ` (${s.jenjang.toUpperCase()})` : '';
+            var isSelected = (idx === 0 && (!DASHLAPBUL_USER_NPSN || DASHLAPBUL_USER_NPSN === "")) ? ' selected' : (DASHLAPBUL_USER_NPSN === npsn ? ' selected' : '');
+            $selSekolah.append(`<option value="${npsn}"${isSelected}>${nama}${jjg}</option>`);
+        });
+
+        // Set pilihan pertama secara otomatis jika belum terpilih
+        if (!DASHLAPBUL_USER_NPSN || DASHLAPBUL_USER_NPSN === "") {
+            DASHLAPBUL_USER_NPSN = list[0].npsn || "";
+            DASHLAPBUL_USER_SEKOLAH = list[0].namaSekolah || list[0].nama || "";
+        }
+
+        var currentSelectedName = $selSekolah.find('option:selected').text();
+        $('#dashlapbul_userSchoolName').text(currentSelectedName || DASHLAPBUL_USER_SEKOLAH);
+    }
 
     // ======================================================================
     // LOGIKA DASHBOARD USER (SEKOLAH) - STATUS BERJALAN & MULTI-YEAR GRID
@@ -408,7 +592,9 @@
             dashlapbul_bukaDetailBulanUser(blnNama, tahun, infoLaporan);
         });
 
-        dashlapbul_loadUserMultiYear();
+        if (DASHLAPBUL_USER_NPSN) {
+            dashlapbul_loadUserMultiYear();
+        }
     }
 
     function dashlapbul_loadUserMultiYear() {
@@ -584,7 +770,11 @@
                     titleElem.html('<span class="text-info">Laporan ' + targetMonthName + ' Perlu Revisi</span>');
                     descElem.text(catatan && catatan !== "-" ? 'Catatan: ' + catatan : 'Terdapat perbaikan pada berkas laporan bulan ' + targetMonthName + '. Mohon segera perbaiki.');
 
-                    actionElem.html('<button type="button" class="btn btn-sm btn-warning rounded-pill px-3 font-weight-bold shadow-xs text-dark" onclick="$(\'[data-page=\\\'lapbul_kelola\\\']\').first().click();"><i class="fas fa-edit mr-1"></i> Perbaiki Laporan</button>');
+                    if (DASHLAPBUL_IS_ADMIN) {
+                        actionElem.html('<span class="badge badge-info rounded-pill px-3 py-1.5 font-weight-bold"><i class="fas fa-sync-alt mr-1"></i> Perlu Revisi</span>');
+                    } else {
+                        actionElem.html('<button type="button" class="btn btn-sm btn-warning rounded-pill px-3 font-weight-bold shadow-xs text-dark" onclick="$(\'[data-page=\\\'lapbul_kelola\\\']\').first().click();"><i class="fas fa-edit mr-1"></i> Perbaiki Laporan</button>');
+                    }
                 } else if (stLower.includes('tolak')) {
                     // 3. DITOLAK (Merah - times-circle)
                     iconBox.css('background', 'rgba(239, 68, 68, 0.15)').css('color', '#ef4444');
@@ -592,7 +782,11 @@
                     titleElem.html('<span class="text-danger">Laporan ' + targetMonthName + ' Ditolak</span>');
                     descElem.text(catatan && catatan !== "-" ? 'Alasan: ' + catatan : 'Laporan bulan ' + targetMonthName + ' ditolak oleh dinas. Silakan unggah kembali.');
 
-                    actionElem.html('<button type="button" class="btn btn-sm btn-danger rounded-pill px-3 font-weight-bold shadow-xs" onclick="$(\'[data-page=\\\'lapbul_kelola\\\']\').first().click();"><i class="fas fa-upload mr-1"></i> Unggah Ulang</button>');
+                    if (DASHLAPBUL_IS_ADMIN) {
+                        actionElem.html('<span class="badge badge-danger rounded-pill px-3 py-1.5 font-weight-bold"><i class="fas fa-times-circle mr-1"></i> Ditolak</span>');
+                    } else {
+                        actionElem.html('<button type="button" class="btn btn-sm btn-danger rounded-pill px-3 font-weight-bold shadow-xs" onclick="$(\'[data-page=\\\'lapbul_kelola\\\']\').first().click();"><i class="fas fa-upload mr-1"></i> Unggah Ulang</button>');
+                    }
                 } else {
                     // 4. DIPROSES / MENUNGGU VERIFIKASI (Kuning / Warning - clock)
                     iconBox.css('background', 'rgba(234, 179, 8, 0.15)').css('color', '#eab308');
@@ -613,7 +807,11 @@
                 titleElem.html('<span class="text-danger">' + statusText + '</span>');
                 descElem.text(descWarning);
 
-                actionElem.html('<button type="button" class="btn btn-sm btn-danger rounded-pill px-3 font-weight-bold shadow-xs" onclick="$(\'[data-page=\\\'lapbul_kelola\\\']\').first().click();"><i class="fas fa-upload mr-1"></i> Unggah Laporan Sekarang</button>');
+                if (DASHLAPBUL_IS_ADMIN) {
+                    actionElem.html('<span class="badge badge-danger rounded-pill px-3 py-1.5 font-weight-bold"><i class="fas fa-exclamation-circle mr-1"></i> Belum Lapor</span>');
+                } else {
+                    actionElem.html('<button type="button" class="btn btn-sm btn-danger rounded-pill px-3 font-weight-bold shadow-xs" onclick="$(\'[data-page=\\\'lapbul_kelola\\\']\').first().click();"><i class="fas fa-upload mr-1"></i> Unggah Laporan Sekarang</button>');
+                }
             }
         };
 
@@ -852,11 +1050,19 @@
                 </div>
             `);
 
-            $action.append(`
-                <button type="button" class="sultan-btn sultan-btn-aksi-utama px-3" onclick="$('#dashlapbul_modalDetailUser').modal('hide'); $('[data-page=\\'lapbul_kelola\\']').first().click();">
-                    <i class="fas fa-plus mr-1"></i> Isi Laporan Sekarang
-                </button>
-            `);
+            if (DASHLAPBUL_IS_ADMIN) {
+                $action.append(`
+                    <span class="badge badge-light border text-muted px-3 py-2 font-weight-bold">
+                        <i class="fas fa-info-circle mr-1"></i> Mode Inspeksi Admin
+                    </span>
+                `);
+            } else {
+                $action.append(`
+                    <button type="button" class="sultan-btn sultan-btn-aksi-utama px-3" onclick="$('#dashlapbul_modalDetailUser').modal('hide'); $('[data-page=\\'lapbul_kelola\\']').first().click();">
+                        <i class="fas fa-plus mr-1"></i> Isi Laporan Sekarang
+                    </button>
+                `);
+            }
         }
 
         $('#dashlapbul_modalDetailUser').modal('show');
