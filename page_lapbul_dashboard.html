@@ -596,18 +596,34 @@
         }
 
         var $container = $('#dashlapbul_userMultiYearContainer');
-        $container.html(`
-            <div class="col-12 py-5">
-                <div class="sultan-loading-box sultan-page-transition">
-                    <div class="sultan-spinner-icon">
-                        <i class="fas fa-circle-notch fa-spin"></i>
-                    </div>
-                    <h6 class="text-muted font-weight-bold sultan-loading-text mb-0" style="letter-spacing: 0.5px; text-transform: uppercase; font-size: 11px;">Menyinkronkan status laporan tahunan...</h6>
-                </div>
-            </div>
-        `);
 
-        // Tarik data tahun berjalan terlebih dahulu untuk mengisi Banner Status Bulan Berjalan & Card Tahun Ini
+        // INSTAN: Render card tahun dan 12 kotak bulan placeholder (skeleton) langsung di detik ke-0
+        $container.empty();
+        yearsList.forEach(function(yr) {
+            var cardId = 'dashlapbul_gridYear_' + yr;
+            var htmlCard = `
+                <div class="col-xl-3 col-lg-4 col-md-6 mb-4">
+                    <div class="lapbul-user-card">
+                        <div class="lapbul-user-card-header">
+                            <h5 class="lapbul-user-card-title">
+                                <i class="fas fa-calendar-alt"></i>
+                                <span>Laporan Bulan</span>
+                            </h5>
+                            <span class="lapbul-user-year-badge">${yr}</span>
+                        </div>
+                        <div class="lapbul-month-grid" id="${cardId}">
+                            ${dashlapbul_generateSkeletonMonthBoxes(yr)}
+                        </div>
+                    </div>
+                </div>
+            `;
+            $container.append(htmlCard);
+        });
+
+        var $btnRefresh = $('#dashlapbul_userBtnRefresh');
+        $btnRefresh.prop('disabled', true).html('<i class="fas fa-circle-notch fa-spin mr-1"></i> Menyinkronkan...');
+
+        // 1. Tarik data tahun berjalan terlebih dahulu untuk mengisi Banner Status Bulan Berjalan & Card Tahun Ini
         Lapbul_GetGlobalData(currentYear, DASHLAPBUL_USER_NPSN, false, function(resCur) {
             var dataCur = (resCur && !resCur.error) ? resCur : [];
             DASHLAPBUL_USER_REKAP_TAHUN[currentYear] = dataCur;
@@ -615,50 +631,53 @@
             // Update Poin 2: Kartu Status Bulan Berjalan
             dashlapbul_renderStatusBulanBerjalan(currentYear, dataCur);
 
-            // Siapkan wadah grid multi-tahun
-            $container.empty();
-
-            // Render skeleton per tahun
-            yearsList.forEach(function(yr) {
-                var cardId = 'dashlapbul_gridYear_' + yr;
-                var htmlCard = `
-                    <div class="col-xl-3 col-lg-4 col-md-6 mb-4">
-                        <div class="lapbul-user-card">
-                            <div class="lapbul-user-card-header">
-                                <h5 class="lapbul-user-card-title">
-                                    <i class="fas fa-calendar-alt"></i>
-                                    <span>Laporan Bulan</span>
-                                </h5>
-                                <span class="lapbul-user-year-badge">${yr}</span>
-                            </div>
-                            <div class="lapbul-month-grid" id="${cardId}">
-                                <div class="col-12 text-center py-4 text-muted small">
-                                    <i class="fas fa-circle-notch fa-spin mr-1"></i> Memuat...
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                $container.append(htmlCard);
-            });
-
-            // Langsung render tahun berjalan
+            // Hydrate animasi warna untuk tahun berjalan
             dashlapbul_renderYearGridCard(currentYear, dataCur);
 
-            // Tarik data tahun-tahun sebelumnya secara paralel
+            // 2. Tarik data tahun-tahun sebelumnya secara paralel
+            var remainingPrev = yearsList.length - 1;
+            if (remainingPrev <= 0) {
+                $btnRefresh.prop('disabled', false).html('<i class="fas fa-sync-alt mr-1"></i> Refresh Data');
+            }
+
             yearsList.slice(1).forEach(function(prevYear) {
                 Lapbul_GetGlobalData(prevYear, DASHLAPBUL_USER_NPSN, false, function(resPrev) {
                     var dataPrev = (resPrev && !resPrev.error) ? resPrev : [];
                     DASHLAPBUL_USER_REKAP_TAHUN[prevYear] = dataPrev;
                     dashlapbul_renderYearGridCard(prevYear, dataPrev);
+                    remainingPrev--;
+                    if (remainingPrev <= 0) {
+                        $btnRefresh.prop('disabled', false).html('<i class="fas fa-sync-alt mr-1"></i> Refresh Data');
+                    }
                 }, function() {
                     dashlapbul_renderYearGridCard(prevYear, []);
+                    remainingPrev--;
+                    if (remainingPrev <= 0) {
+                        $btnRefresh.prop('disabled', false).html('<i class="fas fa-sync-alt mr-1"></i> Refresh Data');
+                    }
                 });
             });
 
         }, function(err) {
-            $container.html('<div class="col-12 text-center py-4 text-danger"><i class="fas fa-wifi mr-2"></i>Koneksi terputus: ' + (err.message || 'Error') + '</div>');
+            console.error("Gagal memuat status bulan berjalan:", err);
+            $btnRefresh.prop('disabled', false).html('<i class="fas fa-sync-alt mr-1"></i> Refresh Data');
         });
+    }
+
+    // Generator 12 kotak bulan skeleton (placeholder instan tanpa jeda)
+    function dashlapbul_generateSkeletonMonthBoxes(yr) {
+        var mthsDisplay = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+        var mthsFull = ['januari', 'februari', 'maret', 'april', 'mei', 'juni', 'juli', 'agustus', 'september', 'oktober', 'november', 'desember'];
+        var html = '';
+        mthsDisplay.forEach(function(namaSingkat, idx) {
+            html += `
+                <div class="lapbul-month-box lapbul-month-skeleton" data-month-idx="${idx}" data-month-name="${mthsFull[idx]}" data-year="${yr}" title="${mthsFull[idx].toUpperCase()} ${yr} - Memuat...">
+                    <span class="lapbul-month-name">${namaSingkat}</span>
+                    <i class="lapbul-month-icon far fa-circle"></i>
+                </div>
+            `;
+        });
+        return html;
     }
 
     // Poin 2: Kartu Status Target Pengiriman (Laporan dilaporkan paling lambat tgl 10 bulan berikutnya)
@@ -799,7 +818,6 @@
 
         var $grid = $('#dashlapbul_gridYear_' + targetTahun);
         if ($grid.length === 0) return;
-        $grid.empty();
 
         mthsDisplay.forEach(function(namaSingkat, idx) {
             var blnKey = mthsFull[idx];
@@ -853,13 +871,27 @@
                 }
             }
 
-            var $box = $('<div class="lapbul-month-box ' + boxClass + '" data-month-idx="' + idx + '" data-month-name="' + mthsFull[idx] + '" data-year="' + targetTahun + '" title="' + mthsFull[idx].toUpperCase() + ' ' + targetTahun + ' - ' + statusLabel + '"></div>');
+            // Cari kotak skeleton yang sudah ada di layar
+            var $box = $grid.find(`.lapbul-month-box[data-month-idx="${idx}"]`);
+            if ($box.length === 0) {
+                // Jika belum ada di DOM (fallback)
+                $box = $(`<div class="lapbul-month-box" data-month-idx="${idx}" data-month-name="${blnKey}" data-year="${targetTahun}"></div>`);
+                $box.append(`<span class="lapbul-month-name">${namaSingkat}</span>`);
+                $box.append(`<i class="lapbul-month-icon"></i>`);
+                $grid.append($box);
+            }
+
+            // Simpan data laporan & update tooltip/title
             $box.data('report-info', dataBulan);
+            $box.attr('title', `${mthsFull[idx].toUpperCase()} ${targetTahun} - ${statusLabel}`);
 
-            $box.append('<span class="lapbul-month-name">' + namaSingkat + '</span>');
-            $box.append('<i class="lapbul-month-icon ' + iconClass + '"></i>');
+            // Transisi halus: hapus kelas skeleton, pasang status warna asli, dan picu animasi hydrate
+            $box.removeClass('lapbul-month-skeleton lapbul-month-approved lapbul-month-revisi lapbul-month-rejected lapbul-month-pending lapbul-month-future lapbul-month-missed')
+                .addClass(boxClass)
+                .addClass('lapbul-hydrated');
 
-            $grid.append($box);
+            $box.find('.lapbul-month-icon')
+                .attr('class', 'lapbul-month-icon ' + iconClass);
         });
     }
 
