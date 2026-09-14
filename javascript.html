@@ -635,15 +635,57 @@
 
     inisialisasiAplikasi();
 
+    // -------------------------------------------------------------
+    // SMART RESPONSIVE SIDEBAR & AUTO-COLLAPSE (MULTITASKING READY)
+    // -------------------------------------------------------------
+    function sultan_syncSidebarResponsive(isManualToggle) {
+      var winWidth = $(window).width();
+      if (winWidth < 1200) {
+        // Layar sedang/sempit, tablet, atau split-screen multitasking:
+        // Otomatis lipat sidebar agar ruang kerja tabel selalu maksimal
+        $('body').addClass('sidebar-collapse');
+        if (winWidth < 992) {
+          $('body').removeClass('sidebar-open');
+        }
+      } else {
+        // Layar monitor besar penuh (>= 1200px): buka sidebar normal jika bukan interaksi manual pengguna
+        if (!isManualToggle) {
+          $('body').removeClass('sidebar-collapse');
+        }
+      }
+
+      // Selaraskan ulang seluruh kolom DataTables yang aktif
+      setTimeout(function () {
+        if ($.fn.dataTable) {
+          $($.fn.dataTable.tables(true)).DataTable().columns.adjust().responsive.recalc();
+        }
+      }, 350);
+    }
+
+    // Jalankan deteksi ukuran layar pertama kali saat startup
+    sultan_syncSidebarResponsive(false);
+
+    // Event saat browser di-resize (misal pengguna membagi layar 50:50 untuk multitasking)
+    var sultan_resizeDebounce;
+    $(window).on('resize', function () {
+      clearTimeout(sultan_resizeDebounce);
+      sultan_resizeDebounce = setTimeout(function () {
+        sultan_syncSidebarResponsive(false);
+      }, 200);
+    });
+
     $(document).on('click', '.nav-sidebar .nav-link', function (e) {
       var pageName = $(this).data('page');
       if (pageName) {
         e.preventDefault(); loadContent(pageName);
-        if ($(window).width() < 992) { $('body').removeClass('sidebar-open').addClass('sidebar-closed sidebar-collapse'); }
+        // Jika layar kurang dari 1200px (termasuk multitasking split-screen), otomatis tutup/lipat kembali setelah klik menu
+        if ($(window).width() < 1200) {
+          $('body').removeClass('sidebar-open').addClass('sidebar-closed sidebar-collapse');
+        }
       }
     });
 
-    // Otomatis sesuaikan lebar kolom tabel DataTables ketika sidebar dilipat/dibuka via tombol hamburger
+    // Otomatis sesuaikan lebar kolom tabel DataTables ketika sidebar dilipat/dibuka manual via tombol hamburger
     $(document).on('collapsed.lte.pushmenu shown.lte.pushmenu', function () {
       setTimeout(function () {
         if ($.fn.dataTable) {
