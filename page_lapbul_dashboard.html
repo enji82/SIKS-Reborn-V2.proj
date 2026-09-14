@@ -430,10 +430,9 @@
                     <div class="lapbul-user-card">
                         <div class="lapbul-user-card-header">
                             <h5 class="lapbul-user-card-title">
-                                <i class="fas fa-calendar-alt"></i>
-                                <span>Laporan Bulan</span>
+                                <span>Tahun ${yr}</span>
                             </h5>
-                            <span class="lapbul-user-year-badge">${yr}</span>
+                            <span class="lapbul-user-count-badge" id="dashlapbul_summaryBadge_${yr}">0 / 12 Lapor</span>
                         </div>
                         <div class="lapbul-month-grid" id="${cardId}">
                             ${dashlapbul_generateSkeletonMonthBoxes(yr)}
@@ -546,9 +545,9 @@
                     descElem.text('Laporan bulanan Anda telah diperiksa dan disetujui oleh verifikator dinas.');
 
                     if (fileUrl) {
-                        actionElem.html('<a href="' + fileUrl + '" target="_blank" class="sultan-btn sultan-btn-sm sultan-btn-aksi-utama px-3 font-weight-bold"><i class="fas fa-file-pdf mr-1"></i> Buka Dokumen</a>');
+                        actionElem.html('<a href="' + fileUrl + '" target="_blank" class="btn btn-sm btn-outline-danger rounded-pill px-3 font-weight-bold shadow-xs"><i class="fas fa-file-pdf mr-1"></i> Buka Dokumen</a>');
                     } else {
-                        actionElem.html('<span class="badge badge-success px-3 py-2 font-weight-bold" style="border-radius: 8px;"><i class="fas fa-check-circle mr-1"></i>Disetujui</span>');
+                        actionElem.html('<span class="badge badge-success rounded-pill px-3 py-1.5 font-weight-bold"><i class="fas fa-check-circle mr-1"></i>Disetujui</span>');
                     }
                 } else if (stLower.includes('revisi')) {
                     // 2. REVISI (Biru Muda / Info - sync-alt)
@@ -557,7 +556,7 @@
                     titleElem.html('<span class="text-info">Laporan ' + targetMonthName + ' Perlu Revisi</span>');
                     descElem.text(catatan && catatan !== "-" ? 'Catatan: ' + catatan : 'Terdapat perbaikan pada berkas laporan bulan ' + targetMonthName + '. Mohon segera perbaiki.');
 
-                    actionElem.html('<button type="button" class="sultan-btn sultan-btn-sm sultan-btn-aksi-batal px-3 font-weight-bold" onclick="$(\'[data-page=\\\'lapbul_kelola\\\']\').first().click();"><i class="fas fa-edit mr-1"></i> Perbaiki Laporan</button>');
+                    actionElem.html('<button type="button" class="btn btn-sm btn-warning rounded-pill px-3 font-weight-bold shadow-xs text-dark" onclick="$(\'[data-page=\\\'lapbul_kelola\\\']\').first().click();"><i class="fas fa-edit mr-1"></i> Perbaiki Laporan</button>');
                 } else if (stLower.includes('tolak')) {
                     // 3. DITOLAK (Merah - times-circle)
                     iconBox.css('background', 'rgba(239, 68, 68, 0.15)').css('color', '#ef4444');
@@ -565,7 +564,7 @@
                     titleElem.html('<span class="text-danger">Laporan ' + targetMonthName + ' Ditolak</span>');
                     descElem.text(catatan && catatan !== "-" ? 'Alasan: ' + catatan : 'Laporan bulan ' + targetMonthName + ' ditolak oleh dinas. Silakan unggah kembali.');
 
-                    actionElem.html('<button type="button" class="sultan-btn sultan-btn-sm sultan-btn-aksi-batal px-3 font-weight-bold" onclick="$(\'[data-page=\\\'lapbul_kelola\\\']\').first().click();"><i class="fas fa-upload mr-1"></i> Unggah Ulang</button>');
+                    actionElem.html('<button type="button" class="btn btn-sm btn-danger rounded-pill px-3 font-weight-bold shadow-xs" onclick="$(\'[data-page=\\\'lapbul_kelola\\\']\').first().click();"><i class="fas fa-upload mr-1"></i> Unggah Ulang</button>');
                 } else {
                     // 4. DIPROSES / MENUNGGU VERIFIKASI (Kuning / Warning - clock)
                     iconBox.css('background', 'rgba(234, 179, 8, 0.15)').css('color', '#eab308');
@@ -573,7 +572,7 @@
                     titleElem.html('<span class="text-warning">Laporan ' + targetMonthName + ' Sedang Diproses</span>');
                     descElem.text('Laporan dikirim pada ' + tglKirim + ' dan sedang dalam antrean verifikasi dinas.');
 
-                    actionElem.html('<span class="badge badge-warning text-dark px-3 py-2 font-weight-bold" style="border-radius: 8px;"><i class="fas fa-clock mr-1"></i> Diproses</span>');
+                    actionElem.html('<span class="badge badge-warning text-dark rounded-pill px-3 py-1.5 font-weight-bold"><i class="fas fa-clock mr-1"></i> Diproses</span>');
                 }
             } else {
                 // BELUM LAPOR
@@ -586,7 +585,7 @@
                 titleElem.html('<span class="text-danger">' + statusText + '</span>');
                 descElem.text(descWarning);
 
-                actionElem.html('<button type="button" class="sultan-btn sultan-btn-sm sultan-btn-aksi-utama px-3 font-weight-bold" onclick="$(\'[data-page=\\\'lapbul_kelola\\\']\').first().click();"><i class="fas fa-upload mr-1"></i> Unggah Laporan Sekarang</button>');
+                actionElem.html('<button type="button" class="btn btn-sm btn-danger rounded-pill px-3 font-weight-bold shadow-xs" onclick="$(\'[data-page=\\\'lapbul_kelola\\\']\').first().click();"><i class="fas fa-upload mr-1"></i> Unggah Laporan Sekarang</button>');
             }
         };
 
@@ -700,6 +699,17 @@
             $box.find('.lapbul-month-icon')
                 .attr('class', 'lapbul-month-icon ' + iconClass);
         });
+
+        // Hitung total laporan terkirim untuk tahun ini dan update badge header
+        var totalTerkirim = 0;
+        if (dataList && dataList.length > 0) {
+            dataList.forEach(function(r) {
+                if (String(r.tahun || "").trim() === String(targetTahun) && String(r.statusData || "").trim() !== "" && String(r.statusData || "").trim() !== "-") {
+                    totalTerkirim++;
+                }
+            });
+        }
+        $('#dashlapbul_summaryBadge_' + targetTahun).text(totalTerkirim + ' / 12 Lapor');
     }
 
     function dashlapbul_bukaDetailBulanUser(blnNama, tahun, dataBulan) {
