@@ -310,10 +310,22 @@ function setting_tampilkanPanel(u, isNew) {
 // ========================
 function setting_renderChecklist(aksesMenu) {
   function buildCheck(item, level) {
-    if (item.adminOnly) return ''; // Skip menu admin
+    if (item.adminOnly) return ''; // Skip menu admin (Pengaturan, Monitoring Aktivitas)
+    
+    // 1. Tipe Section Header (Kategori Induk Baru)
+    if (item.isHeader) {
+      var iconHdr = item.icon ? '<i class="' + item.icon + ' mr-2" style="color:#e5c158;"></i>' : '';
+      return '<div class="akses-section-header">' +
+        '<span class="akses-section-title">' + iconHdr + item.label + '</span>' +
+      '</div>';
+    }
+
+    // 2. Tipe Menu Always Visible (misal Beranda)
     if (item.alwaysVisible) {
       return '<div class="akses-leaf akses-locked"><label><input type="checkbox" checked disabled> ' + item.label + ' <small class="text-muted">(selalu aktif)</small></label></div>';
     }
+
+    // 3. Tipe Menu dengan Submenu (Group / Dropdown)
     if (item.children && item.children.length) {
       var childChecks = item.children.map(function(c) { return buildCheck(c, level + 1); }).join('');
       // hitung apakah semua child ada di akses
@@ -325,18 +337,23 @@ function setting_renderChecklist(aksesMenu) {
       item.children.forEach(collectIds);
       var anyChecked = allIds.some(function(id) { return aksesMenu.indexOf(id) !== -1; });
       var allChecked = allIds.length > 0 && allIds.every(function(id) { return aksesMenu.indexOf(id) !== -1; });
-      var groupId = 'grp_' + (item.label || '').replace(/\s+/g, '_');
+      var groupId = 'grp_' + (item.label || '').replace(/[^a-zA-Z0-9]/g, '_') + '_' + Math.floor(Math.random()*1000);
+      var iconGroup = item.icon ? '<i class="' + item.icon + ' mr-1" style="font-size:12px; opacity:0.8;"></i> ' : '';
       return '<div class="akses-group">' +
         '<div class="akses-group-header" onclick="setting_toggleGroup(\'' + groupId + '\')">' +
           '<input type="checkbox" ' + (allChecked ? 'checked' : '') + ' onclick="event.stopPropagation(); setting_checkGroup(this, \'' + groupId + '\')">' +
-          '<span>' + item.label + '</span>' +
+          '<span>' + iconGroup + item.label + '</span>' +
+          '<i class="fas fa-chevron-down ml-auto" style="font-size:10px; opacity:0.5;"></i>' +
         '</div>' +
         '<div class="akses-children" id="' + groupId + '">' + childChecks + '</div>' +
       '</div>';
     }
+
+    // 4. Tipe Leaf (Menu Tunggal)
     if (item.id) {
       var checked = aksesMenu.indexOf(item.id) !== -1 ? 'checked' : '';
-      return '<div class="akses-leaf"><label><input type="checkbox" class="akses-cb" data-page="' + item.id + '" ' + checked + '> ' + item.label + '</label></div>';
+      var iconLeaf = item.icon ? '<i class="' + item.icon + ' mr-1" style="font-size:12px; opacity:0.8;"></i> ' : '';
+      return '<div class="akses-leaf"><label><input type="checkbox" class="akses-cb" data-page="' + item.id + '" ' + checked + '> ' + iconLeaf + item.label + '</label></div>';
     }
     return '';
   }
