@@ -410,6 +410,32 @@
         } else {
             DASHLAPBUL_ACTIVE_VIEW = 'unit';
             dashlapbul_switchMode('unit');
+
+            // [PRE-FETCH DI BACKGROUND UNTUK USER SEKOLAH]
+            // Siapkan dropdown filter tahun/bulan rekap kecamatan terlebih dahulu
+            dashlapbul_initFilter();
+
+            // Panggil pre-fetch data rekap kecamatan secara hening (asinkron di background)
+            // tanpa memblokir tampilan Unit yang sedang dinikmati pengguna
+            setTimeout(function () {
+                var currentYear = $('#dashlapbul_dashTahun').val() || new Date().getFullYear();
+                // Tarik data rekap global (keyword: "", is_admin: true) ke cache memori browser
+                Lapbul_GetGlobalData(currentYear, "", true, function (resRekap) {
+                    // Pre-fetch selesai dan data tersimpan di window.LAPBUL_GLOBAL_CACHE
+                    // Hitung metrik dan isi tampilan rekap di belakang layar agar saat tombol Rekap diklik langsung instan!
+                    Lapbul_GetMasterSekolah(function (master) {
+                        var b = $('#dashlapbul_dashBulan').val() || (new Date().getMonth() + 1);
+                        var metrics = dashlapbul_calculateMetrics(master || [], resRekap || [], currentYear, b);
+                        dashlapbul_renderMetrics(metrics);
+                        DASHLAPBUL_REKAP_LOADED = true;
+                        DASHLAPBUL_IS_INIT = false;
+                        var jam = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+                        $('#dashlapbul_syncTime').text('Sinkron: ' + jam);
+                    });
+                }, function (err) {
+                    console.warn("Pre-fetch rekap background ditunda/gagal:", err);
+                });
+            }, 600); // Beri jeda 600ms agar rendering awal kartu unit selesai 100% terlebih dahulu
         }
 
         // 6. Bind Event Handler Admin & Modal Belum Lapor
