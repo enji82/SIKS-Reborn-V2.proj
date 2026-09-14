@@ -958,11 +958,45 @@
             $body.html(html);
 
             if (fileUrl) {
+                var cleanFileUrl = String(fileUrl).trim();
+                var previewUrl = cleanFileUrl;
+                if (cleanFileUrl.includes('drive.google.com') || cleanFileUrl.includes('docs.google.com')) {
+                    var match = cleanFileUrl.match(/\/d\/([a-zA-Z0-9_-]{25,})/) || cleanFileUrl.match(/id=([a-zA-Z0-9_-]{25,})/);
+                    if (match && match[1]) {
+                        previewUrl = 'https://drive.google.com/file/d/' + match[1] + '/preview';
+                    }
+                } else if (cleanFileUrl.includes('/view')) {
+                    previewUrl = cleanFileUrl.replace(/\/view.*/, '/preview');
+                }
+
+                var downloadUrl = cleanFileUrl;
+                if (cleanFileUrl.includes('drive.google.com')) {
+                    var matchDl = cleanFileUrl.match(/\/d\/([a-zA-Z0-9_-]{25,})/) || cleanFileUrl.match(/id=([a-zA-Z0-9_-]{25,})/);
+                    if (matchDl && matchDl[1]) {
+                        downloadUrl = 'https://drive.google.com/uc?export=download&id=' + matchDl[1];
+                    }
+                }
+
                 $action.append(`
-                    <a href="${fileUrl}" target="_blank" class="sultan-btn sultan-btn-aksi-utama px-3">
-                        <i class="fas fa-file-pdf mr-1"></i> Buka Dokumen
-                    </a>
+                    <button type="button" class="sultan-btn sultan-btn-aksi-utama px-3" id="dashlapbul_btnPreviewDokumen">
+                        <i class="fas fa-eye mr-1"></i> Buka Dokumen
+                    </button>
                 `);
+
+                // Handler klik: panggil modal preview terpusat Sultan.modal.preview
+                $(document).off('click', '#dashlapbul_btnPreviewDokumen').on('click', '#dashlapbul_btnPreviewDokumen', function(e) {
+                    e.preventDefault();
+                    if (typeof Sultan !== 'undefined' && Sultan.modal && typeof Sultan.modal.preview === 'function') {
+                        Sultan.modal.preview({
+                            title: 'LAPORAN BULAN ' + capBln.toUpperCase() + ' ' + tahun + ' - ' + namaSekolah,
+                            url: previewUrl,
+                            downloadUrl: downloadUrl
+                        });
+                    } else {
+                        // Fallback jika dibuka di tab baru
+                        window.open(cleanFileUrl, '_blank');
+                    }
+                });
             }
         } else {
             $body.html(`
