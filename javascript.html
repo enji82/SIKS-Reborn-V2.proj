@@ -1897,64 +1897,94 @@
         return;
       }
 
-      var labels = {
-        sk: 'SK Tugas', lapbul: 'Laporan Bulan', lupa: 'Lupa Presensi',
-        salah: 'Salah Presensi', perdin: 'Perjadin', cuti: 'Pengajuan Cuti',
-        surat_cuti: 'Surat Cuti', efile: 'E-File',
-        mutasi_paud: 'Mutasi PAUD', mutasi_sdn: 'Mutasi SDN', mutasi_sds: 'Mutasi SDS',
-        perbaikan_gaji: 'Perbaikan Gaji',
-        seragam_penerimaan: 'Laporan Penerimaan',
-        seragam_penyerahan: 'Laporan Penyerahan',
-        spmb: 'Laporan SPMB',
-        ijazah: 'Cetak Ijazah',
-        koreksi_ktp: 'Koreksi KTP',
-        lokupa: 'Lokasi Upacara',
-        pppkpw: 'PPPK PW'
+      var moduleConfig = {
+        sk: { label: 'SK Tugas', icon: 'fa-file-signature' },
+        lapbul: { label: 'Laporan Bulan', icon: 'fa-calendar-alt' },
+        lupa: { label: 'Lupa Presensi', icon: 'fa-user-clock' },
+        salah: { label: 'Salah Presensi', icon: 'fa-exclamation-triangle' },
+        perdin: { label: 'Perjadin', icon: 'fa-plane-departure' },
+        cuti: { label: 'Pengajuan Cuti', icon: 'fa-calendar-day' },
+        surat_cuti: { label: 'Surat Cuti', icon: 'fa-envelope-open-text' },
+        efile: { label: 'E-File', icon: 'fa-folder-open' },
+        mutasi_paud: { label: 'Mutasi PAUD', icon: 'fa-child' },
+        mutasi_sdn: { label: 'Mutasi SDN', icon: 'fa-school' },
+        mutasi_sds: { label: 'Mutasi SDS', icon: 'fa-graduation-cap' },
+        perbaikan_gaji: { label: 'Perbaikan Gaji', icon: 'fa-money-check-alt' },
+        seragam_penerimaan: { label: 'Laporan Penerimaan', icon: 'fa-box-open' },
+        seragam_penyerahan: { label: 'Laporan Penyerahan', icon: 'fa-hands' },
+        spmb: { label: 'Laporan SPMB', icon: 'fa-user-plus' },
+        ijazah: { label: 'Cetak Ijazah', icon: 'fa-certificate' },
+        koreksi_ktp: { label: 'Koreksi KTP', icon: 'fa-id-card' },
+        lokupa: { label: 'Lokasi Upacara', icon: 'fa-map-marker-alt' },
+        pppkpw: { label: 'PPPK PW', icon: 'fa-user-tie' }
       };
+
+      // Helper pemformat tanggal yang bersih & manusiawi
+      function formatNotifTime(raw) {
+        if (!raw) return "-";
+        try {
+          var str = String(raw).trim().replace(/'/g, "");
+          var d = new Date(str);
+          if (!isNaN(d.getTime())) {
+            var dateStr = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+            var timeStr = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+            return dateStr + ' ' + timeStr;
+          }
+          if (str.indexOf('T') > -1) {
+            var parts = str.split('T');
+            return parts[0];
+          }
+          return str.split(' ')[0];
+        } catch (e) {
+          return String(raw).split(' ')[0];
+        }
+      }
 
       var html = '';
       for (var mKey in res.modules) {
         var mData = res.modules[mKey];
         if (mData && (mData.count > 0 || (mData.recent && mData.recent.length > 0))) {
-          var displayLabel = (labels[mKey] || mKey).toUpperCase();
-          // Header Kelompok (Clickable)
-          html += `<div class="dropdown-header notif-sultan-group d-flex justify-content-between align-items-center py-2 px-3 border-bottom" onclick="sultan_toggleNotifGroup(this)">
-                            <div>
-                                <i class="fas fa-chevron-right notif-chevron mr-2" style="font-size: 10px; opacity: 0.5; transition: transform 0.25s ease;"></i>
-                                <span class="notif-sultan-header font-weight-bold" style="font-size: 13px !important; letter-spacing: 0.5px;">${displayLabel}</span>
-                            </div>
-                            <span class="notif-sultan-badge">${mData.count}</span>
-                         </div>
-                         <div class="notif-group-content" style="display: none;">`; // Mulai pembungkus isi
+          var mCfg = moduleConfig[mKey] || { label: mKey.replace(/_/g, ' '), icon: 'fa-bell' };
+          var displayLabel = mCfg.label;
+          var displayIcon = mCfg.icon;
+
+          // Header Kelompok (Clickable Accordion)
+          html += `<div class="notif-sultan-group d-flex justify-content-between align-items-center py-2 px-3 border-bottom" onclick="sultan_toggleNotifGroup(this)">
+                    <div class="d-flex align-items-center notif-title-wrapper">
+                        <i class="fas fa-chevron-right notif-chevron mr-2" style="font-size: 10px; opacity: 0.5; transition: transform 0.25s ease;"></i>
+                        <i class="fas ${displayIcon} mr-2 notif-module-icon" style="font-size: 12px; opacity: 0.85;"></i>
+                        <span class="notif-sultan-header font-weight-bold" style="font-size: 13px !important; letter-spacing: 0.2px;">${displayLabel}</span>
+                    </div>
+                    <span class="notif-sultan-badge">${mData.count}</span>
+                  </div>
+                  <div class="notif-group-content" style="display: none;">`; // Mulai pembungkus isi
 
           if (mData.recent && Array.isArray(mData.recent)) {
             mData.recent.forEach(function (notif) {
               var content = notif.nama || notif.namaSd || notif.nomor || 'Pemberitahuan';
               var sub = notif.kriteria || notif.tujuan || notif.berkas || notif.jenis || '';
-              var tglRaw = notif.waktu || notif.tglVerif || notif.tglInput || notif.tglUnggah || "";
-              var tglDisplay = tglRaw ? String(tglRaw).split(' ')[0].replace(/'/g, "") : "-";
+              var tglDisplay = formatNotifTime(notif.waktu || notif.tglVerif || notif.tglInput || notif.tglUnggah || "");
 
-              var statusStyle = '';
-              var statusTxt = String(notif.status || "PANDING").toUpperCase();
-              if (statusTxt.includes('PROSES') || statusTxt.includes('PENDING')) statusStyle = 'color: #f6c23e !important;';
-              else if (statusTxt.includes('SETUJU') || statusTxt.includes('OK') || statusTxt.includes('VALID')) statusStyle = 'color: #28a745 !important;';
-              else if (statusTxt.includes('TOLAK') || statusTxt.includes('REVISI')) statusStyle = 'color: #dc3545 !important;';
+              var statusTxt = String(notif.status || "PENDING").toUpperCase();
+              var chipClass = 'chip-warning';
+              if (statusTxt.includes('SETUJU') || statusTxt.includes('OK') || statusTxt.includes('VALID')) chipClass = 'chip-success';
+              else if (statusTxt.includes('TOLAK') || statusTxt.includes('REVISI')) chipClass = 'chip-danger';
 
               html += `
-                        <a href="#" class="dropdown-item notif-sultan-item py-2 border-bottom" onclick="sultan_handleNotifClick('${notif.rowId}', '${notif.source}', this)" style="background: transparent !important;">
-                            <div class="media align-items-center">
-                                <div class="media-body">
-                                    <div class="d-flex justify-content-between align-items-center mb-0">
-                                        <h3 class="notif-sultan-name font-weight-bold" style="font-size: 12px !important; margin: 0 !important;">${content}</h3>
-                                        <span class="notif-sultan-sub" style="font-size: 10px !important;"><i class="far fa-clock mr-1"></i>${tglDisplay}</span>
-                                    </div>
-                                    <div class="d-flex align-items-center justify-content-between">
-                                        <span class="notif-sultan-sub" style="font-size: 10px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px;">${sub}</span>
-                                        <span class="font-weight-bold" style="font-size: 10px !important; letter-spacing: 0.5px !important; ${statusStyle}">${statusTxt}</span>
-                                    </div>
-                                </div>
+                <a href="#" class="dropdown-item notif-sultan-item py-2 px-3 border-bottom" onclick="sultan_handleNotifClick('${notif.rowId}', '${notif.source}', this)">
+                    <div class="media align-items-center w-100">
+                        <div class="media-body">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <h4 class="notif-sultan-name font-weight-bold text-truncate mb-0" style="font-size: 12px !important; max-width: 190px;">${content}</h4>
+                                <span class="notif-sultan-sub text-nowrap ml-2" style="font-size: 10.5px !important;"><i class="far fa-clock mr-1" style="font-size: 9.5px;"></i>${tglDisplay}</span>
                             </div>
-                        </a>`;
+                            <div class="d-flex align-items-center justify-content-between mt-1">
+                                <span class="notif-sultan-sub text-truncate" style="font-size: 11px !important; max-width: 190px;">${sub || '-'}</span>
+                                <span class="notif-status-chip ${chipClass}">${statusTxt}</span>
+                            </div>
+                        </div>
+                    </div>
+                </a>`;
             });
           }
 
