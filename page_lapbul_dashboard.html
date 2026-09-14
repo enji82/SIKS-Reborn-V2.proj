@@ -32,13 +32,10 @@
             </div>
 
             <!-- 2. MULTI-YEAR CARD GRID (Terbaru di kiri atas, lama di bawah, 3-4 kolom) -->
-            <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="mb-3">
                 <h6 class="font-weight-bold text-sultan-utama m-0 text-uppercase" style="letter-spacing: 0.5px;">
                     <i class="fas fa-history mr-2"></i>Riwayat Laporan Tahunan
                 </h6>
-                <button type="button" id="dashlapbul_userBtnRefresh" class="btn btn-sm btn-outline-secondary rounded-pill px-3 font-weight-bold">
-                    <i class="fas fa-sync-alt mr-1"></i> Refresh Data
-                </button>
             </div>
 
             <div class="row" id="dashlapbul_userMultiYearContainer">
@@ -579,11 +576,6 @@
             dashlapbul_bukaDetailBulanUser(blnNama, tahun, infoLaporan);
         });
 
-        $(document).off('click', '#dashlapbul_userBtnRefresh').on('click', '#dashlapbul_userBtnRefresh', function(e) {
-            e.preventDefault();
-            dashlapbul_loadUserMultiYear();
-        });
-
         dashlapbul_loadUserMultiYear();
     }
 
@@ -620,9 +612,6 @@
             $container.append(htmlCard);
         });
 
-        var $btnRefresh = $('#dashlapbul_userBtnRefresh');
-        $btnRefresh.prop('disabled', true).html('<i class="fas fa-circle-notch fa-spin mr-1"></i> Menyinkronkan...');
-
         // 1. Tarik data tahun berjalan terlebih dahulu untuk mengisi Banner Status Bulan Berjalan & Card Tahun Ini
         Lapbul_GetGlobalData(currentYear, DASHLAPBUL_USER_NPSN, false, function(resCur) {
             var dataCur = (resCur && !resCur.error) ? resCur : [];
@@ -635,32 +624,18 @@
             dashlapbul_renderYearGridCard(currentYear, dataCur);
 
             // 2. Tarik data tahun-tahun sebelumnya secara paralel
-            var remainingPrev = yearsList.length - 1;
-            if (remainingPrev <= 0) {
-                $btnRefresh.prop('disabled', false).html('<i class="fas fa-sync-alt mr-1"></i> Refresh Data');
-            }
-
             yearsList.slice(1).forEach(function(prevYear) {
                 Lapbul_GetGlobalData(prevYear, DASHLAPBUL_USER_NPSN, false, function(resPrev) {
                     var dataPrev = (resPrev && !resPrev.error) ? resPrev : [];
                     DASHLAPBUL_USER_REKAP_TAHUN[prevYear] = dataPrev;
                     dashlapbul_renderYearGridCard(prevYear, dataPrev);
-                    remainingPrev--;
-                    if (remainingPrev <= 0) {
-                        $btnRefresh.prop('disabled', false).html('<i class="fas fa-sync-alt mr-1"></i> Refresh Data');
-                    }
                 }, function() {
                     dashlapbul_renderYearGridCard(prevYear, []);
-                    remainingPrev--;
-                    if (remainingPrev <= 0) {
-                        $btnRefresh.prop('disabled', false).html('<i class="fas fa-sync-alt mr-1"></i> Refresh Data');
-                    }
                 });
             });
 
         }, function(err) {
             console.error("Gagal memuat status bulan berjalan:", err);
-            $btnRefresh.prop('disabled', false).html('<i class="fas fa-sync-alt mr-1"></i> Refresh Data');
         });
     }
 
