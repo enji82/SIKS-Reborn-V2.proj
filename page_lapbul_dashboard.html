@@ -545,7 +545,35 @@
                     descElem.text('Laporan bulanan Anda telah diperiksa dan disetujui oleh verifikator dinas.');
 
                     if (fileUrl) {
-                        actionElem.html('<a href="' + fileUrl + '" target="_blank" class="btn btn-sm btn-outline-danger rounded-pill px-3 font-weight-bold shadow-xs"><i class="fas fa-file-pdf mr-1"></i> Buka Dokumen</a>');
+                        var cleanUrl = String(fileUrl).trim();
+                        var prevUrl = cleanUrl;
+                        if (cleanUrl.includes('drive.google.com') || cleanUrl.includes('docs.google.com')) {
+                            var m = cleanUrl.match(/\/d\/([a-zA-Z0-9_-]{25,})/) || cleanUrl.match(/id=([a-zA-Z0-9_-]{25,})/);
+                            if (m && m[1]) prevUrl = 'https://drive.google.com/file/d/' + m[1] + '/preview';
+                        } else if (cleanUrl.includes('/view')) {
+                            prevUrl = cleanUrl.replace(/\/view.*/, '/preview');
+                        }
+
+                        var dlUrl = cleanUrl;
+                        if (cleanUrl.includes('drive.google.com')) {
+                            var mDl = cleanUrl.match(/\/d\/([a-zA-Z0-9_-]{25,})/) || cleanUrl.match(/id=([a-zA-Z0-9_-]{25,})/);
+                            if (mDl && mDl[1]) dlUrl = 'https://drive.google.com/uc?export=download&id=' + mDl[1];
+                        }
+
+                        actionElem.html('<button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 font-weight-bold shadow-xs" id="dashlapbul_btnHeroPreview"><i class="fas fa-file-pdf mr-1"></i> Buka Dokumen</button>');
+                        
+                        $(document).off('click', '#dashlapbul_btnHeroPreview').on('click', '#dashlapbul_btnHeroPreview', function(e) {
+                            e.preventDefault();
+                            if (typeof Sultan !== 'undefined' && Sultan.modal && typeof Sultan.modal.preview === 'function') {
+                                Sultan.modal.preview({
+                                    title: 'LAPORAN BULAN ' + targetMonthName.toUpperCase() + ' ' + targetYear + ' - ' + (DASHLAPBUL_USER_SEKOLAH || 'SEKOLAH'),
+                                    url: prevUrl,
+                                    downloadUrl: dlUrl
+                                });
+                            } else {
+                                window.open(cleanUrl, '_blank');
+                            }
+                        });
                     } else {
                         actionElem.html('<span class="badge badge-success rounded-pill px-3 py-1.5 font-weight-bold"><i class="fas fa-check-circle mr-1"></i>Disetujui</span>');
                     }
