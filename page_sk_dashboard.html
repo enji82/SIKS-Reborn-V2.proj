@@ -1,5 +1,60 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 
+<style>
+    /* Optimasi Kotak Semester SK di Layar Mobile & Desktop */
+    .dashsk-semester-box {
+        min-height: 105px;
+        padding: 12px 8px !important;
+        border-radius: 12px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 1px solid transparent;
+        user-select: none;
+        position: relative;
+    }
+    .dashsk-semester-box:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+    .dashsk-semester-name {
+        font-size: 0.85rem;
+        font-weight: 700;
+        letter-spacing: 0.2px;
+        line-height: 1.2;
+    }
+    .dashsk-semester-icon {
+        font-size: 1.2rem;
+        margin: 6px 0;
+    }
+    .dashsk-semester-sub {
+        font-size: 10px;
+        font-weight: 700;
+        max-width: 100%;
+        line-height: 1.2;
+    }
+    @media (max-width: 576px) {
+        .dashsk-semester-box {
+            min-height: 95px;
+            padding: 10px 4px !important;
+        }
+        .dashsk-semester-name {
+            font-size: 0.78rem;
+        }
+        .dashsk-semester-icon {
+            font-size: 1.05rem;
+            margin: 4px 0;
+        }
+        .dashsk-semester-sub {
+            font-size: 9.5px;
+        }
+    }
+</style>
+
 <section class="content sultan-page-transition">
     <div class="container-fluid">
 
@@ -44,23 +99,25 @@
                 </div>
             </div>
 
-            <!-- 1. KARTU STATUS SEMESTER BERJALAN -->
+            <!-- 1. KARTU STATUS SEMESTER BERJALAN (IDENTIK DENGAN DASHBOARD LAPBUL) -->
             <div class="lapbul-status-banner p-3 p-md-4 mb-4">
                 <div class="row align-items-center">
                     <div class="col-md-7 mb-3 mb-md-0">
                         <div class="d-flex align-items-center">
-                            <div class="status-indicator-circle mr-3" id="dashsk_userCurrentDot">
-                                <i class="fas fa-spinner fa-spin" id="dashsk_userCurrentIcon"></i>
+                            <div class="rounded-circle p-3 mr-3 d-flex align-items-center justify-content-center" id="dashsk_userCurrentIconBox" style="width: 54px; height: 54px; background: rgba(255,255,255,0.08); flex-shrink: 0;">
+                                <i class="fas fa-circle-notch fa-spin fa-lg" id="dashsk_userCurrentIcon"></i>
                             </div>
                             <div>
-                                <span class="badge badge-light border text-muted px-2.5 py-1 mb-1 font-weight-bold" style="font-size: 11px;" id="dashsk_userCurrentBadge">Semester Berjalan</span>
-                                <h4 class="font-weight-bold mb-1" id="dashsk_userCurrentTitle">Memeriksa Status SK...</h4>
+                                <span class="small font-weight-bold text-muted text-uppercase d-block mb-1" id="dashsk_userCurrentPeriod">Periode: -</span>
+                                <h5 class="font-weight-bold mb-1" id="dashsk_userCurrentTitle">Memeriksa Status SK...</h5>
                                 <p class="small text-muted mb-0" id="dashsk_userCurrentDesc">Sistem sedang memeriksa status SK Pembagian Tugas semester berjalan satuan pendidikan Anda.</p>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-5 text-md-right text-left">
-                        <div id="dashsk_userCurrentAction"></div>
+                        <div id="dashsk_userCurrentAction">
+                            <!-- Tombol aksi dinamis via JS -->
+                        </div>
                     </div>
                 </div>
             </div>
@@ -787,65 +844,96 @@
 
         var skTerbaru = currentSKList.length > 0 ? currentSKList[0] : null;
 
-        var statusClass = "text-muted";
-        var statusIcon = "fas fa-question-circle";
         var statusTitle = "Belum Unggah SK";
         var statusDesc = `Sekolah Anda belum mengunggah SK Pembagian Tugas untuk TA ${taCurrent} ${smtCurrent}.`;
-        var actionBtnHtml = `
-            <a href="#" class="sultan-btn sultan-btn-maroon px-4 py-2 shadow-sm font-weight-bold" data-page="sk_data">
-                <i class="fas fa-upload mr-2"></i> Unggah SK Sekarang
-            </a>
-        `;
+        var iconBg = "rgba(244, 63, 94, 0.15)";
+        var iconColor = "#f43f5e";
+        var iconClass = "fas fa-exclamation-circle fa-lg";
+        var actionBtnHtml = "";
+
+        if (DASHSK_USER_IS_ADMIN) {
+            actionBtnHtml = `<span class="badge badge-danger rounded-pill px-3 py-1.5 font-weight-bold"><i class="fas fa-exclamation-circle mr-1"></i> Belum Lapor</span>`;
+        } else {
+            actionBtnHtml = `
+                <a href="#" class="btn btn-sm btn-danger rounded-pill px-3 py-1.5 font-weight-bold shadow-xs" data-page="sk_data">
+                    <i class="fas fa-upload mr-1"></i> Unggah SK Sekarang
+                </a>
+            `;
+        }
 
         if (skTerbaru) {
             var st = String(skTerbaru.status || "").toLowerCase();
-            if (st === 'disetujui') {
-                statusClass = "text-success";
-                statusIcon = "fas fa-check-circle";
-                statusTitle = "SK Sudah Disetujui";
-                statusDesc = `SK Pembagian Tugas (${skTerbaru.kriteria || 'SK Awal'}) telah diverifikasi dan disetujui oleh admin.`;
-                actionBtnHtml = `
-                    <button type="button" class="sultan-btn sultan-btn-outline-success px-4 py-2 shadow-sm font-weight-bold" onclick="dashsk_bukaDetailSK('${skTerbaru.rowBaris}')">
-                        <i class="fas fa-eye mr-2"></i> Lihat Berkas SK
-                    </button>
-                `;
+            var fileUrl = skTerbaru.fileUrl || "";
+
+            if (st === 'disetujui' || st.indexOf('setuju') !== -1) {
+                iconBg = "rgba(34, 197, 94, 0.15)";
+                iconColor = "#22c55e";
+                iconClass = "fas fa-check-circle fa-lg";
+                statusTitle = `<span class="text-success">SK Semester Ini Disetujui</span>`;
+                statusDesc = `SK Pembagian Tugas (${skTerbaru.kriteria || 'SK Awal'}) telah diverifikasi dan disetujui oleh admin dinas.`;
+
+                if (fileUrl) {
+                    actionBtnHtml = `
+                        <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 py-1.5 font-weight-bold shadow-xs" onclick="dashsk_bukaDetailSK('${skTerbaru.rowBaris}')">
+                            <i class="fas fa-file-pdf mr-1"></i> Buka Berkas SK
+                        </button>
+                    `;
+                } else {
+                    actionBtnHtml = `<span class="badge badge-success rounded-pill px-3 py-1.5 font-weight-bold"><i class="fas fa-check-circle mr-1"></i> Disetujui</span>`;
+                }
             } else if (st === 'diproses' || st === '') {
-                statusClass = "text-warning";
-                statusIcon = "fas fa-hourglass-half";
-                statusTitle = "SK Sedang Diproses";
+                iconBg = "rgba(234, 179, 8, 0.15)";
+                iconColor = "#eab308";
+                iconClass = "fas fa-clock fa-lg";
+                statusTitle = `<span class="text-warning">SK Sedang Diproses</span>`;
                 statusDesc = `Berkas SK Pembagian Tugas telah dikirim pada ${skTerbaru.tglUnggah || '-'} dan sedang menunggu verifikasi admin.`;
                 actionBtnHtml = `
-                    <button type="button" class="sultan-btn sultan-btn-outline-warning px-4 py-2 shadow-sm font-weight-bold" onclick="dashsk_bukaDetailSK('${skTerbaru.rowBaris}')">
-                        <i class="fas fa-file-alt mr-2"></i> Cek Berkas
+                    <button type="button" class="btn btn-sm btn-outline-warning text-dark rounded-pill px-3 py-1.5 font-weight-bold shadow-xs" onclick="dashsk_bukaDetailSK('${skTerbaru.rowBaris}')">
+                        <i class="fas fa-clock mr-1"></i> Cek Berkas
                     </button>
                 `;
             } else if (st === 'revisi') {
-                statusClass = "text-warning";
-                statusIcon = "fas fa-exclamation-triangle";
-                statusTitle = "Perlu Perbaikan / Revisi";
+                iconBg = "rgba(56, 189, 248, 0.15)";
+                iconColor = "#0284c7";
+                iconClass = "fas fa-sync-alt fa-lg";
+                statusTitle = `<span class="text-info">SK Perlu Revisi</span>`;
                 statusDesc = `Catatan Admin: ${skTerbaru.keterangan || 'Silakan perbaiki berkas SK sesuai catatan.'}`;
-                actionBtnHtml = `
-                    <a href="#" class="sultan-btn sultan-btn-aksi-hapus px-4 py-2 shadow-sm font-weight-bold" data-page="sk_data">
-                        <i class="fas fa-edit mr-2"></i> Perbaiki SK Sekarang
-                    </a>
-                `;
+
+                if (DASHSK_USER_IS_ADMIN) {
+                    actionBtnHtml = `<span class="badge badge-info rounded-pill px-3 py-1.5 font-weight-bold"><i class="fas fa-sync-alt mr-1"></i> Perlu Revisi</span>`;
+                } else {
+                    actionBtnHtml = `
+                        <a href="#" class="btn btn-sm btn-warning rounded-pill px-3 py-1.5 font-weight-bold shadow-xs text-dark" data-page="sk_data">
+                            <i class="fas fa-edit mr-1"></i> Perbaiki SK Sekarang
+                        </a>
+                    `;
+                }
             } else if (st === 'ditolak') {
-                statusClass = "text-danger";
-                statusIcon = "fas fa-times-circle";
-                statusTitle = "Pengajuan SK Ditolak";
+                iconBg = "rgba(239, 68, 68, 0.15)";
+                iconColor = "#ef4444";
+                iconClass = "fas fa-times-circle fa-lg";
+                statusTitle = `<span class="text-danger">Pengajuan SK Ditolak</span>`;
                 statusDesc = `Alasan: ${skTerbaru.keterangan || 'Pengajuan ditolak oleh dinas.'}`;
-                actionBtnHtml = `
-                    <a href="#" class="sultan-btn sultan-btn-maroon px-4 py-2 shadow-sm font-weight-bold" data-page="sk_data">
-                        <i class="fas fa-redo mr-2"></i> Unggah Ulang SK
-                    </a>
-                `;
+
+                if (DASHSK_USER_IS_ADMIN) {
+                    actionBtnHtml = `<span class="badge badge-danger rounded-pill px-3 py-1.5 font-weight-bold"><i class="fas fa-times-circle mr-1"></i> Ditolak</span>`;
+                } else {
+                    actionBtnHtml = `
+                        <a href="#" class="btn btn-sm btn-danger rounded-pill px-3 py-1.5 font-weight-bold shadow-xs" data-page="sk_data">
+                            <i class="fas fa-redo mr-1"></i> Unggah Ulang SK
+                        </a>
+                    `;
+                }
             }
+        } else {
+            statusTitle = `<span class="text-danger">Belum Mengunggah SK ${smtCurrent}</span>`;
         }
 
-        $('#dashsk_userCurrentPeriod').text(`PERIODE BERJALAN: TA ${taCurrent} - ${smtCurrent.toUpperCase()}`);
-        $('#dashsk_userCurrentTitle').text(statusTitle);
+        $('#dashsk_userCurrentPeriod').html('Target Semester: <strong>' + smtCurrent + ' TA ' + taCurrent + '</strong>');
+        $('#dashsk_userCurrentTitle').html(statusTitle);
         $('#dashsk_userCurrentDesc').text(statusDesc);
-        $('#dashsk_userCurrentIconBox').html(`<i class="${statusIcon} ${statusClass} fa-2x"></i>`);
+        $('#dashsk_userCurrentIconBox').css('background', iconBg).css('color', iconColor);
+        $('#dashsk_userCurrentIcon').attr('class', iconClass);
         $('#dashsk_userCurrentAction').html(actionBtnHtml);
 
         // 2. Susun Riwayat Multi-Tahun Ajaran
@@ -877,7 +965,7 @@
             var listSmt1 = mapTahunAjaran[ta].smt1 || [];
             var listSmt2 = mapTahunAjaran[ta].smt2 || [];
 
-            // Helper untuk merender tile kotak semester terpusat (mengadopsi komponen .lapbul-month-box)
+            // Helper untuk merender tile kotak semester responsif (mengadopsi komponen .lapbul-month-box)
             var renderSemesterTile = function (list, smtLabel, smtKey) {
                 var boxClass = "lapbul-month-missed";
                 var iconClass = "fas fa-exclamation-circle";
@@ -935,10 +1023,10 @@
                 }
 
                 return `
-                    <div class="lapbul-month-box ${boxClass} lapbul-hydrated flex-fill py-3 px-2" ${clickAction} title="${smtLabel} TA ${ta} - ${statusText}">
-                        <span class="lapbul-month-name font-weight-bold" style="font-size: 0.88rem;">${smtLabel}</span>
-                        <i class="lapbul-month-icon ${iconClass} my-1" style="font-size: 1.15rem;"></i>
-                        <span class="small font-weight-bold mt-1 text-truncate" style="font-size: 10.5px; max-width: 95%;">${subText}</span>
+                    <div class="lapbul-month-box dashsk-semester-box ${boxClass} lapbul-hydrated flex-fill" ${clickAction} title="${smtLabel} TA ${ta} - ${statusText}">
+                        <span class="dashsk-semester-name">${smtLabel}</span>
+                        <i class="dashsk-semester-icon ${iconClass}"></i>
+                        <span class="dashsk-semester-sub text-truncate">${subText}</span>
                     </div>
                 `;
             };
@@ -946,8 +1034,8 @@
             var totalTerkirim = (listSmt1.length > 0 ? 1 : 0) + (listSmt2.length > 0 ? 1 : 0);
 
             cardsHtml += `
-                <div class="col-xl-3 col-lg-4 col-md-6 mb-4">
-                    <div class="lapbul-user-card">
+                <div class="col-xl-3 col-lg-4 col-md-6 col-12 mb-4">
+                    <div class="lapbul-user-card h-100">
                         <div class="lapbul-user-card-header">
                             <h5 class="lapbul-user-card-title">
                                 <i class="fas fa-calendar-alt text-maroon mr-1" style="font-size: 0.9rem;"></i>
@@ -955,7 +1043,7 @@
                             </h5>
                             <span class="lapbul-user-count-badge">${totalTerkirim} / 2 Lapor</span>
                         </div>
-                        <div class="d-flex gap-2" style="gap: 10px;">
+                        <div class="d-flex" style="gap: 8px;">
                             ${renderSemesterTile(listSmt1, 'Semester 1', 'smt1')}
                             ${renderSemesterTile(listSmt2, 'Semester 2', 'smt2')}
                         </div>
