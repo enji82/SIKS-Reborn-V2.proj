@@ -1068,7 +1068,7 @@ function admsekolahdash_renderDashboard(dataRekap, dataBelum, fTahun, fPeriode) 
     admsekolahdash_animateValue('admsekolahdash_cardSudah', totSudah);
     admsekolahdash_animateValue('admsekolahdash_cardBelum', totBelum);
     var percentage = totAsn > 0 ? Math.round((totSudah / totAsn) * 100) : 0;
-    admsekolahdash_animateValue('admsekolahdash_cardProgress', percentage, true);
+    admsekolahdash_animateValue('admsekolahdash_cardProgress', percentage, '%');
     admsekolahdash_animateValue('admsekolahdash_cardTotalDokumen', totSudah);
     admsekolahdash_animateValue('admsekolahdash_cardDiproses', totDiproses);
     admsekolahdash_animateValue('admsekolahdash_cardDisetujui', totDisetujui);
@@ -1316,7 +1316,7 @@ function admsekolahdash_renderUnitView(data) {
     }
 
     // Animate KPI Scorecards
-    admsekolahdash_animateValue('admsekolahdash_unitCardProgress', pct, true);
+    admsekolahdash_animateValue('admsekolahdash_unitCardProgress', pct, '%');
     admsekolahdash_animateValue('admsekolahdash_unitCardTotal', totalDokumenDiunggah);
     admsekolahdash_animateValue('admsekolahdash_unitCardDisetujui', countDisetujui);
     admsekolahdash_animateValue('admsekolahdash_unitCardDiproses', countDiproses);
@@ -1372,20 +1372,32 @@ function admsekolahdash_renderUnitView(data) {
     $('#admsekolahdash_unitContent').show();
 }
 
-// ================================================================
-// ANIMASI & UTILITY
-// ================================================================
-function admsekolahdash_animateValue(id, end, formatPercent) {
-    if (typeof SultanUI !== 'undefined') SultanUI.stopLottery('#' + id);
+function admsekolahdash_animateValue(id, endValue, suffix) {
+    suffix = suffix || "";
+    if (typeof SultanUI !== 'undefined') {
+        SultanUI.stopLottery('#' + id);
+    }
     var obj = document.getElementById(id);
     if (!obj) return;
     if (obj.dataset.admsekolahdashAnimId) cancelAnimationFrame(parseInt(obj.dataset.admsekolahdashAnimId, 10));
-    var start = 0, duration = 1000, startTime = null;
+
+    var start = 0;
+    var end = parseInt(endValue, 10);
+    if (isNaN(end)) end = 0;
+
+    if (end === 0) {
+        obj.innerHTML = "0" + (suffix ? `<small class="ml-1">${suffix}</small>` : '');
+        return;
+    }
+
+    var duration = 1200;
+    var startTime = null;
+
     function step(timestamp) {
         if (!startTime) startTime = timestamp;
         var progress = Math.min((timestamp - startTime) / duration, 1);
-        var val = Math.floor(progress * (end - start) + start);
-        obj.innerHTML = val.toLocaleString('id-ID') + (formatPercent ? '%' : '');
+        var curVal = Math.floor(progress * (end - start) + start);
+        obj.innerHTML = curVal.toLocaleString('id-ID') + (suffix ? `<small class="ml-1">${suffix}</small>` : '');
         if (progress < 1) {
             var animId = window.requestAnimationFrame(step);
             obj.dataset.admsekolahdashAnimId = animId;
@@ -1444,4 +1456,4 @@ function admsekolahdash_escapeHtml(text) {
     return text ? String(text).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;") : "";
 }
 </script>
-<!-- Cache buster: Tue Sep 15 18:42:00 WIB 2026 -->
+<!-- Cache buster: Tue Sep 15 18:48:00 WIB 2026 -->
