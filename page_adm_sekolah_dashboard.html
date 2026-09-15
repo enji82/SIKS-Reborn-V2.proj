@@ -321,12 +321,24 @@
              ================================================================ -->
         <div id="admsekolahdash_viewUnit" style="display: none;">
 
-            <div id="admsekolahdash_unitLoadingState" class="text-center py-5">
+            <!-- Prompt State (Sebelum memilih sekolah) -->
+            <div id="admsekolahdash_unitPromptState" class="text-center py-5">
+                <div class="sultan-empty-box sultan-page-transition" style="max-width: 480px; margin: 0 auto; padding: 36px 20px;">
+                    <div class="mb-3" style="font-size: 46px; color: #6b1a2a; opacity: 0.85;">
+                        <i class="fas fa-school"></i>
+                    </div>
+                    <h5 class="font-weight-bold mb-2" style="color: #2c2c2c; font-size: 16px;">Pilih Sekolah Terlebih Dahulu</h5>
+                    <p class="text-muted mb-0" style="font-size: 13px; line-height: 1.5;">Silakan pilih jenjang dan sekolah pada filter di atas untuk melihat dasbor kelengkapan dokumen administrasi sekolah.</p>
+                </div>
+            </div>
+
+            <!-- Loading State (Saat data sedang dimuat dari server) -->
+            <div id="admsekolahdash_unitLoadingState" class="text-center py-5" style="display: none;">
                 <div class="sultan-loading-box sultan-page-transition">
                     <div class="sultan-spinner-icon">
                         <i class="fas fa-circle-notch fa-spin"></i>
                     </div>
-                    <h6 class="text-muted font-weight-bold sultan-loading-text mb-0" style="letter-spacing: 0.5px; text-transform: uppercase; font-size: 11px;">Pilih sekolah untuk melihat kelengkapan dokumen...</h6>
+                    <h6 class="text-muted font-weight-bold sultan-loading-text mb-0" style="letter-spacing: 0.5px; text-transform: uppercase; font-size: 11px;">Memuat data kelengkapan dokumen...</h6>
                 </div>
             </div>
 
@@ -530,7 +542,8 @@ $(document).ready(function() {
         if (npsn) admsekolahdash_loadUnitData(npsn);
         else {
             $('#admsekolahdash_unitContent').hide();
-            $('#admsekolahdash_unitLoadingState').show().find('.sultan-loading-text').text('Pilih sekolah untuk melihat kelengkapan dokumen...');
+            $('#admsekolahdash_unitLoadingState').hide();
+            $('#admsekolahdash_unitPromptState').show();
         }
     });
 
@@ -562,6 +575,15 @@ function admsekolahdash_switchMode(mode) {
         // Jika user non-admin: auto-load sekolah sendiri
         if (!ADMSEKOLAHDASH_IS_ADMIN && ADMSEKOLAHDASH_USER_NPSN) {
             admsekolahdash_loadUnitData(ADMSEKOLAHDASH_USER_NPSN);
+        } else {
+            var curNpsn = $('#admsekolahdash_filterUnitSekolah').val();
+            if (curNpsn) {
+                admsekolahdash_loadUnitData(curNpsn);
+            } else {
+                $('#admsekolahdash_unitContent').hide();
+                $('#admsekolahdash_unitLoadingState').hide();
+                $('#admsekolahdash_unitPromptState').show();
+            }
         }
     } else {
         $('#admsekolahdash_filterBarUnit').hide();
@@ -1078,8 +1100,14 @@ function admsekolahdash_renderDashboard(dataRekap, dataBelum, fTahun, fPeriode) 
 // UNIT MODE — Load & Render
 // ================================================================
 function admsekolahdash_loadUnitData(npsn, forceRefresh) {
-    if (!npsn) return;
+    if (!npsn) {
+        $('#admsekolahdash_unitContent').hide();
+        $('#admsekolahdash_unitLoadingState').hide();
+        $('#admsekolahdash_unitPromptState').show();
+        return;
+    }
 
+    $('#admsekolahdash_unitPromptState').hide();
     $('#admsekolahdash_unitContent').hide();
     $('#admsekolahdash_unitLoadingState').show().find('.sultan-loading-text').html('Memuat data kelengkapan dokumen...');
     $('#admsekolahdash_btnRefreshUnit').prop('disabled', true).html('<i class="fas fa-spinner fa-spin text-maroon"></i>');
@@ -1281,6 +1309,7 @@ function admsekolahdash_renderUnitView(data) {
     populateColumn('admsekolahdash_bodyBelum', itemsBelum, 'belum');
 
     $('#admsekolahdash_unitLoadingState').hide();
+    $('#admsekolahdash_unitPromptState').hide();
     $('#admsekolahdash_unitContent').show();
 }
 
@@ -1356,4 +1385,4 @@ function admsekolahdash_escapeHtml(text) {
     return text ? String(text).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;") : "";
 }
 </script>
-<!-- Cache buster: Mon Sep 15 11:15:00 WIB 2026 -->
+<!-- Cache buster: Mon Sep 15 11:21:00 WIB 2026 -->
