@@ -82,7 +82,7 @@
                 <h6 class="font-weight-bold text-sultan-utama m-0 text-uppercase" style="letter-spacing: 0.5px;">
                     <i class="fas fa-history mr-2"></i>Riwayat SK per Tahun Ajaran
                 </h6>
-                <span class="text-muted small">Klik pada baris riwayat untuk melihat berkas & catatan</span>
+                <span class="text-muted small">Klik pada kotak semester untuk melihat berkas & catatan</span>
             </div>
 
             <div class="row" id="dashsk_userMultiYearContainer">
@@ -958,7 +958,7 @@
         // 2. Susun Riwayat Multi-Tahun Ajaran
         var mapTahunAjaran = {};
         var baseYear = (cMonth >= 6) ? cYear : cYear - 1;
-        for (var i = 0; i >= -2; i--) {
+        for (var i = 0; i >= -3; i--) {
             var yStart = baseYear + i;
             var taStr = `${yStart}/${yStart + 1}`;
             mapTahunAjaran[taStr] = { smt1: [], smt2: [] };
@@ -981,55 +981,90 @@
         var cardsHtml = "";
 
         sortedTA.forEach(function (ta) {
-            var listSmt1 = mapTahunAjaran[ta].smt1;
-            var listSmt2 = mapTahunAjaran[ta].smt2;
+            var listSmt1 = mapTahunAjaran[ta].smt1 || [];
+            var listSmt2 = mapTahunAjaran[ta].smt2 || [];
 
-            var renderSemesterItem = function (list, smtLabel) {
-                if (!list || list.length === 0) {
-                    return `
-                        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
-                            <span class="small font-weight-bold text-muted">${smtLabel}</span>
-                            <span class="badge badge-secondary px-2 py-1 font-weight-normal" style="opacity: 0.7;">Belum Ada Berkas</span>
-                        </div>
-                    `;
+            // Helper untuk merender tile kotak semester terpusat (mengadopsi komponen .lapbul-month-box)
+            var renderSemesterTile = function (list, smtLabel, smtKey) {
+                var boxClass = "lapbul-month-missed";
+                var iconClass = "fas fa-exclamation-circle";
+                var statusText = "Belum Unggah";
+                var clickAction = "";
+                var subText = "Belum Ada Berkas";
+
+                // Deteksi jika periode di masa depan
+                var taParts = ta.split('/');
+                var startYr = parseInt(taParts[0]) || 0;
+                var isFuture = false;
+                if (startYr > cYear) {
+                    isFuture = true;
+                } else if (startYr === cYear && cMonth < 6 && smtKey === 'smt2') {
+                    isFuture = true;
+                } else if (startYr === cYear && cMonth >= 6 && smtKey === 'smt2') {
+                    isFuture = true;
                 }
 
-                var item = list[0];
-                var st = String(item.status || "").toLowerCase();
-                var badgeClass = "badge-secondary";
-                var badgeLabel = item.status || "Diproses";
+                if (list && list.length > 0) {
+                    var item = list[0];
+                    var st = String(item.status || "").toLowerCase();
+                    subText = (item.kriteria || 'SK Awal');
+                    clickAction = `onclick="dashsk_bukaDetailSK('${item.rowBaris}')" style="cursor: pointer;"`;
 
-                if (st === 'disetujui') badgeClass = "badge-success";
-                else if (st === 'diproses' || st === '') badgeClass = "badge-warning text-dark";
-                else if (st === 'revisi') badgeClass = "badge-warning";
-                else if (st === 'ditolak') badgeClass = "badge-danger";
+                    if (st === 'disetujui' || st.indexOf('setuju') !== -1) {
+                        boxClass = "lapbul-month-approved";
+                        iconClass = "fas fa-check-circle";
+                        statusText = "Disetujui";
+                    } else if (st === 'diproses' || st === '') {
+                        boxClass = "lapbul-month-pending";
+                        iconClass = "fas fa-clock";
+                        statusText = "Diproses";
+                    } else if (st === 'revisi') {
+                        boxClass = "lapbul-month-revisi";
+                        iconClass = "fas fa-sync-alt";
+                        statusText = "Perlu Revisi";
+                    } else if (st === 'ditolak') {
+                        boxClass = "lapbul-month-rejected";
+                        iconClass = "fas fa-times-circle";
+                        statusText = "Ditolak";
+                    }
+                } else {
+                    if (isFuture) {
+                        boxClass = "lapbul-month-future";
+                        iconClass = "far fa-circle";
+                        statusText = "Belum Waktunya";
+                        subText = "Mendatang";
+                    } else {
+                        boxClass = "lapbul-month-missed";
+                        iconClass = "fas fa-exclamation-circle";
+                        statusText = "Belum Lapor";
+                        subText = "Belum Ada Berkas";
+                    }
+                }
 
                 return `
-                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom hover-card" style="cursor: pointer;" onclick="dashsk_bukaDetailSK('${item.rowBaris}')">
-                        <div>
-                            <span class="small font-weight-bold d-block text-dark">${smtLabel}</span>
-                            <span class="text-muted" style="font-size: 11px;">${dashsk_escapeHtml(item.kriteria || 'SK Awal')} • ${dashsk_escapeHtml(item.noSk || '-')}</span>
-                        </div>
-                        <span class="badge ${badgeClass} px-2 py-1 shadow-xs">${badgeLabel}</span>
+                    <div class="lapbul-month-box ${boxClass} lapbul-hydrated flex-fill py-3 px-2" ${clickAction} title="${smtLabel} TA ${ta} - ${statusText}">
+                        <span class="lapbul-month-name font-weight-bold" style="font-size: 0.88rem;">${smtLabel}</span>
+                        <i class="lapbul-month-icon ${iconClass} my-1" style="font-size: 1.15rem;"></i>
+                        <span class="small font-weight-bold mt-1 text-truncate" style="font-size: 10.5px; max-width: 95%;">${subText}</span>
                     </div>
                 `;
             };
 
+            var totalTerkirim = (listSmt1.length > 0 ? 1 : 0) + (listSmt2.length > 0 ? 1 : 0);
+
             cardsHtml += `
-                <div class="col-xl-4 col-md-6 mb-4">
-                    <div class="card card-sultan h-100 shadow-sm border-0">
-                        <div class="card-header bg-transparent border-0 pt-3 pb-2 d-flex justify-content-between align-items-center">
-                            <h6 class="font-weight-bold text-sultan-utama mb-0">
-                                <i class="fas fa-calendar-alt mr-2 text-maroon"></i>TA ${ta}
-                            </h6>
-                            <span class="badge badge-light px-2 py-1 small font-weight-bold">${(listSmt1.length + listSmt2.length) > 0 ? 'Tersinkron' : '-'}</span>
+                <div class="col-xl-3 col-lg-4 col-md-6 mb-4">
+                    <div class="lapbul-user-card">
+                        <div class="lapbul-user-card-header">
+                            <h5 class="lapbul-user-card-title">
+                                <i class="fas fa-calendar-alt text-maroon mr-1" style="font-size: 0.9rem;"></i>
+                                <span>TA ${ta}</span>
+                            </h5>
+                            <span class="lapbul-user-count-badge">${totalTerkirim} / 2 Lapor</span>
                         </div>
-                        <div class="card-body py-2">
-                            ${renderSemesterItem(listSmt1, 'Semester 1 (Ganjil)')}
-                            ${renderSemesterItem(listSmt2, 'Semester 2 (Genap)')}
-                        </div>
-                        <div class="card-footer bg-transparent border-0 pt-0 pb-3 text-right">
-                            <small class="text-muted" style="font-size: 10px;">Total ${listSmt1.length + listSmt2.length} dokumen diunggah</small>
+                        <div class="d-flex gap-2" style="gap: 10px;">
+                            ${renderSemesterTile(listSmt1, 'Semester 1', 'smt1')}
+                            ${renderSemesterTile(listSmt2, 'Semester 2', 'smt2')}
                         </div>
                     </div>
                 </div>
