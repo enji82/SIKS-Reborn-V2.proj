@@ -307,9 +307,9 @@
 
         try {
             var user = typeof getSesiUser === 'function' ? getSesiUser() : {};
-            TUGAS_USER_AKTIF = user.nama_lengkap || user.fullname || user.nama || user.username || "User Web";
-            TUGAS_IS_ADMIN = (user.role || "").toLowerCase().includes("admin");
-            TUGAS_USER_NPSN = TUGAS_IS_ADMIN ? "" : (user.npsn || user.username || "");
+            TUGAS_USER_AKTIF = String(user.nama_lengkap || user.fullname || user.nama || user.username || "User Web");
+            TUGAS_IS_ADMIN = String(user.role || "").toLowerCase().includes("admin");
+            TUGAS_USER_NPSN = TUGAS_IS_ADMIN ? "" : String(user.npsn !== undefined && user.npsn !== null ? user.npsn : (user.username || "")).trim();
         } catch (e) { TUGAS_USER_NPSN = ""; TUGAS_IS_ADMIN = false; }
 
         tugas_initFilterTahun();
@@ -526,8 +526,10 @@
         if (!TUGAS_IS_ADMIN) {
             // JIKA USER SEKOLAH (NON-ADMIN):
             // Kunci jenjang sesuai unit user jika ditemukan di master
-            var userJjg = (TUGAS_USER_NPSN && TUGAS_MAP_SCHOOL_JENJANG[TUGAS_USER_NPSN.toUpperCase()]) 
-                          || (TUGAS_UNIT_TERKUNCI && TUGAS_MAP_SCHOOL_JENJANG[TUGAS_UNIT_TERKUNCI.toUpperCase()]) 
+            var safeNpsn = String(TUGAS_USER_NPSN || "").trim().toUpperCase();
+            var safeUnit = String(TUGAS_UNIT_TERKUNCI || "").trim().toUpperCase();
+            var userJjg = (safeNpsn && TUGAS_MAP_SCHOOL_JENJANG[safeNpsn]) 
+                          || (safeUnit && TUGAS_MAP_SCHOOL_JENJANG[safeUnit]) 
                           || "SD";
             $selJenjang.html('<option value="' + tugas_escapeHtml(userJjg) + '">' + tugas_escapeHtml(userJjg) + '</option>').val(userJjg).prop('disabled', true);
             
