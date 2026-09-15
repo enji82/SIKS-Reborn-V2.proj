@@ -146,34 +146,25 @@
     // 2. GATEKEEPER MUTLAK
     // =================================================================
     function statussk_validasiAksesUser() {
-        if (STATUSSK_IS_ADMIN) {
-            $('#statussk_wadahFilter').show(); // Admin butuh filter
-            $('#statussk_loadingText').html('Mempersiapkan Database Admin...');
-            $('#statussk_filterSekolah').empty().append('<option value="SEMUA">- Memuat Database... -</option>').prop('disabled', true);
-            statussk_tarikDataServer();
-        } else {
-            // VAKSIN UX: Sembunyikan blok filter untuk User (Space Saver)
+        if (!STATUSSK_IS_ADMIN) {
             $('#statussk_wadahFilter').hide();
-
-            if (!STATUSSK_USER_NPSN) {
-                $('#statussk_loadingText').html('<span class="text-danger"><i class="fas fa-ban mb-2"></i><br>Akses ditolak: Sesi login tidak valid.</span>');
-                return;
-            }
-
-            google.script.run.withSuccessHandler(function (resUnit) {
-                var dataUnit = JSON.parse(resUnit);
-                if (dataUnit.error) {
-                    $('#statussk_loadingText').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>' + statussk_escapeHtml(dataUnit.error) + '</span>');
-                    return;
-                }
-                STATUSSK_UNIT_TERKUNCI = dataUnit.unitKerja;
-
-                // Filter tidak perlu di-set karena kontainernya sudah disembunyikan
-                statussk_tarikDataServer();
-            }).withFailureHandler(function (err) {
-                $('#statussk_loadingText').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Terputus: ' + statussk_escapeHtml(err.message) + '</span>');
-            }).getUnitKerjaByNpsnPTK(STATUSSK_USER_NPSN);
+            $('#statussk_tableState').hide();
+            $('#statussk_loadingState').html(`
+                <div class="d-flex flex-column justify-content-center align-items-center py-5">
+                    <div class="mb-3 text-danger" style="font-size: 3rem;">
+                        <i class="fas fa-user-shield"></i>
+                    </div>
+                    <h5 class="font-weight-bold text-danger mb-1">AKSES TERBATAS</h5>
+                    <p class="text-muted small mb-0">Halaman Status Data SK hanya dapat diakses oleh Administrator.</p>
+                </div>
+            `).show();
+            return;
         }
+
+        $('#statussk_wadahFilter').show();
+        $('#statussk_loadingText').html('Mempersiapkan Database Admin...');
+        $('#statussk_filterSekolah').empty().append('<option value="SEMUA">- Memuat Database... -</option>').prop('disabled', true);
+        statussk_tarikDataServer();
     }
 
     // =================================================================
