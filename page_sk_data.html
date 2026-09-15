@@ -402,6 +402,9 @@
             TUGAS_IS_INIT = false; // Buka kunci inisialisasi
             tugas_tarikDataServer('INIT_START');
         } else {
+            // Sembunyikan filter jenjang sejak awal untuk user sekolah
+            $('#tugas_filterJenjang_container').hide();
+
             if (!TUGAS_USER_NPSN) {
                 $('#tugas_filterUnit').empty().append('<option value="">AKSES DITOLAK (NPSN KOSONG)</option>');
                 $('#tugas_loadingState').html('<div class="text-center py-5 text-danger sultan-page-transition"><i class="fas fa-ban fa-2x mb-3"></i><br>Akses ditolak: Sesi login tidak valid.</div>');
@@ -525,13 +528,15 @@
 
         if (!TUGAS_IS_ADMIN) {
             // JIKA USER SEKOLAH (NON-ADMIN):
-            // Kunci jenjang sesuai unit user jika ditemukan di master
+            // Sembunyikan filter jenjang sepenuhnya seperti pada Kelola Data Laporan Bulanan
+            $('#tugas_filterJenjang_container').hide();
+            
             var safeNpsn = String(TUGAS_USER_NPSN || "").trim().toUpperCase();
             var safeUnit = String(TUGAS_UNIT_TERKUNCI || "").trim().toUpperCase();
             var userJjg = (safeNpsn && TUGAS_MAP_SCHOOL_JENJANG[safeNpsn]) 
                           || (safeUnit && TUGAS_MAP_SCHOOL_JENJANG[safeUnit]) 
                           || "SD";
-            $selJenjang.html('<option value="' + tugas_escapeHtml(userJjg) + '">' + tugas_escapeHtml(userJjg) + '</option>').val(userJjg).prop('disabled', true);
+            $selJenjang.html('<option value="' + tugas_escapeHtml(userJjg) + '">' + tugas_escapeHtml(userJjg) + '</option>').val(userJjg);
             
             $('#tugas_filterUnit').empty().append('<option value="' + tugas_escapeHtml(TUGAS_UNIT_TERKUNCI) + '">' + tugas_escapeHtml(TUGAS_UNIT_TERKUNCI) + '</option>').prop('disabled', true);
             tugas_populateModalSekolahOptions();
@@ -539,7 +544,8 @@
         }
 
         // JIKA ADMIN:
-        // Ekstrak jenjang unik dari database master
+        // Tampilkan filter jenjang
+        $('#tugas_filterJenjang_container').show();
         var jenjangSet = new Set();
         (TUGAS_MASTER_SEKOLAH || []).forEach(function (s) {
             var j = String(s.jenjang || "").trim();
