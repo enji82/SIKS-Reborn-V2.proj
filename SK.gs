@@ -474,6 +474,7 @@ function getDashboardSK(filterTahun, filterSemester) {
     var stats = {
       totalMasuk: 0, diproses: 0, revisi: 0, disetujui: 0, ditolak: 0,
       progress: 0, belumLaporCount: 0, belumLaporList: [], recent: [],
+      disetujuiList: [], diprosesList: [], revisiList: [], ditolakList: [],
       totalAwal: 0, totalPerubahan: 0, 
       validAwal: 0, validPerubahan: 0,
       prosesAwal: 0, prosesPerubahan: 0,
@@ -513,11 +514,13 @@ function getDashboardSK(filterTahun, filterSemester) {
     stats.totalMasuk = uniqueRows.length;
 
     var sekolahStatusMap = {};
+    var npsnMap = (typeof getMappingMasterNpsn === 'function') ? getMappingMasterNpsn() : {};
 
-    // 2. Hitung Agregat Rinci
+    // 2. Hitung Agregat Rinci & Kelompokkan per Status
     uniqueRows.forEach(function(r) {
       var s = String(r[9] || "").toLowerCase(); 
-      var kriteria = String(r[6] || "").toLowerCase();
+      var schoolName = String(r[1]).trim();
+      var kriteria = String(r[6] || "").trim().toLowerCase();
       var isAwal = kriteria.includes("awal");
 
       // Hitung Total Masuk (Awal vs Perubahan)
@@ -526,44 +529,60 @@ function getDashboardSK(filterTahun, filterSemester) {
 
       var isValid = s.includes("ok") || s.includes("setuju") || s.includes("valid");
 
+      var itemObj = {
+        nama: schoolName,
+        npsn: npsnMap[schoolName.toUpperCase()] || "-",
+        kriteria: r[6] || "-",
+        tglKirim: r[0] || "-",
+        catatan: r[11] || r[13] || "-"
+      };
+
       if (isValid) {
           stats.disetujui++;
-          // Hitung Valid (Awal vs Perubahan)
+          stats.disetujuiList.push(itemObj);
           if (isAwal) stats.validAwal++;
           else stats.validPerubahan++;
       }
       else if (s.includes("revisi")) {
           stats.revisi++;
+          stats.revisiList.push(itemObj);
           if (isAwal) stats.revisiAwal++;
           else stats.revisiPerubahan++;
       }
       else if (s.includes("tolak")) {
           stats.ditolak++;
+          stats.ditolakList.push(itemObj);
           if (isAwal) stats.tolakAwal++;
           else stats.tolakPerubahan++;
       }
       else {
           stats.diproses++;
+          stats.diprosesList.push(itemObj);
           if (isAwal) stats.prosesAwal++;
           else stats.prosesPerubahan++;
       }
 
       // LOGIKA MUTLAK BELUM LAPOR: HANYA berdasarkan SEKOLAH UNIK "Awal Semester" yang TIDAK Ditolak
       if (isAwal && !s.includes("tolak")) {
-          var schoolName = String(r[1]).trim().toUpperCase();
-          sekolahSudahLaporAwal.add(schoolName);
+          var schoolNameKey = schoolName.toUpperCase();
+          sekolahSudahLaporAwal.add(schoolNameKey);
 
           var statusProper = "Diproses";
           if (isValid) statusProper = "Disetujui";
           else if (s.includes("revisi")) statusProper = "Revisi";
           
-          sekolahStatusMap[schoolName] = statusProper;
+          sekolahStatusMap[schoolNameKey] = statusProper;
       }
     });
 
+    var sortByName = function(a, b) { return (a.nama || "").localeCompare(b.nama || ""); };
+    stats.disetujuiList.sort(sortByName);
+    stats.diprosesList.sort(sortByName);
+    stats.revisiList.sort(sortByName);
+    stats.ditolakList.sort(sortByName);
+
     // 3. Kalkulasi Persentase Realisasi yang Akurat
     if (masterSekolah.length > 0) {
-        var npsnMap = getMappingMasterNpsn();
         var rawBelum = masterSekolah.filter(function(x) { 
             return !sekolahSudahLaporAwal.has(x.toUpperCase()); 
         }).sort();
