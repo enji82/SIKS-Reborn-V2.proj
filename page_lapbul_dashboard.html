@@ -43,31 +43,30 @@
                         <i class="fas fa-chevron-down"></i>
                     </div>
 
-                    <button type="button" id="dashlapbul_btnRefreshUser" class="sultan-btn-refresh" title="Refresh Riwayat Sekolah">
-                        <i class="fas fa-sync-alt"></i>
+                    <button type="button" id="dashlapbul_btnBukaDataUser" class="btn btn-maroon rounded-pill px-3 py-1 font-weight-bold shadow-xs">
+                        <i class="fas fa-folder-open mr-1"></i> Buka Data
                     </button>
                 </div>
             </div>
 
-            <!-- 1. KARTU STATUS BULAN BERJALAN -->
-            <div class="lapbul-status-banner p-3 p-md-4 mb-4">
-                <div class="row align-items-center">
-                    <div class="col-md-7 mb-3 mb-md-0">
-                        <div class="d-flex align-items-center">
-                            <div class="rounded-circle p-3 mr-3 d-flex align-items-center justify-content-center" id="dashlapbul_userCurrentIconBox" style="width: 54px; height: 54px; background: rgba(255,255,255,0.08);">
-                                <i class="fas fa-circle-notch fa-spin fa-lg" id="dashlapbul_userCurrentIcon"></i>
-                            </div>
-                            <div>
-                                <span class="small font-weight-bold text-muted text-uppercase d-block mb-1" id="dashlapbul_userCurrentPeriod">Periode: -</span>
-                                <h5 class="font-weight-bold mb-1" id="dashlapbul_userCurrentTitle">Memeriksa Laporan...</h5>
-                                <p class="small text-muted mb-0" id="dashlapbul_userCurrentDesc">Sistem sedang memeriksa status laporan bulan berjalan satuan pendidikan Anda.</p>
-                            </div>
-                        </div>
+            <!-- 1. KARTU INFORMASI KETENTUAN PELAPORAN -->
+            <div class="lapbul-status-banner p-3 mb-4 shadow-xs">
+                <div class="d-flex align-items-center">
+                    <div class="rounded-circle mr-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 42px; height: 42px; background: rgba(160, 30, 50, 0.08); color: #800000;">
+                        <i class="fas fa-info-circle fa-lg"></i>
                     </div>
-                    <div class="col-md-5 text-md-right text-left">
-                        <div id="dashlapbul_userCurrentAction">
-                            <!-- Tombol aksi cepat / badge dinamis via JS -->
+                    <div class="flex-grow-1" style="min-width: 0;">
+                        <div class="d-flex flex-wrap align-items-center justify-content-between mb-1">
+                            <span class="small font-weight-bold text-sultan-utama text-uppercase" style="letter-spacing: 0.5px;">
+                                Target Pelaporan: <strong class="text-maroon font-weight-bolder" id="dashlapbul_targetBulanTahun">-</strong>
+                            </span>
+                            <span class="badge badge-warning text-dark font-weight-bold px-2 py-1" style="font-size: 11px;">
+                                <i class="fas fa-clock mr-1"></i>Batas Unggah: <span id="dashlapbul_deadlineDate">-</span>
+                            </span>
                         </div>
+                        <p class="small text-muted mb-0" style="line-height: 1.4;">
+                            Laporan bulanan wajib dilaporkan oleh setiap satuan pendidikan paling lambat tanggal 10 pada bulan berikutnya.
+                        </p>
                     </div>
                 </div>
             </div>
@@ -388,7 +387,8 @@
             }
         });
 
-        // 3. Render komponen visual terpusat SultanUI untuk Admin
+        // 3. Render komponen visual terpusat SultanUI untuk Admin & Banner Ketentuan
+        dashlapbul_renderInfoBanner();
         if (typeof SultanUI !== 'undefined') {
             $('#dashlapbul_jenjangMinimalContainer').html(SultanUI.renderDashboardJenjangMinimal('dashlapbul'));
             $('#dashlapbul_metricRow2').html(SultanUI.renderDashboardRow2Minimal('dashlapbul'));
@@ -450,12 +450,15 @@
             dashlapbul_loadDashboard();
         });
 
-        $(document).off('click', '#dashlapbul_btnRefreshUser').on('click', '#dashlapbul_btnRefreshUser', function (e) {
+        $(document).off('click', '#dashlapbul_btnBukaDataUser').on('click', '#dashlapbul_btnBukaDataUser', function (e) {
             e.preventDefault();
-            if (!DASHLAPBUL_USER_NPSN) {
-                Sultan.notif.info('Silakan pilih sekolah terlebih dahulu.');
+            var npsn = $('#dashlapbul_filterUserSekolah').val() || DASHLAPBUL_USER_NPSN;
+            if (!npsn) {
+                Sultan.notif.info('Silakan pilih jenjang dan nama sekolah terlebih dahulu.');
                 return;
             }
+            DASHLAPBUL_USER_NPSN = npsn;
+            DASHLAPBUL_USER_SEKOLAH = $('#dashlapbul_filterUserSekolah option:selected').text();
             DASHLAPBUL_USER_REKAP_TAHUN = {};
             dashlapbul_loadUserMultiYear();
         });
@@ -542,6 +545,7 @@
             $('#dashlapbul_wrapperUserJenjang').addClass('d-none');
             $selSekolah.empty().append(`<option value="${DASHLAPBUL_USER_NPSN}">${DASHLAPBUL_USER_SEKOLAH || DASHLAPBUL_USER_NPSN}</option>`);
             $selSekolah.prop('disabled', true);
+            $('#dashlapbul_btnBukaDataUser').html('<i class="fas fa-sync-alt mr-1"></i> Refresh Data');
         } else {
             // JIKA ADMIN: Admin leluasa memilih jenjang & sekolah (default belum terpilih)
             $('#dashlapbul_wrapperUserJenjang').removeClass('d-none');
@@ -558,11 +562,11 @@
                 DASHLAPBUL_USER_NPSN = "";
                 DASHLAPBUL_USER_SEKOLAH = "";
                 DASHLAPBUL_USER_REKAP_TAHUN = {};
-                dashlapbul_renderEmptyStatusBanner();
                 dashlapbul_renderEmptyMultiYearCards();
+                $('#dashlapbul_btnBukaDataUser').html('<i class="fas fa-folder-open mr-1"></i> Buka Data');
             });
 
-            // Handler perubahan filter Sekolah
+            // Handler perubahan filter Sekolah (TIDAK OTOMATIS LOAD)
             $selSekolah.off('change').on('change', function () {
                 var chosenNpsn = $(this).val();
                 var chosenName = $(this).find('option:selected').text();
@@ -571,13 +575,14 @@
                     DASHLAPBUL_USER_NPSN = chosenNpsn;
                     DASHLAPBUL_USER_SEKOLAH = chosenName;
                     DASHLAPBUL_USER_REKAP_TAHUN = {};
-                    dashlapbul_loadUserMultiYear();
+                    dashlapbul_renderEmptyMultiYearCards();
+                    $('#dashlapbul_btnBukaDataUser').html('<i class="fas fa-folder-open mr-1"></i> Buka Data');
                 } else {
                     DASHLAPBUL_USER_NPSN = "";
                     DASHLAPBUL_USER_SEKOLAH = "";
                     DASHLAPBUL_USER_REKAP_TAHUN = {};
-                    dashlapbul_renderEmptyStatusBanner();
                     dashlapbul_renderEmptyMultiYearCards();
+                    $('#dashlapbul_btnBukaDataUser').html('<i class="fas fa-folder-open mr-1"></i> Buka Data');
                 }
             });
         }
@@ -610,16 +615,6 @@
             var isSelected = (DASHLAPBUL_USER_NPSN && DASHLAPBUL_USER_NPSN === npsn) ? ' selected' : '';
             $selSekolah.append(`<option value="${npsn}"${isSelected}>${nama}${jjg}</option>`);
         });
-    }
-
-    // Render tampilan banner kosong saat belum ada sekolah dipilih
-    function dashlapbul_renderEmptyStatusBanner() {
-        $('#dashlapbul_userCurrentIconBox').css('background', 'rgba(255,255,255,0.08)');
-        $('#dashlapbul_userCurrentIcon').attr('class', 'fas fa-school text-muted fa-lg');
-        $('#dashlapbul_userCurrentPeriod').html('Target Pelaporan: <span class="text-muted">-</span>');
-        $('#dashlapbul_userCurrentTitle').text('Silakan Pilih Sekolah');
-        $('#dashlapbul_userCurrentDesc').text('Pilih jenjang dan nama sekolah pada filter di atas untuk melihat status laporan bulanan.');
-        $('#dashlapbul_userCurrentAction').empty();
     }
 
     // Render 4 kartu tahun kosong dengan kotak bulan netral
@@ -672,6 +667,8 @@
     // LOGIKA DASHBOARD USER (SEKOLAH) - STATUS BERJALAN & MULTI-YEAR GRID
     // ======================================================================
     function dashlapbul_initUserView() {
+        dashlapbul_renderInfoBanner();
+
         // Handler klik kotak bulan (berlaku untuk semua card tahun)
         $(document).off('click', '.lapbul-month-box').on('click', '.lapbul-month-box', function () {
             var blnNama = $(this).data('month-name');
@@ -679,22 +676,32 @@
             var infoLaporan = $(this).data('report-info');
 
             if (!DASHLAPBUL_USER_NPSN) {
-                Sultan.notif.info('Silakan pilih sekolah terlebih dahulu.');
+                Sultan.notif.info('Silakan pilih jenjang dan nama sekolah terlebih dahulu.');
                 return;
             }
 
             dashlapbul_bukaDetailBulanUser(blnNama, tahun, infoLaporan);
         });
 
-        if (DASHLAPBUL_USER_NPSN) {
+        if (!DASHLAPBUL_IS_ADMIN && DASHLAPBUL_USER_NPSN) {
+            dashlapbul_loadUserMultiYear();
+        } else if (DASHLAPBUL_USER_NPSN) {
             dashlapbul_loadUserMultiYear();
         } else {
-            dashlapbul_renderEmptyStatusBanner();
             dashlapbul_renderEmptyMultiYearCards();
         }
     }
 
     function dashlapbul_loadUserMultiYear() {
+        if (!DASHLAPBUL_USER_NPSN) {
+            dashlapbul_renderEmptyMultiYearCards();
+            return;
+        }
+
+        var $btn = $('#dashlapbul_btnBukaDataUser');
+        $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Memuat Data...');
+        if (DASHLAPBUL_IS_ADMIN) $('#dashlapbul_filterUserJenjang, #dashlapbul_filterUserSekolah').prop('disabled', true);
+
         var currentYear = new Date().getFullYear();
         var yearsList = [];
         // Susun daftar tahun: terbaru di awal (misal: 2026, 2025, 2024, 2023)
@@ -715,7 +722,7 @@
                             <h5 class="lapbul-user-card-title">
                                 <span>Tahun ${yr}</span>
                             </h5>
-                            <span class="lapbul-user-count-badge" id="dashlapbul_summaryBadge_${yr}">0 / 12 Lapor</span>
+                            <span class="lapbul-user-count-badge" id="dashlapbul_summaryBadge_${yr}">Memuat...</span>
                         </div>
                         <div class="lapbul-month-grid" id="${cardId}">
                             ${dashlapbul_generateSkeletonMonthBoxes(yr)}
@@ -726,16 +733,21 @@
             $container.append(htmlCard);
         });
 
-        // 1. Tarik data tahun berjalan terlebih dahulu untuk mengisi Banner Status Bulan Berjalan & Card Tahun Ini
+        var pendingLoads = yearsList.length;
+        var checkFinish = function() {
+            pendingLoads--;
+            if (pendingLoads <= 0) {
+                $btn.prop('disabled', false).html('<i class="fas fa-sync-alt mr-1"></i> Refresh Data');
+                if (DASHLAPBUL_IS_ADMIN) $('#dashlapbul_filterUserJenjang, #dashlapbul_filterUserSekolah').prop('disabled', false);
+            }
+        };
+
+        // 1. Tarik data tahun berjalan
         Lapbul_GetGlobalData(currentYear, DASHLAPBUL_USER_NPSN, false, function(resCur) {
             var dataCur = (resCur && !resCur.error) ? resCur : [];
             DASHLAPBUL_USER_REKAP_TAHUN[currentYear] = dataCur;
-
-            // Update Poin 2: Kartu Status Bulan Berjalan
-            dashlapbul_renderStatusBulanBerjalan(currentYear, dataCur);
-
-            // Hydrate animasi warna untuk tahun berjalan
             dashlapbul_renderYearGridCard(currentYear, dataCur);
+            checkFinish();
 
             // 2. Tarik data tahun-tahun sebelumnya secara paralel
             yearsList.slice(1).forEach(function(prevYear) {
@@ -743,13 +755,18 @@
                     var dataPrev = (resPrev && !resPrev.error) ? resPrev : [];
                     DASHLAPBUL_USER_REKAP_TAHUN[prevYear] = dataPrev;
                     dashlapbul_renderYearGridCard(prevYear, dataPrev);
+                    checkFinish();
                 }, function() {
                     dashlapbul_renderYearGridCard(prevYear, []);
+                    checkFinish();
                 });
             });
 
         }, function(err) {
-            console.error("Gagal memuat status bulan berjalan:", err);
+            console.error("Gagal memuat data unit:", err);
+            $btn.prop('disabled', false).html('<i class="fas fa-sync-alt mr-1"></i> Refresh Data');
+            if (DASHLAPBUL_IS_ADMIN) $('#dashlapbul_filterUserJenjang, #dashlapbul_filterUserSekolah').prop('disabled', false);
+            Sultan.notif.gagal('Gagal memuat data sekolah: ' + (err.message || 'Koneksi terputus'));
         });
     }
 
@@ -769,14 +786,10 @@
         return html;
     }
 
-    // Poin 2: Kartu Status Target Pengiriman (Laporan dilaporkan paling lambat tgl 10 bulan berikutnya)
-    function dashlapbul_renderStatusBulanBerjalan(tahun, dataList) {
-        var mthsFull = ['januari', 'februari', 'maret', 'april', 'mei', 'juni', 'juli', 'agustus', 'september', 'oktober', 'november', 'desember'];
+    // Render Banner Informasi Ketentuan Pelaporan (Ringkas & Statis)
+    function dashlapbul_renderInfoBanner() {
         var mthsCap = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-
         var now = new Date();
-        // Aturan: Laporan bulan N dikirim di bulan N+1 (maksimal tanggal 10 bulan berikutnya).
-        // Contoh: Tanggal 14 September -> Target wajib lapor adalah bulan Agustus.
         var targetMonthIdx = now.getMonth() - 1;
         var targetYear = now.getFullYear();
         if (targetMonthIdx < 0) {
@@ -785,144 +798,11 @@
         }
 
         var targetMonthName = mthsCap[targetMonthIdx];
-        var targetMonthKey = mthsFull[targetMonthIdx];
-
-        // Format bulan batas pengiriman (Bulan saat ini tanggal 10)
         var nextMonthName = mthsCap[now.getMonth()];
         var deadlineStr = "10 " + nextMonthName + " " + now.getFullYear();
 
-        $('#dashlapbul_userCurrentPeriod').html('Target Pelaporan: <strong>' + targetMonthName + ' ' + targetYear + '</strong> <span class="mx-1">•</span> <span class="text-warning"><i class="fas fa-clock mr-1"></i>Batas Unggah: ' + deadlineStr + '</span>');
-
-        // Jika targetYear sama dengan tahun saat ini yang sedang di-load
-        var currentDataList = (targetYear === tahun) ? dataList : (DASHLAPBUL_USER_REKAP_TAHUN[targetYear] || []);
-
-        // Fungsi pembantu untuk render konten banner
-        var applyBannerContent = function(list) {
-            var dataTargetMonth = null;
-            if (list && list.length > 0) {
-                list.forEach(function(r) {
-                    if (String(r.tahun || "").trim() === String(targetYear) && String(r.bulan || "").trim().toLowerCase() === targetMonthKey) {
-                        dataTargetMonth = r;
-                    }
-                });
-            }
-
-            var iconBox = $('#dashlapbul_userCurrentIconBox');
-            var iconElem = $('#dashlapbul_userCurrentIcon');
-            var titleElem = $('#dashlapbul_userCurrentTitle');
-            var descElem = $('#dashlapbul_userCurrentDesc');
-            var actionElem = $('#dashlapbul_userCurrentAction').empty();
-
-            if (dataTargetMonth) {
-                var st = String(dataTargetMonth.statusData || "Diproses");
-                var stLower = st.toLowerCase();
-                var fileUrl = dataTargetMonth.fileUrl || dataTargetMonth.urlFile || "";
-                var catatan = dataTargetMonth.keterangan || dataTargetMonth.catatanVerifikator || dataTargetMonth.catatan || "";
-                var tglKirim = dataTargetMonth.tglKirim || dataTargetMonth.timestamp || dataTargetMonth.tanggalUpload || "-";
-
-                if (stLower.includes('ok') || stLower.includes('setuju') || stLower.includes('valid') || stLower.includes('terima')) {
-                    // 1. DISETUJUI (Hijau - check-circle)
-                    iconBox.css('background', 'rgba(34, 197, 94, 0.15)').css('color', '#22c55e');
-                    iconElem.attr('class', 'fas fa-check-circle fa-lg');
-                    titleElem.html('<span class="text-success">Laporan ' + targetMonthName + ' Disetujui</span>');
-                    descElem.text('Laporan bulanan Anda telah diperiksa dan disetujui oleh verifikator dinas.');
-
-                    if (fileUrl) {
-                        var cleanUrl = String(fileUrl).trim();
-                        var prevUrl = cleanUrl;
-                        if (cleanUrl.includes('drive.google.com') || cleanUrl.includes('docs.google.com')) {
-                            var m = cleanUrl.match(/\/d\/([a-zA-Z0-9_-]{25,})/) || cleanUrl.match(/id=([a-zA-Z0-9_-]{25,})/);
-                            if (m && m[1]) prevUrl = 'https://drive.google.com/file/d/' + m[1] + '/preview';
-                        } else if (cleanUrl.includes('/view')) {
-                            prevUrl = cleanUrl.replace(/\/view.*/, '/preview');
-                        }
-
-                        var dlUrl = cleanUrl;
-                        if (cleanUrl.includes('drive.google.com')) {
-                            var mDl = cleanUrl.match(/\/d\/([a-zA-Z0-9_-]{25,})/) || cleanUrl.match(/id=([a-zA-Z0-9_-]{25,})/);
-                            if (mDl && mDl[1]) dlUrl = 'https://drive.google.com/uc?export=download&id=' + mDl[1];
-                        }
-
-                        actionElem.html('<button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 font-weight-bold shadow-xs" id="dashlapbul_btnHeroPreview"><i class="fas fa-file-pdf mr-1"></i> Buka Dokumen</button>');
-                        
-                        $(document).off('click', '#dashlapbul_btnHeroPreview').on('click', '#dashlapbul_btnHeroPreview', function(e) {
-                            e.preventDefault();
-                            if (typeof Sultan !== 'undefined' && Sultan.modal && typeof Sultan.modal.preview === 'function') {
-                                Sultan.modal.preview({
-                                    title: 'LAPORAN BULAN ' + targetMonthName.toUpperCase() + ' ' + targetYear + ' - ' + (DASHLAPBUL_USER_SEKOLAH || 'SEKOLAH'),
-                                    url: prevUrl,
-                                    downloadUrl: dlUrl
-                                });
-                            } else {
-                                window.open(cleanUrl, '_blank');
-                            }
-                        });
-                    } else {
-                        actionElem.html('<span class="badge badge-success rounded-pill px-3 py-1.5 font-weight-bold"><i class="fas fa-check-circle mr-1"></i>Disetujui</span>');
-                    }
-                } else if (stLower.includes('revisi')) {
-                    // 2. REVISI (Biru Muda / Info - sync-alt)
-                    iconBox.css('background', 'rgba(56, 189, 248, 0.15)').css('color', '#0284c7');
-                    iconElem.attr('class', 'fas fa-sync-alt fa-lg');
-                    titleElem.html('<span class="text-info">Laporan ' + targetMonthName + ' Perlu Revisi</span>');
-                    descElem.text(catatan && catatan !== "-" ? 'Catatan: ' + catatan : 'Terdapat perbaikan pada berkas laporan bulan ' + targetMonthName + '. Mohon segera perbaiki.');
-
-                    if (DASHLAPBUL_IS_ADMIN) {
-                        actionElem.html('<span class="badge badge-info rounded-pill px-3 py-1.5 font-weight-bold"><i class="fas fa-sync-alt mr-1"></i> Perlu Revisi</span>');
-                    } else {
-                        actionElem.html('<button type="button" class="btn btn-sm btn-warning rounded-pill px-3 font-weight-bold shadow-xs text-dark" onclick="$(\'[data-page=\\\'lapbul_kelola\\\']\').first().click();"><i class="fas fa-edit mr-1"></i> Perbaiki Laporan</button>');
-                    }
-                } else if (stLower.includes('tolak')) {
-                    // 3. DITOLAK (Merah - times-circle)
-                    iconBox.css('background', 'rgba(239, 68, 68, 0.15)').css('color', '#ef4444');
-                    iconElem.attr('class', 'fas fa-times-circle fa-lg');
-                    titleElem.html('<span class="text-danger">Laporan ' + targetMonthName + ' Ditolak</span>');
-                    descElem.text(catatan && catatan !== "-" ? 'Alasan: ' + catatan : 'Laporan bulan ' + targetMonthName + ' ditolak oleh dinas. Silakan unggah kembali.');
-
-                    if (DASHLAPBUL_IS_ADMIN) {
-                        actionElem.html('<span class="badge badge-danger rounded-pill px-3 py-1.5 font-weight-bold"><i class="fas fa-times-circle mr-1"></i> Ditolak</span>');
-                    } else {
-                        actionElem.html('<button type="button" class="btn btn-sm btn-danger rounded-pill px-3 font-weight-bold shadow-xs" onclick="$(\'[data-page=\\\'lapbul_kelola\\\']\').first().click();"><i class="fas fa-upload mr-1"></i> Unggah Ulang</button>');
-                    }
-                } else {
-                    // 4. DIPROSES / MENUNGGU VERIFIKASI (Kuning / Warning - clock)
-                    iconBox.css('background', 'rgba(234, 179, 8, 0.15)').css('color', '#eab308');
-                    iconElem.attr('class', 'fas fa-clock fa-lg');
-                    titleElem.html('<span class="text-warning">Laporan ' + targetMonthName + ' Sedang Diproses</span>');
-                    descElem.text('Laporan dikirim pada ' + tglKirim + ' dan sedang dalam antrean verifikasi dinas.');
-
-                    actionElem.html('<span class="badge badge-warning text-dark rounded-pill px-3 py-1.5 font-weight-bold"><i class="fas fa-clock mr-1"></i> Diproses</span>');
-                }
-            } else {
-                // BELUM LAPOR
-                var isPassedDeadline = (now.getDate() > 10);
-                var statusText = isPassedDeadline ? 'Terlambat Mengirim Laporan ' + targetMonthName : 'Belum Mengirim Laporan ' + targetMonthName;
-                var descWarning = isPassedDeadline ? 'Batas waktu pengiriman (tanggal ' + deadlineStr + ') telah terlewat. Mohon segera kirimkan laporan Anda.' : 'Batas akhir pengiriman laporan adalah tanggal ' + deadlineStr + '.';
-
-                iconBox.css('background', 'rgba(244, 63, 94, 0.15)').css('color', '#f43f5e');
-                iconElem.attr('class', 'fas fa-exclamation-circle fa-lg');
-                titleElem.html('<span class="text-danger">' + statusText + '</span>');
-                descElem.text(descWarning);
-
-                if (DASHLAPBUL_IS_ADMIN) {
-                    actionElem.html('<span class="badge badge-danger rounded-pill px-3 py-1.5 font-weight-bold"><i class="fas fa-exclamation-circle mr-1"></i> Belum Lapor</span>');
-                } else {
-                    actionElem.html('<button type="button" class="btn btn-sm btn-danger rounded-pill px-3 font-weight-bold shadow-xs" onclick="$(\'[data-page=\\\'lapbul_kelola\\\']\').first().click();"><i class="fas fa-upload mr-1"></i> Unggah Laporan Sekarang</button>');
-                }
-            }
-        };
-
-        if (targetYear !== tahun && (!DASHLAPBUL_USER_REKAP_TAHUN[targetYear] || DASHLAPBUL_USER_REKAP_TAHUN[targetYear].length === 0)) {
-            Lapbul_GetGlobalData(targetYear, DASHLAPBUL_USER_NPSN, false, function(resTarget) {
-                var dTarget = (resTarget && !resTarget.error) ? resTarget : [];
-                DASHLAPBUL_USER_REKAP_TAHUN[targetYear] = dTarget;
-                applyBannerContent(dTarget);
-            }, function() {
-                applyBannerContent([]);
-            });
-        } else {
-            applyBannerContent(currentDataList);
-        }
+        $('#dashlapbul_targetBulanTahun').text(targetMonthName.toUpperCase() + ' ' + targetYear);
+        $('#dashlapbul_deadlineDate').text(deadlineStr);
     }
 
     // Render Grid 12 Kotak untuk 1 Kartu Tahun Tertentu (Status Terpusat: Diproses, Disetujui, Revisi, Ditolak)
@@ -1537,4 +1417,4 @@
         }, stepTime);
     }
 </script>
-<!-- Cache buster: Tue Sep 15 19:15:30 WIB 2026 -->
+<!-- Cache buster: Tue Sep 15 19:30:00 WIB 2026 -->
