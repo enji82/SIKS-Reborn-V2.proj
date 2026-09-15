@@ -263,6 +263,8 @@
     var TUGAS_DATA_MASTER = {};
     var TUGAS_CACHE_DATA = [];
     var TUGAS_TABEL_INSTANCE = null;
+    var TUGAS_MASTER_SEKOLAH = [];
+    var TUGAS_MAP_SCHOOL_JENJANG = {};
 
     var TUGAS_USER_AKTIF = "";
     var TUGAS_IS_ADMIN = false;
@@ -313,7 +315,13 @@
         tugas_initFilterTahun();
 
         // VAKSINASI EVENT DELEGATION (ANTI MEMORY LEAK)
-        $(document).off('change', '#tugas_filterTahun, #tugas_filterSemester, #tugas_filterJenjang, #tugas_filterUnit, #tugas_filterStatus').on('change', '#tugas_filterTahun, #tugas_filterSemester, #tugas_filterJenjang, #tugas_filterUnit, #tugas_filterStatus', tugas_terapkanFilterLokal);
+        $(document).off('change', '#tugas_filterJenjang').on('change', '#tugas_filterJenjang', function () {
+            var jjg = $(this).val();
+            tugas_populateSekolahOptions(jjg);
+            tugas_terapkanFilterLokal();
+        });
+
+        $(document).off('change', '#tugas_filterTahun, #tugas_filterSemester, #tugas_filterUnit, #tugas_filterStatus').on('change', '#tugas_filterTahun, #tugas_filterSemester, #tugas_filterUnit, #tugas_filterStatus', tugas_terapkanFilterLokal);
 
         // VAKSIN TOMBOL CARI: Kini memanggil tugas_tarikDataServer secara mutlak (Bypass Cache)
         $(document).off('click', '#tugas_btnCari').on('click', '#tugas_btnCari', tugas_tarikDataServer);
@@ -463,17 +471,37 @@
                         });
                     }
 
-                    tugas_populateFilterOptions();
-                    tugas_terapkanFilterLokal();
+                    var finalizeDataLoad = function (masterSekolah) {
+                        TUGAS_MASTER_SEKOLAH = masterSekolah || [];
+                        TUGAS_MAP_SCHOOL_JENJANG = {};
+                        TUGAS_MASTER_SEKOLAH.forEach(function (s) {
+                            var npsn = String(s.npsn || "").trim().toUpperCase();
+                            var nm = String(s.nama || s.namaSekolah || "").trim().toUpperCase();
+                            var jg = String(s.jenjang || "").trim().toUpperCase();
+                            if (npsn) TUGAS_MAP_SCHOOL_JENJANG[npsn] = jg;
+                            if (nm) TUGAS_MAP_SCHOOL_JENJANG[nm] = jg;
+                        });
 
-                    SultanUI.hideLoading('#tugas_loadingState');
-                    $('#tugas_tableState').show();
-                    if (TUGAS_TABEL_INSTANCE) {
-                        setTimeout(function () { TUGAS_TABEL_INSTANCE.columns.adjust(); }, 50);
-                    }
-                    
-                    if (typeof sultan_fetchNotifikasi === "function") {
-                        sultan_fetchNotifikasi();
+                        tugas_setupJenjangDanSekolahOptions();
+                        tugas_terapkanFilterLokal();
+
+                        SultanUI.hideLoading('#tugas_loadingState');
+                        $('#tugas_tableState').show();
+                        if (TUGAS_TABEL_INSTANCE) {
+                            setTimeout(function () { TUGAS_TABEL_INSTANCE.columns.adjust(); }, 50);
+                        }
+                        
+                        if (typeof sultan_fetchNotifikasi === "function") {
+                            sultan_fetchNotifikasi();
+                        }
+                    };
+
+                    if (typeof Lapbul_GetMasterSekolah === 'function') {
+                        Lapbul_GetMasterSekolah(finalizeDataLoad);
+                    } else {
+                        google.script.run.withSuccessHandler(finalizeDataLoad).withFailureHandler(function () {
+                            finalizeDataLoad([]);
+                        }).getAllSchoolsList();
                     }
 
                 } catch (e) {
@@ -491,24 +519,99 @@
         }).getMappingMasterNpsn();
     }
 
-    function tugas_populateFilterOptions() {
+    function tugas_setupJenjangDanSekolahOptions() {
+        var $selJenjang = $('#tugas_filterJenjang');
+        var curJenjang = $selJenjang.val() || "SD";
+
+        if (!TUGAS_IS_ADMIN) {
+            // JIKA USER SEKOLAH (NON-ADMIN):
+            // Kunci jenjang sesuai unit user jika ditemukan di master
+            var userJjg = (TUGAS_USER_NPSN && TUGAS_MAP_SCHOOL_JENJANG[TUGAS_USER_NPSN.toUpperCase()]) 
+                          || (TUGAS_UNIT_TERKUNCI && TUGAS_MAP_SCHOOL_JENJANG[TUGAS_UNIT_TERKUNCI.toUpperCase()]) 
+                          || "SD";
+            $selJenjang.html('<option value="' + tugas_escapeHtml(userJjg) + '">' + tugas_escapeHtml(userJjg) + '</option>').val(userJjg).prop('disabled', true);
+            
+            $('#tugas_filterUnit').empty().append('<option value="' + tugas_escapeHtml(TUGAS_UNIT_TERKUNCI) + '">' + tugas_escapeHtml(TUGAS_UNIT_TERKUNCI) + '</option>').prop('disabled', true);
+            tugas_populateModalSekolahOptions();
+            return;
+        }
+
+        // JIKA ADMIN:
+        // Ekstrak jenjang unik dari database master
+        var jenjangSet = new Set();
+        (TUGAS_MASTER_SEKOLAH || []).forEach(function (s) {
+            var j = String(s.jenjang || "").trim();
+            if (j) jenjangSet.add(j);
+        });
+
+        // Fallback jika master kosong
+        if (jenjangSet.size === 0) {
+            jenjangSet.add("SD");
+            jenjangSet.add("PAUD");
+        }
+
+        var sortedJenjang = Array.from(jenjangSet).sort();
+        var jHtml = '<option value="">Semua Jenjang</option>';
+        sortedJenjang.forEach(function (jg) {
+            var isSel = (jg.toUpperCase() === (curJenjang || "SD").toUpperCase()) ? ' selected' : '';
+            jHtml += '<option value="' + tugas_escapeHtml(jg) + '"' + isSel + '>' + tugas_escapeHtml(jg) + '</option>';
+        });
+        $selJenjang.html(jHtml).prop('disabled', false);
+
+        var selectedJenjang = $selJenjang.val() || "";
+        tugas_populateSekolahOptions(selectedJenjang);
+        tugas_populateModalSekolahOptions();
+    }
+
+    function tugas_populateSekolahOptions(filterJenjang) {
+        if (!TUGAS_IS_ADMIN) return;
+
+        var $selUnit = $('#tugas_filterUnit');
+        var curVal = $selUnit.val();
         var uniqueUnits = new Set();
 
-        // Ambil daftar sekolah unik dari mapping master agar sinkron
-        Object.keys(TUGAS_MAP_UNIT_NPSN).forEach(u => uniqueUnits.add(u));
+        // Ambil sekolah dari database master yang cocok dengan Jenjang terpilih
+        (TUGAS_MASTER_SEKOLAH || []).forEach(function (s) {
+            var jg = String(s.jenjang || "").trim().toUpperCase();
+            var nama = String(s.nama || s.namaSekolah || "").trim();
+            if (!nama) return;
 
-        // Jika ada sekolah di data transaksi yang belum ada di master (fallback)
-        TUGAS_CACHE_DATA.forEach(row => { if (row.namaSd) uniqueUnits.add(String(row.namaSd).trim()); });
+            if (!filterJenjang || filterJenjang === "SEMUA" || jg === filterJenjang.toUpperCase()) {
+                uniqueUnits.add(nama);
+            }
+        });
+
+        // Fallback: Jika master sekolah kosong, ambil dari mapping master NPSN
+        if (uniqueUnits.size === 0 && (!filterJenjang || filterJenjang === "SEMUA" || filterJenjang.toUpperCase() === "SD")) {
+            Object.keys(TUGAS_MAP_UNIT_NPSN).forEach(u => uniqueUnits.add(u));
+            TUGAS_CACHE_DATA.forEach(row => { if (row.namaSd) uniqueUnits.add(String(row.namaSd).trim()); });
+        }
 
         var sortedUnits = Array.from(uniqueUnits).sort();
+        var uHtml = '<option value="SEMUA">Semua Sekolah</option>';
+        sortedUnits.forEach(u => {
+            uHtml += '<option value="' + tugas_escapeHtml(u) + '">' + tugas_escapeHtml(u) + '</option>';
+        });
+        $selUnit.html(uHtml).prop('disabled', false);
 
-        if (TUGAS_IS_ADMIN) {
-            var uHtml = '<option value="SEMUA">Semua Sekolah</option>';
-            sortedUnits.forEach(u => uHtml += '<option value="' + tugas_escapeHtml(u) + '">' + tugas_escapeHtml(u) + '</option>');
-            var curUnit = $('#tugas_filterUnit').val();
-            $('#tugas_filterUnit').html(uHtml);
-            if (curUnit && uniqueUnits.has(curUnit)) $('#tugas_filterUnit').val(curUnit);
+        if (curVal && uniqueUnits.has(curVal)) {
+            $selUnit.val(curVal);
+        } else {
+            $selUnit.val("SEMUA");
         }
+    }
+
+    function tugas_populateModalSekolahOptions() {
+        var uniqueUnits = new Set();
+        (TUGAS_MASTER_SEKOLAH || []).forEach(function (s) {
+            var nama = String(s.nama || s.namaSekolah || "").trim();
+            if (nama) uniqueUnits.add(nama);
+        });
+        if (uniqueUnits.size === 0) {
+            Object.keys(TUGAS_MAP_UNIT_NPSN).forEach(u => uniqueUnits.add(u));
+            TUGAS_CACHE_DATA.forEach(row => { if (row.namaSd) uniqueUnits.add(String(row.namaSd).trim()); });
+        }
+        var sortedUnits = Array.from(uniqueUnits).sort();
 
         var formHtml = '<option value="">- Pilih Sekolah -</option>';
         sortedUnits.forEach(u => formHtml += '<option value="' + tugas_escapeHtml(u) + '">' + tugas_escapeHtml(u) + '</option>');
@@ -538,6 +641,7 @@
 
         var fTh = String($('#tugas_filterTahun').val() || "");
         var fSm = String($('#tugas_filterSemester').val() || "");
+        var fJg = String($('#tugas_filterJenjang').val() || "").toUpperCase();
         var fSt = String($('#tugas_filterStatus').val() || "").toLowerCase();
 
         var tAdminUnit = TUGAS_IS_ADMIN ? String($('#tugas_filterUnit').val() || "").toUpperCase() : "";
@@ -548,6 +652,14 @@
             var rSm = String(row.semester || "").trim();
             var rSt = String(row.status || "").trim().toLowerCase();
             var rSd = String(row.namaSd || "").trim().toUpperCase();
+            var rNpsn = String(row.npsn || "").trim().toUpperCase();
+
+            // Dapatkan jenjang baris dari master
+            var rowJenjang = (rNpsn && TUGAS_MAP_SCHOOL_JENJANG[rNpsn]) 
+                             || (rSd && TUGAS_MAP_SCHOOL_JENJANG[rSd]) 
+                             || "SD";
+
+            var passJenjang = (!fJg || fJg === "SEMUA" || rowJenjang === fJg);
 
             var passUnit = false;
             if (TUGAS_IS_ADMIN) { passUnit = (tAdminUnit === "SEMUA" || tAdminUnit === "" || rSd === tAdminUnit); }
@@ -563,7 +675,7 @@
                 else passSt = rSt.includes(fSt);
             }
 
-            return passUnit && passTh && passSm && passSt;
+            return passJenjang && passUnit && passTh && passSm && passSt;
         });
 
         tugas_renderTabel(hasil);

@@ -107,6 +107,8 @@
     var STATUSSK_CACHE_DATA = [];
     var STATUSSK_MAP_UNIT_NPSN = {};
     var STATUSSK_TABEL_INSTANCE = null;
+    var STATUSSK_MASTER_SEKOLAH = [];
+    var STATUSSK_MAP_SCHOOL_JENJANG = {};
 
     var STATUSSK_USER_AKTIF = "";
     var STATUSSK_IS_ADMIN = false;
@@ -137,7 +139,13 @@
             statussk_prosesCariData();
         });
 
-        // FILTER LOKAL: Langsung saring tanpa ke server
+        // FILTER LOKAL: Hubungkan Jenjang dan Sekolah
+        $(document).off('change', '#statussk_filterJenjang').on('change', '#statussk_filterJenjang', function () {
+            var jjg = $(this).val();
+            statussk_populateSekolahDropdown(jjg);
+            statussk_terapkanFilterLokal();
+        });
+
         $(document).off('change', '#statussk_filterSekolah').on('change', '#statussk_filterSekolah', statussk_terapkanFilterLokal);
 
         // Cek Sesi Login
@@ -212,11 +220,31 @@
 
                     try {
                         STATUSSK_CACHE_DATA = res.rows || [];
-                        statussk_populateDropdown(res.schools || []);
+                        var fallbackSchools = res.schools || [];
 
-                        // Fungsi Terakhir Diperbarui Dihapus
+                        // 3. Tarik Master Sekolah untuk Jenjang Dinamis
+                        var setupMasterCallback = function (masterList) {
+                            STATUSSK_MASTER_SEKOLAH = masterList || [];
+                            STATUSSK_MAP_SCHOOL_JENJANG = {};
+                            STATUSSK_MASTER_SEKOLAH.forEach(function (s) {
+                                var npsn = String(s.npsn || "").trim().toUpperCase();
+                                var nm = String(s.nama || s.namaSekolah || "").trim().toUpperCase();
+                                var jg = String(s.jenjang || "").trim().toUpperCase();
+                                if (npsn) STATUSSK_MAP_SCHOOL_JENJANG[npsn] = jg;
+                                if (nm) STATUSSK_MAP_SCHOOL_JENJANG[nm] = jg;
+                            });
 
-                        statussk_terapkanFilterLokal();
+                            statussk_setupJenjangDropdown(fallbackSchools);
+                            statussk_terapkanFilterLokal();
+                        };
+
+                        if (typeof Lapbul_GetMasterSekolah === 'function') {
+                            Lapbul_GetMasterSekolah(setupMasterCallback);
+                        } else {
+                            google.script.run.withSuccessHandler(setupMasterCallback).withFailureHandler(function () {
+                                setupMasterCallback([]);
+                            }).getAllSchoolsList();
+                        }
 
                     } catch (e) {
                         console.error("Table Error:", e);
@@ -239,22 +267,71 @@
         }).getMappingMasterNpsn();
     }
 
-    function statussk_populateDropdown(schools) {
-        if (STATUSSK_IS_ADMIN) {
-            var el = $('#statussk_filterSekolah');
-            var currentVal = el.val();
+    function statussk_setupJenjangDropdown(fallbackSchools) {
+        var $selJenjang = $('#statussk_filterJenjang');
+        var curJenjang = $selJenjang.val() || "SD";
 
-            var h = '<option value="SEMUA">Semua Sekolah</option>';
-            for (var i = 0; i < schools.length; i++) {
-                var safeS = statussk_escapeHtml(schools[i]);
-                h += '<option value="' + safeS + '">' + safeS + '</option>';
-            }
+        var jenjangSet = new Set();
+        (STATUSSK_MASTER_SEKOLAH || []).forEach(function (s) {
+            var j = String(s.jenjang || "").trim();
+            if (j) jenjangSet.add(j);
+        });
 
-            el.html(h).prop('disabled', false);
-            $('#statussk_btnRefresh').prop('disabled', false);
-            if (currentVal && schools.includes(currentVal)) el.val(currentVal);
+        if (jenjangSet.size === 0) {
+            jenjangSet.add("SD");
+            jenjangSet.add("PAUD");
         }
-        // Jika bukan Admin, dropdown diabaikan (karena wadahnya di-hide)
+
+        var sortedJenjang = Array.from(jenjangSet).sort();
+        var jHtml = '<option value="">Semua Jenjang</option>';
+        sortedJenjang.forEach(function (jg) {
+            var isSel = (jg.toUpperCase() === (curJenjang || "SD").toUpperCase()) ? ' selected' : '';
+            jHtml += '<option value="' + statussk_escapeHtml(jg) + '"' + isSel + '>' + statussk_escapeHtml(jg) + '</option>';
+        });
+        $selJenjang.html(jHtml);
+
+        var selectedJenjang = $selJenjang.val() || "";
+        statussk_populateSekolahDropdown(selectedJenjang, fallbackSchools);
+    }
+
+    function statussk_populateSekolahDropdown(filterJenjang, fallbackSchools) {
+        if (!STATUSSK_IS_ADMIN) return;
+
+        var el = $('#statussk_filterSekolah');
+        var currentVal = el.val();
+        var uniqueUnits = new Set();
+
+        (STATUSSK_MASTER_SEKOLAH || []).forEach(function (s) {
+            var jg = String(s.jenjang || "").trim().toUpperCase();
+            var nama = String(s.nama || s.namaSekolah || "").trim();
+            if (!nama) return;
+
+            if (!filterJenjang || filterJenjang === "SEMUA" || jg === filterJenjang.toUpperCase()) {
+                uniqueUnits.add(nama);
+            }
+        });
+
+        // Fallback jika master sekolah kosong
+        if (uniqueUnits.size === 0 && fallbackSchools && fallbackSchools.length > 0) {
+            fallbackSchools.forEach(function (sch) {
+                if (sch) uniqueUnits.add(String(sch).trim());
+            });
+        }
+
+        var sortedSchools = Array.from(uniqueUnits).sort();
+        var h = '<option value="SEMUA">Semua Sekolah</option>';
+        sortedSchools.forEach(function (s) {
+            var safeS = statussk_escapeHtml(s);
+            h += '<option value="' + safeS + '">' + safeS + '</option>';
+        });
+
+        el.html(h).prop('disabled', false);
+        $('#statussk_btnRefresh').prop('disabled', false);
+        if (currentVal && uniqueUnits.has(currentVal)) {
+            el.val(currentVal);
+        } else {
+            el.val("SEMUA");
+        }
     }
 
     // =================================================================
@@ -262,12 +339,23 @@
     // =================================================================
     function statussk_terapkanFilterLokal() {
         var tAdminUnit = STATUSSK_IS_ADMIN ? String($('#statussk_filterSekolah').val() || "").toUpperCase() : "";
+        var tAdminJenjang = STATUSSK_IS_ADMIN ? String($('#statussk_filterJenjang').val() || "").toUpperCase() : "";
         var tUnitUser = String(STATUSSK_UNIT_TERKUNCI || "").trim().toUpperCase();
 
         var rowsToShow = STATUSSK_CACHE_DATA.filter(function (r) {
             var rUnit = String(r[0] || "").trim().toUpperCase();
+            var rNpsn = String(STATUSSK_MAP_UNIT_NPSN[rUnit] || "").trim().toUpperCase();
+
+            // Cek Jenjang baris
+            var rowJenjang = (rNpsn && STATUSSK_MAP_SCHOOL_JENJANG[rNpsn]) 
+                             || (rUnit && STATUSSK_MAP_SCHOOL_JENJANG[rUnit]) 
+                             || "SD";
+
+            var passJenjang = (!tAdminJenjang || tAdminJenjang === "SEMUA" || rowJenjang === tAdminJenjang);
+
             if (STATUSSK_IS_ADMIN) {
-                return (tAdminUnit === "SEMUA" || tAdminUnit === "" || rUnit === tAdminUnit);
+                var passUnit = (tAdminUnit === "SEMUA" || tAdminUnit === "" || rUnit === tAdminUnit);
+                return passJenjang && passUnit;
             } else {
                 return (rUnit === tUnitUser);
             }

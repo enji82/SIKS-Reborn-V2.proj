@@ -78,6 +78,14 @@
 
                     <div class="divider-vertical d-none d-md-block mx-1"></div>
 
+                    <!-- Filter Jenjang (Khusus Admin, disembunyikan untuk User biasa) -->
+                    <div class="sultan-filter-item d-none" id="dashsk_wrapperUserJenjang">
+                        <select id="dashsk_filterUserJenjang" class="form-control">
+                            <option value="">Semua Jenjang</option>
+                        </select>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+
                     <!-- Filter Nama Sekolah (Khusus Admin) -->
                     <div class="sultan-filter-item d-none" id="dashsk_wrapperUserSekolah" style="min-width: 240px; max-width: 360px;">
                         <select id="dashsk_filterUserSekolah" class="form-control">
@@ -502,6 +510,11 @@
         });
 
         // Event Listener Filter User Mode untuk Admin
+        $(document).off('change', '#dashsk_filterUserJenjang').on('change', '#dashsk_filterUserJenjang', function () {
+            var selectedJjg = $(this).val();
+            dashsk_populateUserSekolahOptions(selectedJjg);
+        });
+
         $(document).off('change', '#dashsk_filterUserSekolah').on('change', '#dashsk_filterUserSekolah', function () {
             var selectedUnit = $(this).val();
             if (selectedUnit) {
@@ -739,35 +752,18 @@
             window.DASHSK_ALL_TRANSAKSI_SK = dataSK || [];
             btn.prop('disabled', false).html('<i class="fas fa-sync-alt"></i>');
 
-            // Ambil Master Sekolah untuk admin dropdown
-            google.script.run.withSuccessHandler(function (mapUnit) {
-                var list = [];
-                if (mapUnit && typeof mapUnit === 'object') {
-                    for (var u in mapUnit) {
-                        if (mapUnit.hasOwnProperty(u)) {
-                            list.push({ nama: u, npsn: mapUnit[u] });
-                        }
-                    }
-                }
-                if (list.length === 0 && window.DASHSK_ALL_TRANSAKSI_SK.length > 0) {
-                    var sSet = new Set();
-                    window.DASHSK_ALL_TRANSAKSI_SK.forEach(function (r) {
-                        if (r.namaSd) sSet.add(r.namaSd.trim());
-                    });
-                    sSet.forEach(function (name) { list.push({ nama: name, npsn: "" }); });
-                }
-                list.sort(function (a, b) { return a.nama.localeCompare(b.nama); });
-                window.DASHSK_MASTER_SEKOLAH = list;
+            var setupWithMaster = function (masterSekolah) {
+                window.DASHSK_MASTER_SEKOLAH = masterSekolah || [];
+                dashsk_setupUserControls();
+            };
 
-                if (DASHSK_USER_IS_ADMIN) {
-                    dashsk_setupAdminUnitControls();
-                } else {
-                    dashsk_renderModeUnit(DASHSK_USER_SEKOLAH);
-                }
-            }).withFailureHandler(function () {
-                if (DASHSK_USER_IS_ADMIN) dashsk_setupAdminUnitControls();
-                else dashsk_renderModeUnit(DASHSK_USER_SEKOLAH);
-            }).getMappingMasterNpsn();
+            if (typeof Lapbul_GetMasterSekolah === 'function') {
+                Lapbul_GetMasterSekolah(setupWithMaster);
+            } else {
+                google.script.run.withSuccessHandler(setupWithMaster).withFailureHandler(function () {
+                    dashsk_setupUserControls();
+                }).getAllSchoolsList();
+            }
 
         }).withFailureHandler(function (err) {
             btn.prop('disabled', false).html('<i class="fas fa-sync-alt"></i>');
@@ -775,39 +771,75 @@
         }).getDaftarSK();
     }
 
-    function dashsk_setupAdminUnitControls() {
-        $('#dashsk_wrapperUserSekolah').removeClass('d-none');
-        dashsk_filterSekolahDropdown();
+    function dashsk_setupUserControls() {
+        var $selJenjang = $('#dashsk_filterUserJenjang');
+        var $selSekolah = $('#dashsk_filterUserSekolah');
+
+        if (!DASHSK_USER_IS_ADMIN) {
+            // JIKA USER SEKOLAH: Sembunyikan dropdown jenjang, dropdown sekolah disabled / tampilkan nama sekolahnya
+            $('#dashsk_wrapperUserJenjang').addClass('d-none');
+            $('#dashsk_wrapperUserSekolah').addClass('d-none');
+            $selSekolah.empty().append(`<option value="${DASHSK_USER_SEKOLAH}">${DASHSK_USER_SEKOLAH || "Sekolah Anda"}</option>`).prop('disabled', true);
+            $('#dashsk_userSchoolName').text(DASHSK_USER_SEKOLAH || "Sekolah Anda");
+            dashsk_renderModeUnit(DASHSK_USER_SEKOLAH);
+        } else {
+            // JIKA ADMIN: Admin leluasa memilih jenjang & sekolah
+            $('#dashsk_wrapperUserJenjang').removeClass('d-none');
+            $('#dashsk_wrapperUserSekolah').removeClass('d-none');
+            $selSekolah.prop('disabled', false);
+
+            // Populate jenjang unik dari database master sekolah
+            var listMaster = window.DASHSK_MASTER_SEKOLAH || [];
+            var jenjangSet = new Set();
+            listMaster.forEach(function (s) {
+                var j = String(s.jenjang || "").trim();
+                if (j) jenjangSet.add(j);
+            });
+            var jenjangList = Array.from(jenjangSet).sort();
+
+            var jHtml = '<option value="">Semua Jenjang</option>';
+            jenjangList.forEach(function (jg) {
+                var isSelected = (jg.toUpperCase() === 'SD') ? ' selected' : '';
+                jHtml += `<option value="${dashsk_escapeHtml(jg)}"${isSelected}>${dashsk_escapeHtml(jg)}</option>`;
+            });
+            $selJenjang.html(jHtml);
+
+            var defaultJjg = $selJenjang.val() || "";
+            dashsk_populateUserSekolahOptions(defaultJjg);
+        }
     }
 
-    function dashsk_filterSekolahDropdown() {
-        var select = $('#dashsk_filterUserSekolah');
-        select.empty();
+    function dashsk_populateUserSekolahOptions(filterJenjang) {
+        var $selSekolah = $('#dashsk_filterUserSekolah').empty();
+        var list = window.DASHSK_MASTER_SEKOLAH || [];
 
-        // Filter hanya sekolah SD
-        var filtered = (window.DASHSK_MASTER_SEKOLAH || []).filter(function (s) {
-            var sName = (s.nama || "").toUpperCase();
-            return sName.indexOf('SD') !== -1 || sName.indexOf('SDN') !== -1;
-        });
-
-        // Fallback jika tidak ada string 'SD' terdeteksi (tampilkan semua master)
-        if (filtered.length === 0) {
-            filtered = window.DASHSK_MASTER_SEKOLAH || [];
+        if (filterJenjang) {
+            list = list.filter(function (s) {
+                return String(s.jenjang || "").toUpperCase() === String(filterJenjang).toUpperCase();
+            });
         }
 
-        if (filtered.length === 0) {
-            select.append('<option value="">Tidak ada sekolah SD</option>');
+        // Urutkan alfabetis
+        list.sort(function (a, b) {
+            return String(a.nama || a.namaSekolah || "").localeCompare(String(b.nama || b.namaSekolah || ""));
+        });
+
+        if (list.length === 0) {
+            $selSekolah.append('<option value="">Tidak ada data sekolah</option>');
+            dashsk_renderModeUnit("");
             return;
         }
 
-        filtered.forEach(function (s) {
-            select.append(`<option value="${dashsk_escapeHtml(s.nama)}">${dashsk_escapeHtml(s.nama)}</option>`);
+        list.forEach(function (s, idx) {
+            var nama = s.nama || s.namaSekolah || s.npsn || "";
+            var jjg = s.jenjang ? ` (${s.jenjang.toUpperCase()})` : '';
+            var isSelected = (idx === 0) ? ' selected' : '';
+            $selSekolah.append(`<option value="${dashsk_escapeHtml(nama)}"${isSelected}>${dashsk_escapeHtml(nama)}${jjg}</option>`);
         });
 
-        var first = filtered[0].nama;
-        select.val(first);
-        $('#dashsk_userSchoolName').text(first);
-        dashsk_renderModeUnit(first);
+        var chosenUnit = $selSekolah.val() || list[0].nama || list[0].namaSekolah || "";
+        $('#dashsk_userSchoolName').text(chosenUnit);
+        dashsk_renderModeUnit(chosenUnit);
     }
 
     function dashsk_renderModeUnit(targetSekolah) {
