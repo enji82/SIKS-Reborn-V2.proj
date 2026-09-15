@@ -359,19 +359,23 @@
         // 1. Cek sesi role pengguna
         try {
             var user = (typeof getSesiUser === 'function') ? getSesiUser() : {};
-            DASHLAPBUL_IS_ADMIN = (user.role || "").toLowerCase().includes("admin");
+            var r = (user.role || "").toLowerCase();
+            DASHLAPBUL_IS_ADMIN = (r.indexOf("admin") !== -1 || r.indexOf("verifikator") !== -1 || r.indexOf("korwil") !== -1);
             if (DASHLAPBUL_IS_ADMIN) {
                 DASHLAPBUL_USER_NPSN = "";
                 DASHLAPBUL_USER_SEKOLAH = "";
             } else {
-                DASHLAPBUL_USER_NPSN = user.npsn || user.username || "";
-                DASHLAPBUL_USER_SEKOLAH = user.nama_lengkap || user.fullname || user.nama || "";
+                DASHLAPBUL_USER_NPSN = String(user.npsn !== undefined && user.npsn !== null ? user.npsn : (user.username || "")).trim();
+                DASHLAPBUL_USER_SEKOLAH = String(user.unit || user.nama_lengkap || user.fullname || user.nama || "").trim();
             }
         } catch (e) {
             DASHLAPBUL_IS_ADMIN = false;
             DASHLAPBUL_USER_NPSN = "";
             DASHLAPBUL_USER_SEKOLAH = "";
         }
+
+        // Setup filter awal segera (instant lock untuk user sekolah)
+        dashlapbul_setupUserFilters();
 
         // 2. Pasang event listener Segmented Switcher (Unit vs Rekap) di kedua view
         $(document).off('click', '.sultan-segmented-btn').on('click', '.sultan-segmented-btn', function () {
@@ -381,17 +385,24 @@
             }
         });
 
-        // 3. Render komponen visual terpusat SultanUI untuk Admin & Banner Ketentuan
-        dashlapbul_renderEmptyStatusBanner();
+        // 3. Render komponen visual terpusat SultanUI untuk Admin & Banner Status Awal
+        if (DASHLAPBUL_IS_ADMIN && !DASHLAPBUL_USER_NPSN) {
+            dashlapbul_renderEmptyStatusBanner();
+        } else {
+            dashlapbul_renderLoadingStatusBanner();
+        }
+
         if (typeof SultanUI !== 'undefined') {
             $('#dashlapbul_jenjangMinimalContainer').html(SultanUI.renderDashboardJenjangMinimal('dashlapbul'));
             $('#dashlapbul_metricRow2').html(SultanUI.renderDashboardRow2Minimal('dashlapbul'));
         }
 
-        // 4. Inisialisasi Master Sekolah untuk Filter Dropdown
+        // 4. Inisialisasi Master Sekolah untuk Filter Dropdown Admin
         Lapbul_GetMasterSekolah(function(master) {
             DASHLAPBUL_MASTER_SEKOLAH = master || [];
-            dashlapbul_setupUserFilters();
+            if (DASHLAPBUL_IS_ADMIN) {
+                dashlapbul_setupUserFilters();
+            }
         });
 
         // 5. Tampilkan View Awal Berdasarkan Role
@@ -661,7 +672,11 @@
     // LOGIKA DASHBOARD USER (SEKOLAH) - STATUS BERJALAN & MULTI-YEAR GRID
     // ======================================================================
     function dashlapbul_initUserView() {
-        dashlapbul_renderEmptyStatusBanner();
+        if (DASHLAPBUL_IS_ADMIN && !DASHLAPBUL_USER_NPSN) {
+            dashlapbul_renderEmptyStatusBanner();
+        } else {
+            dashlapbul_renderLoadingStatusBanner();
+        }
 
         // Handler klik kotak bulan (berlaku untuk semua card tahun)
         $(document).off('click', '.lapbul-month-box').on('click', '.lapbul-month-box', function () {
@@ -691,6 +706,8 @@
             dashlapbul_renderEmptyMultiYearCards();
             return;
         }
+
+        dashlapbul_renderLoadingStatusBanner();
 
         var $btn = $('#dashlapbul_btnBukaDataUser');
         $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Memuat Data...');
@@ -862,7 +879,31 @@
         }
     }
 
-    // Render Banner Awal saat belum ada sekolah dipilih
+    // Render Banner Loading saat memeriksa status laporan sekolah
+    function dashlapbul_renderLoadingStatusBanner() {
+        var mthsCap = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+        var now = new Date();
+        var targetMonthIdx = now.getMonth() - 1;
+        var targetYear = now.getFullYear();
+        if (targetMonthIdx < 0) {
+            targetMonthIdx = 11;
+            targetYear = targetYear - 1;
+        }
+
+        var targetMonthName = mthsCap[targetMonthIdx];
+        var nextMonthName = mthsCap[now.getMonth()];
+        var deadlineStr = "10 " + nextMonthName + " " + now.getFullYear();
+
+        $('#dashlapbul_targetBulanTahun').text(targetMonthName.toUpperCase() + ' ' + targetYear);
+        $('#dashlapbul_deadlineDate').text(deadlineStr);
+
+        $('#dashlapbul_userCurrentIconBox').css('background', 'rgba(139, 30, 45, 0.12)').css('color', '#8b1e2d');
+        $('#dashlapbul_userCurrentIcon').attr('class', 'fas fa-circle-notch fa-spin fa-lg');
+        $('#dashlapbul_userCurrentTitle').html('<span class="lapbul-banner-title">Memeriksa Status Laporan...</span>');
+        $('#dashlapbul_userCurrentDesc').attr('class', 'small lapbul-banner-desc mb-0').text('Sistem sedang memuat data laporan bulanan satuan pendidikan Anda.');
+    }
+
+    // Render Banner Awal saat belum ada sekolah dipilih (Khusus Admin belum pilih sekolah)
     function dashlapbul_renderEmptyStatusBanner() {
         var mthsCap = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
         var now = new Date();
@@ -1498,4 +1539,4 @@
         }, stepTime);
     }
 </script>
-<!-- Cache buster: Tue Sep 15 20:34:00 WIB 2026 -->
+<!-- Cache buster: Tue Sep 15 21:03:00 WIB 2026 -->
