@@ -26,7 +26,7 @@
                     <!-- Filter Jenjang (Hanya aktif/tampil fleksibel untuk Admin, disembunyikan/terkunci untuk user biasa) -->
                     <div class="sultan-filter-item" id="dashlapbul_wrapperUserJenjang">
                         <select id="dashlapbul_filterUserJenjang" class="form-control">
-                            <option value="">Semua Jenjang</option>
+                            <option value="">Pilih Jenjang...</option>
                             <option value="SD">SD</option>
                             <option value="TK">TK</option>
                             <option value="KB">KB</option>
@@ -46,13 +46,6 @@
                     <button type="button" id="dashlapbul_btnRefreshUser" class="sultan-btn-refresh" title="Refresh Riwayat Sekolah">
                         <i class="fas fa-sync-alt"></i>
                     </button>
-                </div>
-
-                <div class="filter-meta-group d-none d-sm-flex align-items-center">
-                    <span class="sync-badge-modern shadow-xs" id="dashlapbul_userSchoolBadge">
-                        <span class="sync-dot"></span>
-                        <span id="dashlapbul_userSchoolName" class="font-weight-bold">Memuat Satuan...</span>
-                    </span>
                 </div>
             </div>
 
@@ -374,11 +367,17 @@
         try {
             var user = (typeof getSesiUser === 'function') ? getSesiUser() : {};
             DASHLAPBUL_IS_ADMIN = (user.role || "").toLowerCase().includes("admin");
-            DASHLAPBUL_USER_NPSN = user.npsn || user.username || "";
-            DASHLAPBUL_USER_SEKOLAH = user.nama_lengkap || user.fullname || user.nama || "";
+            if (DASHLAPBUL_IS_ADMIN) {
+                DASHLAPBUL_USER_NPSN = "";
+                DASHLAPBUL_USER_SEKOLAH = "";
+            } else {
+                DASHLAPBUL_USER_NPSN = user.npsn || user.username || "";
+                DASHLAPBUL_USER_SEKOLAH = user.nama_lengkap || user.fullname || user.nama || "";
+            }
         } catch (e) {
             DASHLAPBUL_IS_ADMIN = false;
             DASHLAPBUL_USER_NPSN = "";
+            DASHLAPBUL_USER_SEKOLAH = "";
         }
 
         // 2. Pasang event listener Segmented Switcher (Unit vs Rekap) di kedua view
@@ -453,6 +452,10 @@
 
         $(document).off('click', '#dashlapbul_btnRefreshUser').on('click', '#dashlapbul_btnRefreshUser', function (e) {
             e.preventDefault();
+            if (!DASHLAPBUL_USER_NPSN) {
+                Sultan.notif.info('Silakan pilih sekolah terlebih dahulu.');
+                return;
+            }
             DASHLAPBUL_USER_REKAP_TAHUN = {};
             dashlapbul_loadUserMultiYear();
         });
@@ -539,18 +542,24 @@
             $('#dashlapbul_wrapperUserJenjang').addClass('d-none');
             $selSekolah.empty().append(`<option value="${DASHLAPBUL_USER_NPSN}">${DASHLAPBUL_USER_SEKOLAH || DASHLAPBUL_USER_NPSN}</option>`);
             $selSekolah.prop('disabled', true);
-            $('#dashlapbul_userSchoolName').text(DASHLAPBUL_USER_SEKOLAH || DASHLAPBUL_USER_NPSN);
         } else {
-            // JIKA ADMIN: Admin leluasa memilih jenjang & sekolah
+            // JIKA ADMIN: Admin leluasa memilih jenjang & sekolah (default belum terpilih)
             $('#dashlapbul_wrapperUserJenjang').removeClass('d-none');
             $selSekolah.prop('disabled', false);
 
+            $selJenjang.val('');
             dashlapbul_populateUserSekolahOptions("");
 
             // Handler perubahan filter Jenjang
             $selJenjang.off('change').on('change', function () {
                 var selectedJjg = $(this).val();
                 dashlapbul_populateUserSekolahOptions(selectedJjg);
+                // Reset pemilihan sekolah jika jenjang diubah
+                DASHLAPBUL_USER_NPSN = "";
+                DASHLAPBUL_USER_SEKOLAH = "";
+                DASHLAPBUL_USER_REKAP_TAHUN = {};
+                dashlapbul_renderEmptyStatusBanner();
+                dashlapbul_renderEmptyMultiYearCards();
             });
 
             // Handler perubahan filter Sekolah
@@ -561,9 +570,14 @@
                 if (chosenNpsn) {
                     DASHLAPBUL_USER_NPSN = chosenNpsn;
                     DASHLAPBUL_USER_SEKOLAH = chosenName;
-                    $('#dashlapbul_userSchoolName').text(chosenName);
                     DASHLAPBUL_USER_REKAP_TAHUN = {};
                     dashlapbul_loadUserMultiYear();
+                } else {
+                    DASHLAPBUL_USER_NPSN = "";
+                    DASHLAPBUL_USER_SEKOLAH = "";
+                    DASHLAPBUL_USER_REKAP_TAHUN = {};
+                    dashlapbul_renderEmptyStatusBanner();
+                    dashlapbul_renderEmptyMultiYearCards();
                 }
             });
         }
@@ -571,6 +585,7 @@
 
     function dashlapbul_populateUserSekolahOptions(filterJenjang) {
         var $selSekolah = $('#dashlapbul_filterUserSekolah').empty();
+        $selSekolah.append('<option value="" selected>Pilih Sekolah...</option>');
         var list = DASHLAPBUL_MASTER_SEKOLAH || [];
 
         if (filterJenjang) {
@@ -585,26 +600,72 @@
         });
 
         if (list.length === 0) {
-            $selSekolah.append('<option value="">Tidak ada data sekolah</option>');
             return;
         }
 
-        list.forEach(function (s, idx) {
+        list.forEach(function (s) {
             var npsn = s.npsn || s.id || "";
             var nama = s.namaSekolah || s.nama || npsn;
             var jjg = s.jenjang ? ` (${s.jenjang.toUpperCase()})` : '';
-            var isSelected = (idx === 0 && (!DASHLAPBUL_USER_NPSN || DASHLAPBUL_USER_NPSN === "")) ? ' selected' : (DASHLAPBUL_USER_NPSN === npsn ? ' selected' : '');
+            var isSelected = (DASHLAPBUL_USER_NPSN && DASHLAPBUL_USER_NPSN === npsn) ? ' selected' : '';
             $selSekolah.append(`<option value="${npsn}"${isSelected}>${nama}${jjg}</option>`);
         });
+    }
 
-        // Set pilihan pertama secara otomatis jika belum terpilih
-        if (!DASHLAPBUL_USER_NPSN || DASHLAPBUL_USER_NPSN === "") {
-            DASHLAPBUL_USER_NPSN = list[0].npsn || "";
-            DASHLAPBUL_USER_SEKOLAH = list[0].namaSekolah || list[0].nama || "";
+    // Render tampilan banner kosong saat belum ada sekolah dipilih
+    function dashlapbul_renderEmptyStatusBanner() {
+        $('#dashlapbul_userCurrentIconBox').css('background', 'rgba(255,255,255,0.08)');
+        $('#dashlapbul_userCurrentIcon').attr('class', 'fas fa-school text-muted fa-lg');
+        $('#dashlapbul_userCurrentPeriod').html('Target Pelaporan: <span class="text-muted">-</span>');
+        $('#dashlapbul_userCurrentTitle').text('Silakan Pilih Sekolah');
+        $('#dashlapbul_userCurrentDesc').text('Pilih jenjang dan nama sekolah pada filter di atas untuk melihat status laporan bulanan.');
+        $('#dashlapbul_userCurrentAction').empty();
+    }
+
+    // Render 4 kartu tahun kosong dengan kotak bulan netral
+    function dashlapbul_renderEmptyMultiYearCards() {
+        var currentYear = new Date().getFullYear();
+        var yearsList = [];
+        for (var y = currentYear; y >= currentYear - 3; y--) {
+            yearsList.push(y);
         }
 
-        var currentSelectedName = $selSekolah.find('option:selected').text();
-        $('#dashlapbul_userSchoolName').text(currentSelectedName || DASHLAPBUL_USER_SEKOLAH);
+        var $container = $('#dashlapbul_userMultiYearContainer').empty();
+        yearsList.forEach(function(yr) {
+            var cardId = 'dashlapbul_gridYear_' + yr;
+            var htmlCard = `
+                <div class="col-xl-3 col-lg-4 col-md-6 mb-4">
+                    <div class="lapbul-user-card">
+                        <div class="lapbul-user-card-header">
+                            <h5 class="lapbul-user-card-title">
+                                <span>Tahun ${yr}</span>
+                            </h5>
+                            <span class="lapbul-user-count-badge" id="dashlapbul_summaryBadge_${yr}">0 / 12 Lapor</span>
+                        </div>
+                        <div class="lapbul-month-grid" id="${cardId}">
+                            ${dashlapbul_generateEmptyMonthBoxes(yr)}
+                        </div>
+                    </div>
+                </div>
+            `;
+            $container.append(htmlCard);
+        });
+    }
+
+    // Generator 12 kotak bulan status netral/kosong
+    function dashlapbul_generateEmptyMonthBoxes(yr) {
+        var mthsDisplay = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+        var mthsFull = ['januari', 'februari', 'maret', 'april', 'mei', 'juni', 'juli', 'agustus', 'september', 'oktober', 'november', 'desember'];
+        var html = '';
+        mthsDisplay.forEach(function(namaSingkat, idx) {
+            html += `
+                <div class="lapbul-month-box lapbul-month-future" data-month-idx="${idx}" data-month-name="${mthsFull[idx]}" data-year="${yr}" title="${mthsFull[idx].toUpperCase()} ${yr} - Silakan pilih sekolah">
+                    <span class="lapbul-month-name">${namaSingkat}</span>
+                    <i class="lapbul-month-icon far fa-circle"></i>
+                </div>
+            `;
+        });
+        return html;
     }
 
     // ======================================================================
@@ -617,11 +678,19 @@
             var tahun = $(this).data('year');
             var infoLaporan = $(this).data('report-info');
 
+            if (!DASHLAPBUL_USER_NPSN) {
+                Sultan.notif.info('Silakan pilih sekolah terlebih dahulu.');
+                return;
+            }
+
             dashlapbul_bukaDetailBulanUser(blnNama, tahun, infoLaporan);
         });
 
         if (DASHLAPBUL_USER_NPSN) {
             dashlapbul_loadUserMultiYear();
+        } else {
+            dashlapbul_renderEmptyStatusBanner();
+            dashlapbul_renderEmptyMultiYearCards();
         }
     }
 
@@ -1468,3 +1537,4 @@
         }, stepTime);
     }
 </script>
+<!-- Cache buster: Tue Sep 15 19:15:30 WIB 2026 -->
