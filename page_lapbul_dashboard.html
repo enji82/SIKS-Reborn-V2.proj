@@ -740,6 +740,7 @@
         Lapbul_GetGlobalData(currentYear, DASHLAPBUL_USER_NPSN, false, function(resCur) {
             var dataCur = (resCur && !resCur.error) ? resCur : [];
             DASHLAPBUL_USER_REKAP_TAHUN[currentYear] = dataCur;
+            dashlapbul_renderStatusBulanBerjalan(currentYear, dataCur);
             dashlapbul_renderYearGridCard(currentYear, dataCur);
             checkFinish();
 
@@ -780,8 +781,86 @@
         return html;
     }
 
-    // Render Banner Informasi Ketentuan Pelaporan (Ringkas & Statis)
-    function dashlapbul_renderInfoBanner() {
+    // Render Status Bulan Berjalan pada Hero Banner (Dinamis Sesuai Status Data, Tanpa Tombol Buka Dokumen)
+    function dashlapbul_renderStatusBulanBerjalan(tahun, dataList) {
+        var mthsFull = ['januari', 'februari', 'maret', 'april', 'mei', 'juni', 'juli', 'agustus', 'september', 'oktober', 'november', 'desember'];
+        var mthsCap = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+        var now = new Date();
+        var targetMonthIdx = now.getMonth() - 1;
+        var targetYear = now.getFullYear();
+        if (targetMonthIdx < 0) {
+            targetMonthIdx = 11;
+            targetYear = targetYear - 1;
+        }
+
+        var targetMonthName = mthsCap[targetMonthIdx];
+        var targetMonthKey = mthsFull[targetMonthIdx];
+        var nextMonthName = mthsCap[now.getMonth()];
+        var deadlineStr = "10 " + nextMonthName + " " + now.getFullYear();
+
+        $('#dashlapbul_targetBulanTahun').text(targetMonthName.toUpperCase() + ' ' + targetYear);
+        $('#dashlapbul_deadlineDate').text(deadlineStr);
+
+        var dataTargetMonth = null;
+        if (dataList && dataList.length > 0) {
+            dataList.forEach(function(r) {
+                if (String(r.tahun || "").trim() === String(targetYear) && String(r.bulan || "").trim().toLowerCase() === targetMonthKey) {
+                    dataTargetMonth = r;
+                }
+            });
+        }
+
+        var iconBox = $('#dashlapbul_userCurrentIconBox');
+        var iconElem = $('#dashlapbul_userCurrentIcon');
+        var titleElem = $('#dashlapbul_userCurrentTitle');
+        var descElem = $('#dashlapbul_userCurrentDesc');
+
+        if (dataTargetMonth) {
+            var st = String(dataTargetMonth.statusData || "Diproses").toLowerCase();
+            var catatan = dataTargetMonth.keterangan || dataTargetMonth.catatanVerifikator || dataTargetMonth.catatan || "";
+            var tglKirim = dataTargetMonth.tglKirim || dataTargetMonth.timestamp || dataTargetMonth.tanggalUpload || "-";
+
+            if (st.includes('ok') || st.includes('setuju') || st.includes('valid') || st.includes('terima')) {
+                // 1. DISETUJUI (Hijau - check-circle)
+                iconBox.css('background', 'rgba(34, 197, 94, 0.15)').css('color', '#22c55e');
+                iconElem.attr('class', 'fas fa-check-circle fa-lg');
+                titleElem.html('<span class="text-success">Laporan ' + targetMonthName + ' Disetujui</span>');
+                descElem.text('Laporan bulanan Anda telah diperiksa dan disetujui oleh verifikator dinas.');
+            } else if (st.includes('revisi')) {
+                // 2. REVISI (Biru Muda / Info - sync-alt)
+                iconBox.css('background', 'rgba(56, 189, 248, 0.15)').css('color', '#0284c7');
+                iconElem.attr('class', 'fas fa-sync-alt fa-lg');
+                titleElem.html('<span class="text-info">Laporan ' + targetMonthName + ' Perlu Revisi</span>');
+                descElem.text(catatan && catatan !== "-" ? 'Catatan: ' + catatan : 'Terdapat perbaikan pada berkas laporan bulan ' + targetMonthName + '. Mohon segera perbaiki.');
+            } else if (st.includes('tolak')) {
+                // 3. DITOLAK (Merah - times-circle)
+                iconBox.css('background', 'rgba(239, 68, 68, 0.15)').css('color', '#ef4444');
+                iconElem.attr('class', 'fas fa-times-circle fa-lg');
+                titleElem.html('<span class="text-danger">Laporan ' + targetMonthName + ' Ditolak</span>');
+                descElem.text(catatan && catatan !== "-" ? 'Alasan: ' + catatan : 'Laporan bulan ' + targetMonthName + ' ditolak oleh dinas. Silakan unggah kembali.');
+            } else {
+                // 4. DIPROSES (Kuning / Warning - clock)
+                iconBox.css('background', 'rgba(234, 179, 8, 0.15)').css('color', '#eab308');
+                iconElem.attr('class', 'fas fa-clock fa-lg');
+                titleElem.html('<span class="text-warning">Laporan ' + targetMonthName + ' Sedang Diproses</span>');
+                descElem.text('Laporan dikirim pada ' + tglKirim + ' dan sedang dalam antrean verifikasi dinas.');
+            }
+        } else {
+            // BELUM LAPOR
+            var isPassedDeadline = (now.getDate() > 10);
+            var statusText = isPassedDeadline ? 'Terlambat Mengirim Laporan ' + targetMonthName : 'Belum Mengirim Laporan ' + targetMonthName;
+            var descWarning = isPassedDeadline ? 'Batas waktu pengiriman (tanggal ' + deadlineStr + ') telah terlewat. Mohon segera kirimkan laporan Anda.' : 'Batas akhir pengiriman laporan adalah tanggal ' + deadlineStr + '.';
+
+            iconBox.css('background', 'rgba(244, 63, 94, 0.15)').css('color', '#f43f5e');
+            iconElem.attr('class', 'fas fa-exclamation-circle fa-lg');
+            titleElem.html('<span class="text-danger">' + statusText + '</span>');
+            descElem.text(descWarning);
+        }
+    }
+
+    // Render Banner Awal saat belum ada sekolah dipilih
+    function dashlapbul_renderEmptyStatusBanner() {
         var mthsCap = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
         var now = new Date();
         var targetMonthIdx = now.getMonth() - 1;
@@ -797,6 +876,11 @@
 
         $('#dashlapbul_targetBulanTahun').text(targetMonthName.toUpperCase() + ' ' + targetYear);
         $('#dashlapbul_deadlineDate').text(deadlineStr);
+
+        $('#dashlapbul_userCurrentIconBox').css('background', 'rgba(160, 30, 50, 0.12)').css('color', '#dc2626');
+        $('#dashlapbul_userCurrentIcon').attr('class', 'fas fa-school fa-lg');
+        $('#dashlapbul_userCurrentTitle').html('Silakan Pilih Sekolah');
+        $('#dashlapbul_userCurrentDesc').text('Pilih jenjang dan nama sekolah pada filter di atas lalu klik Buka Data.');
     }
 
     // Render Grid 12 Kotak untuk 1 Kartu Tahun Tertentu (Status Terpusat: Diproses, Disetujui, Revisi, Ditolak)
@@ -897,15 +981,11 @@
                 .attr('class', 'lapbul-month-icon ' + iconClass);
         });
 
-        // Hitung total laporan terkirim untuk tahun ini dan update badge header
-        var totalTerkirim = 0;
-        if (dataList && dataList.length > 0) {
-            dataList.forEach(function(r) {
-                if (String(r.tahun || "").trim() === String(targetTahun) && String(r.statusData || "").trim() !== "" && String(r.statusData || "").trim() !== "-") {
-                    totalTerkirim++;
-                }
-            });
-        }
+        // Hitung total laporan terkirim untuk tahun ini (maksimal 12 bulan unik)
+        var totalTerkirim = Object.keys(monthMap).filter(function(k) {
+            var r = monthMap[k];
+            return r && String(r.statusData || "").trim() !== "" && String(r.statusData || "").trim() !== "-";
+        }).length;
         $('#dashlapbul_summaryBadge_' + targetTahun).text(totalTerkirim + ' / 12 Lapor');
     }
 
@@ -1411,4 +1491,4 @@
         }, stepTime);
     }
 </script>
-<!-- Cache buster: Tue Sep 15 19:40:30 WIB 2026 -->
+<!-- Cache buster: Tue Sep 15 19:54:00 WIB 2026 -->
