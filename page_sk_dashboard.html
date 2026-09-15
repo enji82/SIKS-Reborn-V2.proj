@@ -99,7 +99,7 @@
                     </div>
 
                     <button type="button" id="dashsk_btnBukaDataUser" class="sultan-filter-btn-primary">
-                        <i class="fas fa-folder-open mr-1"></i> Buka Data
+                        <i class="fas fa-sync-alt mr-1"></i> Refresh Data
                     </button>
                 </div>
             </div>
@@ -530,15 +530,33 @@
         if (DASHSK_USER_IS_ADMIN) {
             DASHSK_ACTIVE_VIEW = 'rekap';
             dashsk_switchMode('rekap');
+            $('#dashsk_btnBukaDataUser').html('<i class="fas fa-folder-open mr-1"></i> Buka Data');
             dashsk_loadDataUnitSekolah();
         } else {
             DASHSK_ACTIVE_VIEW = 'unit';
             dashsk_switchMode('unit');
+            $('#dashsk_wrapperUserJenjang, #dashsk_wrapperUserSekolah').addClass('d-none');
+            $('#dashsk_btnBukaDataUser').html('<i class="fas fa-sync-alt mr-1"></i> Refresh Data');
             $('#dashsk_userSchoolName').text(DASHSK_USER_SEKOLAH || "Sekolah Anda");
             dashsk_loadDataUnitSekolah();
             // Pre-fetch mode rekap agar langsung siap saat dibuka
             setTimeout(function () { dashsk_loadDataDashboard(true); }, 500);
         }
+
+        // Handler klik tombol Filter Bar (Buka Data / Refresh Data)
+        $(document).off('click', '#dashsk_btnBukaDataUser').on('click', '#dashsk_btnBukaDataUser', function (e) {
+            e.preventDefault();
+            if (!DASHSK_USER_IS_ADMIN) {
+                dashsk_loadDataUnitSekolah(true);
+            } else {
+                var selectedUnit = $('#dashsk_filterUserSekolah').val();
+                if (!selectedUnit) {
+                    Sultan.notif.info('Silakan pilih jenjang dan nama sekolah terlebih dahulu.');
+                    return;
+                }
+                dashsk_renderModeUnit(selectedUnit);
+            }
+        });
 
         // 5. Pasang Event Listener Umum
         $(document).off('click', '#dashsk_btnRefresh').on('click', '#dashsk_btnRefresh', function (e) {
