@@ -282,11 +282,13 @@
         SultanUI.showLoading('#tugas_loadingState', 'Menghubungkan ke Server...');
 
         // Render filter bar secara dinamis (VAKSINASI COMPLIANCE)
+        // Urutan: Tahun Ajaran, Semester, Jenjang (default SD), Sekolah, Status
         var filtersConfig = [
-            { id: 'tugas_filterUnit', placeholder: '- Memvalidasi Akses... -', disabled: true },
-            { id: 'tugas_filterTahun', placeholder: '- Memuat TA... -', disabled: true },
-            { id: 'tugas_filterSemester', placeholder: '- Memuat Semester... -', disabled: true },
-            { id: 'tugas_filterStatus', placeholder: '- Memuat Status... -', disabled: true }
+            { id: 'tugas_filterTahun', placeholder: 'Semua Tahun', disabled: true },
+            { id: 'tugas_filterSemester', placeholder: 'Semua Semester', disabled: true },
+            { id: 'tugas_filterJenjang', placeholder: 'Semua Jenjang', disabled: false },
+            { id: 'tugas_filterUnit', placeholder: 'Semua Sekolah', disabled: true },
+            { id: 'tugas_filterStatus', placeholder: 'Semua Status', disabled: true }
         ];
         var extraButtons = `
             <div class="divider-vertical d-none d-md-block mx-2"></div>
@@ -311,7 +313,7 @@
         tugas_initFilterTahun();
 
         // VAKSINASI EVENT DELEGATION (ANTI MEMORY LEAK)
-        $(document).off('change', '#tugas_filterUnit, #tugas_filterTahun, #tugas_filterSemester, #tugas_filterStatus').on('change', '#tugas_filterUnit, #tugas_filterTahun, #tugas_filterSemester, #tugas_filterStatus', tugas_terapkanFilterLokal);
+        $(document).off('change', '#tugas_filterTahun, #tugas_filterSemester, #tugas_filterJenjang, #tugas_filterUnit, #tugas_filterStatus').on('change', '#tugas_filterTahun, #tugas_filterSemester, #tugas_filterJenjang, #tugas_filterUnit, #tugas_filterStatus', tugas_terapkanFilterLokal);
 
         // VAKSIN TOMBOL CARI: Kini memanggil tugas_tarikDataServer secara mutlak (Bypass Cache)
         $(document).off('click', '#tugas_btnCari').on('click', '#tugas_btnCari', tugas_tarikDataServer);
@@ -337,7 +339,7 @@
 
     function tugas_initFilterTahun() {
         var now = new Date(); var curYear = now.getFullYear(); var curMonth = now.getMonth();
-        var htmlTahun = '<option value="">- Semua Tahun -</option>';
+        var htmlTahun = '<option value="">Semua Tahun</option>';
         var formTahun = '<option value="">- Pilih Tahun Ajaran -</option>';
 
         for (var y = 2021; y <= curYear + 1; y++) {
@@ -349,18 +351,23 @@
         $('#tugas_filterTahun').html(htmlTahun).val("").prop('disabled', false);
 
         var htmlSmt = `
-            <option value="">- Semua Semester -</option>
+            <option value="">Semua Semester</option>
             <option value="Semester 1">Semester 1</option>
             <option value="Semester 2">Semester 2</option>
         `;
         $('#tugas_filterSemester').html(htmlSmt).val("").prop('disabled', false);
 
+        var htmlJenjang = `
+            <option value="SD" selected>SD</option>
+        `;
+        $('#tugas_filterJenjang').html(htmlJenjang).val("SD").prop('disabled', false);
+
         var htmlStat = `
-            <option value="">- Semua Status -</option>
+            <option value="">Semua Status</option>
+            <option value="diproses">Diproses</option>
             <option value="ok">Disetujui</option>
             <option value="revisi">Revisi</option>
             <option value="tolak">Ditolak</option>
-            <option value="diproses">Diproses</option>
         `;
         $('#tugas_filterStatus').html(htmlStat).val("").prop('disabled', false);
 
@@ -373,7 +380,7 @@
     function tugas_validasiAksesUser() {
         if (TUGAS_IS_ADMIN) {
             SultanUI.showLoading('#tugas_loadingState', 'Mempersiapkan Database Admin...');
-            $('#tugas_filterUnit').empty().append('<option value="SEMUA">- Semua Unit Kerja -</option>').prop('disabled', false).removeClass('bg-light font-weight-bold').css('color', '');
+            $('#tugas_filterUnit').empty().append('<option value="SEMUA">Semua Sekolah</option>').prop('disabled', false).removeClass('bg-light font-weight-bold').css('color', '');
 
             // AUTO-SET DEFAULT FILTER UNTUK ADMIN
             var now = new Date(); var curYear = now.getFullYear(); var curMonth = now.getMonth();
@@ -496,7 +503,7 @@
         var sortedUnits = Array.from(uniqueUnits).sort();
 
         if (TUGAS_IS_ADMIN) {
-            var uHtml = '<option value="SEMUA">- Semua Sekolah -</option>';
+            var uHtml = '<option value="SEMUA">Semua Sekolah</option>';
             sortedUnits.forEach(u => uHtml += '<option value="' + tugas_escapeHtml(u) + '">' + tugas_escapeHtml(u) + '</option>');
             var curUnit = $('#tugas_filterUnit').val();
             $('#tugas_filterUnit').html(uHtml);
