@@ -248,11 +248,9 @@ function admsekolahmaster_renderFilterBar() {
     $('#admsekolahmaster_filterBarArea').html(SultanUI.renderFilterBar(filtersConfig, extraButtons));
   }
 
-  // Populate Filter Jenjang
+  // Populate Filter Jenjang (default placeholder sebelum data ditarik)
   $('#admsekolahmaster_filterJenjang').html(`
     <option value="SEMUA" selected>Semua Jenjang</option>
-    <option value="SD">SD</option>
-    <option value="PAUD">PAUD</option>
   `);
 
   // Populate Filter Status
@@ -277,6 +275,35 @@ function admsekolahmaster_renderFilterBar() {
   `);
 }
 
+function admsekolahmaster_populateFilterJenjang() {
+  var $select = $('#admsekolahmaster_filterJenjang');
+  var curVal = String($select.val() || "SEMUA").trim().toUpperCase();
+
+  // Kumpulkan semua nilai jenjang unik yang ada di data
+  var setJenjang = new Set();
+  (ADMSEKOLAHMASTER_CACHE_DATA || []).forEach(function(d) {
+    var j = admsekolahmaster_formatJenjang(d.jenjang);
+    if (j && j.toUpperCase() !== "SEMUA") {
+      setJenjang.add(j);
+    }
+  });
+
+  // Urutkan alfabetis (misal: PAUD, SD, dst.)
+  var listJenjang = Array.from(setJenjang).sort();
+
+  var optionsHtml = '<option value="SEMUA">Semua Jenjang</option>';
+  listJenjang.forEach(function(j) {
+    optionsHtml += '<option value="' + admsekolahmaster_esc(j.toUpperCase()) + '">' + admsekolahmaster_esc(j) + '</option>';
+  });
+
+  $select.html(optionsHtml);
+  if ($select.find('option[value="' + curVal + '"]').length > 0) {
+    $select.val(curVal);
+  } else {
+    $select.val("SEMUA");
+  }
+}
+
 function admsekolahmaster_tarikData() {
   var btn = $('#admsekolahmaster_btnRefresh');
   btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin text-maroon"></i>');
@@ -294,6 +321,7 @@ function admsekolahmaster_tarikData() {
       return;
     }
     ADMSEKOLAHMASTER_CACHE_DATA = res.kategori || [];
+    admsekolahmaster_populateFilterJenjang();
     if (!$.fn.DataTable.isDataTable('#admsekolahmaster_tabel')) { admsekolahmaster_initTable(); }
     admsekolahmaster_terapkanFilter();
     SultanUI.hideLoading('#admsekolahmaster_loadingState');
@@ -333,10 +361,10 @@ function admsekolahmaster_terapkanFilter() {
   var fPeriode = String($('#admsekolahmaster_filterPeriode').val() || "SEMUA").trim().toUpperCase();
 
   var hasil = ADMSEKOLAHMASTER_CACHE_DATA.filter(function(d) {
-    // Filter Jenjang
+    // Filter Jenjang (Tepat sesuai jenjang yang dipilih)
     if (fJenjang !== "SEMUA" && fJenjang !== "") {
-      var dJ = String(d.jenjang || "SEMUA").trim().toUpperCase();
-      if (dJ !== "SEMUA" && dJ !== fJenjang && !dJ.includes(fJenjang)) return false;
+      var dJ = admsekolahmaster_formatJenjang(d.jenjang).toUpperCase();
+      if (dJ !== fJenjang) return false;
     }
     // Filter Status
     if (fAktif !== "SEMUA" && fAktif !== "") {
