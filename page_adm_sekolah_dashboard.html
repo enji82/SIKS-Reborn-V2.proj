@@ -704,6 +704,16 @@ function admsekolahdash_loadDataKategori(idKategori, forceRefresh) {
         SultanUI.startLottery('#admsekolahdash_cardTotalSekolah, #admsekolahdash_cardSudah, #admsekolahdash_cardBelum, #admsekolahdash_cardTotalDokumen, #admsekolahdash_cardDiproses, #admsekolahdash_cardDisetujui, #admsekolahdash_cardRevisi, #admsekolahdash_cardDitolak', 3);
         SultanUI.startLottery('#admsekolahdash_cardProgress', 2, '%');
     }
+
+    // Tampilkan spinner loading di 4 kolom list segera saat request dimulai
+    var listLoadingHtml = (typeof SultanUI !== 'undefined' && SultanUI.renderListLoading)
+        ? SultanUI.renderListLoading('MEMUAT...')
+        : '<li class="list-group-item border-0 px-3 py-4 bg-transparent text-center">' +
+          '<i class="fas fa-circle-notch fa-spin text-muted mb-2 opacity-50"></i><br>' +
+          '<span class="small text-muted font-weight-bold" style="letter-spacing:0.5px;text-transform:uppercase;font-size:11px;">MEMUAT...</span></li>';
+    $('#admsekolahdash_listDisetujui, #admsekolahdash_listDiproses, #admsekolahdash_listRevisi, #admsekolahdash_listDitolak').html(listLoadingHtml);
+    $('#admsekolahdash_countDisetujui, #admsekolahdash_countDiproses, #admsekolahdash_countRevisi, #admsekolahdash_countDitolak').text('...');
+
     $('#admsekolahdash_dashboardState').show();
 
     google.script.run.withSuccessHandler(function(jsonStr) {
@@ -854,35 +864,21 @@ function admsekolahdash_terapkanFilterLokal() {
     var fTahun = isPermanen ? "SEMUA" : String($('#admsekolahdash_filterTahun').val() || "").trim().toUpperCase();
     var fPeriode = String($('#admsekolahdash_filterPeriode').val() || "").trim().toUpperCase();
 
-    // Tampilkan loading spinner di semua 4 kolom list saat filter berubah
-    var listLoading = (typeof SultanUI !== 'undefined' && SultanUI.renderListLoading)
-        ? SultanUI.renderListLoading('MEMUAT...')
-        : '<li class="list-group-item border-0 px-3 py-4 bg-transparent text-center">' +
-          '<i class="fas fa-circle-notch fa-spin text-muted mb-2 opacity-50"></i><br>' +
-          '<span class="small text-muted font-weight-bold" style="letter-spacing:0.5px;text-transform:uppercase;font-size:11px;">MEMUAT...</span></li>';
-    $('#admsekolahdash_listDisetujui, #admsekolahdash_listDiproses, #admsekolahdash_listRevisi, #admsekolahdash_listDitolak').html(listLoading);
+    var filterRekap = ADMSEKOLAHDASH_CACHE_REKAP.filter(function(r) {
+        var rTahun = String(r.tahun || "").trim().toUpperCase();
+        if (!isPermanen && fTahun !== "SEMUA" && fTahun !== "" && rTahun !== fTahun) return false;
+        if (fPeriode !== "SEMUA" && fPeriode !== "" && String(r.periode || "").trim().toUpperCase() !== fPeriode) return false;
+        return true;
+    });
 
-    // Reset badge sementara
-    $('#admsekolahdash_countDisetujui, #admsekolahdash_countDiproses, #admsekolahdash_countRevisi, #admsekolahdash_countDitolak').text('...');
+    var filterBelum = ADMSEKOLAHDASH_CACHE_BELUM.filter(function(r) {
+        var rTahun = String(r.tahun || "").trim().toUpperCase();
+        if (!isPermanen && fTahun !== "SEMUA" && fTahun !== "" && rTahun !== fTahun) return false;
+        if (fPeriode !== "SEMUA" && fPeriode !== "" && String(r.periode || "").trim().toUpperCase() !== fPeriode) return false;
+        return true;
+    });
 
-    // Beri jeda singkat agar spinner sempat tampil sebelum proses filter
-    setTimeout(function() {
-        var filterRekap = ADMSEKOLAHDASH_CACHE_REKAP.filter(function(r) {
-            var rTahun = String(r.tahun || "").trim().toUpperCase();
-            if (!isPermanen && fTahun !== "SEMUA" && fTahun !== "" && rTahun !== fTahun) return false;
-            if (fPeriode !== "SEMUA" && fPeriode !== "" && String(r.periode || "").trim().toUpperCase() !== fPeriode) return false;
-            return true;
-        });
-
-        var filterBelum = ADMSEKOLAHDASH_CACHE_BELUM.filter(function(r) {
-            var rTahun = String(r.tahun || "").trim().toUpperCase();
-            if (!isPermanen && fTahun !== "SEMUA" && fTahun !== "" && rTahun !== fTahun) return false;
-            if (fPeriode !== "SEMUA" && fPeriode !== "" && String(r.periode || "").trim().toUpperCase() !== fPeriode) return false;
-            return true;
-        });
-
-        admsekolahdash_renderDashboard(filterRekap, filterBelum, fTahun, fPeriode);
-    }, 180);
+    admsekolahdash_renderDashboard(filterRekap, filterBelum, fTahun, fPeriode);
 }
 
 function admsekolahdash_getRekapForMetrics(dataRekap, fTahun, fPeriode) {
