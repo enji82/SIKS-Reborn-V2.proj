@@ -278,50 +278,37 @@
     // =================================================================
     // 1. INITIALIZATION & SPA VACCINE (BAB I)
     // =================================================================
+    // 1. INITIALIZATION & SPA VACCINE (BAB I)
+    // =================================================================
     $(document).ready(function () {
         TUGAS_TABEL_INSTANCE = null;
         $('#tugas_tableState').hide();
         SultanUI.showLoading('#tugas_loadingState', 'Menghubungkan ke Server...');
 
-        // Render filter bar secara dinamis (VAKSINASI COMPLIANCE)
-        // Urutan: Tahun Ajaran, Semester, Jenjang (default SD), Sekolah, Status
-        var filtersConfig = [
-            { id: 'tugas_filterTahun', placeholder: 'Semua Tahun', disabled: true },
-            { id: 'tugas_filterSemester', placeholder: 'Semua Semester', disabled: true },
-            { id: 'tugas_filterJenjang', placeholder: 'Semua Jenjang', disabled: false },
-            { id: 'tugas_filterUnit', placeholder: 'Semua Sekolah', disabled: true },
-            { id: 'tugas_filterStatus', placeholder: 'Semua Status', disabled: true }
-        ];
-        var extraButtons = `
-            <div class="divider-vertical d-none d-md-block mx-2"></div>
-            <button type="button" id="tugas_btnCari" class="sultan-btn-refresh" title="Segarkan Data Server" disabled>
-                <i class="fas fa-sync-alt"></i>
-            </button>
-            <div class="ml-auto d-none d-md-block"></div>
-            <button type="button" id="tugas_btnTambah" class="sultan-btn-tambah" disabled>
-                <i class="fas fa-plus"></i> TAMBAH
-            </button>
-        `;
-        $('#tugas_filterBarArea').html(SultanUI.renderFilterBar(filtersConfig, extraButtons));
-        $('#tugas_filterUnit_container').addClass('sultan-filter-unit-width');
-
         try {
             var user = typeof getSesiUser === 'function' ? getSesiUser() : {};
             TUGAS_USER_AKTIF = String(user.nama_lengkap || user.fullname || user.nama || user.username || "User Web");
-            TUGAS_IS_ADMIN = String(user.role || "").toLowerCase().includes("admin");
+            var rStr = String(user.role || "").toLowerCase();
+            TUGAS_IS_ADMIN = (typeof checkUserRoleIsAdmin === 'function' && checkUserRoleIsAdmin()) || rStr.includes("admin") || rStr.includes("verifikator");
             TUGAS_USER_NPSN = TUGAS_IS_ADMIN ? "" : String(user.npsn !== undefined && user.npsn !== null ? user.npsn : (user.username || "")).trim();
         } catch (e) { TUGAS_USER_NPSN = ""; TUGAS_IS_ADMIN = false; }
+
+        // Render Filter Bar Modern Sesuai Role
+        tugas_renderFilterBar();
 
         tugas_initFilterTahun();
 
         // VAKSINASI EVENT DELEGATION (ANTI MEMORY LEAK)
-        $(document).off('change', '#tugas_filterJenjang').on('change', '#tugas_filterJenjang', function () {
-            var jjg = $(this).val();
-            tugas_populateSekolahOptions(jjg);
-            tugas_terapkanFilterLokal();
-        });
+        $(document).off('change', '#tugas_filterTahun, #tugas_filterSemester, #tugas_filterStatus').on('change', '#tugas_filterTahun, #tugas_filterSemester, #tugas_filterStatus', tugas_terapkanFilterLokal);
 
-        $(document).off('change', '#tugas_filterTahun, #tugas_filterSemester, #tugas_filterUnit, #tugas_filterStatus').on('change', '#tugas_filterTahun, #tugas_filterSemester, #tugas_filterUnit, #tugas_filterStatus', tugas_terapkanFilterLokal);
+        if (TUGAS_IS_ADMIN) {
+            $(document).off('change', '#tugas_filterJenjang').on('change', '#tugas_filterJenjang', function () {
+                var jjg = $(this).val();
+                tugas_populateSekolahOptions(jjg);
+                tugas_terapkanFilterLokal();
+            });
+            $(document).off('change', '#tugas_filterUnit').on('change', '#tugas_filterUnit', tugas_terapkanFilterLokal);
+        }
 
         // VAKSIN TOMBOL CARI: Kini memanggil tugas_tarikDataServer secara mutlak (Bypass Cache)
         $(document).off('click', '#tugas_btnCari').on('click', '#tugas_btnCari', tugas_tarikDataServer);
@@ -345,6 +332,45 @@
         tugas_validasiAksesUser();
     });
 
+    function tugas_renderFilterBar() {
+        var filtersConfig = [];
+        if (TUGAS_IS_ADMIN) {
+            // Admin: Tahun Ajaran, Semester, Jenjang, Sekolah, Status
+            filtersConfig = [
+                { id: 'tugas_filterTahun', placeholder: 'Semua Tahun', disabled: true },
+                { id: 'tugas_filterSemester', placeholder: 'Semua Semester', disabled: true },
+                { id: 'tugas_filterJenjang', placeholder: 'Semua Jenjang', disabled: false },
+                { id: 'tugas_filterUnit', placeholder: 'Semua Sekolah', disabled: true },
+                { id: 'tugas_filterStatus', placeholder: 'Semua Status', disabled: true }
+            ];
+        } else {
+            // User: Tahun Ajaran, Semester, Status
+            filtersConfig = [
+                { id: 'tugas_filterTahun', placeholder: 'Semua Tahun', disabled: true },
+                { id: 'tugas_filterSemester', placeholder: 'Semua Semester', disabled: true },
+                { id: 'tugas_filterStatus', placeholder: 'Semua Status', disabled: true }
+            ];
+        }
+
+        var extraButtons = `
+            <div class="divider-vertical d-none d-md-block mx-2"></div>
+            <button type="button" id="tugas_btnCari" class="sultan-btn-refresh" title="Segarkan Data Server" disabled>
+                <i class="fas fa-sync-alt"></i>
+            </button>
+            <div class="ml-auto d-none d-md-block"></div>
+            <button type="button" id="tugas_btnTambah" class="sultan-btn-tambah" disabled>
+                <i class="fas fa-plus"></i> TAMBAH
+            </button>
+        `;
+
+        if (typeof SultanUI !== 'undefined') {
+            $('#tugas_filterBarArea').html(SultanUI.renderFilterBar(filtersConfig, extraButtons));
+        }
+        if (TUGAS_IS_ADMIN) {
+            $('#tugas_filterUnit_container').addClass('sultan-filter-unit-width');
+        }
+    }
+
     function tugas_initFilterTahun() {
         var now = new Date(); var curYear = now.getFullYear(); var curMonth = now.getMonth();
         var htmlTahun = '<option value="">Semua Tahun</option>';
@@ -365,10 +391,15 @@
         `;
         $('#tugas_filterSemester').html(htmlSmt).val("").prop('disabled', false);
 
-        var htmlJenjang = `
-            <option value="SD" selected>SD</option>
-        `;
-        $('#tugas_filterJenjang').html(htmlJenjang).val("SD").prop('disabled', false);
+        if (TUGAS_IS_ADMIN) {
+            var htmlJenjang = `
+                <option value="" selected>Semua Jenjang</option>
+                <option value="PAUD">PAUD</option>
+                <option value="SD">SD</option>
+                <option value="SMP">SMP</option>
+            `;
+            $('#tugas_filterJenjang').html(htmlJenjang).val("").prop('disabled', false);
+        }
 
         var htmlStat = `
             <option value="">Semua Status</option>
@@ -396,35 +427,29 @@
             var currentSmt = (curMonth >= 6) ? "Semester 1" : "Semester 2";
             $('#tugas_filterTahun').val(currentTa);
             $('#tugas_filterSemester').val(currentSmt);
+            $('#tugas_filterJenjang').val("");
 
             $('#tugas_btnCari, #tugas_btnTambah').prop('disabled', false);
             
             TUGAS_IS_INIT = false; // Buka kunci inisialisasi
             tugas_tarikDataServer('INIT_START');
         } else {
-            // Sembunyikan filter jenjang sejak awal untuk user sekolah
-            $('#tugas_filterJenjang_container').hide();
-
             if (!TUGAS_USER_NPSN) {
-                $('#tugas_filterUnit').empty().append('<option value="">AKSES DITOLAK (NPSN KOSONG)</option>');
                 $('#tugas_loadingState').html('<div class="text-center py-5 text-danger sultan-page-transition"><i class="fas fa-ban fa-2x mb-3"></i><br>Akses ditolak: Sesi login tidak valid.</div>');
                 return;
             }
             google.script.run.withSuccessHandler(function (resUnit) {
                 var dataUnit = JSON.parse(resUnit);
                 if (dataUnit.error) {
-                    $('#tugas_filterUnit').empty().append('<option value="">AKSES DITOLAK</option>');
                     $('#tugas_loadingState').html('<div class="text-center py-5 text-danger sultan-page-transition"><i class="fas fa-exclamation-triangle fa-2x mb-3"></i><br>' + tugas_escapeHtml(dataUnit.error) + '</div>');
                     return;
                 }
                 TUGAS_UNIT_TERKUNCI = dataUnit.unitKerja;
-                $('#tugas_filterUnit').empty().append('<option value="' + tugas_escapeHtml(TUGAS_UNIT_TERKUNCI) + '">' + tugas_escapeHtml(TUGAS_UNIT_TERKUNCI) + '</option>').prop('disabled', true);
                 $('#tugas_btnCari, #tugas_btnTambah').prop('disabled', false);
                 
                 TUGAS_IS_INIT = false; // Buka kunci inisialisasi
                 tugas_tarikDataServer('INIT_START');
             }).withFailureHandler(function (err) {
-                $('#tugas_filterUnit').empty().append('<option value="">ERROR SERVER</option>');
                 $('#tugas_loadingState').html('<div class="text-center py-5 text-danger sultan-page-transition"><i class="fas fa-wifi fa-2x mb-3"></i><br>Koneksi Terputus: ' + tugas_escapeHtml(err.message) + '</div>');
             }).getUnitKerjaByNpsnPTK(TUGAS_USER_NPSN);
         }
@@ -523,29 +548,14 @@
     }
 
     function tugas_setupJenjangDanSekolahOptions() {
-        var $selJenjang = $('#tugas_filterJenjang');
-        var curJenjang = $selJenjang.val() || "SD";
-
         if (!TUGAS_IS_ADMIN) {
-            // JIKA USER SEKOLAH (NON-ADMIN):
-            // Sembunyikan filter jenjang sepenuhnya seperti pada Kelola Data Laporan Bulanan
-            $('#tugas_filterJenjang_container').hide();
-            
-            var safeNpsn = String(TUGAS_USER_NPSN || "").trim().toUpperCase();
-            var safeUnit = String(TUGAS_UNIT_TERKUNCI || "").trim().toUpperCase();
-            var userJjg = (safeNpsn && TUGAS_MAP_SCHOOL_JENJANG[safeNpsn]) 
-                          || (safeUnit && TUGAS_MAP_SCHOOL_JENJANG[safeUnit]) 
-                          || "SD";
-            $selJenjang.html('<option value="' + tugas_escapeHtml(userJjg) + '">' + tugas_escapeHtml(userJjg) + '</option>').val(userJjg);
-            
-            $('#tugas_filterUnit').empty().append('<option value="' + tugas_escapeHtml(TUGAS_UNIT_TERKUNCI) + '">' + tugas_escapeHtml(TUGAS_UNIT_TERKUNCI) + '</option>').prop('disabled', true);
             tugas_populateModalSekolahOptions();
             return;
         }
 
-        // JIKA ADMIN:
-        // Tampilkan filter jenjang
-        $('#tugas_filterJenjang_container').show();
+        var $selJenjang = $('#tugas_filterJenjang');
+        var curJenjang = $selJenjang.val() || "";
+
         var jenjangSet = new Set();
         (TUGAS_MASTER_SEKOLAH || []).forEach(function (s) {
             var j = String(s.jenjang || "").trim();
@@ -554,14 +564,15 @@
 
         // Fallback jika master kosong
         if (jenjangSet.size === 0) {
-            jenjangSet.add("SD");
             jenjangSet.add("PAUD");
+            jenjangSet.add("SD");
+            jenjangSet.add("SMP");
         }
 
         var sortedJenjang = Array.from(jenjangSet).sort();
-        var jHtml = '<option value="">Semua Jenjang</option>';
+        var jHtml = '<option value=""' + (!curJenjang ? ' selected' : '') + '>Semua Jenjang</option>';
         sortedJenjang.forEach(function (jg) {
-            var isSel = (jg.toUpperCase() === (curJenjang || "SD").toUpperCase()) ? ' selected' : '';
+            var isSel = (curJenjang && jg.toUpperCase() === curJenjang.toUpperCase()) ? ' selected' : '';
             jHtml += '<option value="' + tugas_escapeHtml(jg) + '"' + isSel + '>' + tugas_escapeHtml(jg) + '</option>';
         });
         $selJenjang.html(jHtml).prop('disabled', false);
@@ -667,11 +678,17 @@
                              || (rSd && TUGAS_MAP_SCHOOL_JENJANG[rSd]) 
                              || "SD";
 
-            var passJenjang = (!fJg || fJg === "SEMUA" || rowJenjang === fJg);
+            var passJenjang = true;
+            if (TUGAS_IS_ADMIN) {
+                passJenjang = (!fJg || fJg === "SEMUA" || rowJenjang === fJg);
+            }
 
             var passUnit = false;
-            if (TUGAS_IS_ADMIN) { passUnit = (tAdminUnit === "SEMUA" || tAdminUnit === "" || rSd === tAdminUnit); }
-            else { passUnit = (rSd === tUnitUser); }
+            if (TUGAS_IS_ADMIN) { 
+                passUnit = (tAdminUnit === "SEMUA" || tAdminUnit === "" || rSd === tAdminUnit); 
+            } else { 
+                passUnit = (rSd === tUnitUser || (rNpsn && rNpsn === String(TUGAS_USER_NPSN).toUpperCase())); 
+            }
 
             var passTh = (fTh === "" || rTh === fTh);
             var passSm = (fSm === "" || rSm === fSm);
