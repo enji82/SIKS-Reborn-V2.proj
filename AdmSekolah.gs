@@ -13,9 +13,14 @@ function getOrCreateSheetAdmSekolah(sheetName) {
   if (!sheet) {
     sheet = ss.insertSheet(sheetName);
     if (sheetName === "Master_Kategori") {
-      sheet.appendRow(["ID_Kategori", "Nama_Dokumen", "Format_File", "Ukuran_File", "Jenis_Periode", "Keterangan", "Status", "Integrasi_Dashboard"]);
+      sheet.appendRow(["ID_Kategori", "Nama_Dokumen", "Format_File", "Ukuran_File", "Jenis_Periode", "Keterangan", "Status", "Integrasi_Dashboard", "Jenjang"]);
     } else if (sheetName === "Database_Dokumen") {
       sheet.appendRow(["ID_Dokumen", "Timestamp", "ID_Kategori", "Bulan", "Tahun", "TMT", "Nama_File", "URL_File", "ID_File", "Uploader", "Status_Verifikasi", "Catatan"]);
+    }
+  } else if (sheetName === "Master_Kategori") {
+    // Migrasi aman: tambahkan header Jenjang di Kolom 9 jika belum ada
+    if (sheet.getLastColumn() < 9) {
+      sheet.getRange(1, 9).setValue("Jenjang");
     }
   }
   return sheet;
@@ -34,6 +39,9 @@ function getAdmSekolahMasterData(npsnFilter) {
         if(String(dataKat[i][0]).trim() !== "") {
             var rawAktif = String(dataKat[i][6] || "TRUE").trim().toUpperCase();
             var isAktif = (rawAktif !== "FALSE" && rawAktif !== "NONAKTIF" && rawAktif !== "0");
+            var rawJenjang = String(dataKat[i][8] || "SEMUA").trim().toUpperCase();
+            if (!rawJenjang) rawJenjang = "SEMUA";
+
             resKat.push({ 
                 idKat: dataKat[i][0], 
                 namaKat: dataKat[i][1], 
@@ -43,7 +51,8 @@ function getAdmSekolahMasterData(npsnFilter) {
                 keterangan: dataKat[i][5] ? String(dataKat[i][5]).trim() : "",
                 status: isAktif ? "Aktif" : "Nonaktif",
                 isAktif: isAktif,
-                integrasiDashboard: dataKat[i][7] ? String(dataKat[i][7]).trim().toUpperCase() : "TRUE"
+                integrasiDashboard: dataKat[i][7] ? String(dataKat[i][7]).trim().toUpperCase() : "TRUE",
+                jenjang: rawJenjang
             });
         }
     }
@@ -80,6 +89,9 @@ function simpanAdmSekolahMaster(payload) {
     var idKategori = String(payload.idKat || "").trim();
     if (!idKategori) return JSON.stringify({ success: false, message: "ID Kategori tidak boleh kosong." });
     
+    var valJenjang = String(payload.jenjang || "SEMUA").trim().toUpperCase();
+    if (!valJenjang) valJenjang = "SEMUA";
+
     var isUpdate = false;
     for (var i = 1; i < data.length; i++) {
       if (String(data[i][0]).trim().toUpperCase() === idKategori.toUpperCase()) {
@@ -90,6 +102,7 @@ function simpanAdmSekolahMaster(payload) {
         sheet.getRange(i + 1, 6).setValue(payload.keterangan);
         sheet.getRange(i + 1, 7).setValue(payload.status);
         sheet.getRange(i + 1, 8).setValue(payload.integrasi);
+        sheet.getRange(i + 1, 9).setValue(valJenjang);
         isUpdate = true;
         break;
       }
@@ -104,7 +117,8 @@ function simpanAdmSekolahMaster(payload) {
         payload.jenisPeriode, 
         payload.keterangan, 
         payload.status,
-        payload.integrasi
+        payload.integrasi,
+        valJenjang
       ]);
     }
     
@@ -472,9 +486,13 @@ function getAdmSekolahDashboardData(idKategori, forceRefresh) {
     var shKat = getOrCreateSheetAdmSekolah("Master_Kategori");
     var dataKat = shKat ? shKat.getDataRange().getDisplayValues() : [];
     var jPeriode = "TAHUNAN_TAPEL"; // default: tahunan tahun pelajaran
+    var katJenjang = "SEMUA";
     for (var i = 1; i < dataKat.length; i++) {
       if (String(dataKat[i][0]).trim() === String(idKategori).trim()) {
         var jpVal = String(dataKat[i][4] || "").toUpperCase().trim();
+        katJenjang = String(dataKat[i][8] || "SEMUA").toUpperCase().trim();
+        if (!katJenjang) katJenjang = "SEMUA";
+
         if (jpVal.includes("PERMANEN")) jPeriode = "PERMANEN";
         else if (jpVal.includes("TMT")) jPeriode = "TMT";
         else if (jpVal.includes("BULANAN")) jPeriode = "BULANAN";
@@ -499,6 +517,17 @@ function getAdmSekolahDashboardData(idKategori, forceRefresh) {
       var jenjang = String(dataSekolah[j][1]).trim();
       var nama = String(dataSekolah[j][2]).trim();
       if (!npsn || !nama) continue;
+
+      // Filter sekolah sesuai jenjang kategori jika tidak bernilai "SEMUA"
+      var sJjg = jenjang.toUpperCase();
+      var isSd = sJjg === "SD" || sJjg.includes("SD");
+      var isPaud = sJjg === "TK" || sJjg === "KB" || sJjg === "SPS" || sJjg === "TPA" || sJjg.includes("PAUD");
+      
+      if (katJenjang !== "SEMUA") {
+        if (katJenjang === "SD" && !isSd) continue;
+        if (katJenjang === "PAUD" && !isPaud) continue;
+      }
+
       sekolahList.push({ npsn: npsn, nama: nama, jenjang: jenjang });
     }
     
@@ -721,7 +750,8 @@ function getAdmSekolahViewerInit(npsnFilter) {
         categories.push({ 
           idKat: dataKat[i][0], 
           namaKat: dataKat[i][1],
-          jenisPeriode: dataKat[i][4] ? String(dataKat[i][4]).trim().toUpperCase() : ""
+          jenisPeriode: dataKat[i][4] ? String(dataKat[i][4]).trim().toUpperCase() : "",
+          jenjang: dataKat[i][8] ? String(dataKat[i][8]).trim().toUpperCase() : "SEMUA"
         });
       }
     }
@@ -806,14 +836,28 @@ function getAdmSekolahViewerData(npsn, npsnFilter) {
     var shKat = getOrCreateSheetAdmSekolah("Master_Kategori");
     var dataKat = shKat ? shKat.getDataRange().getDisplayValues() : [];
     var categories = [];
+    var sJjg = String(schoolInfo.jenjang || "").toUpperCase();
+    var isSd = sJjg === "SD" || sJjg.includes("SD");
+    var isPaud = sJjg === "TK" || sJjg === "KB" || sJjg === "SPS" || sJjg === "TPA" || sJjg.includes("PAUD");
+
     for (var i = 1; i < dataKat.length; i++) {
       if (String(dataKat[i][0]).trim() !== "") {
         var isAktif = String(dataKat[i][6] || "TRUE").trim().toUpperCase() !== "FALSE";
         if (!isAktif) continue;
+        var katJenjang = String(dataKat[i][8] || "SEMUA").trim().toUpperCase();
+        if (!katJenjang) katJenjang = "SEMUA";
+
+        // Filter sesuai jenjang sekolah
+        if (katJenjang !== "SEMUA") {
+          if (isSd && !katJenjang.includes("SD")) continue;
+          if (isPaud && !katJenjang.includes("PAUD") && !katJenjang.includes("TK") && !katJenjang.includes("KB")) continue;
+        }
+
         categories.push({ 
           idKat: dataKat[i][0], 
           namaKat: dataKat[i][1],
-          jenisPeriode: dataKat[i][4] ? String(dataKat[i][4]).trim().toUpperCase() : ""
+          jenisPeriode: dataKat[i][4] ? String(dataKat[i][4]).trim().toUpperCase() : "",
+          jenjang: katJenjang
         });
       }
     }
