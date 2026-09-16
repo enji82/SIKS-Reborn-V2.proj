@@ -32,8 +32,8 @@ function getAdmSekolahMasterData(npsnFilter) {
     var resKat = [];
     for(var i=1; i<dataKat.length; i++) {
         if(String(dataKat[i][0]).trim() !== "") {
-            var isAktif = String(dataKat[i][6] || "TRUE").trim().toUpperCase() !== "FALSE";
-            if (!isAktif) continue;
+            var rawAktif = String(dataKat[i][6] || "TRUE").trim().toUpperCase();
+            var isAktif = (rawAktif !== "FALSE" && rawAktif !== "NONAKTIF" && rawAktif !== "0");
             resKat.push({ 
                 idKat: dataKat[i][0], 
                 namaKat: dataKat[i][1], 
@@ -41,6 +41,8 @@ function getAdmSekolahMasterData(npsnFilter) {
                 ukuran: dataKat[i][3] ? String(dataKat[i][3]).trim() : "2",
                 jenisPeriode: dataKat[i][4] ? String(dataKat[i][4]).trim().toUpperCase() : "",
                 keterangan: dataKat[i][5] ? String(dataKat[i][5]).trim() : "",
+                status: isAktif ? "Aktif" : "Nonaktif",
+                isAktif: isAktif,
                 integrasiDashboard: dataKat[i][7] ? String(dataKat[i][7]).trim().toUpperCase() : "TRUE"
             });
         }
@@ -50,22 +52,18 @@ function getAdmSekolahMasterData(npsnFilter) {
     var shSekolah = getSheet("USER_DB", "Data_Sekolah");
     var dataSekolah = shSekolah ? shSekolah.getDataRange().getDisplayValues() : [];
     var resSekolah = [];
-    var targetNpsn = String(npsnFilter || "").trim().toUpperCase();
     
-    // Kolom di Data_Sekolah: [0] NPSN, [1] Jenjang, [2] Nama Sekolah, [3] Status, [4] Kecamatan
     for(var j=1; j<dataSekolah.length; j++) {
-        var rNpsn = String(dataSekolah[j][0]).trim().toUpperCase(); 
-        var rNama = String(dataSekolah[j][2]).trim().toUpperCase(); 
-        if (targetNpsn === "" || targetNpsn === "SEMUA" || rNpsn === targetNpsn || rNama === targetNpsn) {
-            if(rNpsn !== "") {
-                resSekolah.push({ 
-                    npsn: dataSekolah[j][0], 
-                    nama: dataSekolah[j][2], 
-                    jenjang: dataSekolah[j][1], 
-                    status: dataSekolah[j][3],
-                    kecamatan: dataSekolah[j][4]
-                });
-            }
+        var rNpsn = String(dataSekolah[j][0]).trim(); 
+        var rNama = String(dataSekolah[j][2]).trim(); 
+        if(rNpsn !== "") {
+            resSekolah.push({ 
+                npsn: rNpsn, 
+                nama: rNama, 
+                jenjang: dataSekolah[j][1], 
+                status: dataSekolah[j][3],
+                kecamatan: dataSekolah[j][4]
+            });
         }
     }
     return JSON.stringify({ success: true, kategori: resKat, sekolah: resSekolah });
@@ -84,7 +82,7 @@ function simpanAdmSekolahMaster(payload) {
     
     var isUpdate = false;
     for (var i = 1; i < data.length; i++) {
-      if (String(data[i][0]).trim() === idKategori) {
+      if (String(data[i][0]).trim().toUpperCase() === idKategori.toUpperCase()) {
         sheet.getRange(i + 1, 2).setValue(payload.namaKat);
         sheet.getRange(i + 1, 3).setValue(payload.format);
         sheet.getRange(i + 1, 4).setValue(payload.ukuran);
