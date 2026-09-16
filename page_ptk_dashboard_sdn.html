@@ -330,6 +330,58 @@
 <section class="content sultan-page-transition">
   <div class="container-fluid">
 
+    <!-- ================================================================
+         FILTER BAR UTAMA (Switcher + filter kontekstual per mode)
+         ================================================================ -->
+
+    <!-- Mode REKAP filter bar -->
+    <div id="sdndash_filterBarRekap" class="sultan-filter-pill-container shadow-sm mb-4 sultan-page-transition">
+        <!-- Segmented Switch Mode -->
+        <div class="sultan-segmented-switch mr-2">
+            <button type="button" class="sultan-segmented-btn" data-ptksdn-mode="unit" id="sdndash_btnModeUnit">
+                <i class="fas fa-school"></i> Unit
+            </button>
+            <button type="button" class="sultan-segmented-btn active" data-ptksdn-mode="rekap" id="sdndash_btnModeRekap">
+                <i class="fas fa-chart-pie"></i> Rekap
+            </button>
+        </div>
+
+        <div class="divider-vertical d-none d-md-block mx-1"></div>
+
+        <button type="button" id="sdndash_btnRefreshRekap" class="sultan-btn-refresh" title="Segarkan Data Rekap">
+            <i class="fas fa-sync-alt"></i>
+        </button>
+    </div>
+
+    <!-- Mode UNIT filter bar -->
+    <div id="sdndash_filterBarUnit" class="sultan-filter-bar-balanced mb-4 sultan-page-transition" style="display: none;">
+        <div class="filter-controls-group">
+            <!-- Segmented Switch Mode -->
+            <div class="sultan-segmented-switch">
+                <button type="button" class="sultan-segmented-btn active" data-ptksdn-mode="unit" id="sdndash_btnModeUnit2">
+                    <i class="fas fa-school"></i> Unit
+                </button>
+                <button type="button" class="sultan-segmented-btn" data-ptksdn-mode="rekap" id="sdndash_btnModeRekap2">
+                    <i class="fas fa-chart-pie"></i> Rekap
+                </button>
+            </div>
+
+            <div class="divider-vertical d-none d-md-block mx-1"></div>
+
+            <!-- Filter Sekolah Unit (Admin Only) -->
+            <div class="sultan-filter-item d-none" id="sdndash_filterSekolahContainer" style="min-width: 260px; max-width: 380px;">
+                <select id="sdndash_filterSekolah" class="form-control" aria-label="Pilih Satuan Pendidikan">
+                    <option value="">Pilih Sekolah...</option>
+                </select>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+
+            <button type="button" id="sdndash_btnRefreshUnit" class="sultan-filter-btn-primary">
+                <i class="fas fa-sync-alt mr-1"></i> Refresh Data
+            </button>
+        </div>
+    </div>
+
     <!-- Loading State -->
     <div id="sdnPageLoading" class="text-center py-5">
       <i class="fas fa-spinner fa-spin fa-2x text-muted mb-3"></i>
@@ -339,12 +391,31 @@
     <!-- Main Content -->
     <div id="wrapperSDN" style="display:none;">
 
+      <!-- Unit Info Header Card (Hanya muncul di Mode Unit) -->
+      <div class="card-sultan p-3 mb-4 sultan-page-transition" id="sdndash_unitInfoCard" style="display: none;">
+        <div class="d-flex flex-wrap justify-content-between align-items-center">
+          <div class="d-flex align-items-center">
+            <div class="mr-3 text-sultan-utama" style="font-size: 28px;">
+              <i class="fas fa-school"></i>
+            </div>
+            <div>
+              <h5 class="font-weight-bold text-sultan-utama m-0 text-uppercase" id="sdndash_unitNamaSekolah">-</h5>
+              <small class="text-muted">NPSN: <span id="sdndash_unitNpsnSekolah" class="font-weight-bold">-</span></small>
+            </div>
+          </div>
+          <div class="mt-2 mt-md-0">
+            <span class="badge badge-pill badge-light border px-3 py-2 text-uppercase font-weight-bold" style="letter-spacing: 0.5px;">
+              <i class="fas fa-tag mr-1 text-maroon"></i> Jenjang SD Negeri
+            </span>
+          </div>
+        </div>
+      </div>
 
       <!-- Row 1: KPI Summary Cards -->
       <div class="row">
-        <div class="col-lg-2 col-md-4 col-6 mb-4">
+        <div class="col-lg-2 col-md-4 col-6 mb-4" id="sdn_card_sekolah_wrapper">
           <div class="sultan-metric-card metric-maroon">
-            <div class="inner"><h3 id="sdn_jml_sekolah">0</h3><p>Sekolah</p></div>
+            <div class="inner"><h3 id="sdn_jml_sekolah">0</h3><p id="sdn_jml_sekolah_label">Sekolah</p></div>
             <div class="icon"><i class="fas fa-building"></i></div>
           </div>
         </div>
@@ -895,10 +966,15 @@
 
 <script>
 // ======================================================================
-// DASHBOARD SD NEGERI — ISOLASI VARIABEL
+// DASHBOARD SD NEGERI — ISOLASI VARIABEL & MODE UNIT/REKAP
 // ======================================================================
 var DASHN_IS_ADMIN   = false;
 var DASHN_USER_NPSN  = "";
+var SDN_CURRENT_MODE = "rekap"; // "rekap" | "unit"
+var SDN_RAW_KEADAAN  = null;
+var SDN_RAW_PENSIUN  = null;
+var SDN_RAW_BEZETTING= null;
+var SDN_SELECTED_NPSN = "";
 var SDN_CHART_PEN    = null;
 var SDN_PEN_RAW      = null;
 var SDN_PEN_NPSN     = null;
@@ -916,6 +992,15 @@ $(document).ready(function() {
     DASHN_USER_NPSN = user.npsn || user.username || "";
   } catch(e) { DASHN_IS_ADMIN = false; DASHN_USER_NPSN = ""; }
 
+  // Default mode: Sekolah / Non-Admin langsung mode Unit, Admin mode Rekap
+  SDN_CURRENT_MODE = DASHN_IS_ADMIN ? 'rekap' : 'unit';
+  if (!DASHN_IS_ADMIN) {
+    SDN_SELECTED_NPSN = DASHN_USER_NPSN;
+  }
+
+  // Setup Event Listeners
+  ptksdndash_setupEventListeners();
+
   sdnGatekeeper();
 
   $(document).off('change.dashsdn', '#sultan_darkModeToggle').on('change.dashsdn', '#sultan_darkModeToggle', function() {
@@ -923,17 +1008,177 @@ $(document).ready(function() {
   });
 });
 
+function ptksdndash_setupEventListeners() {
+  // Segmented Switch Click Mode
+  $(document).off('click', '[data-ptksdn-mode]').on('click', '[data-ptksdn-mode]', function(e) {
+    e.preventDefault();
+    var mode = $(this).attr('data-ptksdn-mode');
+    ptksdndash_gantiMode(mode);
+  });
+
+  // Filter Sekolah Change (Admin Mode Unit)
+  $(document).off('change', '#sdndash_filterSekolah').on('change', '#sdndash_filterSekolah', function() {
+    SDN_SELECTED_NPSN = $(this).val();
+    ptksdndash_renderUnitView();
+  });
+
+  // Refresh Rekap Button
+  $(document).off('click', '#sdndash_btnRefreshRekap').on('click', '#sdndash_btnRefreshRekap', function() {
+    sdnGatekeeper();
+  });
+
+  // Refresh Unit Button
+  $(document).off('click', '#sdndash_btnRefreshUnit').on('click', '#sdndash_btnRefreshUnit', function() {
+    sdnGatekeeper();
+  });
+}
+
+function ptksdndash_gantiMode(mode) {
+  SDN_CURRENT_MODE = mode;
+
+  // Update active state in segmented switches
+  $('[data-ptksdn-mode]').removeClass('active');
+  $('[data-ptksdn-mode="' + mode + '"]').addClass('active');
+
+  if (mode === 'unit') {
+    $('#sdndash_filterBarRekap').hide();
+    $('#sdndash_filterBarUnit').fadeIn(200);
+    $('#sdndash_unitInfoCard').fadeIn(200);
+    $('#sdn_jml_sekolah_label').text('NPSN Terpilih');
+
+    if (DASHN_IS_ADMIN) {
+      $('#sdndash_filterSekolahContainer').removeClass('d-none');
+      if (!SDN_SELECTED_NPSN && $('#sdndash_filterSekolah option').length > 1) {
+        // Default pilih sekolah pertama
+        SDN_SELECTED_NPSN = $('#sdndash_filterSekolah option:eq(1)').val();
+        $('#sdndash_filterSekolah').val(SDN_SELECTED_NPSN);
+      }
+    } else {
+      $('#sdndash_filterSekolahContainer').addClass('d-none');
+      SDN_SELECTED_NPSN = DASHN_USER_NPSN;
+    }
+
+    ptksdndash_renderUnitView();
+  } else {
+    $('#sdndash_filterBarUnit').hide();
+    $('#sdndash_filterBarRekap').fadeIn(200);
+    $('#sdndash_unitInfoCard').hide();
+    $('#sdn_jml_sekolah_label').text('Sekolah');
+
+    ptksdndash_renderRekapView();
+  }
+}
+
+function ptksdndash_populateSekolahDropdown(dataKeadaan) {
+  if (!DASHN_IS_ADMIN || !dataKeadaan || !Array.isArray(dataKeadaan)) return;
+
+  var $sel = $('#sdndash_filterSekolah');
+  var currentVal = $sel.val();
+  $sel.empty().append('<option value="">Pilih Sekolah...</option>');
+
+  var sekolahList = [];
+  dataKeadaan.forEach(function(row) {
+    if (!row) return;
+    var nama = String(row[0] || '').trim();
+    var npsn = String(row[1] || '').trim();
+    if (npsn && nama) {
+      sekolahList.push({ npsn: npsn, nama: nama });
+    }
+  });
+
+  sekolahList.sort(function(a, b) {
+    return a.nama.localeCompare(b.nama);
+  });
+
+  sekolahList.forEach(function(s) {
+    $sel.append('<option value="' + s.npsn + '">' + s.nama + ' (' + s.npsn + ')</option>');
+  });
+
+  if (currentVal && $sel.find('option[value="' + currentVal + '"]').length > 0) {
+    $sel.val(currentVal);
+  } else if (SDN_SELECTED_NPSN) {
+    $sel.val(SDN_SELECTED_NPSN);
+  }
+}
+
 function sdnGatekeeper() {
   if (typeof SultanUI !== 'undefined') {
     SultanUI.startLottery('#sdn_jml_sekolah, #sdn_jml_pns, #sdn_jml_pppk, #sdn_jml_pppk_pw, #sdn_jml_nonasn, #sdn_total_ptk', 3);
   }
 
-  // Semua pengguna (Admin maupun Sekolah/Non-Admin) dapat melihat seluruh data secara agregat
-  $('#sdnPageLoading').hide();
-  $('#wrapperSDN, #sdnMatriksPegawaiRow, #sdnKebutuhanRow, #sdnBezettingDistribusiRow').fadeIn();
-  google.script.run.withSuccessHandler(function(res) { sdnCalculate(res, true); }).getDataKeadaanGTK();
-  google.script.run.withSuccessHandler(function(res) { sdnCalculatePensiun(res); }).getDataProyeksiPensiunSDN();
-  google.script.run.withSuccessHandler(function(res) { sdnProcessBezetting(res, true); }).getDataBezettingSDN();
+  $('#sdnPageLoading').show();
+  $('#wrapperSDN').hide();
+
+  var p1 = new Promise(function(resolve) {
+    google.script.run.withSuccessHandler(function(res) { SDN_RAW_KEADAAN = res; resolve(res); }).getDataKeadaanGTK();
+  });
+  var p2 = new Promise(function(resolve) {
+    google.script.run.withSuccessHandler(function(res) { SDN_RAW_PENSIUN = res; resolve(res); }).getDataProyeksiPensiunSDN();
+  });
+  var p3 = new Promise(function(resolve) {
+    google.script.run.withSuccessHandler(function(res) { SDN_RAW_BEZETTING = res; resolve(res); }).getDataBezettingSDN();
+  });
+
+  Promise.all([p1, p2, p3]).then(function() {
+    $('#sdnPageLoading').hide();
+    $('#wrapperSDN, #sdnMatriksPegawaiRow, #sdnKebutuhanRow, #sdnBezettingDistribusiRow').fadeIn();
+
+    if (DASHN_IS_ADMIN && SDN_RAW_KEADAAN) {
+      ptksdndash_populateSekolahDropdown(SDN_RAW_KEADAAN);
+    }
+
+    ptksdndash_gantiMode(SDN_CURRENT_MODE);
+  }).catch(function(err) {
+    $('#sdnPageLoading').hide();
+    $('#wrapperSDN').fadeIn();
+    if (typeof SultanUI !== 'undefined') {
+      SultanUI.showToast('Gagal memuat sebagian data: ' + err, 'error');
+    }
+  });
+}
+
+function ptksdndash_renderRekapView() {
+  if (SDN_RAW_KEADAAN) sdnCalculate(SDN_RAW_KEADAAN, true);
+  if (SDN_RAW_PENSIUN) sdnCalculatePensiun(SDN_RAW_PENSIUN, null, SDN_PEN_OFFSET);
+  if (SDN_RAW_BEZETTING) sdnProcessBezetting(SDN_RAW_BEZETTING, true, null);
+}
+
+function ptksdndash_renderUnitView() {
+  var npsn = String(SDN_SELECTED_NPSN || '').trim().toUpperCase();
+
+  // Ambil nama & info sekolah terpilih
+  var sekolahNama = "SD NEGERI";
+  if (SDN_RAW_KEADAAN && Array.isArray(SDN_RAW_KEADAAN)) {
+    var found = SDN_RAW_KEADAAN.find(function(r) {
+      return String(r[1] || '').trim().toUpperCase() === npsn;
+    });
+    if (found) {
+      sekolahNama = found[0] || 'SD NEGERI';
+    }
+  }
+
+  $('#sdndash_unitNamaSekolah').text(sekolahNama);
+  $('#sdndash_unitNpsnSekolah').text(npsn || '-');
+
+  // Filter Keadaan GTK
+  var dataUnitKeadaan = [];
+  if (SDN_RAW_KEADAAN && Array.isArray(SDN_RAW_KEADAAN)) {
+    dataUnitKeadaan = SDN_RAW_KEADAAN.filter(function(r) {
+      return String(r[1] || '').trim().toUpperCase() === npsn;
+    });
+  }
+  sdnCalculate(dataUnitKeadaan, false);
+
+  // Filter Pensiun
+  // Catatan: Sheet pensiun kolom unit berisi nama sekolah
+  if (SDN_RAW_PENSIUN) {
+    sdnCalculatePensiun(SDN_RAW_PENSIUN, sekolahNama, SDN_PEN_OFFSET);
+  }
+
+  // Filter Bezetting (Col 1 = NPSN)
+  if (SDN_RAW_BEZETTING) {
+    sdnProcessBezetting(SDN_RAW_BEZETTING, false, npsn);
+  }
 }
 
 function sdnCalculate(data, isAdmin) {
