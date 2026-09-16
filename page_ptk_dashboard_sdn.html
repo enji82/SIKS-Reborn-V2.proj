@@ -458,6 +458,64 @@
   }
 
   /* ================================================================
+     DASHBOARD VISUAL ROW — Donut + Horizontal Bar
+     ================================================================ */
+  .sdn-dash-chart-card {
+    border-radius: 16px;
+    background: #ffffff;
+    border: 1px solid rgba(0,0,0,0.06);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    padding: 1rem 1.2rem;
+    height: 100%;
+  }
+  .dark-mode .sdn-dash-chart-card {
+    background: #1e293b;
+    border-color: rgba(255,255,255,0.06);
+  }
+  .sdn-dash-chart-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: #475569;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .dark-mode .sdn-dash-chart-title {
+    color: #94a3b8;
+  }
+  .sdn-dash-chart-sub {
+    font-size: 11px;
+    color: #94a3b8;
+    margin-bottom: 0.8rem;
+  }
+  .dark-mode .sdn-dash-chart-sub {
+    color: #64748b;
+  }
+  /* Legend pills bawah donut */
+  .sdn-donut-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    margin-top: 10px;
+    justify-content: center;
+  }
+  .sdn-donut-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #475569;
+  }
+  .dark-mode .sdn-donut-legend-item { color: #94a3b8; }
+  .sdn-donut-legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ================================================================
      TABEL KOMPAK REKAPITULASI KEBUTUHAN GURU
      ================================================================ */
   .sdn-kebutuhan-table {
@@ -660,6 +718,31 @@
             <div class="minimal-label text-truncate"><i class="fas fa-chart-line mr-1"></i>Total PTK</div>
             <div class="minimal-value" id="sdn_total_ptk">0</div>
             <div class="minimal-sub text-truncate">Guru &amp; Tendik</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 1b: Dashboard Visual Row (Komposisi PTK + Pemenuhan Formasi) -->
+      <div class="row mb-3" id="sdnDashVisualRow" style="display:none;">
+        <!-- Chart 1: Donut Komposisi PTK -->
+        <div class="col-lg-4 col-md-12 mb-3">
+          <div class="sdn-dash-chart-card">
+            <div class="sdn-dash-chart-title"><i class="fas fa-chart-pie mr-1"></i>Komposisi Status Kepegawaian</div>
+            <div class="sdn-dash-chart-sub">Distribusi PTK berdasarkan status</div>
+            <div style="position:relative;height:170px;">
+              <canvas id="sdnChartDonutKomposisi"></canvas>
+            </div>
+            <div class="sdn-donut-legend" id="sdnDonutLegend"></div>
+          </div>
+        </div>
+        <!-- Chart 2: Horizontal Bar Pemenuhan Formasi Guru -->
+        <div class="col-lg-8 col-md-12 mb-3">
+          <div class="sdn-dash-chart-card">
+            <div class="sdn-dash-chart-title"><i class="fas fa-balance-scale mr-1"></i>Pemenuhan Formasi Guru per Jabatan</div>
+            <div class="sdn-dash-chart-sub">Perbandingan jumlah yang dibutuhkan vs tersedia (riil)</div>
+            <div style="position:relative;height:190px;">
+              <canvas id="sdnChartFormasiBar"></canvas>
+            </div>
           </div>
         </div>
       </div>
@@ -1043,6 +1126,8 @@ var SDN_RAW_PENSIUN  = null;
 var SDN_RAW_BEZETTING= null;
 var SDN_SELECTED_NPSN = "";
 var SDN_CHART_PEN    = null;
+var SDN_CHART_DONUT  = null;
+var SDN_CHART_FORMASI = null;
 var SDN_PEN_RAW      = null;
 var SDN_PEN_NPSN     = null;
 var SDN_PEN_OFFSET   = 0;
@@ -1270,6 +1355,10 @@ function sdnCalculate(data, isAdmin) {
   sdnAnimate("sdn_jml_pppk", total_pppk); sdnAnimate("sdn_jml_pppk_pw", total_pw);
   sdnAnimate("sdn_jml_nonasn", total_nonasn); sdnAnimate("sdn_total_ptk", total_all);
 
+  // Render Dashboard Visual Row — Donut Komposisi PTK
+  sdnRenderDonutKomposisi(total_pns, total_pppk, total_pw, total_nonasn);
+  $('#sdnDashVisualRow').show();
+
   // Kalkulasi & Render Matriks Keadaan Pegawai (Baris 2)
   sdnRenderMatriksPegawai(data, stats);
 }
@@ -1489,6 +1578,9 @@ function sdnProcessBezetting(data, isAdmin, filterNpsn) {
   sdnSetKebutuhanRow('pjok', agg.pjok_butuh, agg.pjok_riil, agg.pjok_selisih);
   sdnSetKebutuhanRow('pai',  agg.pai_butuh,  agg.pai_riil,  agg.pai_selisih);
   sdnSetKebutuhanRow('pak',  agg.pak_butuh,  agg.pak_riil,  agg.pak_selisih);
+
+  // Render Dashboard Visual Row — Horizontal Bar Formasi
+  sdnRenderFormasiBar(agg);
 
   $('#sdnKebutuhanContent').fadeIn();
 
@@ -1994,6 +2086,164 @@ function sdnRenderPensiunChart(perBulanPNS, perBulanPPPK, bulanSekarang) {
   });
 }
 
+function sdnRenderDonutKomposisi(pns, pppk, pw, nonasn) {
+  var isDark = $('body').hasClass('dark-mode');
+  var textColor = isDark ? '#e2e8f0' : '#334155';
+  var total = pns + pppk + pw + nonasn;
+
+  var colors = ['#991b1b', '#d97706', '#0369a1', '#dc2626'];
+  var colorsDark = ['#ef4444', '#fbbf24', '#38bdf8', '#f87171'];
+  var labels = ['PNS', 'PPPK', 'PPPK PW', 'Non ASN'];
+  var values = [pns, pppk, pw, nonasn];
+  var activeColors = isDark ? colorsDark : colors;
+
+  if (SDN_CHART_DONUT) SDN_CHART_DONUT.destroy();
+  SDN_CHART_DONUT = new Chart(document.getElementById('sdnChartDonutKomposisi').getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels: labels,
+      datasets: [{
+        data: values,
+        backgroundColor: activeColors.map(function(c) { return c + (isDark ? 'cc' : 'dd'); }),
+        borderColor: activeColors,
+        borderWidth: 2,
+        hoverOffset: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '68%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(c) {
+              var pct = total > 0 ? Math.round(c.parsed / total * 100) : 0;
+              return ' ' + c.label + ': ' + c.parsed + ' (' + pct + '%)';
+            }
+          }
+        }
+      }
+    },
+    plugins: [{
+      id: 'centerText',
+      afterDraw: function(chart) {
+        var ctx = chart.ctx;
+        var cx = chart.chartArea ? (chart.chartArea.left + chart.chartArea.right) / 2 : chart.width / 2;
+        var cy = chart.chartArea ? (chart.chartArea.top + chart.chartArea.bottom) / 2 : chart.height / 2;
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = isDark ? '#f1f5f9' : '#1e293b';
+        ctx.font = 'bold 22px system-ui, sans-serif';
+        ctx.fillText(total, cx, cy - 8);
+        ctx.font = '11px system-ui, sans-serif';
+        ctx.fillStyle = isDark ? '#94a3b8' : '#64748b';
+        ctx.fillText('Total PTK', cx, cy + 12);
+        ctx.restore();
+      }
+    }]
+  });
+
+  // Legend pills
+  var legendHtml = '';
+  labels.forEach(function(lbl, i) {
+    var pct = total > 0 ? Math.round(values[i] / total * 100) : 0;
+    legendHtml += '<div class="sdn-donut-legend-item">';
+    legendHtml += '<span class="sdn-donut-legend-dot" style="background:' + activeColors[i] + ';"></span>';
+    legendHtml += lbl + ' <b>' + values[i] + '</b> <span style="color:#94a3b8;font-weight:400;">(' + pct + '%)</span>';
+    legendHtml += '</div>';
+  });
+  $('#sdnDonutLegend').html(legendHtml);
+}
+
+function sdnRenderFormasiBar(agg) {
+  var isDark = $('body').hasClass('dark-mode');
+  var textColor = isDark ? '#e2e8f0' : '#334155';
+  var gridColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)';
+
+  var labels   = ['Kep. Sekolah', 'Guru Kelas', 'Guru PJOK', 'Guru PAI', 'Guru PAK'];
+  var butuhData = [agg.ks_butuh, agg.gk_butuh, agg.pjok_butuh, agg.pai_butuh, agg.pak_butuh];
+  var riilData  = [agg.ks_riil,  agg.gk_riil,  agg.pjok_riil,  agg.pai_riil,  agg.pak_riil];
+
+  // Color riil bar by fulfillment: merah=kurang, hijau=terpenuhi/lebih
+  var riilColors = riilData.map(function(v, i) {
+    var b = butuhData[i];
+    if (v >= b) return isDark ? 'rgba(34,197,94,0.75)' : 'rgba(34,197,94,0.7)';
+    return isDark ? 'rgba(239,68,68,0.75)' : 'rgba(239,68,68,0.7)';
+  });
+
+  if (SDN_CHART_FORMASI) SDN_CHART_FORMASI.destroy();
+  SDN_CHART_FORMASI = new Chart(document.getElementById('sdnChartFormasiBar').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Dibutuhkan',
+          data: butuhData,
+          backgroundColor: isDark ? 'rgba(148,163,184,0.18)' : 'rgba(100,116,139,0.12)',
+          borderColor:     isDark ? 'rgba(148,163,184,0.5)'  : 'rgba(100,116,139,0.4)',
+          borderWidth: 1.5,
+          borderRadius: 6,
+          barPercentage: 0.65
+        },
+        {
+          label: 'Tersedia (Riil)',
+          data: riilData,
+          backgroundColor: riilColors,
+          borderRadius: 6,
+          barPercentage: 0.65
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      indexAxis: 'y',
+      scales: {
+        x: {
+          beginAtZero: true,
+          grid: { color: gridColor },
+          ticks: { color: textColor, font: { size: 11 }, precision: 0 }
+        },
+        y: {
+          grid: { display: false },
+          ticks: { color: textColor, font: { size: 11, weight: '600' } }
+        }
+      },
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          align: 'end',
+          labels: {
+            color: textColor,
+            font: { size: 11 },
+            boxWidth: 12,
+            boxHeight: 8,
+            padding: 12,
+            usePointStyle: true,
+            pointStyle: 'rectRounded'
+          }
+        },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          callbacks: {
+            afterBody: function(items) {
+              if (items.length < 2) return '';
+              var selisih = items[1].parsed.x - items[0].parsed.x;
+              return selisih >= 0 ? 'Kelebihan: +' + selisih : 'Kekurangan: ' + selisih;
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
 function sdnAnimate(id, value) {
   if (typeof SultanUI !== 'undefined') SultanUI.stopLottery('#' + id);
   var $el = $('#' + id);
@@ -2003,7 +2253,7 @@ function sdnAnimate(id, value) {
 
 function sdnApplyChartTheme() {
   var isDark = $('body').hasClass('dark-mode');
-  var textColor = isDark ? '#ffffff' : '#333333';
+  var textColor = isDark ? '#e2e8f0' : '#333333';
   var gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)';
   if (SDN_CHART_PEN) {
     if (SDN_CHART_PEN.options.scales) {
@@ -2019,6 +2269,28 @@ function sdnApplyChartTheme() {
       }
     }
     SDN_CHART_PEN.update();
+  }
+  // Re-render donut & formasi bar on dark mode toggle
+  if (SDN_CHART_DONUT) { SDN_CHART_DONUT.destroy(); SDN_CHART_DONUT = null; }
+  if (SDN_CHART_FORMASI) { SDN_CHART_FORMASI.destroy(); SDN_CHART_FORMASI = null; }
+  // Re-trigger if data is available (stored in KPI element values)
+  var pns  = parseInt($('#sdn_jml_pns').text()) || 0;
+  var pppk = parseInt($('#sdn_jml_pppk').text()) || 0;
+  var pw   = parseInt($('#sdn_jml_pppk_pw').text()) || 0;
+  var na   = parseInt($('#sdn_jml_nonasn').text()) || 0;
+  if (pns + pppk + pw + na > 0) sdnRenderDonutKomposisi(pns, pppk, pw, na);
+  if (SDN_BEZETTING_DATA && SDN_BEZETTING_DATA.length > 0) {
+    // Re-compute agg from stored data
+    var agg2 = { ks_butuh:0,ks_riil:0, gk_butuh:0,gk_riil:0, pjok_butuh:0,pjok_riil:0, pai_butuh:0,pai_riil:0, pak_butuh:0,pak_riil:0 };
+    SDN_BEZETTING_DATA.forEach(function(r) {
+      if (!r) return;
+      agg2.ks_butuh   += parseInt(r[4])||0;  agg2.ks_riil   += (parseInt(r[5])||0)+(parseInt(r[6])||0);
+      agg2.gk_butuh   += parseInt(r[10])||0; agg2.gk_riil   += (parseInt(r[11])||0)+(parseInt(r[12])||0)+(parseInt(r[13])||0);
+      agg2.pjok_butuh += parseInt(r[19])||0; agg2.pjok_riil += (parseInt(r[20])||0)+(parseInt(r[21])||0)+(parseInt(r[22])||0);
+      agg2.pai_butuh  += parseInt(r[28])||0; agg2.pai_riil  += (parseInt(r[29])||0)+(parseInt(r[30])||0)+(parseInt(r[31])||0);
+      agg2.pak_butuh  += parseInt(r[37])||0; agg2.pak_riil  += (parseInt(r[38])||0)+(parseInt(r[39])||0)+(parseInt(r[40])||0);
+    });
+    sdnRenderFormasiBar(agg2);
   }
 }
 </script>
