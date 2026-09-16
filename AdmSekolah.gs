@@ -731,14 +731,14 @@ function getAdmSekolahViewerInit(npsnFilter) {
     var shSekolah = getSheet("USER_DB", "Data_Sekolah");
     var dataSekolah = shSekolah ? shSekolah.getDataRange().getDisplayValues() : [];
     var schools = [];
-    var targetNpsn = String(npsnFilter || "").trim().toUpperCase();
+    var targetFilter = String(npsnFilter || "").trim().toUpperCase();
     
     for(var j=1; j<dataSekolah.length; j++) {
       var rNpsn = String(dataSekolah[j][0]).trim().toUpperCase();
       var rNama = String(dataSekolah[j][2]).trim();
       var rJenjang = String(dataSekolah[j][1]).trim().toUpperCase();
       if (rNpsn !== "") {
-        if (targetNpsn === "" || targetNpsn === "SEMUA" || rNpsn === targetNpsn) {
+        if (targetFilter === "" || targetFilter === "SEMUA" || rNpsn === targetFilter || rNama.toUpperCase() === targetFilter || (targetFilter && (rNama.toUpperCase().includes(targetFilter) || targetFilter.includes(rNama.toUpperCase())))) {
           schools.push({ 
             npsn: dataSekolah[j][0], 
             nama: rNama, 
@@ -753,28 +753,49 @@ function getAdmSekolahViewerInit(npsnFilter) {
 
 function getAdmSekolahViewerData(npsn, npsnFilter) {
   try {
-    var targetNpsn = String(npsn).trim().toUpperCase();
+    var targetKey = String(npsn || "").trim().toUpperCase();
     var cleanFilter = String(npsnFilter || "").trim().toUpperCase();
-    
-    // Keamanan Akses
-    if (cleanFilter && cleanFilter !== "SEMUA" && cleanFilter !== "" && targetNpsn !== cleanFilter) {
-      return JSON.stringify({ success: false, message: "Anda tidak memiliki akses ke data sekolah tersebut." });
-    }
     
     var shSekolah = getSheet("USER_DB", "Data_Sekolah");
     var dataSekolah = shSekolah ? shSekolah.getDataRange().getDisplayValues() : [];
     var schoolInfo = null;
+    var resolvedNpsn = "";
+    
     for (var j = 1; j < dataSekolah.length; j++) {
-      if (String(dataSekolah[j][0]).trim().toUpperCase() === targetNpsn) {
+      var sNpsn = String(dataSekolah[j][0]).trim().toUpperCase();
+      var sNama = String(dataSekolah[j][2]).trim().toUpperCase();
+      if (sNpsn === targetKey || sNama === targetKey || (targetKey && (sNama.includes(targetKey) || targetKey.includes(sNama)))) {
         schoolInfo = {
           npsn: dataSekolah[j][0],
           nama: dataSekolah[j][2],
           jenjang: dataSekolah[j][1]
         };
+        resolvedNpsn = String(dataSekolah[j][0]).trim().toUpperCase();
         break;
       }
     }
-    if (!schoolInfo) return JSON.stringify({ success: false, message: "Sekolah dengan NPSN " + npsn + " tidak ditemukan." });
+    
+    if (!schoolInfo) {
+      // Fallback jika tidak terdaftar di Data_Sekolah
+      schoolInfo = {
+        npsn: npsn,
+        nama: npsn,
+        jenjang: "SD"
+      };
+      resolvedNpsn = targetKey;
+    }
+    
+    // Keamanan Akses: jika filter dipasang dan tidak cocok
+    if (cleanFilter && cleanFilter !== "SEMUA" && cleanFilter !== "") {
+      var filterMatch = (resolvedNpsn === cleanFilter || 
+                         targetKey === cleanFilter || 
+                         String(schoolInfo.nama).trim().toUpperCase() === cleanFilter || 
+                         (cleanFilter && String(schoolInfo.nama).trim().toUpperCase().includes(cleanFilter)) ||
+                         (cleanFilter && cleanFilter.includes(resolvedNpsn)));
+      if (!filterMatch) {
+        return JSON.stringify({ success: false, message: "Anda tidak memiliki akses ke data sekolah tersebut." });
+      }
+    }
 
     var shKat = getOrCreateSheetAdmSekolah("Master_Kategori");
     var dataKat = shKat ? shKat.getDataRange().getDisplayValues() : [];
@@ -797,7 +818,11 @@ function getAdmSekolahViewerData(npsn, npsnFilter) {
     
     for (var f = 1; f < dataDoc.length; f++) {
       var docNpsn = String(dataDoc[f][0]).trim().toUpperCase();
-      if (docNpsn === targetNpsn) {
+      var isMatch = (docNpsn === resolvedNpsn || 
+                     docNpsn === targetKey || 
+                     (schoolInfo && docNpsn === String(schoolInfo.nama).trim().toUpperCase()) ||
+                     (schoolInfo && docNpsn === String(schoolInfo.npsn).trim().toUpperCase()));
+      if (isMatch) {
         var docName = dataDoc[f][4];
         var docUrl = dataDoc[f][5];
         var docStatus = dataDoc[f][6] || "-";
