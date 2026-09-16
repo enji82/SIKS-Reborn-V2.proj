@@ -731,20 +731,18 @@ function getAdmSekolahViewerInit(npsnFilter) {
     var shSekolah = getSheet("USER_DB", "Data_Sekolah");
     var dataSekolah = shSekolah ? shSekolah.getDataRange().getDisplayValues() : [];
     var schools = [];
-    var targetFilter = String(npsnFilter || "").trim().toUpperCase();
     
+    // Kembalikan semua daftar master sekolah agar resolusi nama/NPSN di sisi client selalu akurat
     for(var j=1; j<dataSekolah.length; j++) {
-      var rNpsn = String(dataSekolah[j][0]).trim().toUpperCase();
+      var rNpsn = String(dataSekolah[j][0]).trim();
       var rNama = String(dataSekolah[j][2]).trim();
       var rJenjang = String(dataSekolah[j][1]).trim().toUpperCase();
       if (rNpsn !== "") {
-        if (targetFilter === "" || targetFilter === "SEMUA" || rNpsn === targetFilter || rNama.toUpperCase() === targetFilter || (targetFilter && (rNama.toUpperCase().includes(targetFilter) || targetFilter.includes(rNama.toUpperCase())))) {
-          schools.push({ 
-            npsn: dataSekolah[j][0], 
-            nama: rNama, 
-            jenjang: rJenjang 
-          });
-        }
+        schools.push({ 
+          npsn: rNpsn, 
+          nama: rNama, 
+          jenjang: rJenjang 
+        });
       }
     }
     return JSON.stringify({ success: true, categories: categories, schools: schools });
@@ -753,8 +751,14 @@ function getAdmSekolahViewerInit(npsnFilter) {
 
 function getAdmSekolahViewerData(npsn, npsnFilter) {
   try {
-    var targetKey = String(npsn || "").trim().toUpperCase();
-    var cleanFilter = String(npsnFilter || "").trim().toUpperCase();
+    function normalizeAdmKey(str) {
+      return String(str || "").replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    }
+
+    var targetKey = String(npsn || "").trim();
+    var targetKeyNorm = normalizeAdmKey(targetKey);
+    var cleanFilter = String(npsnFilter || "").trim();
+    var cleanFilterNorm = normalizeAdmKey(cleanFilter);
     
     var shSekolah = getSheet("USER_DB", "Data_Sekolah");
     var dataSekolah = shSekolah ? shSekolah.getDataRange().getDisplayValues() : [];
@@ -762,15 +766,19 @@ function getAdmSekolahViewerData(npsn, npsnFilter) {
     var resolvedNpsn = "";
     
     for (var j = 1; j < dataSekolah.length; j++) {
-      var sNpsn = String(dataSekolah[j][0]).trim().toUpperCase();
-      var sNama = String(dataSekolah[j][2]).trim().toUpperCase();
-      if (sNpsn === targetKey || sNama === targetKey || (targetKey && (sNama.includes(targetKey) || targetKey.includes(sNama)))) {
+      var sNpsn = String(dataSekolah[j][0]).trim();
+      var sNama = String(dataSekolah[j][2]).trim();
+      var sNpsnNorm = normalizeAdmKey(sNpsn);
+      var sNamaNorm = normalizeAdmKey(sNama);
+      
+      if (sNpsnNorm === targetKeyNorm || sNamaNorm === targetKeyNorm || 
+          (targetKeyNorm && (sNamaNorm.includes(targetKeyNorm) || targetKeyNorm.includes(sNamaNorm)))) {
         schoolInfo = {
-          npsn: dataSekolah[j][0],
-          nama: dataSekolah[j][2],
+          npsn: sNpsn,
+          nama: sNama,
           jenjang: dataSekolah[j][1]
         };
-        resolvedNpsn = String(dataSekolah[j][0]).trim().toUpperCase();
+        resolvedNpsn = sNpsn;
         break;
       }
     }
@@ -786,12 +794,12 @@ function getAdmSekolahViewerData(npsn, npsnFilter) {
     }
     
     // Keamanan Akses: jika filter dipasang dan tidak cocok
-    if (cleanFilter && cleanFilter !== "SEMUA" && cleanFilter !== "") {
-      var filterMatch = (resolvedNpsn === cleanFilter || 
-                         targetKey === cleanFilter || 
-                         String(schoolInfo.nama).trim().toUpperCase() === cleanFilter || 
-                         (cleanFilter && String(schoolInfo.nama).trim().toUpperCase().includes(cleanFilter)) ||
-                         (cleanFilter && cleanFilter.includes(resolvedNpsn)));
+    if (cleanFilterNorm && cleanFilterNorm !== "SEMUA" && cleanFilterNorm !== "") {
+      var filterMatch = (normalizeAdmKey(resolvedNpsn) === cleanFilterNorm || 
+                         targetKeyNorm === cleanFilterNorm || 
+                         normalizeAdmKey(schoolInfo.nama) === cleanFilterNorm || 
+                         normalizeAdmKey(schoolInfo.nama).includes(cleanFilterNorm) ||
+                         cleanFilterNorm.includes(normalizeAdmKey(resolvedNpsn)));
       if (!filterMatch) {
         return JSON.stringify({ success: false, message: "Anda tidak memiliki akses ke data sekolah tersebut." });
       }
@@ -816,12 +824,19 @@ function getAdmSekolahViewerData(npsn, npsnFilter) {
     var dataDoc = shDoc ? shDoc.getDataRange().getDisplayValues() : [];
     var files = [];
     
+    var resNpsnNorm = normalizeAdmKey(resolvedNpsn);
+    var schoolNamaNorm = schoolInfo ? normalizeAdmKey(schoolInfo.nama) : "";
+    var schoolNpsnNorm = schoolInfo ? normalizeAdmKey(schoolInfo.npsn) : "";
+
     for (var f = 1; f < dataDoc.length; f++) {
-      var docNpsn = String(dataDoc[f][0]).trim().toUpperCase();
-      var isMatch = (docNpsn === resolvedNpsn || 
-                     docNpsn === targetKey || 
-                     (schoolInfo && docNpsn === String(schoolInfo.nama).trim().toUpperCase()) ||
-                     (schoolInfo && docNpsn === String(schoolInfo.npsn).trim().toUpperCase()));
+      var docNpsn = String(dataDoc[f][0]).trim();
+      var docNpsnNorm = normalizeAdmKey(docNpsn);
+      
+      var isMatch = (docNpsnNorm === resNpsnNorm || 
+                     docNpsnNorm === targetKeyNorm || 
+                     (schoolNamaNorm && docNpsnNorm === schoolNamaNorm) ||
+                     (schoolNpsnNorm && docNpsnNorm === schoolNpsnNorm) ||
+                     (schoolNamaNorm && (docNpsnNorm.includes(schoolNamaNorm) || schoolNamaNorm.includes(docNpsnNorm))));
       if (isMatch) {
         var docName = dataDoc[f][4];
         var docUrl = dataDoc[f][5];

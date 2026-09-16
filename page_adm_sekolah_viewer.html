@@ -231,10 +231,10 @@ var ADMSEKOLAHVIEWER_CATEGORIES = [];
 $(document).ready(function() {
     try {
         var user = typeof getSesiUser === 'function' ? getSesiUser() : {};
-        ADMSEKOLAHVIEWER_USER_AKTIF = user.nama_lengkap || user.fullname || user.nama || user.username || "User Web";
+        ADMSEKOLAHVIEWER_USER_AKTIF = user.nama_lengkap || user.fullname || user.nama || user.username || "";
         var roleStr = String(user.role || "").toLowerCase();
         ADMSEKOLAHVIEWER_IS_ADMIN = (typeof checkUserRoleIsAdmin === 'function' && checkUserRoleIsAdmin()) || roleStr.includes("admin") || roleStr.includes("verifikator");
-        ADMSEKOLAHVIEWER_NPSN_TERKUNCI = user.npsn || user.unit || user.username || ""; 
+        ADMSEKOLAHVIEWER_NPSN_TERKUNCI = user.npsn || user.unit || user.nama || user.nama_lengkap || user.username || ""; 
     } catch(e) { ADMSEKOLAHVIEWER_NPSN_TERKUNCI = ""; ADMSEKOLAHVIEWER_IS_ADMIN = false; }
 
     // Render Filter Bar Modern Sesuai Role
@@ -251,7 +251,7 @@ $(document).ready(function() {
     }
 
     $(document).off('click', '#admsekolahviewer_btnRefresh').on('click', '#admsekolahviewer_btnRefresh', function() {
-        var npsn = ADMSEKOLAHVIEWER_IS_ADMIN ? $('#admsekolahviewer_filterSekolah').val() : ADMSEKOLAHVIEWER_NPSN_TERKUNCI;
+        var npsn = ADMSEKOLAHVIEWER_IS_ADMIN ? $('#admsekolahviewer_filterSekolah').val() : ($('#admsekolahviewer_filterSekolahUser').val() || ADMSEKOLAHVIEWER_NPSN_TERKUNCI);
         if (npsn) admsekolahviewer_loadSchoolData(npsn);
     });
     
@@ -280,6 +280,10 @@ $(document).ready(function() {
         admsekolahviewer_loadIframe(url, namaFile);
     });
 });
+
+function admsekolahviewer_normalize(str) {
+    return String(str || "").replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+}
 
 function admsekolahviewer_renderFilterBar() {
     var filtersConfig = [];
@@ -323,8 +327,6 @@ function admsekolahviewer_renderFilterBar() {
 }
 
 function admsekolahviewer_init() {
-    var targetFilter = ADMSEKOLAHVIEWER_IS_ADMIN ? "" : ADMSEKOLAHVIEWER_NPSN_TERKUNCI;
-
     google.script.run.withSuccessHandler(function(json) {
         var res = JSON.parse(json);
         if (res.success) {
@@ -352,22 +354,30 @@ function admsekolahviewer_init() {
                 admsekolahviewer_populateSchools();
                 $('#admsekolahviewer_btnRefresh').prop('disabled', false);
             } else {
-                var targetKey = String(ADMSEKOLAHVIEWER_NPSN_TERKUNCI).trim().toUpperCase();
+                var targetKeyNorm = admsekolahviewer_normalize(ADMSEKOLAHVIEWER_NPSN_TERKUNCI);
+                var userAktifNorm = admsekolahviewer_normalize(ADMSEKOLAHVIEWER_USER_AKTIF);
+                
                 var foundSchool = ADMSEKOLAHVIEWER_MASTER_SCHOOLS.find(function(s) {
-                    var sNpsn = String(s.npsn || "").trim().toUpperCase();
-                    var sNama = String(s.nama || "").trim().toUpperCase();
-                    return sNpsn === targetKey || 
-                           sNama === targetKey || 
-                           (targetKey && sNama.includes(targetKey)) || 
-                           (targetKey && targetKey.includes(sNama));
+                    var sNpsnNorm = admsekolahviewer_normalize(s.npsn);
+                    var sNamaNorm = admsekolahviewer_normalize(s.nama);
+                    
+                    return (targetKeyNorm && sNpsnNorm === targetKeyNorm) ||
+                           (targetKeyNorm && sNamaNorm === targetKeyNorm) ||
+                           (targetKeyNorm && sNamaNorm.includes(targetKeyNorm)) ||
+                           (targetKeyNorm && targetKeyNorm.includes(sNamaNorm)) ||
+                           (userAktifNorm && sNamaNorm === userAktifNorm) ||
+                           (userAktifNorm && sNamaNorm.includes(userAktifNorm)) ||
+                           (userAktifNorm && userAktifNorm.includes(sNamaNorm));
                 });
-                var npsnToLoad = foundSchool ? foundSchool.npsn : ADMSEKOLAHVIEWER_NPSN_TERKUNCI;
-                var schoolName = foundSchool ? foundSchool.nama : (ADMSEKOLAHVIEWER_USER_AKTIF || "Sekolah Anda");
+                
+                var npsnToLoad = foundSchool ? foundSchool.npsn : (ADMSEKOLAHVIEWER_NPSN_TERKUNCI || ADMSEKOLAHVIEWER_USER_AKTIF);
+                var schoolName = foundSchool ? foundSchool.nama : (ADMSEKOLAHVIEWER_USER_AKTIF || ADMSEKOLAHVIEWER_NPSN_TERKUNCI || "Sekolah Anda");
+                
                 $('#admsekolahviewer_filterSekolahUser').html('<option value="' + admsekolahviewer_escapeHtml(npsnToLoad) + '" selected>' + admsekolahviewer_escapeHtml(schoolName) + '</option>');
                 admsekolahviewer_loadSchoolData(npsnToLoad);
             }
         }
-    }).getAdmSekolahViewerInit(targetFilter);
+    }).getAdmSekolahViewerInit("");
 }
 
 function admsekolahviewer_populateSchools() {
