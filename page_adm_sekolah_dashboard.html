@@ -103,40 +103,40 @@
         </div>
 
         <!-- Mode UNIT filter bar -->
-        <div id="admsekolahdash_filterBarUnit" class="sultan-filter-pill-container shadow-sm mb-4 sultan-page-transition" style="display: none;">
-            <!-- Segmented Switch Mode -->
-            <div class="sultan-segmented-switch mr-2">
-                <button type="button" class="sultan-segmented-btn active" data-admsekolah-mode="unit" id="admsekolahdash_btnModeUnit2">
-                    <i class="fas fa-school"></i> Unit
+        <div id="admsekolahdash_filterBarUnit" class="sultan-filter-bar-balanced mb-4 sultan-page-transition" style="display: none;">
+            <div class="filter-controls-group">
+                <!-- Segmented Switch Mode -->
+                <div class="sultan-segmented-switch">
+                    <button type="button" class="sultan-segmented-btn active" data-admsekolah-mode="unit" id="admsekolahdash_btnModeUnit2">
+                        <i class="fas fa-school"></i> Unit
+                    </button>
+                    <button type="button" class="sultan-segmented-btn" data-admsekolah-mode="rekap" id="admsekolahdash_btnModeRekap2">
+                        <i class="fas fa-chart-pie"></i> Rekap
+                    </button>
+                </div>
+
+                <div class="divider-vertical d-none d-md-block mx-1"></div>
+
+                <!-- Filter Jenjang Unit (hanya admin, hidden untuk user) -->
+                <div class="sultan-filter-item d-none" id="admsekolahdash_filterJenjangUnitContainer">
+                    <select id="admsekolahdash_filterJenjangUnit" class="form-control" aria-label="Pilih Jenjang">
+                        <option value="">Pilih Jenjang...</option>
+                    </select>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+
+                <!-- Filter Sekolah Unit -->
+                <div class="sultan-filter-item d-none" id="admsekolahdash_filterUnitSekolahContainer" style="min-width: 220px; max-width: 340px;">
+                    <select id="admsekolahdash_filterUnitSekolah" class="form-control" aria-label="Pilih Sekolah">
+                        <option value="">Pilih Sekolah...</option>
+                    </select>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+
+                <button type="button" id="admsekolahdash_btnBukaDataUnit" class="sultan-filter-btn-primary">
+                    <i class="fas fa-sync-alt mr-1"></i> Refresh Data
                 </button>
-                <button type="button" class="sultan-segmented-btn" data-admsekolah-mode="rekap" id="admsekolahdash_btnModeRekap2">
-                    <i class="fas fa-chart-pie"></i> Rekap
-                </button>
             </div>
-
-            <div class="divider-vertical d-none d-md-block mx-1"></div>
-
-            <!-- Filter Jenjang Unit (hanya admin, hidden untuk user) -->
-            <div class="sultan-filter-item" id="admsekolahdash_filterJenjangUnitContainer" style="display: none;">
-                <select id="admsekolahdash_filterJenjangUnit" class="form-control" aria-label="Pilih Jenjang">
-                    <option value="SEMUA">Semua Jenjang</option>
-                </select>
-                <i class="fas fa-chevron-down"></i>
-            </div>
-
-            <!-- Filter Sekolah Unit -->
-            <div class="sultan-filter-item" id="admsekolahdash_filterUnitSekolahContainer" style="min-width: 220px; max-width: 340px;">
-                <select id="admsekolahdash_filterUnitSekolah" class="form-control" aria-label="Pilih Sekolah">
-                    <option value="">Pilih Sekolah...</option>
-                </select>
-                <i class="fas fa-chevron-down"></i>
-            </div>
-
-            <div class="divider-vertical d-none d-md-block mx-2"></div>
-
-            <button type="button" id="admsekolahdash_btnRefreshUnit" class="sultan-btn-refresh" title="Segarkan Data Unit">
-                <i class="fas fa-sync-alt"></i>
-            </button>
         </div>
 
         <!-- ================================================================
@@ -476,17 +476,29 @@ $(document).ready(function() {
     $(document).off('change', '#admsekolahdash_filterTahun, #admsekolahdash_filterPeriode').on('change', '#admsekolahdash_filterTahun, #admsekolahdash_filterPeriode', admsekolahdash_terapkanFilterLokal);
 
     // Event listeners — Unit mode
-    $(document).off('click', '#admsekolahdash_btnRefreshUnit').on('click', '#admsekolahdash_btnRefreshUnit', function() {
-        var npsn = $('#admsekolahdash_filterUnitSekolah').val();
-        if (npsn) admsekolahdash_loadUnitData(npsn, true);
-    });
+    // Jenjang berubah: update dropdown sekolah & reset tombol
     $(document).off('change', '#admsekolahdash_filterJenjangUnit').on('change', '#admsekolahdash_filterJenjangUnit', function() {
         admsekolahdash_updateSekolahDropdown('unit');
+        admsekolahdash_resetUnitView();
+        $('#admsekolahdash_btnBukaDataUnit').html('<i class="fas fa-folder-open mr-1"></i> Buka Data');
     });
+    // Sekolah berubah: reset view & update tombol (TIDAK auto-load)
     $(document).off('change', '#admsekolahdash_filterUnitSekolah').on('change', '#admsekolahdash_filterUnitSekolah', function() {
-        var npsn = $(this).val();
-        if (npsn) admsekolahdash_loadUnitData(npsn);
-        else admsekolahdash_resetUnitView();
+        admsekolahdash_resetUnitView();
+        if ($(this).val()) {
+            $('#admsekolahdash_btnBukaDataUnit').html('<i class="fas fa-folder-open mr-1"></i> Buka Data');
+        } else {
+            $('#admsekolahdash_btnBukaDataUnit').html('<i class="fas fa-folder-open mr-1"></i> Buka Data');
+        }
+    });
+    // Tombol Buka Data / Refresh Data
+    $(document).off('click', '#admsekolahdash_btnBukaDataUnit').on('click', '#admsekolahdash_btnBukaDataUnit', function() {
+        var npsn = $('#admsekolahdash_filterUnitSekolah').val();
+        if (!npsn) {
+            Sultan.notif.info('Silakan pilih nama sekolah terlebih dahulu.');
+            return;
+        }
+        admsekolahdash_loadUnitData(npsn, true);
     });
 
     // Cari list Rekap Mode (4 Status Cards)
@@ -545,16 +557,12 @@ function admsekolahdash_switchMode(mode) {
         $('#admsekolahdash_filterBarUnit').show();
         $('#admsekolahdash_viewRekap').hide();
         $('#admsekolahdash_viewUnit').show();
-        // Jika user non-admin: auto-load sekolah sendiri
+        // Jika user non-admin: auto-load sekolah sendiri (tombol berfungsi sbg Refresh)
         if (!ADMSEKOLAHDASH_IS_ADMIN && ADMSEKOLAHDASH_USER_NPSN) {
             admsekolahdash_loadUnitData(ADMSEKOLAHDASH_USER_NPSN);
         } else {
-            var curNpsn = $('#admsekolahdash_filterUnitSekolah').val();
-            if (curNpsn) {
-                admsekolahdash_loadUnitData(curNpsn);
-            } else {
-                admsekolahdash_resetUnitView();
-            }
+            // Admin: tidak auto-load, tampilkan state kosong & tunggu klik Buka Data
+            admsekolahdash_resetUnitView();
         }
     } else {
         $('#admsekolahdash_filterBarUnit').hide();
@@ -594,11 +602,15 @@ function admsekolahdash_initMasterAccess() {
         admsekolahdash_setupJenjangDropdowns();
         admsekolahdash_setupUnitSekolahDropdown();
 
-        // Untuk non-admin di Mode Unit: sembunyikan filter Jenjang
+        // Untuk non-admin: sembunyikan filter Jenjang & Sekolah, tombol jadi Refresh Data
         if (!ADMSEKOLAHDASH_IS_ADMIN) {
-            $('#admsekolahdash_filterJenjangUnitContainer').hide();
+            $('#admsekolahdash_filterJenjangUnitContainer').addClass('d-none');
+            $('#admsekolahdash_filterUnitSekolahContainer').addClass('d-none');
+            $('#admsekolahdash_btnBukaDataUnit').html('<i class="fas fa-sync-alt mr-1"></i> Refresh Data');
         } else {
-            $('#admsekolahdash_filterJenjangUnitContainer').show();
+            $('#admsekolahdash_filterJenjangUnitContainer').removeClass('d-none');
+            $('#admsekolahdash_filterUnitSekolahContainer').removeClass('d-none');
+            $('#admsekolahdash_btnBukaDataUnit').html('<i class="fas fa-folder-open mr-1"></i> Buka Data');
         }
 
         if (ADMSEKOLAHDASH_KATEGORI_MAP.length === 0) {
@@ -634,7 +646,7 @@ function admsekolahdash_setupJenjangDropdowns() {
 
     // Populate Jenjang Unit
     var selJenjangUnit = $('#admsekolahdash_filterJenjangUnit');
-    selJenjangUnit.empty().append('<option value="SEMUA">Semua Jenjang</option>');
+    selJenjangUnit.empty().append('<option value="">Pilih Jenjang...</option>');
     jenjangList.forEach(function(j) {
         selJenjangUnit.append($('<option>', { value: j, text: j }));
     });
@@ -1080,7 +1092,7 @@ function admsekolahdash_loadUnitData(npsn, forceRefresh) {
     $('#admsekolahdash_unitProgressBar').css('width', '50%');
     $('#admsekolahdash_unitProgressSub').text('Memuat kelengkapan...');
     $('#admsekolahdash_unitHeaderStatusText').html('Memeriksa kelengkapan dokumen...');
-    $('#admsekolahdash_btnRefreshUnit').prop('disabled', true).html('<i class="fas fa-sync-alt fa-spin text-maroon"></i>');
+    $('#admsekolahdash_btnBukaDataUnit').prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Memuat...');
 
     var loadingHtml = '<li class="list-group-item border-0 px-3 py-4 bg-transparent text-center">'
         + '<i class="fas fa-circle-notch fa-spin text-maroon mb-2 opacity-50" style="font-size: 20px;"></i><br>'
@@ -1096,7 +1108,10 @@ function admsekolahdash_loadUnitData(npsn, forceRefresh) {
     var npsnSafe = String(npsn).trim();
 
     google.script.run.withSuccessHandler(function(jsonStr) {
-        $('#admsekolahdash_btnRefreshUnit').prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
+        $('#admsekolahdash_btnBukaDataUnit').prop('disabled', false)
+            .html(ADMSEKOLAHDASH_IS_ADMIN
+                ? '<i class="fas fa-sync-alt mr-1"></i> Refresh Data'
+                : '<i class="fas fa-sync-alt mr-1"></i> Refresh Data');
         var data;
         try { data = JSON.parse(jsonStr); } catch(e) {
             Sultan.alert('error', 'Gagal Memproses Data', 'Respon server tidak valid.');
@@ -1110,7 +1125,8 @@ function admsekolahdash_loadUnitData(npsn, forceRefresh) {
         }
         admsekolahdash_renderUnitView(data);
     }).withFailureHandler(function(err) {
-        $('#admsekolahdash_btnRefreshUnit').prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
+        $('#admsekolahdash_btnBukaDataUnit').prop('disabled', false)
+            .html('<i class="fas fa-folder-open mr-1"></i> Buka Data');
         Sultan.alert('error', 'Koneksi Terputus', err.message || 'Gagal terhubung ke server.');
         admsekolahdash_resetUnitView();
     }).getAdmSekolahViewerData(npsnSafe, ADMSEKOLAHDASH_IS_ADMIN ? "" : ADMSEKOLAHDASH_USER_NPSN);
