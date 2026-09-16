@@ -854,21 +854,35 @@ function admsekolahdash_terapkanFilterLokal() {
     var fTahun = isPermanen ? "SEMUA" : String($('#admsekolahdash_filterTahun').val() || "").trim().toUpperCase();
     var fPeriode = String($('#admsekolahdash_filterPeriode').val() || "").trim().toUpperCase();
 
-    var filterRekap = ADMSEKOLAHDASH_CACHE_REKAP.filter(function(r) {
-        var rTahun = String(r.tahun || "").trim().toUpperCase();
-        if (!isPermanen && fTahun !== "SEMUA" && fTahun !== "" && rTahun !== fTahun) return false;
-        if (fPeriode !== "SEMUA" && fPeriode !== "" && String(r.periode || "").trim().toUpperCase() !== fPeriode) return false;
-        return true;
-    });
+    // Tampilkan loading spinner di semua 4 kolom list saat filter berubah
+    var listLoading = (typeof SultanUI !== 'undefined' && SultanUI.renderListLoading)
+        ? SultanUI.renderListLoading('MEMUAT...')
+        : '<li class="list-group-item border-0 px-3 py-4 bg-transparent text-center">' +
+          '<i class="fas fa-circle-notch fa-spin text-muted mb-2 opacity-50"></i><br>' +
+          '<span class="small text-muted font-weight-bold" style="letter-spacing:0.5px;text-transform:uppercase;font-size:11px;">MEMUAT...</span></li>';
+    $('#admsekolahdash_listDisetujui, #admsekolahdash_listDiproses, #admsekolahdash_listRevisi, #admsekolahdash_listDitolak').html(listLoading);
 
-    var filterBelum = ADMSEKOLAHDASH_CACHE_BELUM.filter(function(r) {
-        var rTahun = String(r.tahun || "").trim().toUpperCase();
-        if (!isPermanen && fTahun !== "SEMUA" && fTahun !== "" && rTahun !== fTahun) return false;
-        if (fPeriode !== "SEMUA" && fPeriode !== "" && String(r.periode || "").trim().toUpperCase() !== fPeriode) return false;
-        return true;
-    });
+    // Reset badge sementara
+    $('#admsekolahdash_countDisetujui, #admsekolahdash_countDiproses, #admsekolahdash_countRevisi, #admsekolahdash_countDitolak').text('...');
 
-    admsekolahdash_renderDashboard(filterRekap, filterBelum, fTahun, fPeriode);
+    // Beri jeda singkat agar spinner sempat tampil sebelum proses filter
+    setTimeout(function() {
+        var filterRekap = ADMSEKOLAHDASH_CACHE_REKAP.filter(function(r) {
+            var rTahun = String(r.tahun || "").trim().toUpperCase();
+            if (!isPermanen && fTahun !== "SEMUA" && fTahun !== "" && rTahun !== fTahun) return false;
+            if (fPeriode !== "SEMUA" && fPeriode !== "" && String(r.periode || "").trim().toUpperCase() !== fPeriode) return false;
+            return true;
+        });
+
+        var filterBelum = ADMSEKOLAHDASH_CACHE_BELUM.filter(function(r) {
+            var rTahun = String(r.tahun || "").trim().toUpperCase();
+            if (!isPermanen && fTahun !== "SEMUA" && fTahun !== "" && rTahun !== fTahun) return false;
+            if (fPeriode !== "SEMUA" && fPeriode !== "" && String(r.periode || "").trim().toUpperCase() !== fPeriode) return false;
+            return true;
+        });
+
+        admsekolahdash_renderDashboard(filterRekap, filterBelum, fTahun, fPeriode);
+    }, 180);
 }
 
 function admsekolahdash_getRekapForMetrics(dataRekap, fTahun, fPeriode) {
@@ -1003,8 +1017,9 @@ function admsekolahdash_renderStatusList(statusKey, list, isFiltered) {
 
     list.forEach(function (item, i) {
         var namaSekolah = (typeof item === 'string') ? item : (item.unit || item.nama || "-");
+        var delay = Math.min(i * 25, 300); // stagger animasi, maks 300ms
         ul.append(
-            '<li class="list-group-item bg-transparent py-2 px-3 font-weight-bold dashlapbul-list-item d-flex align-items-start" style="font-size:12px; line-height:1.4;">' +
+            '<li class="list-group-item bg-transparent py-2 px-3 font-weight-bold dashlapbul-list-item d-flex align-items-start animate__animated animate__fadeIn" style="font-size:12px; line-height:1.4; animation-delay:' + delay + 'ms;">' +
             '<span class="badge dashlapbul-badge-idx mr-2 mt-0.5" style="width:25px; min-width:25px; flex-shrink:0;">' + (i + 1) + '</span>' +
             '<span class="school-name flex-grow-1" style="word-break: break-word;">' + admsekolahdash_escapeHtml(namaSekolah) + '</span>' +
             '</li>'
