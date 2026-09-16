@@ -422,6 +422,40 @@
     border-color: #ef4444 !important;
     box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.3) !important;
   }
+
+  /* Badge Adaptive untuk Mode Terang & Gelap */
+  .sdn-pensiun-pill-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11.5px;
+    font-weight: 600;
+    background-color: #f1f5f9;
+    color: #334155;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+  }
+  .dark-mode .sdn-pensiun-pill-badge {
+    background-color: #242830;
+    color: #cbd5e1;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .sdn-pensiun-tmt-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 600;
+    background-color: #f1f5f9;
+    color: #334155;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+  }
+  .dark-mode .sdn-pensiun-tmt-badge {
+    background-color: #242830;
+    color: #e2e8f0;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
 </style>
 
 <section class="content sultan-page-transition">
@@ -887,7 +921,7 @@
                   <h6 class="font-weight-bold text-sultan-utama m-0 text-uppercase">
                     <i class="fas fa-chart-bar mr-2"></i>Timeline Pensiun Per Bulan (Tahun <span id="sdnPensiunChartTahunLabel">-</span>)
                   </h6>
-                  <span class="badge badge-light px-2.5 py-1 text-muted" id="sdnPensiunBulanIniHint" style="font-size: 11.5px;"></span>
+                  <span class="sdn-pensiun-pill-badge" id="sdnPensiunBulanIniHint"></span>
                 </div>
                 <div style="position:relative;height:220px;">
                   <canvas id="sdnChartPensiun" style="max-height:220px;"></canvas>
@@ -1613,7 +1647,8 @@ function sdnCalculatePensiun(jsonStr, filterNpsn, tahunOffset) {
   for (var i = 0; i < 5; i++) {
     var yr = curYear + i;
     var countTotal = 0, countGuru = 0, countTendik = 0;
-    var months = [0,0,0,0,0,0,0,0,0,0,0,0];
+    var monthsPNS  = [0,0,0,0,0,0,0,0,0,0,0,0];
+    var monthsPPPK = [0,0,0,0,0,0,0,0,0,0,0,0];
     var ptkList = [];
 
     data.forEach(function(ptk) {
@@ -1631,7 +1666,12 @@ function sdnCalculatePensiun(jsonStr, filterNpsn, tahunOffset) {
       if (tp === yr) {
         countTotal++;
         if (isGuru) countGuru++; else countTendik++;
-        months[bp]++;
+        var statusPeg = String(ptk.status_peg || 'PNS').trim().toUpperCase();
+        if (statusPeg === 'PPPK' || statusPeg === 'P3K') {
+          monthsPPPK[bp]++;
+        } else {
+          monthsPNS[bp]++;
+        }
         ptkList.push({
           nama: ptk.nama || '-',
           nip: ptk.nip || '-',
@@ -1649,6 +1689,9 @@ function sdnCalculatePensiun(jsonStr, filterNpsn, tahunOffset) {
 
     ptkList.sort(function(a, b) { return a.bulan_pensiun - b.bulan_pensiun; });
 
+    // Build combined months array (total per bulan) for backward-compat references
+    var months = monthsPNS.map(function(v, idx) { return v + monthsPPPK[idx]; });
+
     yearData.push({
       year: yr,
       offset: i,
@@ -1656,6 +1699,8 @@ function sdnCalculatePensiun(jsonStr, filterNpsn, tahunOffset) {
       guru: countGuru,
       tendik: countTendik,
       months: months,
+      monthsPNS: monthsPNS,
+      monthsPPPK: monthsPPPK,
       list: ptkList
     });
   }
@@ -1702,8 +1747,8 @@ function sdnCalculatePensiun(jsonStr, filterNpsn, tahunOffset) {
     $('#sdnPensiunBulanIniHint').html('Total Pensiun: <b>' + selectedYearData.total + '</b> PTK');
   }
 
-  // Render Bar Chart
-  sdnRenderPensiunChart(selectedYearData.months, offset > 0 ? -1 : bulanIni);
+  // Render Stacked Bar Chart
+  sdnRenderPensiunChart(selectedYearData.monthsPNS, selectedYearData.monthsPPPK, offset > 0 ? -1 : bulanIni);
 
   // Simpan data PTK untuk pencarian & render tabel
   SDN_PEN_LIST_CURRENT = selectedYearData.list;
@@ -1770,45 +1815,108 @@ function sdnPensiunFilterTable() {
   sdnPensiunRenderTable(filtered);
 }
 
-function sdnRenderPensiunChart(perBulan, bulanSekarang) {
+function sdnRenderPensiunChart(perBulanPNS, perBulanPPPK, bulanSekarang) {
   var isDark = $('body').hasClass('dark-mode');
-  var textColor = isDark ? '#ffffff' : '#333333';
+  var textColor = isDark ? '#e2e8f0' : '#333333';
   var gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)';
-  var bgColors = perBulan.map(function(_, i) {
-    return i < bulanSekarang ? (isDark ? '#475569' : '#cbd5e1') : (i === bulanSekarang ? '#dc2626' : (i === bulanSekarang + 1 ? '#d97706' : '#800000'));
-  });
+
+  // Color palette per status
+  // PNS  => merah/maroon (past = redup)
+  // PPPK => kuning/amber (past = redup)
+  var PNS_ACTIVE   = 'rgba(185, 28, 28, 0.85)';   // red-700
+  var PNS_CURRENT  = 'rgba(220, 38, 38, 1)';       // red-600 vivid
+  var PNS_PAST     = isDark ? 'rgba(100,116,139,0.5)' : 'rgba(203,213,225,0.7)';
+  var PPPK_ACTIVE  = 'rgba(180, 83, 9, 0.85)';     // amber-800
+  var PPPK_CURRENT = 'rgba(217, 119, 6, 1)';       // amber-600 vivid
+  var PPPK_PAST    = isDark ? 'rgba(71,85,105,0.4)' : 'rgba(226,232,240,0.6)';
+
+  function getBgPNS(i) {
+    if (bulanSekarang >= 0 && i < bulanSekarang) return PNS_PAST;
+    if (i === bulanSekarang) return PNS_CURRENT;
+    return PNS_ACTIVE;
+  }
+  function getBgPPPK(i) {
+    if (bulanSekarang >= 0 && i < bulanSekarang) return PPPK_PAST;
+    if (i === bulanSekarang) return PPPK_CURRENT;
+    return PPPK_ACTIVE;
+  }
+
+  var bgPNS  = (perBulanPNS  || []).map(function(_, i) { return getBgPNS(i); });
+  var bgPPPK = (perBulanPPPK || []).map(function(_, i) { return getBgPPPK(i); });
+
   if (SDN_CHART_PEN) SDN_CHART_PEN.destroy();
   SDN_CHART_PEN = new Chart(document.getElementById('sdnChartPensiun').getContext('2d'), {
     type: 'bar',
     data: {
       labels: NAMA_BULAN_SDN,
-      datasets: [{
-        label: 'Jumlah Pensiun',
-        data: perBulan,
-        backgroundColor: bgColors,
-        borderRadius: 6,
-        barPercentage: 0.7
-      }]
+      datasets: [
+        {
+          label: 'PNS',
+          data: perBulanPNS || [],
+          backgroundColor: bgPNS,
+          borderRadius: 4,
+          borderSkipped: false,
+          barPercentage: 0.72,
+          categoryPercentage: 0.8,
+          stack: 'pensiun'
+        },
+        {
+          label: 'PPPK',
+          data: perBulanPPPK || [],
+          backgroundColor: bgPPPK,
+          borderRadius: 4,
+          borderSkipped: false,
+          barPercentage: 0.72,
+          categoryPercentage: 0.8,
+          stack: 'pensiun'
+        }
+      ]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       scales: {
         x: {
+          stacked: true,
           grid: { display: false },
-          ticks: { color: textColor, font: { weight: 'bold', size: 12 } }
+          ticks: { color: textColor, font: { weight: 'bold', size: 11 } }
         },
         y: {
+          stacked: true,
           beginAtZero: true,
           grid: { color: gridColor },
           ticks: { color: textColor, font: { weight: 'bold' }, stepSize: 1, precision: 0 }
         }
       },
       plugins: {
-        legend: { display: false },
+        legend: {
+          display: true,
+          position: 'top',
+          align: 'end',
+          labels: {
+            color: textColor,
+            font: { size: 12, weight: 'bold' },
+            boxWidth: 14,
+            boxHeight: 10,
+            padding: 16,
+            usePointStyle: true,
+            pointStyle: 'rectRounded'
+          }
+        },
         tooltip: {
+          mode: 'index',
+          intersect: false,
           callbacks: {
-            label: function(c) { return c.parsed.y + ' orang'; }
+            title: function(items) {
+              return items.length ? NAMA_BULAN_FULL_SDN[items[0].dataIndex] : '';
+            },
+            label: function(c) {
+              return ' ' + c.dataset.label + ': ' + c.parsed.y + ' orang';
+            },
+            footer: function(items) {
+              var total = items.reduce(function(s, c) { return s + (c.parsed.y || 0); }, 0);
+              return total > 0 ? 'Total: ' + total + ' orang' : '';
+            }
           }
         }
       }
