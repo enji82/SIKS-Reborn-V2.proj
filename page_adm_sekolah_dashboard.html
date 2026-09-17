@@ -455,6 +455,10 @@ $(document).ready(function() {
 function admsekolahdash_switchMode(mode) {
     ADMSEKOLAHDASH_MODE = mode;
 
+    // Update active state pada tombol switcher
+    $('[data-admsekolah-mode]').removeClass('active');
+    $('[data-admsekolah-mode="' + mode + '"]').addClass('active');
+
     if (mode === 'unit') {
         $('#admsekolahdash_filterBarRekap').hide();
         $('#admsekolahdash_filterBarUnit').show();
@@ -527,7 +531,15 @@ function admsekolahdash_initMasterAccess() {
             selectKat.append($('<option>', { value: k.idKat, text: k.namaKategori }));
         });
 
-        admsekolahdash_loadDataKategori($('#admsekolahdash_filterKategori').val());
+        // Set default mode berdasarkan role:
+        // User Sekolah (Non-Admin) -> Langsung masuk Mode Unit
+        // Admin/Verifikator -> Mode Rekap
+        if (!ADMSEKOLAHDASH_IS_ADMIN) {
+            admsekolahdash_switchMode('unit');
+        } else {
+            admsekolahdash_switchMode('rekap');
+            admsekolahdash_loadDataKategori($('#admsekolahdash_filterKategori').val());
+        }
 
     }).withFailureHandler(function(err) {
         $('#admsekolahdash_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Terputus: ' + admsekolahdash_escapeHtml(err.message) + '</span>');
