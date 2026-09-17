@@ -1271,28 +1271,28 @@ function getDataBezettingSDNMaster() {
       // A. Kepala Sekolah: Keb = 1
       s.ks.keb = 1;
       s.ks.jml = s.ks.cpns + s.ks.pns + s.ks.pppk + s.ks.pw;
-      s.ks.selisih = s.ks.keb - s.ks.jml;
+      s.ks.selisih = s.ks.jml - s.ks.keb;
 
       // B. Guru Kelas: Keb = Rombel
       s.guru_kelas.keb = rombel;
       s.guru_kelas.jml = s.guru_kelas.cpns + s.guru_kelas.pns + s.guru_kelas.pppk + s.guru_kelas.pw;
-      s.guru_kelas.selisih = s.guru_kelas.keb - s.guru_kelas.jml;
+      s.guru_kelas.selisih = s.guru_kelas.jml - s.guru_kelas.keb;
 
       // C. Guru PJOK: 1-10 rombel = 1, 11-15 rombel = 2, 16-20 rombel = 3
       s.guru_pjok.keb = hitungKebMapel(rombel);
       s.guru_pjok.jml = s.guru_pjok.cpns + s.guru_pjok.pns + s.guru_pjok.pppk + s.guru_pjok.pw;
-      s.guru_pjok.selisih = s.guru_pjok.keb - s.guru_pjok.jml;
+      s.guru_pjok.selisih = s.guru_pjok.jml - s.guru_pjok.keb;
 
       // D. Guru PAI: 1-10 rombel = 1, 11-15 rombel = 2, 16-20 rombel = 3
       s.guru_pai.keb = hitungKebMapel(rombel);
       s.guru_pai.jml = s.guru_pai.cpns + s.guru_pai.pns + s.guru_pai.pppk + s.guru_pai.pw;
-      s.guru_pai.selisih = s.guru_pai.keb - s.guru_pai.jml;
+      s.guru_pai.selisih = s.guru_pai.jml - s.guru_pai.keb;
 
       // E. Guru PA Kristen: Keb = total eksisting atau 0
       var pakEksis = s.guru_kristen.cpns + s.guru_kristen.pns + s.guru_kristen.pppk + s.guru_kristen.pw;
       s.guru_kristen.keb = pakEksis > 0 ? pakEksis : 0;
       s.guru_kristen.jml = pakEksis;
-      s.guru_kristen.selisih = s.guru_kristen.keb - s.guru_kristen.jml;
+      s.guru_kristen.selisih = s.guru_kristen.jml - s.guru_kristen.keb;
     });
 
     schoolList.sort(function(a, b) { return a.unit.localeCompare(b.unit); });
