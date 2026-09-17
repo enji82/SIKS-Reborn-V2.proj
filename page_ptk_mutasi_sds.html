@@ -396,7 +396,7 @@
     function ptksds_bukaModalEditUsulan(idUsulan) {
         var row = PTKSDS_CACHE_USULAN.find(function (r) { return String(r.id_usulan) === String(idUsulan); });
         if (!row) {
-            Sultan.notif.error('Data usulan tidak ditemukan.');
+            Sultan.notif.gagal('Data usulan tidak ditemukan.');
             return;
         }
 
@@ -718,10 +718,13 @@
 
         try {
             PTKSDS_TABEL_USULAN_INSTANCE = SultanTable.init('#ptksds_tabelUsulan', {
-                "destroy": true, "ordering": false, "pageLength": 10, "autoWidth": false,
+                "destroy": true, 
+                "ordering": false, 
+                "pageLength": 10, 
+                "autoWidth": false,
                 "deferRender": true,
                 "dom": "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
-                    "<'row'<'col-sm-12'<'ptksds-scroll-container sultan-scroll'tr>>>" +
+                    "<'row'<'col-sm-12'<'table-responsive sultan-scroll'tr>>>" +
                     "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
                 "columnDefs": [
                     { "targets": 0, "className": "col-sticky-left text-left align-middle" },
@@ -731,12 +734,12 @@
                     { "targets": [1, 2, 3, 6], "className": "text-left align-middle" }
                 ],
                 "language": {
-                    "url": "https://cdn.datatables.net/plug-ins/1.10.21/i18n/Indonesian.json",
+                    "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json",
                     "emptyTable": "<div class='p-4 text-center text-muted'><i class='fas fa-inbox fa-3x mb-3 opacity-50'></i><br>Belum ada data mutasi.</div>"
                 },
                 "initComplete": function (settings, json) {
                     try {
-                        var $container = $('.ptksds-scroll-container');
+                        var $container = $('#ptksds_tabelUsulan').closest('.table-responsive, .sultan-scroll');
                         if ($container.length > 0) {
                             $container.attr('tabindex', '0').css('outline', 'none');
                             $('#ptksds_tabelUsulan').attr('tabindex', '0').css('outline', 'none');
@@ -771,21 +774,38 @@
         } else {
             if (!PTKSDS_USER_NPSN) {
                 $('#ptksds_filterUnit').empty().append('<option value="">AKSES DITOLAK (NPSN KOSONG)</option>');
+                SultanUI.hideLoading('#ptksds_loadingUsulan');
+                ptksds_updateTabelKosong('<div class="text-danger p-4 text-center font-weight-bold"><i class="fas fa-ban fa-2x mb-2"></i><br>Akses ditolak: Sesi login tidak valid.</div>');
                 return;
             }
-            google.script.run.withSuccessHandler(function (resUnit) {
-                var dataUnit = JSON.parse(resUnit);
-                if (dataUnit.error) {
-                    $('#ptksds_filterUnit').empty().append('<option value="">AKSES DITOLAK</option>');
-                    return;
-                }
-                PTKSDS_UNIT_TERKUNCI = dataUnit.unitKerja;
-                if (!PTKSDS_UNIT_TERKUNCI) {
-                    Sultan.alert('warning', 'Peringatan', 'Unit kerja Anda tidak ditemukan di Database Sekolah. Data usulan mungkin tidak muncul.');
-                }
-                $('#ptksds_filterUnit').empty().append('<option value="' + ptksds_escapeHtml(PTKSDS_UNIT_TERKUNCI || '') + '">' + ptksds_escapeHtml(PTKSDS_UNIT_TERKUNCI || 'Tidak Ditemukan') + '</option>').prop('disabled', true);
-                ptksds_tarikDataUsulan();
-            }).getUnitKerjaByNpsnPTK(PTKSDS_USER_NPSN);
+            google.script.run
+                .withSuccessHandler(function (resUnit) {
+                    try {
+                        var dataUnit = JSON.parse(resUnit);
+                        if (dataUnit.error) {
+                            $('#ptksds_filterUnit').empty().append('<option value="">AKSES DITOLAK</option>');
+                            SultanUI.hideLoading('#ptksds_loadingUsulan');
+                            ptksds_updateTabelKosong('<div class="text-danger p-4 text-center font-weight-bold"><i class="fas fa-exclamation-triangle fa-2x mb-2"></i><br>' + ptksds_escapeHtml(dataUnit.error) + '</div>');
+                            return;
+                        }
+                        PTKSDS_UNIT_TERKUNCI = dataUnit.unitKerja;
+                        if (!PTKSDS_UNIT_TERKUNCI) {
+                            Sultan.alert('warning', 'Peringatan', 'Unit kerja Anda tidak ditemukan di Database Sekolah. Data usulan mungkin tidak muncul.');
+                        }
+                        $('#ptksds_filterUnit').empty().append('<option value="' + ptksds_escapeHtml(PTKSDS_UNIT_TERKUNCI || '') + '">' + ptksds_escapeHtml(PTKSDS_UNIT_TERKUNCI || 'Tidak Ditemukan') + '</option>').prop('disabled', true);
+                        ptksds_tarikDataUsulan();
+                    } catch (e) {
+                        $('#ptksds_filterUnit').empty().append('<option value="">ERROR DATA</option>');
+                        SultanUI.hideLoading('#ptksds_loadingUsulan');
+                        ptksds_updateTabelKosong('<div class="text-danger p-4 text-center font-weight-bold">Format data unit kerja tidak valid.</div>');
+                    }
+                })
+                .withFailureHandler(function (err) {
+                    $('#ptksds_filterUnit').empty().append('<option value="">ERROR SERVER</option>');
+                    SultanUI.hideLoading('#ptksds_loadingUsulan');
+                    ptksds_updateTabelKosong('<div class="text-danger p-4 text-center font-weight-bold"><i class="fas fa-wifi fa-2x mb-2"></i><br>Koneksi Terputus: ' + ptksds_escapeHtml(err.message || err || 'Server error') + '</div>');
+                })
+                .getUnitKerjaByNpsnPTK(PTKSDS_USER_NPSN);
         }
     }
 
@@ -793,34 +813,44 @@
         if (PTKSDS_ALREADY_FETCHING) return;
         PTKSDS_ALREADY_FETCHING = true;
 
-        SultanUI.showLoading('#ptksds_loadingUsulan');
+        SultanUI.showLoading('#ptksds_loadingUsulan', 'Memuat data usulan mutasi...');
         $('#ptksds_tableUsulanState').hide();
 
         // Fetch Master Data first (getDataPTKSDS)
         google.script.run
             .withSuccessHandler(function (resMaster) {
-                PTKSDS_CACHE_MASTER = JSON.parse(resMaster);
+                try {
+                    PTKSDS_CACHE_MASTER = JSON.parse(resMaster);
+                } catch (e) {
+                    PTKSDS_CACHE_MASTER = [];
+                }
 
                 // Now fetch Usulan data
                 google.script.run
                     .withSuccessHandler(function (resUsulan) {
                         PTKSDS_ALREADY_FETCHING = false;
-                        $('#ptksds_loadingUsulan').hide();
-                        PTKSDS_CACHE_USULAN = JSON.parse(resUsulan);
-                        ptksds_populateFilterLembaga();
-                        ptksds_terapkanFilterLokal();
+                        SultanUI.hideLoading('#ptksds_loadingUsulan');
+                        try {
+                            PTKSDS_CACHE_USULAN = JSON.parse(resUsulan);
+                            ptksds_populateFilterLembaga();
+                            ptksds_terapkanFilterLokal();
+                        } catch (e) {
+                            ptksds_updateTabelKosong('<div class="text-danger p-4 text-center font-weight-bold">Format JSON usulan gagal diparsing.</div>');
+                        }
                     })
                     .withFailureHandler(function (err) {
                         PTKSDS_ALREADY_FETCHING = false;
-                        $('#ptksds_loadingUsulan').hide();
+                        SultanUI.hideLoading('#ptksds_loadingUsulan');
                         Sultan.notif.crud.gagal(err.message || err || 'Gagal memuat data');
+                        ptksds_updateTabelKosong('<div class="text-danger p-4 text-center font-weight-bold"><i class="fas fa-exclamation-triangle fa-2x mb-2"></i><br>Gagal memuat usulan mutasi.</div>');
                     })
                     .getUsulanMutasiPTKSDS();
             })
             .withFailureHandler(function (err) {
                 PTKSDS_ALREADY_FETCHING = false;
-                $('#ptksds_loadingUsulan').hide();
+                SultanUI.hideLoading('#ptksds_loadingUsulan');
                 Sultan.notif.crud.gagal(err.message || err || 'Gagal memuat data master');
+                ptksds_updateTabelKosong('<div class="text-danger p-4 text-center font-weight-bold"><i class="fas fa-exclamation-triangle fa-2x mb-2"></i><br>Gagal memuat data master PTK SDS.</div>');
             })
             .getDataPTKSDS();
     }
@@ -899,12 +929,13 @@
     }
 
     function ptksds_updateTabelKosong(htmlContent) {
+        SultanUI.hideLoading('#ptksds_loadingUsulan');
+        $('#ptksds_tableUsulanState').show();
         if (PTKSDS_TABEL_USULAN_INSTANCE) {
-            $('#ptksds_tableUsulanState').show();
-            $('#ptksds_loadingUsulan').hide();
             PTKSDS_TABEL_USULAN_INSTANCE.clear().draw();
             var emptyRow = $('#ptksds_tabelUsulan tbody tr td.dataTables_empty');
             if (emptyRow.length > 0) { emptyRow.html(htmlContent); }
+            PTKSDS_TABEL_USULAN_INSTANCE.columns.adjust();
         }
     }
 
@@ -1009,9 +1040,10 @@
             ]);
         });
 
+        SultanUI.hideLoading('#ptksds_loadingUsulan');
+        $('#ptksds_tableUsulanState').show();
         if (PTKSDS_TABEL_USULAN_INSTANCE) {
             PTKSDS_TABEL_USULAN_INSTANCE.clear().rows.add(dtArray).draw(false);
-            $('#ptksds_tableUsulanState').show();
             PTKSDS_TABEL_USULAN_INSTANCE.columns.adjust();
         }
     }
