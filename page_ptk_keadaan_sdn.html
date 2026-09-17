@@ -41,7 +41,7 @@
                                 <ul class="mb-0 pl-3">
                                     <li class="mb-1">Halaman ini bersifat <strong>Read-Only (Hanya Tampil)</strong>.</li>
                                     <li class="mb-1">Data agregasi dihitung secara <strong>Real-Time</strong> langsung dari database <strong>Master Data GTK</strong>.</li>
-                                    <li class="mb-1">Gunakan tab pilihan di bawah untuk berpindah antara rekapitulasi <strong>Menurut Jabatan</strong> dan <strong>Menurut Status Kepegawaian</strong>.</li>
+                                    <li class="mb-1">Gunakan tombol filter di atas untuk berganti antara rekapitulasi <strong>Jabatan</strong> dan <strong>Status</strong>.</li>
                                     <li>Baris paling bawah menunjukkan total akumulasi per kolom.</li>
                                 </ul>
                             </div>
@@ -49,25 +49,36 @@
                     </div>
                 </div>
 
-                <!-- ==================== FILTER BAR ==================== -->
-                <div id="keadaanptksdn_filterBarArea"></div>
-
-                <!-- ==================== SUB-TAB NAVIGATION ==================== -->
-                <div class="d-flex justify-content-center mb-4">
-                    <div class="sultan-tab-container shadow-sm">
-                        <ul class="nav nav-pills sultan-pill-nav" id="keadaanptksdn_subTabs" role="tablist">
-                            <li class="nav-item">
-                                <a class="nav-link active" id="keadaanptksdn_tabJabatanLink" data-toggle="pill" href="#keadaanptksdn_tabJabatan" role="tab" aria-selected="true">
-                                    <i class="fas fa-chalkboard-teacher mr-1"></i> Keadaan Menurut Jabatan
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" id="keadaanptksdn_tabStatusLink" data-toggle="pill" href="#keadaanptksdn_tabStatus" role="tab" aria-selected="false">
-                                    <i class="fas fa-id-card mr-1"></i> Keadaan Menurut Status Kepegawaian
-                                </a>
-                            </li>
-                        </ul>
+                <!-- ==================== FILTER BAR DENGAN SEGMENTED CONTROL ==================== -->
+                <div class="sultan-filter-pill-container shadow-sm mb-4 sultan-page-transition">
+                    <!-- Segmented Switcher (Jabatan vs Status) -->
+                    <div class="sultan-segmented-switch">
+                        <button type="button" class="sultan-segmented-btn active" data-mode="jabatan" id="keadaanptksdn_btnTabJabatan">
+                            <i class="fas fa-briefcase"></i> Jabatan
+                        </button>
+                        <button type="button" class="sultan-segmented-btn" data-mode="status" id="keadaanptksdn_btnTabStatus">
+                            <i class="fas fa-id-card"></i> Status
+                        </button>
                     </div>
+
+                    <div class="divider-vertical d-none d-md-block mx-1"></div>
+
+                    <div class="sultan-filter-item" id="keadaanptksdn_filterUnit_container">
+                        <select id="keadaanptksdn_filterUnit" class="form-control" disabled>
+                            <option value="">Memvalidasi Akses...</option>
+                        </select>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+
+                    <div class="divider-vertical d-none d-md-block mx-1"></div>
+
+                    <button type="button" id="keadaanptksdn_btnSync" class="sultan-btn-refresh" title="Segarkan Data dari Server" disabled>
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+
+                    <button type="button" id="keadaanptksdn_btnExport" class="sultan-btn-excel shadow-sm ml-auto" title="Unduh Data ke Excel" style="display: none;">
+                        <i class="fas fa-file-excel"></i> UNDUH EXCEL
+                    </button>
                 </div>
 
                 <!-- LOADING STATE -->
@@ -77,230 +88,228 @@
 
                 <!-- ==================== TAB CONTENT CONTAINER ==================== -->
                 <div id="keadaanptksdn_tableState" style="display:none;">
-                    <div class="tab-content" id="keadaanptksdn_tabContent">
 
-                        <!-- ============================================================== -->
-                        <!-- TAB 1: MENURUT JABATAN (PENDIDIK & TENDIK)                      -->
-                        <!-- ============================================================== -->
-                        <div class="tab-pane fade show active" id="keadaanptksdn_tabJabatan" role="tabpanel">
-                            
-                            <!-- CARD 1.1: PENDIDIK -->
-                            <div class="card-sultan w-100 mb-4 overflow-hidden shadow-sm">
-                                <div class="card-body p-3 w-100">
-                                    <div class="sultan-card-section-header mb-3">
-                                        <div class="sultan-card-section-title">
-                                            <i class="fas fa-user-graduate text-maroon"></i>
-                                            <h6 class="mb-0 font-weight-bold">Keadaan Pendidik (Kepala Sekolah & Guru)</h6>
-                                        </div>
+                    <!-- ============================================================== -->
+                    <!-- VIEW 1: MENURUT JABATAN (PENDIDIK & TENDIK)                     -->
+                    <!-- ============================================================== -->
+                    <div id="keadaanptksdn_viewJabatan">
+                        
+                        <!-- CARD 1.1: PENDIDIK -->
+                        <div class="card-sultan w-100 mb-4 overflow-hidden shadow-sm">
+                            <div class="card-body p-3 w-100">
+                                <div class="sultan-card-section-header mb-3">
+                                    <div class="sultan-card-section-title">
+                                        <i class="fas fa-user-graduate text-maroon"></i>
+                                        <h6 class="mb-0 font-weight-bold">Keadaan Pendidik (Kepala Sekolah & Guru)</h6>
                                     </div>
-
-                                    <table id="keadaanptksdn_tabelPendidik"
-                                        class="table table-bordered table-hover table-premium table-sultan-compact table-header-compact mb-0 w-100"
-                                        style="border: none !important;">
-                                        <thead class="thead-sultan-premium thead-tiered">
-                                            <tr>
-                                                <th rowspan="2" class="th-main align-middle text-maroon text-left px-3 col-sticky-left border-bottom-maroon" style="z-index:50; border-right: 2px solid #dee2e6; white-space: nowrap;"><span class="sultan-th-title">NAMA SEKOLAH</span></th>
-                                                <th colspan="6" class="th-main align-middle text-center bg-soft-primary">KEPALA SEKOLAH</th>
-                                                <th colspan="6" class="th-main align-middle text-center bg-soft-success">GURU KELAS</th>
-                                                <th colspan="6" class="th-main align-middle text-center bg-soft-orange">GURU PJOK</th>
-                                                <th colspan="6" class="th-main align-middle text-center bg-soft-purple">GURU PAI</th>
-                                                <th colspan="6" class="th-main align-middle text-center bg-soft-danger">GURU PA KRISTEN</th>
-                                                <th colspan="6" class="th-main align-middle text-center bg-soft-abu">GURU LAINNYA</th>
-                                            </tr>
-                                            <tr class="small text-center">
-                                                <!-- KS -->
-                                                <th class="th-sub bg-soft-primary">CPNS</th>
-                                                <th class="th-sub bg-soft-primary">PNS</th>
-                                                <th class="th-sub bg-soft-primary">PPPK</th>
-                                                <th class="th-sub bg-soft-primary">PW</th>
-                                                <th class="th-sub bg-soft-primary">Non ASN</th>
-                                                <th class="th-sub bg-soft-primary text-maroon font-weight-bold">JML</th>
-                                                <!-- GURU KELAS -->
-                                                <th class="th-sub bg-soft-success">CPNS</th>
-                                                <th class="th-sub bg-soft-success">PNS</th>
-                                                <th class="th-sub bg-soft-success">PPPK</th>
-                                                <th class="th-sub bg-soft-success">PW</th>
-                                                <th class="th-sub bg-soft-success">Non ASN</th>
-                                                <th class="th-sub bg-soft-success text-maroon font-weight-bold">JML</th>
-                                                <!-- PJOK -->
-                                                <th class="th-sub bg-soft-orange">CPNS</th>
-                                                <th class="th-sub bg-soft-orange">PNS</th>
-                                                <th class="th-sub bg-soft-orange">PPPK</th>
-                                                <th class="th-sub bg-soft-orange">PW</th>
-                                                <th class="th-sub bg-soft-orange">Non ASN</th>
-                                                <th class="th-sub bg-soft-orange text-maroon font-weight-bold">JML</th>
-                                                <!-- PAI -->
-                                                <th class="th-sub bg-soft-purple">CPNS</th>
-                                                <th class="th-sub bg-soft-purple">PNS</th>
-                                                <th class="th-sub bg-soft-purple">PPPK</th>
-                                                <th class="th-sub bg-soft-purple">PW</th>
-                                                <th class="th-sub bg-soft-purple">Non ASN</th>
-                                                <th class="th-sub bg-soft-purple text-maroon font-weight-bold">JML</th>
-                                                <!-- KRISTEN -->
-                                                <th class="th-sub bg-soft-danger">CPNS</th>
-                                                <th class="th-sub bg-soft-danger">PNS</th>
-                                                <th class="th-sub bg-soft-danger">PPPK</th>
-                                                <th class="th-sub bg-soft-danger">PW</th>
-                                                <th class="th-sub bg-soft-danger">Non ASN</th>
-                                                <th class="th-sub bg-soft-danger text-maroon font-weight-bold">JML</th>
-                                                <!-- GURU LAINNYA -->
-                                                <th class="th-sub bg-soft-abu">CPNS</th>
-                                                <th class="th-sub bg-soft-abu">PNS</th>
-                                                <th class="th-sub bg-soft-abu">PPPK</th>
-                                                <th class="th-sub bg-soft-abu">PW</th>
-                                                <th class="th-sub bg-soft-abu">Non ASN</th>
-                                                <th class="th-sub bg-soft-abu text-maroon font-weight-bold">JML</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody></tbody>
-                                        <tfoot class="bg-light font-weight-bold" style="border-top: 3px solid #800000;">
-                                            <tr><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr>
-                                        </tfoot>
-                                    </table>
                                 </div>
+
+                                <table id="keadaanptksdn_tabelPendidik"
+                                    class="table table-bordered table-hover table-premium table-sultan-compact table-header-compact mb-0 w-100"
+                                    style="border: none !important;">
+                                    <thead class="thead-sultan-premium thead-tiered">
+                                        <tr>
+                                            <th rowspan="2" class="th-main align-middle text-maroon text-left px-3 col-sticky-left border-bottom-maroon" style="z-index:50; border-right: 2px solid #dee2e6; white-space: nowrap;"><span class="sultan-th-title">NAMA SEKOLAH</span></th>
+                                            <th colspan="6" class="th-main align-middle text-center bg-soft-primary">KEPALA SEKOLAH</th>
+                                            <th colspan="6" class="th-main align-middle text-center bg-soft-success">GURU KELAS</th>
+                                            <th colspan="6" class="th-main align-middle text-center bg-soft-orange">GURU PJOK</th>
+                                            <th colspan="6" class="th-main align-middle text-center bg-soft-purple">GURU PAI</th>
+                                            <th colspan="6" class="th-main align-middle text-center bg-soft-danger">GURU PA KRISTEN</th>
+                                            <th colspan="6" class="th-main align-middle text-center bg-soft-abu">GURU LAINNYA</th>
+                                        </tr>
+                                        <tr class="small text-center">
+                                            <!-- KS -->
+                                            <th class="th-sub bg-soft-primary">CPNS</th>
+                                            <th class="th-sub bg-soft-primary">PNS</th>
+                                            <th class="th-sub bg-soft-primary">PPPK</th>
+                                            <th class="th-sub bg-soft-primary">PW</th>
+                                            <th class="th-sub bg-soft-primary">Non ASN</th>
+                                            <th class="th-sub bg-soft-primary text-maroon font-weight-bold">JML</th>
+                                            <!-- GURU KELAS -->
+                                            <th class="th-sub bg-soft-success">CPNS</th>
+                                            <th class="th-sub bg-soft-success">PNS</th>
+                                            <th class="th-sub bg-soft-success">PPPK</th>
+                                            <th class="th-sub bg-soft-success">PW</th>
+                                            <th class="th-sub bg-soft-success">Non ASN</th>
+                                            <th class="th-sub bg-soft-success text-maroon font-weight-bold">JML</th>
+                                            <!-- PJOK -->
+                                            <th class="th-sub bg-soft-orange">CPNS</th>
+                                            <th class="th-sub bg-soft-orange">PNS</th>
+                                            <th class="th-sub bg-soft-orange">PPPK</th>
+                                            <th class="th-sub bg-soft-orange">PW</th>
+                                            <th class="th-sub bg-soft-orange">Non ASN</th>
+                                            <th class="th-sub bg-soft-orange text-maroon font-weight-bold">JML</th>
+                                            <!-- PAI -->
+                                            <th class="th-sub bg-soft-purple">CPNS</th>
+                                            <th class="th-sub bg-soft-purple">PNS</th>
+                                            <th class="th-sub bg-soft-purple">PPPK</th>
+                                            <th class="th-sub bg-soft-purple">PW</th>
+                                            <th class="th-sub bg-soft-purple">Non ASN</th>
+                                            <th class="th-sub bg-soft-purple text-maroon font-weight-bold">JML</th>
+                                            <!-- KRISTEN -->
+                                            <th class="th-sub bg-soft-danger">CPNS</th>
+                                            <th class="th-sub bg-soft-danger">PNS</th>
+                                            <th class="th-sub bg-soft-danger">PPPK</th>
+                                            <th class="th-sub bg-soft-danger">PW</th>
+                                            <th class="th-sub bg-soft-danger">Non ASN</th>
+                                            <th class="th-sub bg-soft-danger text-maroon font-weight-bold">JML</th>
+                                            <!-- GURU LAINNYA -->
+                                            <th class="th-sub bg-soft-abu">CPNS</th>
+                                            <th class="th-sub bg-soft-abu">PNS</th>
+                                            <th class="th-sub bg-soft-abu">PPPK</th>
+                                            <th class="th-sub bg-soft-abu">PW</th>
+                                            <th class="th-sub bg-soft-abu">Non ASN</th>
+                                            <th class="th-sub bg-soft-abu text-maroon font-weight-bold">JML</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                    <tfoot class="bg-light font-weight-bold" style="border-top: 3px solid #800000;">
+                                        <tr><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr>
+                                    </tfoot>
+                                </table>
                             </div>
-
-                            <!-- CARD 1.2: TENDIK -->
-                            <div class="card-sultan w-100 overflow-hidden shadow-sm">
-                                <div class="card-body p-3 w-100">
-                                    <div class="sultan-card-section-header mb-3">
-                                        <div class="sultan-card-section-title">
-                                            <i class="fas fa-user-cog text-maroon"></i>
-                                            <h6 class="mb-0 font-weight-bold">Keadaan Tenaga Kependidikan (Tendik)</h6>
-                                        </div>
-                                    </div>
-
-                                    <table id="keadaanptksdn_tabelTendik"
-                                        class="table table-bordered table-hover table-premium table-sultan-compact table-header-compact mb-0 w-100"
-                                        style="border: none !important;">
-                                        <thead class="thead-sultan-premium thead-tiered">
-                                            <tr>
-                                                <th rowspan="2" class="th-main align-middle text-maroon text-left px-3 col-sticky-left border-bottom-maroon" style="z-index:50; border-right: 2px solid #dee2e6; white-space: nowrap;"><span class="sultan-th-title">NAMA SEKOLAH</span></th>
-                                                <th colspan="6" class="th-main align-middle text-center bg-soft-warning">PENGELOLA UMUM OPERASIONAL</th>
-                                                <th colspan="6" class="th-main align-middle text-center bg-soft-info">OPERATOR LAYANAN OPERASIONAL</th>
-                                                <th colspan="6" class="th-main align-middle text-center bg-soft-primary">PENGELOLA LAYANAN OPERASIONAL</th>
-                                                <th colspan="6" class="th-main align-middle text-center bg-soft-warning">PENATA LAYANAN OPERASIONAL</th>
-                                                <th colspan="6" class="th-main align-middle text-center bg-soft-abu">TENDIK LAINNYA</th>
-                                            </tr>
-                                            <tr class="small text-center">
-                                                <!-- PENGELOLA UMUM -->
-                                                <th class="th-sub bg-soft-warning">CPNS</th>
-                                                <th class="th-sub bg-soft-warning">PNS</th>
-                                                <th class="th-sub bg-soft-warning">PPPK</th>
-                                                <th class="th-sub bg-soft-warning">PW</th>
-                                                <th class="th-sub bg-soft-warning">Non ASN</th>
-                                                <th class="th-sub bg-soft-warning text-maroon font-weight-bold">JML</th>
-                                                <!-- OPERATOR LAYANAN -->
-                                                <th class="th-sub bg-soft-info">CPNS</th>
-                                                <th class="th-sub bg-soft-info">PNS</th>
-                                                <th class="th-sub bg-soft-info">PPPK</th>
-                                                <th class="th-sub bg-soft-info">PW</th>
-                                                <th class="th-sub bg-soft-info">Non ASN</th>
-                                                <th class="th-sub bg-soft-info text-maroon font-weight-bold">JML</th>
-                                                <!-- PENGELOLA LAYANAN -->
-                                                <th class="th-sub bg-soft-primary">CPNS</th>
-                                                <th class="th-sub bg-soft-primary">PNS</th>
-                                                <th class="th-sub bg-soft-primary">PPPK</th>
-                                                <th class="th-sub bg-soft-primary">PW</th>
-                                                <th class="th-sub bg-soft-primary">Non ASN</th>
-                                                <th class="th-sub bg-soft-primary text-maroon font-weight-bold">JML</th>
-                                                <!-- PENATA LAYANAN -->
-                                                <th class="th-sub bg-soft-warning">CPNS</th>
-                                                <th class="th-sub bg-soft-warning">PNS</th>
-                                                <th class="th-sub bg-soft-warning">PPPK</th>
-                                                <th class="th-sub bg-soft-warning">PW</th>
-                                                <th class="th-sub bg-soft-warning">Non ASN</th>
-                                                <th class="th-sub bg-soft-warning text-maroon font-weight-bold">JML</th>
-                                                <!-- TENDIK LAINNYA -->
-                                                <th class="th-sub bg-soft-abu">CPNS</th>
-                                                <th class="th-sub bg-soft-abu">PNS</th>
-                                                <th class="th-sub bg-soft-abu">PPPK</th>
-                                                <th class="th-sub bg-soft-abu">PW</th>
-                                                <th class="th-sub bg-soft-abu">Non ASN</th>
-                                                <th class="th-sub bg-soft-abu text-maroon font-weight-bold">JML</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody></tbody>
-                                        <tfoot class="bg-light font-weight-bold" style="border-top: 3px solid #800000;">
-                                            <tr><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr>
-                                        </tfoot>
-                                    </table>
-                                </div>
-                            </div>
-
                         </div>
 
-                        <!-- ============================================================== -->
-                        <!-- TAB 2: MENURUT STATUS KEPEGAWAIAN                              -->
-                        <!-- ============================================================== -->
-                        <div class="tab-pane fade" id="keadaanptksdn_tabStatus" role="tabpanel">
-                            
-                            <div class="card-sultan w-100 overflow-hidden shadow-sm">
-                                <div class="card-body p-3 w-100">
-                                    <div class="sultan-card-section-header mb-3">
-                                        <div class="sultan-card-section-title">
-                                            <i class="fas fa-id-badge text-maroon"></i>
-                                            <h6 class="mb-0 font-weight-bold">Keadaan PTK Menurut Status Kepegawaian</h6>
-                                        </div>
+                        <!-- CARD 1.2: TENDIK -->
+                        <div class="card-sultan w-100 overflow-hidden shadow-sm">
+                            <div class="card-body p-3 w-100">
+                                <div class="sultan-card-section-header mb-3">
+                                    <div class="sultan-card-section-title">
+                                        <i class="fas fa-user-cog text-maroon"></i>
+                                        <h6 class="mb-0 font-weight-bold">Keadaan Tenaga Kependidikan (Tendik)</h6>
                                     </div>
-
-                                    <table id="keadaanptksdn_tabelStatus"
-                                        class="table table-bordered table-hover table-premium table-sultan-compact table-header-compact mb-0 w-100"
-                                        style="border: none !important;">
-                                        <thead class="thead-sultan-premium thead-tiered">
-                                            <tr>
-                                                <th rowspan="2" class="th-main align-middle text-maroon text-left px-3 col-sticky-left border-bottom-maroon" style="z-index:50; border-right: 2px solid #dee2e6; white-space: nowrap;"><span class="sultan-th-title">NAMA SEKOLAH</span></th>
-                                                <th colspan="4" class="th-main align-middle text-center bg-soft-orange">JUMLAH CPNS</th>
-                                                <th colspan="4" class="th-main align-middle text-center bg-soft-primary">JUMLAH PNS</th>
-                                                <th colspan="4" class="th-main align-middle text-center bg-soft-success">JUMLAH PPPK</th>
-                                                <th colspan="4" class="th-main align-middle text-center bg-soft-info">JUMLAH PPPK PW</th>
-                                                <th colspan="4" class="th-main align-middle text-center bg-soft-warning">JUMLAH NON ASN</th>
-                                                <th colspan="4" class="th-main align-middle text-center text-maroon font-weight-bold border-bottom-maroon bg-soft-maroon">JUMLAH SELURUH PTK</th>
-                                            </tr>
-                                            <tr class="small text-center">
-                                                <!-- CPNS -->
-                                                <th class="th-sub bg-soft-orange">KS</th>
-                                                <th class="th-sub bg-soft-orange">Guru</th>
-                                                <th class="th-sub bg-soft-orange">Tendik</th>
-                                                <th class="th-sub bg-soft-orange text-maroon font-weight-bold">JML</th>
-                                                <!-- PNS -->
-                                                <th class="th-sub bg-soft-primary">KS</th>
-                                                <th class="th-sub bg-soft-primary">Guru</th>
-                                                <th class="th-sub bg-soft-primary">Tendik</th>
-                                                <th class="th-sub bg-soft-primary text-maroon font-weight-bold">JML</th>
-                                                <!-- PPPK -->
-                                                <th class="th-sub bg-soft-success">KS</th>
-                                                <th class="th-sub bg-soft-success">Guru</th>
-                                                <th class="th-sub bg-soft-success">Tendik</th>
-                                                <th class="th-sub bg-soft-success text-maroon font-weight-bold">JML</th>
-                                                <!-- PPPK PW -->
-                                                <th class="th-sub bg-soft-info">KS</th>
-                                                <th class="th-sub bg-soft-info">Guru</th>
-                                                <th class="th-sub bg-soft-info">Tendik</th>
-                                                <th class="th-sub bg-soft-info text-maroon font-weight-bold">JML</th>
-                                                <!-- NON ASN -->
-                                                <th class="th-sub bg-soft-warning">KS</th>
-                                                <th class="th-sub bg-soft-warning">Guru</th>
-                                                <th class="th-sub bg-soft-warning">Tendik</th>
-                                                <th class="th-sub bg-soft-warning text-maroon font-weight-bold">JML</th>
-                                                <!-- TOTAL SELURUH PTK -->
-                                                <th class="th-sub bg-soft-maroon">KS</th>
-                                                <th class="th-sub bg-soft-maroon">Guru</th>
-                                                <th class="th-sub bg-soft-maroon">Tendik</th>
-                                                <th class="th-sub bg-soft-maroon text-maroon font-weight-bold">TOTAL</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody></tbody>
-                                        <tfoot class="bg-light font-weight-bold" style="border-top: 3px solid #800000;">
-                                            <tr><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr>
-                                        </tfoot>
-                                    </table>
                                 </div>
-                            </div>
 
+                                <table id="keadaanptksdn_tabelTendik"
+                                    class="table table-bordered table-hover table-premium table-sultan-compact table-header-compact mb-0 w-100"
+                                    style="border: none !important;">
+                                    <thead class="thead-sultan-premium thead-tiered">
+                                        <tr>
+                                            <th rowspan="2" class="th-main align-middle text-maroon text-left px-3 col-sticky-left border-bottom-maroon" style="z-index:50; border-right: 2px solid #dee2e6; white-space: nowrap;"><span class="sultan-th-title">NAMA SEKOLAH</span></th>
+                                            <th colspan="6" class="th-main align-middle text-center bg-soft-warning">PENGELOLA UMUM OPERASIONAL</th>
+                                            <th colspan="6" class="th-main align-middle text-center bg-soft-info">OPERATOR LAYANAN OPERASIONAL</th>
+                                            <th colspan="6" class="th-main align-middle text-center bg-soft-primary">PENGELOLA LAYANAN OPERASIONAL</th>
+                                            <th colspan="6" class="th-main align-middle text-center bg-soft-warning">PENATA LAYANAN OPERASIONAL</th>
+                                            <th colspan="6" class="th-main align-middle text-center bg-soft-abu">TENDIK LAINNYA</th>
+                                        </tr>
+                                        <tr class="small text-center">
+                                            <!-- PENGELOLA UMUM -->
+                                            <th class="th-sub bg-soft-warning">CPNS</th>
+                                            <th class="th-sub bg-soft-warning">PNS</th>
+                                            <th class="th-sub bg-soft-warning">PPPK</th>
+                                            <th class="th-sub bg-soft-warning">PW</th>
+                                            <th class="th-sub bg-soft-warning">Non ASN</th>
+                                            <th class="th-sub bg-soft-warning text-maroon font-weight-bold">JML</th>
+                                            <!-- OPERATOR LAYANAN -->
+                                            <th class="th-sub bg-soft-info">CPNS</th>
+                                            <th class="th-sub bg-soft-info">PNS</th>
+                                            <th class="th-sub bg-soft-info">PPPK</th>
+                                            <th class="th-sub bg-soft-info">PW</th>
+                                            <th class="th-sub bg-soft-info">Non ASN</th>
+                                            <th class="th-sub bg-soft-info text-maroon font-weight-bold">JML</th>
+                                            <!-- PENGELOLA LAYANAN -->
+                                            <th class="th-sub bg-soft-primary">CPNS</th>
+                                            <th class="th-sub bg-soft-primary">PNS</th>
+                                            <th class="th-sub bg-soft-primary">PPPK</th>
+                                            <th class="th-sub bg-soft-primary">PW</th>
+                                            <th class="th-sub bg-soft-primary">Non ASN</th>
+                                            <th class="th-sub bg-soft-primary text-maroon font-weight-bold">JML</th>
+                                            <!-- PENATA LAYANAN -->
+                                            <th class="th-sub bg-soft-warning">CPNS</th>
+                                            <th class="th-sub bg-soft-warning">PNS</th>
+                                            <th class="th-sub bg-soft-warning">PPPK</th>
+                                            <th class="th-sub bg-soft-warning">PW</th>
+                                            <th class="th-sub bg-soft-warning">Non ASN</th>
+                                            <th class="th-sub bg-soft-warning text-maroon font-weight-bold">JML</th>
+                                            <!-- TENDIK LAINNYA -->
+                                            <th class="th-sub bg-soft-abu">CPNS</th>
+                                            <th class="th-sub bg-soft-abu">PNS</th>
+                                            <th class="th-sub bg-soft-abu">PPPK</th>
+                                            <th class="th-sub bg-soft-abu">PW</th>
+                                            <th class="th-sub bg-soft-abu">Non ASN</th>
+                                            <th class="th-sub bg-soft-abu text-maroon font-weight-bold">JML</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                    <tfoot class="bg-light font-weight-bold" style="border-top: 3px solid #800000;">
+                                        <tr><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr>
+                                    </tfoot>
+                                </table>
+                            </div>
                         </div>
 
                     </div>
+
+                    <!-- ============================================================== -->
+                    <!-- VIEW 2: MENURUT STATUS KEPEGAWAIAN                             -->
+                    <!-- ============================================================== -->
+                    <div id="keadaanptksdn_viewStatus" style="display:none;">
+                        
+                        <div class="card-sultan w-100 overflow-hidden shadow-sm">
+                            <div class="card-body p-3 w-100">
+                                <div class="sultan-card-section-header mb-3">
+                                    <div class="sultan-card-section-title">
+                                        <i class="fas fa-id-badge text-maroon"></i>
+                                        <h6 class="mb-0 font-weight-bold">Keadaan PTK Menurut Status Kepegawaian</h6>
+                                    </div>
+                                </div>
+
+                                <table id="keadaanptksdn_tabelStatus"
+                                    class="table table-bordered table-hover table-premium table-sultan-compact table-header-compact mb-0 w-100"
+                                    style="border: none !important;">
+                                    <thead class="thead-sultan-premium thead-tiered">
+                                        <tr>
+                                            <th rowspan="2" class="th-main align-middle text-maroon text-left px-3 col-sticky-left border-bottom-maroon" style="z-index:50; border-right: 2px solid #dee2e6; white-space: nowrap;"><span class="sultan-th-title">NAMA SEKOLAH</span></th>
+                                            <th colspan="4" class="th-main align-middle text-center bg-soft-orange">JUMLAH CPNS</th>
+                                            <th colspan="4" class="th-main align-middle text-center bg-soft-primary">JUMLAH PNS</th>
+                                            <th colspan="4" class="th-main align-middle text-center bg-soft-success">JUMLAH PPPK</th>
+                                            <th colspan="4" class="th-main align-middle text-center bg-soft-info">JUMLAH PPPK PW</th>
+                                            <th colspan="4" class="th-main align-middle text-center bg-soft-warning">JUMLAH NON ASN</th>
+                                            <th colspan="4" class="th-main align-middle text-center text-maroon font-weight-bold border-bottom-maroon bg-soft-maroon">JUMLAH SELURUH PTK</th>
+                                        </tr>
+                                        <tr class="small text-center">
+                                            <!-- CPNS -->
+                                            <th class="th-sub bg-soft-orange">KS</th>
+                                            <th class="th-sub bg-soft-orange">Guru</th>
+                                            <th class="th-sub bg-soft-orange">Tendik</th>
+                                            <th class="th-sub bg-soft-orange text-maroon font-weight-bold">JML</th>
+                                            <!-- PNS -->
+                                            <th class="th-sub bg-soft-primary">KS</th>
+                                            <th class="th-sub bg-soft-primary">Guru</th>
+                                            <th class="th-sub bg-soft-primary">Tendik</th>
+                                            <th class="th-sub bg-soft-primary text-maroon font-weight-bold">JML</th>
+                                            <!-- PPPK -->
+                                            <th class="th-sub bg-soft-success">KS</th>
+                                            <th class="th-sub bg-soft-success">Guru</th>
+                                            <th class="th-sub bg-soft-success">Tendik</th>
+                                            <th class="th-sub bg-soft-success text-maroon font-weight-bold">JML</th>
+                                            <!-- PPPK PW -->
+                                            <th class="th-sub bg-soft-info">KS</th>
+                                            <th class="th-sub bg-soft-info">Guru</th>
+                                            <th class="th-sub bg-soft-info">Tendik</th>
+                                            <th class="th-sub bg-soft-info text-maroon font-weight-bold">JML</th>
+                                            <!-- NON ASN -->
+                                            <th class="th-sub bg-soft-warning">KS</th>
+                                            <th class="th-sub bg-soft-warning">Guru</th>
+                                            <th class="th-sub bg-soft-warning">Tendik</th>
+                                            <th class="th-sub bg-soft-warning text-maroon font-weight-bold">JML</th>
+                                            <!-- TOTAL SELURUH PTK -->
+                                            <th class="th-sub bg-soft-maroon">KS</th>
+                                            <th class="th-sub bg-soft-maroon">Guru</th>
+                                            <th class="th-sub bg-soft-maroon">Tendik</th>
+                                            <th class="th-sub bg-soft-maroon text-maroon font-weight-bold">TOTAL</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                    <tfoot class="bg-light font-weight-bold" style="border-top: 3px solid #800000;">
+                                        <tr><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+
+                    </div>
+
                 </div>
 
             </div>
@@ -317,6 +326,7 @@
     var KEADAANPTKSDN_TABEL_TENDIK_INSTANCE = null;
     var KEADAANPTKSDN_TABEL_STATUS_INSTANCE = null;
 
+    var KEADAANPTKSDN_CURRENT_MODE = "jabatan";
     var KEADAANPTKSDN_USER_AKTIF = "";
     var KEADAANPTKSDN_IS_ADMIN = false;
     var KEADAANPTKSDN_UNIT_TERKUNCI = "";
@@ -338,35 +348,32 @@
             KEADAANPTKSDN_USER_NPSN = user.npsn || user.username || "";
         } catch (e) { KEADAANPTKSDN_USER_NPSN = ""; KEADAANPTKSDN_IS_ADMIN = false; }
 
-        // Render Filter Bar Global
-        var extraButtons = '<div class="divider-vertical d-none d-md-block mx-2"></div>' +
-            '<button type="button" id="keadaanptksdn_btnSync" class="sultan-btn-refresh" title="Segarkan Data dari Server" disabled>' +
-            '<i class="fas fa-sync-alt"></i></button>' +
-            '<button type="button" id="keadaanptksdn_btnExport" class="sultan-btn-excel shadow-sm ml-auto" title="Unduh Data ke Excel" style="display: none;">' +
-            '<i class="fas fa-file-excel"></i> UNDUH EXCEL</button>';
-
-        $('#keadaanptksdn_filterBarArea').html(
-            SultanUI.renderFilterBar([
-                {
-                    id: 'keadaanptksdn_filterUnit',
-                    placeholder: 'Memvalidasi Akses...',
-                    disabled: true
-                }
-            ], extraButtons)
-        );
-
         // VAKSIN ANTI MEMORY LEAK SPA
         $(document).off('click', '#keadaanptksdn_btnSync').on('click', '#keadaanptksdn_btnSync', keadaanptksdn_tarikDataServer);
         $(document).off('change', '#keadaanptksdn_filterUnit').on('change', '#keadaanptksdn_filterUnit', keadaanptksdn_terapkanFilterLokal);
         $(document).off('click', '#keadaanptksdn_btnExport').on('click', '#keadaanptksdn_btnExport', keadaanptksdn_exportExcel);
 
-        // Penyesuaian Kolom saat Tab Berganti
-        $(document).off('shown.bs.tab', 'a[data-toggle="pill"]').on('shown.bs.tab', 'a[data-toggle="pill"]', function () {
-            setTimeout(function () {
-                if (KEADAANPTKSDN_TABEL_PENDIDIK_INSTANCE) KEADAANPTKSDN_TABEL_PENDIDIK_INSTANCE.columns.adjust();
-                if (KEADAANPTKSDN_TABEL_TENDIK_INSTANCE) KEADAANPTKSDN_TABEL_TENDIK_INSTANCE.columns.adjust();
-                if (KEADAANPTKSDN_TABEL_STATUS_INSTANCE) KEADAANPTKSDN_TABEL_STATUS_INSTANCE.columns.adjust();
-            }, 50);
+        // Segmented Switcher (Jabatan vs Status)
+        $(document).off('click', '.sultan-segmented-btn[data-mode]').on('click', '.sultan-segmented-btn[data-mode]', function () {
+            var mode = $(this).data('mode');
+            KEADAANPTKSDN_CURRENT_MODE = mode;
+            $('.sultan-segmented-btn[data-mode]').removeClass('active');
+            $(this).addClass('active');
+
+            if (mode === 'jabatan') {
+                $('#keadaanptksdn_viewJabatan').fadeIn(200);
+                $('#keadaanptksdn_viewStatus').hide();
+                setTimeout(function () {
+                    if (KEADAANPTKSDN_TABEL_PENDIDIK_INSTANCE) KEADAANPTKSDN_TABEL_PENDIDIK_INSTANCE.columns.adjust();
+                    if (KEADAANPTKSDN_TABEL_TENDIK_INSTANCE) KEADAANPTKSDN_TABEL_TENDIK_INSTANCE.columns.adjust();
+                }, 50);
+            } else {
+                $('#keadaanptksdn_viewJabatan').hide();
+                $('#keadaanptksdn_viewStatus').fadeIn(200);
+                setTimeout(function () {
+                    if (KEADAANPTKSDN_TABEL_STATUS_INSTANCE) KEADAANPTKSDN_TABEL_STATUS_INSTANCE.columns.adjust();
+                }, 50);
+            }
         });
 
         keadaanptksdn_validasiAksesUser();
@@ -508,9 +515,12 @@
         $('#keadaanptksdn_tableState').show();
 
         setTimeout(function () {
-            if (KEADAANPTKSDN_TABEL_PENDIDIK_INSTANCE) KEADAANPTKSDN_TABEL_PENDIDIK_INSTANCE.columns.adjust();
-            if (KEADAANPTKSDN_TABEL_TENDIK_INSTANCE) KEADAANPTKSDN_TABEL_TENDIK_INSTANCE.columns.adjust();
-            if (KEADAANPTKSDN_TABEL_STATUS_INSTANCE) KEADAANPTKSDN_TABEL_STATUS_INSTANCE.columns.adjust();
+            if (KEADAANPTKSDN_CURRENT_MODE === 'jabatan') {
+                if (KEADAANPTKSDN_TABEL_PENDIDIK_INSTANCE) KEADAANPTKSDN_TABEL_PENDIDIK_INSTANCE.columns.adjust();
+                if (KEADAANPTKSDN_TABEL_TENDIK_INSTANCE) KEADAANPTKSDN_TABEL_TENDIK_INSTANCE.columns.adjust();
+            } else {
+                if (KEADAANPTKSDN_TABEL_STATUS_INSTANCE) KEADAANPTKSDN_TABEL_STATUS_INSTANCE.columns.adjust();
+            }
         }, 50);
     }
 
@@ -698,11 +708,11 @@
     // 4. EXPORT EXCEL CERDAS SESUAI TAB AKTIF
     // =================================================================
     function keadaanptksdn_exportExcel() {
-        var activeTabId = $('#keadaanptksdn_subTabs .nav-link.active').attr('href');
-        var targetTableId = (activeTabId === '#keadaanptksdn_tabStatus') ? 'keadaanptksdn_tabelStatus' : 'keadaanptksdn_tabelPendidik';
-        var tableTitle = (activeTabId === '#keadaanptksdn_tabStatus') ? 'Keadaan_PTK_Status_SDN' : 'Keadaan_PTK_Jabatan_SDN';
+        var activeMode = KEADAANPTKSDN_CURRENT_MODE || 'jabatan';
+        var targetTableId = (activeMode === 'status') ? 'keadaanptksdn_tabelStatus' : 'keadaanptksdn_tabelPendidik';
+        var tableTitle = (activeMode === 'status') ? 'Keadaan_PTK_Status_SDN' : 'Keadaan_PTK_Jabatan_SDN';
 
-        var dtInstance = (activeTabId === '#keadaanptksdn_tabStatus') ? KEADAANPTKSDN_TABEL_STATUS_INSTANCE : KEADAANPTKSDN_TABEL_PENDIDIK_INSTANCE;
+        var dtInstance = (activeMode === 'status') ? KEADAANPTKSDN_TABEL_STATUS_INSTANCE : KEADAANPTKSDN_TABEL_PENDIDIK_INSTANCE;
         if (!dtInstance) {
             Sultan.alert('warning', 'Belum Ada Data', 'Silakan tunggu data dimuat terlebih dahulu.');
             return;
