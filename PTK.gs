@@ -1170,14 +1170,24 @@ function getDataKebutuhanGuruSDNMaster() {
       s.guru_kelas.selisih = totalGk - s.guru_kelas.keb;
       s.guru_kelas.ket = s.guru_kelas.selisih < 0 ? "Kurang " + Math.abs(s.guru_kelas.selisih) : (s.guru_kelas.selisih > 0 ? "Lebih " + s.guru_kelas.selisih : "Sesuai");
 
-      // C. Guru PJOK: Keb = ceil(rombel / 6) minimal 1 jika rombel > 0
-      s.guru_pjok.keb = rombel > 0 ? Math.max(1, Math.ceil(rombel / 6)) : 0;
+      // Helper formula beban kerja mapel (PJOK & PAI) sesuai kebijakan dinas:
+      // 1-10 rombel = 1 guru, 11-15 rombel = 2 guru, 16-20 rombel = 3 guru
+      function hitungKebMapel(jmlRombel) {
+        if (!jmlRombel || jmlRombel <= 0) return 0;
+        if (jmlRombel <= 10) return 1;
+        if (jmlRombel <= 15) return 2;
+        if (jmlRombel <= 20) return 3;
+        return Math.max(3, Math.ceil(jmlRombel / 6));
+      }
+
+      // C. Guru PJOK: 1-10 rombel = 1, 11-15 rombel = 2, 16-20 rombel = 3
+      s.guru_pjok.keb = hitungKebMapel(rombel);
       var totalPjok = s.guru_pjok.cpns + s.guru_pjok.pns + s.guru_pjok.pppk + s.guru_pjok.pw + s.guru_pjok.non_asn_lt + s.guru_pjok.non_asn_gt;
       s.guru_pjok.selisih = totalPjok - s.guru_pjok.keb;
       s.guru_pjok.ket = s.guru_pjok.selisih < 0 ? "Kurang " + Math.abs(s.guru_pjok.selisih) : (s.guru_pjok.selisih > 0 ? "Lebih " + s.guru_pjok.selisih : "Sesuai");
 
-      // D. Guru PAI: Keb = ceil(rombel / 6) minimal 1 jika rombel > 0
-      s.guru_pai.keb = rombel > 0 ? Math.max(1, Math.ceil(rombel / 6)) : 0;
+      // D. Guru PAI: 1-10 rombel = 1, 11-15 rombel = 2, 16-20 rombel = 3
+      s.guru_pai.keb = hitungKebMapel(rombel);
       var totalPai = s.guru_pai.cpns + s.guru_pai.pns + s.guru_pai.pppk + s.guru_pai.pw + s.guru_pai.non_asn_lt + s.guru_pai.non_asn_gt;
       s.guru_pai.selisih = totalPai - s.guru_pai.keb;
       s.guru_pai.ket = s.guru_pai.selisih < 0 ? "Kurang " + Math.abs(s.guru_pai.selisih) : (s.guru_pai.selisih > 0 ? "Lebih " + s.guru_pai.selisih : "Sesuai");
