@@ -50,27 +50,20 @@
                     </div>
                 </div>
 
-                <div class="sultan-filter-pill-container shadow-sm mb-4">
-                    <div class="sultan-filter-item">
-                        <select id="keadaanptksdn_filterUnit" disabled>
-                            <option value="">- Memvalidasi Akses... -</option>
-                        </select>
-                        <i class="fas fa-chevron-down"></i>
-                    </div>
-
-                    <div class="divider-vertical d-none d-md-block mx-2"></div>
-
-                    <button type="button" id="keadaanptksdn_btnSync" class="sultan-btn-refresh"
-                        title="Segarkan Data dari Server" disabled>
-                        <i class="fas fa-sync-alt"></i>
-                    </button>
-                    <button type="button" id="keadaanptksdn_btnExport" class="btn btn-link p-0 ml-auto sultan-btn-icon-excel" title="Unduh Data ke Excel" style="display: none;">
-                        <i class="fas fa-file-excel fa-2x text-success"></i>
-                    </button>
-                </div>
+                <!-- ==================== FILTER BAR ==================== -->
+                <div id="keadaanptksdn_filterBarArea"></div>
 
                 <div class="card-sultan w-100 overflow-hidden">
                     <div class="card-body p-3 w-100">
+                        <div class="sultan-card-section-header">
+                            <div class="sultan-card-section-title">
+                                <i class="fas fa-school text-maroon"></i>
+                                <h6 class="mb-0">Rekapitulasi Keadaan PTK</h6>
+                            </div>
+                            <button type="button" id="keadaanptksdn_btnExport" class="sultan-btn-excel shadow-sm" title="Unduh Data ke Excel" style="display: none;">
+                                <i class="fas fa-file-excel"></i> UNDUH EXCEL
+                            </button>
+                        </div>
 
                         <div id="keadaanptksdn_loadingState">
                             <!-- Spinner Otomatis via SultanUI.showLoading -->
@@ -85,8 +78,7 @@
                                     <tr>
                                         <th rowspan="2"
                                             class="th-main align-middle text-maroon text-left px-3 col-sticky-left border-bottom-maroon"
-                                            style="z-index:50; border-right: 2px solid #dee2e6; white-space: nowrap;">UNIT
-                                            KERJA</th>
+                                            style="z-index:50; border-right: 2px solid #dee2e6; white-space: nowrap;"><span class="sultan-th-title">NAMA SEKOLAH</span></th>
 
                                         <th colspan="3" class="th-main align-middle text-center bg-soft-primary">KEPALA
                                             SEKOLAH</th>
@@ -328,7 +320,7 @@
     var KEADAANPTKSDN_UNIT_TERKUNCI = "";
     var KEADAANPTKSDN_USER_NPSN = "";
 
-    $(document).ready(function () {
+    (function () {
         KEADAANPTKSDN_TABEL_INSTANCE = null;
         $('#keadaanptksdn_tableState').hide();
         SultanUI.showLoading('#keadaanptksdn_loadingState', 'Mengambil Rekapitulasi Server...');
@@ -341,13 +333,28 @@
             KEADAANPTKSDN_USER_NPSN = user.npsn || user.username || "";
         } catch (e) { KEADAANPTKSDN_USER_NPSN = ""; KEADAANPTKSDN_IS_ADMIN = false; }
 
+        // Render Filter Bar Global
+        var syncBtn = '<div class="divider-vertical d-none d-md-block mx-2"></div>' +
+            '<button type="button" id="keadaanptksdn_btnSync" class="sultan-btn-refresh" title="Segarkan Data dari Server" disabled>' +
+            '<i class="fas fa-sync-alt"></i></button>';
+
+        $('#keadaanptksdn_filterBarArea').html(
+            SultanUI.renderFilterBar([
+                {
+                    id: 'keadaanptksdn_filterUnit',
+                    placeholder: 'Memvalidasi Akses...',
+                    disabled: true
+                }
+            ], syncBtn)
+        );
+
         // VAKSIN 1: ANTI MEMORY LEAK SPA. Selalu .off() sebelum .on()
         $(document).off('click', '#keadaanptksdn_btnSync').on('click', '#keadaanptksdn_btnSync', keadaanptksdn_tarikDataServer);
         $(document).off('change', '#keadaanptksdn_filterUnit').on('change', '#keadaanptksdn_filterUnit', keadaanptksdn_terapkanFilterLokal);
         $(document).off('click', '#keadaanptksdn_btnExport').on('click', '#keadaanptksdn_btnExport', keadaanptksdn_exportExcel);
 
         keadaanptksdn_validasiAksesUser();
-    });
+    })();
 
     function keadaanptksdn_updateTabelKosong(htmlContent) {
         if (KEADAANPTKSDN_TABEL_INSTANCE) {
@@ -366,7 +373,7 @@
         SultanUI.showLoading('#keadaanptksdn_loadingState', 'Mempersiapkan Akses...');
 
         if (KEADAANPTKSDN_IS_ADMIN) {
-            $('#keadaanptksdn_filterUnit').empty().append('<option value="SEMUA">- Semua Unit Kerja -</option>').prop('disabled', false).removeClass('bg-light text-maroon font-weight-bold');
+            $('#keadaanptksdn_filterUnit').empty().append('<option value="SEMUA">Semua Sekolah</option>').prop('disabled', false).removeClass('bg-light text-maroon font-weight-bold');
             $('#keadaanptksdn_btnSync').prop('disabled', false);
             $('#keadaanptksdn_btnExport').show();
             keadaanptksdn_tarikDataServer();
@@ -438,7 +445,7 @@
         });
 
         var currentUnit = $('#keadaanptksdn_filterUnit').val();
-        var $selUnit = $('#keadaanptksdn_filterUnit').empty().append('<option value="SEMUA">- Semua Unit Kerja -</option>');
+        var $selUnit = $('#keadaanptksdn_filterUnit').empty().append('<option value="SEMUA">Semua Sekolah</option>');
 
         Array.from(uniqueUnit).sort().forEach(function (u) {
             $selUnit.append($('<option>', { value: u, text: u }));
@@ -497,9 +504,11 @@
         dataRows.forEach(function (row) {
             var arrRow = [];
 
-            // KEPATUHAN: Menambahkan NPSN di bawah Nama Sekolah.
-            var uiUnit = '<div style="white-space: nowrap;"><div class="sultan-table-primary text-uppercase text-left">' + (keadaanptksdn_escapeHtml(row[0]) || '-') + '</div>';
-            uiUnit += '<div class="sultan-table-secondary text-left">' + (keadaanptksdn_escapeHtml(row[1]) || '-') + '</div></div>';
+            // KEPATUHAN: Menampilkan Nama Sekolah & NPSN secara terstandar
+            var uiUnit = (typeof SultanUI !== 'undefined' && SultanUI.renderUnitSekolah)
+                ? SultanUI.renderUnitSekolah(row[0], row[1])
+                : '<div class="sultan-table-primary font-weight-bold text-left">' + (keadaanptksdn_escapeHtml(row[0]) || '-') + '</div>' +
+                  '<div class="sultan-table-secondary text-left">' + (keadaanptksdn_escapeHtml(row[1]) || '-') + '</div>';
             arrRow.push(uiUnit);
 
             // Kolom Data Numerik
