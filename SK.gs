@@ -22,6 +22,13 @@ function getOrCreateFolder(parentFolder, folderName) {
  * Sheet ID: 1wiDKez4rL5UYnpP2-OZjYowvmt1nRx-fIMy9trJlhBA
  */
 function getMappingMasterNpsn() {
+  var cacheKey = "MAP_MASTER_NPSN_CACHE";
+  var cache = CacheService.getScriptCache();
+  try {
+    var cached = cache.get(cacheKey);
+    if (cached) return JSON.parse(cached);
+  } catch (e) {}
+
   try {
     const sheet = getSheet("USER_DB", "Data User");
     const data = sheet.getDataRange().getValues();
@@ -35,6 +42,9 @@ function getMappingMasterNpsn() {
           mapping[sekolah] = npsn;
        }
     }
+    try {
+      cache.put(cacheKey, JSON.stringify(mapping), 1800); // Cache 30 menit
+    } catch(e) {}
     return mapping;
   } catch (e) {
     Logger.log("Error getMappingMasterNpsn: " + e.message);
@@ -452,16 +462,17 @@ function getDashboardSK(filterTahun, filterSemester) {
   } catch (e) {}
 
   try {
-    const sheetData = getSheet("SK_DATA_DB", "Unggah_SK");
+    const db = getDB("SK_DATA_DB");
+    const sheetData = db.getSheetByName("Unggah_SK");
     if (!sheetData) return { error: "Sheet 'Unggah_SK' tidak ditemukan!" };
-    var rawData = sheetData.getDataRange().getDisplayValues();
+    var rawData = sheetData.getDataRange().getValues();
     var rows = rawData.slice(1); 
 
     var masterSekolah = [];
     var masterSekolahSet = new Set();
-    var sheetMaster = getSheet("SK_DATA_DB", "Master_Sekolah");
+    var sheetMaster = db.getSheetByName("Master_Sekolah");
     if (sheetMaster) {
-        var rawMaster = sheetMaster.getDataRange().getDisplayValues();
+        var rawMaster = sheetMaster.getDataRange().getValues();
         for (var i = 1; i < rawMaster.length; i++) {
             if(rawMaster[i][0]) {
                 var sName = String(rawMaster[i][0]).trim();
@@ -516,6 +527,14 @@ function getDashboardSK(filterTahun, filterSemester) {
     var sekolahStatusMap = {};
     var npsnMap = (typeof getMappingMasterNpsn === 'function') ? getMappingMasterNpsn() : {};
 
+    var formatCellDate = function(val) {
+      if (!val) return "-";
+      if (val instanceof Date) {
+        return Utilities.formatDate(val, Session.getScriptTimeZone() || "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss");
+      }
+      return String(val).trim();
+    };
+
     // 2. Hitung Agregat Rinci & Kelompokkan per Status
     uniqueRows.forEach(function(r) {
       var s = String(r[9] || "").toLowerCase(); 
@@ -532,9 +551,9 @@ function getDashboardSK(filterTahun, filterSemester) {
       var itemObj = {
         nama: schoolName,
         npsn: npsnMap[schoolName.toUpperCase()] || "-",
-        kriteria: r[6] || "-",
-        tglKirim: r[0] || "-",
-        catatan: r[11] || r[13] || "-"
+        kriteria: String(r[6] || "-"),
+        tglKirim: formatCellDate(r[0]),
+        catatan: String(r[11] || r[13] || "-")
       };
 
       if (isValid) {
@@ -603,13 +622,12 @@ function getDashboardSK(filterTahun, filterSemester) {
             };
         });
         
-        // VAKSIN LOGIKA: Progress = (Total Sekolah - Belum Lapor) / Total Sekolah
-        // Ini memastikan hitungan murni berdasarkan JUMLAH SEKOLAH, bukan jumlah file ganda
+        // Progress = (Total Sekolah - Belum Lapor) / Total Sekolah
         var jmlSekolahSudahLapor = masterSekolah.length - stats.belumLaporCount;
         stats.progress = Math.round((jmlSekolahSudahLapor / masterSekolah.length) * 100);
         stats.totalSekolah = masterSekolah.length;
         
-        if(stats.progress > 100) stats.progress = 100; // Pengaman visual
+        if(stats.progress > 100) stats.progress = 100;
         if(stats.progress < 0) stats.progress = 0;
     }
 
@@ -626,11 +644,11 @@ function getDashboardSK(filterTahun, filterSemester) {
         var tVerif = parseSiabaDateTime(r[12]);
         var maxTime = Math.max(tKirim, tEdit, tVerif);
         
-        var displayTime = String(r[0]);
-        if (maxTime === tEdit && tEdit > 0) displayTime = String(r[10]);
-        if (maxTime === tVerif && tVerif > 0) displayTime = String(r[12]);
+        var displayTime = formatCellDate(r[0]);
+        if (maxTime === tEdit && tEdit > 0) displayTime = formatCellDate(r[10]);
+        if (maxTime === tVerif && tVerif > 0) displayTime = formatCellDate(r[12]);
         
-        return { sekolah: r[1], status: r[9], waktu: displayTime.replace(/['"]/g, "").trim().substring(0, 16) };
+        return { sekolah: String(r[1]), status: String(r[9]), waktu: displayTime.replace(/['"]/g, "").trim().substring(0, 16) };
     });
 
     try {
@@ -638,7 +656,7 @@ function getDashboardSK(filterTahun, filterSemester) {
     } catch(e) {}
     return stats;
 
-  } catch (e) { return { error: "Terjadi kesalahan statistik." }; }
+  } catch (e) { return { error: "Terjadi kesalahan statistik: " + e.message }; }
 }
 
 /* ======================================================================
