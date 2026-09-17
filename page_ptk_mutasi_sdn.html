@@ -19,27 +19,8 @@
   </div>
 </div>
 
-<!-- GRUP FILTER (Sultan Pill) -->
-<div class="sultan-filter-pill-container shadow-sm mb-3">
-    <div class="sultan-filter-item sultan-filter-auto">
-        <select id="ptksdn_filterUnit" disabled>
-            <option value="">Memuat Lembaga...</option>
-        </select>
-        <i class="fas fa-chevron-down"></i>
-    </div>
-
-    <div class="divider-vertical d-none d-md-block mx-1"></div>
-
-    <button type="button" id="ptksdn_btnSync" class="sultan-btn-refresh" title="Segarkan Data Server">
-        <i class="fas fa-sync-alt"></i>
-    </button>
-
-    <div class="ml-auto d-none d-md-block"></div>
-
-    <button type="button" id="ptksdn_btnMutasiGlobal" class="sultan-btn-tambah shadow-sm ml-2">
-        <i class="fas fa-exchange-alt"></i> AJUKAN MUTASI
-    </button>
-</div>
+<!-- FILTER BAR AREA (Rendered dynamically via SultanUI.renderFilterBar) -->
+<div id="ptksdn_filterBarArea"></div>
 
 <!-- TABEL RIWAYAT USULAN MUTASI SDN -->
 <div class="card-sultan">
@@ -51,21 +32,19 @@
     <!-- Tabel -->
     <div id="ptksdn_tableUsulanState" style="display:none;">
         <table id="ptksdn_tabelUsulan" class="table table-premium table-sultan-compact mb-0 w-100 text-nowrap">
-               <thead class="thead-sultan-premium">
+            <thead class="thead-sultan-premium text-uppercase font-weight-bold">
               <tr>
-                 <th class="col-sticky-left text-center align-middle" style="width: 1%;">AKSI</th>
-                 <th class="text-center align-middle">STATUS</th>
-                 <th class="text-left align-middle">NAMA PTK</th>
-                 <th class="text-center align-middle">JENIS MUTASI</th>
-                 <th class="text-center align-middle">TMT/TANGGAL</th>
-                 <th class="text-left align-middle">TUJUAN/ALASAN</th>
-                 <th class="text-center align-middle">FILE SK</th>
-                 <th class="text-left align-middle">DIINPUT</th>
-                 <th class="text-left align-middle">DIUBAH</th>
-                 <th class="text-left align-middle">VERIFIKASI</th>
+                 <th class="text-left align-middle" style="min-width:220px;"><span class="sultan-th-title">NAMA PTK</span></th>
+                 <th class="text-left align-middle"><span class="sultan-th-title">JENIS MUTASI</span></th>
+                 <th class="text-left align-middle"><span class="sultan-th-title">TMT / TANGGAL</span></th>
+                 <th class="text-left align-middle"><span class="sultan-th-title">TUJUAN / ALASAN</span></th>
+                 <th class="text-center align-middle" style="min-width:100px;"><span class="sultan-th-title">FILE SK</span></th>
+                 <th class="text-center align-middle"><span class="sultan-th-title">STATUS</span></th>
+                 <th class="text-left align-middle text-nowrap"><span class="sultan-th-title">AKTIVITAS</span></th>
+                 <th class="text-center align-middle px-2" style="width:1%; white-space:nowrap;"><span class="sultan-th-title">AKSI</span></th>
               </tr>
-           </thead>
-           <tbody></tbody>
+            </thead>
+            <tbody></tbody>
         </table>
     </div>
   </div>
@@ -228,46 +207,64 @@ var PTKSDN_ALREADY_FETCHING = false;
 var PTKSDN_CURRENT_EDIT_ROW = null;
 var PTKSDN_CURRENT_VERIFIKASI_ROW = null;
 
-$(document).ready(function() {
+(function() {
+    // Render filter bar secara dinamis via SultanUI
+    var filtersConfig = [
+        { id: 'ptksdn_filterUnit', placeholder: 'Memvalidasi Akses...', disabled: true }
+    ];
+    var extraButtons = `
+        <div class="divider-vertical d-none d-md-block mx-2"></div>
+        <button type="button" id="ptksdn_btnSync" class="sultan-btn-refresh" title="Segarkan Data Server">
+            <i class="fas fa-sync-alt"></i>
+        </button>
+        <div class="ml-auto d-none d-md-block"></div>
+        <button type="button" id="ptksdn_btnMutasiGlobal" class="sultan-btn-tambah shadow-sm ml-2">
+            <i class="fas fa-exchange-alt"></i> AJUKAN MUTASI
+        </button>
+    `;
+    $('#ptksdn_filterBarArea').html(SultanUI.renderFilterBar(filtersConfig, extraButtons));
+
     try {
         var user = getSesiUser() || {};
         PTKSDN_USER_AKTIF = user.nama_lengkap || user.fullname || user.nama || user.username || "User Web";
-        PTKSDN_IS_ADMIN = (user.role || "").toLowerCase().includes("admin");
-        PTKSDN_USER_NPSN = user.npsn || user.username || "";
+        PTKSDN_IS_ADMIN = (typeof checkUserRoleIsAdmin === 'function' && checkUserRoleIsAdmin()) || 
+                          (user.role || "").toLowerCase().includes("admin") || 
+                          (user.role || "").toLowerCase().includes("verifikator");
+        PTKSDN_USER_NPSN = String(user.npsn || user.username || user.unit || "").trim();
     } catch(e) { PTKSDN_IS_ADMIN = false; }
 
     ptksdn_initDataTablesUsulan();
     ptksdn_inisialisasiHalaman();
 
     // Event handler untuk filter
-    $(document).on('change', '#ptksdn_filterUnit', function() {
+    $(document).off('change', '#ptksdn_filterUnit').on('change', '#ptksdn_filterUnit', function() {
         ptksdn_terapkanFilterLokal();
     });
 
     // Event handler untuk tombol refresh
-    $('#ptksdn_btnSync').on('click', function() {
+    $(document).off('click', '#ptksdn_btnSync').on('click', '#ptksdn_btnSync', function() {
         ptksdn_tarikDataUsulan();
     });
 
     // Event handler untuk tombol Ajukan Mutasi
-    $('#ptksdn_btnMutasiGlobal').on('click', function() {
+    $(document).off('click', '#ptksdn_btnMutasiGlobal').on('click', '#ptksdn_btnMutasiGlobal', function() {
         ptksdn_bukaModalMutasi();
     });
 
     // Event handler untuk perubahan Unit Kerja di modal
-    $(document).on('change', '#ptksdn_mutasiUnitKerja', function() {
+    $(document).off('change', '#ptksdn_mutasiUnitKerja').on('change', '#ptksdn_mutasiUnitKerja', function() {
         var selectedUnit = $(this).val();
         ptksdn_populatePtkDropdown(selectedUnit);
     });
 
     // Event handler untuk perubahan Jenis Mutasi di modal
-    $(document).on('change', '#ptksdn_mutasiJenis', function() {
+    $(document).off('change', '#ptksdn_mutasiJenis').on('change', '#ptksdn_mutasiJenis', function() {
         var jenis = $(this).val();
         ptksdn_toggleMutasiFields(jenis);
     });
 
     // Event handler untuk input file mutasi
-    $(document).on('change', '#ptksdn_mutasiFile', function() {
+    $(document).off('change', '#ptksdn_mutasiFile').on('change', '#ptksdn_mutasiFile', function() {
         var fileName = $(this).val().split('\\').pop();
         $('#ptksdn_formMutasi .custom-file-label').html(fileName || 'Pilih file...');
     });
@@ -277,6 +274,7 @@ $(document).ready(function() {
         e.preventDefault();
         ptksdn_submitFormMutasi();
     });
+
     // Event handler untuk form verifikasi
     $(document).off('submit', '#ptksdn_formVerif').on('submit', '#ptksdn_formVerif', function(e) {
         e.preventDefault();
@@ -299,7 +297,7 @@ $(document).ready(function() {
     });
 
     // Toggle catatan box based on status
-    $(document).on('change', '#ptksdn_verifStatus', function() {
+    $(document).off('change', '#ptksdn_verifStatus').on('change', '#ptksdn_verifStatus', function() {
         var s = $(this).val();
         if (s === "Ditolak" || s === "Revisi") {
             $('#ptksdn_reqCatatanVerif').show();
@@ -310,13 +308,12 @@ $(document).ready(function() {
         }
     });
 
-
     // Event handler untuk tombol baca catatan
     $(document).off('click', '.ptksdn-btn-catatan').on('click', '.ptksdn-btn-catatan', function() {
         var pesan = $(this).attr('data-pesan') || 'Tidak ada catatan.';
         Sultan.bacaCatatan(pesan);
     });
-});
+})();
 
 function ptksdn_bukaModalMutasi(showModal = true) {
     $('#ptksdn_formMutasi')[0].reset();
@@ -671,9 +668,10 @@ function ptksdn_initDataTablesUsulan() {
                "<'row'<'col-sm-12'<'ptksdn-scroll-container sultan-scroll'tr>>>" +
                "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
         "columnDefs": [ 
-            { "targets": 0, "className": "col-sticky-left text-center align-middle" }, 
-            { "targets": [1, 3, 4, 6], "className": "text-center align-middle" }, 
-            { "targets": [2, 5, 7, 8, 9], "className": "text-left align-middle" } 
+            { "targets": 4, "className": "text-center align-middle" },
+            { "targets": 5, "className": "text-center align-middle" },
+            { "targets": 7, "className": "text-center align-middle px-2", "width": "1%", "orderable": false },
+            { "targets": [0, 1, 2, 3, 6], "className": "text-left align-middle" }
         ],
         "language": { 
             "url": "https://cdn.datatables.net/plug-ins/1.10.21/i18n/Indonesian.json", 
@@ -888,24 +886,21 @@ function ptksdn_renderTabelUsulan(data) {
             statusBadge += '<div class="mt-2"><button type="button" class="sultan-btn-note ptksdn-btn-catatan" data-pesan="' + safeKet + '"><i class="fas fa-comment-dots mr-1"></i> BACA CATATAN</button></div>';
         }
 
-        // Column 2: Status
-        var uiStatus = '<div style="font-size: 13px;">' + statusBadge + '</div>';
-
-        // Column 3: Nama PTK
+        // 1. Nama PTK
         var uiNama = '<div style="font-size: 13px;" class="sultan-table-primary">' + ptksdn_escapeHtml(row.nama_ptk) + '</div>';
         uiNama += '<div style="font-size: 13px;" class="sultan-table-secondary">NIP: ' + ptksdn_escapeHtml(nip) + '</div>';
         uiNama += '<div style="font-size: 13px;" class="sultan-table-secondary">Asal: ' + ptksdn_escapeHtml(row.lembaga_asal || '-') + '</div>';
 
-        // Column 4: Jenis Mutasi
-        var uiJenis = '<div style="font-size: 13px;" class="text-center">' + ptksdn_escapeHtml(row.jenis_mutasi || '-') + '</div>';
+        // 2. Jenis Mutasi
+        var uiJenis = '<div style="font-size: 13px;">' + ptksdn_escapeHtml(row.jenis_mutasi || '-') + '</div>';
 
-        // Column 5: TMT/Tanggal (NEW)
-        var uiTanggal = '<div style="font-size: 13px;" class="text-center">' + ptksdn_escapeHtml(row.tmt_tanggal || '-') + '</div>';
+        // 3. TMT/Tanggal
+        var uiTanggal = '<div style="font-size: 13px;">' + ptksdn_escapeHtml(row.tmt_tanggal || '-') + '</div>';
 
-        // Column 6: Tujuan/Alasan
+        // 4. Tujuan/Alasan
         var uiTujuan = '<div style="font-size: 13px;">' + ptksdn_escapeHtml(row.lembaga_tujuan || '-') + '</div>';
 
-        // Column 7: File SK
+        // 5. File SK
         var uiFileSk = '<div class="text-center">';
         if (row.file_sk && row.file_sk !== '-') {
             uiFileSk += '<button type="button" style="font-size: 13px;" class="sultan-btn-pdf" onclick="ptksdn_previewPdf(\'' + ptksdn_escapeHtml(row.file_sk) + '\')" title="Lihat Dokumen"><i class="fas fa-file-pdf"></i> LIHAT</button>';
@@ -914,20 +909,21 @@ function ptksdn_renderTabelUsulan(data) {
         }
         uiFileSk += '</div>';
 
-        // Column 8: Diinput
-        var uiDiinput = '<div style="font-size: 13px;">' + ptksdn_escapeHtml(row.tanggal_usulan || '-') + '</div>';
-        uiDiinput += '<div style="font-size: 13px;" class="sultan-table-secondary">' + ptksdn_escapeHtml(row.user_pengusul || '-') + '</div>';
+        // 6. Status
+        var uiStatus = '<div style="font-size: 13px;">' + statusBadge + '</div>';
 
-        // Column 9: Diubah
-        var uiDiubah = '<div style="font-size: 13px;">' + ptksdn_escapeHtml(row.tanggal_eksekusi || '-') + '</div>';
-        uiDiubah += '<div style="font-size: 13px;" class="sultan-table-secondary">' + ptksdn_escapeHtml(row.user_eksekutor || '-') + '</div>';
+        // 7. Aktivitas (Audit Cell SultanUI)
+        var auditWaktu = row.tanggal_eksekusi || row.tanggal_usulan || '-';
+        var auditUser = row.user_eksekutor || row.user_pengusul || '-';
+        var auditLabel = row.tanggal_eksekusi && row.tanggal_eksekusi !== '-' ? 'Diverifikasi' : 'Diajukan';
+        var tooltipAudit = `Diajukan: ${row.tanggal_usulan||'-'} (${row.user_pengusul||'-'})\nDiverifikasi: ${row.tanggal_eksekusi||'-'} (${row.user_eksekutor||'-'})`;
+        var uiAktivitas = typeof SultanUI !== 'undefined' && typeof SultanUI.renderAuditCell === 'function'
+            ? SultanUI.renderAuditCell({waktu: auditWaktu, user: auditUser, label: auditLabel, tooltip: tooltipAudit})
+            : `<div class="text-left"><div style="font-size:11.5px;" class="font-weight-bold">${auditWaktu}</div><div class="text-muted" style="font-size:11px;">${auditLabel}: ${auditUser}</div></div>`;
 
-        // Column 10: Verifikasi
-        var uiVerifikasi = '<div style="font-size: 13px;">' + ptksdn_escapeHtml(row.tanggal_eksekusi || '-') + '</div>';
-        uiVerifikasi += '<div style="font-size: 13px;" class="sultan-table-secondary">' + ptksdn_escapeHtml(row.user_eksekutor || '-') + '</div>';
-
+        // Push 8 kolom: NAMA, JENIS, TMT, TUJUAN, FILE SK, STATUS, AKTIVITAS, AKSI
         dtArray.push([
-            aksiHtml, uiStatus, uiNama, uiJenis, uiTanggal, uiTujuan, uiFileSk, uiDiinput, uiDiubah, uiVerifikasi
+            uiNama, uiJenis, uiTanggal, uiTujuan, uiFileSk, uiStatus, uiAktivitas, aksiHtml
         ]);
     });
 
