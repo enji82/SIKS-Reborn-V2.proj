@@ -142,21 +142,28 @@
                 </div>
             </div>
 
-            <!-- 1. KARTU HIGHLIGHT JENJANG MINIMAL MODERN (TERPUSAT DARI SultanUI) -->
-            <div id="dashlapbul_jenjangMinimalContainer"></div>
+            <!-- LOADING STATE TERPUSAT (STANDAR SULTAN) -->
+            <div id="dashlapbul_loadingStateRekap" class="sultan-loading-box sultan-page-transition mb-4" style="display: none;">
+                <i class="fas fa-circle-notch fa-spin sultan-spinner"></i>
+                <div class="sultan-loading-text">Memuat Data Dashboard Laporan Bulanan...</div>
+            </div>
 
-            <!-- 2. STATUS DETIL 5 KOLOM MINIMAL MODERN (TERPUSAT DARI SultanUI) -->
-            <div id="dashlapbul_metricRow2"></div>
+            <div id="dashlapbul_dashboardStateRekap" style="display: none;">
+                <!-- 1. KARTU HIGHLIGHT JENJANG MINIMAL MODERN (TERPUSAT DARI SultanUI) -->
+                <div id="dashlapbul_jenjangMinimalContainer"></div>
 
-            <div class="col-12 mt-2 px-0">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h6 class="font-weight-bold text-sultan-utama m-0 text-uppercase" style="letter-spacing: 0.5px;">
-                        <i class="fas fa-exclamation-circle mr-2"></i>Daftar Sekolah Belum Lapor
-                    </h6>
-                    <button type="button" class="sultan-btn-wa-circular shadow-sm" id="dashlapbul_btnCopySemuaHeader" title="Salin daftar semua jenjang ke WhatsApp">
-                        <i class="fab fa-whatsapp"></i>
-                    </button>
-                </div>
+                <!-- 2. STATUS DETIL 5 KOLOM MINIMAL MODERN (TERPUSAT DARI SultanUI) -->
+                <div id="dashlapbul_metricRow2"></div>
+
+                <div class="col-12 mt-2 px-0">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="font-weight-bold text-sultan-utama m-0 text-uppercase" style="letter-spacing: 0.5px;">
+                            <i class="fas fa-exclamation-circle mr-2"></i>Daftar Sekolah Belum Lapor
+                        </h6>
+                        <button type="button" class="sultan-btn-wa-circular shadow-sm" id="dashlapbul_btnCopySemuaHeader" title="Salin daftar semua jenjang ke WhatsApp">
+                            <i class="fab fa-whatsapp"></i>
+                        </button>
+                    </div>
 
                 <div class="row">
                     <!-- JENJANG SD -->
@@ -1192,6 +1199,12 @@
     }
 
     function dashlapbul_loadDashboard() {
+        // Tampilkan loading spinner terpusat standar Sultan jika dashboard belum muncul
+        if (!$('#dashlapbul_dashboardStateRekap').is(':visible')) {
+            $('#dashlapbul_loadingStateRekap').show();
+            $('#dashlapbul_dashboardStateRekap').hide();
+        }
+
         // Mode Rekap dapat diakses oleh Admin maupun User Sekolah
         $('.badge-info, .badge-warning, .badge-success, .badge-primary').css('opacity', '0.5');
 
@@ -1223,12 +1236,16 @@
                 if (res && res.error) {
                     btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-sultan-utama"></i>');
                     Sultan.alert('error', 'Gagal Sinkronisasi', res.error);
+                    $('#dashlapbul_loadingStateRekap').hide();
                     return;
                 }
 
                 var metrics = dashlapbul_calculateMetrics(masterSekolah || [], res || [], t, b);
                 
                 setTimeout(function() {
+                    $('#dashlapbul_loadingStateRekap').hide();
+                    $('#dashlapbul_dashboardStateRekap').fadeIn(250);
+
                     dashlapbul_renderMetrics(metrics);
                     DASHLAPBUL_IS_INIT = false;
                     DASHLAPBUL_REKAP_LOADED = true;
@@ -1244,6 +1261,7 @@
                 btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-sultan-utama"></i>');
                 Sultan.alert('error', 'Koneksi Terputus', err.message);
                 $('#dashlapbul_syncTime').text('Sinkron Terputus');
+                $('#dashlapbul_loadingStateRekap').hide();
             });
         });
     }
@@ -1517,29 +1535,13 @@
     }
 
     function dashlapbul_animateValue(id, endValue, suffix = "") {
-        if (typeof SultanUI !== 'undefined') {
-            SultanUI.stopLottery('#' + id);
+        if (typeof SultanUI !== 'undefined' && SultanUI.animateValue) {
+            SultanUI.animateValue(id, endValue, suffix, 800);
+            return;
         }
         var obj = document.getElementById(id);
         if (!obj) return;
-        var start = 0; var end = parseInt(endValue);
-        if (isNaN(end)) end = 0;
-
-        if (end === 0) { obj.innerHTML = "0" + (suffix ? `<small class="ml-1">${suffix}</small>` : ''); return; }
-
-        var duration = 800;
-        var range = end - start;
-        var current = start;
-        var stepTime = Math.abs(Math.floor(duration / range));
-        if (stepTime < 10) stepTime = 10;
-
-        var stepVal = Math.ceil(range / (duration / stepTime));
-
-        var timer = setInterval(function () {
-            current += stepVal;
-            if (current >= end) { current = end; clearInterval(timer); }
-            obj.innerHTML = current + (suffix ? `<small class="ml-1">${suffix}</small>` : '');
-        }, stepTime);
+        obj.innerHTML = endValue + (suffix ? `<small class="ml-1">${suffix}</small>` : '');
     }
 </script>
 <!-- Cache buster: Tue Sep 15 21:03:00 WIB 2026 -->
