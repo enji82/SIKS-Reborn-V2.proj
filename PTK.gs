@@ -1011,6 +1011,143 @@ function getDataBezettingSDN() { var sheet = getSheet(KONFIG_PTK.DB_KEY, "Bezett
 function getDataRekapGolongan() { var sheet = getSheet(KONFIG_PTK.DB_KEY, "Rekap Golongan"); if (!sheet) return []; var lastRow = sheet.getLastRow(); if (lastRow < 3) return []; return sheet.getRange(3, 1, lastRow - 2, 76).getDisplayValues(); }
 function getDataRekapPendidikan() { var sheet = getSheet(KONFIG_PTK.DB_KEY, "Rekap Pendidikan"); if (!sheet) return []; var lastRow = sheet.getLastRow(); if (lastRow < 3) return []; return sheet.getRange(3, 1, lastRow - 2, 42).getDisplayValues(); }
 
+/**
+ * REKAPITULASI KEADAAN PTK SD NEGERI (DINAMIS DARI MASTER DATA GTK)
+ * Menghitung langsung dari sheet 'Master Data GTK' secara real-time.
+ * Output: JSON string { success: true, schools: [...] }
+ */
+function getDataRekapKeadaanSDN() {
+  try {
+    var sheet = getSheet(KONFIG_PTK.DB_KEY, KONFIG_PTK.SHEET_PTK);
+    if (!sheet) return JSON.stringify({ success: false, message: "Sheet Master Data GTK tidak ditemukan.", schools: [] });
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) return JSON.stringify({ success: true, schools: [] });
+
+    // Baca kolom A (1) s/d Z (26): ID(0), NPSN(1), Unit(2), ..., StatusPeg(19), ..., Tugas(25)
+    var data = sheet.getRange(2, 1, lastRow - 1, 26).getValues();
+    var schoolMap = {};
+
+    for (var i = 0; i < data.length; i++) {
+      var row = data[i];
+      if (!row[0]) continue; // Lewati baris tanpa ID
+
+      var npsn = String(row[1] || "").trim();
+      var unit = String(row[2] || "").trim();
+      if (!unit && !npsn) continue;
+
+      var schoolKey = npsn || unit;
+
+      if (!schoolMap[schoolKey]) {
+        schoolMap[schoolKey] = {
+          npsn: npsn,
+          unit: unit,
+          jabatan: {
+            ks: { cpns: 0, pns: 0, pppk: 0, pppk_pw: 0, non_asn: 0, jml: 0 },
+            guru_kelas: { cpns: 0, pns: 0, pppk: 0, pppk_pw: 0, non_asn: 0, jml: 0 },
+            guru_pjok: { cpns: 0, pns: 0, pppk: 0, pppk_pw: 0, non_asn: 0, jml: 0 },
+            guru_pai: { cpns: 0, pns: 0, pppk: 0, pppk_pw: 0, non_asn: 0, jml: 0 },
+            guru_kristen: { cpns: 0, pns: 0, pppk: 0, pppk_pw: 0, non_asn: 0, jml: 0 },
+            guru_lainnya: { cpns: 0, pns: 0, pppk: 0, pppk_pw: 0, non_asn: 0, jml: 0 },
+            pengelola_umum: { cpns: 0, pns: 0, pppk: 0, pppk_pw: 0, non_asn: 0, jml: 0 },
+            operator_layanan: { cpns: 0, pns: 0, pppk: 0, pppk_pw: 0, non_asn: 0, jml: 0 },
+            pengelola_layanan: { cpns: 0, pns: 0, pppk: 0, pppk_pw: 0, non_asn: 0, jml: 0 },
+            penata_layanan: { cpns: 0, pns: 0, pppk: 0, pppk_pw: 0, non_asn: 0, jml: 0 },
+            tendik_lainnya: { cpns: 0, pns: 0, pppk: 0, pppk_pw: 0, non_asn: 0, jml: 0 }
+          },
+          status: {
+            cpns: { ks: 0, guru: 0, tendik: 0, jml: 0 },
+            pns: { ks: 0, guru: 0, tendik: 0, jml: 0 },
+            pppk: { ks: 0, guru: 0, tendik: 0, jml: 0 },
+            pppk_pw: { ks: 0, guru: 0, tendik: 0, jml: 0 },
+            non_asn: { ks: 0, guru: 0, tendik: 0, jml: 0 },
+            total: { ks: 0, guru: 0, tendik: 0, jml: 0 }
+          }
+        };
+      }
+
+      var sch = schoolMap[schoolKey];
+      if (!sch.unit && unit) sch.unit = unit;
+      if (!sch.npsn && npsn) sch.npsn = npsn;
+
+      // 1. Normalisasi Status Kepegawaian
+      var st = String(row[19] || "").trim().toUpperCase();
+      var statusKey = "non_asn";
+      if (st.indexOf("CPNS") !== -1) {
+        statusKey = "cpns";
+      } else if (st.indexOf("PPPK PW") !== -1 || st.indexOf("PARUH WAKTU") !== -1 || st.indexOf("PW") !== -1) {
+        statusKey = "pppk_pw";
+      } else if (st.indexOf("PPPK") !== -1) {
+        statusKey = "pppk";
+      } else if (st.indexOf("PNS") !== -1) {
+        statusKey = "pns";
+      } else {
+        statusKey = "non_asn";
+      }
+
+      // 2. Normalisasi Tugas / Jabatan
+      var tg = String(row[25] || "").trim().toUpperCase();
+      var jabKey = "tendik_lainnya";
+      var roleGroup = "tendik"; // 'ks', 'guru', 'tendik'
+
+      if (tg.indexOf("KEPALA") !== -1) {
+        jabKey = "ks";
+        roleGroup = "ks";
+      } else if (tg.indexOf("KELAS") !== -1) {
+        jabKey = "guru_kelas";
+        roleGroup = "guru";
+      } else if (tg.indexOf("PJOK") !== -1 || tg.indexOf("PENJAS") !== -1 || tg.indexOf("OLAHRAGA") !== -1) {
+        jabKey = "guru_pjok";
+        roleGroup = "guru";
+      } else if (tg.indexOf("PAI") !== -1 || tg.indexOf("AGAMA ISLAM") !== -1 || tg.indexOf("ISLAM") !== -1) {
+        jabKey = "guru_pai";
+        roleGroup = "guru";
+      } else if (tg.indexOf("KRISTEN") !== -1 || tg.indexOf("PROTESTAN") !== -1 || tg.indexOf("KATOLIK") !== -1) {
+        jabKey = "guru_kristen";
+        roleGroup = "guru";
+      } else if (tg.indexOf("GURU") !== -1) {
+        jabKey = "guru_lainnya";
+        roleGroup = "guru";
+      } else if (tg.indexOf("PENGELOLA UMUM") !== -1) {
+        jabKey = "pengelola_umum";
+        roleGroup = "tendik";
+      } else if (tg.indexOf("OPERATOR LAYANAN") !== -1 || tg.indexOf("OPERATOR") !== -1) {
+        jabKey = "operator_layanan";
+        roleGroup = "tendik";
+      } else if (tg.indexOf("PENGELOLA LAYANAN") !== -1) {
+        jabKey = "pengelola_layanan";
+        roleGroup = "tendik";
+      } else if (tg.indexOf("PENATA LAYANAN") !== -1) {
+        jabKey = "penata_layanan";
+        roleGroup = "tendik";
+      } else {
+        jabKey = "tendik_lainnya";
+        roleGroup = "tendik";
+      }
+
+      // Akumulasi Matriks 1: Menurut Jabatan
+      if (sch.jabatan[jabKey]) {
+        sch.jabatan[jabKey][statusKey]++;
+        sch.jabatan[jabKey].jml++;
+      }
+
+      // Akumulasi Matriks 2: Menurut Status Kepegawaian
+      if (sch.status[statusKey]) {
+        sch.status[statusKey][roleGroup]++;
+        sch.status[statusKey].jml++;
+      }
+      sch.status.total[roleGroup]++;
+      sch.status.total.jml++;
+    }
+
+    var schoolList = Object.keys(schoolMap).map(function(k) { return schoolMap[k]; });
+    schoolList.sort(function(a, b) { return a.unit.localeCompare(b.unit); });
+
+    return JSON.stringify({ success: true, schools: schoolList });
+  } catch (e) {
+    return JSON.stringify({ success: false, message: e.message, schools: [] });
+  }
+}
+
 // =============================================================
 // BACKEND: KELOLA DATA PTK SD SWASTA (SDS)
 // =============================================================
