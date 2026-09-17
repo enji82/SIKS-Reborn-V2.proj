@@ -45,21 +45,22 @@
 
                 <!-- 2. FILTER BAR SULTAN (PILL SYSTEM) -->
                 <div class="sultan-filter-pill-container shadow-sm mb-4">
-                    <!-- Filter Status -->
+                    <!-- Filter Nama Sekolah (Di Depan) -->
                     <div class="sultan-filter-item">
-                        <select id="vktp_filterStatus" class="form-control font-weight-bold text-maroon" style="min-width:180px;">
-                            <option value="SEMUA" selected>- Semua Status -</option>
-                            <option value="Pending">Pending</option>
-                            <option value="Disetujui">Disetujui</option>
-                            <option value="Ditolak">Ditolak</option>
+                        <select id="vktp_filterSekolah" class="form-control font-weight-bold text-maroon" style="min-width:240px;">
+                            <option value="SEMUA" selected>Semua Sekolah</option>
                         </select>
                         <i class="fas fa-chevron-down"></i>
                     </div>
 
-                    <!-- Filter Unit / Sekolah -->
+                    <!-- Filter Status -->
                     <div class="sultan-filter-item">
-                        <select id="vktp_filterSekolah" class="form-control font-weight-bold text-maroon" style="min-width:220px;">
-                            <option value="SEMUA" selected>- Semua Unit Kerja -</option>
+                        <select id="vktp_filterStatus" class="form-control font-weight-bold text-maroon" style="min-width:180px;">
+                            <option value="SEMUA" selected>Semua Status</option>
+                            <option value="Diproses">Diproses</option>
+                            <option value="Disetujui">Disetujui</option>
+                            <option value="Revisi">Revisi</option>
+                            <option value="Ditolak">Ditolak</option>
                         </select>
                         <i class="fas fa-chevron-down"></i>
                     </div>
@@ -80,13 +81,11 @@
                             <table id="vktp_tabelUtama" class="table table-hover table-premium table-sultan-compact text-nowrap mb-0 w-100">
                                 <thead class="thead-sultan-premium text-uppercase font-weight-bold">
                                     <tr>
-                                        <th class="col-sticky-left text-left align-middle" style="min-width: 250px; z-index: 5;"><span class="sultan-th-title">NAMA PTK &amp; SEKOLAH</span></th>
+                                        <th class="col-sticky-left text-left align-middle" style="min-width: 250px; z-index: 5;"><span class="sultan-th-title">NAMA PTK</span></th>
                                         <th class="text-left align-middle" style="min-width: 220px;"><span class="sultan-th-title">PERUBAHAN DATA AJUAN</span></th>
                                         <th class="text-center align-middle" style="min-width: 90px;"><span class="sultan-th-title">SCAN KTP</span></th>
-                                        <th class="text-center align-middle" style="min-width: 110px;"><span class="sultan-th-title">STATUS</span></th>
-                                        <th class="text-left align-middle"><span class="sultan-th-title">TANGGAL USULAN</span></th>
-                                        <th class="text-left align-middle"><span class="sultan-th-title">PENGUSUL</span></th>
-                                        <th class="text-left align-middle text-nowrap"><span class="sultan-th-title">AKTIVITAS</span></th>
+                                        <th class="text-center align-middle" style="min-width: 130px;"><span class="sultan-th-title">STATUS</span></th>
+                                        <th class="text-left align-middle text-nowrap" style="min-width: 180px;"><span class="sultan-th-title">AKTIVITAS</span></th>
                                         <th class="text-center align-middle px-2" style="width: 1%; white-space: nowrap;"><span class="sultan-th-title">AKSI</span></th>
                                     </tr>
                                 </thead>
@@ -171,6 +170,7 @@
         
         <div class="modal-verifikasi-footer border-top p-3 d-flex justify-content-end" id="vktp_verifFooter">
             <button type="button" class="modal-btn-batal btn btn-light border mr-auto font-weight-bold" data-dismiss="modal">BATAL</button>
+            <button type="button" class="modal-btn-revisi btn btn-warning mr-2 font-weight-bold text-dark" onclick="vktp_submitVerif('Revisi')">REVISI</button>
             <button type="button" class="modal-btn-hapus btn btn-danger mr-2 font-weight-bold" onclick="vktp_submitVerif('Ditolak')">TOLAK AJUAN</button>
             <button type="button" class="modal-btn-simpan btn btn-success font-weight-bold" onclick="vktp_submitVerif('Disetujui')">SETUJUI &amp; UPDATE</button>
         </div>
@@ -228,7 +228,7 @@
 
             var prevVal = $('#vktp_filterSekolah').val() || 'SEMUA';
             var $sel = $('#vktp_filterSekolah');
-            $sel.empty().append('<option value="SEMUA">- Semua Unit Kerja -</option>');
+            $sel.empty().append('<option value="SEMUA">Semua Sekolah</option>');
 
             var sortedSchools = Array.from(schoolSet).sort();
             sortedSchools.forEach(function(sch) {
@@ -272,78 +272,99 @@
             var sekolahFilter = $('#vktp_filterSekolah').val();
 
             var filtered = VKTP_DATA_CACHE.filter(function(row) {
-                var matchStatus = (statusFilter === "SEMUA" || String(row.status).trim() === statusFilter);
+                var rawSt = String(row.status || '').trim();
+                var matchStatus = true;
+                if (statusFilter !== "SEMUA") {
+                    if (statusFilter === "Diproses") {
+                        matchStatus = (rawSt.toLowerCase() === "diproses" || rawSt.toLowerCase() === "pending" || rawSt === "");
+                    } else {
+                        matchStatus = (rawSt.toLowerCase() === statusFilter.toLowerCase());
+                    }
+                }
                 var matchSekolah = (sekolahFilter === "SEMUA" || String(row.sekolah).trim() === sekolahFilter);
                 return matchStatus && matchSekolah;
             });
 
             var cols = [
-                { title: '<span class="sultan-th-title">NAMA PTK & SEKOLAH</span>', className: "col-sticky-left bg-white text-left align-middle" },
+                { title: '<span class="sultan-th-title">NAMA PTK</span>', className: "col-sticky-left bg-white text-left align-middle" },
                 { title: '<span class="sultan-th-title">PERUBAHAN DATA AJUAN</span>', className: "text-left align-middle" },
                 { title: '<span class="sultan-th-title">SCAN KTP</span>', className: "text-center align-middle" },
                 { title: '<span class="sultan-th-title">STATUS</span>', className: "text-center align-middle" },
-                { title: '<span class="sultan-th-title">TANGGAL USULAN</span>', className: "text-left align-middle" },
-                { title: '<span class="sultan-th-title">PENGUSUL</span>', className: "text-left align-middle" },
                 { title: '<span class="sultan-th-title">AKTIVITAS</span>', className: "text-left align-middle text-nowrap" },
                 { title: '<span class="sultan-th-title">AKSI</span>', className: "text-center align-middle px-2" }
             ];
 
             var rows = filtered.map(function(row) {
-                var statusBadge = '';
-                var st = String(row.status).toLowerCase();
-                if (st === 'pending') {
-                    statusBadge = '<span class="text-warning font-weight-bold">Pending</span>';
-                } else if (st === 'disetujui') {
-                    statusBadge = '<span class="text-success font-weight-bold">Disetujui</span>';
-                    if (row.catatan && row.catatan !== '-') {
-                        statusBadge += '<br><button type="button" class="sultan-btn-compact mt-1 bg-info text-white px-2 py-0" style="font-size:10px; border-radius:4px;" onclick="vktp_bacaCatatan(\'' + row.id_ajuan + '\')">Baca Catatan</button>';
-                    }
-                } else if (st === 'ditolak') {
-                    statusBadge = '<span class="text-danger font-weight-bold">Ditolak</span>';
-                    if (row.catatan && row.catatan !== '-') {
-                        statusBadge += '<br><button type="button" class="sultan-btn-compact mt-1 bg-info text-white px-2 py-0" style="font-size:10px; border-radius:4px;" onclick="vktp_bacaCatatan(\'' + row.id_ajuan + '\')">Baca Catatan</button>';
-                    }
-                }
+                // 1. Kolom NAMA PTK (Standar Terpusat Sultan: Nama, ID/NIP, Unit Sekolah)
+                var uiNamaPtk = SultanUI.renderPegawaiCell(
+                    row.nama_lama,
+                    'ID: ' + (row.id_ptk || '-'),
+                    row.sekolah || '-',
+                    true
+                );
 
+                // 2. Kolom PERUBAHAN DATA AJUAN
                 var detailPerubahan = [];
                 if (row.nama_baru && row.nama_baru !== '-') {
-                    detailPerubahan.push('<div><span class="text-muted small">Nama:</span> <b class="text-success">' + row.nama_baru + '</b></div>');
+                    detailPerubahan.push('<div><span class="text-muted small">Nama:</span> <b class="text-success">' + SultanUI.escapeHtml(row.nama_baru) + '</b></div>');
                 }
                 if (row.nik_baru && row.nik_baru !== '-') {
-                    detailPerubahan.push('<div><span class="text-muted small">NIK:</span> <b class="text-success">' + row.nik_baru + '</b></div>');
+                    detailPerubahan.push('<div><span class="text-muted small">NIK:</span> <b class="text-success">' + SultanUI.escapeHtml(row.nik_baru) + '</b></div>');
                 }
                 if (row.ttl_baru && row.ttl_baru !== '-') {
-                    detailPerubahan.push('<div><span class="text-muted small">TTL:</span> <b class="text-success">' + row.ttl_baru + '</b></div>');
+                    detailPerubahan.push('<div><span class="text-muted small">TTL:</span> <b class="text-success">' + SultanUI.escapeHtml(row.ttl_baru) + '</b></div>');
                 }
                 var detailHtml = detailPerubahan.length > 0 ? detailPerubahan.join('') : '<span class="text-muted">-</span>';
 
-                var btnPdf = '<button type="button" class="sultan-btn-pdf font-weight-bold" onclick="vktp_previewKtp(\'' + row.file_ktp + '\')" title="Lihat Scan KTP">KTP</button>';
+                // 3. Kolom SCAN KTP (Tombol PDF Standar)
+                var btnPdf = SultanUI.renderDokumenPdf(row.file_ktp, {
+                    onClick: 'vktp_previewKtp',
+                    label: 'KTP',
+                    icon: 'fa-id-card',
+                    tooltip: 'Lihat Scan KTP'
+                });
 
-                var namaDanSekolah = '<div class="sultan-table-primary font-weight-bold text-maroon">' + row.nama_lama + '</div>' +
-                                     '<div class="sultan-table-secondary text-dark font-weight-bold">' + (row.sekolah || '-') + '</div>' +
-                                     '<div class="sultan-table-secondary text-muted font-mono">ID: ' + row.id_ptk + '</div>';
+                // 4. Kolom STATUS (Kode Global Terpusat SultanUI.renderBadgeStatus & Baca Catatan)
+                var statusNorm = row.status;
+                if (String(statusNorm).toLowerCase() === 'pending') statusNorm = 'Diproses';
+                var statusBadge = SultanUI.renderBadgeStatus(statusNorm, row.catatan, {
+                    unit: row.sekolah,
+                    waktu: row.tgl_eksekusi || row.tgl_usulan,
+                    verifikator: row.user_eksekutor || row.user_pengusul
+                });
 
-                var auditAktivitas = '-';
-                if (row.status !== 'Pending') {
-                    auditAktivitas = '<div class="sultan-table-primary font-weight-bold">' + row.user_eksekutor + '</div>' +
-                                     '<div class="sultan-table-secondary text-muted">' + row.tgl_eksekusi + '</div>' +
-                                     (row.catatan && row.catatan !== '-' ? '<div class="font-italic text-info small text-truncate" style="max-width:160px;" title="' + row.catatan + '">Cat: ' + row.catatan + '</div>' : '');
+                // 5. Kolom AKTIVITAS (Standar Terpusat SultanUI.renderAuditCell)
+                var auditWaktu = "-", auditUser = "-", auditLabel = "Diusulkan";
+                if (row.tgl_eksekusi && String(row.tgl_eksekusi).trim() !== "" && String(row.tgl_eksekusi).trim() !== "-") {
+                    auditLabel = "Verif";
+                    auditWaktu = row.tgl_eksekusi;
+                    auditUser = row.user_eksekutor || "-";
+                } else if (row.tgl_usulan && String(row.tgl_usulan).trim() !== "" && String(row.tgl_usulan).trim() !== "-") {
+                    auditLabel = "Diusulkan";
+                    auditWaktu = row.tgl_usulan;
+                    auditUser = row.user_pengusul || "-";
                 }
+                var tooltipAudit = `Diusulkan: ${row.tgl_usulan || '-'} (${row.user_pengusul || '-'})\nVerifikasi: ${row.tgl_eksekusi || '-'} (${row.user_eksekutor || '-'}`;
+                var uiAktivitas = SultanUI.renderAuditCell({
+                    waktu: auditWaktu,
+                    user: auditUser,
+                    label: auditLabel,
+                    tooltip: tooltipAudit
+                });
 
-                // Kolom AKSI di paling kanan sesuai standar CRUD Sultan (teks murni, tanpa ikon)
+                // 6. Kolom AKSI (Paling Kanan Sesuai Standar CRUD Sultan)
                 var btnAksi = '-';
-                if (row.status === 'Pending') {
-                    btnAksi = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-primary px-2 font-weight-bold" style="width:auto; height:32px; font-size:11px; border-radius:6px;" onclick="vktp_bukaModalProses(\'' + row.id_ajuan + '\')" title="Verifikasi Ajuan KTP">VERIFIKASI</button>';
+                var stLower = String(row.status || '').toLowerCase();
+                if (stLower === 'pending' || stLower === 'diproses' || stLower === '') {
+                    btnAksi = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-primary" onclick="vktp_bukaModalProses(\'' + row.id_ajuan + '\')" title="Verifikasi Ajuan KTP"><i class="fas fa-clipboard-check"></i></button>';
                 }
 
                 return [
-                    namaDanSekolah,
+                    uiNamaPtk,
                     detailHtml,
                     btnPdf,
                     statusBadge,
-                    row.tgl_usulan,
-                    row.user_pengusul,
-                    auditAktivitas,
+                    uiAktivitas,
                     btnAksi
                 ];
             });
@@ -481,8 +502,8 @@
             var idAjuan = $('#vktp_in_idAjuan').val();
             var catatan = $('#vktp_in_catatan').val();
 
-            if (status === 'Ditolak' && (!catatan || catatan.trim() === "")) {
-                Sultan.alert('warning', 'Perhatian', 'Harap masukkan alasan penolakan pada kolom catatan.');
+            if ((status === 'Ditolak' || status === 'Revisi') && (!catatan || catatan.trim() === "")) {
+                Sultan.alert('warning', 'Perhatian', 'Harap masukkan alasan ' + (status === 'Revisi' ? 'revisi' : 'penolakan') + ' pada kolom catatan.');
                 return;
             }
 
@@ -493,7 +514,12 @@
                 btnYa: 'Ya, Lanjutkan',
                 btnBatal: 'Batal'
             }, function() {
-                Sultan.notif.loading(status === 'Disetujui' ? 'Menyetujui & Memperbarui Master Data...' : 'Menolak Ajuan...');
+                var loadMsg = 'Memproses Ajuan...';
+                if (status === 'Disetujui') loadMsg = 'Menyetujui & Memperbarui Master Data...';
+                else if (status === 'Revisi') loadMsg = 'Menandai Ajuan Butuh Revisi...';
+                else if (status === 'Ditolak') loadMsg = 'Menolak Ajuan...';
+
+                Sultan.notif.loading(loadMsg);
                 google.script.run
                     .withSuccessHandler(function(res) {
                         if (res === "Sukses") {
