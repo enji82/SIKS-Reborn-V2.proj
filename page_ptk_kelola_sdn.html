@@ -158,46 +158,45 @@
                         <div id="ptksdn_tableState" style="display: none;">
                             <table id="ptksdn_tabelUtama"
                                 class="table table-hover table-premium table-sultan-compact w-100 text-nowrap">
-                                <thead class="bg-light text-maroon text-uppercase font-weight-bold">
+                                <thead class="thead-sultan-premium text-uppercase font-weight-bold">
                                     <tr>
                                         <th class="col-sticky-left align-middle text-center px-2"
                                             style="width: 1%; white-space: nowrap; z-index: 5;">
-                                            AKSI</th>
+                                            <span class="sultan-th-title">AKSI</span></th>
                                         <th class="text-left align-middle" style="min-width: 250px;">
-                                            NAMA PTK</th>
+                                            <span class="sultan-th-title">NAMA PTK</span></th>
                                         <th class="text-left align-middle">
-                                            TEMPAT, TGL LAHIR</th>
-                                        <th class="text-left align-middle">NIK</th>
+                                            <span class="sultan-th-title">TEMPAT, TGL LAHIR</span></th>
+                                        <th class="text-left align-middle"><span class="sultan-th-title">NIK</span></th>
                                         <th class="text-left align-middle" style="min-width: 200px;">
-                                            PENDIDIKAN TERAKHIR</th>
+                                            <span class="sultan-th-title">PENDIDIKAN TERAKHIR</span></th>
                                         <th class="text-left align-middle">
-                                            STATUS PEGAWAI</th>
+                                            <span class="sultan-th-title">STATUS PEGAWAI</span></th>
                                         <th class="text-left align-middle">
-                                            JABATAN</th>
+                                            <span class="sultan-th-title">JABATAN</span></th>
                                         <th class="text-left align-middle" style="min-width: 150px;">
-                                            PANGKAT/GOL</th>
-                                        <th class="text-left align-middle">MASA
-                                            KERJA</th>
+                                            <span class="sultan-th-title">PANGKAT/GOL</span></th>
+                                        <th class="text-left align-middle"><span class="sultan-th-title">MASA KERJA</span></th>
                                         <th class="text-left align-middle">
-                                            TUGAS</th>
+                                            <span class="sultan-th-title">TUGAS</span></th>
                                         <th class="text-left align-middle">
-                                            NUPTK</th>
+                                            <span class="sultan-th-title">NUPTK</span></th>
                                         <th class="text-left align-middle">
-                                            SERDIK</th>
+                                            <span class="sultan-th-title">SERDIK</span></th>
                                         <th class="text-left align-middle">
-                                            DAPODIK</th>
+                                            <span class="sultan-th-title">DAPODIK</span></th>
                                         <th class="text-left align-middle">
-                                            TUGAS TAMBAHAN</th>
+                                            <span class="sultan-th-title">TUGAS TAMBAHAN</span></th>
                                         <th class="text-left align-middle" style="min-width: 150px;">
-                                            EMAIL</th>
+                                            <span class="sultan-th-title">EMAIL</span></th>
                                         <th class="text-left align-middle" style="min-width: 150px;">
-                                            JENIS DOKUMEN</th>
+                                            <span class="sultan-th-title">JENIS DOKUMEN</span></th>
                                         <th class="text-center align-middle" style="min-width: 120px;">
-                                            FILE DOKUMEN</th>
+                                            <span class="sultan-th-title">FILE DOKUMEN</span></th>
                                         <th class="text-left align-middle">
-                                            DIINPUT</th>
+                                            <span class="sultan-th-title">DIINPUT</span></th>
                                         <th class="text-left align-middle">
-                                            DIPERBARUI</th>
+                                            <span class="sultan-th-title">DIPERBARUI</span></th>
                                     </tr>
                                 </thead>
                                 <tbody></tbody>
@@ -769,7 +768,7 @@
             PTKSDN_IS_ADMIN = (typeof checkUserRoleIsAdmin === 'function' && checkUserRoleIsAdmin()) || 
                               (user.role || "").toLowerCase().includes("admin") || 
                               (user.role || "").toLowerCase().includes("verifikator");
-            PTKSDN_USER_NPSN = user.npsn || user.username || "";
+            PTKSDN_USER_NPSN = String(user.npsn || user.username || user.unit || "").trim();
             $('#ptksdn_inputUserLogin').val(PTKSDN_USER_AKTIF);
         } catch (e) { PTKSDN_USER_NPSN = ""; PTKSDN_IS_ADMIN = false; }
 
@@ -896,19 +895,30 @@
                 return;
             }
             google.script.run.withSuccessHandler(function (resUnit) {
-                var dataUnit = JSON.parse(resUnit);
-                if (dataUnit.error) {
+                var dataUnit = {};
+                try { dataUnit = typeof resUnit === 'object' ? resUnit : JSON.parse(resUnit); } catch(e) {}
+                if (dataUnit.unitKerja) {
+                    PTKSDN_UNIT_TERKUNCI = dataUnit.unitKerja;
+                } else if (user.unit) {
+                    PTKSDN_UNIT_TERKUNCI = user.unit;
+                } else {
                     $('#ptksdn_filterUnit').empty().append('<option value="">AKSES DITOLAK</option>');
-                    ptksdn_updateTabelKosong('<div class="text-danger"><i class="fas fa-exclamation-triangle fa-2x mb-2"></i><br>' + ptksdn_escapeHtml(dataUnit.error) + '</div>');
+                    ptksdn_updateTabelKosong('<div class="text-danger"><i class="fas fa-exclamation-triangle fa-2x mb-2"></i><br>' + ptksdn_escapeHtml(dataUnit.error || 'NPSN/Unit tidak terdaftar.') + '</div>');
                     return;
                 }
-                PTKSDN_UNIT_TERKUNCI = dataUnit.unitKerja;
                 $('#ptksdn_filterUnit').empty().append('<option value="' + ptksdn_escapeHtml(PTKSDN_UNIT_TERKUNCI) + '">' + ptksdn_escapeHtml(PTKSDN_UNIT_TERKUNCI) + '</option>').prop('disabled', true);
                 $('#ptksdn_btnSync, #ptksdn_btnTambah, #ptksdn_btnExcel').prop('disabled', false);
                 ptksdn_tarikDataServer();
             }).withFailureHandler(function (err) {
-                $('#ptksdn_filterUnit').empty().append('<option value="">ERROR SERVER</option>');
-                ptksdn_updateTabelKosong('<div class="text-danger"><i class="fas fa-wifi fa-2x mb-2"></i><br>Koneksi Terputus: ' + ptksdn_escapeHtml(err.message) + '</div>');
+                if (user.unit) {
+                    PTKSDN_UNIT_TERKUNCI = user.unit;
+                    $('#ptksdn_filterUnit').empty().append('<option value="' + ptksdn_escapeHtml(PTKSDN_UNIT_TERKUNCI) + '">' + ptksdn_escapeHtml(PTKSDN_UNIT_TERKUNCI) + '</option>').prop('disabled', true);
+                    $('#ptksdn_btnSync, #ptksdn_btnTambah, #ptksdn_btnExcel').prop('disabled', false);
+                    ptksdn_tarikDataServer();
+                } else {
+                    $('#ptksdn_filterUnit').empty().append('<option value="">ERROR SERVER</option>');
+                    ptksdn_updateTabelKosong('<div class="text-danger"><i class="fas fa-wifi fa-2x mb-2"></i><br>Koneksi Terputus: ' + ptksdn_escapeHtml(err.message) + '</div>');
+                }
             }).getUnitKerjaByNpsnPTK(PTKSDN_USER_NPSN);
         }
     }
@@ -1069,6 +1079,38 @@
             var pang = '<div class="sultan-table-primary">' + (row.pangkat || '-') + '</div>';
             if (row.tmt_gol) pang += '<div class="sultan-table-secondary">TMT: ' + ptksdn_formatTanggalIndo(row.tmt_gol) + '</div>';
 
+            var sPeg = String(row.status_peg || '').trim();
+            var uiStatusPeg = '-';
+            if (sPeg === 'PNS' || sPeg === 'CPNS') {
+                uiStatusPeg = '<span class="text-primary font-weight-bold">' + ptksdn_escapeHtml(sPeg) + '</span>';
+            } else if (sPeg.indexOf('PPPK') !== -1) {
+                uiStatusPeg = '<span class="text-purple font-weight-bold" style="color: #6f42c1 !important;">' + ptksdn_escapeHtml(sPeg) + '</span>';
+            } else if (sPeg.toLowerCase().indexOf('non asn') !== -1 || sPeg.toLowerCase().indexOf('honor') !== -1) {
+                uiStatusPeg = '<span class="text-warning font-weight-bold" style="color: #d97706 !important;">' + ptksdn_escapeHtml(sPeg) + '</span>';
+            } else if (sPeg) {
+                uiStatusPeg = '<span class="font-weight-bold">' + ptksdn_escapeHtml(sPeg) + '</span>';
+            }
+
+            var uiSerdik = '-';
+            var ser = String(row.serdik || '').trim().toLowerCase();
+            if (ser === 'sudah' || ser === 'sudah serdik') {
+                uiSerdik = '<span class="text-success font-weight-bold">Sudah</span>';
+            } else if (ser === 'belum' || ser === 'belum serdik') {
+                uiSerdik = '<span class="text-muted font-weight-bold">Belum</span>';
+            } else if (row.serdik) {
+                uiSerdik = '<span class="font-weight-bold">' + ptksdn_escapeHtml(row.serdik) + '</span>';
+            }
+
+            var uiDapodik = '-';
+            var dap = String(row.dapodik || '').trim().toLowerCase();
+            if (dap === 'sudah' || dap === 'terdata' || dap === 'ya') {
+                uiDapodik = '<span class="text-success font-weight-bold">Sudah</span>';
+            } else if (dap === 'belum' || dap === 'tidak') {
+                uiDapodik = '<span class="text-muted font-weight-bold">Belum</span>';
+            } else if (row.dapodik) {
+                uiDapodik = '<span class="font-weight-bold">' + ptksdn_escapeHtml(row.dapodik) + '</span>';
+            }
+
             // Tombol Aksi menggunakan class global sultan-btn-aksi
             var btnEdit = '';
             var btnHapus = '';
@@ -1099,10 +1141,10 @@
 
             dtArray.push([
                 btnAksi, uiNama, ttl, '<span title="NIK Disensor" class="text-muted text-left">' + nikMask + '</span>',
-                pend, (row.status_peg || '-'),
+                pend, uiStatusPeg,
                 jab, pang,
                 (row.mkg || '-'), (row.tugas || '-'), (row.nuptk || '-'),
-                (row.serdik || '-'), (row.dapodik || '-'), (row.tugtam || '-'), uiEmail,
+                uiSerdik, uiDapodik, (row.tugtam || '-'), uiEmail,
                 uiJenisDok, uiFileDok,
                 metaInput, metaEdit
             ]);
