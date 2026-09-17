@@ -252,37 +252,23 @@
     .dark-mode .rp-rekap-table thead th {
         background-color: var(--dm-bg-card, #1a1c1e) !important;
     }
-    .rp-rekap-table thead th:nth-child(1) {
+    .rp-rekap-table thead th.col-sticky-left {
         position: sticky !important;
         left: 0 !important;
         top: 0 !important;
         z-index: 20 !important;
         background-color: #fff4d4 !important;
     }
-    .rp-rekap-table tbody tr:not(.rp-total-row) td:nth-child(1) {
+    .rp-rekap-table tbody tr:not(.rp-total-row) td.col-sticky-left {
         position: sticky !important;
         left: 0 !important;
-        z-index: 12 !important;
-        background-color: #ffffff !important;
-    }
-    .rp-rekap-table .col-sticky-left-2 {
-        position: sticky !important;
-        left: 45px !important;
         z-index: 12 !important;
         background-color: #ffffff !important;
         border-right: 2px solid rgba(128,0,0,0.08) !important;
         box-shadow: 4px 0 8px rgba(0,0,0,0.02);
     }
-    .rp-rekap-table thead th.col-sticky-left-2 {
-        top: 0 !important;
-        z-index: 20 !important;
-        background-color: #fff4d4 !important;
-    }
-    .dark-mode .rp-rekap-table thead th:nth-child(1),
-    .dark-mode .rp-rekap-table tbody tr:not(.rp-total-row) td:nth-child(1) {
-        background-color: var(--dm-bg-card, #1a1c1e) !important;
-    }
-    .dark-mode .rp-rekap-table .col-sticky-left-2 {
+    .dark-mode .rp-rekap-table thead th.col-sticky-left,
+    .dark-mode .rp-rekap-table tbody tr:not(.rp-total-row) td.col-sticky-left {
         background-color: var(--dm-bg-card, #1a1c1e) !important;
         border-right-color: rgba(255,255,255,0.1) !important;
     }
@@ -300,12 +286,10 @@
     }
 
     /* Hover styles for sticky columns to prevent transparent overlays */
-    .rp-rekap-table tbody tr:hover td:nth-child(1),
-    .rp-rekap-table tbody tr:hover .col-sticky-left-2 {
+    .rp-rekap-table tbody tr:hover td.col-sticky-left {
         background-color: var(--sultan-table-hover, #ffe8e8) !important;
     }
-    .dark-mode .rp-rekap-table tbody tr:hover td:nth-child(1),
-    .dark-mode .rp-rekap-table tbody tr:hover .col-sticky-left-2 {
+    .dark-mode .rp-rekap-table tbody tr:hover td.col-sticky-left {
         background-color: var(--sultan-table-hover-dm, #3a3a3a) !important;
     }
 
@@ -398,8 +382,7 @@
                                     class="table table-bordered table-hover table-premium table-sultan-compact rp-rekap-table mb-0 w-100 text-nowrap">
                                     <thead class="thead-sultan-premium text-uppercase font-weight-bold">
                                         <tr>
-                                            <th class="col-sticky-left text-center align-middle" style="width:1%;"><span class="sultan-th-title">NO</span></th>
-                                            <th class="col-sticky-left-2 text-left align-middle" style="min-width:230px;"><span class="sultan-th-title">UNIT KERJA</span></th>
+                                            <th class="col-sticky-left text-left align-middle" style="min-width:230px;"><span class="sultan-th-title">NAMA SEKOLAH</span></th>
                                             <th class="text-center align-middle bg-soft-info text-info"><span class="sultan-th-title">JML PEGAWAI<br>LAPORAN BULAN</span></th>
                                             <th class="text-center align-middle"><span class="sultan-th-title">JML PEGAWAI<br>DATA PTK</span></th>
                                             <th class="text-center align-middle bg-soft-success"><span class="sultan-th-title">SUDAH<br>PERBARUI</span></th>
@@ -771,7 +754,6 @@
         });
         var totalAll = 0, sudahAll = 0, belumAll = 0, lapbulTotalAll = 0;
         var html = '';
-        var no = 1;
 
         units.forEach(function (u) {
             var d = byUnit[u];
@@ -790,32 +772,33 @@
 
             var lapbulCount = (lapbulCountVal === 0 || lapbulCountVal === '0') ? '-' : lapbulCountVal;
 
+            var unitSekolahCell = (typeof SultanUI !== 'undefined' && SultanUI.renderUnitSekolah)
+                ? SultanUI.renderUnitSekolah(u, d.npsn)
+                : '<div class="sultan-table-primary font-weight-bold text-left">' + rp_escHtml(u) + '</div>' +
+                  (d.npsn ? '<div class="sultan-table-secondary text-muted text-left" style="font-size: 11px;">' + rp_escHtml(d.npsn) + '</div>' : '');
+
             html += '<tr>' +
-                '<td class="col-sticky-left text-center">' + no++ + '</td>' +
-                '<td class="unit-col col-sticky-left-2">' +
-                '<div class="unit-name">' + rp_escHtml(u) + '</div>' +
-                (d.npsn ? '<div class="unit-npsn">' + rp_escHtml(d.npsn) + '</div>' : '') +
-                '</td>' +
+                '<td class="col-sticky-left text-left">' + unitSekolahCell + '</td>' +
                 '<td class="text-center font-weight-bold text-info">' + lapbulCount + '</td>' +
                 '<td class="text-center font-weight-bold">' + d.total + '</td>' +
-            '<td class="text-center text-success font-weight-bold">' + (d.sudah || '-') + '</td>' +
-            '<td class="text-center text-danger font-weight-bold">' + (d.belum || '-') + '</td>' +
-            '<td>' + rp_renderProgressBar(pct, barClr) + '</td>' +
+                '<td class="text-center text-success font-weight-bold">' + (d.sudah || '-') + '</td>' +
+                '<td class="text-center text-danger font-weight-bold">' + (d.belum || '-') + '</td>' +
+                '<td>' + rp_renderProgressBar(pct, barClr) + '</td>' +
+                '</tr>';
+        });
+
+        /* Baris TOTAL */
+        var pctAll = totalAll > 0 ? Math.round((sudahAll / totalAll) * 100) : 0;
+        var barClrAll = pctAll >= 80 ? '#28a745' : pctAll >= 50 ? '#fd7e14' : '#dc3545';
+
+        html += '<tr class="rp-total-row">' +
+            '<td class="col-sticky-left text-left pl-3"><i class="fas fa-sigma mr-1"></i> TOTAL KESELURUHAN</td>' +
+            '<td class="text-center text-info">' + (lapbulTotalAll || '-') + '</td>' +
+            '<td class="text-center">' + (totalAll || '-') + '</td>' +
+            '<td class="text-center">' + (sudahAll || '-') + '</td>' +
+            '<td class="text-center">' + (belumAll || '-') + '</td>' +
+            '<td>' + rp_renderProgressBar(pctAll, barClrAll) + '</td>' +
             '</tr>';
-    });
-
-    /* Baris TOTAL */
-    var pctAll = totalAll > 0 ? Math.round((sudahAll / totalAll) * 100) : 0;
-    var barClrAll = pctAll >= 80 ? '#28a745' : pctAll >= 50 ? '#fd7e14' : '#dc3545';
-
-    html += '<tr class="rp-total-row">' +
-        '<td colspan="2" class="col-sticky-left text-left pl-3"><i class="fas fa-sigma mr-1"></i> TOTAL KESELURUHAN</td>' +
-        '<td class="text-center text-info">' + (lapbulTotalAll || '-') + '</td>' +
-        '<td class="text-center">' + (totalAll || '-') + '</td>' +
-        '<td class="text-center">' + (sudahAll || '-') + '</td>' +
-        '<td class="text-center">' + (belumAll || '-') + '</td>' +
-        '<td>' + rp_renderProgressBar(pctAll, barClrAll) + '</td>' +
-        '</tr>';
 
         $('#rp_tbodyRekap').html(html);
         $('#rp_rekapTableState').show();
