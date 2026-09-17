@@ -3468,15 +3468,33 @@ function getUsulanKoreksiKtpList() {
     var idxCatatan = headers.indexOf("Catatan");
     var idxReadStatus = headers.indexOf("Read Status");
     
+    // Ambil mapping unit sekolah dari Master Data GTK untuk memperkaya data ajuan
+    var schoolMap = {};
+    try {
+      var sheetMaster = ss.getSheetByName(KONFIG_PTK.SHEET_PTK);
+      if (sheetMaster && sheetMaster.getLastRow() > 1) {
+        var masterVals = sheetMaster.getRange(2, 1, sheetMaster.getLastRow() - 1, 3).getValues();
+        for (var m = 0; m < masterVals.length; m++) {
+          if (masterVals[m][0]) {
+            schoolMap[String(masterVals[m][0]).trim()] = String(masterVals[m][2] || "").trim();
+          }
+        }
+      }
+    } catch(eMap) {
+      Logger.log("getUsulanKoreksiKtpList: School map error: " + eMap.message);
+    }
+
     var data = sheet.getRange(2, 1, lastRow - 1, headers.length).getDisplayValues();
     var list = [];
     for (var i = 0; i < data.length; i++) {
       var row = data[i];
       if (idxIdAjuan !== -1 && !row[idxIdAjuan]) continue;
       
+      var idPtkVal = idxIdPtk !== -1 ? String(row[idxIdPtk]).trim() : "";
       list.push({
         id_ajuan: idxIdAjuan !== -1 ? row[idxIdAjuan] : "",
-        id_ptk: idxIdPtk !== -1 ? row[idxIdPtk] : "",
+        id_ptk: idPtkVal,
+        sekolah: schoolMap[idPtkVal] || "-",
         nama_lama: idxNamaLama !== -1 ? row[idxNamaLama] : "",
         nama_baru: idxNamaBaru !== -1 ? row[idxNamaBaru] : "",
         nik_lama: idxNikLama !== -1 ? row[idxNikLama] : "",

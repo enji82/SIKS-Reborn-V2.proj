@@ -14,10 +14,36 @@
     height: 55% !important;
     overflow-y: auto !important;
   }
+  .vktp-badge-diff {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .vktp-badge-diff-old {
+    background-color: #f1f3f5;
+    color: #6c757d;
+    text-decoration: line-through;
+  }
+  .vktp-badge-diff-new {
+    background-color: #e6fcf5;
+    color: #0ca678;
+    border: 1px solid rgba(12, 166, 120, 0.2);
+  }
+  .dark-mode .vktp-badge-diff-old {
+    background-color: #2b3035;
+    color: #adb5bd;
+  }
+  .dark-mode .vktp-badge-diff-new {
+    background-color: rgba(12, 166, 120, 0.15);
+    color: #63e6be;
+    border-color: rgba(12, 166, 120, 0.3);
+  }
 </style>
 
 <!-- SECTION: INFORMASI (GLOBAL SULTAN) -->
-<div class="sultan-info-card">
+<div class="sultan-info-card mb-4">
   <div class="card-body">
     <div class="info-header" data-toggle="collapse" data-target="#vktp_infoCollapse" aria-expanded="false">
       <div class="info-title">
@@ -29,17 +55,50 @@
     <div id="vktp_infoCollapse" class="collapse">
       <div class="info-body">
         <ul class="mb-0 pl-3">
-          <li class="mb-1">Halaman ini digunakan oleh Admin untuk meninjau dan menyetujui ajuan koreksi KTP (Nama, NIK, Tempat/Tanggal Lahir) PTK SD Negeri.</li>
-          <li class="mb-1">Persetujuan usulan secara otomatis akan memperbarui data PTK bersangkutan di database master.</li>
-          <li class="mb-1">Harap teliti membandingkan berkas KTP asli sebelum memberikan persetujuan.</li>
+          <li class="mb-1">Halaman ini digunakan oleh Admin untuk meninjau dan memverifikasi ajuan koreksi KTP (Nama, NIK, Tempat/Tanggal Lahir) PTK SD Negeri.</li>
+          <li class="mb-1">Persetujuan usulan secara otomatis akan memperbarui data PTK bersangkutan di database master secara real-time.</li>
+          <li class="mb-1">Harap teliti memeriksa dan membandingkan scan KTP asli sebelum memberikan persetujuan atau penolakan.</li>
         </ul>
       </div>
     </div>
   </div>
 </div>
 
-<!-- GRUP FILTER (Sultan Pill) -->
+<!-- STATS SUMMARY CARDS (SULTAN METRIC CARDS) -->
+<div class="row mb-4">
+  <div class="col-xl-3 col-md-6 col-sm-6 col-6 mb-3">
+    <div class="sultan-metric-card-minimal minimal-maroon shadow-xs h-100" style="border-radius: 18px !important; padding: 1.1rem 0.9rem !important;">
+      <div class="minimal-label text-truncate">Total Ajuan</div>
+      <div class="minimal-value" id="vktp_stat_total">0</div>
+      <div class="minimal-sub text-truncate">Semua Usulan Masuk</div>
+    </div>
+  </div>
+  <div class="col-xl-3 col-md-6 col-sm-6 col-6 mb-3">
+    <div class="sultan-metric-card-minimal minimal-warning shadow-xs h-100" style="border-radius: 18px !important; padding: 1.1rem 0.9rem !important;">
+      <div class="minimal-label text-truncate">Menunggu Verifikasi</div>
+      <div class="minimal-value" id="vktp_stat_pending">0</div>
+      <div class="minimal-sub text-truncate">Status Pending</div>
+    </div>
+  </div>
+  <div class="col-xl-3 col-md-6 col-sm-6 col-6 mb-3">
+    <div class="sultan-metric-card-minimal minimal-success shadow-xs h-100" style="border-radius: 18px !important; padding: 1.1rem 0.9rem !important;">
+      <div class="minimal-label text-truncate">Disetujui</div>
+      <div class="minimal-value" id="vktp_stat_disetujui">0</div>
+      <div class="minimal-sub text-truncate">Telah Diperbarui di Master</div>
+    </div>
+  </div>
+  <div class="col-xl-3 col-md-6 col-sm-6 col-6 mb-3">
+    <div class="sultan-metric-card-minimal minimal-danger shadow-xs h-100" style="border-radius: 18px !important; padding: 1.1rem 0.9rem !important;">
+      <div class="minimal-label text-truncate">Ditolak</div>
+      <div class="minimal-value" id="vktp_stat_ditolak">0</div>
+      <div class="minimal-sub text-truncate">Ajuan Tidak Valid</div>
+    </div>
+  </div>
+</div>
+
+<!-- GRUP FILTER (Sultan Pill Container) -->
 <div class="sultan-filter-pill-container shadow-sm mb-4">
+    <!-- Filter Status -->
     <div class="sultan-filter-item">
         <select id="vktp_filterStatus" class="form-control font-weight-bold text-maroon" style="min-width:180px;">
             <option value="SEMUA" selected>- Semua Status -</option>
@@ -49,24 +108,41 @@
         </select>
         <i class="fas fa-chevron-down"></i>
     </div>
+
+    <!-- Filter Satuan Pendidikan / Sekolah -->
+    <div class="sultan-filter-item">
+        <select id="vktp_filterSekolah" class="form-control font-weight-bold text-maroon" style="min-width:220px;">
+            <option value="SEMUA" selected>- Semua Sekolah -</option>
+        </select>
+        <i class="fas fa-chevron-down"></i>
+    </div>
+
     <div class="divider-vertical d-none d-md-block mx-2"></div>
-    <button type="button" id="vktp_btnRefresh" class="sultan-btn-refresh" title="Segarkan Data">
+    <button type="button" id="vktp_btnRefresh" class="sultan-btn-refresh" title="Segarkan Data dari Server">
         <i class="fas fa-sync-alt"></i>
     </button>
 </div>
 
-<!-- TABEL UTAMA -->
-<div class="card-sultan w-100 overflow-hidden">
+<!-- KOTAK LOADING CONTAINER (STANDAR SULTAN CARD) -->
+<div id="vktp_loadingCard" class="card-sultan w-100 mb-4 overflow-hidden shadow-sm">
     <div class="card-body p-3 w-100">
-        <div id="vktp_loadingState"></div>
-        <div id="vktp_tableState" style="display:none;">
+        <div id="vktp_loadingState">
+            <!-- Spinner Terpusat via SultanUI.showLoading -->
+        </div>
+    </div>
+</div>
+
+<!-- TABEL UTAMA SULTAN -->
+<div id="vktp_tableCard" class="card-sultan w-100 overflow-hidden shadow-sm" style="display:none;">
+    <div class="card-body p-3 w-100">
+        <div class="table-responsive sultan-scroll">
             <table id="vktp_tabelUtama" class="table table-hover table-premium table-sultan-compact text-nowrap mb-0 w-100" style="font-size: 13px;">
                 <thead class="thead-sultan-premium text-uppercase font-weight-bold">
                     <tr>
                         <th class="col-sticky-left text-center align-middle" style="width: 1%;">AKSI</th>
                         <th class="text-center align-middle" style="width: 5%;">STATUS</th>
-                        <th class="text-left align-middle" style="min-width: 150px;">NAMA PTK (LAMA)</th>
-                        <th class="text-left align-middle" style="min-width: 150px;">PERUBAHAN DATA</th>
+                        <th class="text-left align-middle" style="min-width: 170px;">NAMA PTK &amp; SEKOLAH</th>
+                        <th class="text-left align-middle" style="min-width: 200px;">PERUBAHAN DATA</th>
                         <th class="text-center align-middle" style="width: 5%;">KTP</th>
                         <th class="text-left align-middle">TANGGAL USULAN</th>
                         <th class="text-left align-middle">PENGUSUL</th>
@@ -82,71 +158,75 @@
 <!-- TEMPLATE FOR VERIFICATION MODAL -->
 <div id="vktp_templates" style="display:none;">
     <form id="vktp_formProses" class="d-flex flex-column flex-grow-1 overflow-hidden m-0 p-0" novalidate>
-        <div class="modal-verifikasi-data-content text-dark">
+        <div class="modal-verifikasi-data-content text-dark p-3">
             <input type="hidden" id="vktp_in_idAjuan">
             
-            <div class="row mb-4">
-                <div class="col-md-4 col-sm-6 mb-2">
-                    <label class="sultan-detail-label">ID USULAN</label>
-                    <div class="sultan-detail-value font-weight-bold" id="vktp_view_idAjuan">-</div>
+            <div class="row mb-3">
+                <div class="col-md-3 col-sm-6 mb-2">
+                    <label class="sultan-detail-label text-muted small font-weight-bold">ID USULAN</label>
+                    <div class="sultan-detail-value font-weight-bold text-maroon" id="vktp_view_idAjuan">-</div>
                 </div>
-                <div class="col-md-4 col-sm-6 mb-2">
-                    <label class="sultan-detail-label">PENGUSUL</label>
+                <div class="col-md-3 col-sm-6 mb-2">
+                    <label class="sultan-detail-label text-muted small font-weight-bold">SEKOLAH</label>
+                    <div class="sultan-detail-value font-weight-bold" id="vktp_view_sekolah">-</div>
+                </div>
+                <div class="col-md-3 col-sm-6 mb-2">
+                    <label class="sultan-detail-label text-muted small font-weight-bold">PENGUSUL</label>
                     <div class="sultan-detail-value text-uppercase" id="vktp_view_pengusul">-</div>
                 </div>
-                <div class="col-md-4 col-sm-6 mb-2">
-                    <label class="sultan-detail-label">TANGGAL USULAN</label>
+                <div class="col-md-3 col-sm-6 mb-2">
+                    <label class="sultan-detail-label text-muted small font-weight-bold">TANGGAL USULAN</label>
                     <div class="sultan-detail-value" id="vktp_view_tglUsulan">-</div>
                 </div>
             </div>
 
-            <h6 class="modal-verifikasi-section-title"><i class="fas fa-exchange-alt mr-2"></i> Perbandingan Data</h6>
+            <h6 class="modal-verifikasi-section-title font-weight-bold text-maroon mb-2"><i class="fas fa-exchange-alt mr-2"></i> Perbandingan Data Ajuan</h6>
             
-            <div class="table-responsive">
-                <table class="table table-bordered table-sm text-sm" style="font-size:12px;">
+            <div class="table-responsive mb-3">
+                <table class="table table-bordered table-sm text-sm mb-0" style="font-size:12px;">
                     <thead class="bg-light">
                         <tr>
-                            <th>KOLOM DATA</th>
-                            <th>DATA LAMA (DATABASE)</th>
-                            <th>DATA BARU (AJUAN)</th>
+                            <th style="width: 25%;">KOLOM DATA</th>
+                            <th style="width: 37.5%;">DATA LAMA (DATABASE)</th>
+                            <th style="width: 37.5%;">DATA BARU (AJUAN KTP)</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr id="vktp_row_nama">
-                            <td class="font-weight-bold">Nama Lengkap</td>
-                            <td id="vktp_val_nama_lama" class="text-muted">-</td>
-                            <td id="vktp_val_nama_baru" class="font-weight-bold text-success">-</td>
+                            <td class="font-weight-bold align-middle">Nama Lengkap</td>
+                            <td id="vktp_val_nama_lama" class="text-muted align-middle">-</td>
+                            <td id="vktp_val_nama_baru" class="font-weight-bold text-success align-middle">-</td>
                         </tr>
                         <tr id="vktp_row_nik">
-                            <td class="font-weight-bold">NIK</td>
-                            <td id="vktp_val_nik_lama" class="text-muted">-</td>
-                            <td id="vktp_val_nik_baru" class="font-weight-bold text-success">-</td>
+                            <td class="font-weight-bold align-middle">NIK</td>
+                            <td id="vktp_val_nik_lama" class="text-muted align-middle">-</td>
+                            <td id="vktp_val_nik_baru" class="font-weight-bold text-success align-middle">-</td>
                         </tr>
                         <tr id="vktp_row_ttl">
-                            <td class="font-weight-bold">Tempat, Tgl Lahir</td>
-                            <td id="vktp_val_ttl_lama" class="text-muted">-</td>
-                            <td id="vktp_val_ttl_baru" class="font-weight-bold text-success">-</td>
+                            <td class="font-weight-bold align-middle">Tempat, Tgl Lahir</td>
+                            <td id="vktp_val_ttl_lama" class="text-muted align-middle">-</td>
+                            <td id="vktp_val_ttl_baru" class="font-weight-bold text-success align-middle">-</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
 
             <div class="form-group mb-3" id="vktp_prevCatatanWrap" style="display:none;">
-                <label class="modal-verifikasi-form-label text-muted"><i class="fas fa-history mr-1"></i>Keterangan Verifikasi Sebelumnya</label>
-                <div class="modal-verifikasi-prev-catatan" id="vktp_prevCatatan"></div>
+                <label class="modal-verifikasi-form-label text-muted font-weight-bold small"><i class="fas fa-history mr-1"></i>Keterangan Verifikasi Sebelumnya</label>
+                <div class="modal-verifikasi-prev-catatan p-2 rounded bg-light border text-muted small" id="vktp_prevCatatan"></div>
             </div>
 
-            <div class="form-group mb-0 mt-3">
-                <label class="modal-verifikasi-form-label">Catatan / Alasan Penolakan</label>
-                <textarea id="vktp_in_catatan" class="modal-verifikasi-textarea w-100" rows="3" placeholder="Tambahkan catatan jika penolakan..." style="resize:none;"></textarea>
+            <div class="form-group mb-0 mt-2">
+                <label class="modal-verifikasi-form-label font-weight-bold small">Catatan / Alasan Penolakan</label>
+                <textarea id="vktp_in_catatan" class="modal-verifikasi-textarea form-control w-100" rows="3" placeholder="Tambahkan catatan jika diperlukan atau jika ajuan ditolak..." style="resize:none; font-size: 13px;"></textarea>
             </div>
 
         </div>
         
-        <div class="modal-verifikasi-footer" id="vktp_verifFooter">
-            <button type="button" class="modal-btn-batal" data-dismiss="modal"><i class="fas fa-times mr-2"></i>BATAL</button>
-            <button type="button" class="modal-btn-hapus mr-2" onclick="vktp_submitVerif('Ditolak')"><i class="fas fa-times-circle mr-2"></i>TOLAK AJUAN</button>
-            <button type="button" class="modal-btn-simpan" onclick="vktp_submitVerif('Disetujui')"><i class="fas fa-check-circle mr-2"></i>SETUJUI & UPDATE</button>
+        <div class="modal-verifikasi-footer border-top p-3 d-flex justify-content-end" id="vktp_verifFooter">
+            <button type="button" class="modal-btn-batal btn btn-light border mr-auto" data-dismiss="modal"><i class="fas fa-times mr-2"></i>BATAL</button>
+            <button type="button" class="modal-btn-hapus btn btn-danger mr-2" onclick="vktp_submitVerif('Ditolak')"><i class="fas fa-times-circle mr-2"></i>TOLAK AJUAN</button>
+            <button type="button" class="modal-btn-simpan btn btn-success" onclick="vktp_submitVerif('Disetujui')"><i class="fas fa-check-circle mr-2"></i>SETUJUI &amp; UPDATE</button>
         </div>
     </form>
 </div>
@@ -167,27 +247,83 @@
 
             $(document).off('click', '#vktp_btnRefresh').on('click', '#vktp_btnRefresh', vktp_tarikData);
             $(document).off('change', '#vktp_filterStatus').on('change', '#vktp_filterStatus', vktp_renderTableLokal);
+            $(document).off('change', '#vktp_filterSekolah').on('change', '#vktp_filterSekolah', vktp_renderTableLokal);
         })();
 
         function vktp_tarikData() {
+            $('#vktp_loadingCard').show();
             SultanUI.showLoading('#vktp_loadingState', 'Memuat data usulan koreksi KTP...');
-            $('#vktp_tableState').hide();
+            $('#vktp_tableCard').hide();
 
             google.script.run
                 .withSuccessHandler(function(raw) {
+                    $('#vktp_loadingCard').hide();
                     $('#vktp_loadingState').empty();
                     try {
-                        VKTP_DATA_CACHE = JSON.parse(raw) || [];
+                        VKTP_DATA_CACHE = (typeof raw === 'string') ? JSON.parse(raw) : (raw || []);
+                        vktp_populateFilterSekolah();
+                        vktp_updateMetricCards();
                         vktp_renderTableLokal();
                     } catch(e) {
                         Sultan.alert('error', 'Gagal', 'Terjadi kesalahan parse data: ' + e.message);
                     }
                 })
                 .withFailureHandler(function(err) {
+                    $('#vktp_loadingCard').hide();
                     $('#vktp_loadingState').empty();
                     Sultan.alert('error', 'Gagal Koneksi', err.message);
                 })
                 .getUsulanKoreksiKtpList();
+        }
+
+        function vktp_populateFilterSekolah() {
+            var schoolSet = new Set();
+            VKTP_DATA_CACHE.forEach(function(row) {
+                if (row.sekolah && row.sekolah !== '-' && row.sekolah !== '') {
+                    schoolSet.add(row.sekolah.trim());
+                }
+            });
+
+            var prevVal = $('#vktp_filterSekolah').val() || 'SEMUA';
+            var $sel = $('#vktp_filterSekolah');
+            $sel.empty().append('<option value="SEMUA">- Semua Sekolah -</option>');
+
+            var sortedSchools = Array.from(schoolSet).sort();
+            sortedSchools.forEach(function(sch) {
+                $sel.append('<option value="' + sch + '">' + sch + '</option>');
+            });
+
+            if (schoolSet.has(prevVal)) {
+                $sel.val(prevVal);
+            } else {
+                $sel.val('SEMUA');
+            }
+        }
+
+        function vktp_updateMetricCards() {
+            var total = VKTP_DATA_CACHE.length;
+            var pending = 0;
+            var disetujui = 0;
+            var ditolak = 0;
+
+            VKTP_DATA_CACHE.forEach(function(r) {
+                var st = String(r.status || '').toLowerCase().trim();
+                if (st === 'pending') pending++;
+                else if (st === 'disetujui') disetujui++;
+                else if (st === 'ditolak') ditolak++;
+            });
+
+            if (typeof SultanUI !== 'undefined' && typeof SultanUI.animateCounter === 'function') {
+                SultanUI.animateCounter('#vktp_stat_total', total);
+                SultanUI.animateCounter('#vktp_stat_pending', pending);
+                SultanUI.animateCounter('#vktp_stat_disetujui', disetujui);
+                SultanUI.animateCounter('#vktp_stat_ditolak', ditolak);
+            } else {
+                $('#vktp_stat_total').text(total);
+                $('#vktp_stat_pending').text(pending);
+                $('#vktp_stat_disetujui').text(disetujui);
+                $('#vktp_stat_ditolak').text(ditolak);
+            }
         }
 
         function vktp_renderTableLokal() {
@@ -217,15 +353,18 @@
             });
 
             var statusFilter = $('#vktp_filterStatus').val();
+            var sekolahFilter = $('#vktp_filterSekolah').val();
+
             var filtered = VKTP_DATA_CACHE.filter(function(row) {
-                if (statusFilter === "SEMUA") return true;
-                return String(row.status).trim() === statusFilter;
+                var matchStatus = (statusFilter === "SEMUA" || String(row.status).trim() === statusFilter);
+                var matchSekolah = (sekolahFilter === "SEMUA" || String(row.sekolah).trim() === sekolahFilter);
+                return matchStatus && matchSekolah;
             });
 
             var cols = [
                 { title: "AKSI", className: "col-sticky-left bg-white text-center align-middle" },
                 { title: "STATUS", className: "text-center align-middle" },
-                { title: "NAMA PTK (LAMA)", className: "text-left align-middle" },
+                { title: "NAMA PTK & SEKOLAH", className: "text-left align-middle" },
                 { title: "PERUBAHAN DATA", className: "text-left align-middle" },
                 { title: "KTP", className: "text-center align-middle" },
                 { title: "TANGGAL USULAN", className: "text-left align-middle" },
@@ -242,7 +381,7 @@
                 var statusBadge = '';
                 var st = String(row.status).toLowerCase();
                 if (st === 'pending') {
-                    statusBadge = '<span class="badge-sultan-belum"><i class="fas fa-spinner fa-spin mr-1"></i>Pending</span>';
+                    statusBadge = '<span class="badge-sultan-belum"><i class="fas fa-clock mr-1"></i>Pending</span>';
                 } else if (st === 'disetujui') {
                     statusBadge = '<span class="badge-sultan-disetujui"><i class="fas fa-check-circle mr-1"></i>Disetujui</span>';
                     if (row.catatan && row.catatan !== '-') {
@@ -256,24 +395,34 @@
                 }
 
                 var detailPerubahan = [];
-                if (row.nama_baru !== '-') detailPerubahan.push('<b>Nama:</b> ' + row.nama_baru);
-                if (row.nik_baru !== '-') detailPerubahan.push('<b>NIK:</b> ' + row.nik_baru);
-                if (row.ttl_baru !== '-') detailPerubahan.push('<b>TTL:</b> ' + row.ttl_baru);
-                var detailHtml = detailPerubahan.join('<br>');
+                if (row.nama_baru && row.nama_baru !== '-') {
+                    detailPerubahan.push('<b>Nama:</b> <span class="vktp-badge-diff vktp-badge-diff-new">' + row.nama_baru + '</span>');
+                }
+                if (row.nik_baru && row.nik_baru !== '-') {
+                    detailPerubahan.push('<b>NIK:</b> <span class="vktp-badge-diff vktp-badge-diff-new">' + row.nik_baru + '</span>');
+                }
+                if (row.ttl_baru && row.ttl_baru !== '-') {
+                    detailPerubahan.push('<b>TTL:</b> <span class="vktp-badge-diff vktp-badge-diff-new">' + row.ttl_baru + '</span>');
+                }
+                var detailHtml = detailPerubahan.length > 0 ? detailPerubahan.join('<br>') : '<span class="text-muted">-</span>';
 
-                var btnPdf = '<button type="button" class="sultan-btn-pdf" onclick="vktp_previewKtp(\'' + row.file_ktp + '\')"><i class="fas fa-file-pdf"></i> DOK</button>';
+                var btnPdf = '<button type="button" class="sultan-btn-pdf" onclick="vktp_previewKtp(\'' + row.file_ktp + '\')"><i class="fas fa-id-card mr-1"></i> KTP</button>';
+
+                var namaDanSekolah = '<div class="font-weight-bold text-maroon">' + row.nama_lama + '</div>' +
+                                     '<div class="small text-dark font-weight-bold"><i class="fas fa-school mr-1 text-muted"></i>' + (row.sekolah || '-') + '</div>' +
+                                     '<div class="small text-muted font-mono">ID: ' + row.id_ptk + '</div>';
 
                 var infoVerif = '-';
                 if (row.status !== 'Pending') {
                     infoVerif = '<div><b>Oleh:</b> ' + row.user_eksekutor + '</div>' +
                                 '<div class="small text-muted">' + row.tgl_eksekusi + '</div>' +
-                                (row.catatan !== '-' ? '<div class="font-italic text-info small text-truncate" style="max-width:150px;" title="' + row.catatan + '">Cat: ' + row.catatan + '</div>' : '');
+                                (row.catatan && row.catatan !== '-' ? '<div class="font-italic text-info small text-truncate" style="max-width:150px;" title="' + row.catatan + '">Cat: ' + row.catatan + '</div>' : '');
                 }
 
                 return [
                     btnAksi,
                     statusBadge,
-                    '<b>' + row.nama_lama + '</b><br><small class="text-muted">ID: ' + row.id_ptk + '</small>',
+                    namaDanSekolah,
                     detailHtml,
                     btnPdf,
                     row.tgl_usulan,
@@ -288,7 +437,7 @@
             $('#vktp_tabelUtama tbody').empty();
 
             SultanTable.renderNative('#vktp_tabelUtama', cols, rows, 'Tidak ada usulan koreksi KTP.', function() {
-                $('#vktp_tableState').show();
+                $('#vktp_tableCard').show();
             });
         }
 
@@ -299,8 +448,6 @@
         };
 
         window.vktp_bukaModalProses = function(idAjuan) {
-            // PENGABDIAN RASA AMAN: Kembalikan form & footer ke template secara sinkron
-            // guna mencegah race-condition jika event modal tertutup sebelumnya terlambat dipicu.
             $('#global_modalVerifikasi').removeClass('vktp-layout-split-vertical');
             $('#vktp_verifFooter').appendTo('#vktp_formProses');
             $('#vktp_formProses').appendTo('#vktp_templates');
@@ -311,6 +458,7 @@
 
             $('#vktp_in_idAjuan').val(idAjuan);
             $('#vktp_view_idAjuan').text(idAjuan);
+            $('#vktp_view_sekolah').text(row.sekolah || '-');
             $('#vktp_view_pengusul').text(row.user_pengusul);
             $('#vktp_view_tglUsulan').text(row.tgl_usulan);
             var ketLama = (row.catatan && row.catatan !== '-') ? row.catatan : '';
@@ -328,24 +476,24 @@
 
             // Set detail values
             $('#vktp_val_nama_lama').text(row.nama_lama);
-            if (row.nama_baru !== '-') {
-                $('#vktp_val_nama_baru').text(row.nama_baru);
+            if (row.nama_baru && row.nama_baru !== '-') {
+                $('#vktp_val_nama_baru').html('<span class="vktp-badge-diff vktp-badge-diff-new">' + row.nama_baru + '</span>');
                 $('#vktp_row_nama').show().addClass('bg-soft-warning');
             } else {
                 $('#vktp_row_nama').hide();
             }
 
             $('#vktp_val_nik_lama').text(row.nik_lama);
-            if (row.nik_baru !== '-') {
-                $('#vktp_val_nik_baru').text(row.nik_baru);
+            if (row.nik_baru && row.nik_baru !== '-') {
+                $('#vktp_val_nik_baru').html('<span class="vktp-badge-diff vktp-badge-diff-new">' + row.nik_baru + '</span>');
                 $('#vktp_row_nik').show().addClass('bg-soft-warning');
             } else {
                 $('#vktp_row_nik').hide();
             }
 
             $('#vktp_val_ttl_lama').text(row.ttl_lama);
-            if (row.ttl_baru !== '-') {
-                $('#vktp_val_ttl_baru').text(row.ttl_baru);
+            if (row.ttl_baru && row.ttl_baru !== '-') {
+                $('#vktp_val_ttl_baru').html('<span class="vktp-badge-diff vktp-badge-diff-new">' + row.ttl_baru + '</span>');
                 $('#vktp_row_ttl').show().addClass('bg-soft-warning');
             } else {
                 $('#vktp_row_ttl').hide();
@@ -378,7 +526,7 @@
             $('#vktp_verifFooter').appendTo('#global_verifikasiFooterArea');
             $('#global_verifikasiFooterArea').show();
 
-            // Pastikan form dikembalikan saat modal mulai ditutup (hide) untuk menghindari delay
+            // Pastikan form dikembalikan saat modal mulai ditutup (hide)
             $('#global_modalVerifikasi').off('hide.bs.modal.vktpverif').on('hide.bs.modal.vktpverif', function() {
                 $('#global_modalVerifikasi').removeClass('vktp-layout-split-vertical');
                 $('#vktp_verifFooter').appendTo('#vktp_formProses');
@@ -422,13 +570,13 @@
             }
 
             Sultan.konfirmasi({
-                title: 'Konfirmasi',
+                title: 'Konfirmasi Verifikasi',
                 text: 'Apakah Anda yakin ingin status ajuan ini disetel sebagai [' + status.toUpperCase() + ']?',
                 icon: 'question',
                 btnYa: 'Ya, Lanjutkan',
                 btnBatal: 'Batal'
             }, function() {
-                Sultan.notif.loading(status === 'Disetujui' ? 'Menyetujui & Memperbarui...' : 'Menolak Ajuan...');
+                Sultan.notif.loading(status === 'Disetujui' ? 'Menyetujui & Memperbarui Master Data...' : 'Menolak Ajuan...');
                 google.script.run
                     .withSuccessHandler(function(res) {
                         if (res === "Sukses") {
