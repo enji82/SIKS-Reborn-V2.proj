@@ -1,6 +1,7 @@
 <style>
   .bg-soft-orange { background: rgba(253, 126, 20, 0.08) !important; }
   .bg-soft-purple { background: rgba(111, 66, 193, 0.08) !important; }
+  .table-sultan-compact th, .table-sultan-compact td { white-space: nowrap; font-size: 0.85rem; }
 </style>
 
 <section class="content">
@@ -15,23 +16,18 @@
                             aria-expanded="false">
                             <div class="info-title">
                                 <div class="info-icon-circle"><i class="fas fa-info"></i></div>
-                                <span>Informasi</span>
+                                <span>Informasi & Ketentuan Analisis Kebutuhan Guru</span>
                             </div>
                             <i class="fas fa-chevron-down"></i>
                         </div>
                         <div id="kebutuhanptksdn_infoCollapse" class="collapse">
                             <div class="info-body">
                                 <ul class="mb-0 pl-3">
-                                    <li class="mb-1">Halaman ini bersifat <b>Read-Only (Hanya Tampil)</b>.</li>
-                                    <li class="mb-1">Data jumlah guru bersumber dari menu Daftar Nama PTK.</li>
-                                    <li class="mb-1">Jumlah rombel dan jumlah murid bersumber dari <strong>laporan
-                                            bulan</strong> yang
-                                        terakhir dikirim.</li>
-                                    <li class="mb-1">Kolom <b>+/-</b> berwarna <span
-                                            class="text-danger font-weight-bold">Merah</span> jika Kekurangan Guru, dan
-                                        <span class="text-primary font-weight-bold">Biru</span> jika Kelebihan Guru.
-                                    </li>
-                                    <li>Scroll ke samping untuk melihat seluruh data guru mata pelajaran.</li>
+                                    <li class="mb-1">Halaman ini bersifat <b>Real-Time & Read-Only</b> dihitung langsung dari <b>Master Data GTK</b>.</li>
+                                    <li class="mb-1">Gunakan dropdown <b>Jabatan</b> untuk memfilter tampilan tabel agar lebih ringkas dan fokus per bidang guru.</li>
+                                    <li class="mb-1">Non ASN dipisahkan menjadi 2 kategori: <b>Non ASN &lt; 3-8-2023</b> dan <b>Non ASN &gt; 3-8-2023</b>.</li>
+                                    <li class="mb-1">Kolom <b>+/-</b> berwarna <span class="text-danger font-weight-bold">Merah</span> jika Kekurangan Guru, <span class="text-primary font-weight-bold">Biru</span> jika Kelebihan Guru, dan netral jika Sesuai.</li>
+                                    <li>Tombol <b>Unduh Excel</b> akan mengekspor data tabel sesuai dengan filter jabatan yang sedang aktif.</li>
                                 </ul>
                             </div>
                         </div>
@@ -40,9 +36,9 @@
 
                 <!-- FILTER BAR (STANDAR GLOBAL SULTAN) -->
                 <div id="kebutuhanptksdn_wadahFilter" class="sultan-filter-pill-container shadow-sm mb-4">
-                    <div class="sultan-filter-item" style="min-width: 250px;">
-                        <select id="kebutuhanptksdn_filterUnit" class="form-control font-weight-bold text-maroon"
-                            disabled>
+                    <!-- Filter Unit Kerja -->
+                    <div class="sultan-filter-item" style="min-width: 240px;">
+                        <select id="kebutuhanptksdn_filterUnit" class="form-control font-weight-bold text-maroon" disabled>
                             <option value="SEMUA">- Memvalidasi Akses... -</option>
                         </select>
                         <i class="fas fa-chevron-down"></i>
@@ -50,12 +46,36 @@
 
                     <div class="divider-vertical d-none d-md-block mx-2"></div>
 
+                    <!-- Filter Jabatan -->
+                    <div class="sultan-filter-item" style="min-width: 200px;">
+                        <select id="kebutuhanptksdn_filterJabatan" class="form-control font-weight-bold text-dark">
+                            <option value="SEMUA">💼 Semua Jabatan</option>
+                            <option value="KS">👑 Kepala Sekolah</option>
+                            <option value="GK">📖 Guru Kelas</option>
+                            <option value="PJOK">🏃 Guru PJOK</option>
+                            <option value="PAI">🕌 Guru PAI</option>
+                            <option value="PAK">✝️ Guru PA Kristen</option>
+                        </select>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+
+                    <div class="divider-vertical d-none d-md-block mx-2"></div>
+
+                    <!-- Tombol Refresh -->
                     <button type="button" id="kebutuhanptksdn_btnSync" class="sultan-btn-refresh"
                         title="Segarkan Data dari Server" disabled>
                         <i class="fas fa-sync-alt"></i>
                     </button>
+
+                    <!-- Tombol Unduh Excel di Pojok Kanan -->
+                    <button type="button" id="kebutuhanptksdn_btnExport" class="btn btn-outline-success font-weight-bold ml-auto px-3 py-1 shadow-sm rounded-pill"
+                        title="Unduh Rekap Excel" style="display: flex; align-items: center; gap: 6px;">
+                        <i class="fas fa-file-excel text-success"></i>
+                        <span>Unduh Excel</span>
+                    </button>
                 </div>
 
+                <!-- TABEL UTAMA SULTAN -->
                 <div class="card-sultan w-100 overflow-hidden">
                     <div class="card-body p-3 w-100">
 
@@ -69,84 +89,77 @@
                                 style="border: none !important;">
 
                                 <thead class="thead-sultan-premium thead-tiered">
-                                    <tr>
+                                    <tr id="kebutuhanptksdn_headerRowGroup">
                                         <th rowspan="2"
                                             class="th-main align-middle text-maroon text-left px-3 col-sticky-left border-bottom-maroon"
-                                            style="z-index:50; border-right: 2px solid #dee2e6; white-space: nowrap;">UNIT
-                                            KERJA</th>
+                                            style="z-index:50; border-right: 2px solid #dee2e6; white-space: nowrap;">UNIT KERJA</th>
 
-                                        <th rowspan="2" class="th-main align-middle text-center border-bottom-maroon">
-                                            JML<br>ROMBEL</th>
-                                        <th rowspan="2" class="th-main align-middle text-center border-bottom-maroon">
-                                            JML<br>MURID</th>
+                                        <th rowspan="2" class="th-main align-middle text-center border-bottom-maroon">JML<br>ROMBEL</th>
+                                        <th rowspan="2" class="th-main align-middle text-center border-bottom-maroon">JML<br>MURID</th>
 
-                                        <th colspan="5" class="th-main align-middle text-center bg-soft-primary">KEPALA
-                                            SEKOLAH</th>
-                                        <th colspan="8" class="th-main align-middle text-center bg-soft-success">GURU
-                                            KELAS</th>
-                                        <th colspan="8" class="th-main align-middle text-center bg-soft-orange">GURU
-                                            PJOK</th>
-                                        <th colspan="8" class="th-main align-middle text-center bg-soft-purple">GURU PAI
-                                        </th>
-                                        <th colspan="8" class="th-main align-middle text-center bg-soft-danger">GURU PA
-                                            KRISTEN</th>
+                                        <!-- GROUP JABATAN -->
+                                        <th colspan="9" id="grp_ks" class="th-main align-middle text-center bg-soft-primary">KEPALA SEKOLAH</th>
+                                        <th colspan="9" id="grp_gk" class="th-main align-middle text-center bg-soft-success">GURU KELAS</th>
+                                        <th colspan="9" id="grp_pjok" class="th-main align-middle text-center bg-soft-orange">GURU PJOK</th>
+                                        <th colspan="9" id="grp_pai" class="th-main align-middle text-center bg-soft-purple">GURU PAI</th>
+                                        <th colspan="9" id="grp_pak" class="th-main align-middle text-center bg-soft-danger">GURU PA KRISTEN</th>
                                     </tr>
 
-                                    <tr class="text-center">
-                                        <!-- KEPALA SEKOLAH -->
-                                        <th class="th-sub bg-soft-primary border-bottom-maroon">Keb.</th>
-                                        <th class="th-sub bg-soft-primary border-bottom-maroon">PNS</th>
-                                        <th class="th-sub bg-soft-primary border-bottom-maroon">PPPK</th>
-                                        <th class="th-sub bg-soft-primary border-bottom-maroon">+/-</th>
-                                        <th class="th-sub bg-soft-primary border-bottom-maroon">Keterangan</th>
+                                    <tr class="text-center" id="kebutuhanptksdn_headerRowSub">
+                                        <!-- KEPALA SEKOLAH (Cols 3-11) -->
+                                        <th class="th-sub bg-soft-primary border-bottom-maroon col-ks">Keb.</th>
+                                        <th class="th-sub bg-soft-primary border-bottom-maroon col-ks">CPNS</th>
+                                        <th class="th-sub bg-soft-primary border-bottom-maroon col-ks">PNS</th>
+                                        <th class="th-sub bg-soft-primary border-bottom-maroon col-ks">PPPK</th>
+                                        <th class="th-sub bg-soft-primary border-bottom-maroon col-ks">PW</th>
+                                        <th class="th-sub bg-soft-primary border-bottom-maroon col-ks">Non ASN<br>&lt; 3-8-2023</th>
+                                        <th class="th-sub bg-soft-primary border-bottom-maroon col-ks">Non ASN<br>&gt; 3-8-2023</th>
+                                        <th class="th-sub bg-soft-primary border-bottom-maroon col-ks">+/-</th>
+                                        <th class="th-sub bg-soft-primary border-bottom-maroon col-ks">Keterangan</th>
 
-                                        <!-- GURU KELAS -->
-                                        <th class="th-sub bg-soft-success border-bottom-maroon">Keb.</th>
-                                        <th class="th-sub bg-soft-success border-bottom-maroon">PNS</th>
-                                        <th class="th-sub bg-soft-success border-bottom-maroon">PPPK</th>
-                                        <th class="th-sub bg-soft-success border-bottom-maroon">PW</th>
-                                        <th class="th-sub bg-soft-success border-bottom-maroon">Non ASN<br>&lt; 3-8-2023
-                                        </th>
-                                        <th class="th-sub bg-soft-success border-bottom-maroon">Non ASN<br>&gt; 3-8-2023
-                                        </th>
-                                        <th class="th-sub bg-soft-success border-bottom-maroon">+/-</th>
-                                        <th class="th-sub bg-soft-success border-bottom-maroon">Keterangan</th>
+                                        <!-- GURU KELAS (Cols 12-20) -->
+                                        <th class="th-sub bg-soft-success border-bottom-maroon col-gk">Keb.</th>
+                                        <th class="th-sub bg-soft-success border-bottom-maroon col-gk">CPNS</th>
+                                        <th class="th-sub bg-soft-success border-bottom-maroon col-gk">PNS</th>
+                                        <th class="th-sub bg-soft-success border-bottom-maroon col-gk">PPPK</th>
+                                        <th class="th-sub bg-soft-success border-bottom-maroon col-gk">PW</th>
+                                        <th class="th-sub bg-soft-success border-bottom-maroon col-gk">Non ASN<br>&lt; 3-8-2023</th>
+                                        <th class="th-sub bg-soft-success border-bottom-maroon col-gk">Non ASN<br>&gt; 3-8-2023</th>
+                                        <th class="th-sub bg-soft-success border-bottom-maroon col-gk">+/-</th>
+                                        <th class="th-sub bg-soft-success border-bottom-maroon col-gk">Keterangan</th>
 
-                                        <!-- GURU PJOK -->
-                                        <th class="th-sub bg-soft-orange border-bottom-maroon">Keb.</th>
-                                        <th class="th-sub bg-soft-orange border-bottom-maroon">PNS</th>
-                                        <th class="th-sub bg-soft-orange border-bottom-maroon">PPPK</th>
-                                        <th class="th-sub bg-soft-orange border-bottom-maroon">PW</th>
-                                        <th class="th-sub bg-soft-orange border-bottom-maroon">Non ASN<br>&lt; 3-8-2023
-                                        </th>
-                                        <th class="th-sub bg-soft-orange border-bottom-maroon">Non ASN<br>&gt; 3-8-2023
-                                        </th>
-                                        <th class="th-sub bg-soft-orange border-bottom-maroon">+/-</th>
-                                        <th class="th-sub bg-soft-orange border-bottom-maroon">Keterangan</th>
+                                        <!-- GURU PJOK (Cols 21-29) -->
+                                        <th class="th-sub bg-soft-orange border-bottom-maroon col-pjok">Keb.</th>
+                                        <th class="th-sub bg-soft-orange border-bottom-maroon col-pjok">CPNS</th>
+                                        <th class="th-sub bg-soft-orange border-bottom-maroon col-pjok">PNS</th>
+                                        <th class="th-sub bg-soft-orange border-bottom-maroon col-pjok">PPPK</th>
+                                        <th class="th-sub bg-soft-orange border-bottom-maroon col-pjok">PW</th>
+                                        <th class="th-sub bg-soft-orange border-bottom-maroon col-pjok">Non ASN<br>&lt; 3-8-2023</th>
+                                        <th class="th-sub bg-soft-orange border-bottom-maroon col-pjok">Non ASN<br>&gt; 3-8-2023</th>
+                                        <th class="th-sub bg-soft-orange border-bottom-maroon col-pjok">+/-</th>
+                                        <th class="th-sub bg-soft-orange border-bottom-maroon col-pjok">Keterangan</th>
 
-                                        <!-- GURU PAI -->
-                                        <th class="th-sub bg-soft-purple border-bottom-maroon">Keb.</th>
-                                        <th class="th-sub bg-soft-purple border-bottom-maroon">PNS</th>
-                                        <th class="th-sub bg-soft-purple border-bottom-maroon">PPPK</th>
-                                        <th class="th-sub bg-soft-purple border-bottom-maroon">PW</th>
-                                        <th class="th-sub bg-soft-purple border-bottom-maroon">Non ASN<br>&lt; 3-8-2023
-                                        </th>
-                                        <th class="th-sub bg-soft-purple border-bottom-maroon">Non ASN<br>&gt; 3-8-2023
-                                        </th>
-                                        <th class="th-sub bg-soft-purple border-bottom-maroon">+/-</th>
-                                        <th class="th-sub bg-soft-purple border-bottom-maroon">Keterangan</th>
+                                        <!-- GURU PAI (Cols 30-38) -->
+                                        <th class="th-sub bg-soft-purple border-bottom-maroon col-pai">Keb.</th>
+                                        <th class="th-sub bg-soft-purple border-bottom-maroon col-pai">CPNS</th>
+                                        <th class="th-sub bg-soft-purple border-bottom-maroon col-pai">PNS</th>
+                                        <th class="th-sub bg-soft-purple border-bottom-maroon col-pai">PPPK</th>
+                                        <th class="th-sub bg-soft-purple border-bottom-maroon col-pai">PW</th>
+                                        <th class="th-sub bg-soft-purple border-bottom-maroon col-pai">Non ASN<br>&lt; 3-8-2023</th>
+                                        <th class="th-sub bg-soft-purple border-bottom-maroon col-pai">Non ASN<br>&gt; 3-8-2023</th>
+                                        <th class="th-sub bg-soft-purple border-bottom-maroon col-pai">+/-</th>
+                                        <th class="th-sub bg-soft-purple border-bottom-maroon col-pai">Keterangan</th>
 
-                                        <!-- GURU PA KRISTEN -->
-                                        <th class="th-sub bg-soft-danger border-bottom-maroon">Keb.</th>
-                                        <th class="th-sub bg-soft-danger border-bottom-maroon">PNS</th>
-                                        <th class="th-sub bg-soft-danger border-bottom-maroon">PPPK</th>
-                                        <th class="th-sub bg-soft-danger border-bottom-maroon">PW</th>
-                                        <th class="th-sub bg-soft-danger border-bottom-maroon">Non ASN<br>&lt; 3-8-2023
-                                        </th>
-                                        <th class="th-sub bg-soft-danger border-bottom-maroon">Non ASN<br>&gt; 3-8-2023
-                                        </th>
-                                        <th class="th-sub bg-soft-danger border-bottom-maroon">+/-</th>
-                                        <th class="th-sub bg-soft-danger border-bottom-maroon">Keterangan</th>
+                                        <!-- GURU PA KRISTEN (Cols 39-47) -->
+                                        <th class="th-sub bg-soft-danger border-bottom-maroon col-pak">Keb.</th>
+                                        <th class="th-sub bg-soft-danger border-bottom-maroon col-pak">CPNS</th>
+                                        <th class="th-sub bg-soft-danger border-bottom-maroon col-pak">PNS</th>
+                                        <th class="th-sub bg-soft-danger border-bottom-maroon col-pak">PPPK</th>
+                                        <th class="th-sub bg-soft-danger border-bottom-maroon col-pak">PW</th>
+                                        <th class="th-sub bg-soft-danger border-bottom-maroon col-pak">Non ASN<br>&lt; 3-8-2023</th>
+                                        <th class="th-sub bg-soft-danger border-bottom-maroon col-pak">Non ASN<br>&gt; 3-8-2023</th>
+                                        <th class="th-sub bg-soft-danger border-bottom-maroon col-pak">+/-</th>
+                                        <th class="th-sub bg-soft-danger border-bottom-maroon col-pak">Keterangan</th>
                                     </tr>
                                 </thead>
 
@@ -154,46 +167,13 @@
 
                                 <tfoot class="bg-light font-weight-bold" style="border-top: 3px solid #800000;">
                                     <tr>
-                                        <th></th>
-                                        <th></th>
-                                        <th></th>
-                                        <th></th>
-                                        <th></th>
-                                        <th></th>
-                                        <th></th>
-                                        <th></th>
-                                        <th></th>
-                                        <th></th>
-                                        <th></th>
-                                        <th></th>
-                                        <th></th>
-                                        <th></th>
-                                        <th></th>
-                                        <th></th>
-                                        <th></th>
-                                        <th></th>
-                                        <th></th>
-                                        <th></th>
-                                        <th></th>
-                                        <th></th>
-                                        <th></th>
-                                        <th></th>
-                                        <th></th>
-                                        <th></th>
-                                        <th></th>
-                                        <th></th>
-                                        <th></th>
-                                        <th></th>
-                                        <th></th>
-                                        <th></th>
-                                        <th></th>
-                                        <th></th>
-                                        <th></th>
-                                        <th></th>
-                                        <th></th>
-                                        <th></th>
-                                        <th></th>
-                                        <th></th>
+                                        <!-- 48 cells (0 s/d 47) -->
+                                        <th></th><th></th><th></th>
+                                        <th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th>
+                                        <th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th>
+                                        <th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th>
+                                        <th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th>
+                                        <th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th>
                                     </tr>
                                 </tfoot>
 
@@ -219,20 +199,19 @@
     var KEBUTUHANPTKSDN_UNIT_TERKUNCI = "";
     var KEBUTUHANPTKSDN_USER_NPSN = "";
 
-    function kebutuhanptksdn_updateTabelKosong(htmlContent) {
-        if (KEBUTUHANPTKSDN_TABEL_INSTANCE) {
-            $('#kebutuhanptksdn_tableState').show();
-            SultanUI.hideLoading('#kebutuhanptksdn_loadingState');
-            KEBUTUHANPTKSDN_TABEL_INSTANCE.clear().draw();
-            var emptyRow = $('#kebutuhanptksdn_tabelUtama tbody tr td.dataTables_empty');
-            if (emptyRow.length > 0) { emptyRow.html(htmlContent); }
-        }
-    }
+    // Mapping Jabatan ke Index Kolom DataTables
+    var KEBUTUHANPTKSDN_JABATAN_MAP = {
+        "KS":   { name: "Kepala Sekolah",   start: 3,  end: 11, grpId: "#grp_ks",   cls: "col-ks",   bg: "bg-soft-primary" },
+        "GK":   { name: "Guru Kelas",       start: 12, end: 20, grpId: "#grp_gk",   cls: "col-gk",   bg: "bg-soft-success" },
+        "PJOK": { name: "Guru PJOK",        start: 21, end: 29, grpId: "#grp_pjok", cls: "col-pjok", bg: "bg-soft-orange" },
+        "PAI":  { name: "Guru PAI",         start: 30, end: 38, grpId: "#grp_pai",  cls: "col-pai",  bg: "bg-soft-purple" },
+        "PAK":  { name: "Guru PA Kristen",  start: 39, end: 47, grpId: "#grp_pak",  cls: "col-pak",  bg: "bg-soft-danger" }
+    };
 
     $(document).ready(function () {
         KEBUTUHANPTKSDN_TABEL_INSTANCE = null;
         $('#kebutuhanptksdn_tableState').hide();
-        SultanUI.showLoading('#kebutuhanptksdn_loadingState', 'Mengambil Analisis Kebutuhan Server...');
+        SultanUI.showLoading('#kebutuhanptksdn_loadingState', 'Mengambil Analisis Kebutuhan Guru...');
 
         // Verifikasi Sesi Kepatuhan Sultan
         try {
@@ -244,23 +223,23 @@
 
         // VAKSIN DELEGASI EVENT JQUERY 
         $(document).on('change', '#kebutuhanptksdn_filterUnit', kebutuhanptksdn_terapkanFilterLokal);
+        $(document).on('change', '#kebutuhanptksdn_filterJabatan', kebutuhanptksdn_onFilterJabatanChange);
         $(document).on('click', '#kebutuhanptksdn_btnSync', kebutuhanptksdn_tarikDataServer);
+        $(document).on('click', '#kebutuhanptksdn_btnExport', kebutuhanptksdn_exportExcel);
 
         kebutuhanptksdn_validasiAksesUser();
     });
 
     // =================================================================
-    // 2. GATEKEEPER & FETCH SERVER (BAB VIII)
+    // 2. GATEKEEPER & FETCH SERVER (REAL-TIME DARI MASTER DATA GTK)
     // =================================================================
     function kebutuhanptksdn_validasiAksesUser() {
         SultanUI.showLoading('#kebutuhanptksdn_loadingState', 'Mempersiapkan Akses...');
 
-        // Semua user (Admin & Sekolah) diizinkan melihat semua unit kerja sdn
         $('#kebutuhanptksdn_filterUnit').empty().append('<option value="SEMUA">- Semua Unit Kerja -</option>').prop('disabled', false).removeClass('bg-light text-maroon font-weight-bold');
         $('#kebutuhanptksdn_btnSync').prop('disabled', false);
 
         if (!KEBUTUHANPTKSDN_IS_ADMIN && KEBUTUHANPTKSDN_USER_NPSN) {
-            // Ambil unit kerja user login untuk dijadikan default filter awal
             google.script.run
                 .withSuccessHandler(function (resUnit) {
                     var dataUnit = JSON.parse(resUnit);
@@ -286,30 +265,35 @@
         $('#kebutuhanptksdn_filterUnit').prop('disabled', true);
 
         $('#kebutuhanptksdn_tableState').hide();
-        SultanUI.showLoading('#kebutuhanptksdn_loadingState', 'Mengambil Analisis Kebutuhan Server...');
+        SultanUI.showLoading('#kebutuhanptksdn_loadingState', 'Mengambil Analisis Kebutuhan Master GTK...');
 
         google.script.run
-            .withSuccessHandler(function (data) {
+            .withSuccessHandler(function (rawRes) {
                 btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
                 $('#kebutuhanptksdn_filterUnit').prop('disabled', false);
 
-                KEBUTUHANPTKSDN_CACHE_DATA = data || [];
-                kebutuhanptksdn_populateFilterUnit();
-
-                kebutuhanptksdn_terapkanFilterLokal();
+                var res = typeof rawRes === 'string' ? JSON.parse(rawRes) : rawRes;
+                if (res && res.success) {
+                    KEBUTUHANPTKSDN_CACHE_DATA = res.schools || [];
+                    kebutuhanptksdn_populateFilterUnit();
+                    kebutuhanptksdn_terapkanFilterLokal();
+                } else {
+                    SultanUI.hideLoading('#kebutuhanptksdn_loadingState');
+                    Sultan.alert('error', 'Gagal Memuat Data', (res && res.message) ? res.message : 'Terjadi kesalahan sistem.');
+                }
             })
             .withFailureHandler(function (err) {
                 btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-danger"></i>');
                 $('#kebutuhanptksdn_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Terputus: ' + kebutuhanptksdn_escapeHtml(err.message) + '</span>');
                 Sultan.alert('error', 'Koneksi Terputus', err.message);
             })
-            .getDataKebutuhanGuru();
+            .getDataKebutuhanGuruSDNMaster();
     }
 
     function kebutuhanptksdn_populateFilterUnit() {
         var uniqueUnit = new Set();
-        KEBUTUHANPTKSDN_CACHE_DATA.forEach(function (row) {
-            var rUnit = String(row[0] || "").trim();
+        KEBUTUHANPTKSDN_CACHE_DATA.forEach(function (sch) {
+            var rUnit = String(sch.unit || "").trim();
             if (rUnit) uniqueUnit.add(rUnit);
         });
 
@@ -320,9 +304,10 @@
             $selUnit.append($('<option>', { value: u, text: u }));
         });
 
-        // Set default filter: pilih filter aktif sebelumnya, atau default "SEMUA" agar semua data sekolah terlihat langsung oleh semua user
         if (currentUnit && uniqueUnit.has(currentUnit)) {
             $selUnit.val(currentUnit);
+        } else if (KEBUTUHANPTKSDN_UNIT_TERKUNCI && uniqueUnit.has(KEBUTUHANPTKSDN_UNIT_TERKUNCI)) {
+            $selUnit.val(KEBUTUHANPTKSDN_UNIT_TERKUNCI);
         } else {
             $selUnit.val("SEMUA");
         }
@@ -331,23 +316,69 @@
     function kebutuhanptksdn_terapkanFilterLokal() {
         var tUnit = ($('#kebutuhanptksdn_filterUnit').val() || "SEMUA").toUpperCase();
 
-        var filteredData = KEBUTUHANPTKSDN_CACHE_DATA.filter(function (row) {
-            var rUnit = String(row[0] || "").trim().toUpperCase();
+        var filteredData = KEBUTUHANPTKSDN_CACHE_DATA.filter(function (sch) {
+            var rUnit = String(sch.unit || "").trim().toUpperCase();
             return (tUnit === "SEMUA" || rUnit === tUnit);
         });
 
         kebutuhanptksdn_renderTabel(filteredData);
     }
 
+    function kebutuhanptksdn_onFilterJabatanChange() {
+        if (!KEBUTUHANPTKSDN_TABEL_INSTANCE) return;
+        var selectedJab = $('#kebutuhanptksdn_filterJabatan').val();
+        kebutuhanptksdn_sesuaikanVisibilitasKolom(selectedJab);
+    }
+
+    function kebutuhanptksdn_sesuaikanVisibilitasKolom(selectedJab) {
+        if (!KEBUTUHANPTKSDN_TABEL_INSTANCE) return;
+
+        var dt = KEBUTUHANPTKSDN_TABEL_INSTANCE;
+
+        // Kolom 0, 1, 2 (Unit Kerja, Rombel, Murid) selalu terlihat
+        dt.column(0).visible(true, false);
+        dt.column(1).visible(true, false);
+        dt.column(2).visible(true, false);
+
+        if (selectedJab === "SEMUA") {
+            // Tampilkan semua kolom 3 s/d 47
+            for (var c = 3; c <= 47; c++) {
+                dt.column(c).visible(true, false);
+            }
+            $('#kebutuhanptksdn_headerRowGroup th[id^="grp_"]').show();
+        } else {
+            var activeInfo = KEBUTUHANPTKSDN_JABATAN_MAP[selectedJab];
+
+            // Sembunyikan semua group header dulu
+            $('#kebutuhanptksdn_headerRowGroup th[id^="grp_"]').hide();
+
+            // Loop semua jabatan
+            Object.keys(KEBUTUHANPTKSDN_JABATAN_MAP).forEach(function (jKey) {
+                var info = KEBUTUHANPTKSDN_JABATAN_MAP[jKey];
+                var isTarget = (jKey === selectedJab);
+
+                for (var c = info.start; c <= info.end; c++) {
+                    dt.column(c).visible(isTarget, false);
+                }
+
+                if (isTarget) {
+                    $(info.grpId).show();
+                }
+            });
+        }
+
+        dt.columns.adjust().draw(false);
+    }
+
     // =================================================================
-    // 3. RENDER ENGINE MATRIKS: EXCEL SOLID COLOR (BAB VII)
+    // 3. RENDER ENGINE TABEL & SOLID COLOR MATRIX (BAB VII)
     // =================================================================
-    function kebutuhanptksdn_getColumnClass(index) {
-        if (index >= 4 && index <= 8) return "bg-soft-primary";
-        if (index >= 9 && index <= 16) return "bg-soft-success";
-        if (index >= 17 && index <= 24) return "bg-soft-orange";
-        if (index >= 25 && index <= 32) return "bg-soft-purple";
-        if (index >= 33 && index <= 40) return "bg-soft-danger";
+    function kebutuhanptksdn_getColumnClass(colIndex) {
+        if (colIndex >= 3 && colIndex <= 11) return "bg-soft-primary";
+        if (colIndex >= 12 && colIndex <= 20) return "bg-soft-success";
+        if (colIndex >= 21 && colIndex <= 29) return "bg-soft-orange";
+        if (colIndex >= 30 && colIndex <= 38) return "bg-soft-purple";
+        if (colIndex >= 39 && colIndex <= 47) return "bg-soft-danger";
         return "";
     }
 
@@ -359,55 +390,62 @@
     function kebutuhanptksdn_renderTabel(dataRows) {
         var dtArray = [];
 
-        dataRows.forEach(function (row) {
+        dataRows.forEach(function (sch) {
             var arrRow = [];
 
-            // KEPATUHAN: Menambahkan NPSN di bawah Nama Sekolah.
-            var uiUnit = '<div style="white-space: nowrap;"><div class="sultan-table-primary text-uppercase text-left">' + (kebutuhanptksdn_escapeHtml(row[0]) || '-') + '</div>';
-            uiUnit += '<div class="sultan-table-secondary text-left">' + (kebutuhanptksdn_escapeHtml(row[1]) || '-') + '</div></div>';
+            // Kolom 0: Unit Kerja + Subtitle NPSN
+            var uiUnit = '<div style="white-space: nowrap;"><div class="sultan-table-primary text-uppercase text-left">' + (kebutuhanptksdn_escapeHtml(sch.unit) || '-') + '</div>';
+            uiUnit += '<div class="sultan-table-secondary text-left">' + (kebutuhanptksdn_escapeHtml(sch.npsn) || '-') + '</div></div>';
             arrRow.push(uiUnit);
 
-            // Kolom 2 & 3 (Index 1 & 2 di DT): Jml Rombel & Murid
-            arrRow.push(row[2] || '0');
-            arrRow.push(row[3] || '0');
+            // Kolom 1 & 2: Rombel & Murid
+            arrRow.push(sch.rombel || 0);
+            arrRow.push(sch.murid || 0);
 
-            // Kolom Data Numerik/Keterangan (Index 3 s/d 39 di DT, dari backend Index 4 s/d 40)
-            for (var c = 4; c <= 40; c++) {
-                var isKeterangan = [8, 16, 24, 32, 40].includes(c);
-                if (isKeterangan) {
-                    var textVal = String(row[c] || "").trim();
-                    if (!textVal) {
-                        arrRow.push('<span class="text-muted opacity-50">-</span>');
-                    } else {
-                        var colorClass = "text-dark";
-                        if (textVal.indexOf("Kurang") !== -1) {
-                            colorClass = "text-danger";
-                        } else if (textVal.indexOf("Lebih") !== -1) {
-                            colorClass = "text-primary";
-                        }
-                        arrRow.push('<span class="font-weight-bold ' + colorClass + '">' + kebutuhanptksdn_escapeHtml(textVal) + '</span>');
-                    }
-                } else {
-                    var val = parseInt(row[c]) || 0;
-                    if (val === 0) {
-                        arrRow.push('<span class="text-muted opacity-50">-</span>');
-                    } else {
-                        var isPlusMinus = [7, 15, 23, 31, 39].includes(c);
-                        if (isPlusMinus) {
-                            var pmClass = val < 0 ? 'text-danger' : 'text-primary';
-                            arrRow.push('<span class="font-weight-bold ' + pmClass + '">' + val + '</span>');
-                        } else {
-                            arrRow.push('<span class="font-weight-bold">' + val + '</span>');
-                        }
-                    }
-                }
+            // Helper untuk menambahkan 9 kolom per jabatan
+            function pushJabatanCols(item) {
+                item = item || { keb: 0, cpns: 0, pns: 0, pppk: 0, pw: 0, non_asn_lt: 0, non_asn_gt: 0, selisih: 0, ket: "Sesuai" };
+                
+                // Formasi / Guru
+                arrRow.push(item.keb || 0);
+                arrRow.push(item.cpns || 0);
+                arrRow.push(item.pns || 0);
+                arrRow.push(item.pppk || 0);
+                arrRow.push(item.pw || 0);
+                arrRow.push(item.non_asn_lt || 0);
+                arrRow.push(item.non_asn_gt || 0);
+
+                // Selisih (+/-)
+                var selisih = parseInt(item.selisih) || 0;
+                var pmClass = selisih < 0 ? 'text-danger' : (selisih > 0 ? 'text-primary' : 'text-dark');
+                var selisihDisplay = selisih === 0 ? '<span class="text-muted opacity-50">0</span>' : '<span class="font-weight-bold ' + pmClass + '">' + (selisih > 0 ? '+' + selisih : selisih) + '</span>';
+                arrRow.push(selisihDisplay);
+
+                // Keterangan
+                var ket = String(item.ket || "Sesuai").trim();
+                var ketColor = "text-dark";
+                if (ket.indexOf("Kurang") !== -1) ketColor = "text-danger";
+                else if (ket.indexOf("Lebih") !== -1) ketColor = "text-primary";
+                arrRow.push('<span class="font-weight-bold ' + ketColor + '">' + kebutuhanptksdn_escapeHtml(ket) + '</span>');
             }
+
+            // KS (Cols 3-11)
+            pushJabatanCols(sch.ks);
+            // GK (Cols 12-20)
+            pushJabatanCols(sch.guru_kelas);
+            // PJOK (Cols 21-29)
+            pushJabatanCols(sch.guru_pjok);
+            // PAI (Cols 30-38)
+            pushJabatanCols(sch.guru_pai);
+            // PAK (Cols 39-47)
+            pushJabatanCols(sch.guru_kristen);
+
             dtArray.push(arrRow);
         });
 
         if (!$.fn.DataTable.isDataTable('#kebutuhanptksdn_tabelUtama')) {
             KEBUTUHANPTKSDN_TABEL_INSTANCE = SultanTable.init('#kebutuhanptksdn_tabelUtama', {
-            "responsive": false,
+                "responsive": false,
                 "data": dtArray,
                 "destroy": true, "ordering": false, "pageLength": 10, "autoWidth": false,
                 "deferRender": true,
@@ -420,48 +458,41 @@
                 ],
                 "language": {
                     "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json",
-                    "emptyTable": '<div class="py-4 text-center text-muted"><i class="fas fa-clipboard-list fa-3x text-gray-300 mb-3" style="opacity: 0.6;"></i><br><h6 class="font-weight-bold text-dark mb-1">Belum Ada Data</h6><p class="small mb-0">Tidak ada analisis kebutuhan PTK untuk filter terpilih.</p></div>'
+                    "emptyTable": '<div class="py-4 text-center text-muted"><i class="fas fa-clipboard-list fa-3x text-gray-300 mb-3" style="opacity: 0.6;"></i><br><h6 class="font-weight-bold text-dark mb-1">Belum Ada Data</h6><p class="small mb-0">Tidak ada analisis kebutuhan guru untuk filter terpilih.</p></div>'
                 },
                 "createdRow": function (row, data, dataIndex) {
-                    // Gunakan default background (adaptif)
                     $('td', row).eq(1).addClass('text-dark py-1');
                     $('td', row).eq(2).addClass('text-dark py-1');
 
-                    // Loop index array dari DT (Index 3 sampai 39)
-                    for (var i = 3; i <= 39; i++) {
-                        var colIndexBackend = i + 1; // Konversi index DT ke index backend warna
+                    for (var i = 3; i <= 47; i++) {
                         var td = $('td', row).eq(i);
-
-                        var bgClass = kebutuhanptksdn_getColumnClass(colIndexBackend);
-
-                        if ([8, 16, 24, 32, 40].includes(colIndexBackend)) {
-                            td.addClass('text-dark');
-                        } else {
-                            td.addClass('text-dark');
-                        }
-
+                        var bgClass = kebutuhanptksdn_getColumnClass(i);
                         if (bgClass) td.addClass(bgClass);
-                        td.addClass('py-1');
+                        td.addClass('py-1 text-dark');
                     }
                 },
                 "footerCallback": function (row, data, start, end, display) {
                     var api = this.api();
-                    var totalArr = new Array(39).fill(0); // Menampung DT index 1 s/d 39
+                    var totalArr = new Array(47).fill(0); // DT index 1 s/d 47
+
+                    // Index kolom keterangan yang tidak dijumlahkan numerik
+                    var ketIndices = [11, 20, 29, 38, 47];
+                    // Index kolom selisih (+/-)
+                    var pmIndices = [10, 19, 28, 37, 46];
 
                     api.rows({ search: 'applied' }).data().each(function (rowData) {
-                        for (var i = 1; i <= 39; i++) {
-                            var colIndexBackend = i + 1;
-                            if ([8, 16, 24, 32, 40].includes(colIndexBackend)) {
+                        for (var i = 1; i <= 47; i++) {
+                            if (ketIndices.includes(i)) {
                                 totalArr[i - 1] = "";
                                 continue;
                             }
                             var rawStr = String(rowData[i]);
-                            var val = parseInt(rawStr.replace(/<[^>]*>?/gm, '').replace(/,/g, '')) || 0;
+                            var cleanVal = rawStr.replace(/<[^>]*>?/gm, '').replace(/,/g, '').trim();
+                            var val = parseInt(cleanVal) || 0;
                             totalArr[i - 1] += val;
                         }
                     });
 
-                    // Update existing footer cells in-place to avoid breaking DataTables' internal node references (nTf)
                     var cells = $(api.table().footer()).find('th');
                     cells.eq(0).html('TOTAL JUMLAH').addClass('text-maroon text-left font-weight-bold px-3 py-1 align-middle col-sticky-left text-uppercase').css({'z-index': '40', 'border-right': '2px solid #dee2e6'});
                     
@@ -469,27 +500,29 @@
                     cells.eq(1).html(totalArr[0]).removeClass('text-danger text-primary text-dark').addClass('text-center px-2 py-1 font-weight-bold text-maroon bg-white align-middle sultan-total-row');
                     cells.eq(2).html(totalArr[1]).removeClass('text-danger text-primary text-dark').addClass('text-center px-2 py-1 font-weight-bold text-maroon bg-white align-middle sultan-total-row');
 
-                    // Rekap Metrik (DT col 3-39 -> totalArr index 2-38)
-                    for (var i = 2; i < 39; i++) {
-                        var colIndexBackend = i + 2;
-                        var val = totalArr[i];
-                        var bgClass = kebutuhanptksdn_getColumnClass(colIndexBackend);
+                    // Kolom Metrik Guru (Col 3 s/d 47)
+                    for (var col = 3; col <= 47; col++) {
+                        var val = totalArr[col - 1];
+                        var bgClass = kebutuhanptksdn_getColumnClass(col);
                         var txtColor = "text-maroon";
 
-                        if ([8, 16, 24, 32, 40].includes(colIndexBackend)) {
+                        if (ketIndices.includes(col)) {
                             val = "";
-                        } else if ([7, 15, 23, 31, 39].includes(colIndexBackend)) {
-                            var totalVal = parseInt(val) || 0;
-                            if (totalVal < 0) {
+                        } else if (pmIndices.includes(col)) {
+                            var totalPm = parseInt(val) || 0;
+                            if (totalPm < 0) {
                                 txtColor = "text-danger";
-                            } else if (totalVal > 0) {
+                                val = totalPm;
+                            } else if (totalPm > 0) {
                                 txtColor = "text-primary";
+                                val = "+" + totalPm;
                             } else {
                                 txtColor = "text-dark";
+                                val = "0";
                             }
                         }
 
-                        var td = cells.eq(i + 1);
+                        var td = cells.eq(col);
                         td.html(val).removeClass('text-maroon text-danger text-primary text-dark bg-soft-primary bg-soft-success bg-soft-orange bg-soft-purple bg-soft-danger')
                           .addClass('text-center px-2 py-1 font-weight-bold sultan-total-row ' + txtColor);
                         if (bgClass) td.addClass(bgClass);
@@ -499,7 +532,10 @@
 
             SultanUI.hideLoading('#kebutuhanptksdn_loadingState');
             $('#kebutuhanptksdn_tableState').show();
-            KEBUTUHANPTKSDN_TABEL_INSTANCE.columns.adjust();
+            
+            // Terapkan visibilitas kolom sesuai dropdown jabatan saat inisialisasi
+            var currentJab = $('#kebutuhanptksdn_filterJabatan').val();
+            kebutuhanptksdn_sesuaikanVisibilitasKolom(currentJab);
         }
         else {
             KEBUTUHANPTKSDN_TABEL_INSTANCE.clear().rows.add(dtArray).draw(false);
@@ -507,8 +543,114 @@
             if ($('#kebutuhanptksdn_tableState').is(':hidden')) {
                 SultanUI.hideLoading('#kebutuhanptksdn_loadingState');
                 $('#kebutuhanptksdn_tableState').show();
-                KEBUTUHANPTKSDN_TABEL_INSTANCE.columns.adjust();
+            }
+
+            var activeJab = $('#kebutuhanptksdn_filterJabatan').val();
+            kebutuhanptksdn_sesuaikanVisibilitasKolom(activeJab);
+        }
+    }
+
+    // =================================================================
+    // 4. EXCEL EXPORT (STANDAR SULTAN: VISIBLE COLUMNS & CLEAN UNIT)
+    // =================================================================
+    function kebutuhanptksdn_exportExcel() {
+        if (!KEBUTUHANPTKSDN_TABEL_INSTANCE) {
+            Sultan.alert('warning', 'Peringatan', 'Tabel belum siap diekspor.');
+            return;
+        }
+
+        var selectedJab = $('#kebutuhanptksdn_filterJabatan').val();
+        var jabTitle = selectedJab === "SEMUA" ? "Semua Jabatan" : (KEBUTUHANPTKSDN_JABATAN_MAP[selectedJab] ? KEBUTUHANPTKSDN_JABATAN_MAP[selectedJab].name : selectedJab);
+
+        var excelRows = [];
+
+        // 1. Header Baris 1 & 2
+        var header1 = ["Unit Kerja", "Jml Rombel", "Jml Murid"];
+        var header2 = ["", "", ""];
+
+        var subHeaders = ["Keb.", "CPNS", "PNS", "PPPK", "PW", "Non ASN < 3-8-2023", "Non ASN > 3-8-2023", "+/-", "Keterangan"];
+
+        if (selectedJab === "SEMUA") {
+            Object.keys(KEBUTUHANPTKSDN_JABATAN_MAP).forEach(function (key) {
+                var info = KEBUTUHANPTKSDN_JABATAN_MAP[key];
+                for (var i = 0; i < subHeaders.length; i++) {
+                    header1.push(i === 0 ? info.name.toUpperCase() : "");
+                    header2.push(subHeaders[i]);
+                }
+            });
+        } else {
+            var info = KEBUTUHANPTKSDN_JABATAN_MAP[selectedJab];
+            for (var i = 0; i < subHeaders.length; i++) {
+                header1.push(i === 0 ? info.name.toUpperCase() : "");
+                header2.push(subHeaders[i]);
             }
         }
+
+        excelRows.push(header1);
+        excelRows.push(header2);
+
+        // 2. Data Rows (Hanya ambil nama sekolah bersih tanpa NPSN)
+        var tUnit = ($('#kebutuhanptksdn_filterUnit').val() || "SEMUA").toUpperCase();
+        var filteredSchools = KEBUTUHANPTKSDN_CACHE_DATA.filter(function (sch) {
+            var rUnit = String(sch.unit || "").trim().toUpperCase();
+            return (tUnit === "SEMUA" || rUnit === tUnit);
+        });
+
+        filteredSchools.forEach(function (sch) {
+            var r = [sch.unit || "-", sch.rombel || 0, sch.murid || 0];
+
+            function addJabValues(item) {
+                item = item || { keb: 0, cpns: 0, pns: 0, pppk: 0, pw: 0, non_asn_lt: 0, non_asn_gt: 0, selisih: 0, ket: "Sesuai" };
+                r.push(item.keb || 0);
+                r.push(item.cpns || 0);
+                r.push(item.pns || 0);
+                r.push(item.pppk || 0);
+                r.push(item.pw || 0);
+                r.push(item.non_asn_lt || 0);
+                r.push(item.non_asn_gt || 0);
+                r.push(item.selisih || 0);
+                r.push(item.ket || "Sesuai");
+            }
+
+            if (selectedJab === "SEMUA") {
+                addJabValues(sch.ks);
+                addJabValues(sch.guru_kelas);
+                addJabValues(sch.guru_pjok);
+                addJabValues(sch.guru_pai);
+                addJabValues(sch.guru_kristen);
+            } else if (selectedJab === "KS") {
+                addJabValues(sch.ks);
+            } else if (selectedJab === "GK") {
+                addJabValues(sch.guru_kelas);
+            } else if (selectedJab === "PJOK") {
+                addJabValues(sch.guru_pjok);
+            } else if (selectedJab === "PAI") {
+                addJabValues(sch.guru_pai);
+            } else if (selectedJab === "PAK") {
+                addJabValues(sch.guru_kristen);
+            }
+
+            excelRows.push(r);
+        });
+
+        // 3. Export XLSX
+        try {
+            var ws = XLSX.utils.aoa_to_sheet(excelRows);
+            var wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Kebutuhan Guru");
+            var filename = "Kebutuhan_Guru_SDN_" + jabTitle.replace(/\s+/g, '_') + "_" + Utilities_getTimestamp() + ".xlsx";
+            XLSX.writeFile(wb, filename);
+            Sultan.alert('success', 'Berhasil', 'Data berhasil diekspor ke Excel.');
+        } catch (err) {
+            Sultan.alert('error', 'Gagal Ekspor', err.message);
+        }
+    }
+
+    function Utilities_getTimestamp() {
+        var now = new Date();
+        var y = now.getFullYear();
+        var m = String(now.getMonth() + 1).padStart(2, '0');
+        var d = String(now.getDate()).padStart(2, '0');
+        return y + m + d;
     }
 </script>
