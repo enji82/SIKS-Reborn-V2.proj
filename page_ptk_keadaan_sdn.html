@@ -709,7 +709,6 @@
     // =================================================================
     function keadaanptksdn_exportExcel() {
         var activeMode = KEADAANPTKSDN_CURRENT_MODE || 'jabatan';
-        var targetTableId = (activeMode === 'status') ? 'keadaanptksdn_tabelStatus' : 'keadaanptksdn_tabelPendidik';
         var tableTitle = (activeMode === 'status') ? 'Keadaan_PTK_Status_SDN' : 'Keadaan_PTK_Jabatan_SDN';
 
         var dtInstance = (activeMode === 'status') ? KEADAANPTKSDN_TABEL_STATUS_INSTANCE : KEADAANPTKSDN_TABEL_PENDIDIK_INSTANCE;
@@ -722,35 +721,52 @@
         btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Mengekspor...');
 
         setTimeout(function () {
-            var info = dtInstance.page.info();
-            var currLen = info.length; var currPage = info.page;
-            dtInstance.page.len(-1).draw('page');
+            var exportContent = '';
 
-            var tableClone = document.getElementById(targetTableId).cloneNode(true);
-            dtInstance.page.len(currLen).page(currPage).draw('page');
+            var processTableClone = function (tableId, instance) {
+                if (!instance) return '';
+                var info = instance.page.info();
+                var currLen = info.length; var currPage = info.page;
+                instance.page.len(-1).draw('page');
 
-            $(tableClone).find('[style*="display: none"]').remove();
-            $(tableClone).removeClass();
-            $(tableClone).css('border-collapse', 'collapse');
+                var tableClone = document.getElementById(tableId).cloneNode(true);
+                instance.page.len(currLen).page(currPage).draw('page');
 
-            // Format cell texts
-            $(tableClone).find('tbody tr').each(function () {
-                var $tr = $(this);
-                var $firstTd = $tr.find('td:first');
-                var schoolName = $firstTd.find('.sultan-table-primary').text().trim();
-                var npsn = $firstTd.find('.sultan-table-secondary').text().trim();
-                if (!schoolName) {
-                    schoolName = $firstTd.text().trim();
-                    npsn = "-";
-                }
-                $firstTd.text(schoolName + " (" + npsn + ")");
-            });
+                $(tableClone).find('[style*="display: none"]').remove();
+                $(tableClone).removeClass();
+                $(tableClone).css('border-collapse', 'collapse');
+
+                // Format cell texts: hanya Nama Sekolah, tanpa NPSN
+                $(tableClone).find('tbody tr').each(function () {
+                    var $tr = $(this);
+                    var $firstTd = $tr.find('td:first');
+                    var schoolName = $firstTd.find('.sultan-table-primary').text().trim();
+                    if (!schoolName) {
+                        schoolName = $firstTd.text().trim();
+                    }
+                    $firstTd.text(schoolName);
+                });
+
+                return tableClone.outerHTML;
+            };
+
+            if (activeMode === 'status') {
+                exportContent = processTableClone('keadaanptksdn_tabelStatus', KEADAANPTKSDN_TABEL_STATUS_INSTANCE);
+            } else {
+                var htmlPendidik = processTableClone('keadaanptksdn_tabelPendidik', KEADAANPTKSDN_TABEL_PENDIDIK_INSTANCE);
+                var htmlTendik = processTableClone('keadaanptksdn_tabelTendik', KEADAANPTKSDN_TABEL_TENDIK_INSTANCE);
+                exportContent = '<h3 style="text-align:left; font-family:sans-serif; margin-bottom:8px;">REKAPITULASI KEADAAN PENDIDIK (GURU & KEPALA SEKOLAH)</h3>' +
+                    htmlPendidik +
+                    '<br><br>' +
+                    '<h3 style="text-align:left; font-family:sans-serif; margin-bottom:8px;">REKAPITULASI KEADAAN TENAGA KEPENDIDIKAN (TENDIK)</h3>' +
+                    htmlTendik;
+            }
 
             var html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">' +
                 '<head><meta charset="utf-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>' +
                 '<x:Name>Rekapitulasi</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->' +
                 '<style>td, th { border: 0.5pt solid #000; padding: 5px; text-align: center; } .text-left { text-align: left; } th { background-color: #f2f2f2; font-weight: bold; }</style>' +
-                '</head><body>' + tableClone.outerHTML + '</body></html>';
+                '</head><body>' + exportContent + '</body></html>';
 
             var blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
             var url = URL.createObjectURL(blob);
