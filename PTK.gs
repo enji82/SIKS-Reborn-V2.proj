@@ -1007,7 +1007,301 @@ function moveDataPTKToNonAktif(id, reason, userLogin) {
 
 function getDataKeadaanGTK() { var sheet = getSheet(KONFIG_PTK.DB_KEY, "Keadaan GTK"); if (!sheet) return []; var lastRow = sheet.getLastRow(); if (lastRow < 3) return []; return sheet.getRange(3, 1, lastRow - 2, 67).getDisplayValues(); }
 function getDataKebutuhanGuru() { return getDataKebutuhanGuruSDNMaster(); }
-function getDataBezettingSDN() { var sheet = getSheet(KONFIG_PTK.DB_KEY, "Bezetting"); if (!sheet) return []; var lastRow = sheet.getLastRow(); if (lastRow < 4) return []; return sheet.getRange(4, 1, lastRow - 3, 54).getDisplayValues(); }
+function getDataBezettingSDN() { return getDataBezettingSDNMaster(); }
+
+/**
+ * BEZETTING SD NEGERI (DINAMIS DARI MASTER DATA GTK)
+ * Menghitung bezetting, formasi, CPNS, pensiun (1 & 2 thn), selisih +/-, dan tendik
+ * langsung secara real-time dari Master Data GTK.
+ * Output: JSON string { success: true, schools: [...] }
+ */
+function getDataBezettingSDNMaster() {
+  try {
+    var sheet = getSheet(KONFIG_PTK.DB_KEY, KONFIG_PTK.SHEET_PTK);
+    if (!sheet) return JSON.stringify({ success: false, message: "Sheet Master Data GTK tidak ditemukan.", schools: [] });
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) return JSON.stringify({ success: true, schools: [] });
+
+    // 1. Ambil Data Rombel & Murid dari sheet Kebutuhan Guru
+    var rombelMuridMap = {};
+    try {
+      var kgSheet = getSheet(KONFIG_PTK.DB_KEY, "Kebutuhan Guru");
+      if (kgSheet && kgSheet.getLastRow() >= 3) {
+        var kgData = kgSheet.getRange(3, 1, kgSheet.getLastRow() - 2, 4).getValues();
+        for (var k = 0; k < kgData.length; k++) {
+          var kUnit = String(kgData[k][0] || "").trim();
+          var kNpsn = String(kgData[k][1] || "").trim();
+          var kRombel = parseInt(kgData[k][2]) || 0;
+          var kMurid = parseInt(kgData[k][3]) || 0;
+          var info = { rombel: kRombel, murid: kMurid, unit: kUnit, npsn: kNpsn };
+          if (kNpsn) rombelMuridMap[kNpsn] = info;
+          if (kUnit) rombelMuridMap[kUnit] = info;
+        }
+      }
+    } catch (eKg) {}
+
+    // 2. Baca Kolom A (1) s/d Z (26) Master Data GTK
+    var data = sheet.getRange(2, 1, lastRow - 1, 26).getValues();
+    var schoolMap = {};
+
+    function initBezettingJabatan() {
+      return {
+        keb: 0,
+        cpns: 0,
+        pns: 0,
+        pppk: 0,
+        pw: 0,
+        jml: 0,
+        selisih: 0,
+        non_asn_lt: 0,
+        pens_1: 0,
+        pens_2: 0
+      };
+    }
+
+    // Inisialisasi sekolah dari rombelMuridMap
+    Object.keys(rombelMuridMap).forEach(function(key) {
+      var ref = rombelMuridMap[key];
+      var sKey = ref.npsn || ref.unit;
+      if (!schoolMap[sKey]) {
+        schoolMap[sKey] = {
+          npsn: ref.npsn || "",
+          unit: ref.unit || "",
+          rombel: ref.rombel || 0,
+          murid: ref.murid || 0,
+          ks: initBezettingJabatan(),
+          guru_kelas: initBezettingJabatan(),
+          guru_pjok: initBezettingJabatan(),
+          guru_pai: initBezettingJabatan(),
+          guru_kristen: initBezettingJabatan(),
+          tendik_pw: { pengelola_umum: 0, operator_layanan: 0, pengelola_layanan: 0, penata_layanan: 0, jml: 0 },
+          non_asn_cutoff: { guru: 0, tendik: 0, jml: 0 }
+        };
+      }
+    });
+
+    var now = new Date();
+    var curYear = now.getFullYear(); // 2026
+    var nextYear = curYear + 1;      // 2027
+    var cutoffDate = new Date(2023, 7, 3); // 3 Agustus 2023
+
+    for (var i = 0; i < data.length; i++) {
+      var row = data[i];
+      if (!row[0]) continue;
+
+      var npsn = String(row[1] || "").trim();
+      var unit = String(row[2] || "").trim();
+      if (!unit && !npsn) continue;
+
+      var schoolKey = npsn || unit;
+      if (!schoolMap[schoolKey]) {
+        var refInfo = rombelMuridMap[npsn] || rombelMuridMap[unit] || { rombel: 0, murid: 0 };
+        schoolMap[schoolKey] = {
+          npsn: npsn,
+          unit: unit,
+          rombel: refInfo.rombel || 0,
+          murid: refInfo.murid || 0,
+          ks: initBezettingJabatan(),
+          guru_kelas: initBezettingJabatan(),
+          guru_pjok: initBezettingJabatan(),
+          guru_pai: initBezettingJabatan(),
+          guru_kristen: initBezettingJabatan(),
+          tendik_pw: { pengelola_umum: 0, operator_layanan: 0, pengelola_layanan: 0, penata_layanan: 0, jml: 0 },
+          non_asn_cutoff: { guru: 0, tendik: 0, jml: 0 }
+        };
+      }
+
+      var sch = schoolMap[schoolKey];
+      if (!sch.unit && unit) sch.unit = unit;
+      if (!sch.npsn && npsn) sch.npsn = npsn;
+
+      // Status Pegawai (Kolom T / index 19)
+      var st = String(row[19] || "").trim().toUpperCase();
+      var isCpns = (st.indexOf("CPNS") !== -1);
+      var isPw = (st.indexOf("PPPK PW") !== -1 || st.indexOf("PARUH WAKTU") !== -1 || st.indexOf("PW") !== -1);
+      var isPppk = !isPw && (st.indexOf("PPPK") !== -1);
+      var isPns = !isCpns && (st.indexOf("PNS") !== -1);
+      var isAsnGroup = isCpns || isPns || isPppk || isPw;
+
+      // Cek apakah Non-ASN < 3-8-2023
+      var isNonAsnLt = false;
+      if (!isAsnGroup) {
+        var tmtVal = row[21]; // Kolom V
+        var tmtDate = null;
+        if (tmtVal instanceof Date && !isNaN(tmtVal.getTime())) {
+          tmtDate = tmtVal;
+        } else if (tmtVal) {
+          var strTmt = String(tmtVal).trim();
+          var m1 = strTmt.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+          if (m1) tmtDate = new Date(parseInt(m1[1], 10), parseInt(m1[2], 10) - 1, parseInt(m1[3], 10));
+          var m2 = strTmt.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/);
+          if (m2) tmtDate = new Date(parseInt(m2[3], 10), parseInt(m2[2], 10) - 1, parseInt(m2[1], 10));
+        }
+        if (!tmtDate || tmtDate < cutoffDate) {
+          isNonAsnLt = true;
+        }
+      }
+
+      // Hitung Pensiun (Tahun Pensiun = Tahun Lahir + BUP 60)
+      // Berlaku untuk CPNS, PNS, PPPK, PPPK Paruh Waktu
+      var isPens1 = false;
+      var isPens2 = false;
+      if (isAsnGroup) {
+        var tglLahirStr = parseIndoDate(row[9]); // Kolom J (index 9)
+        if (tglLahirStr) {
+          var partsLahir = tglLahirStr.split('-');
+          if (partsLahir.length === 3) {
+            var thnLahir = parseInt(partsLahir[0], 10);
+            var blnLahir = parseInt(partsLahir[1], 10) - 1;
+            if (!isNaN(thnLahir) && !isNaN(blnLahir)) {
+              var bup = 60; // BUP Guru & KS = 60
+              var thnPensiun = thnLahir + bup;
+              var blnPensiun = blnLahir + 1;
+              if (blnPensiun > 11) { blnPensiun = 0; thnPensiun++; }
+              if (thnPensiun === curYear) isPens1 = true;
+              else if (thnPensiun === nextYear) isPens2 = true;
+            }
+          }
+        }
+      }
+
+      // Tugas / Jabatan (Kolom Z / index 25)
+      var tg = String(row[25] || "").trim().toUpperCase();
+
+      if (tg.indexOf("KEPALA") !== -1) {
+        var ks = sch.ks;
+        if (isCpns) ks.cpns++;
+        else if (isPns) ks.pns++;
+        else if (isPppk) ks.pppk++;
+        else if (isPw) ks.pw++;
+        if (isPens1) ks.pens_1++;
+        if (isPens2) ks.pens_2++;
+      } else if (tg.indexOf("KELAS") !== -1) {
+        var gk = sch.guru_kelas;
+        if (isCpns) gk.cpns++;
+        else if (isPns) gk.pns++;
+        else if (isPppk) gk.pppk++;
+        else if (isPw) gk.pw++;
+        if (isNonAsnLt) {
+          gk.non_asn_lt++;
+          sch.non_asn_cutoff.guru++;
+          sch.non_asn_cutoff.jml++;
+        }
+        if (isPens1) gk.pens_1++;
+        if (isPens2) gk.pens_2++;
+      } else if (tg.indexOf("PJOK") !== -1 || tg.indexOf("PENJAS") !== -1 || tg.indexOf("OLAHRAGA") !== -1) {
+        var pjok = sch.guru_pjok;
+        if (isCpns) pjok.cpns++;
+        else if (isPns) pjok.pns++;
+        else if (isPppk) pjok.pppk++;
+        else if (isPw) pjok.pw++;
+        if (isNonAsnLt) {
+          pjok.non_asn_lt++;
+          sch.non_asn_cutoff.guru++;
+          sch.non_asn_cutoff.jml++;
+        }
+        if (isPens1) pjok.pens_1++;
+        if (isPens2) pjok.pens_2++;
+      } else if (tg.indexOf("PAI") !== -1 || tg.indexOf("AGAMA ISLAM") !== -1 || tg.indexOf("ISLAM") !== -1) {
+        var pai = sch.guru_pai;
+        if (isCpns) pai.cpns++;
+        else if (isPns) pai.pns++;
+        else if (isPppk) pai.pppk++;
+        else if (isPw) pai.pw++;
+        if (isNonAsnLt) {
+          pai.non_asn_lt++;
+          sch.non_asn_cutoff.guru++;
+          sch.non_asn_cutoff.jml++;
+        }
+        if (isPens1) pai.pens_1++;
+        if (isPens2) pai.pens_2++;
+      } else if (tg.indexOf("KRISTEN") !== -1 || tg.indexOf("PROTESTAN") !== -1 || tg.indexOf("KATOLIK") !== -1) {
+        var pak = sch.guru_kristen;
+        if (isCpns) pak.cpns++;
+        else if (isPns) pak.pns++;
+        else if (isPppk) pak.pppk++;
+        else if (isPw) pak.pw++;
+        if (isNonAsnLt) {
+          pak.non_asn_lt++;
+          sch.non_asn_cutoff.guru++;
+          sch.non_asn_cutoff.jml++;
+        }
+        if (isPens1) pak.pens_1++;
+        if (isPens2) pak.pens_2++;
+      } else {
+        // TENDIK / GURU LAINNYA
+        if (tg.indexOf("GURU") !== -1) {
+          if (isNonAsnLt) {
+            sch.non_asn_cutoff.guru++;
+            sch.non_asn_cutoff.jml++;
+          }
+        } else {
+          // Tendik
+          if (isPw) {
+            var tpw = sch.tendik_pw;
+            if (tg.indexOf("PENGELOLA UMUM") !== -1) tpw.pengelola_umum++;
+            else if (tg.indexOf("OPERATOR LAYANAN") !== -1 || tg.indexOf("OPERATOR") !== -1) tpw.operator_layanan++;
+            else if (tg.indexOf("PENGELOLA LAYANAN") !== -1) tpw.pengelola_layanan++;
+            else if (tg.indexOf("PENATA LAYANAN") !== -1) tpw.penata_layanan++;
+            else tpw.pengelola_umum++;
+            tpw.jml++;
+          }
+          if (isNonAsnLt) {
+            sch.non_asn_cutoff.tendik++;
+            sch.non_asn_cutoff.jml++;
+          }
+        }
+      }
+    }
+
+    // 3. Hitung Kebutuhan, Jml Bezetting, dan Selisih (+/-) per Sekolah
+    var schoolList = Object.keys(schoolMap).map(function(k) { return schoolMap[k]; });
+
+    function hitungKebMapel(jmlRombel) {
+      if (!jmlRombel || jmlRombel <= 0) return 0;
+      if (jmlRombel <= 10) return 1;
+      if (jmlRombel <= 15) return 2;
+      if (jmlRombel <= 20) return 3;
+      return Math.max(3, Math.ceil(jmlRombel / 6));
+    }
+
+    schoolList.forEach(function(s) {
+      var rombel = s.rombel || 0;
+
+      // A. Kepala Sekolah: Keb = 1
+      s.ks.keb = 1;
+      s.ks.jml = s.ks.cpns + s.ks.pns + s.ks.pppk + s.ks.pw;
+      s.ks.selisih = s.ks.keb - s.ks.jml;
+
+      // B. Guru Kelas: Keb = Rombel
+      s.guru_kelas.keb = rombel;
+      s.guru_kelas.jml = s.guru_kelas.cpns + s.guru_kelas.pns + s.guru_kelas.pppk + s.guru_kelas.pw;
+      s.guru_kelas.selisih = s.guru_kelas.keb - s.guru_kelas.jml;
+
+      // C. Guru PJOK: 1-10 rombel = 1, 11-15 rombel = 2, 16-20 rombel = 3
+      s.guru_pjok.keb = hitungKebMapel(rombel);
+      s.guru_pjok.jml = s.guru_pjok.cpns + s.guru_pjok.pns + s.guru_pjok.pppk + s.guru_pjok.pw;
+      s.guru_pjok.selisih = s.guru_pjok.keb - s.guru_pjok.jml;
+
+      // D. Guru PAI: 1-10 rombel = 1, 11-15 rombel = 2, 16-20 rombel = 3
+      s.guru_pai.keb = hitungKebMapel(rombel);
+      s.guru_pai.jml = s.guru_pai.cpns + s.guru_pai.pns + s.guru_pai.pppk + s.guru_pai.pw;
+      s.guru_pai.selisih = s.guru_pai.keb - s.guru_pai.jml;
+
+      // E. Guru PA Kristen: Keb = total eksisting atau 0
+      var pakEksis = s.guru_kristen.cpns + s.guru_kristen.pns + s.guru_kristen.pppk + s.guru_kristen.pw;
+      s.guru_kristen.keb = pakEksis > 0 ? pakEksis : 0;
+      s.guru_kristen.jml = pakEksis;
+      s.guru_kristen.selisih = s.guru_kristen.keb - s.guru_kristen.jml;
+    });
+
+    schoolList.sort(function(a, b) { return a.unit.localeCompare(b.unit); });
+
+    return JSON.stringify({ success: true, schools: schoolList });
+  } catch (e) {
+    return JSON.stringify({ success: false, message: e.message, schools: [] });
+  }
+}
 function getDataRekapGolongan() { var sheet = getSheet(KONFIG_PTK.DB_KEY, "Rekap Golongan"); if (!sheet) return []; var lastRow = sheet.getLastRow(); if (lastRow < 3) return []; return sheet.getRange(3, 1, lastRow - 2, 76).getDisplayValues(); }
 function getDataRekapPendidikan() { var sheet = getSheet(KONFIG_PTK.DB_KEY, "Rekap Pendidikan"); if (!sheet) return []; var lastRow = sheet.getLastRow(); if (lastRow < 3) return []; return sheet.getRange(3, 1, lastRow - 2, 42).getDisplayValues(); }
 

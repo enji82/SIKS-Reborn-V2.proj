@@ -1,3 +1,16 @@
+<!-- CSS Khusus Sultan Bezetting SD Negeri -->
+<style>
+  .bg-soft-orange {
+      background: rgba(253, 126, 20, 0.08) !important;
+  }
+  .bg-soft-purple {
+      background: rgba(111, 66, 193, 0.08) !important;
+  }
+  .table-sultan-compact th, .table-sultan-compact td { 
+      white-space: nowrap; 
+  }
+</style>
+
 <section class="content">
     <div class="container-fluid">
         <div class="row justify-content-center">
@@ -10,7 +23,7 @@
                             aria-expanded="false">
                             <div class="info-title">
                                 <div class="info-icon-circle"><i class="fas fa-info"></i></div>
-                                <span>Informasi</span>
+                                <span>INFORMASI</span>
                             </div>
                             <i class="fas fa-chevron-down"></i>
                         </div>
@@ -18,14 +31,12 @@
                             <div class="info-body">
                                 <ul class="mb-0 pl-3">
                                     <li class="mb-1">Halaman ini bersifat <b>Read-Only (Hanya Tampil)</b>.</li>
-                                    <li class="mb-1">Data jumlah guru bersumber dari menu Daftar Nama PTK.</li>
-                                    <li class="mb-1">Jumlah rombel dan jumlah murid bersumber dari laporan bulan yang
-                                        terakhir dikirim.</li>
-                                    <li class="mb-1">Kolom <b>+/-</b> berwarna <span
-                                            class="text-danger font-weight-bold">Merah</span> jika Kekurangan Guru, dan
-                                        <span class="text-primary font-weight-bold">Biru</span> jika Kelebihan Guru.
-                                    </li>
-                                    <li>Scroll ke samping untuk melihat seluruh data guru mata pelajaran.</li>
+                                    <li class="mb-1">Data agregasi bezetting dihitung secara <b>Real-Time</b> bersumber dari <b>Master Data GTK</b>.</li>
+                                    <li class="mb-1">Kolom <b>BEZETTING</b> memuat <b>CPNS</b>, <b>PNS</b>, <b>PPPK</b>, dan <b>PPPK Paruh Waktu (PW)</b>.</li>
+                                    <li class="mb-1">Kolom <b>PENS 1 THN</b> memproyeksikan CPNS, PNS, PPPK, atau PPPK PW yang mencapai usia pensiun (BUP 60) pada <b>tahun ini</b>.</li>
+                                    <li class="mb-1">Kolom <b>PENS 2 THN</b> memproyeksikan CPNS, PNS, PPPK, atau PPPK PW yang mencapai usia pensiun pada <b>tahun depan</b>.</li>
+                                    <li class="mb-1">Kolom <b>+/-</b> menghitung <b>Keb. dikurangi Bezetting (CPNS, PNS, PPPK, PW)</b>; berwarna <span class="text-danger font-weight-bold">Merah</span> jika Kekurangan Guru, dan <span class="text-primary font-weight-bold">Biru</span> jika Kelebihan Guru.</li>
+                                    <li>Scroll ke samping untuk melihat seluruh data guru dan tenaga kependidikan.</li>
                                 </ul>
                             </div>
                         </div>
@@ -33,31 +44,43 @@
                 </div>
 
                 <!-- FILTER BAR (STANDAR GLOBAL SULTAN) -->
-                <div id="bezettingptksdn_wadahFilter" class="sultan-filter-pill-container shadow-sm mb-4">
-                    <div class="sultan-filter-item" style="min-width: 250px;">
-                        <select id="bezettingptksdn_filterUnit" class="form-control font-weight-bold text-maroon"
-                            disabled>
-                            <option value="SEMUA">- Memvalidasi Akses... -</option>
+                <div id="bezettingptksdn_wadahFilter" class="sultan-filter-pill-container shadow-sm mb-4 sultan-page-transition">
+                    <!-- Filter Unit Kerja -->
+                    <div class="sultan-filter-item" id="bezettingptksdn_filterUnit_container" style="min-width: 260px;">
+                        <select id="bezettingptksdn_filterUnit" class="form-control" disabled>
+                            <option value="SEMUA">Memvalidasi Akses...</option>
                         </select>
                         <i class="fas fa-chevron-down"></i>
                     </div>
 
-                    <div class="divider-vertical d-none d-md-block mx-2"></div>
+                    <div class="divider-vertical d-none d-md-block mx-1"></div>
 
+                    <!-- Tombol Refresh -->
                     <button type="button" id="bezettingptksdn_btnSync" class="sultan-btn-refresh"
                         title="Segarkan Data dari Server" disabled>
                         <i class="fas fa-sync-alt"></i>
                     </button>
+
+                    <!-- Tombol Unduh Excel (Standar Sultan) -->
+                    <button type="button" id="bezettingptksdn_btnExport" class="sultan-btn-excel shadow-sm ml-auto"
+                        title="Unduh Data Bezetting ke Excel">
+                        <i class="fas fa-file-excel"></i> UNDUH EXCEL
+                    </button>
                 </div>
 
-                <div class="card-sultan w-100 overflow-hidden">
+                <!-- KOTAK LOADING CONTAINER (STANDAR CARD SULTAN) -->
+                <div id="bezettingptksdn_loadingCard" class="card-sultan w-100 mb-4 overflow-hidden shadow-sm">
                     <div class="card-body p-3 w-100">
-
                         <div id="bezettingptksdn_loadingState">
                             <!-- Spinner Otomatis via SultanUI.showLoading -->
                         </div>
+                    </div>
+                </div>
 
-                        <div id="bezettingptksdn_tableState" style="display:none;">
+                <!-- KOTAK TABEL UTAMA SULTAN -->
+                <div id="bezettingptksdn_tableCard" class="card-sultan w-100 overflow-hidden shadow-sm" style="display:none;">
+                    <div class="card-body p-3 w-100">
+                        <div class="table-responsive sultan-scroll">
                             <table id="bezettingptksdn_tabelUtama"
                                 class="table table-bordered table-hover table-premium table-sultan-compact table-header-compact mb-0 w-100"
                                 style="border: none !important;">
@@ -66,131 +89,102 @@
                                     <tr>
                                         <th rowspan="3"
                                             class="th-main align-middle text-maroon text-left px-3 col-sticky-left border-bottom-maroon"
-                                            style="z-index:50; border-right: 2px solid #dee2e6; white-space: nowrap;">UNIT
-                                            KERJA</th>
+                                            style="z-index:50; border-right: 2px solid #dee2e6; white-space: nowrap;">UNIT KERJA</th>
 
-                                        <th rowspan="3" class="th-main align-middle text-center border-bottom-maroon">
-                                            JML<br>ROMBEL</th>
-                                        <th rowspan="3" class="th-main align-middle text-center border-bottom-maroon">
-                                            JML<br>MURID</th>
+                                        <th rowspan="3" class="th-main align-middle text-center border-bottom-maroon">JML<br>ROMBEL</th>
+                                        <th rowspan="3" class="th-main align-middle text-center border-bottom-maroon">JML<br>MURID</th>
 
-                                        <th colspan="6" class="th-main align-middle text-center bg-soft-primary">KEPALA
-                                            SEKOLAH</th>
-                                        <th colspan="9" class="th-main align-middle text-center bg-soft-success">GURU
-                                            KELAS</th>
-                                        <th colspan="9" class="th-main align-middle text-center bg-soft-orange">GURU
-                                            PJOK</th>
-                                        <th colspan="9" class="th-main align-middle text-center bg-soft-purple">GURU PAI
-                                        </th>
-                                        <th colspan="9" class="th-main align-middle text-center bg-soft-danger">GURU PA
-                                            KRISTEN</th>
-                                        <th colspan="5" class="th-main align-middle text-center bg-soft-warning">PPPK
-                                            PARUH WAKTU</th>
-                                        <th colspan="3" class="th-main align-middle text-center bg-soft-secondary">NON
-                                            ASN SEBELUM 3-8-2023</th>
+                                        <th colspan="7" class="th-main align-middle text-center bg-soft-primary">KEPALA SEKOLAH</th>
+                                        <th colspan="10" class="th-main align-middle text-center bg-soft-success">GURU KELAS</th>
+                                        <th colspan="10" class="th-main align-middle text-center bg-soft-orange">GURU PJOK</th>
+                                        <th colspan="10" class="th-main align-middle text-center bg-soft-purple">GURU PAI</th>
+                                        <th colspan="10" class="th-main align-middle text-center bg-soft-danger">GURU PA KRISTEN</th>
+                                        <th colspan="5" class="th-main align-middle text-center bg-soft-warning">PPPK PARUH WAKTU</th>
+                                        <th colspan="3" class="th-main align-middle text-center bg-soft-secondary">NON ASN SEBELUM 3-8-2023</th>
                                     </tr>
 
                                     <tr>
                                         <!-- KEPALA SEKOLAH -->
                                         <th rowspan="2" class="th-sub bg-soft-primary border-bottom-maroon">Keb.</th>
-                                        <th colspan="2" class="th-sub bg-soft-primary border-bottom-maroon">Bezetting
-                                        </th>
+                                        <th colspan="3" class="th-sub bg-soft-primary border-bottom-maroon">Bezetting</th>
                                         <th rowspan="2" class="th-sub bg-soft-primary border-bottom-maroon">+/-</th>
-                                        <th rowspan="2" class="th-sub bg-soft-primary border-bottom-maroon text-danger">
-                                            Pens 1 Thn</th>
-                                        <th rowspan="2" class="th-sub bg-soft-primary border-bottom-maroon text-danger">
-                                            Pens 2 Thn</th>
+                                        <th rowspan="2" class="th-sub bg-soft-primary border-bottom-maroon text-danger">Pens 1 Thn</th>
+                                        <th rowspan="2" class="th-sub bg-soft-primary border-bottom-maroon text-danger">Pens 2 Thn</th>
 
                                         <!-- GURU KELAS -->
                                         <th rowspan="2" class="th-sub bg-soft-success border-bottom-maroon">Keb.</th>
-                                        <th colspan="4" class="th-sub bg-soft-success border-bottom-maroon">Bezetting
-                                        </th>
+                                        <th colspan="5" class="th-sub bg-soft-success border-bottom-maroon">Bezetting</th>
                                         <th rowspan="2" class="th-sub bg-soft-success border-bottom-maroon">+/-</th>
-                                        <th rowspan="2" class="th-sub bg-soft-success border-bottom-maroon">Non
-                                            ASN<br>3-8-2023</th>
-                                        <th rowspan="2" class="th-sub bg-soft-success border-bottom-maroon text-danger">
-                                            Pens 1 Thn</th>
-                                        <th rowspan="2" class="th-sub bg-soft-success border-bottom-maroon text-danger">
-                                            Pens 2 Thn</th>
+                                        <th rowspan="2" class="th-sub bg-soft-success border-bottom-maroon">Non ASN<br>3-8-2023</th>
+                                        <th rowspan="2" class="th-sub bg-soft-success border-bottom-maroon text-danger">Pens 1 Thn</th>
+                                        <th rowspan="2" class="th-sub bg-soft-success border-bottom-maroon text-danger">Pens 2 Thn</th>
 
                                         <!-- GURU PJOK -->
                                         <th rowspan="2" class="th-sub bg-soft-orange border-bottom-maroon">Keb.</th>
-                                        <th colspan="4" class="th-sub bg-soft-orange border-bottom-maroon">Bezetting
-                                        </th>
+                                        <th colspan="5" class="th-sub bg-soft-orange border-bottom-maroon">Bezetting</th>
                                         <th rowspan="2" class="th-sub bg-soft-orange border-bottom-maroon">+/-</th>
-                                        <th rowspan="2" class="th-sub bg-soft-orange border-bottom-maroon">Non
-                                            ASN<br>3-8-2023</th>
-                                        <th rowspan="2" class="th-sub bg-soft-orange border-bottom-maroon text-danger">
-                                            Pens 1 Thn</th>
-                                        <th rowspan="2" class="th-sub bg-soft-orange border-bottom-maroon text-danger">
-                                            Pens 2 Thn</th>
+                                        <th rowspan="2" class="th-sub bg-soft-orange border-bottom-maroon">Non ASN<br>3-8-2023</th>
+                                        <th rowspan="2" class="th-sub bg-soft-orange border-bottom-maroon text-danger">Pens 1 Thn</th>
+                                        <th rowspan="2" class="th-sub bg-soft-orange border-bottom-maroon text-danger">Pens 2 Thn</th>
 
                                         <!-- GURU PAI -->
                                         <th rowspan="2" class="th-sub bg-soft-purple border-bottom-maroon">Keb.</th>
-                                        <th colspan="4" class="th-sub bg-soft-purple border-bottom-maroon">Bezetting
-                                        </th>
+                                        <th colspan="5" class="th-sub bg-soft-purple border-bottom-maroon">Bezetting</th>
                                         <th rowspan="2" class="th-sub bg-soft-purple border-bottom-maroon">+/-</th>
-                                        <th rowspan="2" class="th-sub bg-soft-purple border-bottom-maroon">Non
-                                            ASN<br>3-8-2023</th>
-                                        <th rowspan="2" class="th-sub bg-soft-purple border-bottom-maroon text-danger">
-                                            Pens 1 Thn</th>
-                                        <th rowspan="2" class="th-sub bg-soft-purple border-bottom-maroon text-danger">
-                                            Pens 2 Thn</th>
+                                        <th rowspan="2" class="th-sub bg-soft-purple border-bottom-maroon">Non ASN<br>3-8-2023</th>
+                                        <th rowspan="2" class="th-sub bg-soft-purple border-bottom-maroon text-danger">Pens 1 Thn</th>
+                                        <th rowspan="2" class="th-sub bg-soft-purple border-bottom-maroon text-danger">Pens 2 Thn</th>
 
                                         <!-- GURU PA KRISTEN -->
                                         <th rowspan="2" class="th-sub bg-soft-danger border-bottom-maroon">Keb.</th>
-                                        <th colspan="4" class="th-sub bg-soft-danger border-bottom-maroon">Bezetting
-                                        </th>
+                                        <th colspan="5" class="th-sub bg-soft-danger border-bottom-maroon">Bezetting</th>
                                         <th rowspan="2" class="th-sub bg-soft-danger border-bottom-maroon">+/-</th>
-                                        <th rowspan="2" class="th-sub bg-soft-danger border-bottom-maroon">Non
-                                            ASN<br>3-8-2023</th>
-                                        <th rowspan="2" class="th-sub bg-soft-danger border-bottom-maroon text-danger">
-                                            Pens 1 Thn</th>
-                                        <th rowspan="2" class="th-sub bg-soft-danger border-bottom-maroon text-danger">
-                                            Pens 2 Thn</th>
+                                        <th rowspan="2" class="th-sub bg-soft-danger border-bottom-maroon">Non ASN<br>3-8-2023</th>
+                                        <th rowspan="2" class="th-sub bg-soft-danger border-bottom-maroon text-danger">Pens 1 Thn</th>
+                                        <th rowspan="2" class="th-sub bg-soft-danger border-bottom-maroon text-danger">Pens 2 Thn</th>
 
                                         <!-- PPPK PARUH WAKTU -->
-                                        <th rowspan="2" class="th-sub bg-soft-warning border-bottom-maroon">
-                                            Pengelola<br>Umum</th>
-                                        <th rowspan="2" class="th-sub bg-soft-warning border-bottom-maroon">
-                                            Operator<br>Layanan</th>
-                                        <th rowspan="2" class="th-sub bg-soft-warning border-bottom-maroon">
-                                            Pengelola<br>Layanan</th>
-                                        <th rowspan="2" class="th-sub bg-soft-warning border-bottom-maroon">
-                                            Penata<br>Layanan</th>
+                                        <th rowspan="2" class="th-sub bg-soft-warning border-bottom-maroon">Pengelola<br>Umum</th>
+                                        <th rowspan="2" class="th-sub bg-soft-warning border-bottom-maroon">Operator<br>Layanan</th>
+                                        <th rowspan="2" class="th-sub bg-soft-warning border-bottom-maroon">Pengelola<br>Layanan</th>
+                                        <th rowspan="2" class="th-sub bg-soft-warning border-bottom-maroon">Penata<br>Layanan</th>
                                         <th rowspan="2" class="th-sub bg-soft-warning border-bottom-maroon">Jml</th>
 
                                         <!-- NON ASN SEBELUM 3-8-2023 -->
                                         <th rowspan="2" class="th-sub bg-soft-secondary border-bottom-maroon">Guru</th>
-                                        <th rowspan="2" class="th-sub bg-soft-secondary border-bottom-maroon">Tendik
-                                        </th>
+                                        <th rowspan="2" class="th-sub bg-soft-secondary border-bottom-maroon">Tendik</th>
                                         <th rowspan="2" class="th-sub bg-soft-secondary border-bottom-maroon">Jml</th>
                                     </tr>
 
                                     <tr class="text-center">
                                         <!-- KEPALA SEKOLAH BEZETTING -->
+                                        <th class="th-sub bg-soft-primary border-bottom-maroon">CPNS</th>
                                         <th class="th-sub bg-soft-primary border-bottom-maroon">PNS</th>
                                         <th class="th-sub bg-soft-primary border-bottom-maroon">PPPK</th>
 
                                         <!-- GURU KELAS BEZETTING -->
+                                        <th class="th-sub bg-soft-success border-bottom-maroon">CPNS</th>
                                         <th class="th-sub bg-soft-success border-bottom-maroon">PNS</th>
                                         <th class="th-sub bg-soft-success border-bottom-maroon">PPPK</th>
                                         <th class="th-sub bg-soft-success border-bottom-maroon">PW</th>
                                         <th class="th-sub bg-soft-success border-bottom-maroon">Jml</th>
 
                                         <!-- GURU PJOK BEZETTING -->
+                                        <th class="th-sub bg-soft-orange border-bottom-maroon">CPNS</th>
                                         <th class="th-sub bg-soft-orange border-bottom-maroon">PNS</th>
                                         <th class="th-sub bg-soft-orange border-bottom-maroon">PPPK</th>
                                         <th class="th-sub bg-soft-orange border-bottom-maroon">PW</th>
                                         <th class="th-sub bg-soft-orange border-bottom-maroon">Jml</th>
 
                                         <!-- GURU PAI BEZETTING -->
+                                        <th class="th-sub bg-soft-purple border-bottom-maroon">CPNS</th>
                                         <th class="th-sub bg-soft-purple border-bottom-maroon">PNS</th>
                                         <th class="th-sub bg-soft-purple border-bottom-maroon">PPPK</th>
                                         <th class="th-sub bg-soft-purple border-bottom-maroon">PW</th>
                                         <th class="th-sub bg-soft-purple border-bottom-maroon">Jml</th>
 
                                         <!-- GURU PA KRISTEN BEZETTING -->
+                                        <th class="th-sub bg-soft-danger border-bottom-maroon">CPNS</th>
                                         <th class="th-sub bg-soft-danger border-bottom-maroon">PNS</th>
                                         <th class="th-sub bg-soft-danger border-bottom-maroon">PPPK</th>
                                         <th class="th-sub bg-soft-danger border-bottom-maroon">PW</th>
@@ -202,7 +196,22 @@
 
                                 <tfoot class="bg-light font-weight-bold" style="border-top: 3px solid #800000;">
                                     <tr>
-                                        <!-- Footer columns will be injected dynamically -->
+                                        <!-- 58 cells (0 s/d 57) -->
+                                        <th></th><th></th><th></th>
+                                        <!-- KS (7) -->
+                                        <th></th><th></th><th></th><th></th><th></th><th></th><th></th>
+                                        <!-- GK (10) -->
+                                        <th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th>
+                                        <!-- PJOK (10) -->
+                                        <th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th>
+                                        <!-- PAI (10) -->
+                                        <th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th>
+                                        <!-- PAK (10) -->
+                                        <th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th>
+                                        <!-- PW Tendik (5) -->
+                                        <th></th><th></th><th></th><th></th><th></th>
+                                        <!-- Non ASN Cutoff (3) -->
+                                        <th></th><th></th><th></th>
                                     </tr>
                                 </tfoot>
 
@@ -229,9 +238,9 @@
     var BEZETTINGPTKSDN_USER_NPSN = "";
 
     function bezettingptksdn_updateTabelKosong(htmlContent) {
+        $('#bezettingptksdn_loadingCard').hide();
+        $('#bezettingptksdn_tableCard').show();
         if (BEZETTINGPTKSDN_TABEL_INSTANCE) {
-            $('#bezettingptksdn_tableState').show();
-            SultanUI.hideLoading('#bezettingptksdn_loadingState');
             BEZETTINGPTKSDN_TABEL_INSTANCE.clear().draw();
             var emptyRow = $('#bezettingptksdn_tabelUtama tbody tr td.dataTables_empty');
             if (emptyRow.length > 0) { emptyRow.html(htmlContent); }
@@ -240,7 +249,8 @@
 
     $(document).ready(function () {
         BEZETTINGPTKSDN_TABEL_INSTANCE = null;
-        $('#bezettingptksdn_tableState').hide();
+        $('#bezettingptksdn_tableCard').hide();
+        $('#bezettingptksdn_loadingCard').show();
         SultanUI.showLoading('#bezettingptksdn_loadingState', 'Mengambil Analisis Bezetting Server...');
 
         // Verifikasi Sesi Kepatuhan Sultan
@@ -251,9 +261,10 @@
             BEZETTINGPTKSDN_USER_NPSN = user.npsn || user.username || "";
         } catch (e) { BEZETTINGPTKSDN_USER_NPSN = ""; BEZETTINGPTKSDN_IS_ADMIN = false; }
 
-        // VAKSIN DELEGASI EVENT JQUERY 
+        // Event Listener Standar Sultan
         $(document).on('change', '#bezettingptksdn_filterUnit', bezettingptksdn_terapkanFilterLokal);
         $(document).on('click', '#bezettingptksdn_btnSync', bezettingptksdn_tarikDataServer);
+        $(document).on('click', '#bezettingptksdn_btnExport', bezettingptksdn_exportExcel);
 
         bezettingptksdn_validasiAksesUser();
     });
@@ -262,10 +273,12 @@
     // 2. GATEKEEPER & FETCH SERVER (BAB VIII)
     // =================================================================
     function bezettingptksdn_validasiAksesUser() {
+        $('#bezettingptksdn_tableCard').hide();
+        $('#bezettingptksdn_loadingCard').show();
         SultanUI.showLoading('#bezettingptksdn_loadingState', 'Mempersiapkan Akses...');
 
         if (BEZETTINGPTKSDN_IS_ADMIN) {
-            $('#bezettingptksdn_filterUnit').empty().append('<option value="SEMUA">- Semua Unit Kerja -</option>').prop('disabled', false).removeClass('bg-light text-maroon font-weight-bold');
+            $('#bezettingptksdn_filterUnit').empty().append('<option value="SEMUA">- Semua Unit Kerja -</option>').prop('disabled', false);
             $('#bezettingptksdn_btnSync').prop('disabled', false);
             bezettingptksdn_tarikDataServer();
         } else {
@@ -304,21 +317,30 @@
         btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin text-maroon"></i>');
         if (BEZETTINGPTKSDN_IS_ADMIN) $('#bezettingptksdn_filterUnit').prop('disabled', true);
 
-        $('#bezettingptksdn_tableState').hide();
+        $('#bezettingptksdn_tableCard').hide();
+        $('#bezettingptksdn_loadingCard').show();
         SultanUI.showLoading('#bezettingptksdn_loadingState', 'Mengambil Analisis Bezetting Server...');
 
         google.script.run
-            .withSuccessHandler(function (data) {
-                btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
+            .withSuccessHandler(function (rawRes) {
+                btn.prop('disabled', false).html('<i class="fas fa-sync-alt"></i>');
                 if (BEZETTINGPTKSDN_IS_ADMIN) $('#bezettingptksdn_filterUnit').prop('disabled', false);
 
-                BEZETTINGPTKSDN_CACHE_DATA = data || [];
+                var parsed = (typeof rawRes === 'string') ? JSON.parse(rawRes) : rawRes;
+                if (parsed && parsed.success === false) {
+                    Sultan.alert('error', 'Gagal Memuat Data', parsed.message || 'Terjadi kesalahan pada server.');
+                    bezettingptksdn_updateTabelKosong('<div class="text-danger"><i class="fas fa-exclamation-triangle fa-2x mb-2"></i><br>' + bezettingptksdn_escapeHtml(parsed.message || 'Gagal mengambil data.') + '</div>');
+                    return;
+                }
+
+                BEZETTINGPTKSDN_CACHE_DATA = (parsed && parsed.schools) ? parsed.schools : (Array.isArray(parsed) ? parsed : []);
                 if (BEZETTINGPTKSDN_IS_ADMIN) bezettingptksdn_populateFilterUnit();
 
                 bezettingptksdn_terapkanFilterLokal();
             })
             .withFailureHandler(function (err) {
                 btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-danger"></i>');
+                if (BEZETTINGPTKSDN_IS_ADMIN) $('#bezettingptksdn_filterUnit').prop('disabled', false);
                 $('#bezettingptksdn_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Terputus: ' + bezettingptksdn_escapeHtml(err.message) + '</span>');
                 Sultan.alert('error', 'Koneksi Terputus', err.message);
             })
@@ -327,8 +349,8 @@
 
     function bezettingptksdn_populateFilterUnit() {
         var uniqueUnit = new Set();
-        BEZETTINGPTKSDN_CACHE_DATA.forEach(function (row) {
-            var rUnit = String(row[0] || "").trim();
+        BEZETTINGPTKSDN_CACHE_DATA.forEach(function (sch) {
+            var rUnit = String(sch.unit || (Array.isArray(sch) ? sch[0] : "")).trim();
             if (rUnit) uniqueUnit.add(rUnit);
         });
 
@@ -346,8 +368,8 @@
         var tAdminUnit = BEZETTINGPTKSDN_IS_ADMIN ? ($('#bezettingptksdn_filterUnit').val() || "SEMUA").toUpperCase() : "";
         var tUnitUser = String(BEZETTINGPTKSDN_UNIT_TERKUNCI).trim().toUpperCase();
 
-        var filteredData = BEZETTINGPTKSDN_CACHE_DATA.filter(function (row) {
-            var rUnit = String(row[0] || "").trim().toUpperCase();
+        var filteredData = BEZETTINGPTKSDN_CACHE_DATA.filter(function (sch) {
+            var rUnit = String(sch.unit || (Array.isArray(sch) ? sch[0] : "")).trim().toUpperCase();
 
             if (BEZETTINGPTKSDN_IS_ADMIN) {
                 return (tAdminUnit === "SEMUA" || rUnit === tAdminUnit);
@@ -360,73 +382,123 @@
     }
 
     // =================================================================
-    // 3. RENDER ENGINE MATRIKS: EXCEL SOLID COLOR (BAB VII)
+    // 3. RENDER ENGINE MATRIKS SULTAN
     // =================================================================
-    function bezettingptksdn_getColumnClass(index) {
-        // Col 4 s/d 9: Kepala Sekolah
-        if (index >= 4 && index <= 9) return "bg-soft-primary";
-        // Col 10 s/d 18: Guru Kelas
-        if (index >= 10 && index <= 18) return "bg-soft-success";
-        // Col 19 s/d 27: Guru PJOK
-        if (index >= 19 && index <= 27) return "bg-soft-orange";
-        // Col 28 s/d 36: Guru PAI
-        if (index >= 28 && index <= 36) return "bg-soft-purple";
-        // Col 37 s/d 45: Guru PA Kristen
-        if (index >= 37 && index <= 45) return "bg-soft-danger";
-        // Col 46 s/d 50: PPPK Paruh Waktu
-        if (index >= 46 && index <= 50) return "bg-soft-warning";
-        // Col 51 s/d 53: Non ASN sebelum 3-8-2023
-        if (index >= 51 && index <= 53) return "bg-soft-secondary";
-        return "";
-    }
-
     function bezettingptksdn_escapeHtml(text) {
         if (!text) return "";
         return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
     }
 
+    function bezettingptksdn_fmtCellNum(val) {
+        var num = parseInt(val) || 0;
+        if (num === 0) {
+            return '<span class="text-muted opacity-50">-</span>';
+        }
+        return '<span class="font-weight-bold">' + num + '</span>';
+    }
+
+    function bezettingptksdn_fmtPlusMinus(val) {
+        var num = parseInt(val) || 0;
+        if (num === 0) {
+            return '<span class="text-muted opacity-50">-</span>';
+        }
+        var pmClass = num < 0 ? 'text-danger' : 'text-primary';
+        var text = num > 0 ? '+' + num : String(num);
+        return '<span class="font-weight-bold ' + pmClass + '">' + text + '</span>';
+    }
+
+    function bezettingptksdn_fmtPensiun(val) {
+        var num = parseInt(val) || 0;
+        if (num === 0) {
+            return '<span class="text-muted opacity-50">-</span>';
+        }
+        return '<span class="font-weight-bold text-danger">' + num + '</span>';
+    }
+
     function bezettingptksdn_renderTabel(dataRows) {
         var dtArray = [];
 
-        dataRows.forEach(function (row) {
+        dataRows.forEach(function (sch) {
             var arrRow = [];
 
             // Col 0: Unit Kerja & NPSN Combined (sticky left)
-            var uiUnit = '<div style="white-space: nowrap;"><div class="sultan-table-primary text-uppercase text-left">' + (bezettingptksdn_escapeHtml(row[0]) || '-') + '</div>';
-            uiUnit += '<div class="sultan-table-secondary text-left">' + (bezettingptksdn_escapeHtml(row[1]) || '-') + '</div></div>';
+            var unitName = sch.unit || (Array.isArray(sch) ? sch[0] : "-");
+            var npsnCode = sch.npsn || (Array.isArray(sch) ? sch[1] : "-");
+            var uiUnit = '<div style="white-space: nowrap;"><div class="sultan-table-primary text-uppercase text-left">' + bezettingptksdn_escapeHtml(unitName) + '</div>';
+            uiUnit += '<div class="sultan-table-secondary text-left">' + bezettingptksdn_escapeHtml(npsnCode) + '</div></div>';
             arrRow.push(uiUnit);
 
             // Col 1: Jml Rombel
-            arrRow.push(row[2] || '0');
+            arrRow.push(bezettingptksdn_fmtCellNum(sch.rombel));
             // Col 2: Jml Murid
-            arrRow.push(row[3] || '0');
+            arrRow.push(bezettingptksdn_fmtCellNum(sch.murid));
 
-            // Col 3 s/d 52 (Backend Col index 4 s/d 53)
-            for (var c = 4; c <= 53; c++) {
-                var val = parseInt(row[c]) || 0;
-                if (val === 0) {
-                    arrRow.push('<span class="text-muted opacity-50">-</span>');
-                } else {
-                    var isPlusMinus = [7, 15, 24, 33, 42].includes(c);
-                    if (isPlusMinus) {
-                        var pmClass = val < 0 ? 'text-danger' : 'text-primary';
-                        arrRow.push('<span class="font-weight-bold ' + pmClass + '">' + val + '</span>');
-                    } else {
-                        arrRow.push('<span class="font-weight-bold">' + val + '</span>');
-                    }
-                }
+            // KEPALA SEKOLAH (7 Kolom: Keb, CPNS, PNS, PPPK, +/-, Pens 1, Pens 2)
+            var ks = sch.ks || {};
+            arrRow.push(bezettingptksdn_fmtCellNum(ks.keb));
+            arrRow.push(bezettingptksdn_fmtCellNum(ks.cpns));
+            arrRow.push(bezettingptksdn_fmtCellNum(ks.pns));
+            arrRow.push(bezettingptksdn_fmtCellNum(ks.pppk));
+            arrRow.push(bezettingptksdn_fmtPlusMinus(ks.selisih));
+            arrRow.push(bezettingptksdn_fmtPensiun(ks.pens_1));
+            arrRow.push(bezettingptksdn_fmtPensiun(ks.pens_2));
+
+            // Helper untuk menambahkan 10 kolom guru (Keb, CPNS, PNS, PPPK, PW, Jml, +/-, Non ASN, Pens 1, Pens 2)
+            function pushGuruCols(g) {
+                g = g || {};
+                arrRow.push(bezettingptksdn_fmtCellNum(g.keb));
+                arrRow.push(bezettingptksdn_fmtCellNum(g.cpns));
+                arrRow.push(bezettingptksdn_fmtCellNum(g.pns));
+                arrRow.push(bezettingptksdn_fmtCellNum(g.pppk));
+                arrRow.push(bezettingptksdn_fmtCellNum(g.pw));
+                arrRow.push(bezettingptksdn_fmtCellNum(g.jml));
+                arrRow.push(bezettingptksdn_fmtPlusMinus(g.selisih));
+                arrRow.push(bezettingptksdn_fmtCellNum(g.non_asn_lt));
+                arrRow.push(bezettingptksdn_fmtPensiun(g.pens_1));
+                arrRow.push(bezettingptksdn_fmtPensiun(g.pens_2));
             }
+
+            // GURU KELAS (10 Kolom)
+            pushGuruCols(sch.guru_kelas);
+            // GURU PJOK (10 Kolom)
+            pushGuruCols(sch.guru_pjok);
+            // GURU PAI (10 Kolom)
+            pushGuruCols(sch.guru_pai);
+            // GURU PA KRISTEN (10 Kolom)
+            pushGuruCols(sch.guru_kristen);
+
+            // PPPK PARUH WAKTU TENDIK (5 Kolom)
+            var pwT = sch.tendik_pw || {};
+            arrRow.push(bezettingptksdn_fmtCellNum(pwT.pengelola_umum));
+            arrRow.push(bezettingptksdn_fmtCellNum(pwT.operator_layanan));
+            arrRow.push(bezettingptksdn_fmtCellNum(pwT.pengelola_layanan));
+            arrRow.push(bezettingptksdn_fmtCellNum(pwT.penata_layanan));
+            arrRow.push(bezettingptksdn_fmtCellNum(pwT.jml));
+
+            // NON ASN SEBELUM 3-8-2023 (3 Kolom)
+            var naC = sch.non_asn_cutoff || {};
+            arrRow.push(bezettingptksdn_fmtCellNum(naC.guru));
+            arrRow.push(bezettingptksdn_fmtCellNum(naC.tendik));
+            arrRow.push(bezettingptksdn_fmtCellNum(naC.jml));
+
             dtArray.push(arrRow);
         });
 
+        // Daftar indeks kolom +/- dan Pensiun untuk styling footer
+        var pmColIndices = [7, 16, 26, 36, 46];
+        var pensColIndices = [8, 9, 18, 19, 28, 29, 38, 39, 48, 49];
+
         if (!$.fn.DataTable.isDataTable('#bezettingptksdn_tabelUtama')) {
             BEZETTINGPTKSDN_TABEL_INSTANCE = SultanTable.init('#bezettingptksdn_tabelUtama', {
-            "responsive": false,
+                "responsive": false,
                 "data": dtArray,
-                "destroy": true, "ordering": false, "pageLength": 10, "autoWidth": false,
+                "destroy": true,
+                "ordering": false,
+                "pageLength": 10,
+                "autoWidth": false,
                 "deferRender": true,
                 "dom": "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
-                    "<'row'<'col-sm-12'<'table-responsive sultan-scroll'tr>>>" +
+                    "<'row'<'col-sm-12'tr>>" +
                     "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
                 "columnDefs": [
                     { "targets": 0, "className": "col-sticky-left align-middle border-right text-left px-3 py-1" },
@@ -437,91 +509,233 @@
                     "emptyTable": '<div class="py-4 text-center text-muted"><i class="fas fa-clipboard-list fa-3x text-gray-300 mb-3" style="opacity: 0.6;"></i><br><h6 class="font-weight-bold text-dark mb-1">Belum Ada Data</h6><p class="small mb-0">Tidak ada analisis bezetting untuk filter terpilih.</p></div>'
                 },
                 "createdRow": function (row, data, dataIndex) {
+                    $('td', row).eq(0).addClass('col-sticky-left align-middle border-right text-left px-3 py-1 bg-white');
                     $('td', row).eq(1).addClass('text-dark py-1');
                     $('td', row).eq(2).addClass('text-dark py-1');
-
-                    // Loop index array dari DT (Index 3 sampai 52)
-                    for (var i = 3; i <= 52; i++) {
-                        var td = $('td', row).eq(i);
-                        var valStr = String(data[i]).replace(/<[^>]*>?/gm, '').trim();
-                        var val = parseInt(valStr) || 0;
-
-                        var bgClass = bezettingptksdn_getColumnClass(i + 1);
-
-                        // LOGIKA +/- (Peringatan warna: Kepala Sekolah index 7, Guru Kelas 15, Guru PJOK 24, Guru PAI 33, Guru PA Kristen 42)
-                        if ([7, 15, 24, 33, 42].includes(i + 1)) {
-                            td.addClass('text-dark');
-                        } else {
-                            // Pens 1 & 2 Thn (Kepala Sekolah 8,9; Guru Kelas 17,18; Guru PJOK 26,27; Guru PAI 35,36; Guru PA Kristen 44,45)
-                            if ([8, 9, 17, 18, 26, 27, 35, 36, 44, 45].includes(i + 1) && val > 0) {
-                                td.addClass('text-danger');
-                            } else {
-                                td.addClass('text-dark');
-                            }
-                        }
-
-                        if (bgClass) td.addClass(bgClass);
-                        td.addClass('py-1');
+                    for (var i = 3; i <= 57; i++) {
+                        $('td', row).eq(i).addClass('py-1 text-center');
                     }
                 },
                 "footerCallback": function (row, data, start, end, display) {
                     var api = this.api();
-                    var totalArr = new Array(52).fill(0); // Menampung DT index 1 s/d 52 (total Rombel sampai akhir)
+                    var totalCols = 58; // 0 s/d 57
+                    var totalArr = new Array(totalCols).fill(0);
 
                     api.rows({ search: 'applied' }).data().each(function (rowData) {
-                        for (var i = 1; i <= 52; i++) {
+                        for (var i = 1; i < totalCols; i++) {
                             var rawStr = String(rowData[i]);
-                            var val = parseInt(rawStr.replace(/<[^>]*>?/gm, '').replace(/,/g, '')) || 0;
-                            totalArr[i - 1] += val;
+                            var cleanVal = rawStr.replace(/<[^>]*>?/gm, '').replace(/,/g, '').trim();
+                            var val = parseInt(cleanVal) || 0;
+                            totalArr[i] += val;
                         }
                     });
 
-                    var footHtml = '<th class="text-maroon text-left font-weight-bold px-3 py-1 align-middle col-sticky-left text-uppercase" style="z-index:40; border-right: 2px solid #dee2e6;">TOTAL JUMLAH</th>';
-
-                    // Rombel & Murid
-                    footHtml += '<th class="text-center px-2 py-1 font-weight-bold text-maroon bg-white align-middle sultan-total-row">' + totalArr[0] + '</th>';
-                    footHtml += '<th class="text-center px-2 py-1 font-weight-bold text-maroon bg-white align-middle sultan-total-row">' + totalArr[1] + '</th>';
-
-                    // Rekap Metrik (DT col 3-52 -> totalArr index 2-51)
-                    for (var i = 2; i <= 51; i++) {
-                        var colIndexDT = i + 1;
-                        var val = totalArr[i];
-                        var bgClass = bezettingptksdn_getColumnClass(colIndexDT + 1);
-                        var txtColor = "text-maroon";
-
-                        if ([7, 15, 24, 33, 42].includes(colIndexDT + 1)) {
-                            var totalVal = parseInt(val) || 0;
-                            if (totalVal < 0) {
-                                txtColor = "text-danger";
-                            } else if (totalVal > 0) {
-                                txtColor = "text-primary";
-                            } else {
-                                txtColor = "text-dark";
-                            }
-                        } else if ([8, 9, 17, 18, 26, 27, 35, 36, 44, 45].includes(colIndexDT + 1) && val > 0) {
-                            txtColor = "text-danger";
-                        }
-
-                        footHtml += '<th class="text-center px-2 py-1 font-weight-bold ' + txtColor + ' ' + bgClass + ' sultan-total-row" style="vertical-align: middle;">' + val + '</th>';
+                    // Col 0: Sticky Label TOTAL JUMLAH
+                    var node0 = api.column(0).footer();
+                    if (node0) {
+                        $(node0).html('TOTAL JUMLAH')
+                            .attr('class', 'text-maroon text-left font-weight-bold px-3 py-1 align-middle col-sticky-left text-uppercase bg-white')
+                            .css({ 'z-index': '40', 'border-right': '2px solid #dee2e6' });
                     }
 
-                    // Injeksi mutlak ke tag dummy di tfoot
-                    $(api.table().footer()).find('tr').html(footHtml);
+                    // Col 1 & 2: Rombel & Murid
+                    var node1 = api.column(1).footer();
+                    if (node1) {
+                        $(node1).html(totalArr[1] === 0 ? '-' : totalArr[1])
+                            .attr('class', 'text-center px-2 py-1 font-weight-bold text-maroon bg-white align-middle sultan-total-row');
+                    }
+                    var node2 = api.column(2).footer();
+                    if (node2) {
+                        $(node2).html(totalArr[2] === 0 ? '-' : totalArr[2])
+                            .attr('class', 'text-center px-2 py-1 font-weight-bold text-maroon bg-white align-middle sultan-total-row');
+                    }
+
+                    // Col 3 s/d 57: Metrik Bezetting Guru & Tendik
+                    for (var col = 3; col < totalCols; col++) {
+                        var colNode = api.column(col).footer();
+                        if (!colNode) continue;
+
+                        var rawVal = totalArr[col];
+                        var txtColor = "text-maroon";
+                        var displayVal = rawVal;
+
+                        if (pmColIndices.includes(col)) {
+                            var totalPm = parseInt(rawVal) || 0;
+                            if (totalPm < 0) {
+                                txtColor = "text-danger";
+                                displayVal = totalPm;
+                            } else if (totalPm > 0) {
+                                txtColor = "text-primary";
+                                displayVal = "+" + totalPm;
+                            } else {
+                                txtColor = "text-muted opacity-50";
+                                displayVal = "-";
+                            }
+                        } else if (pensColIndices.includes(col)) {
+                            var totalPens = parseInt(rawVal) || 0;
+                            if (totalPens === 0) {
+                                txtColor = "text-muted opacity-50";
+                                displayVal = "-";
+                            } else {
+                                txtColor = "text-danger";
+                                displayVal = totalPens;
+                            }
+                        } else {
+                            var totalCol = parseInt(rawVal) || 0;
+                            if (totalCol === 0) {
+                                txtColor = "text-muted opacity-50";
+                                displayVal = "-";
+                            } else {
+                                displayVal = totalCol;
+                            }
+                        }
+
+                        $(colNode).html(displayVal)
+                            .attr('class', 'text-center px-2 py-1 font-weight-bold sultan-total-row ' + txtColor)
+                            .css({ 'vertical-align': 'middle' });
+                    }
                 }
             });
 
-            SultanUI.hideLoading('#bezettingptksdn_loadingState');
-            $('#bezettingptksdn_tableState').show();
+            $('#bezettingptksdn_loadingCard').hide();
+            $('#bezettingptksdn_tableCard').show();
             BEZETTINGPTKSDN_TABEL_INSTANCE.columns.adjust();
         }
         else {
             BEZETTINGPTKSDN_TABEL_INSTANCE.clear().rows.add(dtArray).draw(false);
 
-            if ($('#bezettingptksdn_tableState').is(':hidden')) {
-                SultanUI.hideLoading('#bezettingptksdn_loadingState');
-                $('#bezettingptksdn_tableState').show();
+            if ($('#bezettingptksdn_tableCard').is(':hidden')) {
+                $('#bezettingptksdn_loadingCard').hide();
+                $('#bezettingptksdn_tableCard').show();
                 BEZETTINGPTKSDN_TABEL_INSTANCE.columns.adjust();
             }
         }
+    }
+
+    // =================================================================
+    // 4. EXCEL EXPORT SULTAN
+    // =================================================================
+    function bezettingptksdn_exportExcel() {
+        if (!BEZETTINGPTKSDN_CACHE_DATA || BEZETTINGPTKSDN_CACHE_DATA.length === 0) {
+            Sultan.alert('warning', 'Peringatan', 'Belum ada data untuk diekspor.');
+            return;
+        }
+
+        var tAdminUnit = BEZETTINGPTKSDN_IS_ADMIN ? ($('#bezettingptksdn_filterUnit').val() || "SEMUA").toUpperCase() : "";
+        var tUnitUser = String(BEZETTINGPTKSDN_UNIT_TERKUNCI).trim().toUpperCase();
+
+        var filteredSchools = BEZETTINGPTKSDN_CACHE_DATA.filter(function (sch) {
+            var rUnit = String(sch.unit || (Array.isArray(sch) ? sch[0] : "")).trim().toUpperCase();
+            if (BEZETTINGPTKSDN_IS_ADMIN) {
+                return (tAdminUnit === "SEMUA" || rUnit === tAdminUnit);
+            } else {
+                return (rUnit === tUnitUser);
+            }
+        });
+
+        if (filteredSchools.length === 0) {
+            Sultan.alert('warning', 'Peringatan', 'Tidak ada baris data untuk diekspor.');
+            return;
+        }
+
+        var excelRows = [];
+
+        // Header Baris 1
+        var h1 = [
+            "UNIT KERJA", "NPSN", "JML ROMBEL", "JML MURID",
+            "KEPALA SEKOLAH", "", "", "", "", "", "",
+            "GURU KELAS", "", "", "", "", "", "", "", "", "",
+            "GURU PJOK", "", "", "", "", "", "", "", "", "",
+            "GURU PAI", "", "", "", "", "", "", "", "", "",
+            "GURU PA KRISTEN", "", "", "", "", "", "", "", "", "",
+            "PPPK PARUH WAKTU", "", "", "", "",
+            "NON ASN SEBELUM 3-8-2023", "", ""
+        ];
+
+        // Header Baris 2
+        var h2 = [
+            "", "", "", "",
+            "Keb.", "Bezetting", "", "", "+/-", "Pens 1 Thn", "Pens 2 Thn",
+            "Keb.", "Bezetting", "", "", "", "", "+/-", "Non ASN 3-8-2023", "Pens 1 Thn", "Pens 2 Thn",
+            "Keb.", "Bezetting", "", "", "", "", "+/-", "Non ASN 3-8-2023", "Pens 1 Thn", "Pens 2 Thn",
+            "Keb.", "Bezetting", "", "", "", "", "+/-", "Non ASN 3-8-2023", "Pens 1 Thn", "Pens 2 Thn",
+            "Keb.", "Bezetting", "", "", "", "", "+/-", "Non ASN 3-8-2023", "Pens 1 Thn", "Pens 2 Thn",
+            "Pengelola Umum", "Operator Layanan", "Pengelola Layanan", "Penata Layanan", "Jml",
+            "Guru", "Tendik", "Jml"
+        ];
+
+        // Header Baris 3
+        var h3 = [
+            "", "", "", "",
+            "", "CPNS", "PNS", "PPPK", "", "", "",
+            "", "CPNS", "PNS", "PPPK", "PW", "Jml", "", "", "", "",
+            "", "CPNS", "PNS", "PPPK", "PW", "Jml", "", "", "", "",
+            "", "CPNS", "PNS", "PPPK", "PW", "Jml", "", "", "", "",
+            "", "CPNS", "PNS", "PPPK", "PW", "Jml", "", "", "", "",
+            "", "", "", "", "",
+            "", "", ""
+        ];
+
+        excelRows.push(h1);
+        excelRows.push(h2);
+        excelRows.push(h3);
+
+        filteredSchools.forEach(function (sch) {
+            var r = [
+                sch.unit || "-",
+                sch.npsn || "-",
+                sch.rombel || 0,
+                sch.murid || 0
+            ];
+
+            // KS
+            var ks = sch.ks || {};
+            r.push(ks.keb || 0, ks.cpns || 0, ks.pns || 0, ks.pppk || 0, ks.selisih || 0, ks.pens_1 || 0, ks.pens_2 || 0);
+
+            // GK
+            var gk = sch.guru_kelas || {};
+            r.push(gk.keb || 0, gk.cpns || 0, gk.pns || 0, gk.pppk || 0, gk.pw || 0, gk.jml || 0, gk.selisih || 0, gk.non_asn_lt || 0, gk.pens_1 || 0, gk.pens_2 || 0);
+
+            // PJOK
+            var pjok = sch.guru_pjok || {};
+            r.push(pjok.keb || 0, pjok.cpns || 0, pjok.pns || 0, pjok.pppk || 0, pjok.pw || 0, pjok.jml || 0, pjok.selisih || 0, pjok.non_asn_lt || 0, pjok.pens_1 || 0, pjok.pens_2 || 0);
+
+            // PAI
+            var pai = sch.guru_pai || {};
+            r.push(pai.keb || 0, pai.cpns || 0, pai.pns || 0, pai.pppk || 0, pai.pw || 0, pai.jml || 0, pai.selisih || 0, pai.non_asn_lt || 0, pai.pens_1 || 0, pai.pens_2 || 0);
+
+            // PAK
+            var pak = sch.guru_kristen || {};
+            r.push(pak.keb || 0, pak.cpns || 0, pak.pns || 0, pak.pppk || 0, pak.pw || 0, pak.jml || 0, pak.selisih || 0, pak.non_asn_lt || 0, pak.pens_1 || 0, pak.pens_2 || 0);
+
+            // PW Tendik
+            var pwT = sch.tendik_pw || {};
+            r.push(pwT.pengelola_umum || 0, pwT.operator_layanan || 0, pwT.pengelola_layanan || 0, pwT.penata_layanan || 0, pwT.jml || 0);
+
+            // Non ASN Cutoff
+            var naC = sch.non_asn_cutoff || {};
+            r.push(naC.guru || 0, naC.tendik || 0, naC.jml || 0);
+
+            excelRows.push(r);
+        });
+
+        try {
+            var ws = XLSX.utils.aoa_to_sheet(excelRows);
+            var wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Bezetting SDN");
+            var filename = "Bezetting_SDN_" + bezettingptksdn_getTimestamp() + ".xlsx";
+            XLSX.writeFile(wb, filename);
+            Sultan.alert('success', 'Berhasil', 'Data bezetting berhasil diekspor ke Excel.');
+        } catch (err) {
+            Sultan.alert('error', 'Gagal Ekspor', err.message);
+        }
+    }
+
+    function bezettingptksdn_getTimestamp() {
+        var now = new Date();
+        var y = now.getFullYear();
+        var m = String(now.getMonth() + 1).padStart(2, '0');
+        var d = String(now.getDate()).padStart(2, '0');
+        return y + m + d;
     }
 </script>
