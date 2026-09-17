@@ -57,6 +57,53 @@ var SultanUI = {
     },
 
     /**
+     * Animasi Counter Angka Berputar Terpusat (Sultan UI Counter Engine)
+     * @param {string|HTMLElement} target - ID elemen (misal: 'kpi_id' atau '#kpi_id') atau objek DOM
+     * @param {number|string} endValue - Nilai target akhir
+     * @param {string} suffix - Opsional akhiran (misal: '%', ' PTK', dll)
+     * @param {number} duration - Durasi animasi dalam ms (default: 1000ms)
+     */
+    animateValue: function(target, endValue, suffix = "", duration = 1000) {
+        if (typeof SultanUI !== 'undefined' && SultanUI.stopLottery) {
+            var targetSelector = typeof target === 'string' ? (target.startsWith('#') ? target : '#' + target) : target;
+            SultanUI.stopLottery(targetSelector);
+        }
+        var obj = typeof target === 'string' 
+            ? document.getElementById(target.replace(/^#/, '')) 
+            : target;
+        if (!obj) return;
+        
+        if (obj.dataset.sultanAnimId) {
+            cancelAnimationFrame(parseInt(obj.dataset.sultanAnimId, 10));
+        }
+
+        var start = 0;
+        var end = parseInt(endValue, 10);
+        if (isNaN(end)) end = 0;
+
+        if (end === 0) {
+            obj.innerHTML = "0" + (suffix ? `<small class="ml-1">${suffix}</small>` : '');
+            return;
+        }
+
+        var startTime = null;
+        function step(timestamp) {
+            if (!startTime) startTime = timestamp;
+            var progress = Math.min((timestamp - startTime) / duration, 1);
+            var easeProgress = progress * (2 - progress); // Easing out quadratic
+            var curVal = Math.floor(easeProgress * (end - start) + start);
+            obj.innerHTML = curVal.toLocaleString('id-ID') + (suffix ? `<small class="ml-1">${suffix}</small>` : '');
+            if (progress < 1) {
+                var animId = window.requestAnimationFrame(step);
+                obj.dataset.sultanAnimId = animId;
+            } else {
+                obj.dataset.sultanAnimId = "";
+            }
+        }
+        obj.dataset.sultanAnimId = window.requestAnimationFrame(step);
+    },
+
+    /**
      * Merender Skeleton Loader untuk Dashboard
      * @param {string} targetId - ID elemen target dashboardState (misal: '#admsekolahdash_dashboardState')
      */
