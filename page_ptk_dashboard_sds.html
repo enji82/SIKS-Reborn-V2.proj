@@ -625,6 +625,52 @@ function sdsToggleJabatanDetail(jabatanKey) {
 }
 
 // ----------------------------------------------------------------------
+// HELPER PENCOCOKAN SEKOLAH SDS (NPSN & NAMA SEKOLAH)
+// ----------------------------------------------------------------------
+function sdsMatchSchoolRow(row, filterVal) {
+  if (!row) return false;
+  if (!filterVal || filterVal === 'SEMUA') return true;
+
+  var f = String(filterVal).trim().toUpperCase();
+  var rNama = String(row[0] || '').trim().toUpperCase();
+  var rNpsn = String(row[1] || '').trim().toUpperCase();
+
+  // 1. Exact match dengan NPSN atau Nama Unit
+  if (rNpsn === f || rNama === f) return true;
+
+  // 2. Normalisasi awalan SDS / SD
+  var cleanR = rNama.replace(/^(SDS|SD)\s+/i, '').trim();
+  var cleanF = f.replace(/^(SDS|SD)\s+/i, '').trim();
+  if (cleanR && cleanF && (cleanR === cleanF || cleanR.indexOf(cleanF) !== -1 || cleanF.indexOf(cleanR) !== -1)) return true;
+
+  // 3. Fallback partial match jika panjang pencarian > 3 karakter
+  if (f.length > 3 && (rNama.indexOf(f) !== -1 || f.indexOf(rNama) !== -1)) return true;
+
+  // 4. Jika user bukan admin, coba juga atribut sesi login lainnya
+  if (!DASHS_IS_ADMIN) {
+    try {
+      var u = typeof getSesiUser === 'function' ? (getSesiUser() || {}) : {};
+      var candidates = [
+        String(u.npsn || '').trim().toUpperCase(),
+        String(u.unit || '').trim().toUpperCase(),
+        String(u.username || '').trim().toUpperCase(),
+        String(u.nama_lengkap || u.nama || '').trim().toUpperCase()
+      ];
+      for (var i = 0; i < candidates.length; i++) {
+        var c = candidates[i];
+        if (!c) continue;
+        if (rNpsn === c || rNama === c) return true;
+        var cleanC = c.replace(/^(SDS|SD)\s+/i, '').trim();
+        if (cleanR && cleanC && (cleanR === cleanC || cleanR.indexOf(cleanC) !== -1 || cleanC.indexOf(cleanR) !== -1)) return true;
+        if (c.length > 3 && (rNama.indexOf(c) !== -1 || c.indexOf(rNama) !== -1)) return true;
+      }
+    } catch(e) {}
+  }
+
+  return false;
+}
+
+// ----------------------------------------------------------------------
 // 1. HITUNG KEADAAN GTK SDS (Row 1 KPI & Row 2 Matriks & Donut Chart)
 // ----------------------------------------------------------------------
 function sdsCalculateKeadaan(data, filterNpsn) {
@@ -634,7 +680,7 @@ function sdsCalculateKeadaan(data, filterNpsn) {
   }
 
   var filtered = filterNpsn ? data.filter(function(d){
-    return String(d[1]||'').trim().toUpperCase() === String(filterNpsn).trim().toUpperCase();
+    return sdsMatchSchoolRow(d, filterNpsn);
   }) : data;
 
   // Hitung KPI
@@ -752,7 +798,7 @@ function sdsProcessKebutuhan(data, filterNpsn) {
   }
 
   var filtered = filterNpsn ? data.filter(function(d){
-    return String(d[1]||'').trim().toUpperCase() === String(filterNpsn).trim().toUpperCase();
+    return sdsMatchSchoolRow(d, filterNpsn);
   }) : data;
 
   var jabatans = [

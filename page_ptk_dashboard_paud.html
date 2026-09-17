@@ -700,13 +700,59 @@ function paudFilterJenjang(jenjang) {
   paudRenderDashboard();
 }
 
+// ----------------------------------------------------------------------
+// HELPER PENCOCOKAN LEMBAGA PAUD (NPSN & NAMA LEMBAGA)
+// ----------------------------------------------------------------------
+function paudMatchSchoolRow(row, filterVal) {
+  if (!row) return false;
+  if (!filterVal || filterVal === 'SEMUA') return true;
+
+  var f = String(filterVal).trim().toUpperCase();
+  var rNama = String(row[0] || '').trim().toUpperCase();
+  var rNpsn = String(row[1] || '').trim().toUpperCase();
+
+  // 1. Exact match dengan NPSN atau Nama Unit
+  if (rNpsn === f || rNama === f) return true;
+
+  // 2. Normalisasi awalan PAUD / TK / KB / SPS / TPA
+  var cleanR = rNama.replace(/^(PAUD|TK|KB|SPS|TPA)\s+/i, '').trim();
+  var cleanF = f.replace(/^(PAUD|TK|KB|SPS|TPA)\s+/i, '').trim();
+  if (cleanR && cleanF && (cleanR === cleanF || cleanR.indexOf(cleanF) !== -1 || cleanF.indexOf(cleanR) !== -1)) return true;
+
+  // 3. Fallback partial match jika panjang pencarian > 3 karakter
+  if (f.length > 3 && (rNama.indexOf(f) !== -1 || f.indexOf(rNama) !== -1)) return true;
+
+  // 4. Jika user bukan admin, coba juga atribut sesi login lainnya
+  if (!DASHPAUD_IS_ADMIN) {
+    try {
+      var u = typeof getSesiUser === 'function' ? (getSesiUser() || {}) : {};
+      var candidates = [
+        String(u.npsn || '').trim().toUpperCase(),
+        String(u.unit || '').trim().toUpperCase(),
+        String(u.username || '').trim().toUpperCase(),
+        String(u.nama_lengkap || u.nama || '').trim().toUpperCase()
+      ];
+      for (var i = 0; i < candidates.length; i++) {
+        var c = candidates[i];
+        if (!c) continue;
+        if (rNpsn === c || rNama === c) return true;
+        var cleanC = c.replace(/^(PAUD|TK|KB|SPS|TPA)\s+/i, '').trim();
+        if (cleanR && cleanC && (cleanR === cleanC || cleanR.indexOf(cleanC) !== -1 || cleanC.indexOf(cleanR) !== -1)) return true;
+        if (c.length > 3 && (rNama.indexOf(c) !== -1 || c.indexOf(rNama) !== -1)) return true;
+      }
+    } catch(e) {}
+  }
+
+  return false;
+}
+
 function paudRenderDashboard() {
   if (!PAUD_RAW_DATA || PAUD_RAW_DATA.length === 0) return;
 
   var baseData = PAUD_RAW_DATA;
   if (PAUD_CURRENT_MODE === 'unit' && PAUD_SELECTED_NPSN) {
     baseData = PAUD_RAW_DATA.filter(function(r){
-      return String(r[1]||"").trim().toUpperCase() === String(PAUD_SELECTED_NPSN).trim().toUpperCase();
+      return paudMatchSchoolRow(r, PAUD_SELECTED_NPSN);
     });
   }
 

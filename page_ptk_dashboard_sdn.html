@@ -869,23 +869,36 @@ function ptksdndash_renderUnitView() {
 
   // Ambil nama & info sekolah terpilih
   var sekolahNama = "SD NEGERI";
+  var resolvedNpsn = npsn;
   if (SDN_RAW_KEADAAN && Array.isArray(SDN_RAW_KEADAAN)) {
     var found = SDN_RAW_KEADAAN.find(function(r) {
-      return String(r[1] || '').trim().toUpperCase() === npsn;
+      if (!r) return false;
+      var rNama = String(r[0] || '').trim().toUpperCase();
+      var rNpsn = String(r[1] || '').trim().toUpperCase();
+      if (rNpsn === npsn || rNama === npsn) return true;
+      var cleanR = rNama.replace(/^SDN\s+/i, '').trim();
+      var cleanF = npsn.replace(/^SDN\s+/i, '').trim();
+      if (cleanR && cleanF && (cleanR === cleanF || cleanR.indexOf(cleanF) !== -1 || cleanF.indexOf(cleanR) !== -1)) return true;
+      if (npsn.length > 3 && (rNama.indexOf(npsn) !== -1 || npsn.indexOf(rNama) !== -1)) return true;
+      return false;
     });
     if (found) {
       sekolahNama = found[0] || 'SD NEGERI';
+      resolvedNpsn = found[1] || npsn;
     }
   }
 
   $('#sdndash_unitNamaSekolah').text(sekolahNama);
-  $('#sdndash_unitNpsnSekolah').text(npsn || '-');
+  $('#sdndash_unitNpsnSekolah').text(resolvedNpsn || '-');
 
   // Filter Keadaan GTK
   var dataUnitKeadaan = [];
   if (SDN_RAW_KEADAAN && Array.isArray(SDN_RAW_KEADAAN)) {
     dataUnitKeadaan = SDN_RAW_KEADAAN.filter(function(r) {
-      return String(r[1] || '').trim().toUpperCase() === npsn;
+      if (!r) return false;
+      var rNama = String(r[0] || '').trim().toUpperCase();
+      var rNpsn = String(r[1] || '').trim().toUpperCase();
+      return rNpsn === resolvedNpsn || rNama === sekolahNama;
     });
   }
   sdnCalculate(dataUnitKeadaan, false);
@@ -898,7 +911,7 @@ function ptksdndash_renderUnitView() {
 
   // Filter Bezetting (Col 1 = NPSN)
   if (SDN_RAW_BEZETTING) {
-    sdnProcessBezetting(SDN_RAW_BEZETTING, false, npsn);
+    sdnProcessBezetting(SDN_RAW_BEZETTING, false, resolvedNpsn);
   }
 }
 
