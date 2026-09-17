@@ -472,36 +472,59 @@
                 },
                 "footerCallback": function (row, data, start, end, display) {
                     var api = this.api();
-                    var totalArr = new Array(47).fill(0); // DT index 1 s/d 47
+                    var totalArr = new Array(48).fill(0); // Index 0 s/d 47
 
                     var ketIndices = [11, 20, 29, 38, 47];
                     var pmIndices = [10, 19, 28, 37, 46];
 
+                    // 1. Akumulasi nilai dari baris data yang sedang aktif (sesuai search & filter)
                     api.rows({ search: 'applied' }).data().each(function (rowData) {
                         for (var i = 1; i <= 47; i++) {
-                            if (ketIndices.includes(i)) {
-                                totalArr[i - 1] = "";
-                                continue;
-                            }
-                            var rawStr = String(rowData[i]);
+                            if (ketIndices.includes(i) || pmIndices.includes(i)) continue;
+                            var rawStr = String(rowData[i] || "");
                             var cleanVal = rawStr.replace(/<[^>]*>?/gm, '').replace(/,/g, '').trim();
                             var val = (cleanVal === "-" || cleanVal === "") ? 0 : (parseInt(cleanVal) || 0);
-                            totalArr[i - 1] += val;
+                            totalArr[i] += val;
                         }
                     });
 
-                    var cells = $(api.table().footer()).find('th');
-                    cells.eq(0).html('TOTAL JUMLAH').addClass('text-maroon text-left font-weight-bold px-3 py-1 align-middle col-sticky-left text-uppercase').css({'z-index': '40', 'border-right': '2px solid #dee2e6'});
-                    
-                    // Rombel & Murid
-                    var totalRombel = totalArr[0] === 0 ? '-' : totalArr[0];
-                    var totalMurid = totalArr[1] === 0 ? '-' : totalArr[1];
-                    cells.eq(1).html(totalRombel).removeClass('text-danger text-primary').addClass('text-center px-2 py-1 font-weight-bold text-maroon align-middle sultan-total-row');
-                    cells.eq(2).html(totalMurid).removeClass('text-danger text-primary').addClass('text-center px-2 py-1 font-weight-bold text-maroon align-middle sultan-total-row');
+                    // 2. Hitung Selisih (+/-) secara matematis: Total Guru - Total Kebutuhan
+                    // KS (Keb=3, Guru=4..9, Selisih=10)
+                    totalArr[10] = (totalArr[4] + totalArr[5] + totalArr[6] + totalArr[7] + totalArr[8] + totalArr[9]) - totalArr[3];
+                    // GK (Keb=12, Guru=13..18, Selisih=19)
+                    totalArr[19] = (totalArr[13] + totalArr[14] + totalArr[15] + totalArr[16] + totalArr[17] + totalArr[18]) - totalArr[12];
+                    // PJOK (Keb=21, Guru=22..27, Selisih=28)
+                    totalArr[28] = (totalArr[22] + totalArr[23] + totalArr[24] + totalArr[25] + totalArr[26] + totalArr[27]) - totalArr[21];
+                    // PAI (Keb=30, Guru=31..36, Selisih=37)
+                    totalArr[37] = (totalArr[31] + totalArr[32] + totalArr[33] + totalArr[34] + totalArr[35] + totalArr[36]) - totalArr[30];
+                    // PAK (Keb=39, Guru=40..45, Selisih=46)
+                    totalArr[46] = (totalArr[40] + totalArr[41] + totalArr[42] + totalArr[43] + totalArr[44] + totalArr[45]) - totalArr[39];
 
-                    // Kolom Metrik Guru (Col 3 s/d 47)
+                    // 3. Update DOM footer menggunakan api.column(col).footer() agar selalu sinkron
+                    var nodeUnit = api.column(0).footer();
+                    if (nodeUnit) {
+                        $(nodeUnit).html('TOTAL JUMLAH').addClass('text-maroon text-left font-weight-bold px-3 py-1 align-middle col-sticky-left text-uppercase').css({'z-index': '40', 'border-right': '2px solid #dee2e6'});
+                    }
+
+                    // Rombel & Murid (Cols 1 & 2)
+                    var nodeRombel = api.column(1).footer();
+                    if (nodeRombel) {
+                        var totalRombel = totalArr[1] === 0 ? '-' : totalArr[1];
+                        $(nodeRombel).html(totalRombel).removeClass('text-danger text-primary').addClass('text-center px-2 py-1 font-weight-bold text-maroon align-middle sultan-total-row');
+                    }
+
+                    var nodeMurid = api.column(2).footer();
+                    if (nodeMurid) {
+                        var totalMurid = totalArr[2] === 0 ? '-' : totalArr[2];
+                        $(nodeMurid).html(totalMurid).removeClass('text-danger text-primary').addClass('text-center px-2 py-1 font-weight-bold text-maroon align-middle sultan-total-row');
+                    }
+
+                    // Kolom Metrik Guru (Cols 3 s/d 47)
                     for (var col = 3; col <= 47; col++) {
-                        var rawVal = totalArr[col - 1];
+                        var colNode = api.column(col).footer();
+                        if (!colNode) continue;
+
+                        var rawVal = totalArr[col];
                         var txtColor = "text-maroon";
                         var displayVal = rawVal;
 
@@ -529,9 +552,8 @@
                             }
                         }
 
-                        var td = cells.eq(col);
-                        td.html(displayVal).removeClass('text-maroon text-danger text-primary bg-soft-primary bg-soft-success bg-soft-orange bg-soft-purple bg-soft-danger')
-                          .addClass('text-center px-2 py-1 font-weight-bold sultan-total-row ' + txtColor);
+                        $(colNode).html(displayVal).removeClass('text-maroon text-danger text-primary bg-soft-primary bg-soft-success bg-soft-orange bg-soft-purple bg-soft-danger')
+                            .addClass('text-center px-2 py-1 font-weight-bold sultan-total-row ' + txtColor);
                     }
                 }
             });
