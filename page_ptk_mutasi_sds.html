@@ -219,7 +219,6 @@
     var PTKSDS_CURRENT_VERIFIKASI_ROW = null;
 
     (function () {
-        console.log('PTKSDS: IIFE start. filterBarArea:', $('#ptksds_filterBarArea').length, '| loadingDiv:', $('#ptksds_loadingUsulan').length, '| tableState:', $('#ptksds_tableUsulanState').length);
         // Render filter bar secara dinamis via SultanUI
         var filtersConfig = [
             { id: 'ptksds_filterUnit', placeholder: 'Memvalidasi Akses...', disabled: true }
@@ -235,7 +234,6 @@
             </button>
         `;
         $('#ptksds_filterBarArea').html(SultanUI.renderFilterBar(filtersConfig, extraButtons));
-        console.log('PTKSDS: Filter bar rendered. filterUnit exists:', $('#ptksds_filterUnit').length);
 
         try {
             var user = getSesiUser() || {};
@@ -244,11 +242,9 @@
                               (user.role || "").toLowerCase().includes("admin") || 
                               (user.role || "").toLowerCase().includes("verifikator");
             PTKSDS_USER_NPSN = String(user.npsn || user.username || user.unit || "").trim();
-        } catch (e) { PTKSDS_IS_ADMIN = false; console.warn('PTKSDS: getSesiUser error:', e); }
-        console.log('PTKSDS: User detected. IS_ADMIN:', PTKSDS_IS_ADMIN, '| NPSN:', PTKSDS_USER_NPSN, '| Aktif:', PTKSDS_USER_AKTIF);
+        } catch (e) { PTKSDS_IS_ADMIN = false; }
 
         ptksds_initDataTablesUsulan();
-        console.log('PTKSDS: DataTable instance:', PTKSDS_TABEL_USULAN_INSTANCE ? 'OK' : 'NULL');
         ptksds_inisialisasiHalaman();
 
         // Event handler untuk filter
@@ -347,7 +343,7 @@
             var pesan = $(this).attr('data-pesan') || 'Tidak ada catatan.';
             Sultan.bacaCatatan(pesan);
         });
-    });
+    })();
 
     function ptksds_bukaModalMutasi(showModal = true) {
         $('#ptksds_formMutasi')[0].reset();
@@ -704,71 +700,48 @@
 
     function ptksds_initDataTablesUsulan() {
         try {
-            if ($('#ptksds_tabelUsulan').length === 0) {
-                console.warn('Table #ptksds_tabelUsulan not found');
-                return;
-            }
+            if ($.fn.DataTable.isDataTable('#ptksds_tabelUsulan')) { $('#ptksds_tabelUsulan').DataTable().destroy(); }
+        } catch (e) { console.warn("DataTable destroy failed", e); }
 
-            if ($.fn.DataTable.isDataTable('#ptksds_tabelUsulan')) {
-                try {
-                    $('#ptksds_tabelUsulan').DataTable().destroy();
-                } catch (e) {
-                    console.warn("DataTable destroy failed", e);
-                }
-            }
-        } catch (e) {
-            console.warn("DataTable init check failed", e);
-        }
+        PTKSDS_TABEL_USULAN_INSTANCE = SultanTable.init('#ptksds_tabelUsulan', {
+            "destroy": true,
+            "ordering": false,
+            "pageLength": 10,
+            "autoWidth": false,
+            "deferRender": true,
+            "dom": "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
+                "<'row'<'col-sm-12'<'ptksds-scroll-container sultan-scroll'tr>>>" +
+                "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+            "columnDefs": [
+                { "targets": 0, "className": "col-sticky-left text-left align-middle" },
+                { "targets": 4, "className": "text-center align-middle" },
+                { "targets": 5, "className": "text-center align-middle" },
+                { "targets": 7, "className": "text-center align-middle px-2", "width": "1%", "orderable": false },
+                { "targets": [1, 2, 3, 6], "className": "text-left align-middle" }
+            ],
+            "language": {
+                "url": "https://cdn.datatables.net/plug-ins/1.10.21/i18n/Indonesian.json",
+                "emptyTable": "<div class='p-4 text-center text-muted'><i class='fas fa-inbox fa-3x mb-3 opacity-50'></i><br>Belum ada data mutasi.</div>"
+            },
+            "initComplete": function (settings, json) {
+                var $container = $('.ptksds-scroll-container');
+                $container.attr('tabindex', '0').css('outline', 'none');
+                $('#ptksds_tabelUsulan').attr('tabindex', '0').css('outline', 'none');
 
-        try {
-            PTKSDS_TABEL_USULAN_INSTANCE = SultanTable.init('#ptksds_tabelUsulan', {
-                "destroy": true, 
-                "ordering": false, 
-                "pageLength": 10, 
-                "autoWidth": false,
-                "deferRender": true,
-                "dom": "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
-                    "<'row'<'col-sm-12'<'table-responsive sultan-scroll'tr>>>" +
-                    "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
-                "columnDefs": [
-                    { "targets": 0, "className": "col-sticky-left text-left align-middle" },
-                    { "targets": 4, "className": "text-center align-middle" },
-                    { "targets": 5, "className": "text-center align-middle" },
-                    { "targets": 7, "className": "text-center align-middle px-2", "width": "1%", "orderable": false },
-                    { "targets": [1, 2, 3, 6], "className": "text-left align-middle" }
-                ],
-                "language": {
-                    "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json",
-                    "emptyTable": "<div class='p-4 text-center text-muted'><i class='fas fa-inbox fa-3x mb-3 opacity-50'></i><br>Belum ada data mutasi.</div>"
-                },
-                "initComplete": function (settings, json) {
-                    try {
-                        var $container = $('#ptksds_tabelUsulan').closest('.table-responsive, .sultan-scroll');
-                        if ($container.length > 0) {
-                            $container.attr('tabindex', '0').css('outline', 'none');
-                            $('#ptksds_tabelUsulan').attr('tabindex', '0').css('outline', 'none');
+                $container.off('keydown').on('keydown', function (e) {
+                    if ($(e.target).is('input, textarea')) return;
 
-                            $container.off('keydown').on('keydown', function (e) {
-                                if ($(e.target).is('input, textarea')) return;
-
-                                var scrollAmount = 200;
-                                if (e.key === 'ArrowLeft') {
-                                    this.scrollLeft -= scrollAmount;
-                                    e.preventDefault();
-                                } else if (e.key === 'ArrowRight') {
-                                    this.scrollLeft += scrollAmount;
-                                    e.preventDefault();
-                                }
-                            });
-                        }
-                    } catch (e) {
-                        console.warn('Error in initComplete', e);
+                    var scrollAmount = 200;
+                    if (e.key === 'ArrowLeft') {
+                        this.scrollLeft -= scrollAmount;
+                        e.preventDefault();
+                    } else if (e.key === 'ArrowRight') {
+                        this.scrollLeft += scrollAmount;
+                        e.preventDefault();
                     }
-                }
-            });
-        } catch (e) {
-            console.error('Error initializing DataTables', e);
-        }
+                });
+            }
+        });
     }
 
     function ptksds_inisialisasiHalaman() {
@@ -814,7 +787,6 @@
     }
 
     function ptksds_tarikDataUsulan() {
-        console.log('PTKSDS: tarikDataUsulan called. alreadyFetching:', PTKSDS_ALREADY_FETCHING);
         if (PTKSDS_ALREADY_FETCHING) return;
         PTKSDS_ALREADY_FETCHING = true;
 
@@ -824,7 +796,6 @@
         // Fetch Master Data first (getDataPTKSDS)
         google.script.run
             .withSuccessHandler(function (resMaster) {
-                console.log('PTKSDS: Master data OK, count:', (JSON.parse(resMaster)||[]).length);
                 try {
                     PTKSDS_CACHE_MASTER = JSON.parse(resMaster);
                 } catch (e) {
@@ -834,9 +805,8 @@
                 // Now fetch Usulan data
                 google.script.run
                     .withSuccessHandler(function (resUsulan) {
-                        console.log('PTKSDS: Usulan data OK, raw length:', resUsulan ? resUsulan.length : 0);
                         PTKSDS_ALREADY_FETCHING = false;
-                        SultanUI.hideLoading('#ptksds_loadingUsulan');
+                        $('#ptksds_loadingUsulan').hide();
                         try {
                             PTKSDS_CACHE_USULAN = JSON.parse(resUsulan);
                             ptksds_populateFilterLembaga();
@@ -847,7 +817,7 @@
                     })
                     .withFailureHandler(function (err) {
                         PTKSDS_ALREADY_FETCHING = false;
-                        SultanUI.hideLoading('#ptksds_loadingUsulan');
+                        $('#ptksds_loadingUsulan').hide();
                         Sultan.notif.crud.gagal(err.message || err || 'Gagal memuat data');
                         ptksds_updateTabelKosong('<div class="text-danger p-4 text-center font-weight-bold"><i class="fas fa-exclamation-triangle fa-2x mb-2"></i><br>Gagal memuat usulan mutasi.</div>');
                     })
@@ -855,7 +825,7 @@
             })
             .withFailureHandler(function (err) {
                 PTKSDS_ALREADY_FETCHING = false;
-                SultanUI.hideLoading('#ptksds_loadingUsulan');
+                $('#ptksds_loadingUsulan').hide();
                 Sultan.notif.crud.gagal(err.message || err || 'Gagal memuat data master');
                 ptksds_updateTabelKosong('<div class="text-danger p-4 text-center font-weight-bold"><i class="fas fa-exclamation-triangle fa-2x mb-2"></i><br>Gagal memuat data master PTK SDS.</div>');
             })
@@ -936,7 +906,7 @@
     }
 
     function ptksds_updateTabelKosong(htmlContent) {
-        SultanUI.hideLoading('#ptksds_loadingUsulan');
+        $('#ptksds_loadingUsulan').hide();
         $('#ptksds_tableUsulanState').show();
         if (PTKSDS_TABEL_USULAN_INSTANCE) {
             PTKSDS_TABEL_USULAN_INSTANCE.clear().draw();
@@ -947,7 +917,6 @@
     }
 
     function ptksds_renderTabelUsulan(data) {
-        console.log('PTKSDS: renderTabelUsulan called, data count:', data ? data.length : 'null', '| tableState in DOM:', $('#ptksds_tableUsulanState').length);
         var dtArray = [];
 
         if (!data || data.length === 0) {
@@ -1048,11 +1017,10 @@
             ]);
         });
 
-        console.log('PTKSDS: Showing table. tableState in DOM:', $('#ptksds_tableUsulanState').length, '| instance:', PTKSDS_TABEL_USULAN_INSTANCE ? 'OK' : 'NULL');
-        SultanUI.hideLoading('#ptksds_loadingUsulan');
-        $('#ptksds_tableUsulanState').show();
         if (PTKSDS_TABEL_USULAN_INSTANCE) {
             PTKSDS_TABEL_USULAN_INSTANCE.clear().rows.add(dtArray).draw(false);
+            $('#ptksds_tableUsulanState').show();
+            $('#ptksds_loadingUsulan').hide();
             PTKSDS_TABEL_USULAN_INSTANCE.columns.adjust();
         }
     }
