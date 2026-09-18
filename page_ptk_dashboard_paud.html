@@ -20,17 +20,20 @@
 
             <div class="divider-vertical d-none d-md-block mx-1"></div>
 
-            <!-- Filter Lembaga Unit (Admin Only) -->
-            <div class="sultan-filter-item d-none" id="pauddash_filterLembagaContainer" style="min-width: 240px; max-width: 360px;">
-                <select id="pauddash_filterLembaga" class="form-control" aria-label="Pilih Lembaga PAUD">
-                    <option value="">Pilih Lembaga...</option>
-                </select>
-                <i class="fas fa-chevron-down"></i>
+            <!-- Filter Lembaga Unit (Admin Only) & Divider Pemisah ke Refresh -->
+            <div class="d-none align-items-center" id="pauddash_filterLembagaWrapper">
+                <div class="sultan-filter-item" id="pauddash_filterLembagaContainer" style="min-width: 240px; max-width: 360px;">
+                    <select id="pauddash_filterLembaga" class="form-control" aria-label="Pilih Lembaga PAUD">
+                        <option value="">Semua Lembaga</option>
+                    </select>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="divider-vertical d-none d-md-block mx-1"></div>
             </div>
 
-            <!-- Tombol Aksi Universal (Refresh / Buka Data) -->
-            <button type="button" id="pauddash_btnAction" class="sultan-filter-btn-primary">
-                <i class="fas fa-sync-alt mr-1"></i> Refresh Data
+            <!-- Tombol Refresh Data -->
+            <button type="button" id="pauddash_btnRefresh" class="sultan-btn-refresh" title="Refresh Data">
+                <i class="fas fa-sync-alt"></i>
             </button>
         </div>
     </div>
@@ -414,45 +417,30 @@ $(document).ready(function() {
 
 function ptkpauddash_updateFilterBarControls() {
   var isUnit = (PAUD_CURRENT_MODE === 'unit');
-  var $lembagaFilter = $('#pauddash_filterLembagaContainer');
-  var $btnAction = $('#pauddash_btnAction');
+  var $lembagaFilter = $('#pauddash_filterLembagaWrapper');
   var $jenjangRow = $('#paudFilterJenjangRow');
 
   if (isUnit) {
     $jenjangRow.hide();
     if (DASHPAUD_IS_ADMIN) {
-      $lembagaFilter.removeClass('d-none');
+      $lembagaFilter.removeClass('d-none').addClass('d-flex');
       ptkpauddash_populateDropdownLembaga();
-      $btnAction.html('<i class="fas fa-folder-open mr-1"></i> Buka Data');
     } else {
-      $lembagaFilter.addClass('d-none');
-      $btnAction.html('<i class="fas fa-sync-alt mr-1"></i> Refresh Data');
+      $lembagaFilter.addClass('d-none').removeClass('d-flex');
     }
   } else {
     $jenjangRow.show();
-    $lembagaFilter.addClass('d-none');
-    $btnAction.html('<i class="fas fa-sync-alt mr-1"></i> Refresh Rekap');
+    $lembagaFilter.addClass('d-none').removeClass('d-flex');
   }
 }
 
 function ptkpauddash_setupEventListeners() {
-  // Tombol Aksi Terpusat (Refresh / Buka Data)
-  $(document).off('click', '#pauddash_btnAction').on('click', '#pauddash_btnAction', function() {
-    if (PAUD_CURRENT_MODE === 'rekap') {
-      paudReloadAllData(true);
-    } else {
-      if (DASHPAUD_IS_ADMIN) {
-        PAUD_SELECTED_NPSN = $('#pauddash_filterLembaga').val() || '';
-        if (!PAUD_SELECTED_NPSN) {
-          if (typeof Sultan !== 'undefined') Sultan.notif.info('Silakan pilih lembaga PAUD terlebih dahulu.');
-          return;
-        }
-      }
-      ptkpauddash_applyModeView();
-    }
+  // Tombol Refresh Universal (Segarkan Data dari Server)
+  $(document).off('click', '#pauddash_btnRefresh').on('click', '#pauddash_btnRefresh', function() {
+    paudReloadAllData(true);
   });
 
-  // Ganti Lembaga (Admin)
+  // Ganti Lembaga (Admin) - Langsung reaktif ganti data
   $(document).off('change', '#pauddash_filterLembaga').on('change', '#pauddash_filterLembaga', function() {
     PAUD_SELECTED_NPSN = $(this).val() || '';
     ptkpauddash_applyModeView();
@@ -467,7 +455,7 @@ function ptkpauddash_populateDropdownLembaga() {
   var sel = $('#pauddash_filterLembaga');
   var curVal = sel.val();
   sel.empty();
-  sel.append('<option value="">Pilih Lembaga...</option>');
+  sel.append('<option value="">Semua Lembaga</option>');
 
   if (PAUD_RAW_DATA && Array.isArray(PAUD_RAW_DATA)) {
     var listLembaga = [];
@@ -488,6 +476,8 @@ function ptkpauddash_populateDropdownLembaga() {
 
     if (curVal && sel.find('option[value="' + curVal + '"]').length) {
       sel.val(curVal);
+    } else {
+      sel.val('');
     }
   }
 }
