@@ -98,8 +98,11 @@
                         <i class="fas fa-chevron-down"></i>
                     </div>
 
-                    <button type="button" id="dashsk_btnBukaDataUser" class="sultan-filter-btn-primary">
-                        <i class="fas fa-sync-alt mr-1"></i> Refresh Data
+                    <div class="divider-vertical d-none d-md-block mx-1"></div>
+
+                    <!-- Tombol Refresh Data Unit -->
+                    <button type="button" id="dashsk_btnRefreshUser" class="sultan-btn-refresh" title="Refresh Data">
+                        <i class="fas fa-sync-alt"></i>
                     </button>
                 </div>
             </div>
@@ -164,6 +167,8 @@
                         <select id="dashsk_filterSemester" class="form-control" disabled></select>
                         <i class="fas fa-chevron-down"></i>
                     </div>
+
+                    <div class="divider-vertical d-none d-md-block mx-1"></div>
 
                     <button type="button" id="dashsk_btnRefresh" class="sultan-btn-refresh" title="Refresh Data" disabled>
                         <i class="fas fa-sync-alt"></i>
@@ -513,11 +518,8 @@
                 DASHSK_USER_NPSN = state.userNpsn;
                 DASHSK_USER_SEKOLAH = state.userSekolah;
 
-                if (DASHSK_USER_IS_ADMIN) {
-                    $('#dashsk_btnBukaDataUser').html('<i class="fas fa-folder-open mr-1"></i> Buka Data');
-                } else {
+                if (!DASHSK_USER_IS_ADMIN) {
                     $('#dashsk_wrapperUserJenjang, #dashsk_wrapperUserSekolah').addClass('d-none');
-                    $('#dashsk_btnBukaDataUser').html('<i class="fas fa-sync-alt mr-1"></i> Refresh Data');
                     $('#dashsk_userSchoolName').text(DASHSK_USER_SEKOLAH || "Sekolah Anda");
                     setTimeout(function () { dashsk_loadDataDashboard(true); }, 500);
                 }
@@ -549,27 +551,13 @@
             }
         });
 
-        // Handler klik tombol Filter Bar (Buka Data / Refresh Data)
-        $(document).off('click', '#dashsk_btnBukaDataUser').on('click', '#dashsk_btnBukaDataUser', function (e) {
-            e.preventDefault();
-            if (!DASHSK_USER_IS_ADMIN) {
-                dashsk_loadDataUnitSekolah(true);
-            } else {
-                var selectedUnit = $('#dashsk_filterUserSekolah').val();
-                if (!selectedUnit) {
-                    Sultan.notif.info('Silakan pilih jenjang dan nama sekolah terlebih dahulu.');
-                    return;
-                }
-                dashsk_renderModeUnit(selectedUnit);
-            }
-        });
-
         // 4. Pasang Event Listener Umum
         $(document).off('click', '#dashsk_btnRefresh').on('click', '#dashsk_btnRefresh', function (e) {
             e.preventDefault();
             dashsk_loadDataDashboard();
         });
 
+        // Handler klik tombol Refresh Data Unit
         $(document).off('click', '#dashsk_btnRefreshUser').on('click', '#dashsk_btnRefreshUser', function (e) {
             e.preventDefault();
             dashsk_loadDataUnitSekolah(true);
@@ -837,12 +825,15 @@
             selectJenjangId: '#dashsk_filterUserJenjang',
             wrapperSekolahId: '#dashsk_wrapperUserSekolah',
             selectSekolahId: '#dashsk_filterUserSekolah',
-            btnActionId: '#dashsk_btnBukaDataUser',
+            btnActionId: '#dashsk_btnRefreshUser',
             masterSekolah: window.DASHSK_MASTER_SEKOLAH,
             onSelectSchool: function(npsn, nama) {
-                dashsk_renderEmptyStatusBanner();
-                dashsk_renderEmptyMultiYearCards();
-                $('#dashsk_btnBukaDataUser').html('<i class="fas fa-folder-open mr-1"></i> Buka Data');
+                if (npsn || nama) {
+                    dashsk_renderModeUnit(npsn || nama);
+                } else {
+                    dashsk_renderEmptyStatusBanner();
+                    dashsk_renderEmptyMultiYearCards();
+                }
             }
         });
 
