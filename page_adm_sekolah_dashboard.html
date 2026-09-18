@@ -118,9 +118,11 @@
                     <i class="fas fa-chevron-down"></i>
                 </div>
 
-                <!-- Tombol Aksi Universal Terpusat (Refresh / Buka Data) -->
-                <button type="button" id="admsekolahdash_btnAction" class="sultan-filter-btn-primary">
-                    <i class="fas fa-sync-alt mr-1"></i> Refresh Rekap
+                <div class="divider-vertical d-none d-md-block mx-1"></div>
+
+                <!-- Tombol Refresh Terpusat Sesuai Tema Sultan Modern -->
+                <button type="button" id="admsekolahdash_btnRefresh" class="sultan-btn-refresh" title="Refresh Data">
+                    <i class="fas fa-sync-alt"></i>
                 </button>
             </div>
         </div>
@@ -389,10 +391,8 @@ function admsekolahdash_updateFilterBarControls() {
         $('#admsekolahdash_filterKategoriContainer, #admsekolahdash_filterTahunContainer, #admsekolahdash_filterPeriodeContainer').addClass('d-none');
         if (ADMSEKOLAHDASH_IS_ADMIN) {
             $('#admsekolahdash_filterJenjangUnitContainer, #admsekolahdash_filterUnitSekolahContainer').removeClass('d-none');
-            $('#admsekolahdash_btnAction').html('<i class="fas fa-folder-open mr-1"></i> Buka Data');
         } else {
             $('#admsekolahdash_filterJenjangUnitContainer, #admsekolahdash_filterUnitSekolahContainer').addClass('d-none');
-            $('#admsekolahdash_btnAction').html('<i class="fas fa-sync-alt mr-1"></i> Refresh Data');
         }
     } else {
         // Mode Rekap: tampilkan filter Kategori, Tahun, dan Periode sesuai jenisnya
@@ -410,14 +410,13 @@ function admsekolahdash_updateFilterBarControls() {
             }
         }
         $('#admsekolahdash_filterJenjangUnitContainer, #admsekolahdash_filterUnitSekolahContainer').addClass('d-none');
-        $('#admsekolahdash_btnAction').html('<i class="fas fa-sync-alt mr-1"></i> Refresh Rekap');
     }
 }
 
 // Event Listeners Terpusat
 function admsekolahdash_setupEventListeners() {
-    // Tombol Aksi Universal Terpusat (#admsekolahdash_btnAction)
-    $(document).off('click', '#admsekolahdash_btnAction').on('click', '#admsekolahdash_btnAction', function(e) {
+    // Tombol Refresh Terpusat (#admsekolahdash_btnRefresh)
+    $(document).off('click', '#admsekolahdash_btnRefresh').on('click', '#admsekolahdash_btnRefresh', function(e) {
         e.preventDefault();
         if (ADMSEKOLAHDASH_MODE === 'rekap') {
             var k = $('#admsekolahdash_filterKategori').val();
@@ -438,23 +437,26 @@ function admsekolahdash_setupEventListeners() {
         admsekolahdash_salinKeWA();
     });
 
-    // Filter Kategori Ganti
+    // Filter Kategori Ganti (Otomatis load data)
     $(document).off('change', '#admsekolahdash_filterKategori').on('change', '#admsekolahdash_filterKategori', function() {
         var k = $(this).val();
         if (k) admsekolahdash_loadDataKategori(k);
     });
 
-    // Filter Tahun & Periode Ganti
+    // Filter Tahun & Periode Ganti (Otomatis filter lokal)
     $(document).off('change', '#admsekolahdash_filterTahun, #admsekolahdash_filterPeriode').on('change', '#admsekolahdash_filterTahun, #admsekolahdash_filterPeriode', function() {
         admsekolahdash_terapkanFilterLokal();
     });
 
-    // Filter Jenjang Unit Ganti (Admin)
+    // Filter Jenjang Unit Ganti (Admin - otomatis perbarui daftar sekolah)
     $(document).off('change', '#admsekolahdash_filterJenjangUnit').on('change', '#admsekolahdash_filterJenjangUnit', function() {
         admsekolahdash_updateSekolahDropdown('unit');
+        var npsn = $('#admsekolahdash_filterUnitSekolah').val();
+        if (npsn) admsekolahdash_loadUnitData(npsn);
+        else admsekolahdash_resetUnitView();
     });
 
-    // Filter Unit Sekolah Ganti (Admin)
+    // Filter Unit Sekolah Ganti (Admin - otomatis load tanpa klik tombol)
     $(document).off('change', '#admsekolahdash_filterUnitSekolah').on('change', '#admsekolahdash_filterUnitSekolah', function() {
         var npsn = $(this).val();
         if (npsn) admsekolahdash_loadUnitData(npsn);
@@ -630,7 +632,7 @@ function admsekolahdash_loadDataKategori(idKategori, forceRefresh) {
     if (!mapData) { ADMSEKOLAHDASH_PENDING_REQ = 0; return; }
 
     var btn = $('#admsekolahdash_btnRefresh');
-    btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin text-maroon"></i>');
+    btn.prop('disabled', true).addClass('loading').find('i').addClass('fa-spin');
     $('#admsekolahdash_filterKategori, #admsekolahdash_filterTahun, #admsekolahdash_filterPeriode, #admsekolahdash_filterSekolah').prop('disabled', true);
 
     if (typeof SultanUI !== 'undefined') {
@@ -655,7 +657,7 @@ function admsekolahdash_loadDataKategori(idKategori, forceRefresh) {
 
     google.script.run.withSuccessHandler(function(jsonStr) {
         ADMSEKOLAHDASH_PENDING_REQ = 0;
-        btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
+        btn.prop('disabled', false).removeClass('loading').find('i').removeClass('fa-spin');
         $('#admsekolahdash_filterKategori, #admsekolahdash_filterTahun, #admsekolahdash_filterPeriode').prop('disabled', false);
         if (ADMSEKOLAHDASH_IS_ADMIN) $('#admsekolahdash_filterSekolah').prop('disabled', false);
         $('.card-loading-overlay').remove();
@@ -688,7 +690,7 @@ function admsekolahdash_loadDataKategori(idKategori, forceRefresh) {
 
     }).withFailureHandler(function(err) {
         ADMSEKOLAHDASH_PENDING_REQ = 0;
-        btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
+        btn.prop('disabled', false).removeClass('loading').find('i').removeClass('fa-spin');
         $('#admsekolahdash_filterKategori').prop('disabled', false);
         $('.card-loading-overlay').remove();
         $('#admsekolahdash_loadingState').html('<div class="text-center p-4"><span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Terputus: ' + admsekolahdash_escapeHtml(err.message) + '</span></div>');
@@ -1018,7 +1020,7 @@ function admsekolahdash_loadUnitData(npsn, forceRefresh) {
     $('#admsekolahdash_unitProgressBar').css('width', '50%');
     $('#admsekolahdash_unitProgressSub').text('Memuat kelengkapan...');
     $('#admsekolahdash_unitHeaderStatusText').html('Memeriksa kelengkapan dokumen...');
-    $('#admsekolahdash_btnBukaDataUnit').prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Memuat...');
+    $('#admsekolahdash_btnRefresh').prop('disabled', true).addClass('loading').find('i').addClass('fa-spin');
 
     var loadingHtml = SultanUI && SultanUI.renderListLoading ? SultanUI.renderListLoading('MEMUAT...') : (
         '<li class="list-group-item border-0 px-3 py-4 bg-transparent text-center">'
@@ -1036,10 +1038,7 @@ function admsekolahdash_loadUnitData(npsn, forceRefresh) {
     var npsnSafe = String(npsn).trim();
 
     google.script.run.withSuccessHandler(function(jsonStr) {
-        $('#admsekolahdash_btnBukaDataUnit').prop('disabled', false)
-            .html(ADMSEKOLAHDASH_IS_ADMIN
-                ? '<i class="fas fa-sync-alt mr-1"></i> Refresh Data'
-                : '<i class="fas fa-sync-alt mr-1"></i> Refresh Data');
+        $('#admsekolahdash_btnRefresh').prop('disabled', false).removeClass('loading').find('i').removeClass('fa-spin');
         var data;
         try { data = JSON.parse(jsonStr); } catch(e) {
             Sultan.alert('error', 'Gagal Memproses Data', 'Respon server tidak valid.');
@@ -1053,8 +1052,7 @@ function admsekolahdash_loadUnitData(npsn, forceRefresh) {
         }
         admsekolahdash_renderUnitView(data);
     }).withFailureHandler(function(err) {
-        $('#admsekolahdash_btnBukaDataUnit').prop('disabled', false)
-            .html('<i class="fas fa-folder-open mr-1"></i> Buka Data');
+        $('#admsekolahdash_btnRefresh').prop('disabled', false).removeClass('loading').find('i').removeClass('fa-spin');
         Sultan.alert('error', 'Koneksi Terputus', err.message || 'Gagal terhubung ke server.');
         admsekolahdash_resetUnitView();
     }).getAdmSekolahViewerData(npsnSafe, ADMSEKOLAHDASH_IS_ADMIN ? "" : ADMSEKOLAHDASH_USER_NPSN);
