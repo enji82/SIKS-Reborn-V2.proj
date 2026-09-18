@@ -219,6 +219,7 @@
     var PTKSDS_CURRENT_VERIFIKASI_ROW = null;
 
     (function () {
+        console.log('PTKSDS: IIFE start. filterBarArea:', $('#ptksds_filterBarArea').length, '| loadingDiv:', $('#ptksds_loadingUsulan').length, '| tableState:', $('#ptksds_tableUsulanState').length);
         // Render filter bar secara dinamis via SultanUI
         var filtersConfig = [
             { id: 'ptksds_filterUnit', placeholder: 'Memvalidasi Akses...', disabled: true }
@@ -234,6 +235,7 @@
             </button>
         `;
         $('#ptksds_filterBarArea').html(SultanUI.renderFilterBar(filtersConfig, extraButtons));
+        console.log('PTKSDS: Filter bar rendered. filterUnit exists:', $('#ptksds_filterUnit').length);
 
         try {
             var user = getSesiUser() || {};
@@ -242,9 +244,11 @@
                               (user.role || "").toLowerCase().includes("admin") || 
                               (user.role || "").toLowerCase().includes("verifikator");
             PTKSDS_USER_NPSN = String(user.npsn || user.username || user.unit || "").trim();
-        } catch (e) { PTKSDS_IS_ADMIN = false; }
+        } catch (e) { PTKSDS_IS_ADMIN = false; console.warn('PTKSDS: getSesiUser error:', e); }
+        console.log('PTKSDS: User detected. IS_ADMIN:', PTKSDS_IS_ADMIN, '| NPSN:', PTKSDS_USER_NPSN, '| Aktif:', PTKSDS_USER_AKTIF);
 
         ptksds_initDataTablesUsulan();
+        console.log('PTKSDS: DataTable instance:', PTKSDS_TABEL_USULAN_INSTANCE ? 'OK' : 'NULL');
         ptksds_inisialisasiHalaman();
 
         // Event handler untuk filter
@@ -810,6 +814,7 @@
     }
 
     function ptksds_tarikDataUsulan() {
+        console.log('PTKSDS: tarikDataUsulan called. alreadyFetching:', PTKSDS_ALREADY_FETCHING);
         if (PTKSDS_ALREADY_FETCHING) return;
         PTKSDS_ALREADY_FETCHING = true;
 
@@ -819,6 +824,7 @@
         // Fetch Master Data first (getDataPTKSDS)
         google.script.run
             .withSuccessHandler(function (resMaster) {
+                console.log('PTKSDS: Master data OK, count:', (JSON.parse(resMaster)||[]).length);
                 try {
                     PTKSDS_CACHE_MASTER = JSON.parse(resMaster);
                 } catch (e) {
@@ -828,6 +834,7 @@
                 // Now fetch Usulan data
                 google.script.run
                     .withSuccessHandler(function (resUsulan) {
+                        console.log('PTKSDS: Usulan data OK, raw length:', resUsulan ? resUsulan.length : 0);
                         PTKSDS_ALREADY_FETCHING = false;
                         SultanUI.hideLoading('#ptksds_loadingUsulan');
                         try {
@@ -940,6 +947,7 @@
     }
 
     function ptksds_renderTabelUsulan(data) {
+        console.log('PTKSDS: renderTabelUsulan called, data count:', data ? data.length : 'null', '| tableState in DOM:', $('#ptksds_tableUsulanState').length);
         var dtArray = [];
 
         if (!data || data.length === 0) {
@@ -1040,6 +1048,7 @@
             ]);
         });
 
+        console.log('PTKSDS: Showing table. tableState in DOM:', $('#ptksds_tableUsulanState').length, '| instance:', PTKSDS_TABEL_USULAN_INSTANCE ? 'OK' : 'NULL');
         SultanUI.hideLoading('#ptksds_loadingUsulan');
         $('#ptksds_tableUsulanState').show();
         if (PTKSDS_TABEL_USULAN_INSTANCE) {
