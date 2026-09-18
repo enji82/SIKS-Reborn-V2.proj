@@ -822,7 +822,12 @@ function sdnGatekeeper() {
     google.script.run.withSuccessHandler(function(res) { SDN_RAW_PENSIUN = res; resolve(res); }).getDataProyeksiPensiunSDN();
   });
   var p3 = new Promise(function(resolve) {
-    google.script.run.withSuccessHandler(function(res) { SDN_RAW_BEZETTING = res; resolve(res); }).getDataBezettingSDN();
+    google.script.run.withSuccessHandler(function(res) {
+      // Parse JSON string menjadi array of school objects
+      var parsed = (typeof res === 'string') ? JSON.parse(res) : res;
+      SDN_RAW_BEZETTING = (parsed && parsed.schools) ? parsed.schools : (Array.isArray(parsed) ? parsed : []);
+      resolve(SDN_RAW_BEZETTING);
+    }).getDataBezettingSDN();
   });
 
   Promise.all([p1, p2, p3]).then(function() {
@@ -1065,23 +1070,42 @@ function sdnToggleJabatanDetail(jabatanKey) {
 
 function sdnProcessBezetting(data, isAdmin, filterNpsn) {
   $('#sdnKebutuhanLoading').hide();
-  if (!data || !Array.isArray(data) || data.length === 0) {
+
+  // Normalisasi: handle JSON string, { success, schools }, atau langsung array
+  var schools;
+  if (typeof data === 'string') {
+    try { var p = JSON.parse(data); schools = p && p.schools ? p.schools : (Array.isArray(p) ? p : []); }
+    catch(e) { schools = []; }
+  } else if (data && data.schools) {
+    schools = data.schools;
+  } else if (Array.isArray(data)) {
+    schools = data;
+  } else {
+    schools = [];
+  }
+
+  if (!schools || schools.length === 0) {
     $('#sdnKebutuhanRow').hide();
     return;
   }
 
-  var filtered = filterNpsn ? data.filter(function(d){
-    return String(d[1]||'').trim().toUpperCase() === String(filterNpsn).trim().toUpperCase();
-  }) : data;
+  // Filter berdasarkan NPSN atau nama unit jika mode Unit
+  var filtered = filterNpsn ? schools.filter(function(s) {
+    var sNpsn = String(s.npsn || '').trim().toUpperCase();
+    var sUnit = String(s.unit || '').trim().toUpperCase();
+    var target = String(filterNpsn).trim().toUpperCase();
+    return sNpsn === target || sUnit === target;
+  }) : schools;
 
   SDN_BEZETTING_DATA = filtered;
 
+  // Mapping key jabatan ke field object school dari backend
   var jabatans = [
-    { key: 'ks',   label: 'Kepala Sekolah', keb: 4,  cpns: null, pns: 5,  pppk: 6,  pw: null, selisih: 7,  nonasn: null },
-    { key: 'gk',   label: 'Guru Kelas',     keb: 10, cpns: null, pns: 11, pppk: 12, pw: 13,   selisih: 15, nonasn: 16 },
-    { key: 'pjok', label: 'Guru PJOK',      keb: 19, cpns: null, pns: 20, pppk: 21, pw: 22,   selisih: 24, nonasn: 25 },
-    { key: 'pai',  label: 'Guru PAI',       keb: 28, cpns: null, pns: 29, pppk: 30, pw: 31,   selisih: 33, nonasn: 34 },
-    { key: 'pak',  label: 'Guru PAK',       keb: 37, cpns: null, pns: 38, pppk: 39, pw: 40,   selisih: 42, nonasn: 43 }
+    { key: 'ks',   label: 'Kepala Sekolah', field: 'ks',          hasPw: false, hasNonAsn: false },
+    { key: 'gk',   label: 'Guru Kelas',     field: 'guru_kelas',  hasPw: true,  hasNonAsn: true },
+    { key: 'pjok', label: 'Guru PJOK',      field: 'guru_pjok',   hasPw: true,  hasNonAsn: true },
+    { key: 'pai',  label: 'Guru PAI',       field: 'guru_pai',    hasPw: true,  hasNonAsn: true },
+    { key: 'pak',  label: 'Guru PAK',       field: 'guru_kristen',hasPw: true,  hasNonAsn: false }
   ];
 
   var grandTotal = { butuh: 0, cpns: 0, pns: 0, pppk: 0, pw: 0, selisih: 0, nonasn: 0 };
@@ -1093,20 +1117,21 @@ function sdnProcessBezetting(data, isAdmin, filterNpsn) {
 
     filtered.forEach(function(r) {
       if (!r) return;
-      var namaSekolah = String(r[0] || '').trim();
-      var keb = parseInt(r[j.keb]) || 0;
-      var cpns = j.cpns !== null ? (parseInt(r[j.cpns]) || 0) : 0;
-      var pns = parseInt(r[j.pns]) || 0;
-      var pppk = parseInt(r[j.pppk]) || 0;
-      var pw = j.pw !== null ? (parseInt(r[j.pw]) || 0) : 0;
-      var sel = parseInt(r[j.selisih]) || 0;
-      var nonasn = j.nonasn !== null ? (parseInt(r[j.nonasn]) || 0) : 0;
+      var namaSekolah = String(r.unit || r[0] || '').trim();
+      var d = r[j.field] || {}; // object jabatan dari school
+      var keb    = parseInt(d.keb)    || 0;
+      var cpns   = parseInt(d.cpns)   || 0;
+      var pns    = parseInt(d.pns)    || 0;
+      var pppk   = parseInt(d.pppk)   || 0;
+      var pw     = j.hasPw  ? (parseInt(d.pw)     || 0) : 0;
+      var nonasn = j.hasNonAsn ? (parseInt(d.non_asn_lt) || 0) : 0;
+      var sel    = parseInt(d.selisih) || (pns + cpns + pppk + pw - keb);
 
-      tot.butuh += keb;
-      tot.cpns += cpns;
-      tot.pns += pns;
-      tot.pppk += pppk;
-      tot.pw += pw;
+      tot.butuh  += keb;
+      tot.cpns   += cpns;
+      tot.pns    += pns;
+      tot.pppk   += pppk;
+      tot.pw     += pw;
       tot.selisih += sel;
       tot.nonasn += nonasn;
 
@@ -1119,7 +1144,7 @@ function sdnProcessBezetting(data, isAdmin, filterNpsn) {
           pns: pns,
           pppk: pppk,
           pw: pw,
-          hasPw: (j.pw !== null),
+          hasPw: j.hasPw,
           selisih: sel,
           nonasn: nonasn
         });
@@ -1747,11 +1772,17 @@ function sdnApplyChartTheme() {
     var agg2 = { ks_butuh:0,ks_riil:0, gk_butuh:0,gk_riil:0, pjok_butuh:0,pjok_riil:0, pai_butuh:0,pai_riil:0, pak_butuh:0,pak_riil:0 };
     SDN_BEZETTING_DATA.forEach(function(r) {
       if (!r) return;
-      agg2.ks_butuh   += parseInt(r[4])||0;  agg2.ks_riil   += (parseInt(r[5])||0)+(parseInt(r[6])||0);
-      agg2.gk_butuh   += parseInt(r[10])||0; agg2.gk_riil   += (parseInt(r[11])||0)+(parseInt(r[12])||0)+(parseInt(r[13])||0);
-      agg2.pjok_butuh += parseInt(r[19])||0; agg2.pjok_riil += (parseInt(r[20])||0)+(parseInt(r[21])||0)+(parseInt(r[22])||0);
-      agg2.pai_butuh  += parseInt(r[28])||0; agg2.pai_riil  += (parseInt(r[29])||0)+(parseInt(r[30])||0)+(parseInt(r[31])||0);
-      agg2.pak_butuh  += parseInt(r[37])||0; agg2.pak_riil  += (parseInt(r[38])||0)+(parseInt(r[39])||0)+(parseInt(r[40])||0);
+      // Format object school: r.ks, r.guru_kelas, r.guru_pjok, r.guru_pai, r.guru_kristen
+      var ks   = r.ks          || {};
+      var gk   = r.guru_kelas  || {};
+      var pjok = r.guru_pjok   || {};
+      var pai  = r.guru_pai    || {};
+      var pak  = r.guru_kristen|| {};
+      agg2.ks_butuh   += parseInt(ks.keb)   ||0; agg2.ks_riil   += (parseInt(ks.cpns)||0)+(parseInt(ks.pns)||0)+(parseInt(ks.pppk)||0)+(parseInt(ks.pw)||0);
+      agg2.gk_butuh   += parseInt(gk.keb)   ||0; agg2.gk_riil   += (parseInt(gk.cpns)||0)+(parseInt(gk.pns)||0)+(parseInt(gk.pppk)||0)+(parseInt(gk.pw)||0);
+      agg2.pjok_butuh += parseInt(pjok.keb) ||0; agg2.pjok_riil += (parseInt(pjok.cpns)||0)+(parseInt(pjok.pns)||0)+(parseInt(pjok.pppk)||0)+(parseInt(pjok.pw)||0);
+      agg2.pai_butuh  += parseInt(pai.keb)  ||0; agg2.pai_riil  += (parseInt(pai.cpns)||0)+(parseInt(pai.pns)||0)+(parseInt(pai.pppk)||0)+(parseInt(pai.pw)||0);
+      agg2.pak_butuh  += parseInt(pak.keb)  ||0; agg2.pak_riil  += (parseInt(pak.cpns)||0)+(parseInt(pak.pns)||0)+(parseInt(pak.pppk)||0)+(parseInt(pak.pw)||0);
     });
     sdnRenderFormasiBar(agg2);
   }
