@@ -134,12 +134,7 @@
                     </button>
                 </div>
 
-                <div class="filter-meta-group d-none d-sm-flex align-items-center">
-                    <span class="sync-badge-modern shadow-xs" id="dashlapbul_syncBadge">
-                        <span class="sync-dot"></span>
-                        <span id="dashlapbul_syncTime">Data Sinkron</span>
-                    </span>
-                </div>
+
             </div>
 
             <!-- LOADING STATE TERPUSAT (STANDAR SULTAN) -->
@@ -459,8 +454,11 @@
                 return;
             }
             DASHLAPBUL_USER_NPSN = npsn;
-            DASHLAPBUL_USER_SEKOLAH = $('#dashlapbul_filterUserSekolah option:selected').text();
-            DASHLAPBUL_USER_REKAP_TAHUN = {};
+            DASHLAPBUL_USER_SEKOLAH = $('#dashlapbul_filterUserSekolah option:selected').text().replace(/\s*\(.*?\)\s*$/, '').trim();
+            // Hanya reset cache jika NPSN berubah
+            if (DASHLAPBUL_USER_REKAP_TAHUN._npsn !== npsn) {
+                DASHLAPBUL_USER_REKAP_TAHUN = { _npsn: npsn };
+            }
             dashlapbul_loadUserMultiYear();
         });
 
@@ -617,18 +615,31 @@
             return;
         }
 
+        var currentYear = new Date().getFullYear();
+        var yearsList = [];
+        for (var y = currentYear; y >= currentYear - 3; y--) {
+            yearsList.push(y);
+        }
+
+        // Cek apakah semua tahun sudah ada di cache
+        var allCached = yearsList.every(function(yr) {
+            return DASHLAPBUL_USER_REKAP_TAHUN.hasOwnProperty(yr);
+        });
+
+        if (allCached) {
+            // Render langsung dari cache tanpa fetch
+            dashlapbul_renderStatusBulanBerjalan(currentYear, DASHLAPBUL_USER_REKAP_TAHUN[currentYear]);
+            yearsList.forEach(function(yr) {
+                dashlapbul_renderYearGridCard(yr, DASHLAPBUL_USER_REKAP_TAHUN[yr]);
+            });
+            return;
+        }
+
         dashlapbul_renderLoadingStatusBanner();
 
         var $btn = $('#dashlapbul_btnBukaDataUser');
         $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Memuat Data...');
         if (DASHLAPBUL_IS_ADMIN) $('#dashlapbul_filterUserJenjang, #dashlapbul_filterUserSekolah').prop('disabled', true);
-
-        var currentYear = new Date().getFullYear();
-        var yearsList = [];
-        // Susun daftar tahun: terbaru di awal (misal: 2026, 2025, 2024, 2023)
-        for (var y = currentYear; y >= currentYear - 3; y--) {
-            yearsList.push(y);
-        }
 
         var $container = $('#dashlapbul_userMultiYearContainer');
 
@@ -636,6 +647,8 @@
         $container.empty();
         yearsList.forEach(function(yr) {
             var cardId = 'dashlapbul_gridYear_' + yr;
+            // Gunakan data cache jika ada, skeleton jika belum
+            var hasCache = DASHLAPBUL_USER_REKAP_TAHUN.hasOwnProperty(yr);
             var htmlCard = `
                 <div class="col-xl-3 col-lg-4 col-md-6 mb-4">
                     <div class="lapbul-user-card">
@@ -643,18 +656,34 @@
                             <h5 class="lapbul-user-card-title">
                                 <span>Tahun ${yr}</span>
                             </h5>
-                            <span class="lapbul-user-count-badge" id="dashlapbul_summaryBadge_${yr}">Memuat...</span>
+                            <span class="lapbul-user-count-badge" id="dashlapbul_summaryBadge_${yr}">${hasCache ? '' : 'Memuat...'}</span>
                         </div>
                         <div class="lapbul-month-grid" id="${cardId}">
-                            ${dashlapbul_generateSkeletonMonthBoxes(yr)}
+                            ${hasCache ? dashlapbul_generateEmptyMonthBoxes(yr) : dashlapbul_generateSkeletonMonthBoxes(yr)}
                         </div>
                     </div>
                 </div>
             `;
             $container.append(htmlCard);
+            // Render langsung jika cache tersedia
+            if (hasCache) {
+                dashlapbul_renderYearGridCard(yr, DASHLAPBUL_USER_REKAP_TAHUN[yr]);
+            }
         });
 
-        var pendingLoads = yearsList.length;
+        // Kumpulkan tahun yang belum di-cache
+        var pendingYears = yearsList.filter(function(yr) {
+            return !DASHLAPBUL_USER_REKAP_TAHUN.hasOwnProperty(yr);
+        });
+
+        var pendingLoads = pendingYears.length;
+        if (pendingLoads === 0) {
+            $btn.prop('disabled', false).html('<i class="fas fa-sync-alt mr-1"></i> Refresh Data');
+            if (DASHLAPBUL_IS_ADMIN) $('#dashlapbul_filterUserJenjang, #dashlapbul_filterUserSekolah').prop('disabled', false);
+            dashlapbul_renderStatusBulanBerjalan(currentYear, DASHLAPBUL_USER_REKAP_TAHUN[currentYear]);
+            return;
+        }
+
         var checkFinish = function() {
             pendingLoads--;
             if (pendingLoads <= 0) {
@@ -663,33 +692,30 @@
             }
         };
 
-        // 1. Tarik data tahun berjalan
-        Lapbul_GetGlobalData(currentYear, DASHLAPBUL_USER_NPSN, false, function(resCur) {
-            var dataCur = (resCur && !resCur.error) ? resCur : [];
-            DASHLAPBUL_USER_REKAP_TAHUN[currentYear] = dataCur;
-            dashlapbul_renderStatusBulanBerjalan(currentYear, dataCur);
-            dashlapbul_renderYearGridCard(currentYear, dataCur);
-            checkFinish();
-
-            // 2. Tarik data tahun-tahun sebelumnya secara paralel
-            yearsList.slice(1).forEach(function(prevYear) {
-                Lapbul_GetGlobalData(prevYear, DASHLAPBUL_USER_NPSN, false, function(resPrev) {
-                    var dataPrev = (resPrev && !resPrev.error) ? resPrev : [];
-                    DASHLAPBUL_USER_REKAP_TAHUN[prevYear] = dataPrev;
-                    dashlapbul_renderYearGridCard(prevYear, dataPrev);
-                    checkFinish();
-                }, function() {
-                    dashlapbul_renderYearGridCard(prevYear, []);
-                    checkFinish();
-                });
+        // Fetch tahun berjalan dulu (jika belum di-cache)
+        var fetchYear = function(yr) {
+            Lapbul_GetGlobalData(yr, DASHLAPBUL_USER_NPSN, false, function(res) {
+                var data = (res && !res.error) ? res : [];
+                DASHLAPBUL_USER_REKAP_TAHUN[yr] = data;
+                if (yr === currentYear) {
+                    dashlapbul_renderStatusBulanBerjalan(currentYear, data);
+                }
+                dashlapbul_renderYearGridCard(yr, data);
+                checkFinish();
+            }, function() {
+                DASHLAPBUL_USER_REKAP_TAHUN[yr] = [];
+                dashlapbul_renderYearGridCard(yr, []);
+                checkFinish();
             });
+        };
 
-        }, function(err) {
-            console.error("Gagal memuat data unit:", err);
-            $btn.prop('disabled', false).html('<i class="fas fa-sync-alt mr-1"></i> Refresh Data');
-            if (DASHLAPBUL_IS_ADMIN) $('#dashlapbul_filterUserJenjang, #dashlapbul_filterUserSekolah').prop('disabled', false);
-            Sultan.notif.gagal('Gagal memuat data sekolah: ' + (err.message || 'Koneksi terputus'));
-        });
+        // Prioritaskan tahun berjalan, lalu sisanya paralel
+        if (pendingYears.indexOf(currentYear) > -1) {
+            fetchYear(currentYear);
+            pendingYears.filter(function(yr) { return yr !== currentYear; }).forEach(fetchYear);
+        } else {
+            pendingYears.forEach(fetchYear);
+        }
     }
 
     // Generator 12 kotak bulan skeleton (placeholder instan tanpa jeda)
