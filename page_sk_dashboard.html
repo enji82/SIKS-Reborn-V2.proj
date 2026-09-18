@@ -169,13 +169,6 @@
                         <i class="fas fa-sync-alt"></i>
                     </button>
                 </div>
-
-                <div class="filter-meta-group d-none d-sm-flex align-items-center">
-                    <span class="sync-badge-modern shadow-xs" id="dashsk_syncBadge">
-                        <span class="sync-dot"></span>
-                        <span id="dashsk_syncTime">Data Sinkron</span>
-                    </span>
-                </div>
             </div>
 
             <!-- Loading State Terpusat (Standar Sultan UI) -->
@@ -969,8 +962,8 @@
     }
 
     function dashsk_renderModeUnit(targetSekolah) {
-        var unitName = (targetSekolah || "").trim();
-        if (!unitName) {
+        var unitParam = (targetSekolah || "").trim();
+        if (!unitParam && !DASHSK_USER_NPSN && !DASHSK_USER_SEKOLAH) {
             dashsk_renderEmptyStatusBanner();
             dashsk_renderEmptyMultiYearCards();
             return;
@@ -978,14 +971,39 @@
 
         dashsk_renderLoadingStatusBanner();
 
-        // Filter data SK hanya untuk unit ini (Toleransi NPSN atau substring nama sekolah)
-        var targetUpper = unitName.toUpperCase();
+        // Cari profil sekolah terpilih dari Master Sekolah
+        var targetNpsn = (DASHSK_USER_NPSN || "").trim();
+        var targetNama = (DASHSK_USER_SEKOLAH || "").trim();
+
+        if (window.DASHSK_MASTER_SEKOLAH && window.DASHSK_MASTER_SEKOLAH.length > 0) {
+            var foundMaster = window.DASHSK_MASTER_SEKOLAH.find(function(s) {
+                var sNpsn = String(s.npsn || s.id || "").trim();
+                var sNama = String(s.namaSekolah || s.nama || "").trim().toUpperCase();
+                return (unitParam && (sNpsn === unitParam || sNama === unitParam.toUpperCase())) ||
+                       (targetNpsn && sNpsn === targetNpsn) ||
+                       (targetNama && sNama === targetNama.toUpperCase());
+            });
+            if (foundMaster) {
+                targetNpsn = String(foundMaster.npsn || foundMaster.id || "").trim();
+                targetNama = String(foundMaster.namaSekolah || foundMaster.nama || "").trim();
+            }
+        }
+        if (!targetNama && unitParam) targetNama = unitParam;
+
+        // Filter data SK: cocokkan via NPSN atau Normalisasi Nama Sekolah
+        var cleanTargetNama = targetNama.toUpperCase().replace(/^(SDN|SD NEGERI|SDS|SD SWASTA)\s+/i, '').trim();
+        var targetNamaUpper = targetNama.toUpperCase();
+
         var userSK = (window.DASHSK_ALL_TRANSAKSI_SK || []).filter(function (r) {
-            var rName = String(r.namaSd || "").trim().toUpperCase();
             var rNpsn = String(r.npsn || "").trim();
-            var matchNpsn = (DASHSK_USER_NPSN && rNpsn && rNpsn === DASHSK_USER_NPSN);
-            var matchNama = (rName === targetUpper || rName.indexOf(targetUpper) !== -1 || targetUpper.indexOf(rName) !== -1);
-            return matchNpsn || matchNama;
+            var rName = String(r.namaSd || "").trim().toUpperCase();
+            var cleanRName = rName.replace(/^(SDN|SD NEGERI|SDS|SD SWASTA)\s+/i, '').trim();
+
+            var matchNpsn = (targetNpsn && rNpsn && rNpsn === targetNpsn);
+            var matchNama = (targetNamaUpper && (rName === targetNamaUpper || rName.indexOf(targetNamaUpper) !== -1 || targetNamaUpper.indexOf(rName) !== -1));
+            var matchClean = (cleanTargetNama && (cleanRName === cleanTargetNama || cleanRName.indexOf(cleanTargetNama) !== -1 || cleanTargetNama.indexOf(cleanRName) !== -1));
+
+            return matchNpsn || matchNama || matchClean;
         });
 
         // 1. Hitung Status Semester Berjalan
@@ -1000,9 +1018,14 @@
         $('#dashsk_deadlineDate').text(deadlineStr);
 
         var currentSKList = userSK.filter(function (r) {
-            var rTa = String(r.tahun || "").trim();
-            var rSmt = String(r.semester || "").trim();
-            return rTa === taCurrent && (rSmt.toLowerCase().indexOf(smtCurrent.toLowerCase()) !== -1 || smtCurrent.toLowerCase().indexOf(rSmt.toLowerCase()) !== -1);
+            var rTa = String(r.tahun || "").trim().replace(/\s+/g, '');
+            var curTaClean = taCurrent.replace(/\s+/g, '');
+            var rSmt = String(r.semester || "").trim().toLowerCase();
+            var matchTa = (rTa === curTaClean || rTa.indexOf(curTaClean) !== -1 || curTaClean.indexOf(rTa) !== -1);
+            var matchSmt = (cMonth >= 6)
+                ? (rSmt.indexOf('1') !== -1 || rSmt.indexOf('ganjil') !== -1)
+                : (rSmt.indexOf('2') !== -1 || rSmt.indexOf('genap') !== -1);
+            return matchTa && matchSmt;
         });
 
         var skTerbaru = currentSKList.length > 0 ? currentSKList[0] : null;
@@ -1062,15 +1085,20 @@
         }
 
         userSK.forEach(function (r) {
-            var ta = String(r.tahun || "").trim();
+            var rawTa = String(r.tahun || "").trim().replace(/\s+/g, '');
             var smt = String(r.semester || "").trim().toLowerCase();
             var keySmt = (smt.indexOf('1') !== -1 || smt.indexOf('ganjil') !== -1) ? 'smt1' : 'smt2';
 
-            if (ta) {
-                if (!mapTahunAjaran[ta]) {
-                    mapTahunAjaran[ta] = { smt1: [], smt2: [] };
+            if (rawTa) {
+                // Temukan kunci TA yang cocok (toleransi slash atau spasi)
+                var matchedKey = Object.keys(mapTahunAjaran).find(function(k) {
+                    return k.replace(/\s+/g, '') === rawTa;
+                });
+                if (!matchedKey) {
+                    matchedKey = rawTa;
+                    mapTahunAjaran[matchedKey] = { smt1: [], smt2: [] };
                 }
-                mapTahunAjaran[ta][keySmt].push(r);
+                mapTahunAjaran[matchedKey][keySmt].push(r);
             }
         });
 
@@ -1089,16 +1117,20 @@
                 var clickAction = "";
                 var subText = "Belum Ada Berkas";
 
-                // Deteksi jika periode di masa depan
+                // Deteksi jika periode di masa depan berdasarkan kalender akademik:
+                // Juli-Desember (cMonth >= 6): TA berjalan adalah startYr = cYear. Smt1 aktif, Smt2 masa depan.
+                // Januari-Juni (cMonth < 6): TA berjalan adalah startYr = cYear - 1. Smt1 lewat, Smt2 aktif.
                 var taParts = ta.split('/');
                 var startYr = parseInt(taParts[0]) || 0;
                 var isFuture = false;
-                if (startYr > cYear) {
+                var activeStartYr = (cMonth >= 6) ? cYear : cYear - 1;
+
+                if (startYr > activeStartYr) {
                     isFuture = true;
-                } else if (startYr === cYear && cMonth < 6 && smtKey === 'smt2') {
-                    isFuture = true;
-                } else if (startYr === cYear && cMonth >= 6 && smtKey === 'smt2') {
-                    isFuture = true;
+                } else if (startYr === activeStartYr) {
+                    if (cMonth >= 6 && smtKey === 'smt2') {
+                        isFuture = true;
+                    }
                 }
 
                 if (list && list.length > 0) {
