@@ -116,14 +116,16 @@
             <!-- Filter Sekolah Unit (Admin Only) -->
             <div class="sultan-filter-item d-none" id="sdndash_filterSekolahContainer" style="min-width: 240px; max-width: 360px;">
                 <select id="sdndash_filterSekolah" class="form-control" aria-label="Pilih Satuan Pendidikan">
-                    <option value="">Pilih Sekolah...</option>
+                    <option value="">Semua Sekolah</option>
                 </select>
                 <i class="fas fa-chevron-down"></i>
             </div>
 
-            <!-- Tombol Aksi Universal (Refresh / Buka Data) -->
-            <button type="button" id="sdndash_btnAction" class="sultan-filter-btn-primary">
-                <i class="fas fa-sync-alt mr-1"></i> Refresh Data
+            <div class="divider-vertical d-none d-md-block mx-1"></div>
+
+            <!-- Tombol Refresh Data -->
+            <button type="button" id="sdndash_btnRefresh" class="sultan-btn-refresh" title="Refresh Data">
+                <i class="fas fa-sync-alt"></i>
             </button>
         </div>
     </div>
@@ -694,7 +696,6 @@ $(document).ready(function() {
 function ptksdndash_updateFilterBarControls() {
   var isUnit = (SDN_CURRENT_MODE === 'unit');
   var $schoolFilter = $('#sdndash_filterSekolahContainer');
-  var $btnAction = $('#sdndash_btnAction');
 
   if (isUnit) {
     $('#sdn_card_sekolah_wrapper').hide();
@@ -703,37 +704,23 @@ function ptksdndash_updateFilterBarControls() {
       if (SDN_RAW_KEADAAN) {
         ptksdndash_populateSekolahDropdown(SDN_RAW_KEADAAN);
       }
-      $btnAction.html('<i class="fas fa-folder-open mr-1"></i> Buka Data');
     } else {
       $schoolFilter.addClass('d-none');
-      $btnAction.html('<i class="fas fa-sync-alt mr-1"></i> Refresh Data');
     }
   } else {
     $schoolFilter.addClass('d-none');
     $('#sdn_card_sekolah_wrapper').show();
     $('#sdn_jml_sekolah_label').text('Sekolah');
-    $btnAction.html('<i class="fas fa-sync-alt mr-1"></i> Refresh Rekap');
   }
 }
 
 function ptksdndash_setupEventListeners() {
-  // Tombol Aksi Universal (Refresh Rekap / Refresh Unit / Buka Data)
-  $(document).off('click', '#sdndash_btnAction').on('click', '#sdndash_btnAction', function() {
-    if (SDN_CURRENT_MODE === 'rekap') {
-      sdnGatekeeper();
-    } else {
-      if (DASHN_IS_ADMIN) {
-        SDN_SELECTED_NPSN = $('#sdndash_filterSekolah').val() || '';
-        if (!SDN_SELECTED_NPSN) {
-          if (typeof Sultan !== 'undefined') Sultan.notif.info('Silakan pilih sekolah terlebih dahulu.');
-          return;
-        }
-      }
-      ptksdndash_applyModeView();
-    }
+  // Tombol Refresh Universal (Segarkan Data dari Server)
+  $(document).off('click', '#sdndash_btnRefresh').on('click', '#sdndash_btnRefresh', function() {
+    sdnGatekeeper();
   });
 
-  // Filter Sekolah Change (Admin Mode Unit)
+  // Filter Sekolah Change (Admin Mode Unit) - Langsung reaktif ganti data
   $(document).off('change', '#sdndash_filterSekolah').on('change', '#sdndash_filterSekolah', function() {
     SDN_SELECTED_NPSN = $(this).val() || '';
     ptksdndash_applyModeView();
@@ -753,7 +740,7 @@ function ptksdndash_populateSekolahDropdown(dataKeadaan) {
 
   var $sel = $('#sdndash_filterSekolah');
   var currentVal = $sel.val() || SDN_SELECTED_NPSN;
-  $sel.empty().append('<option value="">Pilih Sekolah...</option>');
+  $sel.empty().append('<option value="">Semua Sekolah</option>');
 
   var sekolahList = [];
   dataKeadaan.forEach(function(row) {
@@ -775,10 +762,8 @@ function ptksdndash_populateSekolahDropdown(dataKeadaan) {
 
   if (currentVal && $sel.find('option[value="' + currentVal + '"]').length > 0) {
     $sel.val(currentVal);
-  } else if (!currentVal && sekolahList.length > 0) {
-    // Default ke sekolah pertama jika admin belum memilih
-    SDN_SELECTED_NPSN = sekolahList[0].npsn;
-    $sel.val(SDN_SELECTED_NPSN);
+  } else {
+    $sel.val('');
   }
 }
 
@@ -832,6 +817,14 @@ function ptksdndash_renderRekapView() {
 
 function ptksdndash_renderUnitView() {
   var npsn = String(SDN_SELECTED_NPSN || '').trim().toUpperCase();
+
+  // Jika tidak ada sekolah yang dipilih (default "Semua Sekolah"), tampilkan seluruh data sama seperti rekap
+  if (!npsn || npsn === 'SEMUA') {
+    if (SDN_RAW_KEADAAN) sdnCalculate(SDN_RAW_KEADAAN, true);
+    if (SDN_RAW_PENSIUN) sdnCalculatePensiun(SDN_RAW_PENSIUN, null, SDN_PEN_OFFSET);
+    if (SDN_RAW_BEZETTING) sdnProcessBezetting(SDN_RAW_BEZETTING, true, null);
+    return;
+  }
 
   // Ambil nama & info sekolah terpilih
   var sekolahNama = "SD NEGERI";

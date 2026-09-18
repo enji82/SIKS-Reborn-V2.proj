@@ -23,14 +23,16 @@
             <!-- Filter Sekolah Khusus Mode Unit (Admin Only) -->
             <div class="sultan-filter-item d-none" id="sdsdash_filterSekolahContainer" style="min-width: 240px; max-width: 360px;">
                 <select id="sdsdash_filterSekolah" class="form-control" aria-label="Pilih Satuan Pendidikan">
-                    <option value="">Pilih Sekolah...</option>
+                    <option value="">Semua Sekolah</option>
                 </select>
                 <i class="fas fa-chevron-down"></i>
             </div>
 
-            <!-- Tombol Aksi Universal (Refresh / Buka Data) -->
-            <button type="button" id="sdsdash_btnAction" class="sultan-filter-btn-primary">
-                <i class="fas fa-sync-alt mr-1"></i> Refresh Data
+            <div class="divider-vertical d-none d-md-block mx-1"></div>
+
+            <!-- Tombol Refresh Data -->
+            <button type="button" id="sdsdash_btnRefresh" class="sultan-btn-refresh" title="Refresh Data">
+                <i class="fas fa-sync-alt"></i>
             </button>
         </div>
     </div>
@@ -444,41 +446,26 @@ $(document).ready(function() {
 function ptksdsdash_updateFilterBarControls() {
   var isUnit = (SDS_CURRENT_MODE === 'unit');
   var $schoolFilter = $('#sdsdash_filterSekolahContainer');
-  var $btnAction = $('#sdsdash_btnAction');
 
   if (isUnit) {
     if (DASHS_IS_ADMIN) {
       $schoolFilter.removeClass('d-none');
       ptksdsdash_populateDropdownSekolah();
-      $btnAction.html('<i class="fas fa-folder-open mr-1"></i> Buka Data');
     } else {
       $schoolFilter.addClass('d-none');
-      $btnAction.html('<i class="fas fa-sync-alt mr-1"></i> Refresh Data');
     }
   } else {
     $schoolFilter.addClass('d-none');
-    $btnAction.html('<i class="fas fa-sync-alt mr-1"></i> Refresh Rekap');
   }
 }
 
 function ptksdsdash_setupEventListeners() {
-  // Tombol Aksi Terpusat (Refresh / Buka Data)
-  $(document).off('click', '#sdsdash_btnAction').on('click', '#sdsdash_btnAction', function() {
-    if (SDS_CURRENT_MODE === 'rekap') {
-      sdsReloadAllData(true);
-    } else {
-      if (DASHS_IS_ADMIN) {
-        SDS_SELECTED_NPSN = $('#sdsdash_filterSekolah').val() || '';
-        if (!SDS_SELECTED_NPSN) {
-          if (typeof Sultan !== 'undefined') Sultan.notif.info('Silakan pilih sekolah terlebih dahulu.');
-          return;
-        }
-      }
-      ptksdsdash_applyModeView();
-    }
+  // Tombol Refresh Universal (Segarkan Data dari Server)
+  $(document).off('click', '#sdsdash_btnRefresh').on('click', '#sdsdash_btnRefresh', function() {
+    sdsReloadAllData(true);
   });
 
-  // Ganti Sekolah (Admin)
+  // Ganti Sekolah (Admin) - Langsung reaktif ganti data
   $(document).off('change', '#sdsdash_filterSekolah').on('change', '#sdsdash_filterSekolah', function() {
     SDS_SELECTED_NPSN = $(this).val() || '';
     ptksdsdash_applyModeView();
@@ -493,7 +480,7 @@ function ptksdsdash_populateDropdownSekolah() {
   var sel = $('#sdsdash_filterSekolah');
   var curVal = sel.val();
   sel.empty();
-  sel.append('<option value="">Pilih Sekolah...</option>');
+  sel.append('<option value="">Semua Sekolah</option>');
 
   if (SDS_RAW_KEADAAN && Array.isArray(SDS_RAW_KEADAAN)) {
     var listSekolah = [];
@@ -514,6 +501,8 @@ function ptksdsdash_populateDropdownSekolah() {
 
     if (curVal && sel.find('option[value="' + curVal + '"]').length) {
       sel.val(curVal);
+    } else {
+      sel.val('');
     }
   }
 }
