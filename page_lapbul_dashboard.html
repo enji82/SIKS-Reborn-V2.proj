@@ -43,8 +43,11 @@
                         <i class="fas fa-chevron-down"></i>
                     </div>
 
-                    <button type="button" id="dashlapbul_btnBukaDataUser" class="sultan-filter-btn-primary">
-                        <i class="fas fa-sync-alt mr-1"></i> Refresh Data
+                    <div class="divider-vertical d-none d-md-block mx-1"></div>
+
+                    <!-- Tombol Refresh Data Unit -->
+                    <button type="button" id="dashlapbul_btnRefreshUser" class="sultan-btn-refresh" title="Refresh Data">
+                        <i class="fas fa-sync-alt"></i>
                     </button>
                 </div>
             </div>
@@ -446,20 +449,17 @@
             dashlapbul_loadDashboard();
         });
 
-        $(document).off('click', '#dashlapbul_btnBukaDataUser').on('click', '#dashlapbul_btnBukaDataUser', function (e) {
+        // Tombol Refresh Data Unit (Segarkan data sekolah terpilih)
+        $(document).off('click', '#dashlapbul_btnRefreshUser').on('click', '#dashlapbul_btnRefreshUser', function (e) {
             e.preventDefault();
             var npsn = $('#dashlapbul_filterUserSekolah').val() || DASHLAPBUL_USER_NPSN;
-            if (!npsn) {
+            if (!npsn && DASHLAPBUL_IS_ADMIN) {
                 Sultan.notif.info('Silakan pilih jenjang dan nama sekolah terlebih dahulu.');
                 return;
             }
             DASHLAPBUL_USER_NPSN = npsn;
             DASHLAPBUL_USER_SEKOLAH = $('#dashlapbul_filterUserSekolah option:selected').text().replace(/\s*\(.*?\)\s*$/, '').trim();
-            // Hanya reset cache jika NPSN berubah
-            if (DASHLAPBUL_USER_REKAP_TAHUN._npsn !== npsn) {
-                DASHLAPBUL_USER_REKAP_TAHUN = { _npsn: npsn };
-            }
-            dashlapbul_loadUserMultiYear();
+            dashlapbul_loadUserMultiYear(true);
         });
 
         $(document).off('click', '#dashlapbul_btnCopyUtama, #dashlapbul_btnCopyModal').on('click', '#dashlapbul_btnCopyUtama, #dashlapbul_btnCopyModal', dashlapbul_copySemuaBelumLapor);
@@ -518,14 +518,19 @@
             selectJenjangId: '#dashlapbul_filterUserJenjang',
             wrapperSekolahId: '#dashlapbul_wrapperUserSekolah',
             selectSekolahId: '#dashlapbul_filterUserSekolah',
-            btnActionId: '#dashlapbul_btnBukaDataUser',
+            btnActionId: '#dashlapbul_btnRefreshUser',
             masterSekolah: DASHLAPBUL_MASTER_SEKOLAH,
             onSelectSchool: function(npsn, nama) {
                 DASHLAPBUL_USER_NPSN = npsn;
-                DASHLAPBUL_USER_SEKOLAH = nama;
+                DASHLAPBUL_USER_SEKOLAH = nama ? nama.replace(/\s*\(.*?\)\s*$/, '').trim() : '';
                 DASHLAPBUL_USER_REKAP_TAHUN = {};
-                dashlapbul_renderEmptyMultiYearCards();
-                $('#dashlapbul_btnBukaDataUser').html(npsn ? '<i class="fas fa-folder-open mr-1"></i> Buka Data' : '<i class="fas fa-folder-open mr-1"></i> Buka Data');
+
+                if (npsn) {
+                    dashlapbul_loadUserMultiYear();
+                } else {
+                    dashlapbul_renderEmptyStatusBanner();
+                    dashlapbul_renderEmptyMultiYearCards();
+                }
             }
         });
     }
@@ -609,7 +614,7 @@
         }
     }
 
-    function dashlapbul_loadUserMultiYear() {
+    function dashlapbul_loadUserMultiYear(forceRefresh) {
         if (!DASHLAPBUL_USER_NPSN) {
             dashlapbul_renderEmptyMultiYearCards();
             return;
@@ -621,8 +626,12 @@
             yearsList.push(y);
         }
 
+        if (forceRefresh) {
+            DASHLAPBUL_USER_REKAP_TAHUN = { _npsn: DASHLAPBUL_USER_NPSN };
+        }
+
         // Cek apakah semua tahun sudah ada di cache
-        var allCached = yearsList.every(function(yr) {
+        var allCached = !forceRefresh && yearsList.every(function(yr) {
             return DASHLAPBUL_USER_REKAP_TAHUN.hasOwnProperty(yr);
         });
 
@@ -637,8 +646,9 @@
 
         dashlapbul_renderLoadingStatusBanner();
 
-        var $btn = $('#dashlapbul_btnBukaDataUser');
-        $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Memuat Data...');
+        var $btn = $('#dashlapbul_btnRefreshUser');
+        $btn.prop('disabled', true).addClass('loading');
+        $btn.find('i').addClass('fa-spin');
         if (DASHLAPBUL_IS_ADMIN) $('#dashlapbul_filterUserJenjang, #dashlapbul_filterUserSekolah').prop('disabled', true);
 
         var $container = $('#dashlapbul_userMultiYearContainer');
@@ -648,7 +658,7 @@
         yearsList.forEach(function(yr) {
             var cardId = 'dashlapbul_gridYear_' + yr;
             // Gunakan data cache jika ada, skeleton jika belum
-            var hasCache = DASHLAPBUL_USER_REKAP_TAHUN.hasOwnProperty(yr);
+            var hasCache = !forceRefresh && DASHLAPBUL_USER_REKAP_TAHUN.hasOwnProperty(yr);
             var htmlCard = `
                 <div class="col-xl-3 col-lg-4 col-md-6 mb-4">
                     <div class="lapbul-user-card">
@@ -673,12 +683,13 @@
 
         // Kumpulkan tahun yang belum di-cache
         var pendingYears = yearsList.filter(function(yr) {
-            return !DASHLAPBUL_USER_REKAP_TAHUN.hasOwnProperty(yr);
+            return forceRefresh || !DASHLAPBUL_USER_REKAP_TAHUN.hasOwnProperty(yr);
         });
 
         var pendingLoads = pendingYears.length;
         if (pendingLoads === 0) {
-            $btn.prop('disabled', false).html('<i class="fas fa-sync-alt mr-1"></i> Refresh Data');
+            $btn.prop('disabled', false).removeClass('loading');
+            $btn.find('i').removeClass('fa-spin');
             if (DASHLAPBUL_IS_ADMIN) $('#dashlapbul_filterUserJenjang, #dashlapbul_filterUserSekolah').prop('disabled', false);
             dashlapbul_renderStatusBulanBerjalan(currentYear, DASHLAPBUL_USER_REKAP_TAHUN[currentYear]);
             return;
@@ -687,7 +698,8 @@
         var checkFinish = function() {
             pendingLoads--;
             if (pendingLoads <= 0) {
-                $btn.prop('disabled', false).html('<i class="fas fa-sync-alt mr-1"></i> Refresh Data');
+                $btn.prop('disabled', false).removeClass('loading');
+                $btn.find('i').removeClass('fa-spin');
                 if (DASHLAPBUL_IS_ADMIN) $('#dashlapbul_filterUserJenjang, #dashlapbul_filterUserSekolah').prop('disabled', false);
             }
         };
