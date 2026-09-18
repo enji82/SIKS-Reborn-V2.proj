@@ -361,122 +361,42 @@ $(document).ready(function() {
         ADMSEKOLAHDASH_USER_NPSN = String(user.npsn || user.unit || user.username || "").trim();
     } catch(e) { ADMSEKOLAHDASH_USER_NPSN = ""; ADMSEKOLAHDASH_IS_ADMIN = false; }
 
-    // Event listeners — Mode Switcher (semua tombol)
-    $(document).on('click', '[data-admsekolah-mode]', function() {
-        var mode = $(this).data('admsekolah-mode');
-        admsekolahdash_switchMode(mode);
-    });
-
-    // Event listeners — Rekap mode
-    $(document).off('click', '#admsekolahdash_btnRefresh').on('click', '#admsekolahdash_btnRefresh', function() {
-        var k = $('#admsekolahdash_filterKategori').val();
-        if (k !== "" && k != null) admsekolahdash_loadDataKategori(k, true);
-    });
-    $(document).off('change', '#admsekolahdash_filterKategori').on('change', '#admsekolahdash_filterKategori', function() {
-        ADMSEKOLAHDASH_TAHUN_DEFAULTED = false;
-        var k = $(this).val(); if(k) admsekolahdash_loadDataKategori(k);
-    });
-    $(document).off('change', '#admsekolahdash_filterTahun, #admsekolahdash_filterPeriode').on('change', '#admsekolahdash_filterTahun, #admsekolahdash_filterPeriode', admsekolahdash_terapkanFilterLokal);
-
-    // Event listeners — Unit mode
-    // Jenjang berubah: update dropdown sekolah & reset tombol
-    $(document).off('change', '#admsekolahdash_filterJenjangUnit').on('change', '#admsekolahdash_filterJenjangUnit', function() {
-        admsekolahdash_updateSekolahDropdown('unit');
-        admsekolahdash_resetUnitView();
-        $('#admsekolahdash_btnBukaDataUnit').html('<i class="fas fa-folder-open mr-1"></i> Buka Data');
-    });
-    // Sekolah berubah: reset view & update tombol (TIDAK auto-load)
-    $(document).off('change', '#admsekolahdash_filterUnitSekolah').on('change', '#admsekolahdash_filterUnitSekolah', function() {
-        admsekolahdash_resetUnitView();
-        if ($(this).val()) {
-            $('#admsekolahdash_btnBukaDataUnit').html('<i class="fas fa-folder-open mr-1"></i> Buka Data');
-        } else {
-            $('#admsekolahdash_btnBukaDataUnit').html('<i class="fas fa-folder-open mr-1"></i> Buka Data');
+    // Inisialisasi Dual Mode Terpusat melalui SultanDashboard Engine
+    var dashState = SultanDashboard.initDualMode({
+        pageKey: 'admsekolahdash',
+        unitViewId: '#admsekolahdash_viewUnit',
+        rekapViewId: '#admsekolahdash_viewRekap',
+        switchSelector: '.sultan-segmented-btn',
+        onInit: function(state) {
+            ADMSEKOLAHDASH_IS_ADMIN = state.isAdmin;
+            ADMSEKOLAHDASH_USER_NPSN = state.userNpsn;
+            ADMSEKOLAHDASH_MODE = state.currentMode;
+        },
+        onLoadUnit: function(state, isFirstLoad) {
+            ADMSEKOLAHDASH_MODE = 'unit';
+            $('#admsekolahdash_filterBarRekap').hide();
+            $('#admsekolahdash_filterBarUnit').show();
+            if (!ADMSEKOLAHDASH_IS_ADMIN && ADMSEKOLAHDASH_USER_NPSN) {
+                admsekolahdash_loadUnitData(ADMSEKOLAHDASH_USER_NPSN);
+            } else {
+                admsekolahdash_resetUnitView();
+            }
+        },
+        onLoadRekap: function(state, isFirstLoad) {
+            ADMSEKOLAHDASH_MODE = 'rekap';
+            $('#admsekolahdash_filterBarUnit').hide();
+            $('#admsekolahdash_filterBarRekap').show();
+            var k = $('#admsekolahdash_filterKategori').val();
+            if (k) admsekolahdash_loadDataKategori(k);
         }
-    });
-    // Tombol Buka Data / Refresh Data
-    $(document).off('click', '#admsekolahdash_btnBukaDataUnit').on('click', '#admsekolahdash_btnBukaDataUnit', function() {
-        var npsn = $('#admsekolahdash_filterUnitSekolah').val();
-        if (!npsn) {
-            Sultan.notif.info('Silakan pilih nama sekolah terlebih dahulu.');
-            return;
-        }
-        admsekolahdash_loadUnitData(npsn, true);
-    });
-
-    // Cari list Rekap Mode (4 Status Cards)
-    $(document).off('keyup', '#admsekolahdash_inputCariDisetujui').on('keyup', '#admsekolahdash_inputCariDisetujui', function() {
-        admsekolahdash_filterStatusList('Disetujui', $(this).val() || '');
-    });
-    $(document).off('keyup', '#admsekolahdash_inputCariDiproses').on('keyup', '#admsekolahdash_inputCariDiproses', function() {
-        admsekolahdash_filterStatusList('Diproses', $(this).val() || '');
-    });
-    $(document).off('keyup', '#admsekolahdash_inputCariRevisi').on('keyup', '#admsekolahdash_inputCariRevisi', function() {
-        admsekolahdash_filterStatusList('Revisi', $(this).val() || '');
-    });
-    $(document).off('keyup', '#admsekolahdash_inputCariDitolak').on('keyup', '#admsekolahdash_inputCariDitolak', function() {
-        admsekolahdash_filterStatusList('Ditolak', $(this).val() || '');
-    });
-
-    $(document).off('click', '#admsekolahdash_btnSalinWa').on('click', '#admsekolahdash_btnSalinWa', admsekolahdash_salinKeWA);
-
-    // Cari list Unit Mode (4 Status)
-    $(document).off('keyup', '#admsekolahdash_unit_inputCariDisetujui').on('keyup', '#admsekolahdash_unit_inputCariDisetujui', function() {
-        var val = $(this).val().toLowerCase();
-        $('#admsekolahdash_unit_listDisetujui .dashlapbul-list-item').filter(function() {
-            $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
-        });
-    });
-    $(document).off('keyup', '#admsekolahdash_unit_inputCariDiproses').on('keyup', '#admsekolahdash_unit_inputCariDiproses', function() {
-        var val = $(this).val().toLowerCase();
-        $('#admsekolahdash_unit_listDiproses .dashlapbul-list-item').filter(function() {
-            $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
-        });
-    });
-    $(document).off('keyup', '#admsekolahdash_unit_inputCariRevisi').on('keyup', '#admsekolahdash_unit_inputCariRevisi', function() {
-        var val = $(this).val().toLowerCase();
-        $('#admsekolahdash_unit_listRevisi .dashlapbul-list-item').filter(function() {
-            $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
-        });
-    });
-    $(document).off('keyup', '#admsekolahdash_unit_inputCariDitolak').on('keyup', '#admsekolahdash_unit_inputCariDitolak', function() {
-        var val = $(this).val().toLowerCase();
-        $('#admsekolahdash_unit_listDitolak .dashlapbul-list-item').filter(function() {
-            $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
-        });
     });
 
     admsekolahdash_initMasterAccess();
 });
 
-// ================================================================
-// MODE SWITCHER
-// ================================================================
+// Helper delegasi switcher mode ke SultanDashboard
 function admsekolahdash_switchMode(mode) {
-    ADMSEKOLAHDASH_MODE = mode;
-
-    // Update active state pada tombol switcher
-    $('[data-admsekolah-mode]').removeClass('active');
-    $('[data-admsekolah-mode="' + mode + '"]').addClass('active');
-
-    if (mode === 'unit') {
-        $('#admsekolahdash_filterBarRekap').hide();
-        $('#admsekolahdash_filterBarUnit').show();
-        $('#admsekolahdash_viewRekap').hide();
-        $('#admsekolahdash_viewUnit').show();
-        // Jika user non-admin: auto-load sekolah sendiri (tombol berfungsi sbg Refresh)
-        if (!ADMSEKOLAHDASH_IS_ADMIN && ADMSEKOLAHDASH_USER_NPSN) {
-            admsekolahdash_loadUnitData(ADMSEKOLAHDASH_USER_NPSN);
-        } else {
-            // Admin: tidak auto-load, tampilkan state kosong & tunggu klik Buka Data
-            admsekolahdash_resetUnitView();
-        }
-    } else {
-        $('#admsekolahdash_filterBarUnit').hide();
-        $('#admsekolahdash_filterBarRekap').show();
-        $('#admsekolahdash_viewUnit').hide();
-        $('#admsekolahdash_viewRekap').show();
-    }
+    SultanDashboard.switchMode('admsekolahdash', mode);
 }
 
 // ================================================================

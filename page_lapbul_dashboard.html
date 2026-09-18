@@ -373,80 +373,56 @@
     var DASHLAPBUL_REKAP_LOADED = false; // Flag penanda data rekap kecamatan telah dimuat
 
     $(document).ready(function () {
-        // 1. Cek sesi role pengguna
-        try {
-            var user = (typeof getSesiUser === 'function') ? getSesiUser() : {};
-            var r = (user.role || "").toLowerCase();
-            DASHLAPBUL_IS_ADMIN = (r.indexOf("admin") !== -1 || r.indexOf("verifikator") !== -1 || r.indexOf("korwil") !== -1);
-            if (DASHLAPBUL_IS_ADMIN) {
-                DASHLAPBUL_USER_NPSN = "";
-                DASHLAPBUL_USER_SEKOLAH = "";
-            } else {
-                DASHLAPBUL_USER_NPSN = String(user.npsn !== undefined && user.npsn !== null ? user.npsn : (user.username || "")).trim();
-                DASHLAPBUL_USER_SEKOLAH = String(user.unit || user.nama_lengkap || user.fullname || user.nama || "").trim();
-            }
-        } catch (e) {
-            DASHLAPBUL_IS_ADMIN = false;
-            DASHLAPBUL_USER_NPSN = "";
-            DASHLAPBUL_USER_SEKOLAH = "";
-        }
+        // 1. Inisialisasi Dual Mode Terpusat melalui SultanDashboard Engine
+        var dashState = SultanDashboard.initDualMode({
+            pageKey: 'dashlapbul',
+            unitViewId: '#dashlapbul_viewUser',
+            rekapViewId: '#dashlapbul_viewAdmin',
+            switchSelector: '.sultan-segmented-btn',
+            onInit: function(state) {
+                DASHLAPBUL_IS_ADMIN = state.isAdmin;
+                DASHLAPBUL_USER_NPSN = state.userNpsn;
+                DASHLAPBUL_USER_SEKOLAH = state.userSekolah;
 
-        // Setup filter awal segera (instant lock untuk user sekolah)
-        dashlapbul_setupUserFilters();
+                // Render komponen visual terpusat SultanUI untuk Admin & Banner Status Awal
+                if (DASHLAPBUL_IS_ADMIN && !DASHLAPBUL_USER_NPSN) {
+                    dashlapbul_renderEmptyStatusBanner();
+                } else {
+                    dashlapbul_renderLoadingStatusBanner();
+                }
 
-        // 2. Pasang event listener Segmented Switcher (Unit vs Rekap) di kedua view
-        $(document).off('click', '.sultan-segmented-btn').on('click', '.sultan-segmented-btn', function () {
-            var mode = $(this).data('mode');
-            if (mode) {
-                dashlapbul_switchMode(mode);
+                if (typeof SultanUI !== 'undefined') {
+                    $('#dashlapbul_jenjangMinimalContainer').html(SultanUI.renderDashboardJenjangMinimal('dashlapbul'));
+                    $('#dashlapbul_metricRow2').html(SultanUI.renderDashboardRow2Minimal('dashlapbul'));
+                }
+            },
+            onLoadUnit: function(state, isFirstLoad) {
+                DASHLAPBUL_ACTIVE_VIEW = 'unit';
+                dashlapbul_initUserView();
+            },
+            onLoadRekap: function(state, isFirstLoad) {
+                DASHLAPBUL_ACTIVE_VIEW = 'rekap';
+                if ($('#dashlapbul_dashTahun option').length === 0) {
+                    dashlapbul_initFilter();
+                }
+                if (!DASHLAPBUL_REKAP_LOADED) {
+                    dashlapbul_loadDashboard();
+                }
             }
         });
 
-        // 3. Render komponen visual terpusat SultanUI untuk Admin & Banner Status Awal
-        if (DASHLAPBUL_IS_ADMIN && !DASHLAPBUL_USER_NPSN) {
-            dashlapbul_renderEmptyStatusBanner();
-        } else {
-            dashlapbul_renderLoadingStatusBanner();
-        }
-
-        if (typeof SultanUI !== 'undefined') {
-            $('#dashlapbul_jenjangMinimalContainer').html(SultanUI.renderDashboardJenjangMinimal('dashlapbul'));
-            $('#dashlapbul_metricRow2').html(SultanUI.renderDashboardRow2Minimal('dashlapbul'));
-        }
-
-        // 4. Inisialisasi Master Sekolah untuk Filter Dropdown Admin
+        // 2. Inisialisasi Master Sekolah untuk Dropdown Terpusat
         Lapbul_GetMasterSekolah(function(master) {
             DASHLAPBUL_MASTER_SEKOLAH = master || [];
-            if (DASHLAPBUL_IS_ADMIN) {
-                dashlapbul_setupUserFilters();
-            }
+            dashlapbul_setupUserFilters();
         });
 
-        // 5. Tampilkan View Awal Berdasarkan Role
-        if (DASHLAPBUL_IS_ADMIN) {
-            DASHLAPBUL_ACTIVE_VIEW = 'rekap';
-            dashlapbul_switchMode('rekap');
-            $('#dashlapbul_btnBukaDataUser').html('<i class="fas fa-folder-open mr-1"></i> Buka Data');
+        // Background pre-fetch untuk user sekolah agar peralihan ke rekap instan
+        if (!DASHLAPBUL_IS_ADMIN) {
             dashlapbul_initFilter();
-            dashlapbul_loadDashboard();
-        } else {
-            DASHLAPBUL_ACTIVE_VIEW = 'unit';
-            dashlapbul_switchMode('unit');
-            $('#dashlapbul_wrapperUserJenjang, #dashlapbul_wrapperUserSekolah').addClass('d-none');
-            $('#dashlapbul_btnBukaDataUser').html('<i class="fas fa-sync-alt mr-1"></i> Refresh Data');
-
-            // [PRE-FETCH DI BACKGROUND UNTUK USER SEKOLAH]
-            // Siapkan dropdown filter tahun/bulan rekap kecamatan terlebih dahulu
-            dashlapbul_initFilter();
-
-            // Panggil pre-fetch data rekap kecamatan secara hening (asinkron di background)
-            // tanpa memblokir tampilan Unit yang sedang dinikmati pengguna
             setTimeout(function () {
                 var currentYear = $('#dashlapbul_dashTahun').val() || new Date().getFullYear();
-                // Tarik data rekap global (keyword: "", is_admin: true) ke cache memori browser
                 Lapbul_GetGlobalData(currentYear, "", true, function (resRekap) {
-                    // Pre-fetch selesai dan data tersimpan di window.LAPBUL_GLOBAL_CACHE
-                    // Hitung metrik dan isi tampilan rekap di belakang layar agar saat tombol Rekap diklik langsung instan!
                     Lapbul_GetMasterSekolah(function (master) {
                         var b = $('#dashlapbul_dashBulan').val() || (new Date().getMonth() + 1);
                         var metrics = dashlapbul_calculateMetrics(master || [], resRekap || [], currentYear, b);
@@ -459,10 +435,10 @@
                 }, function (err) {
                     console.warn("Pre-fetch rekap background ditunda/gagal:", err);
                 });
-            }, 600); // Beri jeda 600ms agar rendering awal kartu unit selesai 100% terlebih dahulu
+            }, 600);
         }
 
-        // 6. Bind Event Handler Admin & Modal Belum Lapor
+        // 3. Bind Event Handler Admin & Modal Belum Lapor
         $(document).off('click', '#dashlapbul_btnCopySemuaHeader, #dashlapbul_modBtnCopySemua').on('click', '#dashlapbul_btnCopySemuaHeader, #dashlapbul_modBtnCopySemua', dashlapbul_copySemuaBelumLapor);
 
         $(document).off('change', '#dashlapbul_dashTahun, #dashlapbul_dashBulan').on('change', '#dashlapbul_dashTahun, #dashlapbul_dashBulan', function () {
@@ -531,114 +507,28 @@
         });
     });
 
-    // ======================================================================
-    // FUNGSI SWITCHER MODE: UNIT (SEKOLAH) VS REKAP (KECAMATAN)
-    // ======================================================================
+    // Helper delegasi switcher mode ke SultanDashboard
     function dashlapbul_switchMode(mode) {
-        DASHLAPBUL_ACTIVE_VIEW = mode;
-
-        // Update active class pada kedua switch segmented button
-        $('.sultan-segmented-btn').removeClass('active');
-        $(`.sultan-segmented-btn[data-mode="${mode}"]`).addClass('active');
-
-        if (mode === 'unit') {
-            $('#dashlapbul_viewAdmin').addClass('d-none');
-            $('#dashlapbul_viewUser').removeClass('d-none');
-            dashlapbul_initUserView();
-        } else {
-            $('#dashlapbul_viewUser').addClass('d-none');
-            $('#dashlapbul_viewAdmin').removeClass('d-none');
-
-            if ($('#dashlapbul_dashTahun option').length === 0) {
-                dashlapbul_initFilter();
-            }
-            
-            // Selalu muat atau refresh data rekap saat masuk ke mode Rekap jika belum pernah dimuat atau data kosong
-            if (!DASHLAPBUL_REKAP_LOADED) {
-                dashlapbul_loadDashboard();
-            }
-        }
+        SultanDashboard.switchMode('dashlapbul', mode);
     }
 
-    // Konfigurasi dropdown Jenjang & Sekolah pada mode Unit
+    // Konfigurasi dropdown Jenjang & Sekolah pada mode Unit menggunakan SultanDashboard
     function dashlapbul_setupUserFilters() {
-        var $selJenjang = $('#dashlapbul_filterUserJenjang');
-        var $selSekolah = $('#dashlapbul_filterUserSekolah');
-
-        if (!DASHLAPBUL_IS_ADMIN) {
-            // JIKA USER SEKOLAH: Sembunyikan dropdown jenjang, dropdown sekolah disabled / tampilkan nama sekolahnya
-            $('#dashlapbul_wrapperUserJenjang').addClass('d-none');
-            $selSekolah.empty().append(`<option value="${DASHLAPBUL_USER_NPSN}">${DASHLAPBUL_USER_SEKOLAH || DASHLAPBUL_USER_NPSN}</option>`);
-            $selSekolah.prop('disabled', true);
-            $('#dashlapbul_btnBukaDataUser').html('<i class="fas fa-sync-alt mr-1"></i> Refresh Data');
-        } else {
-            // JIKA ADMIN: Admin leluasa memilih jenjang & sekolah (default belum terpilih)
-            $('#dashlapbul_wrapperUserJenjang').removeClass('d-none');
-            $selSekolah.prop('disabled', false);
-
-            $selJenjang.val('');
-            dashlapbul_populateUserSekolahOptions("");
-
-            // Handler perubahan filter Jenjang
-            $selJenjang.off('change').on('change', function () {
-                var selectedJjg = $(this).val();
-                dashlapbul_populateUserSekolahOptions(selectedJjg);
-                // Reset pemilihan sekolah jika jenjang diubah
-                DASHLAPBUL_USER_NPSN = "";
-                DASHLAPBUL_USER_SEKOLAH = "";
+        SultanDashboard.setupUnitSchoolPicker({
+            pageKey: 'dashlapbul',
+            wrapperJenjangId: '#dashlapbul_wrapperUserJenjang',
+            selectJenjangId: '#dashlapbul_filterUserJenjang',
+            wrapperSekolahId: '#dashlapbul_wrapperUserSekolah',
+            selectSekolahId: '#dashlapbul_filterUserSekolah',
+            btnActionId: '#dashlapbul_btnBukaDataUser',
+            masterSekolah: DASHLAPBUL_MASTER_SEKOLAH,
+            onSelectSchool: function(npsn, nama) {
+                DASHLAPBUL_USER_NPSN = npsn;
+                DASHLAPBUL_USER_SEKOLAH = nama;
                 DASHLAPBUL_USER_REKAP_TAHUN = {};
                 dashlapbul_renderEmptyMultiYearCards();
-                $('#dashlapbul_btnBukaDataUser').html('<i class="fas fa-folder-open mr-1"></i> Buka Data');
-            });
-
-            // Handler perubahan filter Sekolah (TIDAK OTOMATIS LOAD)
-            $selSekolah.off('change').on('change', function () {
-                var chosenNpsn = $(this).val();
-                var chosenName = $(this).find('option:selected').text();
-
-                if (chosenNpsn) {
-                    DASHLAPBUL_USER_NPSN = chosenNpsn;
-                    DASHLAPBUL_USER_SEKOLAH = chosenName;
-                    DASHLAPBUL_USER_REKAP_TAHUN = {};
-                    dashlapbul_renderEmptyMultiYearCards();
-                    $('#dashlapbul_btnBukaDataUser').html('<i class="fas fa-folder-open mr-1"></i> Buka Data');
-                } else {
-                    DASHLAPBUL_USER_NPSN = "";
-                    DASHLAPBUL_USER_SEKOLAH = "";
-                    DASHLAPBUL_USER_REKAP_TAHUN = {};
-                    dashlapbul_renderEmptyMultiYearCards();
-                    $('#dashlapbul_btnBukaDataUser').html('<i class="fas fa-folder-open mr-1"></i> Buka Data');
-                }
-            });
-        }
-    }
-
-    function dashlapbul_populateUserSekolahOptions(filterJenjang) {
-        var $selSekolah = $('#dashlapbul_filterUserSekolah').empty();
-        $selSekolah.append('<option value="" selected>Pilih Sekolah...</option>');
-        var list = DASHLAPBUL_MASTER_SEKOLAH || [];
-
-        if (filterJenjang) {
-            list = list.filter(function (s) {
-                return String(s.jenjang || "").toUpperCase() === filterJenjang.toUpperCase();
-            });
-        }
-
-        // Urutkan nama sekolah secara alfabetis
-        list.sort(function (a, b) {
-            return String(a.namaSekolah || a.nama || "").localeCompare(String(b.namaSekolah || b.nama || ""));
-        });
-
-        if (list.length === 0) {
-            return;
-        }
-
-        list.forEach(function (s) {
-            var npsn = s.npsn || s.id || "";
-            var nama = s.namaSekolah || s.nama || npsn;
-            var jjg = s.jenjang ? ` (${s.jenjang.toUpperCase()})` : '';
-            var isSelected = (DASHLAPBUL_USER_NPSN && DASHLAPBUL_USER_NPSN === npsn) ? ' selected' : '';
-            $selSekolah.append(`<option value="${npsn}"${isSelected}>${nama}${jjg}</option>`);
+                $('#dashlapbul_btnBukaDataUser').html(npsn ? '<i class="fas fa-folder-open mr-1"></i> Buka Data' : '<i class="fas fa-folder-open mr-1"></i> Buka Data');
+            }
         });
     }
 

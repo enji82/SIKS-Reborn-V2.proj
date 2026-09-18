@@ -499,53 +499,62 @@
         console.log("SIKS-LOG: Inisialisasi UI Dashboard SK...");
         window.DASHSK_IS_FETCHING = false;
 
-        // 1. Identifikasi Sesi Role & Unit Pengguna
-        try {
-            var user = (typeof getSesiUser === 'function') ? getSesiUser() : {};
-            var r = (user.role || "").toLowerCase();
-            DASHSK_USER_IS_ADMIN = (r.indexOf("admin") !== -1 || r.indexOf("verifikator") !== -1 || r.indexOf("korwil") !== -1);
-            DASHSK_USER_NPSN = String(user.npsn !== undefined && user.npsn !== null ? user.npsn : (user.username || "")).trim();
-            DASHSK_USER_SEKOLAH = String(user.unit || user.nama_lengkap || user.fullname || user.nama || "").trim();
-        } catch (e) {
-            DASHSK_USER_IS_ADMIN = false;
-            DASHSK_USER_NPSN = "";
-            DASHSK_USER_SEKOLAH = "";
-        }
-
-        // 1.5. Pasang Komponen Terpusat SultanUI untuk Status Detil Row 2 & Jalankan Animasi Angka
+        // 1. Pasang Komponen Terpusat SultanUI untuk Status Detil Row 2 & Jalankan Animasi Angka
         if (typeof SultanUI !== 'undefined') {
             $('#dashsk_metricRow2').html(SultanUI.renderDashboardRow2Minimal('dashsk'));
             SultanUI.startLottery('#dashsk_cardTotalSekolah, #dashsk_cardSudah, #dashsk_cardBelum, #dashsk_cardTotalDokumen, #dashsk_cardDiproses, #dashsk_cardDisetujui, #dashsk_cardRevisi, #dashsk_cardDitolak', 3);
             SultanUI.startLottery('#dashsk_cardProgress', 2, '%');
         }
 
-        // 2. Pasang Event Listener Segmented Switcher (Unit vs Rekap)
-        $(document).off('click', '.sultan-segmented-btn').on('click', '.sultan-segmented-btn', function () {
-            var mode = $(this).data('mode');
-            if (mode) {
-                dashsk_switchMode(mode);
-            }
-        });
-
-        // 3. Inisialisasi Filter Default Tahun Ajaran & Semester
+        // 2. Inisialisasi Filter Default Tahun Ajaran & Semester
         dashsk_initFilterDefault();
 
-        // 4. Tentukan View Awal Berdasarkan Role
-        if (DASHSK_USER_IS_ADMIN) {
-            DASHSK_ACTIVE_VIEW = 'rekap';
-            dashsk_switchMode('rekap');
-            $('#dashsk_btnBukaDataUser').html('<i class="fas fa-folder-open mr-1"></i> Buka Data');
-            dashsk_loadDataUnitSekolah();
-        } else {
-            DASHSK_ACTIVE_VIEW = 'unit';
-            dashsk_switchMode('unit');
-            $('#dashsk_wrapperUserJenjang, #dashsk_wrapperUserSekolah').addClass('d-none');
-            $('#dashsk_btnBukaDataUser').html('<i class="fas fa-sync-alt mr-1"></i> Refresh Data');
-            $('#dashsk_userSchoolName').text(DASHSK_USER_SEKOLAH || "Sekolah Anda");
-            dashsk_loadDataUnitSekolah();
-            // Pre-fetch mode rekap agar langsung siap saat dibuka
-            setTimeout(function () { dashsk_loadDataDashboard(true); }, 500);
-        }
+        // 3. Inisialisasi Dual Mode Terpusat melalui SultanDashboard Engine
+        var dashState = SultanDashboard.initDualMode({
+            pageKey: 'dashsk',
+            unitViewId: '#dashsk_viewUser',
+            rekapViewId: '#dashsk_viewAdmin',
+            switchSelector: '.sultan-segmented-btn',
+            onInit: function(state) {
+                DASHSK_USER_IS_ADMIN = state.isAdmin;
+                DASHSK_USER_NPSN = state.userNpsn;
+                DASHSK_USER_SEKOLAH = state.userSekolah;
+
+                if (DASHSK_USER_IS_ADMIN) {
+                    $('#dashsk_btnBukaDataUser').html('<i class="fas fa-folder-open mr-1"></i> Buka Data');
+                } else {
+                    $('#dashsk_wrapperUserJenjang, #dashsk_wrapperUserSekolah').addClass('d-none');
+                    $('#dashsk_btnBukaDataUser').html('<i class="fas fa-sync-alt mr-1"></i> Refresh Data');
+                    $('#dashsk_userSchoolName').text(DASHSK_USER_SEKOLAH || "Sekolah Anda");
+                    setTimeout(function () { dashsk_loadDataDashboard(true); }, 500);
+                }
+                dashsk_loadDataUnitSekolah();
+            },
+            onLoadUnit: function(state, isFirstLoad) {
+                DASHSK_ACTIVE_VIEW = 'unit';
+                var currentUnit = DASHSK_USER_IS_ADMIN ? ($('#dashsk_filterUserSekolah').val() || DASHSK_USER_SEKOLAH) : DASHSK_USER_SEKOLAH;
+                if (window.DASHSK_ALL_TRANSAKSI_SK && window.DASHSK_ALL_TRANSAKSI_SK.length > 0) {
+                    dashsk_renderModeUnit(currentUnit);
+                } else {
+                    if (DASHSK_USER_IS_ADMIN && !currentUnit) {
+                        dashsk_renderEmptyStatusBanner();
+                        dashsk_renderEmptyMultiYearCards();
+                    } else {
+                        dashsk_renderLoadingStatusBanner();
+                        dashsk_renderEmptyMultiYearCards();
+                    }
+                    dashsk_loadDataUnitSekolah();
+                }
+            },
+            onLoadRekap: function(state, isFirstLoad) {
+                DASHSK_ACTIVE_VIEW = 'rekap';
+                if (window.DASHSK_CACHE_DATA) {
+                    dashsk_renderDashboard(window.DASHSK_CACHE_DATA);
+                } else {
+                    dashsk_loadDataDashboard();
+                }
+            }
+        });
 
         // Handler klik tombol Filter Bar (Buka Data / Refresh Data)
         $(document).off('click', '#dashsk_btnBukaDataUser').on('click', '#dashsk_btnBukaDataUser', function (e) {
@@ -562,7 +571,7 @@
             }
         });
 
-        // 5. Pasang Event Listener Umum
+        // 4. Pasang Event Listener Umum
         $(document).off('click', '#dashsk_btnRefresh').on('click', '#dashsk_btnRefresh', function (e) {
             e.preventDefault();
             dashsk_loadDataDashboard();
@@ -597,39 +606,9 @@
         });
     });
 
-    /* =================================================================
-       SWITCH MODE (UNIT VS REKAP)
-       ================================================================= */
+    // Helper delegasi switcher mode ke SultanDashboard
     function dashsk_switchMode(mode) {
-        DASHSK_ACTIVE_VIEW = mode;
-        $('.sultan-segmented-btn').removeClass('active');
-        $('.sultan-segmented-btn[data-mode="' + mode + '"]').addClass('active');
-
-        if (mode === 'unit') {
-            $('#dashsk_viewAdmin').addClass('d-none');
-            $('#dashsk_viewUser').removeClass('d-none');
-            var currentUnit = DASHSK_USER_IS_ADMIN ? ($('#dashsk_filterUserSekolah').val() || DASHSK_USER_SEKOLAH) : DASHSK_USER_SEKOLAH;
-            if (window.DASHSK_ALL_TRANSAKSI_SK && window.DASHSK_ALL_TRANSAKSI_SK.length > 0) {
-                dashsk_renderModeUnit(currentUnit);
-            } else {
-                if (DASHSK_USER_IS_ADMIN && !currentUnit) {
-                    dashsk_renderEmptyStatusBanner();
-                    dashsk_renderEmptyMultiYearCards();
-                } else {
-                    dashsk_renderLoadingStatusBanner();
-                    dashsk_renderEmptyMultiYearCards();
-                }
-                dashsk_loadDataUnitSekolah();
-            }
-        } else {
-            $('#dashsk_viewUser').addClass('d-none');
-            $('#dashsk_viewAdmin').removeClass('d-none');
-            if (window.DASHSK_CACHE_DATA) {
-                dashsk_renderDashboard(window.DASHSK_CACHE_DATA);
-            } else {
-                dashsk_loadDataDashboard();
-            }
-        }
+        SultanDashboard.switchMode('dashsk', mode);
     }
 
     /* =================================================================
@@ -859,53 +838,24 @@
     // LOGIKA DASHBOARD USER / MODE UNIT (SEKOLAH)
     // ======================================================================
     function dashsk_setupUserControls() {
-        var $selJenjang = $('#dashsk_filterUserJenjang');
-        var $selSekolah = $('#dashsk_filterUserSekolah');
+        SultanDashboard.setupUnitSchoolPicker({
+            pageKey: 'dashsk',
+            wrapperJenjangId: '#dashsk_wrapperUserJenjang',
+            selectJenjangId: '#dashsk_filterUserJenjang',
+            wrapperSekolahId: '#dashsk_wrapperUserSekolah',
+            selectSekolahId: '#dashsk_filterUserSekolah',
+            btnActionId: '#dashsk_btnBukaDataUser',
+            masterSekolah: window.DASHSK_MASTER_SEKOLAH,
+            onSelectSchool: function(npsn, nama) {
+                dashsk_renderEmptyStatusBanner();
+                dashsk_renderEmptyMultiYearCards();
+                $('#dashsk_btnBukaDataUser').html('<i class="fas fa-folder-open mr-1"></i> Buka Data');
+            }
+        });
 
         if (!DASHSK_USER_IS_ADMIN) {
-            // JIKA USER SEKOLAH: Sembunyikan dropdown jenjang & sekolah, tombol Buka Data berfungsi sbg Refresh Data
-            $('#dashsk_wrapperUserJenjang').addClass('d-none');
-            $('#dashsk_wrapperUserSekolah').addClass('d-none');
-            $selSekolah.empty().append(`<option value="${DASHSK_USER_SEKOLAH}">${DASHSK_USER_SEKOLAH || "Sekolah Anda"}</option>`).prop('disabled', true);
-            $('#dashsk_btnBukaDataUser').html('<i class="fas fa-sync-alt mr-1"></i> Refresh Data');
             dashsk_renderModeUnit(DASHSK_USER_SEKOLAH);
         } else {
-            // JIKA ADMIN: Admin leluasa memilih jenjang & sekolah (default belum terpilih)
-            $('#dashsk_wrapperUserJenjang').removeClass('d-none');
-            $('#dashsk_wrapperUserSekolah').removeClass('d-none');
-            $selSekolah.prop('disabled', false);
-
-            $selJenjang.val('');
-            dashsk_populateUserSekolahOptions("");
-
-            // Handler perubahan filter Jenjang
-            $selJenjang.off('change').on('change', function () {
-                var selectedJjg = $(this).val();
-                dashsk_populateUserSekolahOptions(selectedJjg);
-                dashsk_renderEmptyStatusBanner();
-                dashsk_renderEmptyMultiYearCards();
-                $('#dashsk_btnBukaDataUser').html('<i class="fas fa-folder-open mr-1"></i> Buka Data');
-            });
-
-            // Handler perubahan filter Sekolah (TIDAK OTOMATIS LOAD)
-            $selSekolah.off('change').on('change', function () {
-                dashsk_renderEmptyStatusBanner();
-                dashsk_renderEmptyMultiYearCards();
-                $('#dashsk_btnBukaDataUser').html('<i class="fas fa-folder-open mr-1"></i> Buka Data');
-            });
-
-            // Handler tombol Buka Data untuk Admin
-            $('#dashsk_btnBukaDataUser').off('click').on('click', function (e) {
-                e.preventDefault();
-                var selectedUnit = $('#dashsk_filterUserSekolah').val();
-                if (!selectedUnit) {
-                    Sultan.notif.info('Silakan pilih jenjang dan nama sekolah terlebih dahulu.');
-                    return;
-                }
-                dashsk_renderModeUnit(selectedUnit);
-            });
-
-            // Status awal saat admin belum memilih sekolah
             dashsk_renderEmptyStatusBanner();
             dashsk_renderEmptyMultiYearCards();
         }

@@ -1105,4 +1105,203 @@ var SultanUI = {
         return `<div class="d-flex flex-nowrap justify-content-center" style="gap: 4px;">${btns.join('')}</div>`;
     }
 };
+
+/**
+ * ============================================================================
+ * SULTAN DASHBOARD ENGINE (TERPUSAT)
+ * Arsitektur standar global untuk seluruh halaman dashboard di SIKS-Reborn.
+ * Mengontrol konsep "1 Halaman 2 Mode" (Unit vs Rekap), Picker Jenjang/Sekolah,
+ * State Transition, dan Data Binding.
+ * ============================================================================
+ */
+var SultanDashboard = {
+    /**
+     * Inisialisasi Dashboard Dual Mode (Unit & Rekap)
+     * @param {Object} config
+     * @param {string} config.pageKey - Identifier unik halaman (misal: 'dashlapbul', 'dashsk', 'ptksds')
+     * @param {string} config.unitViewId - ID container view Unit (misal: '#dashlapbul_viewUser')
+     * @param {string} config.rekapViewId - ID container view Rekap (misal: '#dashlapbul_viewAdmin')
+     * @param {string} [config.switchSelector='.sultan-segmented-btn'] - Selektor tombol switch
+     * @param {Function} [config.onInit] - Callback saat dashboard pertama kali diinisialisasi
+     * @param {Function} [config.onSwitchMode] - Callback saat mode berganti (mode: 'unit'|'rekap')
+     * @param {Function} [config.onLoadUnit] - Callback untuk memuat data Mode Unit
+     * @param {Function} [config.onLoadRekap] - Callback untuk memuat data Mode Rekap
+     * @param {Object} [config.customRoleCheck] - Override role check jika ada
+     */
+    initDualMode: function(config) {
+        if (!config || !config.pageKey) {
+            console.error("SultanDashboard.initDualMode membutuhkan properti pageKey.");
+            return;
+        }
+
+        var pageKey = config.pageKey;
+        var unitViewId = config.unitViewId || ('#' + pageKey + '_viewUser');
+        var rekapViewId = config.rekapViewId || ('#' + pageKey + '_viewAdmin');
+        var switchSelector = config.switchSelector || '.sultan-segmented-btn';
+
+        // 1. Deteksi Role Pengguna secara terpusat
+        var user = (typeof getSesiUser === 'function') ? getSesiUser() : {};
+        var role = (user.role || "").toLowerCase();
+        var isAdmin = false;
+        if (config.customRoleCheck && typeof config.customRoleCheck === 'function') {
+            isAdmin = config.customRoleCheck(user, role);
+        } else {
+            isAdmin = (role.indexOf("admin") !== -1 || role.indexOf("verifikator") !== -1 || role.indexOf("korwil") !== -1);
+        }
+
+        var userNpsn = isAdmin ? "" : String(user.npsn !== undefined && user.npsn !== null ? user.npsn : (user.username || "")).trim();
+        var userSekolah = isAdmin ? "" : String(user.unit || user.nama_lengkap || user.fullname || user.nama || "").trim();
+
+        // Simpan state di namespace SultanDashboard
+        if (!window.SultanDashboardState) window.SultanDashboardState = {};
+        window.SultanDashboardState[pageKey] = {
+            isAdmin: isAdmin,
+            userNpsn: userNpsn,
+            userSekolah: userSekolah,
+            currentMode: isAdmin ? 'rekap' : 'unit',
+            unitViewId: unitViewId,
+            rekapViewId: rekapViewId,
+            config: config
+        };
+
+        var state = window.SultanDashboardState[pageKey];
+
+        // 2. Setup switcher click event
+        $(document).off('click', switchSelector).on('click', switchSelector, function (e) {
+            e.preventDefault();
+            var mode = $(this).data('mode') || $(this).attr('data-mode');
+            if (mode) {
+                SultanDashboard.switchMode(pageKey, mode);
+            }
+        });
+
+        // 3. Panggil callback inisialisasi awal
+        if (typeof config.onInit === 'function') {
+            config.onInit(state);
+        }
+
+        // 4. Set mode awal
+        SultanDashboard.switchMode(pageKey, state.currentMode, true);
+
+        return state;
+    },
+
+    /**
+     * Berpindah Mode antara Unit dan Rekap
+     * @param {string} pageKey - Identifier halaman
+     * @param {string} mode - 'unit' atau 'rekap'
+     * @param {boolean} [isFirstLoad=false] - Penanda apakah dipanggil saat startup
+     */
+    switchMode: function(pageKey, mode, isFirstLoad = false) {
+        var state = window.SultanDashboardState ? window.SultanDashboardState[pageKey] : null;
+        if (!state) return;
+
+        state.currentMode = mode;
+        var config = state.config;
+
+        // Update indikator active pada segmented button di seluruh halaman
+        var switchSelector = config.switchSelector || '.sultan-segmented-btn';
+        $(switchSelector).removeClass('active');
+        $(`${switchSelector}[data-mode="${mode}"]`).addClass('active');
+
+        // Tampilkan/sembunyikan container view dengan transisi halus
+        if (mode === 'unit') {
+            $(state.rekapViewId).addClass('d-none');
+            $(state.unitViewId).removeClass('d-none');
+            if (typeof config.onLoadUnit === 'function') {
+                config.onLoadUnit(state, isFirstLoad);
+            }
+        } else {
+            $(state.unitViewId).addClass('d-none');
+            $(state.rekapViewId).removeClass('d-none');
+            if (typeof config.onLoadRekap === 'function') {
+                config.onLoadRekap(state, isFirstLoad);
+            }
+        }
+
+        if (typeof config.onSwitchMode === 'function') {
+            config.onSwitchMode(mode, state, isFirstLoad);
+        }
+    },
+
+    /**
+     * Konfigurasi Dropdown Jenjang & Nama Sekolah di Mode Unit secara Terpadu
+     * @param {Object} options
+     * @param {string} options.pageKey - Key dashboard
+     * @param {string} options.wrapperJenjangId - Wrapper filter jenjang (misal: '#dashlapbul_wrapperUserJenjang')
+     * @param {string} options.selectJenjangId - Select jenjang (misal: '#dashlapbul_filterUserJenjang')
+     * @param {string} options.wrapperSekolahId - Wrapper filter sekolah (misal: '#dashlapbul_wrapperUserSekolah')
+     * @param {string} options.selectSekolahId - Select sekolah (misal: '#dashlapbul_filterUserSekolah')
+     * @param {string} options.btnActionId - Tombol Buka Data / Refresh Data (misal: '#dashlapbul_btnBukaDataUser')
+     * @param {Array} options.masterSekolah - List master data sekolah [{npsn, namaSekolah/nama, jenjang}]
+     * @param {Function} [options.onSelectSchool] - Callback saat sekolah dipilih
+     */
+    setupUnitSchoolPicker: function(options) {
+        var pageKey = options.pageKey;
+        var state = window.SultanDashboardState ? window.SultanDashboardState[pageKey] : null;
+        if (!state) return;
+
+        var $wrapperJenjang = $(options.wrapperJenjangId);
+        var $selJenjang = $(options.selectJenjangId);
+        var $wrapperSekolah = $(options.wrapperSekolahId);
+        var $selSekolah = $(options.selectSekolahId);
+        var $btn = $(options.btnActionId);
+
+        if (!state.isAdmin) {
+            // USER SEKOLAH: Sembunyikan jenjang, kunci sekolah ke unit login
+            $wrapperJenjang.addClass('d-none');
+            $wrapperSekolah.addClass('d-none');
+            $selSekolah.empty().append(`<option value="${state.userNpsn}">${state.userSekolah || state.userNpsn}</option>`);
+            $selSekolah.prop('disabled', true);
+            $btn.html('<i class="fas fa-sync-alt mr-1"></i> Refresh Data');
+        } else {
+            // ADMIN: Tampilkan dropdown jenjang & sekolah
+            $wrapperJenjang.removeClass('d-none');
+            $wrapperSekolah.removeClass('d-none');
+            $selSekolah.prop('disabled', false);
+
+            var populate = function(selectedJjg) {
+                $selSekolah.empty().append('<option value="" selected>Pilih Sekolah...</option>');
+                var list = options.masterSekolah || [];
+                if (selectedJjg) {
+                    list = list.filter(function(s) {
+                        return String(s.jenjang || "").toUpperCase() === selectedJjg.toUpperCase();
+                    });
+                }
+                list.sort(function(a, b) {
+                    return String(a.namaSekolah || a.nama || "").localeCompare(String(b.namaSekolah || b.nama || ""));
+                });
+
+                list.forEach(function(s) {
+                    var npsn = s.npsn || s.id || "";
+                    var nama = s.namaSekolah || s.nama || npsn;
+                    var jjg = s.jenjang ? ` (${s.jenjang.toUpperCase()})` : '';
+                    var isSelected = (state.userNpsn && state.userNpsn === npsn) ? ' selected' : '';
+                    $selSekolah.append(`<option value="${npsn}"${isSelected}>${nama}${jjg}</option>`);
+                });
+            };
+
+            populate($selJenjang.val() || "");
+
+            $selJenjang.off('change.sultanPicker').on('change.sultanPicker', function() {
+                populate($(this).val());
+                if (typeof options.onSelectSchool === 'function') {
+                    options.onSelectSchool("", "");
+                }
+            });
+
+            $selSekolah.off('change.sultanPicker').on('change.sultanPicker', function() {
+                var chosenNpsn = $(this).val();
+                var chosenName = $(this).find('option:selected').text();
+                state.userNpsn = chosenNpsn || "";
+                state.userSekolah = chosenNpsn ? chosenName : "";
+                if (typeof options.onSelectSchool === 'function') {
+                    options.onSelectSchool(chosenNpsn, chosenName);
+                }
+            });
+
+            $btn.html('<i class="fas fa-folder-open mr-1"></i> Buka Data');
+        }
+    }
+};
 </script>
