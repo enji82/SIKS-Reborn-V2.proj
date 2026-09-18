@@ -403,8 +403,15 @@
                 if ($('#dashlapbul_dashTahun option').length === 0) {
                     dashlapbul_initFilter();
                 }
-                if (!DASHLAPBUL_REKAP_LOADED) {
+                if (window.DASHLAPBUL_CACHE_METRICS) {
+                    $('#dashlapbul_loadingStateRekap').hide();
+                    $('#dashlapbul_dashboardStateRekap').show();
+                    dashlapbul_renderMetrics(window.DASHLAPBUL_CACHE_METRICS);
+                } else if (!DASHLAPBUL_REKAP_LOADED) {
                     dashlapbul_loadDashboard();
+                } else {
+                    $('#dashlapbul_loadingStateRekap').hide();
+                    $('#dashlapbul_dashboardStateRekap').show();
                 }
             }
         });
@@ -424,11 +431,16 @@
                     Lapbul_GetMasterSekolah(function (master) {
                         var b = $('#dashlapbul_dashBulan').val() || (new Date().getMonth() + 1);
                         var metrics = dashlapbul_calculateMetrics(master || [], resRekap || [], currentYear, b);
+                        window.DASHLAPBUL_CACHE_METRICS = metrics;
                         dashlapbul_renderMetrics(metrics);
                         DASHLAPBUL_REKAP_LOADED = true;
                         DASHLAPBUL_IS_INIT = false;
                         var jam = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
                         $('#dashlapbul_syncTime').text('Sinkron: ' + jam);
+                        if (DASHLAPBUL_ACTIVE_VIEW === 'rekap') {
+                            $('#dashlapbul_loadingStateRekap').hide();
+                            $('#dashlapbul_dashboardStateRekap').fadeIn(250);
+                        }
                     });
                 }, function (err) {
                     console.warn("Pre-fetch rekap background ditunda/gagal:", err);
@@ -1184,6 +1196,7 @@
                     $('#dashlapbul_loadingStateRekap').hide();
                     $('#dashlapbul_dashboardStateRekap').fadeIn(250);
 
+                    window.DASHLAPBUL_CACHE_METRICS = metrics;
                     dashlapbul_renderMetrics(metrics);
                     DASHLAPBUL_IS_INIT = false;
                     DASHLAPBUL_REKAP_LOADED = true;
