@@ -217,7 +217,11 @@ $(document).ready(function() {
     if (typeof SultanUI !== 'undefined') {
         $('#efiledash_metricRow1').html(SultanUI.renderDashboardRow1Minimal('efiledash', { total: 'TARGET SASARAN', sudah: 'SUDAH UNGGAH', belum: 'BELUM UNGGAH', progress: 'CAPAIAN PROGRES' }));
         $('#efiledash_metricRow2').html(SultanUI.renderDashboardRow2Minimal('efiledash'));
-        $('#efiledash_listsContainer').html(SultanUI.renderDashboardLists('efiledash', { placeholderCari: 'Cari nama pegawai...', hasCopyBelum: true }));
+        $('#efiledash_listsContainer').html(SultanUI.renderDashboardStatusCards4('efiledash', {
+            title: 'DAFTAR PTK SUDAH UNGGAH',
+            hasWaButton: true,
+            placeholderCari: 'Cari nama PTK...'
+        }));
 
         SultanUI.startLottery('#efiledash_cardTotalSekolah, #efiledash_cardSudah, #efiledash_cardBelum, #efiledash_cardTotalDokumen, #efiledash_cardDiproses, #efiledash_cardDisetujui, #efiledash_cardRevisi, #efiledash_cardDitolak', 3);
         SultanUI.startLottery('#efiledash_cardProgress', 2, '%');
@@ -253,15 +257,29 @@ $(document).ready(function() {
     });
 
     $(document).off('click', '#efiledash_btnSalinWa').on('click', '#efiledash_btnSalinWa', efiledash_salinKeWA);
-    $(document).off('keyup', '#efiledash_inputCariSudah').on('keyup', '#efiledash_inputCariSudah', function() {
+
+    // Filter cari untuk 4 kartu status PTK
+    $(document).off('keyup', '#efiledash_inputCariDisetujui').on('keyup', '#efiledash_inputCariDisetujui', function() {
         var val = $(this).val().toLowerCase();
-        $('.efiledash-dash-item-sudah').filter(function() {
+        $('#efiledash_listDisetujui .efiledash-item-disetujui').filter(function() {
             $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
         });
     });
-    $(document).off('keyup', '#efiledash_inputCariBelum').on('keyup', '#efiledash_inputCariBelum', function() {
+    $(document).off('keyup', '#efiledash_inputCariDiproses').on('keyup', '#efiledash_inputCariDiproses', function() {
         var val = $(this).val().toLowerCase();
-        $('.efiledash-dash-item-belum').filter(function() {
+        $('#efiledash_listDiproses .efiledash-item-diproses').filter(function() {
+            $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
+        });
+    });
+    $(document).off('keyup', '#efiledash_inputCariRevisi').on('keyup', '#efiledash_inputCariRevisi', function() {
+        var val = $(this).val().toLowerCase();
+        $('#efiledash_listRevisi .efiledash-item-revisi').filter(function() {
+            $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
+        });
+    });
+    $(document).off('keyup', '#efiledash_inputCariDitolak').on('keyup', '#efiledash_inputCariDitolak', function() {
+        var val = $(this).val().toLowerCase();
+        $('#efiledash_listDitolak .efiledash-item-ditolak').filter(function() {
             $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
         });
     });
@@ -905,40 +923,51 @@ function efiledash_renderDashboard(dataRekap, dataSudah, dataBelum, fTahun) {
     efiledash_animateValue('efiledash_cardRevisi', totRevisi);
     efiledash_animateValue('efiledash_cardDitolak', totDitolak);
 
-    $('#efiledash_badgeSudah').text(dataSudah.length);
-    $('#efiledash_badgeBelum').text(dataBelum.length);
+    // Categorize dataSudah into 4 status lists
+    var listDisetujui = [], listDiproses = [], listRevisi = [], listDitolak = [];
+    dataSudah.forEach(function(s) {
+        var st = String(s.status || "").toLowerCase();
+        if (st.indexOf("setuju") > -1 || st.indexOf("ok") > -1 || st.indexOf("valid") > -1) {
+            listDisetujui.push(s);
+        } else if (st.indexOf("revisi") > -1) {
+            listRevisi.push(s);
+        } else if (st.indexOf("tolak") > -1 || st.indexOf("ditolak") > -1) {
+            listDitolak.push(s);
+        } else {
+            listDiproses.push(s);
+        }
+    });
 
-    // Render List Sudah Unggah
-    var uiSudah = '';
-    if (dataSudah.length === 0) {
-        uiSudah = SultanUI.renderListEmptyWarning('Belum Ada Data', 'Belum ada pegawai yang mengunggah dokumen.');
-    } else {
-        dataSudah.forEach(function(b, idx) {
-            var stLower = String(b.status || "").toLowerCase();
-            var statusType = 'success';
-            if (stLower.indexOf("revisi") > -1) statusType = 'warning';
-            else if (stLower.indexOf("proses") > -1 || stLower.indexOf("pending") > -1 || stLower.indexOf("menunggu") > -1) statusType = 'info';
-            else if (stLower.indexOf("tolak") > -1 || stLower.indexOf("ditolak") > -1) statusType = 'danger';
-            
-            var extraAttrs = 'class="list-group-item efiledash-dash-item-sudah py-2 px-3 hover-sultan" data-status="' + efiledash_esc(b.status) + '"';
-            uiSudah += SultanUI.renderListItem(idx + 1, b.nama, 'NIP: ' + (b.nip || '-'), b.unit + ' (' + b.tahun + ') | ' + (b.status || 'Diproses'), statusType, extraAttrs);
-        });
-    }
-    $('#efiledash_listSudah').html(uiSudah);
-    $('#efiledash_inputCariSudah').val('');
+    // Update count badges on 4 status cards headers
+    $('#efiledash_countDisetujui').text(listDisetujui.length);
+    $('#efiledash_countDiproses').text(listDiproses.length);
+    $('#efiledash_countRevisi').text(listRevisi.length);
+    $('#efiledash_countDitolak').text(listDitolak.length);
 
-    // Render List Belum Unggah
-    var uiBelum = '';
-    if (dataBelum.length === 0) {
-        uiBelum = SultanUI.renderListEmptySuccess('Luar Biasa!', 'Tidak ada pegawai yang belum unggah berkas.');
-    } else {
-        dataBelum.forEach(function(b, idx) {
-            var extraAttrs = 'class="list-group-item efiledash-dash-item-belum py-2 px-3 hover-sultan" data-unit="' + efiledash_esc(b.unit) + '"';
-            uiBelum += SultanUI.renderListItem(idx + 1, b.nama, 'NIP: ' + (b.nip || '-'), b.unit + ' (' + b.tahun + ')', 'danger', extraAttrs);
+    // Function to render items with ONLY PTK Name (no NIP, unit, or document name)
+    function renderNameOnlyList(list, itemClass, emptyLabel) {
+        if (!list || list.length === 0) {
+            return '<li class="list-group-item border-0 px-3 py-4 bg-transparent text-center">' +
+                '<i class="fas fa-folder-open text-muted mb-2" style="font-size: 20px; opacity: 0.4;"></i><br>' +
+                '<span class="small text-muted font-weight-bold" style="font-size: 11px;">' + emptyLabel + '</span>' +
+                '</li>';
+        }
+        var html = '';
+        list.forEach(function(item, idx) {
+            html += '<li class="list-group-item py-2 px-3 hover-sultan d-flex align-items-center ' + itemClass + '">' +
+                '<span class="mr-2 text-muted font-weight-bold" style="font-size: 11px; min-width: 18px;">' + (idx + 1) + '.</span>' +
+                '<span class="font-weight-bold text-dark text-truncate nama-asn" style="font-size: 13px;">' + efiledash_esc(item.nama) + '</span>' +
+                '</li>';
         });
+        return html;
     }
-    $('#efiledash_listBelum').html(uiBelum);
-    $('#efiledash_inputCariBelum').val('');
+
+    $('#efiledash_listDisetujui').html(renderNameOnlyList(listDisetujui, 'efiledash-item-disetujui', 'Tidak ada PTK disetujui'));
+    $('#efiledash_listDiproses').html(renderNameOnlyList(listDiproses, 'efiledash-item-diproses', 'Tidak ada PTK diproses'));
+    $('#efiledash_listRevisi').html(renderNameOnlyList(listRevisi, 'efiledash-item-revisi', 'Tidak ada PTK revisi'));
+    $('#efiledash_listDitolak').html(renderNameOnlyList(listDitolak, 'efiledash-item-ditolak', 'Tidak ada PTK ditolak'));
+
+    $('#efiledash_inputCariDisetujui, #efiledash_inputCariDiproses, #efiledash_inputCariRevisi, #efiledash_inputCariDitolak').val('');
 }
 
 function efiledash_animateValue(id, end, formatPercent) {
@@ -1140,55 +1169,68 @@ function efiledash_renderTabelSekolahLengkapData(rekapData, namaSekolah) {
 }
 
 function efiledash_salinKeWA() {
-    var listEl = $('.efiledash-dash-item-belum:visible');
-    var listRevisi = $('.efiledash-dash-item-sudah:visible').filter(function() {
-        var status = String($(this).attr('data-status') || "").toLowerCase();
-        return status.indexOf('revisi') > -1;
-    });
+    var selNamaKat = $('#efiledash_filterKategori option:selected').text();
+    var selTahun = $('#efiledash_filterTahun').val() === "SEMUA" ? "Semua Tahun" : $('#efiledash_filterTahun').val();
 
-    if (listEl.length === 0 && listRevisi.length === 0) { 
+    var listDisetujui = $('#efiledash_listDisetujui .efiledash-item-disetujui:visible');
+    var listDiproses = $('#efiledash_listDiproses .efiledash-item-diproses:visible');
+    var listRevisi = $('#efiledash_listRevisi .efiledash-item-revisi:visible');
+    var listDitolak = $('#efiledash_listDitolak .efiledash-item-ditolak:visible');
+
+    var totalItems = listDisetujui.length + listDiproses.length + listRevisi.length + listDitolak.length;
+
+    if (totalItems === 0) { 
         if (typeof Sultan !== 'undefined' && Sultan.notif) {
-            Sultan.notif.info('Tidak ada data pada daftar belum unggah atau revisi untuk disalin.');
+            Sultan.notif.info('Tidak ada data PTK yang sudah unggah untuk disalin.');
         } else {
-            alert('Tidak ada data pada daftar belum unggah atau revisi untuk disalin.');
+            alert('Tidak ada data PTK yang sudah unggah untuk disalin.');
         }
         return; 
     }
 
-    var selNamaKat = $('#efiledash_filterKategori option:selected').text();
-    var selTahun = $('#efiledash_filterTahun').val() === "SEMUA" ? "Semua Tahun" : $('#efiledash_filterTahun').val();
-    var isSkp = (EFILEDASH_JENIS_PERIODE === "SKP");
-    var subKat = isSkp ? $('#efiledash_filterKategoriSkp option:selected').text() : "";
-    var statusKepeg = isSkp ? $('#efiledash_filterKepeg option:selected').text() : "";
-
-    var teks = "🚨 *DAFTAR PEGAWAI BELUM UNGGAH E-FILE* 🚨\n";
+    var teks = "🚨 *DAFTAR PTK SUDAH UNGGAH E-FILE* 🚨\n";
     teks += "Kategori: " + selNamaKat + "\n";
     teks += "Tahun: " + selTahun + "\n";
-    if (isSkp) {
-        teks += "Kategori: " + subKat + "\n";
-        teks += "Pegawai: " + statusKepeg + "\n";
-    }
-    teks += "Total Belum Unggah: " + listEl.length + " Pegawai\n\n";
-    
-    if (listEl.length > 0) {
+    teks += "Total PTK Unggah: " + totalItems + " Orang\n\n";
+
+    if (listDisetujui.length > 0) {
+        teks += "✅ *DISETUJUI (" + listDisetujui.length + ")*:\n";
         var no = 1;
-        listEl.each(function() { 
-            teks += no++ + ". " + $(this).find('.nama-asn').first().text().trim() + "\n"; 
+        listDisetujui.each(function() {
+            teks += no++ + ". " + $(this).find('.nama-asn').text().trim() + "\n";
         });
         teks += "\n";
     }
-    
-    teks += "Perlu Revisi: " + listRevisi.length + " Pegawai\n";
+
+    if (listDiproses.length > 0) {
+        teks += "⏳ *DIPROSES (" + listDiproses.length + ")*:\n";
+        var no = 1;
+        listDiproses.each(function() {
+            teks += no++ + ". " + $(this).find('.nama-asn').text().trim() + "\n";
+        });
+        teks += "\n";
+    }
+
     if (listRevisi.length > 0) {
-        teks += "\n";
-        var noRev = 1;
-        listRevisi.each(function() { 
-            teks += noRev++ + ". " + $(this).find('.nama-asn').first().text().trim() + "\n"; 
+        teks += "⚠️ *REVISI (" + listRevisi.length + ")*:\n";
+        var no = 1;
+        listRevisi.each(function() {
+            teks += no++ + ". " + $(this).find('.nama-asn').text().trim() + "\n";
         });
         teks += "\n";
     }
-    
-    teks += "Mohon segera mengunggah scan dokumen melalui SIKS-Reborn. Terima kasih. 🙏";
+
+    if (listDitolak.length > 0) {
+        teks += "❌ *DITOLAK (" + listDitolak.length + ")*:\n";
+        var no = 1;
+        listDitolak.each(function() {
+            teks += no++ + ". " + $(this).find('.nama-asn').text().trim() + "\n";
+        });
+        teks += "\n";
+    }
+
+    teks += "Mohon ditindaklanjuti. Terima kasih. 🙏";
+
     navigator.clipboard.writeText(teks).then(function() {
         if (typeof Sultan !== 'undefined' && Sultan.notif) {
             Sultan.notif.sukses('Daftar berhasil disalin ke Clipboard (Siap Paste di WhatsApp).');
@@ -1199,7 +1241,7 @@ function efiledash_salinKeWA() {
         if (typeof Sultan !== 'undefined') {
             Sultan.alert('error','Gagal Menyalin','Browser Anda tidak mendukung Clipboard API.');
         } else {
-            alert('Gagal menyalin text');
+            alert('Gagal menyalin teks.');
         }
     });
 }
