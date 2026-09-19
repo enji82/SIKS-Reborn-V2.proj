@@ -4,46 +4,19 @@
   <div class="container-fluid">
 
     <!-- ================================================================
-         FILTER BAR UTAMA DASHBOARD PAUD (TERPUSAT SULTAN UI)
+         FILTER BAR UTAMA DASHBOARD PAUD (TERPUSAT SULTAN UI - SINGLE TAB)
          ================================================================ -->
-    <div class="sultan-filter-bar-balanced mb-4 sultan-page-transition">
+    <div class="sultan-filter-bar-balanced mb-4 sultan-page-transition d-none" id="pauddash_filterBar">
         <div class="filter-controls-group">
-            <!-- Segmented Switcher Mode (Unit vs Rekap) -->
-            <div class="sultan-segmented-switch">
-                <button type="button" class="sultan-segmented-btn" data-mode="unit">
-                    <i class="fas fa-school"></i> Unit
-                </button>
-                <button type="button" class="sultan-segmented-btn active" data-mode="rekap">
-                    <i class="fas fa-chart-pie"></i> Rekap
-                </button>
+            <!-- Filter Lembaga PAUD (Khusus Admin) -->
+            <div class="sultan-filter-item d-none" id="pauddash_wrapperSekolah" style="min-width: 240px; max-width: 380px;">
+                <select id="pauddash_filterLembaga" class="form-control" aria-label="Pilih Satuan Pendidikan PAUD">
+                    <option value="">Semua Lembaga</option>
+                </select>
+                <i class="fas fa-chevron-down"></i>
             </div>
 
-            <div class="divider-vertical d-none d-md-block mx-1"></div>
-
-            <!-- Filter Jenjang PAUD (Admin Only di Mode Rekap) -->
-            <div class="d-none align-items-center" id="pauddash_filterJenjangWrapper">
-                <div class="sultan-filter-item" id="pauddash_filterJenjangContainer" style="min-width: 170px; max-width: 220px;">
-                    <select id="pauddash_filterJenjang" class="form-control" aria-label="Pilih Jenjang PAUD">
-                        <option value="SEMUA">Semua Jenjang</option>
-                        <option value="TK">TK</option>
-                        <option value="KB">KB</option>
-                        <option value="SPS">SPS / TPA</option>
-                    </select>
-                    <i class="fas fa-chevron-down"></i>
-                </div>
-                <div class="divider-vertical d-none d-md-block mx-1"></div>
-            </div>
-
-            <!-- Filter Lembaga Unit (Admin Only) & Divider Pemisah ke Refresh -->
-            <div class="d-none align-items-center" id="pauddash_filterLembagaWrapper">
-                <div class="sultan-filter-item" id="pauddash_filterLembagaContainer" style="min-width: 240px; max-width: 360px;">
-                    <select id="pauddash_filterLembaga" class="form-control" aria-label="Pilih Lembaga PAUD">
-                        <option value="">Semua Lembaga</option>
-                    </select>
-                    <i class="fas fa-chevron-down"></i>
-                </div>
-                <div class="divider-vertical d-none d-md-block mx-1"></div>
-            </div>
+            <div class="divider-vertical d-none d-md-block mx-1" id="pauddash_dividerRefresh"></div>
 
             <!-- Tombol Refresh Data -->
             <button type="button" id="pauddash_btnRefresh" class="sultan-btn-refresh" title="Refresh Data">
@@ -363,24 +336,36 @@ $(document).ready(function() {
     DASHPAUD_USER_NPSN = String(user.npsn || user.unit || user.username || "").trim();
   } catch(e) { DASHPAUD_IS_ADMIN = false; DASHPAUD_USER_NPSN = ""; }
 
-  // Inisialisasi Dual Mode Terpusat melalui SultanDashboard Engine
+  // Inisialisasi Single Mode Terpusat melalui SultanDashboard Engine
   var dashState = SultanDashboard.initDualMode({
     pageKey: 'ptkpaud',
+    dashboardType: 'single_tab',
     unitViewId: '#wrapperPAUD',
     rekapViewId: '#wrapperPAUD',
     switchSelector: '.sultan-segmented-btn',
     onInit: function(state) {
       DASHPAUD_IS_ADMIN = state.isAdmin;
       DASHPAUD_USER_NPSN = state.userNpsn;
-      PAUD_CURRENT_MODE = state.currentMode;
+      PAUD_CURRENT_MODE = 'rekap';
       PAUD_SELECTED_NPSN = DASHPAUD_IS_ADMIN ? '' : DASHPAUD_USER_NPSN;
+
+      SultanDashboard.setupUnitSchoolPicker({
+        pageKey: 'ptkpaud',
+        wrapperSekolahId: '#pauddash_wrapperSekolah',
+        selectSekolahId: '#pauddash_filterLembaga',
+        btnActionId: '#pauddash_btnRefresh',
+        masterSekolah: window.DASHSK_MASTER_SEKOLAH,
+        onSelectSchool: function(npsn, nama) {
+          PAUD_SELECTED_NPSN = npsn || '';
+          ptkpauddash_applyFilter();
+        }
+      });
+
       ptkpauddash_updateFilterBarControls();
     },
     onSwitchMode: function(mode, state, isFirstLoad) {
-      PAUD_CURRENT_MODE = mode;
-      PAUD_SELECTED_NPSN = (mode === 'unit') ? (DASHPAUD_IS_ADMIN ? ($('#pauddash_filterLembaga').val() || '') : DASHPAUD_USER_NPSN) : '';
+      PAUD_CURRENT_MODE = 'rekap';
       ptkpauddash_updateFilterBarControls();
-      ptkpauddash_applyModeView();
     }
   });
 
@@ -393,28 +378,15 @@ $(document).ready(function() {
 });
 
 function ptkpauddash_updateFilterBarControls() {
-  var isUnit = (PAUD_CURRENT_MODE === 'unit');
-  var $jenjangFilter = $('#pauddash_filterJenjangWrapper');
-  var $lembagaFilter = $('#pauddash_filterLembagaWrapper');
-
-  if (isUnit) {
-    // Mode Unit: Sembunyikan Filter Jenjang
-    $jenjangFilter.addClass('d-none').removeClass('d-flex');
-    if (DASHPAUD_IS_ADMIN) {
-      $lembagaFilter.removeClass('d-none').addClass('d-flex');
-      ptkpauddash_populateDropdownLembaga();
-    } else {
-      $lembagaFilter.addClass('d-none').removeClass('d-flex');
-    }
+  if (DASHPAUD_IS_ADMIN) {
+    $('#pauddash_filterBar').removeClass('d-none');
+    $('#pauddash_wrapperSekolah').removeClass('d-none');
+    $('#pauddash_dividerRefresh').removeClass('d-none');
   } else {
-    // Mode Rekap: Sembunyikan Filter Lembaga, Tampilkan Filter Jenjang (hanya jika Admin)
-    $lembagaFilter.addClass('d-none').removeClass('d-flex');
-    if (DASHPAUD_IS_ADMIN) {
-      $jenjangFilter.removeClass('d-none').addClass('d-flex');
-      $('#pauddash_filterJenjang').val(PAUD_ACTIVE_JENJANG || 'SEMUA');
-    } else {
-      $jenjangFilter.addClass('d-none').removeClass('d-flex');
-    }
+    // User biasa: Sembunyikan seluruh filter bar card
+    $('#pauddash_filterBar').addClass('d-none');
+    $('#pauddash_wrapperSekolah').addClass('d-none');
+    $('#pauddash_dividerRefresh').addClass('d-none');
   }
 }
 
@@ -424,36 +396,36 @@ function ptkpauddash_setupEventListeners() {
     paudReloadAllData(true);
   });
 
-  // Ganti Filter Jenjang (Admin Mode Rekap) - Reaktif
-  $(document).off('change', '#pauddash_filterJenjang').on('change', '#pauddash_filterJenjang', function() {
-    PAUD_ACTIVE_JENJANG = $(this).val() || 'SEMUA';
-    paudRenderDashboard();
-  });
-
-  // Ganti Lembaga (Admin Mode Unit) - Reaktif
+  // Ganti Lembaga (Admin) - Reaktif
   $(document).off('change', '#pauddash_filterLembaga').on('change', '#pauddash_filterLembaga', function() {
     PAUD_SELECTED_NPSN = $(this).val() || '';
-    ptkpauddash_applyModeView();
+    ptkpauddash_applyFilter();
   });
 }
 
-function ptkpauddash_switchMode(mode) {
-  SultanDashboard.switchMode('ptkpaud', mode);
+function ptkpauddash_applyFilter() {
+  paudRenderDashboard();
 }
 
-function ptkpauddash_populateDropdownLembaga() {
-  var sel = $('#pauddash_filterLembaga');
-  var curVal = sel.val();
-  sel.empty();
-  sel.append('<option value="">Semua Lembaga</option>');
+function ptkpauddash_populateDropdownLembaga(dataLembaga) {
+  if (!DASHPAUD_IS_ADMIN) return;
 
-  if (PAUD_RAW_DATA && Array.isArray(PAUD_RAW_DATA)) {
+  var sel = $('#pauddash_filterLembaga');
+  var curVal = sel.val() || PAUD_SELECTED_NPSN;
+  sel.empty().append('<option value="">Semua Lembaga</option>');
+
+  var rawData = dataLembaga || PAUD_RAW_DATA;
+  if (rawData && Array.isArray(rawData)) {
     var listLembaga = [];
-    PAUD_RAW_DATA.forEach(function(r) {
+    var seenNpsn = {};
+
+    rawData.forEach(function(r) {
       if (!r) return;
-      var npsn = String(r[1] || '').trim();
       var nama = String(r[0] || '').trim();
-      if (npsn && nama) {
+      var npsn = String(r[1] || '').trim();
+
+      if (npsn && nama && !seenNpsn[npsn]) {
+        seenNpsn[npsn] = true;
         listLembaga.push({ npsn: npsn, nama: nama });
       }
     });
@@ -470,17 +442,6 @@ function ptkpauddash_populateDropdownLembaga() {
       sel.val('');
     }
   }
-}
-
-function ptkpauddash_applyModeView() {
-  if (PAUD_CURRENT_MODE === 'unit') {
-    $('#paud_card_lembaga_wrapper').hide();
-  } else {
-    $('#paud_card_lembaga_wrapper').show();
-    $('#paud_kpi_lembaga_label').text('Lembaga');
-  }
-
-  paudRenderDashboard();
 }
 
 function paudGatekeeper() {
@@ -500,8 +461,19 @@ function paudReloadAllData(isRefresh) {
   google.script.run.withSuccessHandler(function(res) {
     $('#paudPageLoading').hide();
     $('#wrapperPAUD').fadeIn();
-    paudProcessData(res);
-    ptkpauddash_switchMode(PAUD_CURRENT_MODE);
+    
+    if (typeof SultanUI !== 'undefined') {
+      SultanUI.stopLottery('#paud_kpi_lembaga, #paud_kpi_total_ptk, #paud_kpi_pns, #paud_kpi_gty, #paud_kpi_pty, #paud_kpi_honorer');
+    }
+
+    PAUD_RAW_DATA = res;
+
+    if (DASHPAUD_IS_ADMIN && PAUD_RAW_DATA) {
+      ptkpauddash_populateDropdownLembaga(PAUD_RAW_DATA);
+    }
+
+    ptkpauddash_updateFilterBarControls();
+    ptkpauddash_applyFilter();
   }).withFailureHandler(function() {
     $('#paudPageLoading').hide();
     $('#wrapperPAUD').fadeIn();
@@ -575,29 +547,11 @@ function paudMatchSchoolRow(row, filterVal) {
 function paudRenderDashboard() {
   if (!PAUD_RAW_DATA || PAUD_RAW_DATA.length === 0) return;
 
-  var baseData = PAUD_RAW_DATA;
-  if (PAUD_CURRENT_MODE === 'unit' && PAUD_SELECTED_NPSN) {
-    baseData = PAUD_RAW_DATA.filter(function(r){
+  var filteredRows = PAUD_RAW_DATA;
+  if (PAUD_SELECTED_NPSN) {
+    filteredRows = PAUD_RAW_DATA.filter(function(r){
       return paudMatchSchoolRow(r, PAUD_SELECTED_NPSN);
     });
-  }
-
-  var filteredRows = [];
-  if (PAUD_CURRENT_MODE === 'unit') {
-    filteredRows = baseData;
-  } else {
-    if (PAUD_ACTIVE_JENJANG === 'SEMUA') {
-      filteredRows = baseData;
-    } else if (PAUD_ACTIVE_JENJANG === 'TK') {
-      filteredRows = baseData.filter(function(r){ return String(r[2]||"").toUpperCase().indexOf('TK') !== -1; });
-    } else if (PAUD_ACTIVE_JENJANG === 'KB') {
-      filteredRows = baseData.filter(function(r){ return String(r[2]||"").toUpperCase().indexOf('KB') !== -1; });
-    } else if (PAUD_ACTIVE_JENJANG === 'SPS') {
-      filteredRows = baseData.filter(function(r){
-        var j = String(r[2]||"").toUpperCase();
-        return j.indexOf('SPS') !== -1 || j.indexOf('TPA') !== -1;
-      });
-    }
   }
 
   // 1. Hitung Baris 1: KPI Summary
