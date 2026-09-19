@@ -72,6 +72,14 @@ Dokumen ini berisi cetak biru (blueprint) taktis untuk mengoptimalkan performa, 
     *   **Verifikasi Password Aman:** Hapus perbandingan password secara plain-text pada fungsi `processLogin` di baris 168. Ganti dengan pencocokan hash SHA-256 yang aman menggunakan fungsi `verifyPassword(inputPass, storedHash)`.
     *   **Apps Script CacheService:** Implementasikan penyimpanan cache data spreadsheet untuk fungsi penarikan data rekapitulasi dashboard. Jika data dalam 5 menit terakhir sudah pernah dibaca, kembalikan data dari cache server secara langsung untuk mempercepat respon.
 
+### E. Standarisasi Terpusat Kode Dashboard Global (SultanDashboard Engine)
+*   **File Target:** [ui_helpers.html](file:///Users/macbookpro/Documents/GitHub/SIKS-Reborn-V2.proj/ui_helpers.html) & `page_*_dashboard.html`
+*   **Klasifikasi 3 Jenis Dashboard:**
+    1.  **Single Tab (`tabType: 'single_tab'`)**: Terdapat tab Unit dan tab Rekap yang digunakan bersama-sama oleh user dan admin (segmented switcher tampil untuk semua role).
+    2.  **Dual Tab (`tabType: 'dual_tab'`)**: User dan admin menampilkan halaman yang berbeda secara eksklusif (segmented switcher disembunyikan total).
+    3.  **Multi Tab (`tabType: 'multi_tab'`)**: Terdapat tab Unit dan tab Rekap. User biasa **hanya bisa melihat Tab Unit** (tombol Rekap/switcher di-hide otomatis), sedangkan Admin bisa melihat Tab Unit dan Tab Rekap dengan **default tab aktif = Rekap**.
+*   **Implementasi:** Seluruh logika role check, kontrol visibilitas switcher, dan penentuan default tab dikendalikan secara terpusat oleh `SultanDashboard.initDualMode({ pageKey: '...', tabType: '...' })` tanpa perlu menulis ulang pengondisian UI di setiap halaman dashboard.
+
 ---
 
 ## 🔍 3. Panduan Verifikasi (Uji Kelayakan)
@@ -80,3 +88,4 @@ Dokumen ini berisi cetak biru (blueprint) taktis untuk mengoptimalkan performa, 
 3.  **Keamanan Login:** Percobaan login menggunakan password mentah (plain-text) pada user yang sudah di-hash harus ditolak oleh sistem.
 4.  **Bebas RAM Leak:** Memantau penggunaan tab memori pada Chrome Task Manager saat pengguna berpindah menu berulang kali; grafik memori harus tetap stabil dan tidak naik terus menerus.
 5.  **Tampilan Mobile:** Halaman kelola data dan dashboard tidak boleh menampilkan scrollbar horizontal saat dibuka di resolusi layar 375px (iPhone SE) hingga 414px.
+6.  **Konsistensi Dashboard Multi Tab:** Pada halaman dashboard berjenis Multi Tab (seperti Laporan Bulanan), User biasa tidak melihat switcher tab Rekap dan langsung mengunci di Tab Unit, sedangkan Admin mendarat di Tab Rekap secara default dan dapat berpindah ke Tab Unit secara fleksibel.

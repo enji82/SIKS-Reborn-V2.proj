@@ -1219,12 +1219,15 @@ var SultanDashboard = {
         var userNpsn = isAdmin ? "" : String(user.npsn !== undefined && user.npsn !== null ? user.npsn : (user.username || "")).trim();
         var userSekolah = isAdmin ? "" : String(user.unit || user.nama_lengkap || user.fullname || user.nama || "").trim();
 
+        var dashboardType = config.dashboardType || config.tabType || 'multi_tab';
+
         // Simpan state di namespace SultanDashboard
         if (!window.SultanDashboardState) window.SultanDashboardState = {};
         window.SultanDashboardState[pageKey] = {
             isAdmin: isAdmin,
             userNpsn: userNpsn,
             userSekolah: userSekolah,
+            dashboardType: dashboardType,
             currentMode: isAdmin ? 'rekap' : 'unit',
             unitViewId: unitViewId,
             rekapViewId: rekapViewId,
@@ -1233,13 +1236,53 @@ var SultanDashboard = {
 
         var state = window.SultanDashboardState[pageKey];
 
+        // Kontrol Visibilitas Segmented Switcher berdasarkan dashboardType & role:
+        // - multi_tab: User hanya bisa Tab Unit (tombol Rekap di-hide atau seluruh switch di-hide jika single option), Admin bisa Unit & Rekap (Default Rekap).
+        // - dual_tab: User & Admin beda view (switcher di-hide total).
+        // - single_tab: User & Admin pakai bersama (semua tombol switcher tampil untuk User & Admin).
+        if (dashboardType === 'multi_tab') {
+            if (!isAdmin) {
+                // User tidak boleh melihat/membuka tab Rekap
+                $(`${switchSelector}[data-mode="rekap"]`).addClass('d-none');
+                // Sembunyikan seluruh segmented switch wrapper jika hanya sisa 1 tombol Unit
+                var $switchWrapper = $(switchSelector).closest('.sultan-segmented-switch');
+                if ($switchWrapper.length) {
+                    $switchWrapper.addClass('d-none');
+                }
+            } else {
+                $(`${switchSelector}`).removeClass('d-none');
+                var $switchWrapper = $(switchSelector).closest('.sultan-segmented-switch');
+                if ($switchWrapper.length) {
+                    $switchWrapper.removeClass('d-none');
+                }
+            }
+        } else if (dashboardType === 'dual_tab') {
+            var $switchWrapper = $(switchSelector).closest('.sultan-segmented-switch');
+            if ($switchWrapper.length) {
+                $switchWrapper.addClass('d-none');
+            } else {
+                $(switchSelector).addClass('d-none');
+            }
+        } else if (dashboardType === 'single_tab') {
+            var $switchWrapper = $(switchSelector).closest('.sultan-segmented-switch');
+            if ($switchWrapper.length) {
+                $switchWrapper.removeClass('d-none');
+            }
+            $(switchSelector).removeClass('d-none');
+        }
+
         // 2. Setup switcher click event
         $(document).off('click', switchSelector).on('click', switchSelector, function (e) {
             e.preventDefault();
             var mode = $(this).data('mode') || $(this).attr('data-mode');
-            if (mode) {
-                SultanDashboard.switchMode(pageKey, mode);
+            if (!mode) return;
+
+            // Proteksi tambahan untuk multi_tab: User biasa dilarang buka Rekap
+            if (dashboardType === 'multi_tab' && !isAdmin && mode === 'rekap') {
+                return;
             }
+
+            SultanDashboard.switchMode(pageKey, mode);
         });
 
         // 3. Panggil callback inisialisasi awal
