@@ -78,7 +78,7 @@ Dokumen ini berisi cetak biru (blueprint) taktis untuk mengoptimalkan performa, 
     1.  **Single Tab (`tabType: 'single_tab'`)**: Terdapat tab Unit dan tab Rekap yang digunakan bersama-sama oleh user dan admin (segmented switcher tampil untuk semua role).
     2.  **Dual Tab (`tabType: 'dual_tab'`)**: User dan admin menampilkan halaman yang berbeda secara eksklusif (segmented switcher disembunyikan total).
     3.  **Multi Tab (`tabType: 'multi_tab'`)**: Terdapat tab Unit dan tab Rekap. User biasa **hanya bisa melihat Tab Unit** (tombol Rekap/switcher di-hide otomatis), sedangkan Admin bisa melihat Tab Unit dan Tab Rekap dengan **default tab aktif = Rekap**.
-*   **Implementasi:** Seluruh logika role check, kontrol visibilitas switcher, dan penentuan default tab dikendalikan secara terpusat oleh `SultanDashboard.initDualMode({ pageKey: '...', tabType: '...' })` tanpa perlu menulis ulang pengondisian UI di setiap halaman dashboard.
+*   **Implementasi:** Seluruh logika role check, kontrol visibilitas switcher, penyembunyian filter bar kosong pada role User biasa, dan penentuan default tab dikendalikan secara terpusat oleh `SultanDashboard.initDualMode({ pageKey: '...', tabType: '...' })` & `SultanDashboard.setupUnitSchoolPicker()` tanpa perlu menulis ulang pengondisian UI di setiap halaman dashboard.
 
 ---
 
