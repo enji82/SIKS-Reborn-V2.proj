@@ -666,17 +666,32 @@ function ptksdndash_populateSekolahDropdown(dataKeadaan, filterJenjang) {
   $sel.empty().append('<option value="">Semua Sekolah</option>');
 
   var sekolahList = [];
+  var seenNpsn = {};
+
   dataKeadaan.forEach(function(row) {
     if (!row) return;
     var nama = String(row[0] || '').trim();
     var npsn = String(row[1] || '').trim();
-    var jenjang = String(row[2] || 'SD').trim().toUpperCase();
+    var jenjang = String(row[2] || '').trim().toUpperCase();
 
-    if (filterJenjang && jenjang !== filterJenjang.toUpperCase()) {
-      return;
+    // Jika kolom jenjang kosong, deteksi otomatis dari nama sekolah
+    if (!jenjang) {
+      var namaUpper = nama.toUpperCase();
+      if (namaUpper.indexOf('TK') !== -1) jenjang = 'TK';
+      else if (namaUpper.indexOf('KB') !== -1) jenjang = 'KB';
+      else if (namaUpper.indexOf('SPS') !== -1) jenjang = 'SPS';
+      else jenjang = 'SD';
     }
 
-    if (npsn && nama) {
+    if (filterJenjang && filterJenjang.trim() !== '') {
+      var targetJjg = filterJenjang.trim().toUpperCase();
+      if (jenjang !== targetJjg && nama.toUpperCase().indexOf(targetJjg) === -1) {
+        return;
+      }
+    }
+
+    if (npsn && nama && !seenNpsn[npsn]) {
+      seenNpsn[npsn] = true;
       sekolahList.push({ npsn: npsn, nama: nama, jenjang: jenjang });
     }
   });
