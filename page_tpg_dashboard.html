@@ -168,22 +168,24 @@
       TPGDASH_USER_UNIT = String(user.unit || user.nama_lengkap || user.fullname || user.nama || "").trim();
       TPGDASH_USER_NPSN = String(user.npsn || user.username || "").trim();
 
+      tpgdash_setupControls();
+
       // Inisialisasi SultanDashboard Dual Mode
       if (typeof SultanDashboard !== 'undefined' && SultanDashboard.initDualMode) {
         SultanDashboard.initDualMode({
           pageKey: 'tpgdash',
           switchSelector: '.sultan-segmented-btn',
           onInit: function(state) {
-            tpgdash_setupControls();
+            // onInit
           },
           onSwitchMode: function(mode, state, isFirstLoad) {
             tpgdash_handleModeSwitch(mode);
           }
         });
-      } else {
-        tpgdash_setupControls();
-        tpgdash_handleModeSwitch(TPGDASH_IS_ADMIN ? 'rekap' : 'unit');
       }
+
+      // Selalu muat master sekolah dan data dasbor saat inisialisasi
+      tpgdash_loadMasterSekolahThenFetchData();
     }
 
     function tpgdash_setupControls() {
@@ -441,7 +443,9 @@
 
     function tpgdash_renderRekapTable(rekapObj) {
       if (tpgdash_dtInstance) {
-        tpgdash_dtInstance.destroy();
+        if ($.fn.DataTable.isDataTable('#tpgdash_rekapTable')) {
+          $('#tpgdash_rekapTable').DataTable().destroy();
+        }
         tpgdash_dtInstance = null;
       }
 
@@ -457,47 +461,47 @@
         return a.sekolah.localeCompare(b.sekolah);
       });
 
+      var dataTableRows = [];
+
       if (rekapList.length === 0) {
         tbody.append('<tr><td colspan="6" class="text-center text-muted py-4 font-italic">Tidak ada data usulan TPG yang sesuai dengan filter.</td></tr>');
       } else {
         rekapList.forEach(function(item) {
           var d = item.data;
-          var tr = $('<tr>');
-          tr.append($('<td class="text-left align-middle font-weight-bold sultan-table-primary">').text(item.sekolah));
-          tr.append($('<td class="text-center align-middle font-weight-bold">').text(d.usulan || 0));
-          tr.append($('<td class="text-center align-middle text-info font-weight-bold">').text(d.diproses || 0));
-          tr.append($('<td class="text-center align-middle text-success font-weight-bold">').text(d.disetujui || 0));
-          tr.append($('<td class="text-center align-middle text-warning font-weight-bold">').text(d.revisi || 0));
-          tr.append($('<td class="text-center align-middle text-danger font-weight-bold">').text(d.ditolak || 0));
-          tbody.append(tr);
+          dataTableRows.push([
+            '<span class="font-weight-bold sultan-table-primary">' + item.sekolah + '</span>',
+            '<span class="font-weight-bold">' + (d.usulan || 0) + '</span>',
+            '<span class="text-info font-weight-bold">' + (d.diproses || 0) + '</span>',
+            '<span class="text-success font-weight-bold">' + (d.disetujui || 0) + '</span>',
+            '<span class="text-warning font-weight-bold">' + (d.revisi || 0) + '</span>',
+            '<span class="text-danger font-weight-bold">' + (d.ditolak || 0) + '</span>'
+          ]);
         });
       }
 
-      // Inisialisasi DataTable Standar Sultan (pageLength: 10, ordering enabled)
-      if (typeof SultanTable !== 'undefined') {
-        tpgdash_dtInstance = SultanTable.init('#tpgdash_rekapTable', {
-          "destroy": true,
-          "ordering": true,
-          "pageLength": 10,
-          "autoWidth": false,
-          "order": [[0, 'asc']],
-          "dom": "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
-                 "<'row'<'col-sm-12'tr>>" +
-                 "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>"
-        });
-      } else if ($.fn.DataTable) {
+      // Inisialisasi DataTable Standar Sultan dengan opsi data
+      if (dataTableRows.length > 0 && $.fn.DataTable) {
         tpgdash_dtInstance = $('#tpgdash_rekapTable').DataTable({
           "destroy": true,
+          "data": dataTableRows,
           "ordering": true,
           "pageLength": 10,
           "autoWidth": false,
           "order": [[0, 'asc']],
+          "columnDefs": [
+            { "className": "text-left align-middle", "targets": 0 },
+            { "className": "text-center align-middle", "targets": [1, 2, 3, 4, 5] }
+          ],
           "language": {
             "search": "Cari:",
             "lengthMenu": "Tampilkan _MENU_ data",
             "info": "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
+            "emptyTable": "Tidak ada data yang tersedia pada tabel ini",
             "paginate": { "previous": "Sebelumnya", "next": "Berikutnya" }
-          }
+          },
+          "dom": "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
+                 "<'row'<'col-sm-12'tr>>" +
+                 "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>"
         });
       }
     }
