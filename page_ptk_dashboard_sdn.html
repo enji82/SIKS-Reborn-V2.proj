@@ -11,20 +11,8 @@
          ================================================================ -->
     <div class="sultan-filter-bar-balanced mb-4 sultan-page-transition d-none" id="sdndash_filterBar">
         <div class="filter-controls-group">
-            <!-- Filter Jenjang (Khusus Admin) -->
-            <div class="sultan-filter-item d-none" id="sdndash_wrapperJenjang">
-                <select id="sdndash_filterJenjang" class="form-control" aria-label="Pilih Jenjang">
-                    <option value="">Semua Jenjang</option>
-                    <option value="SD">SD</option>
-                    <option value="TK">TK</option>
-                    <option value="KB">KB</option>
-                    <option value="SPS">SPS</option>
-                </select>
-                <i class="fas fa-chevron-down"></i>
-            </div>
-
             <!-- Filter Sekolah (Khusus Admin) -->
-            <div class="sultan-filter-item d-none" id="sdndash_wrapperSekolah" style="min-width: 220px; max-width: 340px;">
+            <div class="sultan-filter-item d-none" id="sdndash_wrapperSekolah" style="min-width: 240px; max-width: 380px;">
                 <select id="sdndash_filterSekolah" class="form-control" aria-label="Pilih Satuan Pendidikan">
                     <option value="">Semua Sekolah</option>
                 </select>
@@ -589,8 +577,6 @@ $(document).ready(function() {
 
       SultanDashboard.setupUnitSchoolPicker({
         pageKey: 'ptksdn',
-        wrapperJenjangId: '#sdndash_wrapperJenjang',
-        selectJenjangId: '#sdndash_filterJenjang',
         wrapperSekolahId: '#sdndash_wrapperSekolah',
         selectSekolahId: '#sdndash_filterSekolah',
         btnActionId: '#sdndash_btnRefresh',
@@ -620,12 +606,12 @@ $(document).ready(function() {
 function ptksdndash_updateFilterBarControls() {
   if (DASHN_IS_ADMIN) {
     $('#sdndash_filterBar').removeClass('d-none');
-    $('#sdndash_wrapperJenjang, #sdndash_wrapperSekolah').removeClass('d-none');
+    $('#sdndash_wrapperSekolah').removeClass('d-none');
     $('#sdndash_dividerRefresh').removeClass('d-none');
   } else {
     // User biasa: Sembunyikan seluruh filter bar card
     $('#sdndash_filterBar').addClass('d-none');
-    $('#sdndash_wrapperJenjang, #sdndash_wrapperSekolah').addClass('d-none');
+    $('#sdndash_wrapperSekolah').addClass('d-none');
     $('#sdndash_dividerRefresh').addClass('d-none');
   }
 }
@@ -636,14 +622,7 @@ function ptksdndash_setupEventListeners() {
     sdnGatekeeper();
   });
 
-  // Filter Jenjang & Sekolah Change (Admin)
-  $(document).off('change', '#sdndash_filterJenjang').on('change', '#sdndash_filterJenjang', function() {
-    var jjg = $(this).val();
-    ptksdndash_populateSekolahDropdown(SDN_RAW_KEADAAN, jjg);
-    SDN_SELECTED_NPSN = $('#sdndash_filterSekolah').val() || '';
-    ptksdndash_applyFilter();
-  });
-
+  // Filter Sekolah Change (Admin)
   $(document).off('change', '#sdndash_filterSekolah').on('change', '#sdndash_filterSekolah', function() {
     SDN_SELECTED_NPSN = $(this).val() || '';
     ptksdndash_applyFilter();
@@ -658,7 +637,7 @@ function ptksdndash_applyFilter() {
   }
 }
 
-function ptksdndash_populateSekolahDropdown(dataKeadaan, filterJenjang) {
+function ptksdndash_populateSekolahDropdown(dataKeadaan) {
   if (!DASHN_IS_ADMIN || !dataKeadaan || !Array.isArray(dataKeadaan)) return;
 
   var $sel = $('#sdndash_filterSekolah');
@@ -674,25 +653,18 @@ function ptksdndash_populateSekolahDropdown(dataKeadaan, filterJenjang) {
     var npsn = String(row[1] || '').trim();
     var jenjang = String(row[2] || '').trim().toUpperCase();
 
-    // Jika kolom jenjang kosong, deteksi otomatis dari nama sekolah
-    if (!jenjang) {
-      var namaUpper = nama.toUpperCase();
-      if (namaUpper.indexOf('TK') !== -1) jenjang = 'TK';
-      else if (namaUpper.indexOf('KB') !== -1) jenjang = 'KB';
-      else if (namaUpper.indexOf('SPS') !== -1) jenjang = 'SPS';
-      else jenjang = 'SD';
-    }
-
-    if (filterJenjang && filterJenjang.trim() !== '') {
-      var targetJjg = filterJenjang.trim().toUpperCase();
-      if (jenjang !== targetJjg && nama.toUpperCase().indexOf(targetJjg) === -1) {
-        return;
-      }
+    // Deteksi jenjang atau pastikan hanya nama SD Negeri yang dimasukkan
+    var namaUpper = nama.toUpperCase();
+    var isSDN = (jenjang === 'SD') || (namaUpper.indexOf('SDN') !== -1) || (namaUpper.indexOf('SD NEGERI') !== -1);
+    
+    // Abaikan jika bukan SD (misal TK/KB/SPS/SMP)
+    if (!isSDN && (namaUpper.indexOf('TK') !== -1 || namaUpper.indexOf('KB') !== -1 || namaUpper.indexOf('SPS') !== -1)) {
+      return;
     }
 
     if (npsn && nama && !seenNpsn[npsn]) {
       seenNpsn[npsn] = true;
-      sekolahList.push({ npsn: npsn, nama: nama, jenjang: jenjang });
+      sekolahList.push({ npsn: npsn, nama: nama });
     }
   });
 
