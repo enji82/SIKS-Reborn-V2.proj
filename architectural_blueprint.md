@@ -75,9 +75,9 @@ Dokumen ini berisi cetak biru (blueprint) taktis untuk mengoptimalkan performa, 
 ### E. Standarisasi Terpusat Kode Dashboard Global (SultanDashboard Engine)
 *   **File Target:** [ui_helpers.html](file:///Users/macbookpro/Documents/GitHub/SIKS-Reborn-V2.proj/ui_helpers.html) & `page_*_dashboard.html`
 *   **Klasifikasi 3 Jenis Dashboard:**
-    1.  **Single Tab (`tabType: 'single_tab'`)**: Terdapat tab Unit dan tab Rekap yang digunakan bersama-sama oleh user dan admin (segmented switcher tampil untuk semua role).
+    1.  **Single Tab (`tabType: 'single_tab'`)**: Single layout view yang digunakan bersama oleh user dan admin (misal: **Dashboard PTK SD Negeri** & **Dashboard PTK SD Swasta**). Pada role Admin, filter bar hanya berupa dropdown sekolah terfilter (SD Negeri/SD Swasta) dengan default `"Semua Sekolah"`, sedangkan pada role User biasa, filter bar disembunyikan total.
     2.  **Dual Tab (`tabType: 'dual_tab'`)**: User dan admin menampilkan halaman yang berbeda secara eksklusif (segmented switcher disembunyikan total).
-    3.  **Multi Tab (`tabType: 'multi_tab'`)**: Terdapat tab Unit dan tab Rekap. User biasa **hanya bisa melihat Tab Unit** (tombol Rekap/switcher di-hide otomatis), sedangkan Admin bisa melihat Tab Unit dan Tab Rekap dengan **default tab aktif = Rekap**.
+    3.  **Multi Tab (`tabType: 'multi_tab'`)**: Terdapat tab Unit dan tab Rekap. User biasa **hanya bisa melihat Tab Unit** (tombol Rekap/switcher di-hide otomatis), sedangkan Admin bisa melihat Tab Unit dan Tab Rekap dengan **default tab aktif = Rekap** (misal: Dashboard Laporan Bulanan, Dashboard SK Pembagian Tugas, Dashboard Administrasi Sekolah).
 *   **Implementasi:** Seluruh logika role check, kontrol visibilitas switcher, penyembunyian filter bar kosong pada role User biasa, dan penentuan default tab dikendalikan secara terpusat oleh `SultanDashboard.initDualMode({ pageKey: '...', tabType: '...' })` & `SultanDashboard.setupUnitSchoolPicker()` tanpa perlu menulis ulang pengondisian UI di setiap halaman dashboard.
 
 ---

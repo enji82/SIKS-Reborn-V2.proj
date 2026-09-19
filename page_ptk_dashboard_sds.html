@@ -4,32 +4,19 @@
   <div class="container-fluid">
 
     <!-- ================================================================
-         FILTER BAR UTAMA DASHBOARD (TERPUSAT SULTAN UI)
+         FILTER BAR UTAMA DASHBOARD SDS (TERPUSAT SULTAN UI - SINGLE TAB)
          ================================================================ -->
-    <div class="sultan-filter-bar-balanced mb-4 sultan-page-transition">
+    <div class="sultan-filter-bar-balanced mb-4 sultan-page-transition d-none" id="sdsdash_filterBar">
         <div class="filter-controls-group">
-            <!-- Segmented Switcher Mode (Unit vs Rekap) -->
-            <div class="sultan-segmented-switch">
-                <button type="button" class="sultan-segmented-btn" data-mode="unit">
-                    <i class="fas fa-school"></i> Unit
-                </button>
-                <button type="button" class="sultan-segmented-btn active" data-mode="rekap">
-                    <i class="fas fa-chart-pie"></i> Rekap
-                </button>
+            <!-- Filter Sekolah (Khusus Admin) -->
+            <div class="sultan-filter-item d-none" id="sdsdash_wrapperSekolah" style="min-width: 240px; max-width: 380px;">
+                <select id="sdsdash_filterSekolah" class="form-control" aria-label="Pilih Satuan Pendidikan">
+                    <option value="">Semua Sekolah</option>
+                </select>
+                <i class="fas fa-chevron-down"></i>
             </div>
 
-            <div class="divider-vertical d-none d-md-block mx-1"></div>
-
-            <!-- Filter Sekolah Khusus Mode Unit (Admin Only) & Divider Pemisah ke Refresh -->
-            <div class="d-none align-items-center" id="sdsdash_filterSekolahWrapper">
-                <div class="sultan-filter-item" id="sdsdash_filterSekolahContainer" style="min-width: 240px; max-width: 360px;">
-                    <select id="sdsdash_filterSekolah" class="form-control" aria-label="Pilih Satuan Pendidikan">
-                        <option value="">Semua Sekolah</option>
-                    </select>
-                    <i class="fas fa-chevron-down"></i>
-                </div>
-                <div class="divider-vertical d-none d-md-block mx-1"></div>
-            </div>
+            <div class="divider-vertical d-none d-md-block mx-1" id="sdsdash_dividerRefresh"></div>
 
             <!-- Tombol Refresh Data -->
             <button type="button" id="sdsdash_btnRefresh" class="sultan-btn-refresh" title="Refresh Data">
@@ -400,7 +387,7 @@
 // ======================================================================
 var DASHS_IS_ADMIN    = false;
 var DASHS_USER_NPSN   = "";
-var SDS_CURRENT_MODE  = "rekap"; // "rekap" | "unit"
+var SDS_CURRENT_MODE  = "rekap";
 var SDS_RAW_KEADAAN   = null;
 var SDS_RAW_KEBUTUHAN = null;
 var SDS_SELECTED_NPSN = "";
@@ -415,24 +402,36 @@ $(document).ready(function() {
     DASHS_USER_NPSN = String(user.npsn || user.unit || user.username || "").trim();
   } catch(e) { DASHS_IS_ADMIN = false; DASHS_USER_NPSN = ""; }
 
-  // Inisialisasi Dual Mode Terpusat melalui SultanDashboard Engine
+  // Inisialisasi Single Mode Terpusat melalui SultanDashboard Engine
   var dashState = SultanDashboard.initDualMode({
     pageKey: 'ptksds',
+    dashboardType: 'single_tab',
     unitViewId: '#wrapperSDS',
     rekapViewId: '#wrapperSDS',
     switchSelector: '.sultan-segmented-btn',
     onInit: function(state) {
       DASHS_IS_ADMIN = state.isAdmin;
       DASHS_USER_NPSN = state.userNpsn;
-      SDS_CURRENT_MODE = state.currentMode;
+      SDS_CURRENT_MODE = 'rekap';
       SDS_SELECTED_NPSN = DASHS_IS_ADMIN ? '' : DASHS_USER_NPSN;
+
+      SultanDashboard.setupUnitSchoolPicker({
+        pageKey: 'ptksds',
+        wrapperSekolahId: '#sdsdash_wrapperSekolah',
+        selectSekolahId: '#sdsdash_filterSekolah',
+        btnActionId: '#sdsdash_btnRefresh',
+        masterSekolah: window.DASHSK_MASTER_SEKOLAH,
+        onSelectSchool: function(npsn, nama) {
+          SDS_SELECTED_NPSN = npsn || '';
+          ptksdsdash_applyFilter();
+        }
+      });
+
       ptksdsdash_updateFilterBarControls();
     },
     onSwitchMode: function(mode, state, isFirstLoad) {
-      SDS_CURRENT_MODE = mode;
-      SDS_SELECTED_NPSN = (mode === 'unit') ? (DASHS_IS_ADMIN ? ($('#sdsdash_filterSekolah').val() || '') : DASHS_USER_NPSN) : '';
+      SDS_CURRENT_MODE = 'rekap';
       ptksdsdash_updateFilterBarControls();
-      ptksdsdash_applyModeView();
     }
   });
 
@@ -445,18 +444,15 @@ $(document).ready(function() {
 });
 
 function ptksdsdash_updateFilterBarControls() {
-  var isUnit = (SDS_CURRENT_MODE === 'unit');
-  var $schoolFilter = $('#sdsdash_filterSekolahWrapper');
-
-  if (isUnit) {
-    if (DASHS_IS_ADMIN) {
-      $schoolFilter.removeClass('d-none').addClass('d-flex');
-      ptksdsdash_populateDropdownSekolah();
-    } else {
-      $schoolFilter.addClass('d-none').removeClass('d-flex');
-    }
+  if (DASHS_IS_ADMIN) {
+    $('#sdsdash_filterBar').removeClass('d-none');
+    $('#sdsdash_wrapperSekolah').removeClass('d-none');
+    $('#sdsdash_dividerRefresh').removeClass('d-none');
   } else {
-    $schoolFilter.addClass('d-none').removeClass('d-flex');
+    // User biasa: Sembunyikan seluruh filter bar card
+    $('#sdsdash_filterBar').addClass('d-none');
+    $('#sdsdash_wrapperSekolah').addClass('d-none');
+    $('#sdsdash_dividerRefresh').addClass('d-none');
   }
 }
 
@@ -466,31 +462,51 @@ function ptksdsdash_setupEventListeners() {
     sdsReloadAllData(true);
   });
 
-  // Ganti Sekolah (Admin) - Langsung reaktif ganti data
+  // Ganti Sekolah (Admin)
   $(document).off('change', '#sdsdash_filterSekolah').on('change', '#sdsdash_filterSekolah', function() {
     SDS_SELECTED_NPSN = $(this).val() || '';
-    ptksdsdash_applyModeView();
+    ptksdsdash_applyFilter();
   });
 }
 
-function ptksdsdash_switchMode(mode) {
-  SultanDashboard.switchMode('ptksds', mode);
+function ptksdsdash_applyFilter() {
+  if (SDS_RAW_KEADAAN) {
+    sdsCalculateKeadaan(SDS_RAW_KEADAAN, SDS_SELECTED_NPSN);
+  }
+  if (SDS_RAW_KEBUTUHAN) {
+    sdsProcessKebutuhan(SDS_RAW_KEBUTUHAN, SDS_SELECTED_NPSN);
+  }
 }
 
-function ptksdsdash_populateDropdownSekolah() {
-  var sel = $('#sdsdash_filterSekolah');
-  var curVal = sel.val();
-  sel.empty();
-  sel.append('<option value="">Semua Sekolah</option>');
+function ptksdsdash_populateDropdownSekolah(dataKeadaan) {
+  if (!DASHS_IS_ADMIN) return;
 
-  if (SDS_RAW_KEADAAN && Array.isArray(SDS_RAW_KEADAAN)) {
+  var sel = $('#sdsdash_filterSekolah');
+  var curVal = sel.val() || SDS_SELECTED_NPSN;
+  sel.empty().append('<option value="">Semua Sekolah</option>');
+
+  var rawData = dataKeadaan || SDS_RAW_KEADAAN;
+  if (rawData && Array.isArray(rawData)) {
     var listSekolah = [];
-    SDS_RAW_KEADAAN.forEach(function(r) {
+    var seenNpsn = {};
+
+    rawData.forEach(function(r) {
       if (!r) return;
-      var npsn = String(r[1] || '').trim();
       var nama = String(r[0] || '').trim();
-      if (npsn && nama) {
-        listSekolah.push({ npsn: npsn, nama: nama });
+      var npsn = String(r[1] || '').trim();
+      var jenjang = String(r[2] || '').trim().toUpperCase();
+
+      var namaUpper = nama.toUpperCase();
+      // Pastikan hanya SD Swasta (bukan Negeri & bukan TK/KB/SPS)
+      var isSD = (jenjang === 'SD') || (namaUpper.indexOf('SD') !== -1);
+      var isNegeri = (namaUpper.indexOf('SDN') !== -1) || (namaUpper.indexOf('SD NEGERI') !== -1);
+      var isNonSD = (namaUpper.indexOf('TK') !== -1) || (namaUpper.indexOf('KB') !== -1) || (namaUpper.indexOf('SPS') !== -1);
+
+      if (isSD && !isNegeri && !isNonSD) {
+        if (npsn && nama && !seenNpsn[npsn]) {
+          seenNpsn[npsn] = true;
+          listSekolah.push({ npsn: npsn, nama: nama });
+        }
       }
     });
 
@@ -505,22 +521,6 @@ function ptksdsdash_populateDropdownSekolah() {
     } else {
       sel.val('');
     }
-  }
-}
-
-function ptksdsdash_applyModeView() {
-  if (SDS_CURRENT_MODE === 'unit') {
-    $('#sds_card_sekolah_wrapper').hide();
-  } else {
-    $('#sds_card_sekolah_wrapper').show();
-    $('#sds_jml_sekolah_label').text('Sekolah');
-  }
-
-  if (SDS_RAW_KEADAAN) {
-    sdsCalculateKeadaan(SDS_RAW_KEADAAN, SDS_SELECTED_NPSN);
-  }
-  if (SDS_RAW_KEBUTUHAN) {
-    sdsProcessKebutuhan(SDS_RAW_KEBUTUHAN, SDS_SELECTED_NPSN);
   }
 }
 
@@ -544,7 +544,17 @@ function sdsReloadAllData(isRefresh) {
     if (pending <= 0) {
       $('#sdsPageLoading').hide();
       $('#wrapperSDS, #sdsMatriksPegawaiRow, #sdsKebutuhanRow, #sdsDashVisualRow, #sdsSectionDividerDetail').fadeIn();
-      ptksdsdash_switchMode(SDS_CURRENT_MODE);
+      
+      if (typeof SultanUI !== 'undefined') {
+        SultanUI.stopLottery('#sds_jml_sekolah, #sds_total_ptk, #sds_jml_gty, #sds_jml_pty, #sds_jml_gtt, #sds_jml_ptt');
+      }
+
+      if (DASHS_IS_ADMIN && SDS_RAW_KEADAAN) {
+        ptksdsdash_populateDropdownSekolah(SDS_RAW_KEADAAN);
+      }
+
+      ptksdsdash_updateFilterBarControls();
+      ptksdsdash_applyFilter();
     }
   }
 
