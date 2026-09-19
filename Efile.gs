@@ -790,6 +790,21 @@ function getEfileDashboardInit(npsnFilter) {
         }
     }
     
+    var shSekolah = getSheet("USER_DB", "Data_Sekolah");
+    var dataSekolah = shSekolah ? shSekolah.getDataRange().getDisplayValues() : [];
+    var listSekolahMaster = [];
+    var mapSekolahSeen = {};
+
+    for (var s = 1; s < dataSekolah.length; s++) {
+      var rNpsn = String(dataSekolah[s][0]).trim();
+      var rJenjang = String(dataSekolah[s][1]).trim().toUpperCase();
+      var rNama = String(dataSekolah[s][2]).trim();
+      if (rNama && !mapSekolahSeen[rNama]) {
+        mapSekolahSeen[rNama] = true;
+        listSekolahMaster.push({ npsn: rNpsn, unit: rNama, jenjang: rJenjang });
+      }
+    }
+
     var ptkListRaw = efileGetSharedDaftarPtk("SEMUA");
     var myUnit = "";
     var listUnitKerja = [];
@@ -798,7 +813,11 @@ function getEfileDashboardInit(npsnFilter) {
     ptkListRaw.forEach(function(p) {
       if (p.unit && !mapUnitSeen[p.unit]) {
         mapUnitSeen[p.unit] = true;
-        listUnitKerja.push({ npsn: p.npsn, unit: p.unit });
+        listUnitKerja.push({ npsn: p.npsn, unit: p.unit, jenjang: p.jenjang || "" });
+        if (!mapSekolahSeen[p.unit]) {
+          mapSekolahSeen[p.unit] = true;
+          listSekolahMaster.push({ npsn: p.npsn, unit: p.unit, jenjang: p.jenjang || "" });
+        }
       }
       if (npsnFilter && npsnFilter !== "SEMUA" && (p.npsn === npsnFilter || p.unit === npsnFilter)) {
         myUnit = p.unit;
@@ -806,8 +825,9 @@ function getEfileDashboardInit(npsnFilter) {
     });
 
     listUnitKerja.sort(function(a, b) { return a.unit.localeCompare(b.unit); });
+    listSekolahMaster.sort(function(a, b) { return a.unit.localeCompare(b.unit); });
 
-    return JSON.stringify({ success: true, kategori: listKategori, myUnit: myUnit, listUnit: listUnitKerja });
+    return JSON.stringify({ success: true, kategori: listKategori, myUnit: myUnit, listUnit: listUnitKerja, listSekolahMaster: listSekolahMaster });
   } catch(e) { return JSON.stringify({ success: false, message: e.message }); }
 }
 

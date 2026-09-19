@@ -187,6 +187,7 @@ var EFILEDASH_CACHE_SUDAH = [];
 var EFILEDASH_CACHE_BELUM = [];
 var EFILEDASH_LOCAL_STORE = {};
 var EFILEDASH_KATEGORI_MAP = [];
+var EFILEDASH_MASTER_SEKOLAH = [];
 var EFILEDASH_PENDING_REQ = 0;
 var EFILEDASH_IS_ADMIN = false;
 var EFILEDASH_USER_NPSN = "";
@@ -217,7 +218,15 @@ $(document).ready(function() {
 
     // 2. Render komponen UI Terpusat via SultanUI Engine
     if (typeof SultanUI !== 'undefined') {
-        $('#efiledash_metricRow1').html(SultanUI.renderDashboardRow1Minimal('efiledash', { total: 'TARGET SASARAN', sudah: 'SUDAH UNGGAH', belum: 'BELUM UNGGAH', progress: 'CAPAIAN PROGRES' }));
+        $('#efiledash_metricRow1').html(SultanUI.renderDashboardRow1Minimal('efiledash', { 
+            total: 'TARGET SASARAN', 
+            sudah: 'SUDAH UNGGAH', 
+            belum: 'BELUM UNGGAH', 
+            progress: 'CAPAIAN PROGRES',
+            subTotal: 'Total Dokumen Wajib Unggah',
+            subSudah: 'Dokumen Telah Diunggah',
+            subBelum: 'Dokumen Belum Diunggah'
+        }));
         $('#efiledash_metricRow2').html(SultanUI.renderDashboardRow2Minimal('efiledash'));
         $('#efiledash_listsContainer').html(SultanUI.renderDashboardStatusCards4('efiledash', {
             title: 'DAFTAR PTK SUDAH UNGGAH',
@@ -235,7 +244,7 @@ $(document).ready(function() {
             var k = $('#efiledash_filterKategori').val();
             if (k !== "" && k != null) efiledash_loadDataKategori(k, true);
         } else {
-            var u = $('#efiledash_filterUnit').val();
+            var u = EFILEDASH_IS_ADMIN ? ($('#efiledash_filterUnitSekolah').val() || "SEMUA") : ($('#efiledash_filterUnit').val() || "SEMUA");
             if (u) efiledash_loadDataSekolahLengkap(u, true);
         }
     });
@@ -252,6 +261,18 @@ $(document).ready(function() {
             var u = $('#efiledash_filterUnit').val() || "SEMUA";
             efiledash_loadDataSekolahLengkap(u);
         }
+    });
+
+    $(document).off('change', '#efiledash_filterJenjangUnit').on('change', '#efiledash_filterJenjangUnit', function() {
+        var jenjang = $(this).val();
+        efiledash_populateFilterUnitSekolah(jenjang);
+        var curUnit = $('#efiledash_filterUnitSekolah').val() || "SEMUA";
+        efiledash_loadDataSekolahLengkap(curUnit);
+    });
+
+    $(document).off('change', '#efiledash_filterUnitSekolah').on('change', '#efiledash_filterUnitSekolah', function() {
+        var curUnit = $(this).val() || "SEMUA";
+        efiledash_loadDataSekolahLengkap(curUnit);
     });
 
     $(document).off('click', '#efiledash_btnSalinWa').on('click', '#efiledash_btnSalinWa', efiledash_salinKeWA);
@@ -315,6 +336,8 @@ function efiledash_initMasterAccess() {
             return;
         }
 
+        EFILEDASH_MASTER_SEKOLAH = res.listSekolahMaster || res.listUnit || [];
+
         if (!EFILEDASH_IS_ADMIN) {
             if (res.myUnit) {
                 EFILEDASH_UNIT_TERKUNCI = res.myUnit;
@@ -337,6 +360,9 @@ function efiledash_initMasterAccess() {
                 });
             }
             selectUnit.prop('disabled', false);
+
+            // Populate Filter Jenjang Unit untuk Admin
+            efiledash_initDropdownJenjangUnit();
         }
 
         // Dropdown tahun default
@@ -368,6 +394,44 @@ function efiledash_initMasterAccess() {
             SultanUI.showLoadingError('#efiledash_loadingState', 'Koneksi Terputus: ' + (err.message || err));
         }
     }).getEfileDashboardInit(targetNpsn);
+}
+
+function efiledash_initDropdownJenjangUnit() {
+    var selectJenjang = $('#efiledash_filterJenjangUnit');
+    selectJenjang.empty().append('<option value="SEMUA">Semua Jenjang</option>');
+    
+    var setJenjang = new Set();
+    EFILEDASH_MASTER_SEKOLAH.forEach(function(item) {
+        var j = String(item.jenjang || "").trim().toUpperCase();
+        if (j && j !== "-") setJenjang.add(j);
+    });
+    
+    var listJenjang = Array.from(setJenjang).sort();
+    listJenjang.forEach(function(j) {
+        selectJenjang.append($('<option>', { value: j, text: j }));
+    });
+    
+    efiledash_populateFilterUnitSekolah("SEMUA");
+}
+
+function efiledash_populateFilterUnitSekolah(selectedJenjang) {
+    var selectSekolah = $('#efiledash_filterUnitSekolah');
+    selectSekolah.empty().append('<option value="SEMUA">Semua Sekolah</option>');
+    
+    selectedJenjang = String(selectedJenjang || "SEMUA").trim().toUpperCase();
+    
+    var filtered = EFILEDASH_MASTER_SEKOLAH.filter(function(item) {
+        if (selectedJenjang === "SEMUA" || !selectedJenjang) return true;
+        return String(item.jenjang || "").trim().toUpperCase() === selectedJenjang;
+    });
+    
+    filtered.sort(function(a, b) {
+        return String(a.unit || "").localeCompare(String(b.unit || ""));
+    });
+    
+    filtered.forEach(function(item) {
+        selectSekolah.append($('<option>', { value: item.unit, text: item.unit }));
+    });
 }
 
 function efiledash_loadDataKategori(idKategori, forceRefresh) {
@@ -1010,6 +1074,8 @@ function efiledash_setDashboardMode(mode) {
         // Mode REKAP / DOKUMEN
         $('#efiledash_filterKategoriContainer').show();
         $('#efiledash_filterTahunContainer').show();
+        $('#efiledash_filterJenjangUnitContainer').addClass('d-none');
+        $('#efiledash_filterUnitSekolahContainer').addClass('d-none');
         
         if (EFILEDASH_IS_ADMIN) {
             $('#efiledash_filterUnitContainer').show();
@@ -1031,12 +1097,20 @@ function efiledash_setDashboardMode(mode) {
         $('#efiledash_filterKategoriContainer').hide();
         $('#efiledash_filterKategoriSkpContainer').hide();
         $('#efiledash_filterKepegContainer').hide();
-        $('#efiledash_filterUnitContainer').show();
+        $('#efiledash_filterUnitContainer').hide();
         $('#efiledash_containerTabelUnit').hide();
         
-        var selectUnit = $('#efiledash_filterUnit');
-        var curUnit = selectUnit.val() || "SEMUA";
-        efiledash_loadDataSekolahLengkap(curUnit);
+        if (EFILEDASH_IS_ADMIN) {
+            $('#efiledash_filterJenjangUnitContainer').removeClass('d-none');
+            $('#efiledash_filterUnitSekolahContainer').removeClass('d-none');
+            var curUnitAdmin = $('#efiledash_filterUnitSekolah').val() || "SEMUA";
+            efiledash_loadDataSekolahLengkap(curUnitAdmin);
+        } else {
+            $('#efiledash_filterJenjangUnitContainer').addClass('d-none');
+            $('#efiledash_filterUnitSekolahContainer').addClass('d-none');
+            var curUnitUser = EFILEDASH_UNIT_TERKUNCI || EFILEDASH_USER_NPSN || "SEMUA";
+            efiledash_loadDataSekolahLengkap(curUnitUser);
+        }
     }
 }
 
