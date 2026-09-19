@@ -4,30 +4,21 @@
     <!-- ================================================================
          CARD FILTER DENGAN DUAL TAB SWITCHER (STANDAR SULTAN UI)
          ================================================================ -->
-    <div class="sultan-filter-bar-balanced mb-4 sultan-page-transition" id="tpgdash_filterBar">
+    <!-- ================================================================
+         FILTER BAR UTAMA DASHBOARD TPG (TERPUSAT SULTAN UI - SINGLE TAB)
+         ================================================================ -->
+    <div class="sultan-filter-bar-balanced mb-4 sultan-page-transition d-none" id="tpgdash_filterBar">
       <div class="filter-controls-group">
 
-        <!-- Segmented Switcher Mode (Unit vs Rekap) -->
-        <div class="sultan-segmented-switch">
-          <button type="button" class="sultan-segmented-btn" data-mode="unit" id="tpgdash_btnModeUnit">
-            <i class="fas fa-school mr-1"></i> Unit
-          </button>
-          <button type="button" class="sultan-segmented-btn active" data-mode="rekap" id="tpgdash_btnModeRekap">
-            <i class="fas fa-chart-pie mr-1"></i> Rekap
-          </button>
-        </div>
-
-        <div class="divider-vertical d-none d-md-block mx-1"></div>
-
-        <!-- Filter Jenis Dokumen (Default: Perbaikan Gaji) -->
-        <div class="sultan-filter-item" id="tpgdash_filterJenisDokumenContainer">
+        <!-- Filter Nama Dokumen / Jenis Dokumen -->
+        <div class="sultan-filter-item" id="tpgdash_filterJenisDokumenContainer" style="min-width: 180px;">
           <select id="tpgdash_filterJenisDokumen" class="form-control" aria-label="Jenis Dokumen">
             <option value="Perbaikan Gaji" selected>Perbaikan Gaji</option>
           </select>
           <i class="fas fa-chevron-down"></i>
         </div>
 
-        <!-- Filter Jenjang (Admin Only / Rekap Mode) -->
+        <!-- Filter Jenjang (Khusus Admin) -->
         <div class="sultan-filter-item d-none" id="tpgdash_filterJenjangContainer">
           <select id="tpgdash_filterJenjang" class="form-control" aria-label="Pilih Jenjang">
             <option value="SEMUA">Semua Jenjang</option>
@@ -35,15 +26,15 @@
           <i class="fas fa-chevron-down"></i>
         </div>
 
-        <!-- Filter Nama Sekolah (Admin Only / Rekap Mode - tergantung jenjang) -->
-        <div class="sultan-filter-item d-none" id="tpgdash_filterSekolahContainer" style="min-width: 220px; max-width: 340px;">
+        <!-- Filter Sekolah (Khusus Admin - tergantung jenjang) -->
+        <div class="sultan-filter-item d-none" id="tpgdash_filterSekolahContainer" style="min-width: 240px; max-width: 380px;">
           <select id="tpgdash_filterSekolah" class="form-control" aria-label="Pilih Sekolah">
             <option value="SEMUA">Semua Sekolah</option>
           </select>
           <i class="fas fa-chevron-down"></i>
         </div>
 
-        <div class="divider-vertical d-none d-md-block mx-1"></div>
+        <div class="divider-vertical d-none d-md-block mx-1" id="tpgdash_dividerRefresh"></div>
 
         <!-- Tombol Refresh Data -->
         <button type="button" id="tpgdash_btnRefresh" class="sultan-btn-refresh" title="Refresh Data">
@@ -285,22 +276,39 @@
 
       tpgdash_setupControls();
 
-      // Inisialisasi SultanDashboard Dual Mode
+      // Inisialisasi SultanDashboard Single Mode
       if (typeof SultanDashboard !== 'undefined' && SultanDashboard.initDualMode) {
         SultanDashboard.initDualMode({
           pageKey: 'tpgdash',
+          dashboardType: 'single_tab',
           switchSelector: '.sultan-segmented-btn',
           onInit: function(state) {
-            // onInit
+            TPGDASH_IS_ADMIN = state.isAdmin;
+            tpgdash_updateFilterBarControls();
           },
           onSwitchMode: function(mode, state, isFirstLoad) {
-            tpgdash_handleModeSwitch(mode);
+            tpgdash_updateFilterBarControls();
           }
         });
       }
 
-      // Selalu muat master sekolah dan data dasbor saat inisialisasi
+      // Muat master sekolah dan data dasbor saat inisialisasi
       tpgdash_loadMasterSekolahThenFetchData();
+    }
+
+    function tpgdash_updateFilterBarControls() {
+      $('#tpgdash_filterBar').removeClass('d-none');
+      $('#tpgdash_filterJenisDokumenContainer').removeClass('d-none');
+
+      if (TPGDASH_IS_ADMIN) {
+        // Admin: Tampilkan Filter Nama Dokumen + Jenjang + Sekolah
+        $('#tpgdash_filterJenjangContainer').removeClass('d-none');
+        $('#tpgdash_filterSekolahContainer').removeClass('d-none');
+      } else {
+        // User: Hanya Filter Nama Dokumen (Sembunyikan Jenjang & Sekolah)
+        $('#tpgdash_filterJenjangContainer').addClass('d-none');
+        $('#tpgdash_filterSekolahContainer').addClass('d-none');
+      }
     }
 
     function tpgdash_setupControls() {
@@ -354,33 +362,6 @@
       });
     }
 
-    function tpgdash_handleModeSwitch(mode) {
-      if (mode === 'unit') {
-        // Tab Unit
-        if (TPGDASH_IS_ADMIN) {
-          // Admin di Tab Unit: Tampilkan Filter Jenis Dokumen + Jenjang + Sekolah
-          $('#tpgdash_filterJenjangContainer').removeClass('d-none');
-          $('#tpgdash_filterSekolahContainer').removeClass('d-none');
-        } else {
-          // User di Tab Unit: Hanya Jenis Dokumen (Sembunyikan Jenjang & Sekolah)
-          $('#tpgdash_filterJenjangContainer').addClass('d-none');
-          $('#tpgdash_filterSekolahContainer').addClass('d-none');
-        }
-      } else {
-        // Tab Rekap (Sama untuk Admin & User)
-        // Tab Rekap: Toggle + Jenis Dokumen + Jenjang + Sekolah
-        $('#tpgdash_filterJenjangContainer').removeClass('d-none');
-        $('#tpgdash_filterSekolahContainer').removeClass('d-none');
-      }
-
-      // Pastikan master sekolah terisi jika dropdown jenjang/sekolah tampil
-      if (TPGDASH_MASTER_SEKOLAH.length === 0) {
-        tpgdash_loadMasterSekolahThenFetchData();
-      } else {
-        tpgdash_applyFiltersAndRender();
-      }
-    }
-
     function tpgdash_loadMasterSekolahThenFetchData() {
       if (typeof SultanUI !== 'undefined') {
         SultanUI.showLoading('#tpgdash_loadingState', 'Memuat Master Data Sekolah...');
@@ -389,7 +370,6 @@
       }
       $('#tpgdash_dashboardState').hide();
 
-      // Ambil master sekolah dari server (Seragam.gs -> seragam_getSekolahList)
       google.script.run
         .withSuccessHandler(function(list) {
           if (Array.isArray(list) && list.length > 0) {
@@ -455,9 +435,6 @@
       }
       $('#tpgdash_dashboardState').hide();
 
-      // Panggil backend tpg_getPerbaikanData(unitKerja, isAdmin)
-      // Pass unitKerja = "" dan isAdmin = true agar server mengembalikan semua data TPG,
-      // kemudian filtering lokal dilakukan di frontend sesuai tab (Unit/Rekap) & role user
       google.script.run
         .withSuccessHandler(function(response) {
           if (typeof SultanUI !== 'undefined') {
@@ -489,35 +466,21 @@
     }
 
     function tpgdash_applyFiltersAndRender() {
-      var currentMode = $('.sultan-segmented-btn.active').data('mode') || (TPGDASH_IS_ADMIN ? 'rekap' : 'unit');
       var selectedJenis = $('#tpgdash_filterJenisDokumen').val() || "Perbaikan Gaji";
       var selectedJenjang = $('#tpgdash_filterJenjang').val() || "SEMUA";
       var selectedSekolah = $('#tpgdash_filterSekolah').val() || "SEMUA";
 
-      // 1. Filter Data berdasarkan Tab dan Role
+      // 1. Filter Data berdasarkan Role Pengguna
       var filteredData = TPGDASH_RAW_DATA.filter(function(row) {
         var rowUnit = String(row.unitKerja || "").trim();
 
-        if (currentMode === 'unit') {
-          if (!TPGDASH_IS_ADMIN) {
-            // User di Tab Unit: Hanya data milik unit kerjanya
-            if (TPGDASH_USER_UNIT && rowUnit.toLowerCase() !== TPGDASH_USER_UNIT.toLowerCase()) {
-              return false;
-            }
-          } else {
-            // Admin di Tab Unit: Tergantung filter jenjang dan sekolah yang dipilih
-            if (selectedSekolah && selectedSekolah !== "SEMUA") {
-              if (rowUnit.toLowerCase() !== selectedSekolah.toLowerCase()) return false;
-            } else if (selectedJenjang && selectedJenjang !== "SEMUA") {
-              var matchSekolahJenjang = TPGDASH_MASTER_SEKOLAH.filter(function(s) {
-                return String(s.jenjang || "").toUpperCase() === selectedJenjang.toUpperCase();
-              }).map(function(s) { return String(s.nama).toLowerCase(); });
-
-              if (matchSekolahJenjang.indexOf(rowUnit.toLowerCase()) === -1) return false;
-            }
+        if (!TPGDASH_IS_ADMIN) {
+          // User: Hanya data milik unit kerjanya saja
+          if (TPGDASH_USER_UNIT && rowUnit.toLowerCase() !== TPGDASH_USER_UNIT.toLowerCase()) {
+            return false;
           }
         } else {
-          // Mode Rekap: Berlaku filter Jenjang dan Sekolah untuk semua role
+          // Admin: Tergantung filter jenjang dan sekolah yang dipilih
           if (selectedSekolah && selectedSekolah !== "SEMUA") {
             if (rowUnit.toLowerCase() !== selectedSekolah.toLowerCase()) return false;
           } else if (selectedJenjang && selectedJenjang !== "SEMUA") {
@@ -568,7 +531,7 @@
       $('#tpgdash_countDitolak').text(countDitolak);
 
       // Update Label Header Tabel
-      if (currentMode === 'unit' && !TPGDASH_IS_ADMIN) {
+      if (!TPGDASH_IS_ADMIN) {
         $('#tpgdash_tableTitleLabel').text(TPGDASH_USER_UNIT || "Unit Kerja");
       } else if (selectedSekolah && selectedSekolah !== "SEMUA") {
         $('#tpgdash_tableTitleLabel').text(selectedSekolah);
