@@ -6,30 +6,32 @@
     <!-- ================================================================
          FILTER BAR UTAMA DASHBOARD SDN (TERPUSAT SULTAN UI)
          ================================================================ -->
-    <div class="sultan-filter-bar-balanced mb-4 sultan-page-transition">
+    <!-- ================================================================
+         FILTER BAR UTAMA DASHBOARD SDN (TERPUSAT SULTAN UI - SINGLE TAB)
+         ================================================================ -->
+    <div class="sultan-filter-bar-balanced mb-4 sultan-page-transition d-none" id="sdndash_filterBar">
         <div class="filter-controls-group">
-            <!-- Segmented Switcher Mode (Unit vs Rekap) -->
-            <div class="sultan-segmented-switch">
-                <button type="button" class="sultan-segmented-btn" data-mode="unit">
-                    <i class="fas fa-school"></i> Unit
-                </button>
-                <button type="button" class="sultan-segmented-btn active" data-mode="rekap">
-                    <i class="fas fa-chart-pie"></i> Rekap
-                </button>
+            <!-- Filter Jenjang (Khusus Admin) -->
+            <div class="sultan-filter-item d-none" id="sdndash_wrapperJenjang">
+                <select id="sdndash_filterJenjang" class="form-control" aria-label="Pilih Jenjang">
+                    <option value="">Semua Jenjang</option>
+                    <option value="SD">SD</option>
+                    <option value="TK">TK</option>
+                    <option value="KB">KB</option>
+                    <option value="SPS">SPS</option>
+                </select>
+                <i class="fas fa-chevron-down"></i>
             </div>
 
-            <div class="divider-vertical d-none d-md-block mx-1"></div>
-
-            <!-- Filter Sekolah Unit (Admin Only) & Divider Pemisah ke Refresh -->
-            <div class="d-none align-items-center" id="sdndash_filterSekolahWrapper">
-                <div class="sultan-filter-item" id="sdndash_filterSekolahContainer" style="min-width: 240px; max-width: 360px;">
-                    <select id="sdndash_filterSekolah" class="form-control" aria-label="Pilih Satuan Pendidikan">
-                        <option value="">Semua Sekolah</option>
-                    </select>
-                    <i class="fas fa-chevron-down"></i>
-                </div>
-                <div class="divider-vertical d-none d-md-block mx-1"></div>
+            <!-- Filter Sekolah (Khusus Admin) -->
+            <div class="sultan-filter-item d-none" id="sdndash_wrapperSekolah" style="min-width: 220px; max-width: 340px;">
+                <select id="sdndash_filterSekolah" class="form-control" aria-label="Pilih Satuan Pendidikan">
+                    <option value="">Semua Sekolah</option>
+                </select>
+                <i class="fas fa-chevron-down"></i>
             </div>
+
+            <div class="divider-vertical d-none d-md-block mx-1" id="sdndash_dividerRefresh"></div>
 
             <!-- Tombol Refresh Data -->
             <button type="button" id="sdndash_btnRefresh" class="sultan-btn-refresh" title="Refresh Data">
@@ -572,24 +574,38 @@ var NAMA_BULAN_SDN   = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','O
 var NAMA_BULAN_FULL_SDN = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
 $(document).ready(function() {
-  // Inisialisasi Dual Mode Terpusat melalui SultanDashboard Engine
+  // Inisialisasi Single Tab Terpusat melalui SultanDashboard Engine
   var dashState = SultanDashboard.initDualMode({
     pageKey: 'ptksdn',
+    tabType: 'single_tab',
     unitViewId: '#wrapperSDN',
     rekapViewId: '#wrapperSDN',
     switchSelector: '.sultan-segmented-btn',
     onInit: function(state) {
       DASHN_IS_ADMIN = state.isAdmin;
       DASHN_USER_NPSN = state.userNpsn;
-      SDN_CURRENT_MODE = state.currentMode;
+      SDN_CURRENT_MODE = 'rekap';
       SDN_SELECTED_NPSN = DASHN_IS_ADMIN ? '' : DASHN_USER_NPSN;
+
+      SultanDashboard.setupUnitSchoolPicker({
+        pageKey: 'ptksdn',
+        wrapperJenjangId: '#sdndash_wrapperJenjang',
+        selectJenjangId: '#sdndash_filterJenjang',
+        wrapperSekolahId: '#sdndash_wrapperSekolah',
+        selectSekolahId: '#sdndash_filterSekolah',
+        btnActionId: '#sdndash_btnRefresh',
+        masterSekolah: window.DASHSK_MASTER_SEKOLAH,
+        onSelectSchool: function(npsn, nama) {
+          SDN_SELECTED_NPSN = npsn || '';
+          ptksdndash_applyFilter();
+        }
+      });
+
       ptksdndash_updateFilterBarControls();
     },
     onSwitchMode: function(mode, state, isFirstLoad) {
-      SDN_CURRENT_MODE = mode;
-      SDN_SELECTED_NPSN = (mode === 'unit') ? (DASHN_IS_ADMIN ? ($('#sdndash_filterSekolah').val() || '') : DASHN_USER_NPSN) : '';
+      SDN_CURRENT_MODE = 'rekap';
       ptksdndash_updateFilterBarControls();
-      ptksdndash_applyModeView();
     }
   });
 
@@ -602,48 +618,47 @@ $(document).ready(function() {
 });
 
 function ptksdndash_updateFilterBarControls() {
-  var isUnit = (SDN_CURRENT_MODE === 'unit');
-  var $schoolFilter = $('#sdndash_filterSekolahWrapper');
-
-  if (isUnit) {
-    $('#sdn_card_sekolah_wrapper').hide();
-    if (DASHN_IS_ADMIN) {
-      $schoolFilter.removeClass('d-none').addClass('d-flex');
-      if (SDN_RAW_KEADAAN) {
-        ptksdndash_populateSekolahDropdown(SDN_RAW_KEADAAN);
-      }
-    } else {
-      $schoolFilter.addClass('d-none').removeClass('d-flex');
-    }
+  if (DASHN_IS_ADMIN) {
+    $('#sdndash_filterBar').removeClass('d-none');
+    $('#sdndash_wrapperJenjang, #sdndash_wrapperSekolah').removeClass('d-none');
+    $('#sdndash_dividerRefresh').removeClass('d-none');
   } else {
-    $schoolFilter.addClass('d-none').removeClass('d-flex');
-    $('#sdn_card_sekolah_wrapper').show();
-    $('#sdn_jml_sekolah_label').text('Sekolah');
+    // User biasa: Sembunyikan seluruh filter bar card
+    $('#sdndash_filterBar').addClass('d-none');
+    $('#sdndash_wrapperJenjang, #sdndash_wrapperSekolah').addClass('d-none');
+    $('#sdndash_dividerRefresh').addClass('d-none');
   }
 }
 
 function ptksdndash_setupEventListeners() {
-  // Tombol Refresh Universal (Segarkan Data dari Server)
+  // Tombol Refresh Universal
   $(document).off('click', '#sdndash_btnRefresh').on('click', '#sdndash_btnRefresh', function() {
     sdnGatekeeper();
   });
 
-  // Filter Sekolah Change (Admin Mode Unit) - Langsung reaktif ganti data
+  // Filter Jenjang & Sekolah Change (Admin)
+  $(document).off('change', '#sdndash_filterJenjang').on('change', '#sdndash_filterJenjang', function() {
+    var jjg = $(this).val();
+    ptksdndash_populateSekolahDropdown(SDN_RAW_KEADAAN, jjg);
+    SDN_SELECTED_NPSN = $('#sdndash_filterSekolah').val() || '';
+    ptksdndash_applyFilter();
+  });
+
   $(document).off('change', '#sdndash_filterSekolah').on('change', '#sdndash_filterSekolah', function() {
     SDN_SELECTED_NPSN = $(this).val() || '';
-    ptksdndash_applyModeView();
+    ptksdndash_applyFilter();
   });
 }
 
-function ptksdndash_applyModeView() {
-  if (SDN_CURRENT_MODE === 'unit') {
+function ptksdndash_applyFilter() {
+  if (SDN_SELECTED_NPSN) {
     ptksdndash_renderUnitView();
   } else {
     ptksdndash_renderRekapView();
   }
 }
 
-function ptksdndash_populateSekolahDropdown(dataKeadaan) {
+function ptksdndash_populateSekolahDropdown(dataKeadaan, filterJenjang) {
   if (!DASHN_IS_ADMIN || !dataKeadaan || !Array.isArray(dataKeadaan)) return;
 
   var $sel = $('#sdndash_filterSekolah');
@@ -655,8 +670,14 @@ function ptksdndash_populateSekolahDropdown(dataKeadaan) {
     if (!row) return;
     var nama = String(row[0] || '').trim();
     var npsn = String(row[1] || '').trim();
+    var jenjang = String(row[2] || 'SD').trim().toUpperCase();
+
+    if (filterJenjang && jenjang !== filterJenjang.toUpperCase()) {
+      return;
+    }
+
     if (npsn && nama) {
-      sekolahList.push({ npsn: npsn, nama: nama });
+      sekolahList.push({ npsn: npsn, nama: nama, jenjang: jenjang });
     }
   });
 
