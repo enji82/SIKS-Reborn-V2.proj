@@ -1020,12 +1020,13 @@ function admMurid_getDashboardData(npsnFilter, tahunFilter) {
       var rJenjang = String(sekolahData[j][1]).trim().toUpperCase();
       var rNama = String(sekolahData[j][2]).trim();
       
-      if (rJenjang === "SD") {
+      if (rNpsn !== "") {
         countSD++;
         if (!targetNpsn || targetNpsn === "SEMUA" || rNpsn === targetNpsn || rNama.toUpperCase() === targetNpsn) {
           listSekolah.push({
             npsn: rNpsn,
             nama: rNama,
+            jenjang: rJenjang || "SD",
             kecamatan: sekolahData[j][4] || "-"
           });
         }
@@ -1040,6 +1041,7 @@ function admMurid_getDashboardData(npsnFilter, tahunFilter) {
       schoolStatusMap[s.npsn] = {
         npsn: s.npsn,
         nama: s.nama,
+        jenjang: s.jenjang,
         kecamatan: s.kecamatan,
         spmb: { status: "Belum Unggah", fileUrl: "", tglUpload: "", detail: null },
         ijazah: { status: "Belum Unggah", fileUrl: "", tglUpload: "", detail: null },
