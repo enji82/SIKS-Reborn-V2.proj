@@ -205,11 +205,12 @@ function getDashboardMuridData(tahunFilter, bulanFilter, userNpsn, userUnitKerja
                 if (rowBulan < 1 || rowBulan > 12) continue;
 
                 // User school filtering for non-admin
-                if (targetNpsn) {
-                    if (rowNpsn && rowNpsn !== targetNpsn) continue;
-                } else if (targetUnit && rowSekolah) {
-                    var uClean = targetUnit.replace(/^(sdn|sds|tk|kb|sps)\s+/i, '').trim();
-                    if (!rowSekolah.includes(targetUnit) && !targetUnit.includes(rowSekolah) && (uClean && !rowSekolah.includes(uClean))) continue;
+                if (targetNpsn || targetUnit) {
+                    var isMatchNpsn = (targetNpsn && rowNpsn && rowNpsn === targetNpsn);
+                    var uClean = targetUnit ? targetUnit.replace(/^(sdn|sds|tk|kb|sps)\s+/i, '').trim() : "";
+                    var isMatchUnit = (targetUnit && rowSekolah && (rowSekolah.includes(targetUnit) || targetUnit.includes(rowSekolah) || (uClean && rowSekolah.includes(uClean))));
+                    
+                    if (!isMatchNpsn && !isMatchUnit) continue;
                 }
 
                 var valTotal = getNum(row[idxTotal]);
@@ -298,11 +299,12 @@ function getDashboardMuridData(tahunFilter, bulanFilter, userNpsn, userUnitKerja
                 if (rowBulan < 1 || rowBulan > 12) continue;
 
                 // User school filtering for non-admin
-                if (targetNpsn) {
-                    if (rowNpsn && rowNpsn !== targetNpsn) continue;
-                } else if (targetUnit && rowSekolah) {
-                    var uCleanP = targetUnit.replace(/^(sdn|sds|tk|kb|sps)\s+/i, '').trim();
-                    if (!rowSekolah.includes(targetUnit) && !targetUnit.includes(rowSekolah) && (uCleanP && !rowSekolah.includes(uCleanP))) continue;
+                if (targetNpsn || targetUnit) {
+                    var isMatchNpsnP = (targetNpsn && rowNpsn && rowNpsn === targetNpsn);
+                    var uCleanP = targetUnit ? targetUnit.replace(/^(sdn|sds|tk|kb|sps)\s+/i, '').trim() : "";
+                    var isMatchUnitP = (targetUnit && rowSekolah && (rowSekolah.includes(targetUnit) || targetUnit.includes(rowSekolah) || (uCleanP && rowSekolah.includes(uCleanP))));
+                    
+                    if (!isMatchNpsnP && !isMatchUnitP) continue;
                 }
 
                 var tkAL = getNum(row[31]); var tkAP = getNum(row[32]);
