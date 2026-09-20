@@ -114,11 +114,14 @@ function getDataMuridSDAgama() {
 
 function getDashboardMuridData(tahunFilter, bulanFilter) {
   var result = {
-    // Struktur Data: t=Total, n=Negeri, s=Swasta
+    // Struktur Data: t=Total, n=Negeri, s=Swasta, l=Laki-laki, p=Perempuan
     cards: { 
-        sd_total: {t:0, n:0, s:0},
-        sd_k1: {t:0, n:0, s:0}, sd_k2: {t:0, n:0, s:0}, sd_k3: {t:0, n:0, s:0},
-        sd_k4: {t:0, n:0, s:0}, sd_k5: {t:0, n:0, s:0}, sd_k6: {t:0, n:0, s:0},
+        sd_total: {t:0, n:0, s:0, l:0, p:0},
+        sd_k1: {t:0, n:0, s:0, l:0, p:0}, sd_k2: {t:0, n:0, s:0, l:0, p:0}, sd_k3: {t:0, n:0, s:0, l:0, p:0},
+        sd_k4: {t:0, n:0, s:0, l:0, p:0}, sd_k5: {t:0, n:0, s:0, l:0, p:0}, sd_k6: {t:0, n:0, s:0, l:0, p:0},
+        sd_agama: { islam:0, kristen:0, katolik:0, hindu:0, buddha:0, khonghucu:0 },
+        paud_total: {t:0, l:0, p:0},
+        paud_tk_a: {t:0, l:0, p:0}, paud_tk_b: {t:0, l:0, p:0}, paud_kb: {t:0, l:0, p:0}, paud_sps: {t:0, l:0, p:0},
         tk:0, kb:0, sps:0 
     },
     chart: { sd_negeri:[], sd_swasta:[], tk:[], kb:[], sps:[] },
@@ -148,14 +151,10 @@ function getDashboardMuridData(tahunFilter, bulanFilter) {
     return 0;
   };
 
-  var sumRange = function(row, startIdx, endIdx) {
-    var total = 0;
-    for (var c = startIdx; c <= endIdx; c++) {
-        var raw = row[c];
-        var val = (typeof raw === 'number') ? raw : (parseInt(String(raw).replace(/[^0-9]/g, '')) || 0);
-        total += val;
-    }
-    return total;
+  var getNum = function(val) {
+    if (typeof val === 'number') return val;
+    if (!val) return 0;
+    return parseInt(String(val).replace(/[^0-9]/g, '')) || 0;
   };
 
   // =========================================================
@@ -173,20 +172,14 @@ function getDashboardMuridData(tahunFilter, bulanFilter) {
             var idxStatus = 4;  // E
             var idxTotal = 226; // HS
 
-            // MAPPING KELAS (AKURAT)
-            // K1 (J:Q)   -> 9 - 16
-            // K2 (AE:AL) -> 30 - 37
-            // K3 (AZ:BG) -> 51 - 58
-            // K4 (BU:CB) -> 73 - 80 (BU = 73, CB = 80)
-            // K5 (CP:CW) -> 94 - 101 (CP = 94, CW = 101)
-            // K6 (DK:DR) -> 115 - 122 (DK = 115, DR = 122)
-            
-            var idxK1 = [9, 16];
-            var idxK2 = [30, 37];
-            var idxK3 = [51, 58];
-            var idxK4 = [73, 80]; 
-            var idxK5 = [94, 101];
-            var idxK6 = [115, 122];
+            var classCols = [
+              { key: 'sd_k1', l: 9, p: 10 },
+              { key: 'sd_k2', l: 30, p: 31 },
+              { key: 'sd_k3', l: 51, p: 52 },
+              { key: 'sd_k4', l: 73, p: 74 },
+              { key: 'sd_k5', l: 94, p: 95 },
+              { key: 'sd_k6', l: 115, p: 116 }
+            ];
 
             var maxCol = Math.max(sheetInputSD.getLastColumn(), 230);
             var dataRaw = sheetInputSD.getRange(2, 1, lastRow - 1, maxCol).getDisplayValues();
@@ -199,8 +192,7 @@ function getDashboardMuridData(tahunFilter, bulanFilter) {
                 if (rowTahun !== thnTarget) continue;
                 if (rowBulan < 1 || rowBulan > 12) continue;
 
-                var rawValTotal = row[idxTotal];
-                var valTotal = (typeof rawValTotal === 'number') ? rawValTotal : (parseInt(String(rawValTotal).replace(/[^0-9]/g, '')) || 0);
+                var valTotal = getNum(row[idxTotal]);
                 var status = String(row[idxStatus]).toLowerCase();
                 var isNegeri = status.includes("negeri");
 
@@ -210,25 +202,43 @@ function getDashboardMuridData(tahunFilter, bulanFilter) {
 
                 // CARD (Hitung Rincian)
                 if (rowBulan === blnTarget) {
-                    // Total
+                    // Total SD
                     result.cards.sd_total.t += valTotal;
                     if(isNegeri) result.cards.sd_total.n += valTotal;
                     else result.cards.sd_total.s += valTotal;
 
-                    // Kelas
-                    var addClass = function(key, start, end) {
-                        var v = sumRange(row, start, end);
-                        result.cards[key].t += v;
-                        if(isNegeri) result.cards[key].n += v;
-                        else result.cards[key].s += v;
-                    };
+                    var totalL_SD = getNum(row[224]);
+                    var totalP_SD = getNum(row[225]);
+                    result.cards.sd_total.l += totalL_SD;
+                    result.cards.sd_total.p += totalP_SD;
 
-                    addClass('sd_k1', idxK1[0], idxK1[1]);
-                    addClass('sd_k2', idxK2[0], idxK2[1]);
-                    addClass('sd_k3', idxK3[0], idxK3[1]);
-                    addClass('sd_k4', idxK4[0], idxK4[1]);
-                    addClass('sd_k5', idxK5[0], idxK5[1]);
-                    addClass('sd_k6', idxK6[0], idxK6[1]);
+                    // Kelas SD
+                    classCols.forEach(function(item) {
+                      var valL = getNum(row[item.l]);
+                      var valP = getNum(row[item.p]);
+                      var valT = valL + valP;
+
+                      result.cards[item.key].t += valT;
+                      result.cards[item.key].l += valL;
+                      result.cards[item.key].p += valP;
+                      if(isNegeri) result.cards[item.key].n += valT;
+                      else result.cards[item.key].s += valT;
+                    });
+
+                    // Agama SD
+                    var isl = getNum(row[206]) + getNum(row[207]);
+                    var kris = getNum(row[209]) + getNum(row[210]);
+                    var kat = getNum(row[212]) + getNum(row[213]);
+                    var hin = getNum(row[215]) + getNum(row[216]);
+                    var bud = getNum(row[218]) + getNum(row[219]);
+                    var khong = getNum(row[221]) + getNum(row[222]);
+
+                    result.cards.sd_agama.islam += isl;
+                    result.cards.sd_agama.kristen += kris;
+                    result.cards.sd_agama.katolik += kat;
+                    result.cards.sd_agama.hindu += hin;
+                    result.cards.sd_agama.buddha += bud;
+                    result.cards.sd_agama.khonghucu += khong;
                 }
             }
         }
@@ -255,7 +265,7 @@ function getDashboardMuridData(tahunFilter, bulanFilter) {
                 if (rowTahun !== thnTarget) continue;
                 if (rowBulan < 1 || rowBulan > 12) continue;
 
-                var valTotal = parseInt(String(row[idxTotalP]).replace(/[^0-9]/g, '')) || 0;
+                var valTotal = getNum(row[idxTotalP]);
                 var jenjang = String(row[idxJenjang]).toUpperCase().trim();
 
                 if (jenjang.includes("TK")) result.chart.tk[rowBulan - 1] += valTotal;
@@ -263,9 +273,38 @@ function getDashboardMuridData(tahunFilter, bulanFilter) {
                 else if (jenjang.includes("SPS") || jenjang.includes("TPA")) result.chart.sps[rowBulan - 1] += valTotal;
 
                 if (rowBulan === blnTarget) {
-                    if (jenjang.includes("TK")) result.cards.tk += valTotal;
-                    else if (jenjang.includes("KB")) result.cards.kb += valTotal;
-                    else if (jenjang.includes("SPS") || jenjang.includes("TPA")) result.cards.sps += valTotal;
+                    var vL = getNum(row[49]);
+                    var vP = getNum(row[50]);
+
+                    result.cards.paud_total.t += valTotal;
+                    result.cards.paud_total.l += vL;
+                    result.cards.paud_total.p += vP;
+
+                    if (jenjang.includes("TK")) {
+                        result.cards.tk += valTotal;
+                        
+                        var tkAL = getNum(row[42]); var tkAP = getNum(row[43]);
+                        var tkBL = getNum(row[45]); var tkBP = getNum(row[46]);
+                        
+                        result.cards.paud_tk_a.l += tkAL;
+                        result.cards.paud_tk_a.p += tkAP;
+                        result.cards.paud_tk_a.t += (tkAL + tkAP);
+
+                        result.cards.paud_tk_b.l += tkBL;
+                        result.cards.paud_tk_b.p += tkBP;
+                        result.cards.paud_tk_b.t += (tkBL + tkBP);
+
+                    } else if (jenjang.includes("KB")) {
+                        result.cards.kb += valTotal;
+                        result.cards.paud_kb.t += valTotal;
+                        result.cards.paud_kb.l += vL;
+                        result.cards.paud_kb.p += vP;
+                    } else if (jenjang.includes("SPS") || jenjang.includes("TPA")) {
+                        result.cards.sps += valTotal;
+                        result.cards.paud_sps.t += valTotal;
+                        result.cards.paud_sps.l += vL;
+                        result.cards.paud_sps.p += vP;
+                    }
                 }
             }
         }
