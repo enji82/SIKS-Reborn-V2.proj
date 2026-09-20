@@ -1,278 +1,496 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 
-<section class="content">
+<style>
+  #muriddash_tabBar .nav-link {
+    font-weight: 700;
+    border-radius: 20px;
+    padding: 8px 20px;
+    color: var(--warna-maroon, #800000);
+    transition: all 0.3s ease;
+  }
+  #muriddash_tabBar .nav-link.active {
+    background-color: var(--warna-maroon, #800000);
+    color: #ffffff !important;
+    box-shadow: 0 4px 10px rgba(128, 0, 0, 0.25);
+  }
+  .card-stat-mini {
+    border-radius: 12px;
+    border: 1px solid rgba(0,0,0,0.06);
+    background: #ffffff;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .dark-mode .card-stat-mini {
+    background: #2b3035;
+    border-color: rgba(255,255,255,0.08);
+  }
+  .card-stat-mini:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(0,0,0,0.08);
+  }
+</style>
+
+<section class="content sultan-page-transition">
   <div class="container-fluid">
-    
-    <div class="sultan-filter-pill-container shadow-sm mb-4">
-        <div class="sultan-filter-item">
-            <select id="muriddash_filterTahun" class="form-control"></select>
-            <i class="fas fa-chevron-down"></i>
+
+    <!-- FILTER BAR TERPUSAT SULTAN UI -->
+    <div class="sultan-filter-bar-balanced mb-3 sultan-page-transition" id="muriddash_filterBar">
+      <div class="filter-controls-group">
+
+        <!-- 1. Filter Tahun -->
+        <div class="sultan-filter-item" id="muriddash_filterTahunContainer">
+          <select id="muriddash_filterTahun" class="form-control" aria-label="Pilih Tahun"></select>
+          <i class="fas fa-chevron-down"></i>
         </div>
-        
-        <div class="sultan-filter-item">
-            <select id="muriddash_filterBulan" class="form-control">
-                <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option>
-                <option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option>
-                <option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option>
-                <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
-            </select>
-            <i class="fas fa-chevron-down"></i>
+
+        <!-- 2. Filter Bulan -->
+        <div class="sultan-filter-item" id="muriddash_filterBulanContainer">
+          <select id="muriddash_filterBulan" class="form-control" aria-label="Pilih Bulan">
+            <option value="1">Januari</option>
+            <option value="2">Februari</option>
+            <option value="3">Maret</option>
+            <option value="4">April</option>
+            <option value="5">Mei</option>
+            <option value="6">Juni</option>
+            <option value="7">Juli</option>
+            <option value="8">Agustus</option>
+            <option value="9">September</option>
+            <option value="10">Oktober</option>
+            <option value="11">November</option>
+            <option value="12">Desember</option>
+          </select>
+          <i class="fas fa-chevron-down"></i>
         </div>
-        
-        <div class="divider-vertical d-none d-md-block mx-2"></div>
-        
-        <button type="button" id="muriddash_btnRefresh" class="sultan-btn-refresh" title="Tampilkan Data">
-            <i class="fas fa-sync-alt"></i>
+
+        <div class="divider-vertical d-none d-md-block mx-1"></div>
+
+        <!-- Tombol Refresh Data -->
+        <button type="button" id="muriddash_btnRefresh" class="sultan-btn-refresh" title="Refresh Data">
+          <i class="fas fa-sync-alt"></i>
         </button>
+
         <div class="ml-2">
-            <small class="text-muted d-block" style="font-size: 10px; line-height: 1;">Terakhir diperbarui:</small>
-            <small id="muriddash_lastUpdate" class="text-maroon font-weight-bold" style="font-size: 11px;">-</small>
+          <small class="text-muted d-block" style="font-size: 10px; line-height: 1;">Terakhir diperbarui:</small>
+          <small id="muriddash_lastUpdate" class="text-maroon font-weight-bold" style="font-size: 11px;">-</small>
         </div>
+      </div>
     </div>
 
-    <div id="muriddash_contentDash">
+    <!-- Keterangan Bulan Laporan -->
+    <div class="mb-3 pl-1">
+      <small class="text-muted italic" style="font-size: 11px;">
+        <i class="fas fa-info-circle mr-1 text-info"></i>Menampilkan kondisi data murid hasil laporan bulan lalu.
+      </small>
+    </div>
+
+    <!-- NAV TAB BAR KHUSUS ADMIN -->
+    <div id="muriddash_tabContainer" class="mb-4" style="display: none;">
+      <ul class="nav nav-pills" id="muriddash_tabBar">
+        <li class="nav-item mr-2">
+          <a class="nav-link active" id="muriddash_tabSdBtn" href="javascript:void(0)" onclick="muriddash_switchTab('sd')">
+            <i class="fas fa-school mr-1"></i> Data Murid SD
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" id="muriddash_tabPaudBtn" href="javascript:void(0)" onclick="muriddash_switchTab('paud')">
+            <i class="fas fa-child mr-1"></i> Data Murid PAUD
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Loading State Terpusat -->
+    <div id="muriddash_loadingState" class="sultan-loading-box sultan-page-transition">
+      <div class="sultan-spinner-icon">
+        <i class="fas fa-circle-notch fa-spin"></i>
+      </div>
+      <h6 class="text-muted font-weight-bold sultan-loading-text mb-0" style="letter-spacing: 0.5px; text-transform: uppercase; font-size: 11px;">Memuat Data Dasbor Murid...</h6>
+    </div>
+
+    <!-- DASHBOARD VIEW CONTAINER -->
+    <div id="muriddash_dashboardState" style="display: none;">
+
+      <!-- =============================================================== -->
+      <!-- TAB 1: DASBOR DATA MURID SD -->
+      <!-- =============================================================== -->
+      <div id="muriddash_viewSd" class="tab-view-section">
         
-        <h6 class="font-weight-bold text-maroon mb-2 pl-1"><i class="fas fa-school mr-1"></i> KONDISI BULAN <span id="muriddash_labelBulanIni" class="text-uppercase"></span> (SD)</h6>
-        <div class="row">
-            <div class="col-lg-3 col-12 mb-3">
-                <div class="sultan-metric-card metric-maroon h-100">
-                    <div class="inner">
-                        <h3 id="muriddash_sd_total_t"><i class="fas fa-spinner fa-spin text-white-50"></i></h3>
-                        <p class="mb-0 font-weight-bold">Total Siswa SD</p>
-                        <div class="mt-3 pt-2 text-white small font-weight-bold" style="border-top: 1px solid rgba(255,255,255,0.2);">
-                            <div class="d-flex justify-content-between">
-                                <span>Negeri: <span id="muriddash_sd_total_n" class="text-warning ml-1" style="font-size:1.1em;">0</span></span>
-                                <span>Swasta: <span id="muriddash_sd_total_s" class="text-warning ml-1" style="font-size:1.1em;">0</span></span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="icon"><i class="fas fa-users"></i></div>
-                </div>
-            </div>
-            
-            <div class="col-lg-9 col-12">
-                <div class="row">
-                    <div class="col-lg-2 col-md-4 col-6 mb-3">
-                        <div class="card-sultan shadow-sm p-0 d-flex flex-column align-items-center justify-content-center text-center overflow-hidden" style="min-height: 110px;">
-                            <div class="w-100 bg-light py-1 border-bottom"><span class="small font-weight-bold text-muted">Kelas 1</span></div>
-                            <span class="text-maroon h4 mb-1 mt-2 font-weight-bold" id="muriddash_sd_k1_t">0</span>
-                            <div class="small text-muted pb-2 w-100 px-1" style="font-size: 0.7rem;">
-                                N:<b id="muriddash_sd_k1_n">0</b> | S:<b id="muriddash_sd_k1_s">0</b>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-lg-2 col-md-4 col-6 mb-3">
-                        <div class="card-sultan shadow-sm p-0 d-flex flex-column align-items-center justify-content-center text-center overflow-hidden" style="min-height: 110px;">
-                            <div class="w-100 bg-light py-1 border-bottom"><span class="small font-weight-bold text-muted">Kelas 2</span></div>
-                            <span class="text-maroon h4 mb-1 mt-2 font-weight-bold" id="muriddash_sd_k2_t">0</span>
-                            <div class="small text-muted pb-2 w-100 px-1" style="font-size: 0.7rem;">
-                                N:<b id="muriddash_sd_k2_n">0</b> | S:<b id="muriddash_sd_k2_s">0</b>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-lg-2 col-md-4 col-6 mb-3">
-                        <div class="card-sultan shadow-sm p-0 d-flex flex-column align-items-center justify-content-center text-center overflow-hidden" style="min-height: 110px;">
-                            <div class="w-100 bg-light py-1 border-bottom"><span class="small font-weight-bold text-muted">Kelas 3</span></div>
-                            <span class="text-maroon h4 mb-1 mt-2 font-weight-bold" id="muriddash_sd_k3_t">0</span>
-                            <div class="small text-muted pb-2 w-100 px-1" style="font-size: 0.7rem;">
-                                N:<b id="muriddash_sd_k3_n">0</b> | S:<b id="muriddash_sd_k3_s">0</b>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-lg-2 col-md-4 col-6 mb-3">
-                        <div class="card-sultan shadow-sm p-0 d-flex flex-column align-items-center justify-content-center text-center overflow-hidden" style="min-height: 110px;">
-                            <div class="w-100 bg-light py-1 border-bottom"><span class="small font-weight-bold text-muted">Kelas 4</span></div>
-                            <span class="text-maroon h4 mb-1 mt-2 font-weight-bold" id="muriddash_sd_k4_t">0</span>
-                            <div class="small text-muted pb-2 w-100 px-1" style="font-size: 0.7rem;">
-                                N:<b id="muriddash_sd_k4_n">0</b> | S:<b id="muriddash_sd_k4_s">0</b>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-lg-2 col-md-4 col-6 mb-3">
-                        <div class="card-sultan shadow-sm p-0 d-flex flex-column align-items-center justify-content-center text-center overflow-hidden" style="min-height: 110px;">
-                            <div class="w-100 bg-light py-1 border-bottom"><span class="small font-weight-bold text-muted">Kelas 5</span></div>
-                            <span class="text-maroon h4 mb-1 mt-2 font-weight-bold" id="muriddash_sd_k5_t">0</span>
-                            <div class="small text-muted pb-2 w-100 px-1" style="font-size: 0.7rem;">
-                                N:<b id="muriddash_sd_k5_n">0</b> | S:<b id="muriddash_sd_k5_s">0</b>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-lg-2 col-md-4 col-6 mb-3">
-                        <div class="card-sultan shadow-sm p-0 d-flex flex-column align-items-center justify-content-center text-center overflow-hidden" style="min-height: 110px;">
-                            <div class="w-100 bg-light py-1 border-bottom"><span class="small font-weight-bold text-muted">Kelas 6</span></div>
-                            <span class="text-maroon h4 mb-1 mt-2 font-weight-bold" id="muriddash_sd_k6_t">0</span>
-                            <div class="small text-muted pb-2 w-100 px-1" style="font-size: 0.7rem;">
-                                N:<b id="muriddash_sd_k6_n">0</b> | S:<b id="muriddash_sd_k6_s">0</b>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div class="d-flex align-items-center justify-content-between mb-3 pl-1">
+          <h6 class="font-weight-bold text-sultan-utama m-0 text-uppercase" style="letter-spacing: 0.5px;">
+            <i class="fas fa-school mr-2"></i>KONDISI DATA MURID SD (LAPORAN BULAN <span id="muriddash_labelBulanSd"></span>)
+          </h6>
         </div>
 
-        <h6 class="font-weight-bold text-maroon mb-2 pl-1 mt-2"><i class="fas fa-child mr-1"></i> KONDISI BULAN <span id="muriddash_labelBulanIniPaud" class="text-uppercase"></span> (PAUD)</h6>
-        <div class="row">
-            <div class="col-lg-4 col-4 mb-3">
-                <div class="sultan-metric-card metric-gold">
-                    <div class="inner">
-                        <h3 id="muriddash_paud_tk"><i class="fas fa-spinner fa-spin text-dark"></i></h3>
-                        <p>Siswa TK</p>
-                    </div>
-                    <div class="icon"><i class="fas fa-shapes"></i></div>
+        <!-- Metric Top Cards SD -->
+        <div class="row mb-3">
+          <div class="col-lg-4 col-12 mb-3">
+            <div class="sultan-metric-card metric-maroon h-100 shadow-xs">
+              <div class="inner">
+                <h3 id="muriddash_sd_total_t">0</h3>
+                <p class="mb-0 font-weight-bold">Total Siswa SD</p>
+                <div class="mt-3 pt-2 text-white small font-weight-bold" style="border-top: 1px solid rgba(255,255,255,0.2);">
+                  <div class="d-flex justify-content-between">
+                    <span>Negeri: <span id="muriddash_sd_total_n" class="text-warning ml-1 font-weight-bold" style="font-size:1.1em;">0</span></span>
+                    <span>Swasta: <span id="muriddash_sd_total_s" class="text-warning ml-1 font-weight-bold" style="font-size:1.1em;">0</span></span>
+                  </div>
                 </div>
+              </div>
+              <div class="icon"><i class="fas fa-user-graduate"></i></div>
             </div>
-            <div class="col-lg-4 col-4 mb-3">
-                <div class="sultan-metric-card metric-success">
-                    <div class="inner">
-                        <h3 id="muriddash_paud_kb"><i class="fas fa-spinner fa-spin text-white"></i></h3>
-                        <p>Siswa KB</p>
-                    </div>
-                    <div class="icon"><i class="fas fa-gamepad"></i></div>
+          </div>
+
+          <div class="col-lg-8 col-12">
+            <div class="row">
+              <div class="col-md-4 col-6 mb-3">
+                <div class="card-stat-mini p-3 text-center h-100 d-flex flex-column justify-content-center">
+                  <span class="text-muted font-weight-bold text-uppercase" style="font-size: 11px;">Rasio Sekolah</span>
+                  <h4 class="font-weight-bold text-sultan-utama my-1" id="muriddash_sd_rasio_sekolah">0%</h4>
+                  <small class="text-muted">Siswa di SD Negeri</small>
                 </div>
-            </div>
-            <div class="col-lg-4 col-4 mb-3">
-                <div class="sultan-metric-card metric-info">
-                    <div class="inner">
-                        <h3 id="muriddash_paud_sps"><i class="fas fa-spinner fa-spin text-white"></i></h3>
-                        <p>Siswa SPS</p>
-                    </div>
-                    <div class="icon"><i class="fas fa-baby"></i></div>
+              </div>
+              <div class="col-md-4 col-6 mb-3">
+                <div class="card-stat-mini p-3 text-center h-100 d-flex flex-column justify-content-center">
+                  <span class="text-muted font-weight-bold text-uppercase" style="font-size: 11px;">Siswa Kelas Rendah</span>
+                  <h4 class="font-weight-bold text-success my-1" id="muriddash_sd_k_rendah">0</h4>
+                  <small class="text-muted">Kelas 1, 2, dan 3</small>
                 </div>
+              </div>
+              <div class="col-md-4 col-12 mb-3">
+                <div class="card-stat-mini p-3 text-center h-100 d-flex flex-column justify-content-center">
+                  <span class="text-muted font-weight-bold text-uppercase" style="font-size: 11px;">Siswa Kelas Tinggi</span>
+                  <h4 class="font-weight-bold text-info my-1" id="muriddash_sd_k_tinggi">0</h4>
+                  <small class="text-muted">Kelas 4, 5, dan 6</small>
+                </div>
+              </div>
             </div>
+          </div>
         </div>
 
-        <div class="row mt-3">
-            <div class="col-lg-8 mb-3">
-                <div class="card-sultan shadow-sm">
-                    <div class="card-header bg-white border-bottom-0">
-                        <h3 class="card-title font-weight-bold text-maroon">
-                            <i class="fas fa-chart-area mr-2"></i>Tren Tahunan <span id="muriddash_labelTahunGrafik"></span>
-                        </h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="chart">
-                            <canvas id="muriddash_chartMurid" style="min-height: 350px; height: 350px; max-height: 350px; max-width: 100%;"></canvas>
-                        </div>
-                    </div>
-                </div>
+        <!-- Breakdown Per Kelas SD (6 Cards Grid) -->
+        <h6 class="font-weight-bold text-muted mb-2 text-uppercase" style="font-size: 12px; letter-spacing: 0.5px;">
+          <i class="fas fa-th-large mr-1"></i>Rincian Siswa Per Kelas
+        </h6>
+        <div class="row mb-4">
+          <div class="col-lg-2 col-md-4 col-6 mb-3">
+            <div class="card card-sultan-terpusat shadow-xs p-0 text-center overflow-hidden border-0">
+              <div class="bg-light py-1 border-bottom"><span class="small font-weight-bold text-muted">Kelas 1</span></div>
+              <span class="text-maroon h4 mb-1 mt-2 font-weight-bold" id="muriddash_sd_k1_t">0</span>
+              <div class="small text-muted pb-2 w-100 px-1" style="font-size: 0.75rem;">
+                N:<b id="muriddash_sd_k1_n" class="text-dark">0</b> | S:<b id="muriddash_sd_k1_s" class="text-dark">0</b>
+              </div>
             </div>
-            <div class="col-lg-4 mb-3">
-                <div class="card-sultan shadow-sm h-100">
-                    <div class="card-header bg-white border-bottom-0">
-                        <h3 class="card-title font-weight-bold text-maroon">
-                            <i class="fas fa-lightbulb mr-2"></i>Analisis & Insight
-                        </h3>
-                    </div>
-                    <div class="card-body">
-                        <div id="muriddash_insightAlerts" class="sultan-scroll" style="max-height: 350px; overflow-y: auto;">
-                            <div class="text-muted text-center py-5"><i class="fas fa-spinner fa-spin mr-2"></i>Menganalisis data...</div>
-                        </div>
-                    </div>
-                </div>
+          </div>
+          <div class="col-lg-2 col-md-4 col-6 mb-3">
+            <div class="card card-sultan-terpusat shadow-xs p-0 text-center overflow-hidden border-0">
+              <div class="bg-light py-1 border-bottom"><span class="small font-weight-bold text-muted">Kelas 2</span></div>
+              <span class="text-maroon h4 mb-1 mt-2 font-weight-bold" id="muriddash_sd_k2_t">0</span>
+              <div class="small text-muted pb-2 w-100 px-1" style="font-size: 0.75rem;">
+                N:<b id="muriddash_sd_k2_n" class="text-dark">0</b> | S:<b id="muriddash_sd_k2_s" class="text-dark">0</b>
+              </div>
             </div>
+          </div>
+          <div class="col-lg-2 col-md-4 col-6 mb-3">
+            <div class="card card-sultan-terpusat shadow-xs p-0 text-center overflow-hidden border-0">
+              <div class="bg-light py-1 border-bottom"><span class="small font-weight-bold text-muted">Kelas 3</span></div>
+              <span class="text-maroon h4 mb-1 mt-2 font-weight-bold" id="muriddash_sd_k3_t">0</span>
+              <div class="small text-muted pb-2 w-100 px-1" style="font-size: 0.75rem;">
+                N:<b id="muriddash_sd_k3_n" class="text-dark">0</b> | S:<b id="muriddash_sd_k3_s" class="text-dark">0</b>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-2 col-md-4 col-6 mb-3">
+            <div class="card card-sultan-terpusat shadow-xs p-0 text-center overflow-hidden border-0">
+              <div class="bg-light py-1 border-bottom"><span class="small font-weight-bold text-muted">Kelas 4</span></div>
+              <span class="text-maroon h4 mb-1 mt-2 font-weight-bold" id="muriddash_sd_k4_t">0</span>
+              <div class="small text-muted pb-2 w-100 px-1" style="font-size: 0.75rem;">
+                N:<b id="muriddash_sd_k4_n" class="text-dark">0</b> | S:<b id="muriddash_sd_k4_s" class="text-dark">0</b>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-2 col-md-4 col-6 mb-3">
+            <div class="card card-sultan-terpusat shadow-xs p-0 text-center overflow-hidden border-0">
+              <div class="bg-light py-1 border-bottom"><span class="small font-weight-bold text-muted">Kelas 5</span></div>
+              <span class="text-maroon h4 mb-1 mt-2 font-weight-bold" id="muriddash_sd_k5_t">0</span>
+              <div class="small text-muted pb-2 w-100 px-1" style="font-size: 0.75rem;">
+                N:<b id="muriddash_sd_k5_n" class="text-dark">0</b> | S:<b id="muriddash_sd_k5_s" class="text-dark">0</b>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-2 col-md-4 col-6 mb-3">
+            <div class="card card-sultan-terpusat shadow-xs p-0 text-center overflow-hidden border-0">
+              <div class="bg-light py-1 border-bottom"><span class="small font-weight-bold text-muted">Kelas 6</span></div>
+              <span class="text-maroon h4 mb-1 mt-2 font-weight-bold" id="muriddash_sd_k6_t">0</span>
+              <div class="small text-muted pb-2 w-100 px-1" style="font-size: 0.75rem;">
+                N:<b id="muriddash_sd_k6_n" class="text-dark">0</b> | S:<b id="muriddash_sd_k6_s" class="text-dark">0</b>
+              </div>
+            </div>
+          </div>
         </div>
-    </div> 
+
+      </div>
+
+      <!-- =============================================================== -->
+      <!-- TAB 2: DASBOR DATA MURID PAUD -->
+      <!-- =============================================================== -->
+      <div id="muriddash_viewPaud" class="tab-view-section" style="display: none;">
+        
+        <div class="d-flex align-items-center justify-content-between mb-3 pl-1">
+          <h6 class="font-weight-bold text-sultan-utama m-0 text-uppercase" style="letter-spacing: 0.5px;">
+            <i class="fas fa-child mr-2"></i>KONDISI DATA MURID PAUD (LAPORAN BULAN <span id="muriddash_labelBulanPaud"></span>)
+          </h6>
+        </div>
+
+        <!-- Metric Top Cards PAUD (TK, KB, SPS) -->
+        <div class="row mb-4">
+          <div class="col-lg-4 col-12 mb-3">
+            <div class="sultan-metric-card metric-gold h-100 shadow-xs">
+              <div class="inner">
+                <h3 id="muriddash_paud_tk">0</h3>
+                <p class="mb-0 font-weight-bold">Siswa TK (Taman Kanak-Kanak)</p>
+              </div>
+              <div class="icon"><i class="fas fa-shapes"></i></div>
+            </div>
+          </div>
+
+          <div class="col-lg-4 col-12 mb-3">
+            <div class="sultan-metric-card metric-success h-100 shadow-xs">
+              <div class="inner">
+                <h3 id="muriddash_paud_kb">0</h3>
+                <p class="mb-0 font-weight-bold">Siswa KB (Kelompok Bermain)</p>
+              </div>
+              <div class="icon"><i class="fas fa-gamepad"></i></div>
+            </div>
+          </div>
+
+          <div class="col-lg-4 col-12 mb-3">
+            <div class="sultan-metric-card metric-info h-100 shadow-xs">
+              <div class="inner">
+                <h3 id="muriddash_paud_sps">0</h3>
+                <p class="mb-0 font-weight-bold">Siswa SPS (Satuan PAUD Sejenis)</p>
+              </div>
+              <div class="icon"><i class="fas fa-baby"></i></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- =============================================================== -->
+      <!-- SECTION GRAFIK TREN TAHUNAN & ANALISIS INSIGHT (GABUNGAN) -->
+      <!-- =============================================================== -->
+      <div class="row mb-4">
+        <div class="col-lg-8 mb-3">
+          <div class="card card-sultan-terpusat shadow-xs border-0 h-100">
+            <div class="card-header bg-transparent border-0 pt-3 pb-2 px-3">
+              <h6 class="font-weight-bold text-sultan-utama m-0 text-uppercase" style="letter-spacing: 0.5px;">
+                <i class="fas fa-chart-area mr-2"></i>TREN TAHUNAN MURID PER BULAN (<span id="muriddash_labelTahunGrafik"></span>)
+              </h6>
+            </div>
+            <div class="card-body">
+              <div class="chart">
+                <canvas id="muriddash_chartMurid" style="min-height: 320px; height: 320px; max-height: 320px; max-width: 100%;"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-4 mb-3">
+          <div class="card card-sultan-terpusat shadow-xs border-0 h-100">
+            <div class="card-header bg-transparent border-0 pt-3 pb-2 px-3">
+              <h6 class="font-weight-bold text-sultan-utama m-0 text-uppercase" style="letter-spacing: 0.5px;">
+                <i class="fas fa-lightbulb mr-2"></i>ANALISIS & INSIGHT
+              </h6>
+            </div>
+            <div class="card-body p-3">
+              <div id="muriddash_insightAlerts" class="sultan-scroll" style="max-height: 320px; overflow-y: auto;">
+                <div class="text-muted text-center py-5"><i class="fas fa-spinner fa-spin mr-2"></i>Menganalisis data...</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
   </div>
 </section>
 
 <script>
-var MURIDDASH_CHART = null;
+  var MURIDDASH_CHART = null;
+  var MURIDDASH_IS_ADMIN = false;
+  var MURIDDASH_USER_JENJANG = "SD";
+  var MURIDDASH_ACTIVE_TAB = "sd";
 
-$(document).ready(function() {
-    var d = new Date(); 
-    d.setDate(1);
-    d.setMonth(d.getMonth() - 1); 
-
-    var thn = d.getFullYear(); 
-    var bln = d.getMonth() + 1; 
-
-    var currentRealYear = new Date().getFullYear(); 
-    var $selTahun = $('#muriddash_filterTahun').empty();
-    
-    for(var i = currentRealYear + 1; i >= 2022; i--) { 
-        var selectedStr = (i === thn) ? ' selected' : '';
-        $selTahun.append('<option value="' + i + '"' + selectedStr + '>' + i + '</option>'); 
+  $(document).ready(function () {
+    try {
+      var user = typeof getSesiUser === 'function' ? getSesiUser() : {};
+      var rStr = String(user.role || "").toLowerCase();
+      MURIDDASH_IS_ADMIN = (typeof checkUserRoleIsAdmin === 'function' && checkUserRoleIsAdmin()) || rStr.includes("admin") || rStr.includes("verifikator");
+      
+      var jStr = String(user.jenjang || user.bentuk || "").toUpperCase();
+      if (jStr.includes("TK") || jStr.includes("KB") || jStr.includes("SPS") || jStr.includes("PAUD")) {
+        MURIDDASH_USER_JENJANG = "PAUD";
+      } else {
+        MURIDDASH_USER_JENJANG = "SD";
+      }
+    } catch(e) { 
+      MURIDDASH_IS_ADMIN = false; 
+      MURIDDASH_USER_JENJANG = "SD";
     }
-    
-    $('#muriddash_filterBulan').val(bln);
 
+    // Penentuan Tahun & Bulan Default (Bulan Lalu)
+    var d = new Date();
+    d.setDate(1);
+    d.setMonth(d.getMonth() - 1); // Bulan Lalu
+
+    var thnDefault = d.getFullYear();
+    var blnDefault = d.getMonth() + 1; // 1-indexed
+
+    var currentRealYear = new Date().getFullYear();
+    var $selTahun = $('#muriddash_filterTahun').empty();
+
+    for (var i = currentRealYear + 1; i >= 2022; i--) {
+      var selectedStr = (i === thnDefault) ? ' selected' : '';
+      $selTahun.append('<option value="' + i + '"' + selectedStr + '>' + i + '</option>');
+    }
+
+    $('#muriddash_filterBulan').val(blnDefault);
+
+    // Atur tampilan Tab vs Tampilan Sekolah User
+    if (MURIDDASH_IS_ADMIN) {
+      $('#muriddash_tabContainer').show();
+      MURIDDASH_ACTIVE_TAB = "sd";
+    } else {
+      $('#muriddash_tabContainer').hide();
+      MURIDDASH_ACTIVE_TAB = (MURIDDASH_USER_JENJANG === "PAUD") ? "paud" : "sd";
+    }
+
+    muriddash_updateViewTab();
+
+    // Event listener refresh
     $(document).off('click', '#muriddash_btnRefresh').on('click', '#muriddash_btnRefresh', muriddash_loadDashboard);
+    $('#muriddash_filterTahun, #muriddash_filterBulan').change(muriddash_loadDashboard);
 
     if (typeof Chart === 'undefined') {
-        $.getScript("https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js")
-         .done(function() { muriddash_loadDashboard(); });
+      $.getScript("https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js")
+       .done(function() { muriddash_loadDashboard(); });
     } else {
-        muriddash_loadDashboard();
+      muriddash_loadDashboard();
     }
-});
+  });
 
-function muriddash_loadDashboard() {
+  function muriddash_switchTab(tabKey) {
+    MURIDDASH_ACTIVE_TAB = tabKey;
+    $('#muriddash_tabTabBar .nav-link').removeClass('active');
+    if (tabKey === 'sd') {
+      $('#muriddash_tabSdBtn').addClass('active');
+      $('#muriddash_tabPaudBtn').removeClass('active');
+    } else {
+      $('#muriddash_tabPaudBtn').addClass('active');
+      $('#muriddash_tabSdBtn').removeClass('active');
+    }
+    muriddash_updateViewTab();
+  }
+
+  function muriddash_updateViewTab() {
+    if (MURIDDASH_ACTIVE_TAB === 'sd') {
+      $('#muriddash_viewSd').show();
+      $('#muriddash_viewPaud').hide();
+    } else {
+      $('#muriddash_viewSd').hide();
+      $('#muriddash_viewPaud').show();
+    }
+  }
+
+  function muriddash_loadDashboard() {
     var th = $('#muriddash_filterTahun').val();
     var bl = $('#muriddash_filterBulan').val();
     var namaBulan = $('#muriddash_filterBulan option:selected').text();
 
-    if(!th) th = new Date().getFullYear();
+    if (!th) th = new Date().getFullYear();
 
     if (typeof SultanUI !== 'undefined') {
-        var selLottery = '#muriddash_sd_total_t, #muriddash_sd_total_n, #muriddash_sd_total_s, ' +
-                         '#muriddash_sd_k1_t, #muriddash_sd_k1_n, #muriddash_sd_k1_s, ' +
-                         '#muriddash_sd_k2_t, #muriddash_sd_k2_n, #muriddash_sd_k2_s, ' +
-                         '#muriddash_sd_k3_t, #muriddash_sd_k3_n, #muriddash_sd_k3_s, ' +
-                         '#muriddash_sd_k4_t, #muriddash_sd_k4_n, #muriddash_sd_k4_s, ' +
-                         '#muriddash_sd_k5_t, #muriddash_sd_k5_n, #muriddash_sd_k5_s, ' +
-                         '#muriddash_sd_k6_t, #muriddash_sd_k6_n, #muriddash_sd_k6_s, ' +
-                         '#muriddash_paud_tk, #muriddash_paud_kb, #muriddash_paud_sps';
-        SultanUI.startLottery(selLottery, 3);
+      SultanUI.showLoading('#muriddash_loadingState', 'Memuat Data Dasbor Murid...');
+    } else {
+      $('#muriddash_loadingState').show();
     }
+    $('#muriddash_dashboardState').hide();
 
-    $('#muriddash_labelBulanIni, #muriddash_labelBulanIniPaud').text(namaBulan);
+    $('#muriddash_labelBulanSd, #muriddash_labelBulanPaud').text(namaBulan.toUpperCase());
     $('#muriddash_labelTahunGrafik').text(th);
-    
+
     google.script.run
-        .withSuccessHandler(function(jsonString) {
-            try {
-                var data = JSON.parse(jsonString);
-                muriddash_renderCards(data.cards);
-                muriddash_renderChart(data.chart);
-                muriddash_renderInsights(data.cards, data.chart);
-                $('#muriddash_lastUpdate').text(new Date().toLocaleTimeString('id-ID') + " WIB");
-            } catch(e) { 
-                console.error("Gagal membaca struktur data: ", e); 
-            }
-        })
-        .withFailureHandler(function(e) { 
-            Sultan.alert('error', 'Gagal Memuat Data', e.message);
-        })
-        .getDashboardMuridData(th, bl);
-}
-
-function muriddash_renderCards(c) {
-    if(!c) return;
-    
-    muriddash_animateValue("muriddash_sd_total_t", c.sd_total.t);
-    muriddash_animateValue("muriddash_sd_total_n", c.sd_total.n);
-    muriddash_animateValue("muriddash_sd_total_s", c.sd_total.s);
-
-    for(var i = 1; i <= 6; i++) {
-        var key = 'sd_k' + i;
-        if (c[key]) {
-            muriddash_animateValue("muriddash_" + key + "_t", c[key].t);
-            muriddash_animateValue("muriddash_" + key + "_n", c[key].n);
-            muriddash_animateValue("muriddash_" + key + "_s", c[key].s);
+      .withSuccessHandler(function(jsonString) {
+        if (typeof SultanUI !== 'undefined') {
+          SultanUI.hideLoading('#muriddash_loadingState');
+        } else {
+          $('#muriddash_loadingState').hide();
         }
+
+        try {
+          var data = typeof jsonString === 'string' ? JSON.parse(jsonString) : jsonString;
+          muriddash_renderCards(data.cards);
+          muriddash_renderChart(data.chart);
+          muriddash_renderInsights(data.cards, data.chart);
+          $('#muriddash_dashboardState').fadeIn();
+          $('#muriddash_lastUpdate').text(new Date().toLocaleTimeString('id-ID') + " WIB");
+        } catch(e) { 
+          console.error("Gagal membaca struktur data murid: ", e); 
+        }
+      })
+      .withFailureHandler(function(e) { 
+        if (typeof SultanUI !== 'undefined') {
+          SultanUI.showLoadingError('#muriddash_loadingState', e.message || 'Gagal memuat data');
+        }
+      })
+      .getDashboardMuridData(th, bl);
+  }
+
+  function muriddash_renderCards(c) {
+    if (!c) return;
+    
+    var totalSd = (c.sd_total && c.sd_total.t) ? c.sd_total.t : 0;
+    var negeriSd = (c.sd_total && c.sd_total.n) ? c.sd_total.n : 0;
+    var swastaSd = (c.sd_total && c.sd_total.s) ? c.sd_total.s : 0;
+
+    muriddash_animateValue("muriddash_sd_total_t", totalSd);
+    muriddash_animateValue("muriddash_sd_total_n", negeriSd);
+    muriddash_animateValue("muriddash_sd_total_s", swastaSd);
+
+    var ratioNegeri = totalSd > 0 ? Math.round((negeriSd / totalSd) * 100) : 0;
+    $('#muriddash_sd_rasio_sekolah').text(ratioNegeri + '%');
+
+    var kRendah = 0;
+    var kTinggi = 0;
+
+    for (var i = 1; i <= 6; i++) {
+      var key = 'sd_k' + i;
+      if (c[key]) {
+        var valT = c[key].t || 0;
+        muriddash_animateValue("muriddash_" + key + "_t", valT);
+        muriddash_animateValue("muriddash_" + key + "_n", c[key].n || 0);
+        muriddash_animateValue("muriddash_" + key + "_s", c[key].s || 0);
+
+        if (i <= 3) kRendah += valT;
+        else kTinggi += valT;
+      }
     }
+
+    muriddash_animateValue("muriddash_sd_k_rendah", kRendah);
+    muriddash_animateValue("muriddash_sd_k_tinggi", kTinggi);
 
     muriddash_animateValue("muriddash_paud_tk", c.tk || 0);
     muriddash_animateValue("muriddash_paud_kb", c.kb || 0);
     muriddash_animateValue("muriddash_paud_sps", c.sps || 0);
-}
+  }
 
-function muriddash_renderChart(c) {
-    if(!c || typeof Chart === 'undefined') return;
-    var ctx = document.getElementById('muriddash_chartMurid').getContext('2d');
+  function muriddash_renderChart(c) {
+    if (!c || typeof Chart === 'undefined') return;
+    var canvasEl = document.getElementById('muriddash_chartMurid');
+    if (!canvasEl) return;
+    var ctx = canvasEl.getContext('2d');
 
-    if(MURIDDASH_CHART) {
-        MURIDDASH_CHART.destroy();
+    if (MURIDDASH_CHART) {
+      MURIDDASH_CHART.destroy();
     }
 
     var isDark = $('body').hasClass('dark-mode');
@@ -280,118 +498,117 @@ function muriddash_renderChart(c) {
     var gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)';
 
     MURIDDASH_CHART = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'],
-            datasets: [
-                { label: 'SD Negeri', data: c.sd_negeri, borderColor: '#800000', backgroundColor: 'rgba(128, 0, 0, 0.1)', tension: 0.4, fill: true },
-                { label: 'SD Swasta', data: c.sd_swasta, borderColor: '#007bff', backgroundColor: 'transparent', tension: 0.4, borderDash: [5, 5] },
-                { label: 'TK', data: c.tk, borderColor: '#ffc107', backgroundColor: 'transparent', tension: 0.4 },
-                { label: 'KB', data: c.kb, borderColor: '#28a745', backgroundColor: 'transparent', tension: 0.4 },
-                { label: 'SPS', data: c.sps, borderColor: '#17a2b8', backgroundColor: 'transparent', tension: 0.4 }
-            ]
+      type: 'line',
+      data: {
+        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'],
+        datasets: [
+          { label: 'SD Negeri', data: c.sd_negeri, borderColor: '#800000', backgroundColor: 'rgba(128, 0, 0, 0.08)', tension: 0.4, fill: true },
+          { label: 'SD Swasta', data: c.sd_swasta, borderColor: '#007bff', backgroundColor: 'transparent', tension: 0.4, borderDash: [5, 5] },
+          { label: 'TK', data: c.tk, borderColor: '#ffc107', backgroundColor: 'transparent', tension: 0.4 },
+          { label: 'KB', data: c.kb, borderColor: '#28a745', backgroundColor: 'transparent', tension: 0.4 },
+          { label: 'SPS', data: c.sps, borderColor: '#17a2b8', backgroundColor: 'transparent', tension: 0.4 }
+        ]
+      },
+      options: {
+        responsive: true, 
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: { 
+          legend: { position: 'bottom', labels: { color: textColor, font: { weight: 'bold' } } } 
         },
-        options: {
-            responsive: true, 
-            maintainAspectRatio: false,
-            interaction: { mode: 'index', intersect: false },
-            plugins: { legend: { position: 'bottom', labels: { color: textColor, font: { weight: 'bold' } } } },
-            scales: { 
-                y: { 
-                    beginAtZero: true,
-                    grid: { color: gridColor },
-                    ticks: { color: textColor }
-                },
-                x: {
-                    grid: { color: gridColor },
-                    ticks: { color: textColor }
-                }
-            }
+        scales: { 
+          y: { 
+            beginAtZero: true,
+            grid: { color: gridColor },
+            ticks: { color: textColor }
+          },
+          x: {
+            grid: { color: gridColor },
+            ticks: { color: textColor }
+          }
         }
+      }
     });
-}
+  }
 
-function muriddash_renderInsights(cards, chart) {
+  function muriddash_renderInsights(cards, chart) {
     var alertsHtml = "";
-    var totalSd = (cards.sd_total.t || 0);
+    var totalSd = (cards.sd_total && cards.sd_total.t) ? cards.sd_total.t : 0;
     var totalPaud = (cards.tk || 0) + (cards.kb || 0) + (cards.sps || 0);
     
     if (totalSd > 0) {
-        var ratioNegeri = totalSd > 0 ? ((cards.sd_total.n / totalSd) * 100) : 0;
-        alertsHtml += `
-            <div class="sultan-alert alert-soft-info">
-                <i class="fas fa-info-circle fa-lg mr-3 mt-1"></i>
-                <div>
-                    <span class="font-weight-bold d-block" style="font-size: 13px;">Komposisi SD Negeri vs Swasta</span>
-                    Sebesar <strong>${ratioNegeri.toFixed(1)}%</strong> murid SD bersekolah di Negeri.
-                </div>
-            </div>
-        `;
+      var ratioNegeri = totalSd > 0 ? ((cards.sd_total.n / totalSd) * 100) : 0;
+      alertsHtml += `
+        <div class="sultan-alert alert-soft-info mb-2">
+          <i class="fas fa-info-circle fa-lg mr-3 mt-1 text-info"></i>
+          <div>
+            <span class="font-weight-bold d-block" style="font-size: 12px;">Komposisi SD Negeri vs Swasta</span>
+            Sebesar <strong>${ratioNegeri.toFixed(1)}%</strong> murid SD bersekolah di Sekolah Negeri.
+          </div>
+        </div>
+      `;
     }
 
     if (chart && chart.sd_negeri && chart.sd_negeri.length > 0) {
-        var sdNegeriTerakhir = chart.sd_negeri[chart.sd_negeri.length - 1] || 0;
-        var sdNegeriSebelumnya = chart.sd_negeri[chart.sd_negeri.length - 2] || sdNegeriTerakhir;
-        var perubahanSdNegeri = sdNegeriTerakhir - sdNegeriSebelumnya;
-        
-        if (perubahanSdNegeri > 0) {
-            alertsHtml += `
-                <div class="sultan-alert alert-soft-success">
-                    <i class="fas fa-arrow-up fa-lg mr-3 mt-1"></i>
-                    <div>
-                        <span class="font-weight-bold d-block" style="font-size: 13px;">Peningkatan Murid SD Negeri</span>
-                        Terdapat peningkatan <strong>+${perubahanSdNegeri}</strong> murid SD Negeri pada bulan terakhir.
-                    </div>
-                </div>
-            `;
-        } else if (perubahanSdNegeri < 0) {
-            alertsHtml += `
-                <div class="sultan-alert alert-soft-warning">
-                    <i class="fas fa-arrow-down fa-lg mr-3 mt-1"></i>
-                    <div>
-                        <span class="font-weight-bold d-block" style="font-size: 13px;">Penurunan Murid SD Negeri</span>
-                        Terdapat penurunan <strong>${perubahanSdNegeri}</strong> murid SD Negeri pada bulan terakhir.
-                    </div>
-                </div>
-            `;
-        }
+      var sdNegeriTerakhir = chart.sd_negeri[chart.sd_negeri.length - 1] || 0;
+      var sdNegeriSebelumnya = chart.sd_negeri[chart.sd_negeri.length - 2] || sdNegeriTerakhir;
+      var perubahanSdNegeri = sdNegeriTerakhir - sdNegeriSebelumnya;
+      
+      if (perubahanSdNegeri > 0) {
+        alertsHtml += `
+          <div class="sultan-alert alert-soft-success mb-2">
+            <i class="fas fa-arrow-up fa-lg mr-3 mt-1 text-success"></i>
+            <div>
+              <span class="font-weight-bold d-block" style="font-size: 12px;">Peningkatan Murid SD Negeri</span>
+              Terdapat peningkatan <strong>+${perubahanSdNegeri}</strong> murid SD Negeri dibanding bulan sebelumnya.
+            </div>
+          </div>
+        `;
+      } else if (perubahanSdNegeri < 0) {
+        alertsHtml += `
+          <div class="sultan-alert alert-soft-warning mb-2">
+            <i class="fas fa-arrow-down fa-lg mr-3 mt-1 text-warning"></i>
+            <div>
+              <span class="font-weight-bold d-block" style="font-size: 12px;">Penurunan Murid SD Negeri</span>
+              Terdapat penurunan <strong>${perubahanSdNegeri}</strong> murid SD Negeri dibanding bulan sebelumnya.
+            </div>
+          </div>
+        `;
+      }
     }
 
     if (totalPaud > 0) {
-        alertsHtml += `
-            <div class="sultan-alert alert-soft-success">
-                <i class="fas fa-users fa-lg mr-3 mt-1"></i>
-                <div>
-                    <span class="font-weight-bold d-block" style="font-size: 13px;">Total Murid PAUD</span>
-                    Saat ini tercatat <strong>${totalPaud}</strong> murid PAUD (TK + KB + SPS).
-                </div>
-            </div>
-        `;
+      alertsHtml += `
+        <div class="sultan-alert alert-soft-success mb-2">
+          <i class="fas fa-child fa-lg mr-3 mt-1 text-success"></i>
+          <div>
+            <span class="font-weight-bold d-block" style="font-size: 12px;">Total Murid PAUD</span>
+            Saat ini tercatat <strong>${totalPaud.toLocaleString('id-ID')}</strong> murid PAUD (TK + KB + SPS).
+          </div>
+        </div>
+      `;
     }
 
     if (!alertsHtml) {
-        alertsHtml = '<div class="text-muted text-center py-5"><i class="fas fa-info-circle mr-2"></i>Belum ada insight yang tersedia.</div>';
+      alertsHtml = '<div class="text-muted text-center py-4" style="font-size: 12px;"><i class="fas fa-info-circle mr-2"></i>Belum ada analisis data yang tersedia.</div>';
     }
 
     $('#muriddash_insightAlerts').html(alertsHtml);
-}
+  }
 
-function muriddash_animateValue(id, end) {
-    if (typeof SultanUI !== 'undefined') {
-        SultanUI.stopLottery('#' + id);
-    }
+  function muriddash_animateValue(id, end) {
     var obj = document.getElementById(id);
-    if(!obj) return;
+    if (!obj) return;
     var start = 0; 
-    var duration = 1000; 
+    var duration = 800; 
     var startTime = null;
     
     function step(timestamp) {
-        if (!startTime) startTime = timestamp;
-        var progress = Math.min((timestamp - startTime) / duration, 1);
-        obj.innerHTML = Math.floor(progress * (end - start) + start).toLocaleString('id-ID');
-        if (progress < 1) window.requestAnimationFrame(step);
+      if (!startTime) startTime = timestamp;
+      var progress = Math.min((timestamp - startTime) / duration, 1);
+      obj.innerHTML = Math.floor(progress * (end - start) + start).toLocaleString('id-ID');
+      if (progress < 1) window.requestAnimationFrame(step);
     }
     window.requestAnimationFrame(step);
-}
+  }
 </script>
