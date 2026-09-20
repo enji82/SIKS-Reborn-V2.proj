@@ -239,14 +239,10 @@ function getDashboardMuridData(tahunFilter, bulanFilter, userNpsn, userUnitKerja
                       result.cards.sd_total.p += valP;
                     });
 
-                    // Agama SD (Total per Agama kolom 206..223 di Input SD)
-                    // Index 0-based:
-                    // Islam: L=206, P=207
-                    // Kristen: L=209, P=210
-                    // Katolik: L=212, P=213
-                    // Hindu: L=215, P=216
-                    // Buddha: L=218, P=219
-                    // Khonghucu: L=221, P=222
+                    // Agama SD (Hitung dari penjumlahan seluruh kelas 1-6 per agama)
+                    // Atau ambil dari 6 agama x (L+P) di baris Input SD.
+                    // Di Input SD: 6 agama x 3 kolom (L, P, Jml) = 18 kolom untuk TOTAL AGAMA.
+                    // L&P: Islam(206,207), Kristen(209,210), Katolik(212,213), Hindu(215,216), Buddha(218,219), Khonghucu(221,222)
                     var isl = getNum(row[206]) + getNum(row[207]);
                     var kris = getNum(row[209]) + getNum(row[210]);
                     var kat = getNum(row[212]) + getNum(row[213]);
@@ -277,14 +273,13 @@ function getDashboardMuridData(tahunFilter, bulanFilter, userNpsn, userUnitKerja
             // Mapping Input PAUD (0-Based):
             // A (0): Nama Sekolah, B (1): Bulan, C (2): Tahun, D (3): NPSN, G (6): Jenjang
             // Kolom Murid PAUD:
-            // Total Murid per lembaga: Kolom 51 (AZ)
             // USIA 0-1 (7-9), 1-2 (10-12), 2-3 (13-15), 3-4 (16-18), 4-5 (19-21), 5-6 (22-24), >6 (25-27)
             // TOTAL USIA: L=28, P=29, JML=30
             // KELAS A: L=31, P=32, JML=33
             // KELAS B: L=34, P=35, JML=36
             // TOTAL KELAS: L=37, P=38, JML=39
 
-            var idxSekolahP = 0; var idxBulanP = 1; var idxTahunP = 2; var idxNpsnP = 3; var idxJenjang = 6; var idxTotalP = 51;
+            var idxSekolahP = 0; var idxBulanP = 1; var idxTahunP = 2; var idxNpsnP = 3; var idxJenjang = 6;
             var maxColP = Math.max(sheetInputPAUD.getLastColumn(), 60);
             var dataPAUD = sheetInputPAUD.getRange(2, 1, lastRow - 1, maxColP).getDisplayValues();
 
@@ -302,7 +297,11 @@ function getDashboardMuridData(tahunFilter, bulanFilter, userNpsn, userUnitKerja
                 if (targetNpsn && rowNpsn && rowNpsn !== targetNpsn) continue;
                 if (targetUnit && rowSekolah && !rowSekolah.includes(targetUnit) && !targetUnit.includes(rowSekolah)) continue;
 
-                var valTotal = getNum(row[idxTotalP]);
+                var vL = getNum(row[28]); // Total Usia L (index 28)
+                var vP = getNum(row[29]); // Total Usia P (index 29)
+                var valTotal = getNum(row[30]); // Total Usia JML (index 30)
+                if (valTotal === 0) valTotal = vL + vP;
+
                 var jenjang = String(row[idxJenjang]).toUpperCase().trim();
 
                 if (jenjang.includes("TK")) result.chart.tk[rowBulan - 1] += valTotal;
@@ -310,18 +309,15 @@ function getDashboardMuridData(tahunFilter, bulanFilter, userNpsn, userUnitKerja
                 else if (jenjang.includes("SPS") || jenjang.includes("TPA")) result.chart.sps[rowBulan - 1] += valTotal;
 
                 if (rowBulan === blnTarget) {
-                    var vL = getNum(row[28]); // Total L (0-based: index 28)
-                    var vP = getNum(row[29]); // Total P (0-based: index 29)
-
                     result.cards.paud_total.t += valTotal;
                     result.cards.paud_total.l += vL;
                     result.cards.paud_total.p += vP;
 
+                    var tkAL = getNum(row[31]); var tkAP = getNum(row[32]);
+                    var tkBL = getNum(row[34]); var tkBP = getNum(row[35]);
+
                     if (jenjang.includes("TK")) {
                         result.cards.tk += valTotal;
-                        
-                        var tkAL = getNum(row[31]); var tkAP = getNum(row[32]);
-                        var tkBL = getNum(row[34]); var tkBP = getNum(row[35]);
                         
                         result.cards.paud_tk_a.l += tkAL;
                         result.cards.paud_tk_a.p += tkAP;
@@ -341,6 +337,18 @@ function getDashboardMuridData(tahunFilter, bulanFilter, userNpsn, userUnitKerja
                         result.cards.paud_sps.t += valTotal;
                         result.cards.paud_sps.l += vL;
                         result.cards.paud_sps.p += vP;
+                    } else {
+                        // Layanan PAUD umum / Non-formal lainnya
+                        if (tkAL > 0 || tkAP > 0) {
+                            result.cards.paud_tk_a.l += tkAL;
+                            result.cards.paud_tk_a.p += tkAP;
+                            result.cards.paud_tk_a.t += (tkAL + tkAP);
+                        }
+                        if (tkBL > 0 || tkBP > 0) {
+                            result.cards.paud_tk_b.l += tkBL;
+                            result.cards.paud_tk_b.p += tkBP;
+                            result.cards.paud_tk_b.t += (tkBL + tkBP);
+                        }
                     }
                 }
             }
