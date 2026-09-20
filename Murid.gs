@@ -205,8 +205,12 @@ function getDashboardMuridData(tahunFilter, bulanFilter, userNpsn, userUnitKerja
                 if (rowBulan < 1 || rowBulan > 12) continue;
 
                 // User school filtering for non-admin
-                if (targetNpsn && rowNpsn && rowNpsn !== targetNpsn) continue;
-                if (targetUnit && rowSekolah && !rowSekolah.includes(targetUnit) && !targetUnit.includes(rowSekolah)) continue;
+                if (targetNpsn) {
+                    if (rowNpsn && rowNpsn !== targetNpsn) continue;
+                } else if (targetUnit && rowSekolah) {
+                    var uClean = targetUnit.replace(/^(sdn|sds|tk|kb|sps)\s+/i, '').trim();
+                    if (!rowSekolah.includes(targetUnit) && !targetUnit.includes(rowSekolah) && (uClean && !rowSekolah.includes(uClean))) continue;
+                }
 
                 var valTotal = getNum(row[idxTotal]);
                 var status = String(row[idxStatus]).toLowerCase();
@@ -294,13 +298,24 @@ function getDashboardMuridData(tahunFilter, bulanFilter, userNpsn, userUnitKerja
                 if (rowBulan < 1 || rowBulan > 12) continue;
 
                 // User school filtering for non-admin
-                if (targetNpsn && rowNpsn && rowNpsn !== targetNpsn) continue;
-                if (targetUnit && rowSekolah && !rowSekolah.includes(targetUnit) && !targetUnit.includes(rowSekolah)) continue;
+                if (targetNpsn) {
+                    if (rowNpsn && rowNpsn !== targetNpsn) continue;
+                } else if (targetUnit && rowSekolah) {
+                    var uCleanP = targetUnit.replace(/^(sdn|sds|tk|kb|sps)\s+/i, '').trim();
+                    if (!rowSekolah.includes(targetUnit) && !targetUnit.includes(rowSekolah) && (uCleanP && !rowSekolah.includes(uCleanP))) continue;
+                }
+
+                var tkAL = getNum(row[31]); var tkAP = getNum(row[32]);
+                var tkBL = getNum(row[34]); var tkBP = getNum(row[35]);
 
                 var vL = getNum(row[28]); // Total Usia L (index 28)
                 var vP = getNum(row[29]); // Total Usia P (index 29)
-                var valTotal = getNum(row[30]); // Total Usia JML (index 30)
-                if (valTotal === 0) valTotal = vL + vP;
+                // Jika total L & P usia nol tapi ada data Rombel/Kelas (misal TK A/B), gunakan jumlah L & P kelas
+                if (vL === 0 && vP === 0) {
+                    vL = tkAL + tkBL;
+                    vP = tkAP + tkBP;
+                }
+                var valTotal = vL + vP;
 
                 var jenjang = String(row[idxJenjang]).toUpperCase().trim();
 
@@ -312,9 +327,6 @@ function getDashboardMuridData(tahunFilter, bulanFilter, userNpsn, userUnitKerja
                     result.cards.paud_total.t += valTotal;
                     result.cards.paud_total.l += vL;
                     result.cards.paud_total.p += vP;
-
-                    var tkAL = getNum(row[31]); var tkAP = getNum(row[32]);
-                    var tkBL = getNum(row[34]); var tkBP = getNum(row[35]);
 
                     if (jenjang.includes("TK")) {
                         result.cards.tk += valTotal;
