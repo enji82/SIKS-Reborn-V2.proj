@@ -213,9 +213,21 @@ function getDashboardMuridData(tahunFilter, bulanFilter, userNpsn, userUnitKerja
                     if (!isMatchNpsn && !isMatchUnit) continue;
                 }
 
+                var classSumL = 0;
+                var classSumP = 0;
+                classCols.forEach(function(item) {
+                  classSumL += getNum(row[item.l]);
+                  classSumP += getNum(row[item.p]);
+                });
+                var classSumTotal = classSumL + classSumP;
+
                 var valTotal = getNum(row[idxTotal]);
+                if (valTotal === 0 && classSumTotal > 0) {
+                    valTotal = classSumTotal;
+                }
+
                 var status = String(row[idxStatus]).toLowerCase();
-                var isNegeri = status.includes("negeri");
+                var isNegeri = status.includes("negeri") || rowSekolah.includes("sdn");
 
                 // CHART
                 if (isNegeri) result.chart.sd_negeri[rowBulan - 1] += valTotal;
