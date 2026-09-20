@@ -301,17 +301,23 @@ function getDashboardMuridData(tahunFilter, bulanFilter, userNpsn, userUnitKerja
     var sheetInputPAUD = getSheet(KONFIG_MURID.PAUD_DB, "Input PAUD");
     if (sheetInputPAUD) {
         var lastRow = sheetInputPAUD.getLastRow();
+        var lastRow = sheetInputPAUD.getLastRow();
         if (lastRow > 1) {
-            // Mapping Input PAUD (0-Based):
-            // A (0): Nama Sekolah, B (1): Bulan, C (2): Tahun, D (3): NPSN, G (6): Jenjang
-            // Kolom Murid PAUD:
-            // USIA 0-1 (7-9), 1-2 (10-12), 2-3 (13-15), 3-4 (16-18), 4-5 (19-21), 5-6 (22-24), >6 (25-27)
-            // TOTAL USIA: L=28, P=29, JML=30
-            // KELAS A: L=31, P=32, JML=33
-            // KELAS B: L=34, P=35, JML=36
-            // TOTAL KELAS: L=37, P=38, JML=39
+            var headersP = sheetInputPAUD.getRange(1, 1, 1, sheetInputPAUD.getLastColumn()).getValues()[0].map(function(h) { return String(h).toLowerCase().trim(); });
 
-            var idxSekolahP = 0; var idxBulanP = 1; var idxTahunP = 2; var idxNpsnP = 3; var idxJenjang = 6;
+            var findColP = function(name, fallback) {
+              var idx = headersP.indexOf(name.toLowerCase());
+              if (idx > -1) return idx;
+              idx = headersP.findIndex(function(h) { return h.includes(name.toLowerCase()); });
+              return idx > -1 ? idx : fallback;
+            };
+
+            var idxSekolahP = findColP("nama sekolah", 0);
+            var idxBulanP = findColP("bulan", 1);
+            var idxTahunP = findColP("tahun", 2);
+            var idxNpsnP = findColP("npsn", 3);
+            var idxJenjang = findColP("jenjang", 6);
+
             var maxColP = Math.max(sheetInputPAUD.getLastColumn(), 60);
             var dataPAUD = sheetInputPAUD.getRange(2, 1, lastRow - 1, maxColP).getDisplayValues();
 
@@ -327,9 +333,15 @@ function getDashboardMuridData(tahunFilter, bulanFilter, userNpsn, userUnitKerja
 
                 // User school filtering for non-admin
                 if (targetNpsn || targetUnit) {
-                    var isMatchNpsnP = (targetNpsn && rowNpsn && rowNpsn === targetNpsn);
-                    var uCleanP = targetUnit ? targetUnit.replace(/^(sdn|sds|tk|kb|sps)\s+/i, '').trim() : "";
-                    var isMatchUnitP = (targetUnit && rowSekolah && (rowSekolah.includes(targetUnit) || targetUnit.includes(rowSekolah) || (uCleanP && rowSekolah.includes(uCleanP))));
+                    var rNpsnCleanP = String(rowNpsn || "").trim();
+                    var tNpsnCleanP = String(targetNpsn || "").trim();
+                    var isMatchNpsnP = (tNpsnCleanP && rNpsnCleanP && rNpsnCleanP === tNpsnCleanP);
+                    
+                    var rSekCleanP = String(rowSekolah || "").toLowerCase().trim();
+                    var tUnitCleanP = String(targetUnit || "").toLowerCase().trim();
+                    var uSubP = tUnitCleanP.replace(/^(sdn|sds|tk|kb|sps)\s+/i, '').trim();
+                    
+                    var isMatchUnitP = (tUnitCleanP && rSekCleanP && (rSekCleanP.includes(tUnitCleanP) || tUnitCleanP.includes(rSekCleanP) || (uSubP && uSubP.length >= 3 && rSekCleanP.includes(uSubP))));
                     
                     if (!isMatchNpsnP && !isMatchUnitP) continue;
                 }
@@ -346,7 +358,8 @@ function getDashboardMuridData(tahunFilter, bulanFilter, userNpsn, userUnitKerja
                 }
                 var valTotal = vL + vP;
 
-                var jenjang = String(row[idxJenjang]).toUpperCase().trim();
+                var jenjangRaw = String(row[idxJenjang] || "").toUpperCase().trim();
+                var jenjang = jenjangRaw || (rowSekolah.includes("tk") ? "TK" : (rowSekolah.includes("kb") ? "KB" : (rowSekolah.includes("sps") ? "SPS" : "TK")));
 
                 if (jenjang.includes("TK")) result.chart.tk[rowBulan - 1] += valTotal;
                 else if (jenjang.includes("KB")) result.chart.kb[rowBulan - 1] += valTotal;
@@ -379,17 +392,14 @@ function getDashboardMuridData(tahunFilter, bulanFilter, userNpsn, userUnitKerja
                         result.cards.paud_sps.l += vL;
                         result.cards.paud_sps.p += vP;
                     } else {
-                        // Layanan PAUD umum / Non-formal lainnya
-                        if (tkAL > 0 || tkAP > 0) {
-                            result.cards.paud_tk_a.l += tkAL;
-                            result.cards.paud_tk_a.p += tkAP;
-                            result.cards.paud_tk_a.t += (tkAL + tkAP);
-                        }
-                        if (tkBL > 0 || tkBP > 0) {
-                            result.cards.paud_tk_b.l += tkBL;
-                            result.cards.paud_tk_b.p += tkBP;
-                            result.cards.paud_tk_b.t += (tkBL + tkBP);
-                        }
+                        // Default ke TK jika tidak teridentifikasi
+                        result.cards.tk += valTotal;
+                        result.cards.paud_tk_a.l += tkAL;
+                        result.cards.paud_tk_a.p += tkAP;
+                        result.cards.paud_tk_a.t += (tkAL + tkAP);
+                        result.cards.paud_tk_b.l += tkBL;
+                        result.cards.paud_tk_b.p += tkBP;
+                        result.cards.paud_tk_b.t += (tkBL + tkBP);
                     }
                 }
             }
