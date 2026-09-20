@@ -112,7 +112,7 @@ function getDataMuridSDAgama() {
    MODUL: DASHBOARD MURID (FINAL FIX - AKURASI INDEKS KOLOM)
    ====================================================================== */
 
-function getDashboardMuridData(tahunFilter, bulanFilter) {
+function getDashboardMuridData(tahunFilter, bulanFilter, userNpsn, userUnitKerja) {
   var result = {
     // Struktur Data: t=Total, n=Negeri, s=Swasta, l=Laki-laki, p=Perempuan
     cards: { 
@@ -136,6 +136,8 @@ function getDashboardMuridData(tahunFilter, bulanFilter) {
 
   var thnTarget = String(tahunFilter).trim();
   var blnTarget = parseInt(bulanFilter) || 0; 
+  var targetNpsn = userNpsn ? String(userNpsn).trim() : "";
+  var targetUnit = userUnitKerja ? String(userUnitKerja).trim().toLowerCase() : "";
 
   var parseBulan = function(val) {
     if (!val) return 0;
@@ -166,9 +168,17 @@ function getDashboardMuridData(tahunFilter, bulanFilter) {
     if (sheetInputSD) {
         var lastRow = sheetInputSD.getLastRow();
         if (lastRow > 1) {
-            // MAPPING (0-Based)
+            // MAPPING (0-Based):
+            // A (0): Nama Sekolah / Unit
+            // B (1): Bulan
+            // C (2): Tahun
+            // D (3): NPSN
+            // E (4): Status Sekolah
+            // HS (226): Total Murid SD
+            var idxSekolah = 0;
             var idxBulan = 1;   // B
             var idxTahun = 2;   // C
+            var idxNpsn = 3;    // D
             var idxStatus = 4;  // E
             var idxTotal = 226; // HS
 
@@ -188,9 +198,15 @@ function getDashboardMuridData(tahunFilter, bulanFilter) {
                 var row = dataRaw[i];
                 var rowTahun = String(row[idxTahun]).trim();
                 var rowBulan = parseBulan(row[idxBulan]); 
+                var rowNpsn = String(row[idxNpsn]).trim();
+                var rowSekolah = String(row[idxSekolah]).trim().toLowerCase();
 
                 if (rowTahun !== thnTarget) continue;
                 if (rowBulan < 1 || rowBulan > 12) continue;
+
+                // User school filtering for non-admin
+                if (targetNpsn && rowNpsn && rowNpsn !== targetNpsn) continue;
+                if (targetUnit && rowSekolah && !rowSekolah.includes(targetUnit) && !targetUnit.includes(rowSekolah)) continue;
 
                 var valTotal = getNum(row[idxTotal]);
                 var status = String(row[idxStatus]).toLowerCase();
@@ -223,7 +239,7 @@ function getDashboardMuridData(tahunFilter, bulanFilter) {
                       result.cards.sd_total.p += valP;
                     });
 
-                    // Agama SD (Hitung dari Total per Agama kolom 206..223 di Input SD)
+                    // Agama SD (Total per Agama kolom 206..223 di Input SD)
                     // Index 0-based:
                     // Islam: L=206, P=207
                     // Kristen: L=209, P=210
@@ -259,7 +275,7 @@ function getDashboardMuridData(tahunFilter, bulanFilter) {
         var lastRow = sheetInputPAUD.getLastRow();
         if (lastRow > 1) {
             // Mapping Input PAUD (0-Based):
-            // B (1): Bulan, C (2): Tahun, G (6): Jenjang
+            // A (0): Nama Sekolah, B (1): Bulan, C (2): Tahun, D (3): NPSN, G (6): Jenjang
             // Kolom Murid PAUD:
             // Total Murid per lembaga: Kolom 51 (AZ)
             // USIA 0-1 (7-9), 1-2 (10-12), 2-3 (13-15), 3-4 (16-18), 4-5 (19-21), 5-6 (22-24), >6 (25-27)
@@ -268,7 +284,7 @@ function getDashboardMuridData(tahunFilter, bulanFilter) {
             // KELAS B: L=34, P=35, JML=36
             // TOTAL KELAS: L=37, P=38, JML=39
 
-            var idxBulanP = 1; var idxTahunP = 2; var idxJenjang = 6; var idxTotalP = 51;
+            var idxSekolahP = 0; var idxBulanP = 1; var idxTahunP = 2; var idxNpsnP = 3; var idxJenjang = 6; var idxTotalP = 51;
             var maxColP = Math.max(sheetInputPAUD.getLastColumn(), 60);
             var dataPAUD = sheetInputPAUD.getRange(2, 1, lastRow - 1, maxColP).getDisplayValues();
 
@@ -276,9 +292,15 @@ function getDashboardMuridData(tahunFilter, bulanFilter) {
                 var row = dataPAUD[i];
                 var rowTahun = String(row[idxTahunP]).trim();
                 var rowBulan = parseBulan(row[idxBulanP]);
+                var rowNpsn = String(row[idxNpsnP]).trim();
+                var rowSekolah = String(row[idxSekolahP]).trim().toLowerCase();
 
                 if (rowTahun !== thnTarget) continue;
                 if (rowBulan < 1 || rowBulan > 12) continue;
+
+                // User school filtering for non-admin
+                if (targetNpsn && rowNpsn && rowNpsn !== targetNpsn) continue;
+                if (targetUnit && rowSekolah && !rowSekolah.includes(targetUnit) && !targetUnit.includes(rowSekolah)) continue;
 
                 var valTotal = getNum(row[idxTotalP]);
                 var jenjang = String(row[idxJenjang]).toUpperCase().trim();
