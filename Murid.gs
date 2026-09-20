@@ -321,6 +321,19 @@ function getDashboardMuridData(tahunFilter, bulanFilter, userNpsn, userUnitKerja
             var maxColP = Math.max(sheetInputPAUD.getLastColumn(), 60);
             var dataPAUD = sheetInputPAUD.getRange(2, 1, lastRow - 1, maxColP).getDisplayValues();
 
+            var getColPByHdr = function(pattern, fallback) {
+              var idx = headersP.findIndex(function(h) { return h.includes(pattern); });
+              return idx > -1 ? idx : fallback;
+            };
+
+            var idxTkAL = getColPByHdr("tk_a_l", 31);
+            var idxTkAP = getColPByHdr("tk_a_p", 32);
+            var idxTkBL = getColPByHdr("tk_b_l", 34);
+            var idxTkBP = getColPByHdr("tk_b_p", 35);
+            var idxTotalUsiaL = getColPByHdr("total_l", 28);
+            var idxTotalUsiaP = getColPByHdr("total_p", 29);
+            var idxTotalMuridP = findColP("total murid", findColP("total", 51));
+
             for (var i = 0; i < dataPAUD.length; i++) {
                 var row = dataPAUD[i];
                 var rowTahun = String(row[idxTahunP]).trim();
@@ -346,17 +359,20 @@ function getDashboardMuridData(tahunFilter, bulanFilter, userNpsn, userUnitKerja
                     if (!isMatchNpsnP && !isMatchUnitP) continue;
                 }
 
-                var tkAL = getNum(row[31]); var tkAP = getNum(row[32]);
-                var tkBL = getNum(row[34]); var tkBP = getNum(row[35]);
+                var tkAL = getNum(row[idxTkAL]); var tkAP = getNum(row[idxTkAP]);
+                var tkBL = getNum(row[idxTkBL]); var tkBP = getNum(row[idxTkBP]);
 
-                var vL = getNum(row[28]); // Total Usia L (index 28)
-                var vP = getNum(row[29]); // Total Usia P (index 29)
+                var vL = getNum(row[idxTotalUsiaL]); // Total Usia L
+                var vP = getNum(row[idxTotalUsiaP]); // Total Usia P
                 // Jika total L & P usia nol tapi ada data Rombel/Kelas (misal TK A/B), gunakan jumlah L & P kelas
                 if (vL === 0 && vP === 0) {
                     vL = tkAL + tkBL;
                     vP = tkAP + tkBP;
                 }
-                var valTotal = vL + vP;
+                var valTotal = getNum(row[idxTotalMuridP]);
+                if (valTotal === 0 || valTotal !== (vL + vP)) {
+                    valTotal = vL + vP;
+                }
 
                 var jenjangRaw = String(row[idxJenjang] || "").toUpperCase().trim();
                 var jenjang = jenjangRaw || (rowSekolah.includes("tk") ? "TK" : (rowSekolah.includes("kb") ? "KB" : (rowSekolah.includes("sps") ? "SPS" : "TK")));
