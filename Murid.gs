@@ -389,19 +389,20 @@ function getDashboardMuridData(tahunFilter, bulanFilter, userNpsn, userUnitKerja
                 var vL = getNum(row[idxTotalUsiaL]); // Total Usia L
                 var vP = getNum(row[idxTotalUsiaP]); // Total Usia P
                 
-                if ((vL > 1000 || vP > 1000) && (sumRombelL + sumRombelP <= 1000)) {
-                    // Proteksi jika vL/vP tidak sengaja membaca NPSN
+                if (sumRombelL > 0 || sumRombelP > 0) {
+                    // Gunakan data per rombel agar 100% presisi dan sinkron dengan kartu rincian kelas
                     vL = sumRombelL;
                     vP = sumRombelP;
-                } else if (vL === 0 && vP === 0 && (sumRombelL > 0 || sumRombelP > 0)) {
-                    vL = sumRombelL;
-                    vP = sumRombelP;
+                } else if ((vL > 1000 || vP > 1000)) {
+                    vL = 0;
+                    vP = 0;
                 }
 
                 var valTotal = getNum(row[idxTotalMuridP]);
                 if (valTotal > 10000) valTotal = 0; // Proteksi pembacaan kolom non-jumlah
 
-                if (valTotal === 0 && (vL + vP) > 0) {
+                // Sinkronkan valTotal dengan vL + vP jika rombel/usia tersedia
+                if ((vL + vP) > 0) {
                     valTotal = vL + vP;
                 } else if (valTotal === 0 && (sumRombelL + sumRombelP) > 0) {
                     valTotal = sumRombelL + sumRombelP;
