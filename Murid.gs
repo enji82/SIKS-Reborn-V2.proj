@@ -207,12 +207,7 @@ function getDashboardMuridData(tahunFilter, bulanFilter) {
                     if(isNegeri) result.cards.sd_total.n += valTotal;
                     else result.cards.sd_total.s += valTotal;
 
-                    var totalL_SD = getNum(row[224]);
-                    var totalP_SD = getNum(row[225]);
-                    result.cards.sd_total.l += totalL_SD;
-                    result.cards.sd_total.p += totalP_SD;
-
-                    // Kelas SD
+                    // Hitung L & P total SD dari penjumlahan kelas 1-6
                     classCols.forEach(function(item) {
                       var valL = getNum(row[item.l]);
                       var valP = getNum(row[item.p]);
@@ -223,9 +218,19 @@ function getDashboardMuridData(tahunFilter, bulanFilter) {
                       result.cards[item.key].p += valP;
                       if(isNegeri) result.cards[item.key].n += valT;
                       else result.cards[item.key].s += valT;
+
+                      result.cards.sd_total.l += valL;
+                      result.cards.sd_total.p += valP;
                     });
 
-                    // Agama SD
+                    // Agama SD (Hitung dari Total per Agama kolom 206..223 di Input SD)
+                    // Index 0-based:
+                    // Islam: L=206, P=207
+                    // Kristen: L=209, P=210
+                    // Katolik: L=212, P=213
+                    // Hindu: L=215, P=216
+                    // Buddha: L=218, P=219
+                    // Khonghucu: L=221, P=222
                     var isl = getNum(row[206]) + getNum(row[207]);
                     var kris = getNum(row[209]) + getNum(row[210]);
                     var kat = getNum(row[212]) + getNum(row[213]);
@@ -253,6 +258,16 @@ function getDashboardMuridData(tahunFilter, bulanFilter) {
     if (sheetInputPAUD) {
         var lastRow = sheetInputPAUD.getLastRow();
         if (lastRow > 1) {
+            // Mapping Input PAUD (0-Based):
+            // B (1): Bulan, C (2): Tahun, G (6): Jenjang
+            // Kolom Murid PAUD:
+            // Total Murid per lembaga: Kolom 51 (AZ)
+            // USIA 0-1 (7-9), 1-2 (10-12), 2-3 (13-15), 3-4 (16-18), 4-5 (19-21), 5-6 (22-24), >6 (25-27)
+            // TOTAL USIA: L=28, P=29, JML=30
+            // KELAS A: L=31, P=32, JML=33
+            // KELAS B: L=34, P=35, JML=36
+            // TOTAL KELAS: L=37, P=38, JML=39
+
             var idxBulanP = 1; var idxTahunP = 2; var idxJenjang = 6; var idxTotalP = 51;
             var maxColP = Math.max(sheetInputPAUD.getLastColumn(), 60);
             var dataPAUD = sheetInputPAUD.getRange(2, 1, lastRow - 1, maxColP).getDisplayValues();
@@ -273,8 +288,8 @@ function getDashboardMuridData(tahunFilter, bulanFilter) {
                 else if (jenjang.includes("SPS") || jenjang.includes("TPA")) result.chart.sps[rowBulan - 1] += valTotal;
 
                 if (rowBulan === blnTarget) {
-                    var vL = getNum(row[49]);
-                    var vP = getNum(row[50]);
+                    var vL = getNum(row[28]); // Total L (0-based: index 28)
+                    var vP = getNum(row[29]); // Total P (0-based: index 29)
 
                     result.cards.paud_total.t += valTotal;
                     result.cards.paud_total.l += vL;
@@ -283,8 +298,8 @@ function getDashboardMuridData(tahunFilter, bulanFilter) {
                     if (jenjang.includes("TK")) {
                         result.cards.tk += valTotal;
                         
-                        var tkAL = getNum(row[42]); var tkAP = getNum(row[43]);
-                        var tkBL = getNum(row[45]); var tkBP = getNum(row[46]);
+                        var tkAL = getNum(row[31]); var tkAP = getNum(row[32]);
+                        var tkBL = getNum(row[34]); var tkBP = getNum(row[35]);
                         
                         result.cards.paud_tk_a.l += tkAL;
                         result.cards.paud_tk_a.p += tkAP;

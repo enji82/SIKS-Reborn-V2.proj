@@ -1,18 +1,6 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 
 <style>
-  #muriddash_tabBar .nav-link {
-    font-weight: 700;
-    border-radius: 20px;
-    padding: 8px 20px;
-    color: var(--warna-maroon, #800000);
-    transition: all 0.3s ease;
-  }
-  #muriddash_tabBar .nav-link.active {
-    background-color: var(--warna-maroon, #800000);
-    color: #ffffff !important;
-    box-shadow: 0 4px 10px rgba(128, 0, 0, 0.25);
-  }
   .card-stat-mini {
     border-radius: 12px;
     border: 1px solid rgba(0,0,0,0.06);
@@ -36,13 +24,22 @@
     <div class="sultan-filter-bar-balanced mb-3 sultan-page-transition" id="muriddash_filterBar">
       <div class="filter-controls-group">
 
-        <!-- 1. Filter Tahun -->
+        <!-- 1. Filter Jenjang (Khusus Admin / Semua User) -->
+        <div class="sultan-filter-item" id="muriddash_filterJenjangContainer">
+          <select id="muriddash_filterJenjang" class="form-control" aria-label="Pilih Jenjang">
+            <option value="SD" selected>SD</option>
+            <option value="PAUD">PAUD</option>
+          </select>
+          <i class="fas fa-chevron-down"></i>
+        </div>
+
+        <!-- 2. Filter Tahun -->
         <div class="sultan-filter-item" id="muriddash_filterTahunContainer">
           <select id="muriddash_filterTahun" class="form-control" aria-label="Pilih Tahun"></select>
           <i class="fas fa-chevron-down"></i>
         </div>
 
-        <!-- 2. Filter Bulan -->
+        <!-- 3. Filter Bulan -->
         <div class="sultan-filter-item" id="muriddash_filterBulanContainer">
           <select id="muriddash_filterBulan" class="form-control" aria-label="Pilih Bulan">
             <option value="1">Januari</option>
@@ -77,22 +74,6 @@
       </small>
     </div>
 
-    <!-- NAV TAB BAR KHUSUS ADMIN -->
-    <div id="muriddash_tabContainer" class="mb-4" style="display: none;">
-      <ul class="nav nav-pills" id="muriddash_tabBar">
-        <li class="nav-item mr-2">
-          <a class="nav-link active" id="muriddash_tabSdBtn" href="javascript:void(0)" onclick="muriddash_switchTab('sd')">
-            <i class="fas fa-school mr-1"></i> Data Murid SD
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" id="muriddash_tabPaudBtn" href="javascript:void(0)" onclick="muriddash_switchTab('paud')">
-            <i class="fas fa-child mr-1"></i> Data Murid PAUD
-          </a>
-        </li>
-      </ul>
-    </div>
-
     <!-- Loading State Terpusat -->
     <div id="muriddash_loadingState" class="sultan-loading-box sultan-page-transition">
       <div class="sultan-spinner-icon">
@@ -105,7 +86,7 @@
     <div id="muriddash_dashboardState" style="display: none;">
 
       <!-- =============================================================== -->
-      <!-- TAB 1: DASBOR DATA MURID SD -->
+      <!-- VIEW 1: DASBOR DATA MURID SD -->
       <!-- =============================================================== -->
       <div id="muriddash_viewSd" class="tab-view-section">
         
@@ -257,7 +238,7 @@
       </div>
 
       <!-- =============================================================== -->
-      <!-- TAB 2: DASBOR DATA MURID PAUD -->
+      <!-- VIEW 2: DASBOR DATA MURID PAUD -->
       <!-- =============================================================== -->
       <div id="muriddash_viewPaud" class="tab-view-section" style="display: none;">
         
@@ -379,7 +360,6 @@
   var MURIDDASH_CHART = null;
   var MURIDDASH_IS_ADMIN = false;
   var MURIDDASH_USER_JENJANG = "SD";
-  var MURIDDASH_ACTIVE_TAB = "sd";
 
   $(document).ready(function () {
     try {
@@ -416,20 +396,25 @@
 
     $('#muriddash_filterBulan').val(blnDefault);
 
-    // Atur tampilan Tab vs Tampilan Sekolah User
+    // Atur Opsi Filter Jenjang (Admin vs User Sekolah)
+    var $selJenjang = $('#muriddash_filterJenjang');
     if (MURIDDASH_IS_ADMIN) {
-      $('#muriddash_tabContainer').show();
-      MURIDDASH_ACTIVE_TAB = "sd";
+      $selJenjang.prop('disabled', false).val("SD");
+      $('#muriddash_filterJenjangContainer').show();
     } else {
-      $('#muriddash_tabContainer').hide();
-      MURIDDASH_ACTIVE_TAB = (MURIDDASH_USER_JENJANG === "PAUD") ? "paud" : "sd";
+      // User non-admin terkunci pada jenjang sekolahnya
+      $selJenjang.val(MURIDDASH_USER_JENJANG).prop('disabled', true);
+      $('#muriddash_filterJenjangContainer').hide();
     }
 
     muriddash_updateViewTab();
 
     // Event listener refresh
     $(document).off('click', '#muriddash_btnRefresh').on('click', '#muriddash_btnRefresh', muriddash_loadDashboard);
-    $('#muriddash_filterTahun, #muriddash_filterBulan').change(muriddash_loadDashboard);
+    $('#muriddash_filterJenjang, #muriddash_filterTahun, #muriddash_filterBulan').change(function() {
+      muriddash_updateViewTab();
+      muriddash_loadDashboard();
+    });
 
     if (typeof Chart === 'undefined') {
       $.getScript("https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js")
@@ -439,21 +424,9 @@
     }
   });
 
-  function muriddash_switchTab(tabKey) {
-    MURIDDASH_ACTIVE_TAB = tabKey;
-    $('#muriddash_tabBar .nav-link').removeClass('active');
-    if (tabKey === 'sd') {
-      $('#muriddash_tabSdBtn').addClass('active');
-      $('#muriddash_tabPaudBtn').removeClass('active');
-    } else {
-      $('#muriddash_tabPaudBtn').addClass('active');
-      $('#muriddash_tabSdBtn').removeClass('active');
-    }
-    muriddash_updateViewTab();
-  }
-
   function muriddash_updateViewTab() {
-    if (MURIDDASH_ACTIVE_TAB === 'sd') {
+    var jenjangSelected = $('#muriddash_filterJenjang').val() || "SD";
+    if (jenjangSelected === 'SD') {
       $('#muriddash_viewSd').show();
       $('#muriddash_viewPaud').hide();
     } else {
