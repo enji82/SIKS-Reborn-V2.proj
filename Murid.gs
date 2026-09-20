@@ -213,7 +213,7 @@ function getDashboardMuridData(tahunFilter, bulanFilter, userNpsn, userUnitKerja
                 if (rowTahun !== thnTarget) continue;
                 if (rowBulan < 1 || rowBulan > 12) continue;
 
-                // User school filtering for non-admin (Gunakan NPSN jika ada, jika tidak pakai Nama Sekolah)
+                // User school filtering for non-admin (Cek NPSN atau Nama Sekolah)
                 if (targetNpsn || targetUnit) {
                     var rNpsnClean = String(rowNpsn || "").trim();
                     var tNpsnClean = String(targetNpsn || "").trim();
@@ -224,11 +224,7 @@ function getDashboardMuridData(tahunFilter, bulanFilter, userNpsn, userUnitKerja
                     var matchByNpsn = (tNpsnClean !== "" && rNpsnClean !== "" && tNpsnClean === rNpsnClean);
                     var matchByUnit = (tUnitClean !== "" && rSekClean !== "" && (rSekClean.indexOf(tUnitClean) > -1 || tUnitClean.indexOf(rSekClean) > -1 || (uSub.length >= 3 && rSekClean.indexOf(uSub) > -1)));
 
-                    if (tNpsnClean !== "" && rNpsnClean !== "") {
-                        if (!matchByNpsn) continue;
-                    } else {
-                        if (!matchByUnit) continue;
-                    }
+                    if (!matchByNpsn && !matchByUnit) continue;
                 }
 
                 var classSumL = 0;
@@ -351,7 +347,7 @@ function getDashboardMuridData(tahunFilter, bulanFilter, userNpsn, userUnitKerja
                 if (rowTahun !== thnTarget) continue;
                 if (rowBulan < 1 || rowBulan > 12) continue;
 
-                // User school filtering for non-admin (Gunakan NPSN jika ada, jika tidak pakai Nama Sekolah)
+                // User school filtering for non-admin (Cek NPSN atau Nama Sekolah)
                 if (targetNpsn || targetUnit) {
                     var rNpsnCleanP = String(rowNpsn || "").trim();
                     var tNpsnCleanP = String(targetNpsn || "").trim();
@@ -362,11 +358,7 @@ function getDashboardMuridData(tahunFilter, bulanFilter, userNpsn, userUnitKerja
                     var matchByNpsnP = (tNpsnCleanP !== "" && rNpsnCleanP !== "" && tNpsnCleanP === rNpsnCleanP);
                     var matchByUnitP = (tUnitCleanP !== "" && rSekCleanP !== "" && (rSekCleanP.indexOf(tUnitCleanP) > -1 || tUnitCleanP.indexOf(rSekCleanP) > -1 || (uSubP.length >= 3 && rSekCleanP.indexOf(uSubP) > -1)));
 
-                    if (tNpsnCleanP !== "" && rNpsnCleanP !== "") {
-                        if (!matchByNpsnP) continue;
-                    } else {
-                        if (!matchByUnitP) continue;
-                    }
+                    if (!matchByNpsnP && !matchByUnitP) continue;
                 }
 
                 var tkAL = getNum(row[idxTkAL]); var tkAP = getNum(row[idxTkAP]);
