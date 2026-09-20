@@ -92,7 +92,7 @@
                   <thead>
                     <tr>
                       <th class="align-middle text-left font-weight-bold col-sticky-left" style="min-width: 220px;">NAMA SEKOLAH</th>
-                      <th class="align-middle font-weight-bold" style="width: 120px;">TOTAL PEGAWAI</th>
+                      <th class="align-middle font-weight-bold" style="width: 120px;">JUMLAH PPPK PW</th>
                       <th class="align-middle font-weight-bold" style="width: 110px;">SUDAH UNGGAH</th>
                       <th class="align-middle font-weight-bold" style="width: 110px;">BELUM UNGGAH</th>
                       <th class="align-middle font-weight-bold" style="width: 120px;">PROGRESS</th>
@@ -136,9 +136,13 @@ $(document).ready(function () {
     $('#pppkpwdash_metricRow2').html(SultanUI.renderDashboardRow2Minimal('pppkpwdash'));
 
     $('#pppkpwdash_statusCardsContainer').html(SultanUI.renderDashboardStatusCards4('pppkpwdash', {
-      title: 'DAFTAR PPPK PW SUDAH UNGGAH'
+      title: 'DAFTAR PPPK PW SUDAH UNGGAH',
+      hasWaButton: true
     }));
   }
+
+  // Event listener tombol WA salin rekap
+  $(document).off('click', '#pppkpwdash_btnSalinWa').on('click', '#pppkpwdash_btnSalinWa', pppkpwdash_salinWaRekap);
 
   // Inisialisasi filter tahun dinamis tanpa tanda "-"
   var now = new Date(); var yr = now.getFullYear(); var mo = now.getMonth();
@@ -150,11 +154,13 @@ $(document).ready(function () {
   }
   $('#pppkpwdash_filterTahun').html(htmlTahun);
 
-  // Filter unit berdasarkan role (tanpa pilihan dengan tambahan "-")
+  // Filter unit berdasarkan role
   if (!PPPKPWDASH_IS_ADMIN) {
     var unitUser = userLogin.unit || userLogin.nama_lengkap || userLogin.fullname || '';
-    $('#pppkpwdash_filterUnit').html('<option value="' + unitUser + '">' + (unitUser || 'Unit Saya') + '</option>').prop('disabled', true);
+    $('#pppkpwdash_filterUnit').html('<option value="' + unitUser + '">' + (unitUser || 'Unit Saya') + '</option>');
+    $('#pppkpwdash_filterSekolahContainer').addClass('d-none');
   } else {
+    $('#pppkpwdash_filterSekolahContainer').removeClass('d-none');
     $('#pppkpwdash_filterUnit').prop('disabled', false);
   }
 
@@ -310,6 +316,16 @@ function renderDashboard(res) {
   $('#pppkpwdash_countRevisi').text(categories['Revisi'].list.length);
   $('#pppkpwdash_countDitolak').text(categories['Ditolak'].list.length);
 
+  // Cache data list untuk tombol salin WA rekap
+  window.PPPKPWDASH_LIST_BELUM_CACHE = [];
+  units.forEach(function (u) {
+    (u.listBelum || []).forEach(function (p) {
+      window.PPPKPWDASH_LIST_BELUM_CACHE.push(p);
+    });
+  });
+  window.PPPKPWDASH_LIST_REVISI_CACHE = categories['Revisi'].list;
+  window.PPPKPWDASH_LIST_DITOLAK_CACHE = categories['Ditolak'].list;
+
   // Reset input live search
   $('#pppkpwdash_inputCariDiproses, #pppkpwdash_inputCariDisetujui, #pppkpwdash_inputCariRevisi, #pppkpwdash_inputCariDitolak').val('');
 
@@ -391,6 +407,74 @@ function renderDashboard(res) {
     dom: "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
          "<'row'<'col-sm-12'tr>>" +
          "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>"
+  });
+}
+
+function pppkpwdash_salinWaRekap() {
+  var belumList = window.PPPKPWDASH_LIST_BELUM_CACHE || [];
+  var revisiList = window.PPPKPWDASH_LIST_REVISI_CACHE || [];
+  var ditolakList = window.PPPKPWDASH_LIST_DITOLAK_CACHE || [];
+
+  if (belumList.length === 0 && revisiList.length === 0 && ditolakList.length === 0) {
+    if (typeof Sultan !== 'undefined' && Sultan.notif) {
+      Sultan.notif.info('Semua pegawai PPPK PW telah mengunggah berkas dan berstatus valid.');
+    } else {
+      alert('Semua pegawai PPPK PW telah mengunggah berkas.');
+    }
+    return;
+  }
+
+  var fTahun = $('#pppkpwdash_filterTahun').val() || '-';
+  var fDokumen = $('#pppkpwdash_filterDokumen option:selected').text() || 'Draft PK';
+  var timeNow = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) + ' ' +
+                new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+
+  var txt = "*📢 REKAP UNGGAH DOKUMEN PPPK PW*\n";
+  txt += "📁 *Dokumen:* " + fDokumen.toUpperCase() + "\n";
+  txt += "📅 *Tahun Kontrak:* " + fTahun + "\n";
+  txt += "⏱️ *Data per:* " + timeNow + " WIB\n";
+  txt += "=========================================\n\n";
+
+  if (belumList.length > 0) {
+    txt += "🔴 *BELUM UNGGAH (" + belumList.length + " Pegawai):*\n";
+    belumList.forEach(function (item, i) {
+      var nama = (typeof item === 'string') ? item : (item.nama || "-");
+      var unit = item.unit ? " _(" + item.unit + ")_" : "";
+      txt += (i + 1) + ". " + nama + unit + "\n";
+    });
+    txt += "\n";
+  }
+
+  if (revisiList.length > 0) {
+    txt += "🟡 *PERLU REVISI (" + revisiList.length + " Pegawai):*\n";
+    revisiList.forEach(function (item, i) {
+      var nama = (typeof item === 'string') ? item : (item.nama || "-");
+      var ket = (item.catatan || item.keterangan || item.alasan) ? " _(Catatan: " + (item.catatan || item.keterangan || item.alasan) + ")_" : "";
+      txt += (i + 1) + ". " + nama + ket + "\n";
+    });
+    txt += "\n";
+  }
+
+  if (ditolakList.length > 0) {
+    txt += "⛔ *DITOLAK (" + ditolakList.length + " Pegawai):*\n";
+    ditolakList.forEach(function (item, i) {
+      var nama = (typeof item === 'string') ? item : (item.nama || "-");
+      var ket = (item.catatan || item.keterangan || item.alasan) ? " _(Alasan: " + (item.catatan || item.keterangan || item.alasan) + ")_" : "";
+      txt += (i + 1) + ". " + nama + ket + "\n";
+    });
+    txt += "\n";
+  }
+
+  txt += "_Mohon segera menindaklanjuti melalui SIKS-Reborn._";
+
+  navigator.clipboard.writeText(txt).then(function () {
+    if (typeof Sultan !== 'undefined' && Sultan.notif) {
+      Sultan.notif.sukses('Rekap WA berhasil disalin ke clipboard!');
+    } else {
+      alert('Rekap WA berhasil disalin!');
+    }
+  }).catch(function () {
+    alert('Browser tidak mendukung Clipboard API.');
   });
 }
 </script>
