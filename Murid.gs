@@ -326,13 +326,17 @@ function getDashboardMuridData(tahunFilter, bulanFilter, userNpsn, userUnitKerja
               return idx > -1 ? idx : fallback;
             };
 
-            var idxTkAL = getColPByHdr("tk_a_l", 31);
-            var idxTkAP = getColPByHdr("tk_a_p", 32);
-            var idxTkBL = getColPByHdr("tk_b_l", 34);
-            var idxTkBP = getColPByHdr("tk_b_p", 35);
-            var idxTotalUsiaL = getColPByHdr("total_l", 28);
-            var idxTotalUsiaP = getColPByHdr("total_p", 29);
-            var idxTotalMuridP = findColP("total murid", findColP("total", 51));
+            var idxTkAL = getColPByHdr("tk_a_l", letterToColIndex("AF")); // 31
+            var idxTkAP = getColPByHdr("tk_a_p", letterToColIndex("AG")); // 32
+            var idxTkBL = getColPByHdr("tk_b_l", letterToColIndex("AI")); // 34
+            var idxTkBP = getColPByHdr("tk_b_p", letterToColIndex("AJ")); // 35
+            var idxKbL  = getColPByHdr("kb_l", letterToColIndex("AL"));   // 37
+            var idxKbP  = getColPByHdr("kb_p", letterToColIndex("AM"));   // 38
+            var idxSpsL = getColPByHdr("sps_l", letterToColIndex("AO"));  // 40
+            var idxSpsP = getColPByHdr("sps_p", letterToColIndex("AP"));  // 41
+            var idxTotalUsiaL = getColPByHdr("total_l", letterToColIndex("AC")); // 28
+            var idxTotalUsiaP = getColPByHdr("total_p", letterToColIndex("AD")); // 29
+            var idxTotalMuridP = getColPByHdr("total_murid", letterToColIndex("AZ")); // 51 (AZ)
 
             for (var i = 0; i < dataPAUD.length; i++) {
                 var row = dataPAUD[i];
@@ -361,16 +365,22 @@ function getDashboardMuridData(tahunFilter, bulanFilter, userNpsn, userUnitKerja
 
                 var tkAL = getNum(row[idxTkAL]); var tkAP = getNum(row[idxTkAP]);
                 var tkBL = getNum(row[idxTkBL]); var tkBP = getNum(row[idxTkBP]);
+                var kbL  = getNum(row[idxKbL]);  var kbP  = getNum(row[idxKbP]);
+                var spsL = getNum(row[idxSpsL]); var spsP = getNum(row[idxSpsP]);
+
+                var sumRombelL = tkAL + tkBL + kbL + spsL;
+                var sumRombelP = tkAP + tkBP + kbP + spsP;
 
                 var vL = getNum(row[idxTotalUsiaL]); // Total Usia L
                 var vP = getNum(row[idxTotalUsiaP]); // Total Usia P
-                // Jika total L & P usia nol tapi ada data Rombel/Kelas (misal TK A/B), gunakan jumlah L & P kelas
-                if (vL === 0 && vP === 0) {
-                    vL = tkAL + tkBL;
-                    vP = tkAP + tkBP;
+                
+                if (vL === 0 && vP === 0 && (sumRombelL > 0 || sumRombelP > 0)) {
+                    vL = sumRombelL;
+                    vP = sumRombelP;
                 }
+                
                 var valTotal = getNum(row[idxTotalMuridP]);
-                if (valTotal === 0 || valTotal !== (vL + vP)) {
+                if (valTotal === 0 || valTotal < (vL + vP)) {
                     valTotal = vL + vP;
                 }
 
