@@ -159,6 +159,16 @@ function getDashboardMuridData(tahunFilter, bulanFilter, userNpsn, userUnitKerja
     return parseInt(String(val).replace(/[^0-9]/g, '')) || 0;
   };
 
+  var letterToColIndex = function(letter) {
+    var str = String(letter).toUpperCase();
+    var sum = 0;
+    for (var i = 0; i < str.length; i++) {
+      sum *= 26;
+      sum += (str.charCodeAt(i) - 64);
+    }
+    return sum - 1; // 0-indexed
+  };
+
   // =========================================================
   // 1. DATA SD
   // =========================================================
