@@ -167,28 +167,37 @@ function getDashboardMuridData(tahunFilter, bulanFilter, userNpsn, userUnitKerja
     
     if (sheetInputSD) {
         var lastRow = sheetInputSD.getLastRow();
+        var lastRow = sheetInputSD.getLastRow();
         if (lastRow > 1) {
-            // MAPPING (0-Based):
-            // A (0): Nama Sekolah / Unit
-            // B (1): Bulan
-            // C (2): Tahun
-            // D (3): NPSN
-            // E (4): Status Sekolah
-            // HS (226): Total Murid SD
-            var idxSekolah = 0;
-            var idxBulan = 1;   // B
-            var idxTahun = 2;   // C
-            var idxNpsn = 3;    // D
-            var idxStatus = 4;  // E
-            var idxTotal = 226; // HS
+            var headers = sheetInputSD.getRange(1, 1, 1, sheetInputSD.getLastColumn()).getValues()[0].map(function(h) { return String(h).toLowerCase().trim(); });
+
+            var findCol = function(name, fallback) {
+              var idx = headers.indexOf(name.toLowerCase());
+              if (idx > -1) return idx;
+              idx = headers.findIndex(function(h) { return h.includes(name.toLowerCase()); });
+              return idx > -1 ? idx : fallback;
+            };
+
+            var idxSekolah = findCol("nama sekolah", 0);
+            var idxBulan = findCol("bulan", 1);
+            var idxTahun = findCol("tahun", 2);
+            var idxNpsn = findCol("npsn", 3);
+            var idxStatus = findCol("status sekolah", 4);
+            var idxTotal = findCol("total murid", 226);
+
+            // Dynamic find class L & P columns if headers match, else fallback to indices
+            var getColByHdr = function(pattern, fallback) {
+              var idx = headers.findIndex(function(h) { return h.includes(pattern); });
+              return idx > -1 ? idx : fallback;
+            };
 
             var classCols = [
-              { key: 'sd_k1', l: 9, p: 10 },
-              { key: 'sd_k2', l: 30, p: 31 },
-              { key: 'sd_k3', l: 51, p: 52 },
-              { key: 'sd_k4', l: 73, p: 74 },
-              { key: 'sd_k5', l: 94, p: 95 },
-              { key: 'sd_k6', l: 115, p: 116 }
+              { key: 'sd_k1', l: getColByHdr('k1_l', 9), p: getColByHdr('k1_p', 10) },
+              { key: 'sd_k2', l: getColByHdr('k2_l', 30), p: getColByHdr('k2_p', 31) },
+              { key: 'sd_k3', l: getColByHdr('k3_l', 51), p: getColByHdr('k3_p', 52) },
+              { key: 'sd_k4', l: getColByHdr('k4_l', 73), p: getColByHdr('k4_p', 74) },
+              { key: 'sd_k5', l: getColByHdr('k5_l', 94), p: getColByHdr('k5_p', 95) },
+              { key: 'sd_k6', l: getColByHdr('k6_l', 115), p: getColByHdr('k6_p', 116) }
             ];
 
             var maxCol = Math.max(sheetInputSD.getLastColumn(), 230);
@@ -206,9 +215,15 @@ function getDashboardMuridData(tahunFilter, bulanFilter, userNpsn, userUnitKerja
 
                 // User school filtering for non-admin
                 if (targetNpsn || targetUnit) {
-                    var isMatchNpsn = (targetNpsn && rowNpsn && rowNpsn === targetNpsn);
-                    var uClean = targetUnit ? targetUnit.replace(/^(sdn|sds|tk|kb|sps)\s+/i, '').trim() : "";
-                    var isMatchUnit = (targetUnit && rowSekolah && (rowSekolah.includes(targetUnit) || targetUnit.includes(rowSekolah) || (uClean && rowSekolah.includes(uClean))));
+                    var rNpsnClean = String(rowNpsn || "").trim();
+                    var tNpsnClean = String(targetNpsn || "").trim();
+                    var isMatchNpsn = (tNpsnClean && rNpsnClean && rNpsnClean === tNpsnClean);
+                    
+                    var rSekClean = String(rowSekolah || "").toLowerCase().trim();
+                    var tUnitClean = String(targetUnit || "").toLowerCase().trim();
+                    var uSub = tUnitClean.replace(/^(sdn|sds|tk|kb|sps)\s+/i, '').trim();
+                    
+                    var isMatchUnit = (tUnitClean && rSekClean && (rSekClean.includes(tUnitClean) || tUnitClean.includes(rSekClean) || (uSub && uSub.length >= 3 && rSekClean.includes(uSub))));
                     
                     if (!isMatchNpsn && !isMatchUnit) continue;
                 }
