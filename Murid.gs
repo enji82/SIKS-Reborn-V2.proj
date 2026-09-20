@@ -330,22 +330,27 @@ function getDashboardMuridData(tahunFilter, bulanFilter, userNpsn, userUnitKerja
             var maxColP = Math.max(sheetInputPAUD.getLastColumn(), 60);
             var dataPAUD = sheetInputPAUD.getRange(2, 1, lastRow - 1, maxColP).getDisplayValues();
 
-            var getColPByHdr = function(pattern, fallback) {
-              var idx = headersP.findIndex(function(h) { return h.includes(pattern); });
-              return idx > -1 ? idx : fallback;
+            var getColPByHdr = function(patterns, fallback) {
+              if (!Array.isArray(patterns)) patterns = [patterns];
+              for (var p = 0; p < patterns.length; p++) {
+                var pat = patterns[p].toLowerCase();
+                var idx = headersP.findIndex(function(h) { return h === pat || h.indexOf(pat) > -1; });
+                if (idx > -1) return idx;
+              }
+              return fallback;
             };
 
-            var idxTkAL = getColPByHdr("tk_a_l", letterToColIndex("AF")); // 31
-            var idxTkAP = getColPByHdr("tk_a_p", letterToColIndex("AG")); // 32
-            var idxTkBL = getColPByHdr("tk_b_l", letterToColIndex("AI")); // 34
-            var idxTkBP = getColPByHdr("tk_b_p", letterToColIndex("AJ")); // 35
-            var idxKbL  = getColPByHdr("kb_l", letterToColIndex("AL"));   // 37
-            var idxKbP  = getColPByHdr("kb_p", letterToColIndex("AM"));   // 38
-            var idxSpsL = getColPByHdr("sps_l", letterToColIndex("AO"));  // 40
-            var idxSpsP = getColPByHdr("sps_p", letterToColIndex("AP"));  // 41
-            var idxTotalUsiaL = getColPByHdr("total_l", letterToColIndex("AC")); // 28
-            var idxTotalUsiaP = getColPByHdr("total_p", letterToColIndex("AD")); // 29
-            var idxTotalMuridP = getColPByHdr("total_murid", letterToColIndex("AZ")); // 51 (AZ)
+            var idxTkAL = getColPByHdr(["tk_a_l", "tk a l", "a l", "a_l"], letterToColIndex("AF")); // 31
+            var idxTkAP = getColPByHdr(["tk_a_p", "tk a p", "a p", "a_p"], letterToColIndex("AG")); // 32
+            var idxTkBL = getColPByHdr(["tk_b_l", "tk b l", "b l", "b_l"], letterToColIndex("AI")); // 34
+            var idxTkBP = getColPByHdr(["tk_b_p", "tk b p", "b p", "b_p"], letterToColIndex("AJ")); // 35
+            var idxKbL  = getColPByHdr(["kb_l", "kb l"], letterToColIndex("AL"));   // 37
+            var idxKbP  = getColPByHdr(["kb_p", "kb p"], letterToColIndex("AM"));   // 38
+            var idxSpsL = getColPByHdr(["sps_l", "sps l"], letterToColIndex("AO"));  // 40
+            var idxSpsP = getColPByHdr(["sps_p", "sps p"], letterToColIndex("AP"));  // 41
+            var idxTotalUsiaL = getColPByHdr(["total_l", "total l", "l"], letterToColIndex("AC")); // 28
+            var idxTotalUsiaP = getColPByHdr(["total_p", "total p", "p"], letterToColIndex("AD")); // 29
+            var idxTotalMuridP = getColPByHdr(["total_murid", "total murid", "total"], letterToColIndex("AZ")); // 51 (AZ)
 
             for (var i = 0; i < dataPAUD.length; i++) {
                 var row = dataPAUD[i];
@@ -386,10 +391,23 @@ function getDashboardMuridData(tahunFilter, bulanFilter, userNpsn, userUnitKerja
                     vL = sumRombelL;
                     vP = sumRombelP;
                 }
-                
+
                 var valTotal = getNum(row[idxTotalMuridP]);
                 if (valTotal === 0 || valTotal < (vL + vP)) {
                     valTotal = vL + vP;
+                }
+
+                // Fallback: Jika valTotal > 0 tapi vL dan vP masih 0 (misal header tidak terdeteksi & kolom fallback kosong),
+                // maka secara otomatis hitung vL/vP dari sumRombel atau estimasi seimbang / total
+                if (valTotal > 0 && vL === 0 && vP === 0) {
+                    if (sumRombelL > 0 || sumRombelP > 0) {
+                        vL = sumRombelL;
+                        vP = sumRombelP;
+                    } else {
+                        // Jika tidak ada data rombel spesifik, bagi 2 sebagai perkiraan awal jika hanya ada total
+                        vL = Math.floor(valTotal / 2);
+                        vP = valTotal - vL;
+                    }
                 }
 
                 var jenjangRaw = String(row[idxJenjang] || "").toUpperCase().trim();
