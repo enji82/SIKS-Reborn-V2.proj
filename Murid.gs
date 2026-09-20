@@ -213,19 +213,22 @@ function getDashboardMuridData(tahunFilter, bulanFilter, userNpsn, userUnitKerja
                 if (rowTahun !== thnTarget) continue;
                 if (rowBulan < 1 || rowBulan > 12) continue;
 
-                // User school filtering for non-admin
+                // User school filtering for non-admin (Gunakan NPSN jika ada, jika tidak pakai Nama Sekolah)
                 if (targetNpsn || targetUnit) {
                     var rNpsnClean = String(rowNpsn || "").trim();
                     var tNpsnClean = String(targetNpsn || "").trim();
-                    var isMatchNpsn = (tNpsnClean && rNpsnClean && rNpsnClean === tNpsnClean);
-                    
-                    var rSekClean = String(rowSekolah || "").toLowerCase().trim();
+                    var rSekClean  = String(rowSekolah || "").toLowerCase().trim();
                     var tUnitClean = String(targetUnit || "").toLowerCase().trim();
-                    var uSub = tUnitClean.replace(/^(sdn|sds|tk|kb|sps)\s+/i, '').trim();
-                    
-                    var isMatchUnit = (tUnitClean && rSekClean && (rSekClean.includes(tUnitClean) || tUnitClean.includes(rSekClean) || (uSub && uSub.length >= 3 && rSekClean.includes(uSub))));
-                    
-                    if (!isMatchNpsn && !isMatchUnit) continue;
+                    var uSub       = tUnitClean.replace(/^(sdn|sds|tk|kb|sps)\s+/i, '').trim();
+
+                    var matchByNpsn = (tNpsnClean !== "" && rNpsnClean !== "" && tNpsnClean === rNpsnClean);
+                    var matchByUnit = (tUnitClean !== "" && rSekClean !== "" && (rSekClean.indexOf(tUnitClean) > -1 || tUnitClean.indexOf(rSekClean) > -1 || (uSub.length >= 3 && rSekClean.indexOf(uSub) > -1)));
+
+                    if (tNpsnClean !== "" && rNpsnClean !== "") {
+                        if (!matchByNpsn) continue;
+                    } else {
+                        if (!matchByUnit) continue;
+                    }
                 }
 
                 var classSumL = 0;
@@ -348,19 +351,22 @@ function getDashboardMuridData(tahunFilter, bulanFilter, userNpsn, userUnitKerja
                 if (rowTahun !== thnTarget) continue;
                 if (rowBulan < 1 || rowBulan > 12) continue;
 
-                // User school filtering for non-admin
+                // User school filtering for non-admin (Gunakan NPSN jika ada, jika tidak pakai Nama Sekolah)
                 if (targetNpsn || targetUnit) {
                     var rNpsnCleanP = String(rowNpsn || "").trim();
                     var tNpsnCleanP = String(targetNpsn || "").trim();
-                    var isMatchNpsnP = (tNpsnCleanP && rNpsnCleanP && rNpsnCleanP === tNpsnCleanP);
-                    
-                    var rSekCleanP = String(rowSekolah || "").toLowerCase().trim();
+                    var rSekCleanP  = String(rowSekolah || "").toLowerCase().trim();
                     var tUnitCleanP = String(targetUnit || "").toLowerCase().trim();
-                    var uSubP = tUnitCleanP.replace(/^(sdn|sds|tk|kb|sps)\s+/i, '').trim();
-                    
-                    var isMatchUnitP = (tUnitCleanP && rSekCleanP && (rSekCleanP.includes(tUnitCleanP) || tUnitCleanP.includes(rSekCleanP) || (uSubP && uSubP.length >= 3 && rSekCleanP.includes(uSubP))));
-                    
-                    if (!isMatchNpsnP && !isMatchUnitP) continue;
+                    var uSubP       = tUnitCleanP.replace(/^(sdn|sds|tk|kb|sps)\s+/i, '').trim();
+
+                    var matchByNpsnP = (tNpsnCleanP !== "" && rNpsnCleanP !== "" && tNpsnCleanP === rNpsnCleanP);
+                    var matchByUnitP = (tUnitCleanP !== "" && rSekCleanP !== "" && (rSekCleanP.indexOf(tUnitCleanP) > -1 || tUnitCleanP.indexOf(rSekCleanP) > -1 || (uSubP.length >= 3 && rSekCleanP.indexOf(uSubP) > -1)));
+
+                    if (tNpsnCleanP !== "" && rNpsnCleanP !== "") {
+                        if (!matchByNpsnP) continue;
+                    } else {
+                        if (!matchByUnitP) continue;
+                    }
                 }
 
                 var tkAL = getNum(row[idxTkAL]); var tkAP = getNum(row[idxTkAP]);
