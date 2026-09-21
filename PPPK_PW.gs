@@ -232,6 +232,7 @@ function pppkpw_getData(unitFilter, tahun) {
 
     sheets.forEach(function(sheet) {
       var sheetName = sheet.getName();
+      if (sheetName.indexOf("SPMT") === 0) return;
       if (targetTahun && targetTahun !== "SEMUA" && sheetName !== targetTahun) return;
       var lastRow = sheet.getLastRow();
       if (lastRow < 2) return;
@@ -546,6 +547,7 @@ function pppkpw_getDashboardData(unitFilter, tahun, forceRefresh) {
     var dbSheets = ss.getSheets();
     dbSheets.forEach(function(s) {
       var sName = s.getName();
+      if (sName.indexOf("SPMT") === 0) return;
       if (tahun && tahun !== "SEMUA" && sName !== tahun) return;
       var lr = s.getLastRow();
       if (lr < 2) return;
@@ -681,13 +683,18 @@ function getNotifikasiPPPKPW(role, unit) {
             if (!isRead) unreadCount++;
           }
 
+          var isSpmtSheet = sheet.getName().indexOf("SPMT") === 0;
+          var labelKriteria = isSpmtSheet 
+            ? "SPMT " + (rTahun || sheet.getName().replace(/^SPMT\s*/i, ""))
+            : "Draft PK " + (rTahun || sheet.getName());
+
           notifList.push({
             rowId: i + 1,
             sheetName: sheet.getName(),
             source: "PPPK PW",
             nama: rNama,
             namaSd: rUnit,
-            kriteria: "Draft PK " + (rTahun || sheet.getName()),
+            kriteria: labelKriteria,
             status: isDiproses ? "Diproses" : status,
             waktu: (data[i][14] && !isDiproses) ? data[i][14] : (data[i][12] && data[i][12] !== "-" ? data[i][12] : data[i][10]),
             isRead: isRead
@@ -871,3 +878,421 @@ function pppkpw_getEMeteraiExplorer(targetFolderId, forceRefresh) {
     return JSON.stringify({ success: false, message: e.message });
   }
 }
+
+/* =======================================================================
+   SUBMODUL: SPMT PPPK PW — SCAN SURAT PERNYATAAN MELAKSANAKAN TUGAS
+   ======================================================================= */
+
+function pppkpw_spmt_getOrCreateSheet(tahun) {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.PPPK_PW_DB);
+  var sheetName = tahun ? ("SPMT " + tahun) : "SPMT Data";
+  var sheet = ss.getSheetByName(sheetName);
+  var headerSPMT = ["ID", "Unit_Kerja", "Nama_Pegawai", "NIP", "Jabatan", "Tahun", "Nama_File",
+                    "URL_File", "Status", "Catatan", "Tgl_Unggah", "Pengunggah",
+                    "Tgl_Diubah", "Pengubah", "Tgl_Verifikasi", "Verifikator", "Read_By"];
+  if (!sheet) {
+    sheet = ss.insertSheet(sheetName);
+    sheet.appendRow(headerSPMT);
+    sheet.getRange(1, 1, 1, headerSPMT.length).setFontWeight("bold");
+  } else {
+    var headerCur = sheet.getRange(1, 1, 1, sheet.getLastColumn() || 1).getValues()[0];
+    if (headerCur.indexOf("Jabatan") === -1 || headerCur.indexOf("Read_By") === -1) {
+      sheet.getRange(1, 1, 1, headerSPMT.length).setValues([headerSPMT]).setFontWeight("bold");
+    }
+  }
+  return sheet;
+}
+
+function pppkpw_spmt_formatFileName(namaPegawai, nip, unitKerja) {
+  var namaClean = String(namaPegawai || "").trim().replace(/[\\/:*?"<>|]/g, "");
+  var nipClean = String(nip || "").trim().replace(/[\\/:*?"<>|]/g, "");
+  var unitClean = String(unitKerja || "").trim().toUpperCase().replace(/[\\/:*?"<>|]/g, "");
+  return "SPMT_" + namaClean + "_" + nipClean + "_" + unitClean + "_SECANG.pdf";
+}
+
+function pppkpw_spmt_getOrCreateTargetFolder(tahun, unitKerja) {
+  var root = DriveApp.getFolderById(KONFIG_PPPK_PW.FOLDER_DOCS_ID);
+  var iterSpmt = root.getFoldersByName("SPMT");
+  var spmtRootFolder = iterSpmt.hasNext() ? iterSpmt.next() : root.createFolder("SPMT");
+
+  var folderYearName = String(tahun || "Lainnya").replace(/\//g, "-");
+  var iterYear = spmtRootFolder.getFoldersByName(folderYearName);
+  var yearFolder = iterYear.hasNext() ? iterYear.next() : spmtRootFolder.createFolder(folderYearName);
+
+  var unitFolderName = String(unitKerja || "Lainnya").trim().toUpperCase();
+  var iterUnit = yearFolder.getFoldersByName(unitFolderName);
+  var unitFolder = iterUnit.hasNext() ? iterUnit.next() : yearFolder.createFolder(unitFolderName);
+
+  return unitFolder;
+}
+
+function pppkpw_spmt_getAvailableTahun() {
+  try {
+    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.PPPK_PW_DB);
+    var list = [];
+    ss.getSheets().forEach(function(s) {
+      var sName = s.getName();
+      if (sName.indexOf("SPMT ") === 0) {
+        list.push(sName.replace("SPMT ", ""));
+      }
+    });
+    return list;
+  } catch(e) { return []; }
+}
+
+function pppkpw_spmt_getInitData(unitFilter) {
+  try {
+    var rawInit = pppkpw_getInitData(unitFilter);
+    var initObj = typeof rawInit === "string" ? JSON.parse(rawInit) : rawInit;
+    if (initObj.success) {
+      initObj.tahunList = pppkpw_spmt_getAvailableTahun();
+    }
+    return JSON.stringify(initObj);
+  } catch(e) {
+    return JSON.stringify({ success: false, message: e.message });
+  }
+}
+
+function pppkpw_spmt_getData(unitFilter, tahun) {
+  try {
+    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.PPPK_PW_DB);
+    var sheets = ss.getSheets();
+    var result = [];
+    var targetUnit = String(unitFilter || "").trim().toUpperCase();
+    var targetTahun = String(tahun || "").trim();
+
+    sheets.forEach(function(sheet) {
+      var sheetName = sheet.getName();
+      if (sheetName.indexOf("SPMT") !== 0) return; // Hanya sheet SPMT
+      var sheetYear = sheetName.replace(/^SPMT\s*/i, "");
+      if (targetTahun && targetTahun !== "SEMUA" && sheetYear !== targetTahun && sheetName !== targetTahun) return;
+      var lastRow = sheet.getLastRow();
+      if (lastRow < 2) return;
+      var data = sheet.getDataRange().getDisplayValues();
+      for (var i = 1; i < data.length; i++) {
+        if (!data[i][0]) continue;
+        var rUnit = String(data[i][1] || "").trim().toUpperCase();
+        if (targetUnit && targetUnit !== "SEMUA" && rUnit !== targetUnit) continue;
+        result.push({
+          rowId: i + 1, sheetName: sheetName,
+          id: data[i][0],
+          unit_kerja:   data[i][1],
+          nama_pegawai: data[i][2],
+          nip:          data[i][3],
+          jabatan:      data[i][4] || "-",
+          tahun:        data[i][5] || sheetYear,
+          nama_file:    data[i][6],
+          url_file:     data[i][7],
+          status:       data[i][8] || "Diproses",
+          catatan:      data[i][9] || "",
+          tgl_unggah:   data[i][10] || "-",
+          pengunggah:   data[i][11] || "-",
+          tgl_diubah:   data[i][12] || "-",
+          pengubah:     data[i][13] || "-",
+          tgl_verifikasi: data[i][14] || "-",
+          verifikator:  data[i][15] || "-",
+          read_by:      data[i][16] || ""
+        });
+      }
+    });
+
+    function parseDateTime(dStr) {
+      if (!dStr || dStr === "-" || String(dStr).trim() === "") return 0;
+      try {
+        dStr = String(dStr).replace(/'/g, "").trim();
+        var p = dStr.split(" ");
+        if (!p[0]) return 0;
+        var dateParts = p[0].split(/[-/]/);
+        if (dateParts.length < 3) return 0;
+        var timeParts = p[1] ? p[1].split(":") : ["00", "00", "00"];
+        var year, month, day;
+        if (dateParts[0].length === 4) {
+          year = parseInt(dateParts[0], 10);
+          month = parseInt(dateParts[1], 10) - 1;
+          day = parseInt(dateParts[2], 10);
+        } else {
+          year = parseInt(dateParts[2], 10);
+          month = parseInt(dateParts[1], 10) - 1;
+          day = parseInt(dateParts[0], 10);
+        }
+        var hours = parseInt(timeParts[0] || 0, 10);
+        var minutes = parseInt(timeParts[1] || 0, 10);
+        var seconds = parseInt(timeParts[2] || 0, 10);
+        return new Date(year, month, day, hours, minutes, seconds).getTime() || 0;
+      } catch(e) { return 0; }
+    }
+
+    result.sort(function(a, b) {
+      var actA = Math.max(parseDateTime(a.tgl_unggah), parseDateTime(a.tgl_diubah), parseDateTime(a.tgl_verifikasi));
+      var actB = Math.max(parseDateTime(b.tgl_unggah), parseDateTime(b.tgl_diubah), parseDateTime(b.tgl_verifikasi));
+      if (actB === actA) return (b.rowId || 0) - (a.rowId || 0);
+      return actB - actA;
+    });
+
+    return JSON.stringify({ success: true, data: result });
+  } catch(e) {
+    return JSON.stringify({ success: false, message: e.message });
+  }
+}
+
+function pppkpw_spmt_simpan(payload, fileData) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+    if (!payload.unit_kerja) return JSON.stringify({ success: false, message: "Unit Kerja tidak boleh kosong." });
+    if (!payload.nama_pegawai) return JSON.stringify({ success: false, message: "Nama Pegawai tidak boleh kosong." });
+    if (!payload.tahun) return JSON.stringify({ success: false, message: "Tahun Kontrak tidak boleh kosong." });
+    if (!fileData || !fileData.data) return JSON.stringify({ success: false, message: "File Scan SPMT wajib diunggah." });
+
+    var estimatedSize = Math.round(fileData.data.length * 0.75);
+    if (estimatedSize > 1100000) return JSON.stringify({ success: false, message: "Ukuran file melebihi batas maksimal 1 MB." });
+
+    var sheet = pppkpw_spmt_getOrCreateSheet(payload.tahun);
+    var existingData = sheet.getDataRange().getDisplayValues();
+    for (var i = 1; i < existingData.length; i++) {
+      if (String(existingData[i][2] || "").trim().toLowerCase() === String(payload.nama_pegawai).trim().toLowerCase() &&
+          String(existingData[i][3] || "").trim() === String(payload.nip || "").trim() &&
+          String(existingData[i][5] || "").trim() === String(payload.tahun).trim()) {
+        var stDup = String(existingData[i][8] || "").toLowerCase();
+        if (stDup === "diverifikasi" || stDup === "disetujui") return JSON.stringify({ success: false, message: "Dokumen SPMT " + payload.nama_pegawai + " sudah Diverifikasi, tidak dapat ditambah ulang." });
+        return JSON.stringify({ success: false, message: "Data SPMT untuk pegawai ini dan tahun ini sudah ada. Gunakan tombol Edit." });
+      }
+    }
+
+    var targetFolder = pppkpw_spmt_getOrCreateTargetFolder(payload.tahun, payload.unit_kerja);
+    var namaFile = pppkpw_spmt_formatFileName(payload.nama_pegawai, payload.nip, payload.unit_kerja);
+    var iterFile = targetFolder.getFilesByName(namaFile);
+    while (iterFile.hasNext()) { try { iterFile.next().setTrashed(true); } catch(ex) {} }
+
+    var blob = Utilities.newBlob(Utilities.base64Decode(fileData.data), "application/pdf", namaFile);
+    var file = targetFolder.createFile(blob);
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    var fileUrl = file.getUrl();
+
+    var now = "'" + Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
+    var pengunggah = String(payload.user_login || "").trim();
+    if (!pengunggah || /^\d+$/.test(pengunggah)) {
+      pengunggah = payload.unit_kerja || pengunggah || "User";
+    }
+
+    sheet.appendRow([
+      pppkpw_genId(),
+      payload.unit_kerja,
+      payload.nama_pegawai,
+      payload.nip || "",
+      payload.jabatan || "",
+      payload.tahun,
+      namaFile,
+      fileUrl,
+      "Diproses",
+      "",
+      now,
+      pengunggah,
+      "", "", "", "",
+      "User"
+    ]);
+
+    SpreadsheetApp.flush();
+    pppkpw_invalidateCache(payload.tahun);
+    return JSON.stringify({ success: true, message: "Scan SPMT berhasil diunggah dan disimpan." });
+  } catch(e) {
+    return JSON.stringify({ success: false, message: e.message });
+  } finally { lock.releaseLock(); }
+}
+
+function pppkpw_spmt_perbaiki(payload, fileData) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(20000);
+    var sheet = pppkpw_spmt_getOrCreateSheet(payload.tahun || (payload.sheetName ? payload.sheetName.replace(/^SPMT\s*/i, "") : ""));
+    var r = parseInt(payload.rowId);
+    var oldUrl = sheet.getRange(r, 8).getValue();
+    var newFileUrl = oldUrl;
+    var namaFile = sheet.getRange(r, 7).getValue();
+
+    var currentStatus = String(sheet.getRange(r, 9).getValue() || "").toLowerCase();
+    if (currentStatus === "diverifikasi" || currentStatus === "disetujui") return JSON.stringify({ success: false, message: "Dokumen SPMT sudah Diverifikasi, tidak dapat diubah." });
+
+    if (fileData && fileData.data) {
+      var estimatedSize = Math.round(fileData.data.length * 0.75);
+      if (estimatedSize > 1100000) return JSON.stringify({ success: false, message: "Ukuran file melebihi batas maksimal 1 MB." });
+
+      if (oldUrl && oldUrl.indexOf("drive.google.com") !== -1) {
+        try {
+          var match = oldUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) || oldUrl.match(/id=([a-zA-Z0-9_-]+)/);
+          if (match && match[1]) DriveApp.getFileById(match[1]).setTrashed(true);
+        } catch(ex) {}
+      }
+      var unitKerja = payload.unit_kerja || sheet.getRange(r, 2).getValue();
+      var namaPegawai = payload.nama_pegawai || sheet.getRange(r, 3).getValue();
+      var nip = payload.nip || sheet.getRange(r, 4).getValue();
+      var tahun = payload.tahun || sheet.getRange(r, 6).getValue();
+
+      var targetFolder = pppkpw_spmt_getOrCreateTargetFolder(tahun, unitKerja);
+      namaFile = pppkpw_spmt_formatFileName(namaPegawai, nip, unitKerja);
+      var iterFile = targetFolder.getFilesByName(namaFile);
+      while (iterFile.hasNext()) { try { iterFile.next().setTrashed(true); } catch(ex) {} }
+
+      var blob = Utilities.newBlob(Utilities.base64Decode(fileData.data), "application/pdf", namaFile);
+      var newFile = targetFolder.createFile(blob);
+      newFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      newFileUrl = newFile.getUrl();
+    }
+
+    var now = "'" + Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
+    var pengubah = String(payload.user_login || "").trim();
+    if (!pengubah || /^\d+$/.test(pengubah)) {
+      pengubah = (payload.unit_kerja || sheet.getRange(r, 2).getValue() || pengubah || "User");
+    }
+
+    sheet.getRange(r, 5).setValue(payload.jabatan || "");
+    sheet.getRange(r, 7).setValue(namaFile);
+    sheet.getRange(r, 8).setValue(newFileUrl);
+    sheet.getRange(r, 9).setValue("Diproses");
+    sheet.getRange(r, 10).setValue("");
+    sheet.getRange(r, 13).setValue(now);
+    sheet.getRange(r, 14).setValue(pengubah);
+    sheet.getRange(r, 15).setValue("");
+    sheet.getRange(r, 16).setValue("");
+    sheet.getRange(r, 17).setValue("User");
+
+    SpreadsheetApp.flush();
+    pppkpw_invalidateCache(payload.tahun);
+    return JSON.stringify({ success: true, message: "Data SPMT berhasil diperbarui." });
+  } catch(e) {
+    return JSON.stringify({ success: false, message: e.message });
+  } finally { lock.releaseLock(); }
+}
+
+function pppkpw_spmt_hapus(rowId, sheetName, securityCode) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    var d = new Date();
+    var kd = d.getFullYear() + "" + String(d.getMonth() + 1).padStart(2, "0") + "" + String(d.getDate()).padStart(2, "0");
+    if (String(securityCode).trim() !== kd) return JSON.stringify({ success: false, message: "Kode Keamanan Salah!" });
+
+    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.PPPK_PW_DB);
+    var sheet = ss.getSheetByName(sheetName);
+    if (!sheet) return JSON.stringify({ success: false, message: "Sheet SPMT tidak ditemukan." });
+
+    var r = parseInt(rowId);
+    var urlDrive = sheet.getRange(r, 8).getValue();
+    if (urlDrive && urlDrive.indexOf("drive.google.com") !== -1) {
+      try {
+        var match = urlDrive.match(/\/d\/([a-zA-Z0-9_-]+)/) || urlDrive.match(/id=([a-zA-Z0-9_-]+)/);
+        if (match && match[1]) DriveApp.getFileById(match[1]).setTrashed(true);
+      } catch(ex) {}
+    }
+    sheet.deleteRow(r);
+    SpreadsheetApp.flush();
+    pppkpw_invalidateCache(sheetName);
+    return JSON.stringify({ success: true, message: "Data SPMT berhasil dihapus." });
+  } catch(e) {
+    return JSON.stringify({ success: false, message: e.message });
+  } finally { lock.releaseLock(); }
+}
+
+function pppkpw_spmt_verifikasi(payload) {
+  return pppkpw_verifikasi(payload);
+}
+
+function pppkpw_spmt_getDashboardData(unitFilter, tahun, forceRefresh) {
+  try {
+    var cacheKey = "PPPKPW_SPMT_DASH_" + (tahun || "ALL") + "_" + (unitFilter || "ALL");
+    if (!forceRefresh) {
+      var cached = CacheService.getScriptCache().get(cacheKey);
+      if (cached) return cached;
+    }
+
+    var sheet = getSheet("PTK_DB", "Master Data GTK");
+    var allPegawai = [];
+    if (sheet) {
+      var lastRow = sheet.getLastRow();
+      if (lastRow >= 2) {
+        var ptkData = sheet.getRange(2, 1, lastRow - 1, 26).getDisplayValues();
+        var targetUnit = String(unitFilter || "").trim().toUpperCase();
+        ptkData.forEach(function(row) {
+          if (!row[0]) return;
+          if (!pppkpw_isPppkPw(row[19])) return;
+          var unit    = String(row[2] || "").trim();
+          if (targetUnit && targetUnit !== "SEMUA" && unit.toUpperCase() !== targetUnit) return;
+          var nama    = String(row[4] || "").trim();
+          var nip     = String(row[7] || "").trim();
+          var jabatan = String(row[25] || "").trim();
+          if (!nama) return;
+          allPegawai.push({ unit: unit, nama: nama, nip: nip, jabatan: jabatan });
+        });
+      }
+    }
+
+    var uploadedMap = {};
+    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.PPPK_PW_DB);
+    var dbSheets = ss.getSheets();
+    dbSheets.forEach(function(s) {
+      var sName = s.getName();
+      if (sName.indexOf("SPMT") !== 0) return; // Hanya sheet SPMT
+      var sheetYear = sName.replace(/^SPMT\s*/i, "");
+      if (tahun && tahun !== "SEMUA" && sheetYear !== tahun && sName !== tahun) return;
+      var lr = s.getLastRow();
+      if (lr < 2) return;
+      var rows = s.getDataRange().getDisplayValues();
+      for (var i = 1; i < rows.length; i++) {
+        if (!rows[i][0]) continue;
+        var key = String(rows[i][2] || "").trim().toLowerCase() + "|" + String(rows[i][3] || "").trim() + "|" + String(rows[i][5] || sheetYear).trim();
+        uploadedMap[key] = { status: String(rows[i][8] || "Diproses").trim(), tahun: sName };
+      }
+    });
+
+    var unitMap = {};
+    allPegawai.forEach(function(p) {
+      if (!unitMap[p.unit]) unitMap[p.unit] = { unit: p.unit, total: 0, sudah: 0, belum: 0, diverifikasi: 0, diproses: 0, ditolak: 0, listSudah: [], listBelum: [] };
+      var key = p.nama.toLowerCase() + "|" + p.nip + "|" + (tahun && tahun !== "SEMUA" ? tahun : "");
+      var foundEntry = uploadedMap[key] || null;
+
+      if (!foundEntry && (!tahun || tahun === "SEMUA")) {
+        var prefix = p.nama.toLowerCase() + "|" + p.nip + "|";
+        var keys = Object.keys(uploadedMap);
+        for (var ki = 0; ki < keys.length; ki++) {
+          if (keys[ki].indexOf(prefix) === 0) { foundEntry = uploadedMap[keys[ki]]; break; }
+        }
+      }
+
+      unitMap[p.unit].total++;
+      if (foundEntry) {
+        unitMap[p.unit].sudah++;
+        var stL = String(foundEntry.status || "Diproses").toLowerCase();
+        if (stL === "disetujui" || stL === "diverifikasi") unitMap[p.unit].diverifikasi++;
+        else if (stL === "revisi") unitMap[p.unit].revisi = (unitMap[p.unit].revisi || 0) + 1;
+        else if (stL === "ditolak") unitMap[p.unit].ditolak++;
+        else unitMap[p.unit].diproses++;
+        unitMap[p.unit].listSudah.push({ nama: p.nama, nip: p.nip, jabatan: p.jabatan, status: foundEntry.status });
+      } else {
+        unitMap[p.unit].belum++;
+        unitMap[p.unit].listBelum.push({ nama: p.nama, nip: p.nip, jabatan: p.jabatan });
+      }
+    });
+
+    var detailUnit = [];
+    Object.keys(unitMap).forEach(function(k) { detailUnit.push(unitMap[k]); });
+    detailUnit.sort(function(a, b) { return a.unit.localeCompare(b.unit); });
+
+    var totPegawai = 0, totSudah = 0, totBelum = 0, totDiverifikasi = 0, totDiproses = 0, totDitolak = 0;
+    detailUnit.forEach(function(u) {
+      totPegawai += u.total; totSudah += u.sudah; totBelum += u.belum;
+      totDiverifikasi += u.diverifikasi; totDiproses += u.diproses; totDitolak += u.ditolak;
+    });
+
+    var result = JSON.stringify({
+      success: true,
+      totalPegawai: totPegawai, totalSudah: totSudah, totalBelum: totBelum,
+      totalDiverifikasi: totDiverifikasi, totalDiproses: totDiproses, totalDitolak: totDitolak,
+      detailUnit: detailUnit
+    });
+    try { CacheService.getScriptCache().put(cacheKey, result, 900); } catch(ce) {}
+    return result;
+  } catch(e) {
+    return JSON.stringify({ success: false, message: e.message });
+  }
+}
+
