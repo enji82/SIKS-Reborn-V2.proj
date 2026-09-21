@@ -1657,23 +1657,59 @@
       var sesi = getAktifUserEmading();
       var curUser = sesi.username || 'anonim';
 
+      var $btn = $('#koran_btn_like_' + idArtikel);
+      var $icon = $('#koran_icon_like_' + idArtikel);
+      var $label = $('#koran_label_like_' + idArtikel);
+      var $count = $('#koran_count_like_' + idArtikel);
+
+      var isCurrentlyLiked = $btn.hasClass('btn-koran-liked');
+      var curCount = parseInt($count.text() || 0, 10);
+
+      // OPTIMISTIC UI UPDATE (Respon Instan tanpa menunggu jaringan)
+      if (isCurrentlyLiked) {
+        $btn.removeClass('btn-koran-liked').addClass('btn-outline-danger');
+        $icon.removeClass('fas').addClass('far');
+        $label.text('Suka');
+        $count.text(Math.max(0, curCount - 1));
+      } else {
+        $btn.removeClass('btn-outline-danger').addClass('btn-koran-liked');
+        $icon.removeClass('far').addClass('fas');
+        $label.text('Disukai');
+        $count.text(curCount + 1);
+      }
+
       google.script.run
         .withSuccessHandler(function (res) {
           try {
             var data = (typeof res === 'string') ? JSON.parse(res) : res;
             if (data.success) {
-              $('#koran_count_like_' + idArtikel).text(data.totalSuka);
-              if (data.status === 'liked') {
-                $('#koran_btn_like_' + idArtikel).removeClass('btn-outline-danger').addClass('btn-koran-liked');
-                $('#koran_icon_like_' + idArtikel).removeClass('far').addClass('fas');
-                $('#koran_label_like_' + idArtikel).text('Disukai');
+              $count.text(data.totalSuka);
+              var isLiked = (data.liked !== undefined) ? data.liked : (data.status === 'liked');
+              if (isLiked) {
+                $btn.removeClass('btn-outline-danger').addClass('btn-koran-liked');
+                $icon.removeClass('far').addClass('fas');
+                $label.text('Disukai');
               } else {
-                $('#koran_btn_like_' + idArtikel).removeClass('btn-koran-liked').addClass('btn-outline-danger');
-                $('#koran_icon_like_' + idArtikel).removeClass('fas').addClass('far');
-                $('#koran_label_like_' + idArtikel).text('Suka');
+                $btn.removeClass('btn-koran-liked').addClass('btn-outline-danger');
+                $icon.removeClass('fas').addClass('far');
+                $label.text('Suka');
               }
             }
           } catch (e) {}
+        })
+        .withFailureHandler(function() {
+          // Rollback jika request server gagal
+          if (isCurrentlyLiked) {
+            $btn.removeClass('btn-outline-danger').addClass('btn-koran-liked');
+            $icon.removeClass('far').addClass('fas');
+            $label.text('Disukai');
+            $count.text(curCount);
+          } else {
+            $btn.removeClass('btn-koran-liked').addClass('btn-outline-danger');
+            $icon.removeClass('fas').addClass('far');
+            $label.text('Suka');
+            $count.text(curCount);
+          }
         })
         .toggleSukaEmading(idArtikel, curUser);
     }
