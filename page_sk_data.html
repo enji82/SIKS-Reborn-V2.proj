@@ -802,7 +802,12 @@
             ]);
         });
 
+        // [BLUEPRINT] Pagination Preservation: simpan halaman aktif sebelum render ulang
+        var _currentPage = TUGAS_TABEL_INSTANCE.page();
         TUGAS_TABEL_INSTANCE.clear().rows.add(dtArray).draw(false);
+        if (_currentPage > 0 && _currentPage < TUGAS_TABEL_INSTANCE.page.info().pages) {
+            TUGAS_TABEL_INSTANCE.page(_currentPage).draw(false);
+        }
     }
 
     // =================================================================
@@ -928,6 +933,12 @@
     function tugas_bukaModalEdit(rowId) {
         var d = TUGAS_DATA_MASTER[rowId];
         if (!d) return;
+
+        // [BLUEPRINT] Guard: tombol Edit nonaktif jika status sudah Disetujui
+        if (typeof SultanCRUD !== 'undefined' && SultanCRUD.isStatusLocked(d.status) && !TUGAS_IS_ADMIN) {
+            Sultan.notif.gagal('Data sudah <strong>Disetujui</strong> dan tidak dapat diubah.');
+            return;
+        }
 
         tugas_resetFormModal();
         $('#tugas_editRowId').val(rowId);
@@ -1144,7 +1155,11 @@
                         break;
                     }
                 }
-                tugas_terapkanFilterLokal();
+                // [BLUEPRINT] Render dengan preserved pagination setelah verifikasi
+                SultanCRUD.updateRowPreserved(
+                    TUGAS_TABEL_INSTANCE,
+                    function() { tugas_terapkanFilterLokal(); }
+                );
             } else { Sultan.notif.crud.gagal(res.message); }
         }).verifikasiDataSK(payload);
     }
@@ -1155,6 +1170,12 @@
     function tugas_bukaModalHapus(rowId) {
         var d = TUGAS_DATA_MASTER[rowId];
         if (!d) return;
+
+        // [BLUEPRINT] Guard: tombol Hapus nonaktif jika status sudah Disetujui
+        if (typeof SultanCRUD !== 'undefined' && SultanCRUD.isStatusLocked(d.status) && !TUGAS_IS_ADMIN) {
+            Sultan.notif.gagal('Data sudah <strong>Disetujui</strong> dan tidak dapat dihapus.');
+            return;
+        }
 
         var dDate = new Date();
         var kd = dDate.getFullYear() + "" + String(dDate.getMonth() + 1).padStart(2, '0') + "" + String(dDate.getDate()).padStart(2, '0');
