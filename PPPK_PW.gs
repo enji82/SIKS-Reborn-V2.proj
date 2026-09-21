@@ -631,6 +631,14 @@ function pppkpw_invalidateCache(tahun, unit) {
    ----------------------------------------------------------------------- */
 
 function getNotifikasiPPPKPW(role, unit) {
+  return _getNotifikasiPPPKPWInternal(role, unit, false);
+}
+
+function getNotifikasiPPPKPWSPMT(role, unit) {
+  return _getNotifikasiPPPKPWInternal(role, unit, true);
+}
+
+function _getNotifikasiPPPKPWInternal(role, unit, isSpmtOnly) {
   try {
     var rLower = String(role || "").toLowerCase();
     var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
@@ -642,6 +650,13 @@ function getNotifikasiPPPKPW(role, unit) {
     var sheets = ss.getSheets();
 
     sheets.forEach(function(sheet) {
+      var sName = sheet.getName();
+      var isSpmtSheet = sName.indexOf("SPMT") === 0;
+
+      // Filter berdasarkan tipe: jika isSpmtOnly=true hanya sheet SPMT, sebaliknya hanya sheet non-SPMT (Draft PK)
+      if (isSpmtOnly && !isSpmtSheet) return;
+      if (!isSpmtOnly && isSpmtSheet) return;
+
       var lastRow = sheet.getLastRow();
       if (lastRow < 2) return;
       var data = sheet.getDataRange().getDisplayValues();
@@ -683,15 +698,14 @@ function getNotifikasiPPPKPW(role, unit) {
             if (!isRead) unreadCount++;
           }
 
-          var isSpmtSheet = sheet.getName().indexOf("SPMT") === 0;
           var labelKriteria = isSpmtSheet 
-            ? "SPMT " + (rTahun || sheet.getName().replace(/^SPMT\s*/i, ""))
-            : "Draft PK " + (rTahun || sheet.getName());
+            ? "SPMT " + (rTahun || sName.replace(/^SPMT\s*/i, ""))
+            : "Draft PK " + (rTahun || sName);
 
           notifList.push({
             rowId: i + 1,
-            sheetName: sheet.getName(),
-            source: "PPPK PW",
+            sheetName: sName,
+            source: isSpmtSheet ? "PPPK_PW_SPMT" : "PPPK PW",
             nama: rNama,
             namaSd: rUnit,
             kriteria: labelKriteria,
@@ -739,8 +753,9 @@ function pppkpw_tandaiNotifDibaca(rowId, sheetName, role) {
       sheet.getRange(row, 17).setValue(list.join(","));
       SpreadsheetApp.flush();
     }
+    var isSpmt = sheet.getName().indexOf("SPMT") === 0;
     if (typeof invalidateNotifCacheForModule === 'function') {
-      invalidateNotifCacheForModule("pppkpw", role, "");
+      invalidateNotifCacheForModule(isSpmt ? "pppkpw_spmt" : "pppkpw", role, "");
     }
     return true;
   } catch(e) {

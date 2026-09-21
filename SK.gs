@@ -788,6 +788,7 @@ function getNotifikasiGlobal(role, unit) {
     callSafe('arsip_tka', getNotifikasiArsipTka, role, unit);
     callSafe('koreksi_ktp', getNotifikasiKoreksiKtp, role, unit);
     callSafe('pppkpw', getNotifikasiPPPKPW, role, unit);
+    callSafe('pppkpw_spmt', getNotifikasiPPPKPWSPMT, role, unit);
   } catch (err) {
     Logger.log("SULTAN Critical Error: " + err.message);
   }
