@@ -200,13 +200,55 @@
     line-height: 1.72;
     color: #2c3038;
     text-align: left;
-    margin-bottom: 14px;
+    margin-bottom: 8px;
     flex-grow: 1;
     word-break: break-word;
+    position: relative;
+    transition: max-height 0.4s ease-in-out;
   }
   .dark-mode .koran-body-text {
     color: #d1d5db;
   }
+
+  /* CLAMPING BODY TEXT MAX HEIGHT (BISA DIMEKAR-KANKAN) */
+  .koran-body-clamped {
+    max-height: 240px;
+    overflow: hidden;
+  }
+  .koran-body-clamped::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 70px;
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.95));
+    pointer-events: none;
+  }
+  .dark-mode .koran-body-clamped::after {
+    background: linear-gradient(to bottom, rgba(30, 34, 41, 0), rgba(30, 34, 41, 0.95));
+  }
+
+  .btn-koran-expand {
+    background: transparent;
+    border: none;
+    color: var(--warna-maroon, #800000);
+    font-weight: 700;
+    font-size: 0.82rem;
+    padding: 4px 0;
+    margin-bottom: 12px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    outline: none !important;
+  }
+  .dark-mode .btn-koran-expand {
+    color: var(--sultan-aksi-utama, #ff7b7b);
+  }
+  .btn-koran-expand:hover {
+    text-decoration: underline;
+  }
+
   .koran-body-text p {
     margin-bottom: 10px;
   }
@@ -1193,7 +1235,7 @@
               var pSisa = isiRaw.substring(pAwal.length);
               bodyIsiHtml = `
                 ${mediaSlotAwal}
-                <div class="koran-body-text">
+                <div class="koran-body-text koran-body-clamped" id="koran_body_${art.id}">
                   ${pAwal}
                   ${mediaSlotTengah}
                   ${pSisa}
@@ -1203,7 +1245,7 @@
             } else {
               bodyIsiHtml = `
                 ${mediaSlotAwal}
-                <div class="koran-body-text">
+                <div class="koran-body-text koran-body-clamped" id="koran_body_${art.id}">
                   ${mediaSlotTengah}
                   ${isiRaw}
                 </div>
@@ -1217,7 +1259,7 @@
               var sisa = paragrafList.slice(1).map(function(p) { return `<p class="mb-3">${p.trim()}</p>`; }).join('');
               bodyIsiHtml = `
                 ${mediaSlotAwal}
-                <div class="koran-body-text">
+                <div class="koran-body-text koran-body-clamped" id="koran_body_${art.id}">
                   ${lead}
                   ${mediaSlotTengah}
                   ${sisa}
@@ -1227,7 +1269,7 @@
             } else {
               bodyIsiHtml = `
                 ${mediaSlotAwal}
-                <div class="koran-body-text">
+                <div class="koran-body-text koran-body-clamped" id="koran_body_${art.id}">
                   ${mediaSlotTengah}
                   <div style="white-space: pre-line;">${isiRaw}</div>
                 </div>
@@ -1240,12 +1282,19 @@
           var isiKonten = isHtml ? isiRaw : `<div style="white-space: pre-line;">${isiRaw}</div>`;
           bodyIsiHtml = `
             ${mediaSlotAwal}
-            <div class="koran-body-text">
+            <div class="koran-body-text koran-body-clamped" id="koran_body_${art.id}">
               ${isiKonten}
             </div>
             ${mediaSlotAkhir}
           `;
         }
+
+        // Tombol Baca Selengkapnya / Tampilkan Ringkas
+        var btnExpandHtml = `
+          <button type="button" class="btn-koran-expand btn-toggle-expand" data-id="${art.id}" id="koran_btn_expand_${art.id}">
+            <span>Baca Selengkapnya</span> <i class="fas fa-chevron-down ml-1"></i>
+          </button>
+        `;
 
         var videoHtml = '';
 
@@ -1313,6 +1362,9 @@
               <!-- ISI BERITA & FOTO -->
               ${bodyIsiHtml}
 
+              <!-- TOMBOL BACA SELENGKAPNYA / RINGKAS -->
+              ${btnExpandHtml}
+
               <!-- VIDEO JIKA TERSEDIA -->
               ${videoHtml}
 
@@ -1364,6 +1416,15 @@
         `;
         $row.append(htmlKoran);
 
+        // Periksa apakah isi artikel lebih pendek dari 240px untuk menyembunyikan tombol 'Baca Selengkapnya'
+        setTimeout(function() {
+          var $body = $(`#koran_body_${art.id}`);
+          if ($body.length && $body[0].scrollHeight <= 255) {
+            $body.removeClass('koran-body-clamped');
+            $(`#koran_btn_expand_${art.id}`).hide();
+          }
+        }, 150);
+
         // Periksa status like pengguna secara mandiri
         cekStatusLikeKoran(art.id);
       });
@@ -1373,9 +1434,24 @@
     }
 
     /**
-     * Interaksi Tombol di Koran: Suka, Komentar Collapse, Edit, Hapus
+     * Interaksi Tombol di Koran: Suka, Komentar Collapse, Expand Text, Edit, Hapus
      */
     function initKoranInteractions() {
+      // Toggle Baca Selengkapnya / Tampilkan Ringkas
+      $('.btn-toggle-expand').off('click').on('click', function () {
+        var id = $(this).attr('data-id');
+        var $body = $('#koran_body_' + id);
+        var $btn = $(this);
+
+        if ($body.hasClass('koran-body-clamped')) {
+          $body.removeClass('koran-body-clamped');
+          $btn.html('<span>Tampilkan Ringkas</span> <i class="fas fa-chevron-up ml-1"></i>');
+        } else {
+          $body.addClass('koran-body-clamped');
+          $btn.html('<span>Baca Selengkapnya</span> <i class="fas fa-chevron-down ml-1"></i>');
+        }
+      });
+
       // Toggle Like
       $('.btn-koran-like').off('click').on('click', function () {
         var id = $(this).attr('data-id');
