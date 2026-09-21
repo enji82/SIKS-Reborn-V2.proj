@@ -1216,8 +1216,7 @@
             });
 
             // 10. Kolom AKSI (Di kanan - Edit & Hapus terkunci saat Disetujui)
-            var stCheck = String(row.statusData || row.status || "").toLowerCase();
-            var isLocked = (stCheck.includes('setuju') || stCheck.includes('acc') || stCheck.includes('ok') || stCheck.includes('valid') || stCheck.includes('terima'));
+            var isLocked = SultanCRUD.isStatusLocked(row.statusData || row.status);
 
             var btnEdit = isLocked
                 ? `<button class="sultan-btn-aksi" disabled style="opacity:0.4; cursor:not-allowed;" data-toggle="tooltip" title="Terkunci (Sudah Disetujui)"><i class="fas fa-pencil-alt"></i></button>`
@@ -1271,7 +1270,18 @@
                 "language": { "emptyTable": "Tidak ditemukan data laporan." }
             });
         } else {
+            var curPage = 0;
+            try {
+                if (typeof LAPBULKELOLA_TABEL_INSTANCE.page === 'function') {
+                    curPage = LAPBULKELOLA_TABEL_INSTANCE.page();
+                }
+            } catch (errPage) { curPage = 0; }
+
             LAPBULKELOLA_TABEL_INSTANCE.clear().rows.add(dtArray).draw(false);
+
+            if (curPage > 0 && typeof LAPBULKELOLA_TABEL_INSTANCE.page === 'function') {
+                try { LAPBULKELOLA_TABEL_INSTANCE.page(curPage).draw(false); } catch (e) {}
+            }
             setTimeout(function () { LAPBULKELOLA_TABEL_INSTANCE.columns.adjust(); }, 50);
         }
     }
@@ -2499,7 +2509,7 @@
                 if (res.success) {
                     $('#lapbulkelola_modalTambahData').modal('hide');
                     Sultan.notif.crud.simpan(LAPBULKELOLA_IS_EDIT_MODE);
-                    Lapbul_ClearGlobalCache(); LAPBULKELOLA_CACHE_DATA = []; // Force refresh
+                    Lapbul_ClearGlobalCache(d.tahun); LAPBULKELOLA_CACHE_DATA = []; // Force refresh
                     lapbulkelola_prosesCariData(false);
                     sultan_fetchNotifikasi();
                 } else { Sultan.notif.crud.gagal(res.message); }
@@ -2602,7 +2612,7 @@
                 if (res.success) {
                     $('#lapbulkelola_modalTambahData').modal('hide');
                     Sultan.notif.crud.simpan(LAPBULKELOLA_IS_EDIT_MODE);
-                    Lapbul_ClearGlobalCache(); LAPBULKELOLA_CACHE_DATA = [];
+                    Lapbul_ClearGlobalCache(d.tahun); LAPBULKELOLA_CACHE_DATA = [];
                     setTimeout(function() { lapbulkelola_prosesCariData(false); }, 1000);
                     sultan_fetchNotifikasi();
                 } else { Sultan.notif.crud.gagal(res.message); }
@@ -3114,7 +3124,7 @@
                 if (res.success) {
                     $('#lapbulkelola_modalTambahData').modal('hide');
                     Sultan.notif.crud.simpan(LAPBULKELOLA_IS_EDIT_MODE);
-                    Lapbul_ClearGlobalCache(); LAPBULKELOLA_CACHE_DATA = []; // Force refresh
+                    Lapbul_ClearGlobalCache(d.tahun); LAPBULKELOLA_CACHE_DATA = []; // Force refresh
                     lapbulkelola_prosesCariData(false);
                     sultan_fetchNotifikasi();
                 } else { Sultan.notif.crud.gagal(res.message); }
@@ -3150,7 +3160,7 @@
                 if (res.success) {
                     $('#lapbulkelola_modalTambahData').modal('hide');
                     Sultan.notif.crud.simpan(LAPBULKELOLA_IS_EDIT_MODE);
-                    Lapbul_ClearGlobalCache(); LAPBULKELOLA_CACHE_DATA = [];
+                    Lapbul_ClearGlobalCache(d.tahun); LAPBULKELOLA_CACHE_DATA = [];
                     setTimeout(function() { lapbulkelola_prosesCariData(false); }, 1000);
                     sultan_fetchNotifikasi();
                 } else { Sultan.notif.crud.gagal(res.message); }
@@ -3168,6 +3178,12 @@
     // 7. EDIT DATA (POPULATOR)
     // =================================================================
     function lapbulkelola_editLapbul(source, rowId) {
+        var rowData = (LAPBULKELOLA_CACHE_DATA || []).find(function (r) { return String(r.rowId) === String(rowId) && r.source === source; });
+        if (rowData && SultanCRUD.isStatusLocked(rowData.statusData || rowData.status)) {
+            Sultan.notif.warning("Data sudah disetujui dan terkunci untuk perubahan.");
+            return;
+        }
+
         Sultan.notif.info("Memuat data " + source + "...");
         var backendFunction = (source === 'SD')
             ? google.script.run.withSuccessHandler(onSuccessLoad).withFailureHandler(onErr).getDetailRowSD(rowId)
@@ -3651,6 +3667,12 @@
     // 8. HAPUS & VERIFIKASI
     // =================================================================
     function lapbulkelola_hapusLapbul(source, rowId, namaSekolah, bulan, tahun) {
+        var rowData = (LAPBULKELOLA_CACHE_DATA || []).find(function (r) { return String(r.rowId) === String(rowId) && r.source === source; });
+        if (rowData && SultanCRUD.isStatusLocked(rowData.statusData || rowData.status)) {
+            Sultan.notif.warning("Data sudah disetujui dan terkunci untuk dihapus.");
+            return;
+        }
+
         var d = new Date();
         var kd = d.getFullYear() + "" + String(d.getMonth() + 1).padStart(2, '0') + "" + String(d.getDate()).padStart(2, '0');
 
@@ -3667,6 +3689,7 @@
                     Sultan.notif.tutup();
                     if (res.success) {
                         Sultan.notif.crud.hapus();
+                        Lapbul_ClearGlobalCache(tahun);
                         LAPBULKELOLA_CACHE_DATA = LAPBULKELOLA_CACHE_DATA.filter(r => !(r.rowId == rowId && r.source == source));
                         lapbulkelola_prosesCariData(false);
                         sultan_fetchNotifikasi();
@@ -3753,9 +3776,19 @@
                 Sultan.notif.crud.sukses('Keputusan verifikasi telah disimpan.');
                 if (res.newData) {
                     var c = LAPBULKELOLA_CACHE_DATA.find(r => r.rowId == LAPBULKELOLA_V_TARGET_ID && r.source == LAPBULKELOLA_V_TARGET_SOURCE);
-                    if (c) { c.statusData = res.newData.status; c.keterangan = res.newData.ket; c.tglVerif = res.newData.tgl; c.verifikator = res.newData.user; }
-                } else { Lapbul_ClearGlobalCache(); LAPBULKELOLA_CACHE_DATA = []; }
-                lapbulkelola_prosesCariData(false);
+                    if (c) { 
+                        c.statusData = res.newData.status; 
+                        c.keterangan = res.newData.ket; 
+                        c.tglVerif = res.newData.tgl; 
+                        c.verifikator = res.newData.user; 
+                    }
+                    lapbulkelola_terapkanFilterLokal();
+                } else { 
+                    var thnAktif = $('#lapbulkelola_filterTahun').val();
+                    Lapbul_ClearGlobalCache(thnAktif); 
+                    LAPBULKELOLA_CACHE_DATA = []; 
+                    lapbulkelola_prosesCariData(false);
+                }
                 sultan_fetchNotifikasi();
             } else { Sultan.notif.crud.gagal(res.message); }
         }).withFailureHandler(function (err) {

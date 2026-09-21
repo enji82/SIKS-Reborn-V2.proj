@@ -1101,11 +1101,13 @@ var SultanUI = {
     },
 
     /**
-     * STANDARISASI KOLOM: TOMBOL AKSI
+     * STANDARISASI KOLOM: TOMBOL AKSI TERPUSAT
+     * Otomatis mengunci tombol Edit & Hapus jika status data telah Disetujui / Valid / Selesai.
      * @param {Object} options - Konfigurasi aksi
      * @param {string|number} options.id - Row ID / ID baris data
-     * @param {boolean} options.isAdmin - Flag apakah user adalah Admin / Verifikator
-     * @param {boolean} options.isDisetujui - Flag apakah data sudah berstatus Disetujui
+     * @param {string} [options.status=""] - Status data (misal: "Disetujui", "Diproses")
+     * @param {boolean} [options.isAdmin=false] - Flag apakah user adalah Admin / Verifikator
+     * @param {boolean} [options.isDisetujui=false] - Flag explicit jika data sudah berstatus Disetujui
      * @param {boolean} [options.allowEditDisetujui=false] - Pengecualian khusus jika user boleh edit walau disetujui
      * @param {string} [options.onVerif] - Nama fungsi global untuk Verifikasi (misal: 'bukaVerif')
      * @param {string} [options.onEdit] - Nama fungsi global untuk Edit (misal: 'bukaEdit')
@@ -1115,9 +1117,11 @@ var SultanUI = {
     renderTombolAksi: function(options = {}) {
         var id = options.id != null ? String(options.id) : "";
         var isAdmin = !!options.isAdmin;
-        var isDisetujui = !!options.isDisetujui;
+        var st = String(options.status || "").toLowerCase();
+        var isApproved = !!options.isDisetujui || (st.includes('setuju') || st.includes('acc') || st.includes('ok') || st.includes('valid') || st.includes('terima') || st.includes('selesai'));
         var allowEdit = !!options.allowEditDisetujui;
-        var isLocked = isDisetujui && !isAdmin && !allowEdit;
+        // Aturan Global: Tombol Edit & Hapus terkunci jika data sudah Disetujui (kecuali allowEdit diberikan secara eksplisit)
+        var isLocked = isApproved && !allowEdit;
 
         var btns = [];
 
@@ -1134,7 +1138,7 @@ var SultanUI = {
         if (options.onEdit) {
             if (isLocked) {
                 btns.push(`
-                    <button type="button" class="sultan-btn-aksi" disabled style="opacity: 0.4; cursor: not-allowed;" title="Terkunci (Sudah Disetujui)">
+                    <button type="button" class="sultan-btn-aksi" disabled style="opacity: 0.4; cursor: not-allowed;" data-toggle="tooltip" title="Terkunci (Sudah Disetujui)">
                         <i class="fas fa-pencil-alt"></i>
                     </button>
                 `);
@@ -1151,7 +1155,7 @@ var SultanUI = {
         if (options.onHapus) {
             if (isLocked) {
                 btns.push(`
-                    <button type="button" class="sultan-btn-aksi" disabled style="opacity: 0.4; cursor: not-allowed;" title="Terkunci (Sudah Disetujui)">
+                    <button type="button" class="sultan-btn-aksi" disabled style="opacity: 0.4; cursor: not-allowed;" data-toggle="tooltip" title="Terkunci (Sudah Disetujui)">
                         <i class="fas fa-trash-alt"></i>
                     </button>
                 `);
@@ -1170,6 +1174,60 @@ var SultanUI = {
         }
 
         return `<div class="d-flex flex-nowrap justify-content-center" style="gap: 4px;">${btns.join('')}</div>`;
+    }
+};
+
+/**
+ * ============================================================================
+ * SULTAN CRUD ENGINE (STANDARISASI GLOBAL)
+ * Standar operasi tabel CRUD:
+ * 1. updateRowPreserved: Update baris DataTables in-place tanpa mereset halaman/posisi
+ * 2. isStatusLocked: Pengecekan status kunci dokumen (Disetujui/OK/Valid)
+ * ============================================================================
+ */
+var SultanCRUD = {
+    /**
+     * Memeriksa apakah suatu status data terkunci (Disetujui/OK/Selesai)
+     * @param {string} status - String status dokumen
+     * @returns {boolean}
+     */
+    isStatusLocked: function(status) {
+        if (!status) return false;
+        var s = String(status).toLowerCase();
+        return s.includes('setuju') || s.includes('acc') || s.includes('ok') || s.includes('valid') || s.includes('terima') || s.includes('selesai');
+    },
+
+    /**
+     * Memperbarui satu baris DataTables dengan mempertahankan pagination & scroll saat ini.
+     * Ideal untuk aksi verifikasi admin agar admin tetap berada di baris/halaman yang sama.
+     * @param {Object} dataTableInstance - Instance DataTable (jQuery DataTables)
+     * @param {string|number|Node|jQuery} rowSelector - Node TR, ID baris, atau selector baris
+     * @param {Array} newRowData - Data array baru untuk baris tersebut
+     */
+    updateRowPreserved: function(dataTableInstance, rowSelector, newRowData) {
+        if (!dataTableInstance) return;
+        try {
+            var currentPage = 0;
+            if (typeof dataTableInstance.page === 'function') {
+                currentPage = dataTableInstance.page();
+            } else if (dataTableInstance.api && typeof dataTableInstance.api().page === 'function') {
+                currentPage = dataTableInstance.api().page();
+            }
+
+            var dtApi = dataTableInstance.api ? dataTableInstance.api() : dataTableInstance;
+            var targetRow = dtApi.row(rowSelector);
+            if (targetRow && targetRow.length) {
+                targetRow.data(newRowData).draw(false);
+                if (typeof dtApi.page === 'function') {
+                    dtApi.page(currentPage).draw(false);
+                }
+            } else {
+                dtApi.draw(false);
+            }
+        } catch (e) {
+            console.warn("SultanCRUD.updateRowPreserved fallback draw:", e);
+            if (dataTableInstance.draw) dataTableInstance.draw(false);
+        }
     }
 };
 

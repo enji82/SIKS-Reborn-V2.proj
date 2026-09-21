@@ -77,8 +77,26 @@ Dokumen ini berisi cetak biru (blueprint) taktis untuk mengoptimalkan performa, 
 *   **Klasifikasi 3 Jenis Dashboard:**
     1.  **Single Tab (`tabType: 'single_tab'`)**: Single layout view yang digunakan bersama oleh user dan admin (misal: **Dashboard PTK SD Negeri**, **Dashboard PTK SD Swasta**, & **Dashboard PTK PAUD**). Pada role Admin, filter bar hanya berupa dropdown sekolah terfilter (SD Negeri/SD Swasta/PAUD) dengan default `"Semua Sekolah"`, sedangkan pada role User biasa, filter bar disembunyikan total.
     2.  **Dual Tab (`tabType: 'dual_tab'`)**: User dan admin menampilkan halaman yang berbeda secara eksklusif (segmented switcher disembunyikan total).
-    3.  **Multi Tab (`tabType: 'multi_tab'`)**: Terdapat tab Unit dan tab Rekap. User biasa **hanya bisa melihat Tab Unit** (tombol Rekap/switcher di-hide otomatis), sedangkan Admin bisa melihat Tab Unit dan Tab Rekap dengan **default tab aktif = Rekap** (misal: Dashboard Laporan Bulanan, Dashboard SK Pembagian Tugas, Dashboard Administrasi Sekolah).
-*   **Implementasi:** Seluruh logika role check, kontrol visibilitas switcher, penyembunyian filter bar kosong pada role User biasa, dan penentuan default tab dikendalikan secara terpusat oleh `SultanDashboard.initDualMode({ pageKey: '...', tabType: '...' })` & `SultanDashboard.setupUnitSchoolPicker()` tanpa perlu menulis ulang pengondisian UI di setiap halaman dashboard.
+### F. Standarisasi Global Halaman Kelola Data (CRUD Engine & UI Blueprint)
+*   **File Target:** [ui_helpers.html](file:///Users/macbookpro/Documents/GitHub/SIKS-Reborn-V2.proj/ui_helpers.html), `templates_sultan/tpl_sultan_kelola.html`, & `page_*_kelola.html`
+*   **Standar Baku Analisa & Implementasi Halaman CRUD:**
+    1.  **Optimalisasi Cache & Local Filtering (Zero-Blink):**
+        *   Gunakan Smart Cache sisi klien (`CACHE_DATA`, `CACHE_TAHUN/PERIODE`) untuk penarikan data awal.
+        *   Filter dropdown (Bulan, Jenjang, Status, Unit/Sekolah) dieksekusi secara instan di memori klien via `terapkanFilterLokal()` tanpa request ulang ke server.
+        *   Invalidasi cache terarah (`Lapbul_ClearGlobalCache(tahun)` atau `CACHE_DATA = []`) hanya dipicu saat operasi CRUD (Tambah/Edit/Hapus) berhasil atau tombol Refresh Paksa diklik.
+    2.  **Penguncian Tombol Aksi (Status Disetujui/OK/Valid):**
+        *   Ketika status dokumen bernilai `Disetujui`, `OK`, `Valid`, `Diterima`, atau `Selesai` (`SultanCRUD.isStatusLocked(status)` bernilai true):
+            *   Tombol **Edit** dan **Hapus** otomatis dinonaktifkan (`disabled`, `style="opacity:0.4; cursor:not-allowed;"`, title: "Terkunci (Sudah Disetujui)").
+            *   Handler JS (`editData`, `hapusData`) wajib memiliki guard clause di awal fungsi untuk menolak proses jika data berstatus terkunci.
+    3.  **Preservasi Halaman Admin Pasca-Verifikasi (Preserved Pagination):**
+        *   Saat verifikasi data oleh admin berhasil, tabel tidak boleh me-reset posisi pagination kembali ke halaman 1.
+        *   Perbarui baris data secara lokal di cache objek, lalu render ulang dengan mempertahankan nomor halaman aktif menggunakan `SultanCRUD.updateRowPreserved` atau `tableInstance.page(savedPage).draw(false)`.
+    4.  **Layout Kolom Tabel Standar Sultan:**
+        *   **Kolom Paling Kiri (Freeze Left):** `Identitas Subjek/Unit/Sekolah` (Nama & NPSN / NIP) dengan sticky left column.
+        *   **Kolom Audit Trail Terpusat (1 Kolom Cerdas):** Memadukan tanggal dan user pengunggah, pengubah, dan verifikator via `SultanUI.renderAuditCell()` dilengkapi tooltip komprehensif.
+        *   **Kolom Dokumen:** Menggunakan `SultanUI.renderDokumenPdf()` dengan tombol lihat seragam.
+        *   **Kolom Status:** Menggunakan `SultanUI.renderBadgeStatus()` yang menyatu dengan tombol baca catatan revisi/penolakan.
+        *   **Kolom Paling Kanan:** Tombol Aksi terstandarisasi (`SultanUI.renderTombolAksi()` atau grup aksi Sultan: Verifikasi, Edit, Hapus).
 
 ---
 
@@ -89,3 +107,4 @@ Dokumen ini berisi cetak biru (blueprint) taktis untuk mengoptimalkan performa, 
 4.  **Bebas RAM Leak:** Memantau penggunaan tab memori pada Chrome Task Manager saat pengguna berpindah menu berulang kali; grafik memori harus tetap stabil dan tidak naik terus menerus.
 5.  **Tampilan Mobile:** Halaman kelola data dan dashboard tidak boleh menampilkan scrollbar horizontal saat dibuka di resolusi layar 375px (iPhone SE) hingga 414px.
 6.  **Konsistensi Dashboard Multi Tab:** Pada halaman dashboard berjenis Multi Tab (seperti Laporan Bulanan), User biasa tidak melihat switcher tab Rekap dan langsung mengunci di Tab Unit, sedangkan Admin mendarat di Tab Rekap secara default dan dapat berpindah ke Tab Unit secara fleksibel.
+7.  **Integritas CRUD & Pagination:** Pada halaman CRUD (seperti Kelola Laporan Bulan), tombol Edit dan Hapus wajib terkunci jika data Disetujui, dan verifikasi admin tidak boleh menggeser admin dari halaman tabel yang sedang diperiksa.
