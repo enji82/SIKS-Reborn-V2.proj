@@ -179,6 +179,7 @@
                     <div class="card-header bg-transparent border-0 pt-3 pb-2 px-3 d-flex align-items-center justify-content-between">
                         <h3 class="card-title font-weight-bold text-danger m-0 text-uppercase" style="letter-spacing: 0.5px; font-size: 0.95rem;">
                             <i class="fas fa-user-times mr-2 text-warning"></i> Rincian Tidak Presensi (Per ASN)
+                            <span id="dashsiaba_activeUnitBadge" class="badge badge-light border text-danger ml-2 font-weight-bold" style="font-size: 0.72rem; vertical-align: middle;">Semua Unit Kerja</span>
                         </h3>
                     </div>
                     <div class="card-body p-0">
@@ -188,7 +189,7 @@
                                 <thead>
                                     <tr>
                                         <th class="col-sticky-left align-middle text-left px-3 sultan-table-th" style="font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 800;">
-                                            NAMA ASN / NIP / UNIT KERJA
+                                            NAMA ASN
                                         </th>
                                         <th class="text-center align-middle px-2 sultan-table-th" style="width: 70px; font-size: 12px; text-transform: uppercase; font-weight: 800;">
                                             JML
@@ -291,6 +292,17 @@
             setTimeout(function() {
                 $btn.prop('disabled', false).find('i').removeClass('fa-spin');
             }, 1200);
+        });
+
+        // Event listener klik baris Unit Kerja pada tabel Tidak Presensi
+        $(document).off('click', '.dashsiaba-unit-row').on('click', '.dashsiaba-unit-row', function () {
+            var clickedUnit = $(this).attr('data-unit');
+            var currentVal = $('#dashsiaba_dashFilterUnitRincian').val();
+            if (currentVal === clickedUnit) {
+                $('#dashsiaba_dashFilterUnitRincian').val('').trigger('change');
+            } else {
+                $('#dashsiaba_dashFilterUnitRincian').val(clickedUnit).trigger('change');
+            }
         });
 
         // Event listener link detail
@@ -452,7 +464,7 @@
                 var sortedUnits = Object.keys(unitCounts).map(function (key) { return { nama: key, jumlah: unitCounts[key] }; }).sort(function (a, b) { return b.jumlah - a.jumlah; });
                 var strH = "";
                 sortedUnits.forEach(function (item) {
-                    strH += '<tr>' +
+                    strH += '<tr class="dashsiaba-unit-row" data-unit="' + dashsiaba_escapeHtml(item.nama) + '" style="cursor: pointer;" title="Klik untuk memfilter rincian ASN">' +
                         '<td class="align-middle px-3 py-2">' +
                         '<div class="font-weight-bold text-dark" style="font-size: 0.82rem; line-height: 1.2;">' + dashsiaba_escapeHtml(item.nama) + '</div>' + 
                         '</td>' +
@@ -485,19 +497,25 @@
         var filterUnit = $('#dashsiaba_dashFilterUnitRincian').val() || "";
         var rincianHtml = "";
 
+        // Highlight baris unit kerja yang diklik pada tabel Tidak Presensi
+        $('.dashsiaba-unit-row').removeClass('sultan-row-selected table-active');
+        if (filterUnit) {
+            $('.dashsiaba-unit-row[data-unit="' + dashsiaba_escapeHtml(filterUnit) + '"]').addClass('sultan-row-selected table-active');
+            $('#dashsiaba_activeUnitBadge').text(filterUnit);
+        } else {
+            $('#dashsiaba_activeUnitBadge').text('Semua Unit Kerja');
+        }
+
         window.dashsiaba_globalBelumLengkapRows.forEach(function (row) {
             var unit = row[row.length - 1]; 
             if (filterUnit && unit !== filterUnit) return;
 
             var namaAsn = row[0] || "-";
-            var nipAsn = row[1] || "";
             var jumlah = row[2] || "0";
             if (parseInt(jumlah) > 0) {
                 rincianHtml += '<tr>' +
                     '<td class="align-middle px-3 py-2">' +
-                    '<div class="font-weight-bold text-dark" style="font-size: 0.82rem; line-height: 1.2;">' + dashsiaba_escapeHtml(namaAsn) + '</div>' + 
-                    (nipAsn ? '<div class="text-muted mt-1" style="font-size: 0.75rem;">' + dashsiaba_escapeHtml(nipAsn) + '</div>' : '') +
-                    '<div class="text-danger mt-1" style="font-size: 0.72rem; font-weight: 600;">' + dashsiaba_escapeHtml(unit) + '</div>' +
+                    '<div class="font-weight-bold text-dark" style="font-size: 0.82rem; line-height: 1.2;">' + dashsiaba_escapeHtml(namaAsn) + '</div>' +
                     '</td>' +
                     '<td class="text-center align-middle">' +
                     '<span class="sultan-jml-badge bg-danger shadow-sm">' + jumlah + '</span>' +
