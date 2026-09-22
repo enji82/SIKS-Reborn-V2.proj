@@ -115,6 +115,14 @@
 
                 <!-- FILTER BAR (STANDAR GLOBAL SULTAN) -->
                 <div class="sultan-filter-pill-container shadow-sm mb-4">
+                    <div class="sultan-filter-item d-none" id="tpg_pg_filterJenjangWrap">
+                        <select id="tpg_pg_filterJenjang" class="form-control">
+                            <option value="SD" selected>SD</option>
+                            <option value="PAUD">PAUD</option>
+                        </select>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+
                     <div class="sultan-filter-item" style="min-width: 220px; max-width: 360px;">
                         <select id="tpg_pg_filterUnit" class="form-control" disabled>
                             <option value="">Memvalidasi Akses...</option>
@@ -491,18 +499,18 @@
         var unitKerja = String(user.unit || "").trim();
 
         if (isAdmin) {
+            // Tampilkan filter Jenjang khusus untuk admin
+            $('#tpg_pg_filterJenjangWrap').removeClass('d-none');
+
             google.script.run
                 .withSuccessHandler(function (daftarUnit) {
                     SultanUI.hideLoading('#tpg_pg_loadingState');
-                    let unitSelect = $('#tpg_pg_filterUnit');
-                    unitSelect.empty();
-                    unitSelect.append('<option value="">Semua Unit Kerja</option>');
-                    if (daftarUnit && daftarUnit.length > 0) {
-                        daftarUnit.forEach(function (u) {
-                            let namaUnit = typeof u === 'string' ? u : u.nama;
-                            unitSelect.append('<option value="' + namaUnit + '">' + namaUnit + '</option>');
-                        });
-                    }
+
+                    // Simpan semua unit ke variabel global agar bisa difilter ulang per jenjang
+                    window.tpgPgAllUnits = daftarUnit;
+
+                    tpgPg_populateFilterUnit(daftarUnit, $('#tpg_pg_filterJenjang').val());
+
                     unitSelect.prop('disabled', false);
                     $('#tpg_pg_btnTambah').removeAttr('disabled').prop('disabled', false).show();
 
@@ -510,6 +518,13 @@
                     $(document).off('change', '#tpg_pg_filterUnit, #tpg_pg_filterPegawai, #tpg_pg_filterJenisSK, #tpg_pg_filterStatus').on('change', '#tpg_pg_filterUnit, #tpg_pg_filterPegawai, #tpg_pg_filterJenisSK, #tpg_pg_filterStatus', function () {
                         tpgPg_applyFilter();
                     });
+
+                    // Saat Jenjang berubah: perbarui Unit Kerja & jalankan ulang filter
+                    $(document).off('change', '#tpg_pg_filterJenjang').on('change', '#tpg_pg_filterJenjang', function () {
+                        tpgPg_populateFilterUnit(window.tpgPgAllUnits || [], $(this).val());
+                        tpgPg_applyFilter();
+                    });
+
                     tpgPg_loadData();
                 })
                 .withFailureHandler(function (error) {
@@ -734,17 +749,36 @@
                 const rowData = globalTpgPgData[dataIndex];
                 if (!rowData) return true;
 
+                const filterJenjang = $('#tpg_pg_filterJenjang').val() || '';
                 const filterUnit = $('#tpg_pg_filterUnit').val() ? String($('#tpg_pg_filterUnit').val()).trim().toLowerCase() : '';
                 const filterJenisSK = $('#tpg_pg_filterJenisSK').val() ? $('#tpg_pg_filterJenisSK').val().toLowerCase() : '';
                 const filterStatus = $('#tpg_pg_filterStatus').val() ? $('#tpg_pg_filterStatus').val().toLowerCase() : '';
 
+                const fJenjang = filterJenjang ? String(rowData.jenjang || '').trim().toLowerCase() === filterJenjang.toLowerCase() : true;
                 const fUnit = filterUnit ? String(rowData.unitKerja).trim().toLowerCase() === filterUnit : true;
                 const fJenis = filterJenisSK ? rowData.jenisSK.toLowerCase() === filterJenisSK : true;
                 const fStatus = filterStatus ? rowData.status.toLowerCase() === filterStatus : true;
 
-                return fUnit && fJenis && fStatus;
+                return fJenjang && fUnit && fJenis && fStatus;
             }
         );
+    }
+
+    function tpgPg_populateFilterUnit(daftarUnit, jenjang) {
+        const unitSelect = $('#tpg_pg_filterUnit');
+        unitSelect.empty();
+        unitSelect.append('<option value="">Semua Unit Kerja</option>');
+        if (daftarUnit && daftarUnit.length > 0) {
+            daftarUnit.forEach(function (u) {
+                let namaUnit = typeof u === 'string' ? u : u.nama;
+                let jenjangUnit = typeof u === 'object' ? (u.jenjang || '') : '';
+                // Tampilkan unit yang sesuai jenjang (jika ada data jenjang), atau tampilkan semua
+                if (!jenjang || !jenjangUnit || jenjangUnit.toLowerCase() === jenjang.toLowerCase()) {
+                    unitSelect.append('<option value="' + namaUnit + '">' + namaUnit + '</option>');
+                }
+            });
+        }
+        unitSelect.prop('disabled', false);
     }
 
     function tpgPg_applyFilter() {
