@@ -104,16 +104,7 @@
 
         <div class="card-sultan">
           <div class="card-body p-3">
-            <div id="admmuridijazah_loadingState">
-              <div class="sultan-loading-box sultan-page-transition">
-                <div class="sultan-spinner-icon">
-                  <i class="fas fa-circle-notch fa-spin"></i>
-                </div>
-                <h6 class="text-dark font-weight-bold sultan-loading-text mb-0"
-                  style="letter-spacing: 0.5px; text-transform: uppercase; font-size: 11px;">Menghubungkan ke Server...
-                </h6>
-              </div>
-            </div>
+            <div id="admmuridijazah_loadingState"></div>
 
             <div id="admmuridijazah_tableState" style="display: none;">
               <div class="table-responsive sultan-scroll">
@@ -296,7 +287,7 @@
       <div class="form-group mb-3">
         <label class="modal-verifikasi-form-label">Keputusan Verifikasi <span class="text-danger">*</span></label>
         <select class="modal-verifikasi-select font-weight-bold w-100" id="admmuridijazah_verif_status" required>
-          <option value="">-- Pilih Keputusan --</option>
+          <option value="">Pilih Keputusan</option>
           <option value="Diproses">Diproses</option>
           <option value="Disetujui">Disetujui</option>
           <option value="Dicetak">Dicetak</option>
@@ -729,11 +720,18 @@
     var ADMMURIDIJAZAH_CACHE_DATA = [];
     var ADMMURIDIJAZAH_IS_ADMIN = (userLogin.role || "").toLowerCase().includes("admin");
 
+    // Render skeleton loader instan 0ms saat halaman dibuka untuk hilangkan lag
+    if (typeof SultanUI !== 'undefined' && typeof SultanUI.renderSkeletonTable === 'function') {
+      SultanUI.renderSkeletonTable('#admmuridijazah_loadingState', 7);
+    }
+    $('#admmuridijazah_loadingState').show();
+    $('#admmuridijazah_tableState').hide();
+
     // Inisialisasi Filter Bar
     var filtersConfig = [
-      { id: 'admmuridijazah_filterSekolah', placeholder: '- Memvalidasi Akses... -', disabled: true },
-      { id: 'admmuridijazah_filterTahun', placeholder: '- Memuat TA... -', disabled: true },
-      { id: 'admmuridijazah_filterStatus', placeholder: '- Pilih Status... -', disabled: false }
+      { id: 'admmuridijazah_filterSekolah', placeholder: 'Memvalidasi Akses...', disabled: true },
+      { id: 'admmuridijazah_filterTahun', placeholder: 'Memuat TA...', disabled: true },
+      { id: 'admmuridijazah_filterStatus', placeholder: 'Pilih Status...', disabled: false }
     ];
     var extraButtons = `
         <div class="divider-vertical d-none d-md-block mx-2"></div>
@@ -750,7 +748,7 @@
 
     // Inisialisasi Dropdown Status
     var htmlStatus = `
-      <option value="SEMUA">- Semua Status -</option>
+      <option value="SEMUA">Semua Status</option>
       <option value="DIPROSES">Diproses</option>
       <option value="DISETUJUI">Disetujui</option>
       <option value="DICETAK">Dicetak</option>
@@ -771,8 +769,8 @@
     var prevEnd = parseInt(parts[1], 10) - 1;
     var currentTahunAjaran = prevStart + "/" + prevEnd;
 
-    var htmlTahun = '<option value="SEMUA">- Semua Tahun -</option>';
-    var formTahun = '<option value="">- Pilih Tahun Ajaran -</option>';
+    var htmlTahun = '<option value="SEMUA">Semua Tahun</option>';
+    var formTahun = '<option value="">Pilih Tahun Ajaran</option>';
     for (var y = 2023; y <= curYear + 1; y++) {
       var ta = y + "/" + (y + 1);
       htmlTahun += '<option value="' + ta + '">' + ta + '</option>';
@@ -793,8 +791,8 @@
         inSekolah.empty();
 
         if (ADMMURIDIJAZAH_IS_ADMIN) {
-          filterSekolah.append('<option value="SEMUA">- Semua Sekolah -</option>');
-          inSekolah.append('<option value="">- Pilih Sekolah -</option>');
+          filterSekolah.append('<option value="SEMUA">Semua Sekolah</option>');
+          inSekolah.append('<option value="">Pilih Sekolah</option>');
           res.sekolah.forEach(function (s) {
             var isSD = String(s.jenjang || "").toUpperCase() === "SD";
             if (isSD) {
@@ -815,6 +813,9 @@
           $('#admmuridijazah_in_sekolah_hidden').val(userNpsn);
         }
         $('#admmuridijazah_btnTambah').prop('disabled', false);
+        if (typeof SultanUI !== 'undefined' && typeof SultanUI.adjustFilterBarWidths === 'function') {
+          SultanUI.adjustFilterBarWidths('#admmuridijazah_filterBarArea');
+        }
         loadIjazahData();
       }
     }).getAdmSekolahMasterData("SEMUA");
@@ -867,8 +868,11 @@
       btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin" style="color: var(--sultan-aksi-utama);"></i>');
 
       if (!$.fn.DataTable.isDataTable('#admmuridijazah_tabelUtama')) {
-        SultanUI.showLoading('#admmuridijazah_loadingState', 'Memuat Data Laporan Ijazah...');
         $('#admmuridijazah_tableState').hide();
+        if (typeof SultanUI !== 'undefined' && typeof SultanUI.renderSkeletonTable === 'function') {
+          SultanUI.renderSkeletonTable('#admmuridijazah_loadingState', 7);
+        }
+        $('#admmuridijazah_loadingState').show();
       }
 
       var filter = ADMMURIDIJAZAH_IS_ADMIN ? "SEMUA" : (userLogin.npsn || userLogin.username || "");
@@ -895,8 +899,11 @@
           }
 
           terapkanFilterLokalIjazah();
-          SultanUI.hideLoading('#admmuridijazah_loadingState');
+          $('#admmuridijazah_loadingState').hide();
           $('#admmuridijazah_tableState').show();
+          if (typeof SultanUI !== 'undefined' && typeof SultanUI.adjustFilterBarWidths === 'function') {
+            SultanUI.adjustFilterBarWidths('#admmuridijazah_filterBarArea');
+          }
           if (ADMMURIDIJAZAH_TABEL_INSTANCE) {
             setTimeout(function () { ADMMURIDIJAZAH_TABEL_INSTANCE.columns.adjust(); }, 50);
           }
@@ -1201,7 +1208,7 @@
       var inSekolah = $('#admmuridijazah_in_sekolah');
       if (ADMMURIDIJAZAH_IS_ADMIN) {
         inSekolah.empty();
-        inSekolah.append('<option value="">- Pilih Sekolah -</option>');
+        inSekolah.append('<option value="">Pilih Sekolah</option>');
         listMasterSekolah.forEach(function (s) {
           var isSD = String(s.jenjang || "").toUpperCase() === "SD";
           if (isSD) {
@@ -1365,7 +1372,21 @@
         if (res.success) {
           $('#global_modalForm').modal('hide');
           Sultan.notif.crud.simpan(isEdit);
-          loadIjazahData();
+          if (res.data) {
+            if (isEdit) {
+              var idx = ADMMURIDIJAZAH_CACHE_DATA.findIndex(function (item) { return String(item.rowId) === String(payload.rowId); });
+              if (idx !== -1) {
+                ADMMURIDIJAZAH_CACHE_DATA[idx] = res.data;
+              } else {
+                ADMMURIDIJAZAH_CACHE_DATA.unshift(res.data);
+              }
+            } else {
+              ADMMURIDIJAZAH_CACHE_DATA.unshift(res.data);
+            }
+            terapkanFilterLokalIjazah();
+          } else {
+            loadIjazahData();
+          }
           if (typeof sultan_fetchNotifikasi === 'function') {
             sultan_fetchNotifikasi();
           }
@@ -1461,7 +1482,11 @@
             var res = JSON.parse(resRaw);
             if (res.success) {
               Sultan.notif.crud.hapus();
-              loadIjazahData();
+              var idx = ADMMURIDIJAZAH_CACHE_DATA.findIndex(function (item) { return String(item.rowId) === String(rowId); });
+              if (idx !== -1) {
+                ADMMURIDIJAZAH_CACHE_DATA.splice(idx, 1);
+              }
+              terapkanFilterLokalIjazah();
             } else {
               Sultan.notif.crud.gagal(res.message);
             }
@@ -1822,7 +1847,16 @@
         if (res.success) {
           Sultan.modal.tutupVerifikasi();
           Sultan.notif.crud.sukses('Keputusan ' + status + ' tersimpan!');
-          loadIjazahData();
+          var item = ADMMURIDIJAZAH_CACHE_DATA.find(function (d) { return String(d.rowId) === String(rowId); });
+          if (item) {
+            item.status = status;
+            item.catatan = catatan || '';
+            item.verifikator = verifikator;
+            var now = new Date();
+            var tglStr = String(now.getDate()).padStart(2, '0') + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + now.getFullYear() + ' ' + String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+            item.tgl_verif = tglStr;
+          }
+          terapkanFilterLokalIjazah();
           if (typeof sultan_fetchNotifikasi === 'function') {
             sultan_fetchNotifikasi();
           }
