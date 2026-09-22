@@ -92,7 +92,7 @@
 
                     <div class="sultan-filter-item">
                         <select id="perdin_filterBulan" class="form-control">
-                            <option value="">- Semua Bulan -</option>
+                            <option value="">Semua Bulan</option>
                             <option value="1">Januari</option>
                             <option value="2">Februari</option>
                             <option value="3">Maret</option>
@@ -111,7 +111,7 @@
 
                     <div class="sultan-filter-item">
                         <select id="perdin_filterStatus" class="form-control">
-                            <option value="">- Semua Status -</option>
+                            <option value="">Semua Status</option>
                             <option value="Diproses">Diproses</option>
                             <option value="Disetujui">Disetujui</option>
                             <option value="Revisi">Revisi</option>
@@ -230,7 +230,7 @@
                                                     <span class="text-danger">*</span></label><select
                                                     id="perdin_inputJenis" class="form-control form-control-sultan"
                                                     required>
-                                                    <option value="">- Pilih -</option>
+                                                    <option value="">Pilih Jenis</option>
                                                     <option value="DL">DL (Luar Daerah)</option>
                                                     <option value="DD">DD (Dalam Daerah)</option>
                                                 </select></div>
@@ -277,7 +277,7 @@
                                                 Dokumen <span class="text-danger">*</span></label>
                                             <select id="perdin_inputJenisDok" class="form-control form-control-sultan"
                                                 required>
-                                                <option value="">- Pilih -</option>
+                                                <option value="">Pilih Dokumen</option>
                                                 <option value="SPT">ST Final</option>
                                                 <option value="SPT Sementara">ST Sementara (Belum ditandatangani)
                                                 </option>
@@ -475,6 +475,7 @@
 
     var PERDIN_USER_AKTIF = "";
     var PERDIN_IS_ADMIN = false;
+    var PERDIN_IS_LOADING = false; // GUARD: Mencegah load ganda
 
     var PERDIN_UNI_IS_NEW_SPT = true;
     var PERDIN_UNI_TEMP_PESERTA = [];
@@ -536,7 +537,7 @@
         });
 
         var curYear = new Date().getFullYear();
-        var h = '<option value="">- Tahun -</option>';
+        var h = '<option value="">Pilih Tahun</option>';
         for (var i = 0; i < 3; i++) { var t = curYear - i; h += '<option value="' + t + '">' + t + '</option>'; }
         $('#perdin_filterTahun').html(h).val(curYear);
         $('#perdin_filterBulan').val('');
@@ -559,9 +560,12 @@
     }
 
     function perdin_tarikDataServer() {
+        if (PERDIN_IS_LOADING) return;
+
         var th = $('#perdin_filterTahun').val();
         if (!th) return;
 
+        PERDIN_IS_LOADING = true;
         var btn = $('#perdin_btnRefresh');
         btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin text-maroon"></i>');
 
@@ -573,6 +577,7 @@
 
         google.script.run
             .withSuccessHandler(function (jsonString) {
+                PERDIN_IS_LOADING = false;
                 btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
 
                 var responseData;
@@ -615,6 +620,7 @@
                 }
             })
             .withFailureHandler(function (err) {
+                PERDIN_IS_LOADING = false;
                 btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
                 $('#perdin_loadingText').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Server Terputus.</span>');
             }).getDaftarDinas(th, "", "");
@@ -788,7 +794,7 @@
         var row = PERDIN_DATA_MASTER[rowId];
         if (!row) return;
         perdin_bukaModalTambah();
-        $('#global_modalFormHeader').removeClass('modal-header-tambah-edit').addClass('modal-header-edit');
+        $('#global_modalFormHeader').removeClass().addClass('modal-header modal-header-sultan-warning');
         $('#global_modalFormTitle').html('<i class="fas fa-edit mr-2"></i>Edit Data Perjalanan Dinas');
 
         $('#perdin_inputNoSpt').val(row.noSpt);
@@ -809,7 +815,7 @@
         $('#perdin_msgCekSpt').removeClass('text-success text-danger text-warning text-info text-maroon').addClass('text-muted').html('Tekan <b>Enter</b> atau klik ikon cari untuk memulai.');
 
         $('#global_modalFormSize').removeClass('modal-xl modal-md').addClass('modal-xl');
-        $('#global_modalFormHeader').removeClass('modal-header-sultan-primary modal-header-sultan-warning modal-header-sultan-danger modal-header-sultan-success modal-header-sultan-info modal-header-sultan-dark modal-header-edit modal-header-tambah-edit modal-header-hapus').addClass('modal-header-tambah-edit');
+        $('#global_modalFormHeader').removeClass().addClass('modal-header modal-header-sultan-primary');
         $('#global_modalFormTitle').html('<i class="fas fa-file-signature mr-2"></i>Tambah Data Perjalanan Dinas');
 
         $('#global_modalFormBody, #global_modalFormFooter').hide();
@@ -900,7 +906,7 @@
                                     msgEl.removeClass('text-maroon text-muted text-danger text-warning text-info').addClass('text-success font-weight-bold').html('<i class="fas fa-check-circle mr-1"></i> Terdaftar & Final. (Hanya Baca)');
                                 }
                             } else {
-                                $('#global_modalFormHeader').removeClass('modal-header-tambah-edit').addClass('modal-header-edit');
+                                $('#global_modalFormHeader').removeClass().addClass('modal-header modal-header-sultan-warning');
                                 $('#global_modalFormTitle').html('<i class="fas fa-edit mr-2"></i> EDIT DATA PERJALANAN DINAS');
 
                                 perdin_lockFormControls(false);
@@ -1342,71 +1348,4 @@
             return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
         });
     }
-
-    function perdin_buildBadgeStatus(status, ket) {
-        var s = String(status || "").toLowerCase();
-        var style = 'badge-sultan-diproses';
-        var icon = 'clock';
-        var labelStatus = status ? perdin_toProperCase(status) : 'Diproses';
-
-        if (s.includes('ok') || s.includes('setuju') || s.includes('acc')) {
-            style = 'badge-sultan-disetujui';
-            icon = 'check-circle';
-        }
-        else if (s.includes('revisi')) {
-            style = 'badge-sultan-revisi';
-            icon = 'sync-alt';
-        }
-        else if (s.includes('tolak')) {
-            style = 'badge-sultan-ditolak';
-            icon = 'times-circle';
-        }
-
-        var badgeHtml = `<span class="${style}"><i class="fas fa-${icon} mr-1"></i>${perdin_escapeHtml(labelStatus)}</span>`;
-
-        if (ket && ket.trim().length > 2 && ket !== "-") {
-            var safeKet = perdin_escapeJs(ket);
-            var btnCatatan = `<div class="mt-2"><button type="button" class="sultan-btn-note perdin-btn-catatan" data-pesan="${safeKet}"><i class="fas fa-comment-dots mr-1"></i> Baca Catatan</button></div>`;
-            return badgeHtml + btnCatatan;
-        }
-
-        return badgeHtml;
-    }
-
-    $(document).ready(function () {
-        setTimeout(function () {
-            var $scrollContainer = $('.sultan-scroll-container');
-            if ($scrollContainer.length > 0) {
-                $scrollContainer.on('wheel touchmove', function (e) {
-                    var container = this;
-                    var scrollLeft = container.scrollLeft;
-                    var scrollWidth = container.scrollWidth;
-                    var clientWidth = container.clientWidth;
-                    var isAtStart = scrollLeft <= 1;
-                    var isAtEnd = scrollLeft >= scrollWidth - clientWidth - 1;
-
-                    if (e.type === 'wheel') {
-                        var deltaX = e.originalEvent.deltaX;
-                        if ((isAtStart && deltaX < 0) || (isAtEnd && deltaX > 0)) {
-                            e.preventDefault();
-                        }
-                    } else if (e.type === 'touchmove') {
-                        var touch = e.originalEvent.touches[0];
-                        var lastTouchX = $(this).data('lastTouchX');
-                        if (lastTouchX !== undefined) {
-                            var deltaX = touch.clientX - lastTouchX;
-                            if ((isAtStart && deltaX > 0) || (isAtEnd && deltaX < 0)) {
-                                e.preventDefault();
-                            }
-                        }
-                        $(this).data('lastTouchX', touch.clientX);
-                    }
-                });
-
-                $scrollContainer.on('touchend', function () {
-                    $(this).removeData('lastTouchX');
-                });
-            }
-        }, 500);
-    });
 </script>
