@@ -288,12 +288,7 @@
 
         <div class="card-sultan">
           <div class="card-body p-3">
-            <div id="seragamlapor_loadingState">
-              <div class="sultan-loading-box">
-                <div class="sultan-spinner-icon"><i class="fas fa-circle-notch fa-spin"></i></div>
-                <h6 class="text-dark font-weight-bold mb-0">Menghubungkan ke Server...</h6>
-              </div>
-            </div>
+            <div id="seragamlapor_loadingState"></div>
 
             <div id="seragamlapor_tableState" style="display: none;">
               <div class="table-responsive sultan-scroll">
@@ -534,13 +529,15 @@
       // Deteksi Hak Akses
       IS_ADMIN = checkUserRoleIsAdmin();
       
+      SultanUI.renderSkeletonTable('#seragamlapor_loadingState', 9);
+
       // Render Filter Bar Placeholder immediately
       var filtersConfig = [
-        { id: "seragamlapor_filterSekolah", placeholder: "- Memuat Sekolah... -", disabled: true, visible: IS_ADMIN },
-        { id: "seragamlapor_filterTahun", placeholder: "- Memuat Tahun... -", disabled: true },
-        { id: "seragamlapor_filterJenis", placeholder: "- Pilih Jenis Seragam -", disabled: false },
-        { id: "seragamlapor_filterTahap", placeholder: "- Pilih Laporan -", disabled: false },
-        { id: "seragamlapor_filterStatus", placeholder: "- Pilih Status -", disabled: false }
+        { id: "seragamlapor_filterSekolah", placeholder: "Memuat Sekolah...", disabled: true, visible: IS_ADMIN },
+        { id: "seragamlapor_filterTahun", placeholder: "Memuat Tahun...", disabled: true },
+        { id: "seragamlapor_filterJenis", placeholder: "Pilih Jenis Seragam", disabled: false },
+        { id: "seragamlapor_filterTahap", placeholder: "Pilih Laporan", disabled: false },
+        { id: "seragamlapor_filterStatus", placeholder: "Pilih Status", disabled: false }
       ];
 
       var extraButtons = '<div class="divider-vertical d-none d-md-block mx-2"></div>' +
@@ -557,17 +554,20 @@
 
       $('#seragamlapor_filterBarArea').html(SultanUI.renderFilterBar(filtersConfig, extraButtons));
       $('#seragamlapor_filterSekolah_container').addClass('sultan-filter-unit-width');
+      if (typeof SultanUI !== 'undefined' && typeof SultanUI.adjustFilterBarWidths === 'function') {
+        SultanUI.adjustFilterBarWidths('#seragamlapor_filterBarArea');
+      }
 
       // Populate Jenis Seragam filter options
       $('#seragamlapor_filterJenis').html(
-        '<option value="SEMUA">- Semua Jenis -</option>' +
+        '<option value="SEMUA">Semua Jenis</option>' +
         '<option value="Merah Putih">Merah Putih</option>' +
         '<option value="Pramuka">Pramuka</option>'
       );
 
       // Populate Tahap / Laporan filter options
       $('#seragamlapor_filterTahap').html(
-        '<option value="SEMUA">- Semua Laporan -</option>' +
+        '<option value="SEMUA">Semua Laporan</option>' +
         '<option value="Laporan 1">Laporan 1</option>' +
         '<option value="Laporan 2">Laporan 2</option>' +
         '<option value="Laporan 3">Laporan 3</option>' +
@@ -577,7 +577,7 @@
 
       // Populate Status filter options
       $('#seragamlapor_filterStatus').html(
-        '<option value="SEMUA">- Semua Status -</option>' +
+        '<option value="SEMUA">Semua Status</option>' +
         '<option value="DIPROSES">Diproses</option>' +
         '<option value="DISETUJUI">Disetujui</option>' +
         '<option value="REVISI">Revisi</option>' +
@@ -768,7 +768,7 @@
           $('#seragamlapor_filterTahun').val(window.SERAGAM_LAP_CACHE.tahun);
         }
         
-        var inSekolahOpts = '<option value="">- Pilih Sekolah -</option>';
+        var inSekolahOpts = '<option value="">Pilih Sekolah</option>';
         listSekolah.forEach(function(s) {
           if (s.jenjang === "SD") {
             inSekolahOpts += `<option value="${s.npsn}" data-nama="${s.nama}">${s.nama}</option>`;
@@ -831,7 +831,7 @@
           window.SERAGAM_LAP_CACHE.sekolah = listSekolah;
           
           // Populate form sekolah list (Without NPSN in display text)
-          var inSekolahOpts = '<option value="">- Pilih Sekolah -</option>';
+          var inSekolahOpts = '<option value="">Pilih Sekolah</option>';
           listSekolah.forEach(function(s) {
             if (s.jenjang === "SD") {
               inSekolahOpts += `<option value="${s.npsn}" data-nama="${s.nama}">${s.nama}</option>`;
@@ -903,7 +903,7 @@
       });
 
       var $dropdown = $('#seragamlapor_filterSekolah');
-      $dropdown.empty().append('<option value="SEMUA">- Semua Sekolah -</option>');
+      $dropdown.empty().append('<option value="SEMUA">Semua Sekolah</option>');
       
       Object.keys(uniqueSchools).sort(function(a, b) {
         return uniqueSchools[a].localeCompare(uniqueSchools[b]);
@@ -952,6 +952,9 @@
       }
       
       renderTable(filtered);
+      if (typeof SultanUI !== 'undefined' && typeof SultanUI.adjustFilterBarWidths === 'function') {
+        SultanUI.adjustFilterBarWidths('#seragamlapor_filterBarArea');
+      }
     }
 
     function renderTable(data) {
@@ -2057,7 +2060,39 @@
               if (res.success) {
                 $('#global_modalForm').modal('hide');
                 Sultan.notif.sukses(res.message);
-                fetchLaporanData();
+
+                var serverItem = res.data || res.item || {};
+                var rowData = Object.assign({}, payload, serverItem);
+                if (res.url_file_sp) rowData.url_file_sp = res.url_file_sp;
+                if (res.id_file_sp) rowData.id_file_sp = res.id_file_sp;
+                if (res.url_file_dok) rowData.url_file_dok = res.url_file_dok;
+                if (res.id_file_dok) rowData.id_file_dok = res.id_file_dok;
+                if (res.nama_file_dok) rowData.nama_file_dok = res.nama_file_dok;
+
+                var now = new Date();
+                var dStr = String(now.getDate()).padStart(2, '0') + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + now.getFullYear();
+                var tStr = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0') + ':' + String(now.getSeconds()).padStart(2, '0');
+                var fullNow = dStr + ' ' + tStr;
+
+                if (rowId) {
+                  var targetIdx = SERAGAMLAPOR_CACHE_DATA.findIndex(function(r) { return String(r.rowId) === String(rowId); });
+                  if (targetIdx !== -1) {
+                    rowData.tgl_edit = fullNow;
+                    rowData.user_edit = userLogin.nama || userLogin.nama_lengkap || userLogin.username || "User";
+                    SERAGAMLAPOR_CACHE_DATA[targetIdx] = Object.assign({}, SERAGAMLAPOR_CACHE_DATA[targetIdx], rowData);
+                  } else {
+                    fetchLaporanData();
+                    return;
+                  }
+                } else {
+                  rowData.rowId = res.rowId || ("ROW_" + Date.now());
+                  rowData.tgl_upload = fullNow;
+                  rowData.uploader = userLogin.nama || userLogin.nama_lengkap || userLogin.username || "User";
+                  rowData.status = "DIPROSES";
+                  SERAGAMLAPOR_CACHE_DATA.unshift(rowData);
+                }
+                updateSekolahFilterDropdown();
+                applyLocalFilter();
               } else {
                 Sultan.notif.gagal('Gagal menyimpan laporan: ' + res.message);
               }
