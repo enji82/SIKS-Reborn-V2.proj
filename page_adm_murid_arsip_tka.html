@@ -33,16 +33,7 @@
 
         <div class="card-sultan">
           <div class="card-body p-3">
-            <div id="arsiptka_loadingState">
-              <div class="sultan-loading-box sultan-page-transition">
-                <div class="sultan-spinner-icon">
-                  <i class="fas fa-circle-notch fa-spin"></i>
-                </div>
-                <h6 class="text-dark font-weight-bold sultan-loading-text mb-0"
-                  style="letter-spacing: 0.5px; text-transform: uppercase; font-size: 11px;">Menghubungkan ke Server...
-                </h6>
-              </div>
-            </div>
+            <div id="arsiptka_loadingState"></div>
 
             <div id="arsiptka_tableState" style="display: none;">
               <div class="table-responsive sultan-scroll">
@@ -200,7 +191,7 @@
       <div class="form-group mb-3">
         <label class="modal-verifikasi-form-label">Keputusan Verifikasi <span class="text-danger">*</span></label>
         <select class="modal-verifikasi-select font-weight-bold w-100" id="arsiptka_verif_status" required>
-          <option value="">-- Pilih Keputusan --</option>
+          <option value="">Pilih Keputusan</option>
           <option value="Diproses">Diproses</option>
           <option value="Disetujui">Disetujui</option>
           <option value="Dicetak">Dicetak</option>
@@ -233,6 +224,8 @@
 
 <script>
   $(function () {
+    SultanUI.renderSkeletonTable('#arsiptka_loadingState', 7);
+
     var userLogin = getSesiUser();
     if (!userLogin) {
       Sultan.notif.gagal("Anda tidak memiliki sesi akses.");
@@ -246,9 +239,9 @@
 
     // Inisialisasi Filter Bar
     var filtersConfig = [
-      { id: 'arsiptka_filterSekolah', placeholder: '- Memvalidasi Akses... -', disabled: true },
-      { id: 'arsiptka_filterTahun', placeholder: '- Memuat TA... -', disabled: true },
-      { id: 'arsiptka_filterStatus', placeholder: '- Pilih Status... -', disabled: false }
+      { id: 'arsiptka_filterSekolah', placeholder: 'Memvalidasi Akses...', disabled: true },
+      { id: 'arsiptka_filterTahun', placeholder: 'Memuat TA...', disabled: true },
+      { id: 'arsiptka_filterStatus', placeholder: 'Pilih Status...', disabled: false }
     ];
     var extraButtons = `
         <div class="divider-vertical d-none d-md-block mx-2"></div>
@@ -262,10 +255,13 @@
     `;
     $('#arsiptka_filterBarArea').html(SultanUI.renderFilterBar(filtersConfig, extraButtons));
     $('#arsiptka_filterSekolah_container').addClass('sultan-filter-unit-width');
+    if (typeof SultanUI !== 'undefined' && typeof SultanUI.adjustFilterBarWidths === 'function') {
+      SultanUI.adjustFilterBarWidths('#arsiptka_filterBarArea');
+    }
 
     // Inisialisasi Dropdown Status
     var htmlStatus = `
-      <option value="SEMUA">- Semua Status -</option>
+      <option value="SEMUA">Semua Status</option>
       <option value="DIPROSES">Diproses</option>
       <option value="DISETUJUI">Disetujui</option>
       <option value="DICETAK">Dicetak</option>
@@ -285,8 +281,8 @@
     var prevEnd = parseInt(parts[1], 10) - 1;
     var currentTahunAjaran = prevStart + "/" + prevEnd;
 
-    var htmlTahun = '<option value="SEMUA">- Semua Tahun -</option>';
-    var formTahun = '<option value="">- Pilih Tahun Ajaran -</option>';
+    var htmlTahun = '<option value="SEMUA">Semua Tahun</option>';
+    var formTahun = '<option value="">Pilih Tahun Ajaran</option>';
     for (var y = 2023; y <= curYear + 1; y++) {
       var ta = y + "/" + (y + 1);
       htmlTahun += '<option value="' + ta + '">' + ta + '</option>';
@@ -309,8 +305,8 @@
         inSekolah.empty();
 
         if (ARSIPTKA_IS_ADMIN) {
-          filterSekolah.append('<option value="SEMUA">- Semua Sekolah -</option>');
-          inSekolah.append('<option value="">- Pilih Sekolah -</option>');
+          filterSekolah.append('<option value="SEMUA">Semua Sekolah</option>');
+          inSekolah.append('<option value="">Pilih Sekolah</option>');
           res.sekolah.forEach(function (s) {
             var isSD = String(s.jenjang || "").toUpperCase() === "SD";
             if (isSD) {
@@ -331,6 +327,10 @@
           $('#arsiptka_in_sekolah_hidden').val(userNpsn);
         }
         $('#arsiptka_btnTambah').prop('disabled', false);
+        if (typeof SultanUI !== 'undefined' && typeof SultanUI.adjustFilterBarWidths === 'function') {
+          SultanUI.adjustFilterBarWidths('#arsiptka_filterBarArea');
+        }
+        loadArsipTkaData();
       }
     }).getAdmSekolahMasterData("SEMUA");
 
@@ -457,6 +457,9 @@
       });
 
       renderTableArsipTka(filtered);
+      if (typeof SultanUI !== 'undefined' && typeof SultanUI.adjustFilterBarWidths === 'function') {
+        SultanUI.adjustFilterBarWidths('#arsiptka_filterBarArea');
+      }
     }
 
     function renderTableArsipTka(data) {
@@ -617,7 +620,7 @@
       var inSekolah = $('#arsiptka_in_sekolah');
       if (ARSIPTKA_IS_ADMIN) {
         inSekolah.empty();
-        inSekolah.append('<option value="">- Pilih Sekolah -</option>');
+        inSekolah.append('<option value="">Pilih Sekolah</option>');
         listMasterSekolah.forEach(function (s) {
           var isSD = String(s.jenjang || "").toUpperCase() === "SD";
           if (isSD) {
@@ -781,7 +784,37 @@
         if (res.success) {
           $('#global_modalForm').modal('hide');
           Sultan.notif.crud.simpan(isEdit);
-          loadArsipTkaData();
+
+          var serverItem = res.data || res.item || {};
+          var rowData = Object.assign({}, payload, serverItem);
+          if (res.url_file_sertifikat) rowData.url_file_sertifikat = res.url_file_sertifikat;
+          if (res.id_file_sertifikat) rowData.id_file_sertifikat = res.id_file_sertifikat;
+          if (res.url_file_daftar) rowData.url_file_daftar = res.url_file_daftar;
+          if (res.id_file_daftar) rowData.id_file_daftar = res.id_file_daftar;
+
+          var now = new Date();
+          var dStr = String(now.getDate()).padStart(2, '0') + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + now.getFullYear();
+          var tStr = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0') + ':' + String(now.getSeconds()).padStart(2, '0');
+          var fullNow = dStr + ' ' + tStr;
+
+          if (isEdit) {
+            var targetIdx = ARSIPTKA_CACHE_DATA.findIndex(function (item) { return String(item.rowId) === String(payload.rowId); });
+            if (targetIdx !== -1) {
+              rowData.tgl_edit = fullNow;
+              rowData.user_edit = payload.user_login;
+              ARSIPTKA_CACHE_DATA[targetIdx] = Object.assign({}, ARSIPTKA_CACHE_DATA[targetIdx], rowData);
+            } else {
+              loadArsipTkaData();
+              return;
+            }
+          } else {
+            rowData.rowId = res.rowId || ("ROW_" + Date.now());
+            rowData.tgl_upload = fullNow;
+            rowData.uploader = payload.user_login;
+            rowData.status = "DIPROSES";
+            ARSIPTKA_CACHE_DATA.unshift(rowData);
+          }
+          terapkanFilterLokalArsipTka();
         } else {
           Sultan.notif.crud.gagal(res.message);
         }
@@ -866,7 +899,13 @@
             var res = JSON.parse(resRaw);
             if (res.success) {
               Sultan.notif.crud.hapus();
-              loadArsipTkaData();
+              var targetIdx = ARSIPTKA_CACHE_DATA.findIndex(function (item) { return String(item.rowId) === String(rowId); });
+              if (targetIdx !== -1) {
+                ARSIPTKA_CACHE_DATA.splice(targetIdx, 1);
+                terapkanFilterLokalArsipTka();
+              } else {
+                loadArsipTkaData();
+              }
             } else {
               Sultan.notif.crud.gagal(res.message);
             }
