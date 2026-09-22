@@ -5,6 +5,16 @@
       <div class="col-12">
         
         <div class="sultan-filter-pill-container shadow-sm mb-4">
+            <div class="sultan-filter-item" id="efilekelola_filterJenjangContainer" style="display: none;">
+                <select id="efilekelola_filterJenjang" class="form-control">
+                    <option value="SEMUA">Semua Jenjang</option>
+                    <option value="PAUD">PAUD</option>
+                    <option value="SD NEGERI">SD Negeri</option>
+                    <option value="SD SWASTA">SD Swasta</option>
+                </select>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+
             <div class="sultan-filter-item" id="efilekelola_filterContainer" style="display: none;">
                 <select id="efilekelola_filterUnit" class="form-control" disabled>
                     <option value="">Memvalidasi Akses...</option>
@@ -460,7 +470,13 @@ $(document).ready(function() {
             }
         });
     }
-    $(document).off('change', '#efilekelola_filterStatus, #efilekelola_filterKategori, #efilekelola_filterTahun, #efilekelola_filterPeriode, #efilekelola_filterStatusPegawai').on('change', '#efilekelola_filterStatus, #efilekelola_filterKategori, #efilekelola_filterTahun, #efilekelola_filterPeriode, #efilekelola_filterStatusPegawai', efilekelola_terapkanFilterLokal);
+    $(document).off('change', '#efilekelola_filterStatus, #efilekelola_filterKategori, #efilekelola_filterTahun, #efilekelola_filterPeriode, #efilekelola_filterStatusPegawai, #efilekelola_filterJenjang').on('change', '#efilekelola_filterStatus, #efilekelola_filterKategori, #efilekelola_filterTahun, #efilekelola_filterPeriode, #efilekelola_filterStatusPegawai, #efilekelola_filterJenjang', efilekelola_terapkanFilterLokal);
+    $(document).off('change', '#efilekelola_filterJenjang').on('change', '#efilekelola_filterJenjang', function() {
+        if (EFILEKELOLA_IS_ADMIN) {
+            efilekelola_updateUnitOptionsByJenjang();
+            efilekelola_terapkanFilterLokal();
+        }
+    });
     $(document).on('change', '#efilekelola_filterKategori', function() {
         var katId = $(this).val();
         var katData = EFILEKELOLA_MASTER_KAT.find(function(k) { return String(k.idKat).trim() === String(katId).trim(); });
@@ -739,7 +755,11 @@ $(document).ready(function() {
 });
 
 function efilekelola_initMasterData() {
-    if (EFILEKELOLA_IS_ADMIN) { $('#efilekelola_filterContainer').show(); $('#efilekelola_filterUnit').empty().append('<option value="SEMUA">Semua Unit Kerja</option>').prop('disabled', false).removeClass('bg-light text-maroon font-weight-bold'); } 
+    if (EFILEKELOLA_IS_ADMIN) { 
+        $('#efilekelola_filterJenjangContainer').show();
+        $('#efilekelola_filterContainer').show(); 
+        $('#efilekelola_filterUnit').empty().append('<option value="SEMUA">Semua Unit Kerja</option>').prop('disabled', false).removeClass('bg-light text-maroon font-weight-bold'); 
+    } 
     else if (!EFILEKELOLA_NPSN_TERKUNCI) { $('#efilekelola_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-ban mb-2"></i><br>Akses ditolak.</span>'); return; }
 
     google.script.run.withSuccessHandler(function(json) {
@@ -761,6 +781,32 @@ function efilekelola_initMasterData() {
     }).withFailureHandler(function(){ $('#efilekelola_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Terputus.</span>'); }).getEfileMasterData(EFILEKELOLA_IS_ADMIN ? "" : EFILEKELOLA_NPSN_TERKUNCI);
 }
 
+function efilekelola_updateUnitOptionsByJenjang() {
+    if (!EFILEKELOLA_IS_ADMIN) return;
+    var fJ = $('#efilekelola_filterJenjang').val() || "SEMUA";
+    var su = $('#efilekelola_filterUnit');
+    var cu = su.val();
+    su.empty().append('<option value="SEMUA">Semua Unit Kerja</option>');
+
+    var un = {};
+    EFILEKELOLA_MASTER_PTK.forEach(function(p) {
+        if (!p.npsn) return;
+        var jg = String(p.jenjang || "").toUpperCase();
+        var stSek = String(p.status_sekolah || "").toUpperCase();
+        var match = false;
+
+        if (fJ === "SEMUA") match = true;
+        else if (fJ === "PAUD" && (jg.includes("PAUD") || jg.includes("TK") || jg.includes("KB") || jg.includes("TPA") || jg.includes("SPS"))) match = true;
+        else if (fJ === "SD NEGERI" && jg.includes("SD") && (stSek.includes("NEGERI") || !stSek.includes("SWASTA"))) match = true;
+        else if (fJ === "SD SWASTA" && jg.includes("SD") && stSek.includes("SWASTA")) match = true;
+
+        if (match) un[p.npsn] = p.unit;
+    });
+
+    Object.keys(un).forEach(function(n) { su.append($('<option>', {value: n, text: un[n]})); });
+    if (cu && un[cu]) su.val(cu); else su.val("SEMUA");
+}
+
 function efilekelola_tarikDataServer() {
     var btn = $('#efilekelola_btnRefresh'); btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin text-maroon"></i>');
     if (!$.fn.DataTable.isDataTable('#efilekelola_tabelUtama')) {
@@ -774,9 +820,7 @@ function efilekelola_tarikDataServer() {
         if (!res.success) { $('#efilekelola_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>' + efilekelola_escapeHtml(res.message) + '</span>'); return; }
         EFILEKELOLA_CACHE_DATA = res.data || [];
         if (EFILEKELOLA_IS_ADMIN) {
-            var un = {}; EFILEKELOLA_MASTER_PTK.forEach(function(p) { if(p.npsn) un[p.npsn] = p.unit; });
-            var su = $('#efilekelola_filterUnit'); var cu = su.val(); su.empty().append('<option value="SEMUA">Semua Unit Kerja</option>');
-            Object.keys(un).forEach(function(n) { su.append($('<option>', {value: n, text: un[n]})); }); if(cu) su.val(cu);
+            efilekelola_updateUnitOptionsByJenjang();
         }
 
         // BIND FILTER TAHUN DINAMIS
@@ -824,6 +868,7 @@ function efilekelola_initDataTables() {
 
 function efilekelola_terapkanFilterLokal() {
     if (!EFILEKELOLA_TABEL_INSTANCE) return;
+    var fJ = $('#efilekelola_filterJenjang').val() || "SEMUA";
     var fS = $('#efilekelola_filterStatus').val().toLowerCase(); 
     var fK = $('#efilekelola_filterKategori').val(); 
     var fN = EFILEKELOLA_IS_ADMIN ? $('#efilekelola_filterUnit').val() : "";
@@ -833,13 +878,22 @@ function efilekelola_terapkanFilterLokal() {
 
     var hasil = EFILEKELOLA_CACHE_DATA.filter(function(r) {
         var st = String(r.status || "").toLowerCase(); var rn = String(r.npsn || "");
+        var ptk = EFILEKELOLA_MASTER_PTK.find(function(p) { return String(p.id_ptk).trim() === String(r.id_ptk).trim(); });
+        
+        if (EFILEKELOLA_IS_ADMIN && fJ !== "SEMUA") {
+            var jg = ptk ? String(ptk.jenjang || "").toUpperCase() : "";
+            var stSek = ptk ? String(ptk.status_sekolah || "").toUpperCase() : "";
+            if (fJ === "PAUD" && !(jg.includes("PAUD") || jg.includes("TK") || jg.includes("KB") || jg.includes("TPA") || jg.includes("SPS"))) return false;
+            if (fJ === "SD NEGERI" && !(jg.includes("SD") && (stSek.includes("NEGERI") || !stSek.includes("SWASTA")))) return false;
+            if (fJ === "SD SWASTA" && !(jg.includes("SD") && stSek.includes("SWASTA"))) return false;
+        }
+
         if (EFILEKELOLA_IS_ADMIN && fN !== "SEMUA" && fN !== "" && rn !== fN) return false;
         if (fK !== "SEMUA" && fK !== "" && String(r.id_kategori) !== fK) return false;
         if (fS !== "semua" && fS !== "") { var ns = "diproses"; if (st.includes('setuju') || st.includes('ok')) ns = "disetujui"; else if (st.includes('revisi')) ns = "revisi"; else if (st.includes('tolak')) ns = "ditolak"; if (ns !== fS) return false; }
         if (fT !== "SEMUA" && String(r.tahun || "").trim() !== fT) return false;
         if (fP !== "SEMUA" && String(r.periode || "").trim() !== fP) return false;
         if (fSP !== "SEMUA" && fSP !== "") {
-            var ptk = EFILEKELOLA_MASTER_PTK.find(function(p) { return String(p.id_ptk).trim() === String(r.id_ptk).trim(); });
             var pStatus = ptk ? String(ptk.status || "").trim() : "";
             if (pStatus !== fSP) return false;
         }
