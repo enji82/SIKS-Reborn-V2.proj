@@ -65,12 +65,7 @@
         <!-- CARD TABEL -->
         <div class="card-sultan">
           <div class="card-body p-3">
-            <div id="pppkpwspmt_loadingState">
-              <div class="sultan-loading-box sultan-page-transition">
-                <div class="sultan-spinner-icon"><i class="fas fa-circle-notch fa-spin"></i></div>
-                <h6 class="text-dark font-weight-bold sultan-loading-text mb-0" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;">Menghubungkan ke Server...</h6>
-              </div>
-            </div>
+            <div id="pppkpwspmt_loadingState" style="display:none;"></div>
             <div id="pppkpwspmt_tableState" style="display:none;">
               <div class="table-responsive sultan-scroll">
                 <table id="pppkpwspmt_tabelUtama" class="table table-hover table-premium table-sultan-compact mb-0 w-100">
@@ -357,6 +352,10 @@ function pppkpwspmt_initPage() {
         $('#pppkpwspmt_filterTahun').html(htahun).val(curSel || PPPKPWSPMT_CURRENT_TA);
       }
 
+      if (typeof SultanUI !== 'undefined' && typeof SultanUI.adjustFilterBarWidths === 'function') {
+        SultanUI.adjustFilterBarWidths('.sultan-filter-pill-container');
+      }
+
       pppkpwspmt_loadData();
     })
     .withFailureHandler(function (err) {
@@ -373,8 +372,13 @@ function pppkpwspmt_loadData(force) {
   var unitFilter = PPPKPWSPMT_IS_ADMIN ? '' : PPPKPWSPMT_USER_UNIT;
   var tahun = $('#pppkpwspmt_filterTahun').val() || '';
 
-  $('#pppkpwspmt_loadingState').show();
-  $('#pppkpwspmt_tableState').hide();
+  if (!$.fn.DataTable.isDataTable('#pppkpwspmt_tabelUtama')) {
+    $('#pppkpwspmt_tableState').hide();
+    if (typeof SultanUI !== 'undefined' && typeof SultanUI.renderSkeletonTable === 'function') {
+      SultanUI.renderSkeletonTable('#pppkpwspmt_loadingState', 6);
+    }
+    $('#pppkpwspmt_loadingState').show();
+  }
   $('#pppkpwspmt_btnRefresh').prop('disabled', true).html('<i class="fas fa-spinner fa-spin text-maroon"></i>');
 
   google.script.run
@@ -387,6 +391,9 @@ function pppkpwspmt_loadData(force) {
       pppkpwspmt_applyFilterLocal(false);
       $('#pppkpwspmt_loadingState').hide();
       $('#pppkpwspmt_tableState').show();
+      if (typeof SultanUI !== 'undefined' && typeof SultanUI.adjustFilterBarWidths === 'function') {
+        SultanUI.adjustFilterBarWidths('.sultan-filter-pill-container');
+      }
     })
     .withFailureHandler(function (err) {
       $('#pppkpwspmt_btnRefresh').prop('disabled', false).html('<i class="fas fa-sync-alt"></i>');
@@ -768,7 +775,13 @@ function pppkpwspmt_bukaModalHapus(row) {
           var res = JSON.parse(r);
           if (res.success) { 
             Sultan.notif.crud.hapus(); 
-            pppkpwspmt_loadData(); 
+            var idx = PPPKPWSPMT_DATA.findIndex(function (d) {
+              return String(d.rowId) === String(row.rowId) && String(d.sheetName) === String(row.sheetName);
+            });
+            if (idx !== -1) {
+              PPPKPWSPMT_DATA.splice(idx, 1);
+            }
+            pppkpwspmt_applyFilterLocal(true); 
             if (typeof sultan_fetchNotifikasi === 'function') sultan_fetchNotifikasi();
           } else {
             Sultan.notif.crud.gagal(res.message);
