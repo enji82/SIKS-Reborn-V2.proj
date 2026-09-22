@@ -926,7 +926,6 @@
 
         data.forEach(function (row) {
             var master = PTKSDS_CACHE_MASTER.find(function (m) { return String(m.id) === String(row.id_ptk); }) || {};
-
             var niy = master.niy || master.nip || '-';
 
             var rawStatus = row.status || '';
@@ -941,15 +940,15 @@
 
             if (PTKSDS_IS_ADMIN) {
                 if (mainStatus === 'Pending') {
-                    btnVerif = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-primary" onclick="ptksds_bukaModalVerifikasi(' + JSON.stringify(row).replace(/"/g, '&quot;') + ')" title="Verifikasi Ajuan"><i class="fas fa-search-plus"></i></button>';
+                    btnVerif = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-primary ptksds-btn-verif" data-id="' + row.id_usulan + '" title="Verifikasi Ajuan"><i class="fas fa-search-plus"></i></button>';
                 } else {
-                    btnVerif = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-primary" onclick="ptksds_bukaModalVerifikasi(' + JSON.stringify(row).replace(/"/g, '&quot;') + ')" title="Lihat Detail Verifikasi"><i class="fas fa-eye"></i></button>';
+                    btnVerif = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-primary ptksds-btn-verif" data-id="' + row.id_usulan + '" title="Lihat Detail Verifikasi"><i class="fas fa-eye"></i></button>';
                 }
             }
 
             if (mainStatus === 'Pending' || mainStatus === 'Tolak') {
-                btnEdit = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning" onclick="ptksds_bukaModalEditUsulan(\'' + row.id_usulan + '\')" title="Edit Ajuan"><i class="fas fa-pencil-alt"></i></button>';
-                btnHapus = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon" onclick="ptksds_hapusUsulan(\'' + row.id_usulan + '\')" title="Hapus Ajuan"><i class="fas fa-trash-alt"></i></button>';
+                btnEdit = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning ptksds-btn-edit" data-id="' + row.id_usulan + '" title="Edit Ajuan"><i class="fas fa-pencil-alt"></i></button>';
+                btnHapus = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon ptksds-btn-hapus" data-id="' + row.id_usulan + '" title="Hapus Ajuan"><i class="fas fa-trash-alt"></i></button>';
             } else {
                 btnEdit = '<button type="button" class="sultan-btn-aksi" disabled title="Sudah disetujui"><i class="fas fa-pencil-alt"></i></button>';
                 btnHapus = '<button type="button" class="sultan-btn-aksi" disabled title="Sudah disetujui"><i class="fas fa-trash-alt"></i></button>';
@@ -958,51 +957,45 @@
             aksiHtml = '<div class="d-flex flex-nowrap justify-content-center align-items-center" style="gap:4px;">' + (btnVerif ? btnVerif + ' ' : '') + btnEdit + ' ' + btnHapus + '</div>';
 
             // ── 0. NAMA PTK (col-sticky-left) ─────────────────────────────
-            var uiNama = '<div style="font-size: 13px;" class="sultan-table-primary">' + ptksds_escapeHtml(row.nama_ptk) + '</div>';
-            uiNama += '<div style="font-size: 13px;" class="sultan-table-secondary">NIY: ' + ptksds_escapeHtml(niy) + '</div>';
-            uiNama += '<div style="font-size: 13px;" class="sultan-table-secondary">Asal: ' + ptksds_escapeHtml(row.lembaga_asal || '-') + '</div>';
+            var uiNama = '<div style="font-size: 13px;" class="sultan-table-primary font-weight-bold">' + ptksds_escapeHtml(row.nama_ptk) + '</div>';
+            uiNama += '<div style="font-size: 11px;" class="sultan-table-secondary text-muted">NIY: ' + ptksds_escapeHtml(niy) + '</div>';
+            uiNama += '<div style="font-size: 11px;" class="sultan-table-secondary text-muted">Asal: ' + ptksds_escapeHtml(row.lembaga_asal || '-') + '</div>';
 
             // ── 1. JENIS MUTASI ───────────────────────────────────────────
-            var uiJenis = '<div style="font-size: 13px;">' + ptksds_escapeHtml(row.jenis_mutasi || '-') + '</div>';
+            var uiJenis = '<div style="font-size: 12.5px;" class="font-weight-semibold">' + ptksds_escapeHtml(row.jenis_mutasi || '-') + '</div>';
 
             // ── 2. TMT / TANGGAL ──────────────────────────────────────────
-            var uiTanggal = '<div style="font-size: 13px;">' + ptksds_escapeHtml(row.tmt_tanggal || '-') + '</div>';
+            var uiTanggal = '<div style="font-size: 12.5px;">' + ptksds_escapeHtml(row.tmt_tanggal || '-') + '</div>';
 
             // ── 3. TUJUAN / ALASAN ────────────────────────────────────────
-            var uiTujuan = '<div style="font-size: 13px;">' + ptksds_escapeHtml(row.lembaga_tujuan || '-') + '</div>';
+            var uiTujuan = '<div style="font-size: 12.5px;">' + ptksds_escapeHtml(row.lembaga_tujuan || '-') + '</div>';
 
             // ── 4. FILE SK ────────────────────────────────────────────────
             var uiFileSk = '<div class="text-center">';
             if (row.file_sk && row.file_sk !== '-') {
-                uiFileSk += '<button type="button" style="font-size: 13px;" class="sultan-btn-pdf" onclick="ptksds_previewPdf(\'' + ptksds_escapeHtml(row.file_sk) + '\')" title="Lihat Dokumen"><i class="fas fa-file-pdf"></i> LIHAT</button>';
+                uiFileSk += '<button type="button" style="font-size: 12px;" class="sultan-btn-pdf ptksds-btn-preview" data-url="' + ptksds_escapeHtml(row.file_sk) + '" title="Lihat Dokumen"><i class="fas fa-file-pdf mr-1"></i> LIHAT</button>';
             } else {
-                uiFileSk += '<span style="font-size: 13px;">-</span>';
+                uiFileSk += '<span style="font-size: 12px;" class="text-muted">' + (row.file_sk || '-') + '</span>';
             }
             uiFileSk += '</div>';
 
-            // ── 5. STATUS (Badge Sultan + Tombol Catatan) ─────────────────
-            var statusMap = {
-                'Pending': '<span class="sultan-badge sultan-badge-warning"><i class="fas fa-clock mr-1"></i>Menunggu</span>',
-                'Setuju': '<span class="sultan-badge sultan-badge-success"><i class="fas fa-check-circle mr-1"></i>Disetujui</span>',
-                'Tolak': '<span class="sultan-badge sultan-badge-danger"><i class="fas fa-times-circle mr-1"></i>Ditolak</span>'
-            };
-            var statusBadge = statusMap[mainStatus] || '<span class="sultan-badge sultan-badge-secondary">' + rawStatus + '</span>';
-
-            var catatanTampil = row.catatan || statusParts[1] || "";
-            if (catatanTampil) {
-                var safeKet = ptksds_escapeHtml(catatanTampil.trim()); // Tanpa Base64
-                statusBadge += '<div class="mt-2"><button type="button" class="sultan-btn-note ptksds-btn-catatan" data-pesan="' + safeKet + '"><i class="fas fa-comment-dots mr-1"></i> BACA CATATAN</button></div>';
-            }
-            var uiStatus = '<div style="font-size: 13px;">' + statusBadge + '</div>';
+            // ── 5. STATUS (Badge Sultan) ─────────────────────────────────
+            var statusBadge = SultanUI.renderBadgeStatus(mainStatus, row.catatan || statusParts[1], {
+                unit: row.nama_ptk,
+                dokumen: 'Usulan Mutasi PTK (' + (row.jenis_mutasi || '') + ')',
+                verifikator: row.user_eksekutor,
+                waktu: row.tanggal_eksekusi
+            });
+            var uiStatus = '<div style="font-size: 12px;">' + statusBadge + '</div>';
 
             // ── 6. AKTIVITAS (Audit Cell SultanUI) ────────────────────────
             var auditWaktu = row.tanggal_eksekusi || row.tanggal_usulan || '-';
             var auditUser = row.user_eksekutor || row.user_pengusul || '-';
-            var auditLabel = row.tanggal_eksekusi && row.tanggal_eksekusi !== '-' ? 'Diverifikasi' : 'Diajukan';
-            var tooltipAudit = `Diajukan: ${row.tanggal_usulan || '-'} (${row.user_pengusul || '-'})\nDiverifikasi: ${row.tanggal_eksekusi || '-'} (${row.user_eksekutor || '-'})`;
+            var auditLabel = row.tanggal_eksekusi && row.tanggal_eksekusi !== '-' ? 'Verif' : 'Diajukan';
+            var tooltipAudit = 'Diajukan: ' + (row.tanggal_usulan || '-') + ' (' + (row.user_pengusul || '-') + ')\nDiverifikasi: ' + (row.tanggal_eksekusi || '-') + ' (' + (row.user_eksekutor || '-') + ')';
             var uiAktivitas = typeof SultanUI !== 'undefined' && typeof SultanUI.renderAuditCell === 'function'
                 ? SultanUI.renderAuditCell({ waktu: auditWaktu, user: auditUser, label: auditLabel, tooltip: tooltipAudit })
-                : `<div class="text-left"><div style="font-size:11.5px;" class="font-weight-bold">${auditWaktu}</div><div class="text-muted" style="font-size:11px;">${auditLabel}: ${auditUser}</div></div>`;
+                : '<div class="text-left"><div style="font-size:11.5px;" class="font-weight-bold">' + auditWaktu + '</div><div class="text-muted" style="font-size:11px;">' + auditLabel + ': ' + auditUser + '</div></div>';
 
             // Push 8 kolom standar: NAMA, JENIS, TMT, TUJUAN, FILE SK, STATUS, AKTIVITAS, AKSI
             dtArray.push([
@@ -1025,7 +1018,7 @@
         }
     }
 
-    function ptksds_bukaModalVerifikasi(row) {
+function ptksds_bukaModalVerifikasi(row) {
         if (typeof row === 'string') { try { row = JSON.parse(row); } catch (e) { return; } }
 
         PTKSDS_CURRENT_VERIFIKASI_ROW = row;
