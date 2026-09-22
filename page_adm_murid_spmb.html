@@ -30,14 +30,7 @@
 
         <div class="card-sultan">
             <div class="card-body p-3">
-                <div id="admmuridspmb_loadingState">
-                    <div class="sultan-loading-box sultan-page-transition">
-                        <div class="sultan-spinner-icon">
-                            <i class="fas fa-circle-notch fa-spin"></i>
-                        </div>
-                        <h6 class="text-dark font-weight-bold sultan-loading-text mb-0" style="letter-spacing: 0.5px; text-transform: uppercase; font-size: 11px;">Menghubungkan ke Server...</h6>
-                    </div>
-                </div>
+                <div id="admmuridspmb_loadingState"></div>
 
                 <div id="admmuridspmb_tableState" style="display: none;">
                     <div class="table-responsive sultan-scroll">
@@ -240,7 +233,7 @@
             <div class="form-group mb-3">
                 <label class="modal-verifikasi-form-label">Keputusan Verifikasi <span class="text-danger">*</span></label>
                 <select class="modal-verifikasi-select font-weight-bold w-100" id="admmuridspmb_verif_status" required>
-                    <option value="">-- Pilih Keputusan --</option>
+                    <option value="">Pilih Keputusan</option>
                     <option value="Diproses">Diproses</option>
                     <option value="Disetujui">Disetujui</option>
                     <option value="Revisi">Revisi</option>
@@ -276,11 +269,18 @@
     var ADMMURIDSPMB_CACHE_DATA = [];
     var ADMMURIDSPMB_IS_ADMIN = (userLogin.role || "").toLowerCase().includes("admin");
 
+    // Render skeleton loader instan 0ms saat halaman dibuka untuk hilangkan lag
+    if (typeof SultanUI !== 'undefined' && typeof SultanUI.renderSkeletonTable === 'function') {
+      SultanUI.renderSkeletonTable('#admmuridspmb_loadingState', 7);
+    }
+    $('#admmuridspmb_loadingState').show();
+    $('#admmuridspmb_tableState').hide();
+
     // Inisialisasi Filter Bar
     var filtersConfig = [
-        { id: 'admmuridspmb_filterSekolah', placeholder: '- Memvalidasi Akses... -', disabled: true },
-        { id: 'admmuridspmb_filterTahun', placeholder: '- Memuat TA... -', disabled: true },
-        { id: 'admmuridspmb_filterStatus', placeholder: '- Pilih Status... -', disabled: false }
+        { id: 'admmuridspmb_filterSekolah', placeholder: 'Memvalidasi Akses...', disabled: true },
+        { id: 'admmuridspmb_filterTahun', placeholder: 'Memuat TA...', disabled: true },
+        { id: 'admmuridspmb_filterStatus', placeholder: 'Pilih Status...', disabled: false }
     ];
     var extraButtons = `
         <div class="divider-vertical d-none d-md-block mx-2"></div>
@@ -297,7 +297,7 @@
 
     // Inisialisasi Dropdown Status
     var htmlStatus = `
-      <option value="SEMUA">- Semua Status -</option>
+      <option value="SEMUA">Semua Status</option>
       <option value="DIPROSES">Diproses</option>
       <option value="DISETUJUI">Disetujui</option>
       <option value="REVISI">Revisi</option>
@@ -309,8 +309,8 @@
     var now = new Date(); var curYear = now.getFullYear(); var curMonth = now.getMonth();
     var currentTahunAjaran = (curMonth >= 6) ? curYear + "/" + (curYear + 1) : (curYear - 1) + "/" + curYear;
 
-    var htmlTahun = '<option value="SEMUA">- Semua Tahun -</option>';
-    var formTahun = '<option value="">- Pilih Tahun Ajaran -</option>';
+    var htmlTahun = '<option value="SEMUA">Semua Tahun</option>';
+    var formTahun = '<option value="">Pilih Tahun Ajaran</option>';
     for (var y = 2023; y <= curYear + 1; y++) {
         var ta = y + "/" + (y + 1);
         htmlTahun += '<option value="' + ta + '">' + ta + '</option>';
@@ -331,8 +331,8 @@
         inSekolah.empty();
 
         if (ADMMURIDSPMB_IS_ADMIN) {
-          filterSekolah.append('<option value="SEMUA">- Semua Sekolah -</option>');
-          inSekolah.append('<option value="">- Pilih Sekolah -</option>');
+          filterSekolah.append('<option value="SEMUA">Semua Sekolah</option>');
+          inSekolah.append('<option value="">Pilih Sekolah</option>');
           res.sekolah.forEach(function (s) {
             var isSD = String(s.jenjang || "").toUpperCase() === "SD";
             if (isSD) {
@@ -353,6 +353,9 @@
           $('#admmuridspmb_in_sekolah_hidden').val(userNpsn);
         }
         $('#admmuridspmb_btnTambah').prop('disabled', false);
+        if (typeof SultanUI !== 'undefined' && typeof SultanUI.adjustFilterBarWidths === 'function') {
+          SultanUI.adjustFilterBarWidths('#admmuridspmb_filterBarArea');
+        }
         loadSpmbData();
       }
     }).getAdmSekolahMasterData("SEMUA");
@@ -407,8 +410,11 @@
       btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin" style="color: var(--sultan-aksi-utama);"></i>');
 
       if (!$.fn.DataTable.isDataTable('#admmuridspmb_tabelUtama')) {
-        SultanUI.showLoading('#admmuridspmb_loadingState', 'Memuat Data Laporan SPMB...');
         $('#admmuridspmb_tableState').hide();
+        if (typeof SultanUI !== 'undefined' && typeof SultanUI.renderSkeletonTable === 'function') {
+          SultanUI.renderSkeletonTable('#admmuridspmb_loadingState', 7);
+        }
+        $('#admmuridspmb_loadingState').show();
       }
 
       var filter = ADMMURIDSPMB_IS_ADMIN ? "SEMUA" : (userLogin.npsn || userLogin.username || "");
@@ -435,8 +441,11 @@
           }
 
           terapkanFilterLokalSpmb();
-          SultanUI.hideLoading('#admmuridspmb_loadingState');
+          $('#admmuridspmb_loadingState').hide();
           $('#admmuridspmb_tableState').show();
+          if (typeof SultanUI !== 'undefined' && typeof SultanUI.adjustFilterBarWidths === 'function') {
+            SultanUI.adjustFilterBarWidths('#admmuridspmb_filterBarArea');
+          }
           if (ADMMURIDSPMB_TABEL_INSTANCE) {
             setTimeout(function () { ADMMURIDSPMB_TABEL_INSTANCE.columns.adjust(); }, 50);
           }
@@ -668,7 +677,7 @@
       var inSekolah = $('#admmuridspmb_in_sekolah');
       if (ADMMURIDSPMB_IS_ADMIN) {
         inSekolah.empty();
-        inSekolah.append('<option value="">- Pilih Sekolah -</option>');
+        inSekolah.append('<option value="">Pilih Sekolah</option>');
         listMasterSekolah.forEach(function (s) {
           var isSD = String(s.jenjang || "").toUpperCase() === "SD";
           if (isSD) {
@@ -797,7 +806,21 @@
         if (res.success) {
           $('#global_modalForm').modal('hide');
           Sultan.notif.crud.simpan(isEdit);
-          loadSpmbData();
+          if (res.data) {
+            if (isEdit) {
+              var idx = ADMMURIDSPMB_CACHE_DATA.findIndex(function(item) { return String(item.rowId) === String(payload.rowId); });
+              if (idx !== -1) {
+                ADMMURIDSPMB_CACHE_DATA[idx] = res.data;
+              } else {
+                ADMMURIDSPMB_CACHE_DATA.unshift(res.data);
+              }
+            } else {
+              ADMMURIDSPMB_CACHE_DATA.unshift(res.data);
+            }
+            terapkanFilterLokalSpmb();
+          } else {
+            loadSpmbData();
+          }
         } else {
           Sultan.notif.crud.gagal(res.message);
         }
@@ -887,7 +910,11 @@
             var res = JSON.parse(resRaw);
             if (res.success) {
               Sultan.notif.crud.hapus();
-              loadSpmbData();
+              var idx = ADMMURIDSPMB_CACHE_DATA.findIndex(function(item) { return String(item.rowId) === String(rowId); });
+              if (idx !== -1) {
+                ADMMURIDSPMB_CACHE_DATA.splice(idx, 1);
+              }
+              terapkanFilterLokalSpmb();
             } else {
               Sultan.notif.crud.gagal(res.message);
             }
@@ -987,7 +1014,16 @@
         if (res.success) {
           Sultan.modal.tutupVerifikasi();
           Sultan.notif.crud.sukses('Keputusan ' + status + ' tersimpan!');
-          loadSpmbData();
+          var item = ADMMURIDSPMB_CACHE_DATA.find(function(d) { return String(d.rowId) === String(rowId); });
+          if (item) {
+            item.status = status;
+            item.catatan = catatan || '';
+            item.verifikator = verifikator;
+            var now = new Date();
+            var tglStr = String(now.getDate()).padStart(2, '0') + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + now.getFullYear() + ' ' + String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+            item.tgl_verif = tglStr;
+          }
+          terapkanFilterLokalSpmb();
         } else {
           Sultan.notif.crud.gagal(res.message);
         }
