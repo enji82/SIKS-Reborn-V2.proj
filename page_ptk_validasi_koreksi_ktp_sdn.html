@@ -43,33 +43,8 @@
                   </div>
                 </div>
 
-                <!-- 2. FILTER BAR SULTAN (PILL SYSTEM) -->
-                <div class="sultan-filter-pill-container shadow-sm mb-4">
-                    <!-- Filter Nama Sekolah (Di Depan) -->
-                    <div class="sultan-filter-item">
-                        <select id="vktp_filterSekolah" class="form-control font-weight-bold text-maroon">
-                            <option value="SEMUA" selected>Semua Sekolah</option>
-                        </select>
-                        <i class="fas fa-chevron-down"></i>
-                    </div>
-
-                    <!-- Filter Status -->
-                    <div class="sultan-filter-item">
-                        <select id="vktp_filterStatus" class="form-control font-weight-bold text-maroon">
-                            <option value="SEMUA" selected>Semua Status</option>
-                            <option value="Diproses">Diproses</option>
-                            <option value="Disetujui">Disetujui</option>
-                            <option value="Revisi">Revisi</option>
-                            <option value="Ditolak">Ditolak</option>
-                        </select>
-                        <i class="fas fa-chevron-down"></i>
-                    </div>
-
-                    <div class="divider-vertical d-none d-md-block mx-2"></div>
-                    <button type="button" id="vktp_btnRefresh" class="sultan-btn-refresh" title="Segarkan Data dari Server">
-                        <i class="fas fa-sync-alt"></i>
-                    </button>
-                </div>
+                <!-- 2. FILTER BAR AREA (Dynamic SultanUI) -->
+                <div id="vktp_filterBarArea"></div>
 
                 <!-- 3. TABEL DATA PREMIUM SULTAN -->
                 <div class="card-sultan">
@@ -182,19 +157,34 @@
         var VKTP_DATA_CACHE = [];
         var VKTP_USER_AKTIF = "";
 
-        // Inisialisasi awal
+        // Inisialisasi awal (CRUD Blueprint Compliance)
         (function init() {
             try {
                 var user = getSesiUser() || {};
                 VKTP_USER_AKTIF = user.nama_lengkap || user.username || "Admin";
             } catch(e) {}
 
+            vktp_renderFilterBar();
             vktp_tarikData();
 
             $(document).off('click', '#vktp_btnRefresh').on('click', '#vktp_btnRefresh', vktp_tarikData);
-            $(document).off('change', '#vktp_filterStatus').on('change', '#vktp_filterStatus', vktp_renderTableLokal);
-            $(document).off('change', '#vktp_filterSekolah').on('change', '#vktp_filterSekolah', vktp_renderTableLokal);
+            $(document).off('change', '#vktp_filterStatus, #vktp_filterSekolah').on('change', '#vktp_filterStatus, #vktp_filterSekolah', vktp_renderTableLokal);
+
+            $(document).off('click', '.vktp-btn-proses').on('click', '.vktp-btn-proses', function() {
+                vktp_bukaModalProses($(this).attr('data-id'));
+            });
         })();
+
+        function vktp_renderFilterBar() {
+            var filtersConfig = [
+                { id: 'vktp_filterSekolah', placeholder: 'Semua Sekolah', disabled: true },
+                { id: 'vktp_filterStatus', placeholder: 'Semua Status', disabled: true }
+            ];
+            var extraButtons = '<div class="divider-vertical d-none d-md-block mx-2"></div><button type="button" id="vktp_btnRefresh" class="sultan-btn-refresh" title="Segarkan Data"><i class="fas fa-sync-alt"></i></button>';
+            if (typeof SultanUI !== 'undefined') {
+                $('#vktp_filterBarArea').html(SultanUI.renderFilterBar(filtersConfig, extraButtons));
+            }
+        }
 
         function vktp_tarikData() {
             $('#vktp_tableState').hide();
@@ -239,6 +229,12 @@
                 $sel.val(prevVal);
             } else {
                 $sel.val('SEMUA');
+            }
+            $sel.prop('disabled', false);
+
+            var $st = $('#vktp_filterStatus');
+            if ($st.children().length <= 1) {
+                $st.html('<option value="SEMUA">Semua Status</option><option value="Diproses">Diproses</option><option value="Disetujui">Disetujui</option><option value="Revisi">Revisi</option><option value="Ditolak">Ditolak</option>').prop('disabled', false);
             }
         }
 
@@ -356,7 +352,7 @@
                 var btnAksi = '-';
                 var stLower = String(row.status || '').toLowerCase();
                 if (stLower === 'pending' || stLower === 'diproses' || stLower === '') {
-                    btnAksi = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-primary" onclick="vktp_bukaModalProses(\'' + row.id_ajuan + '\')" title="Verifikasi Ajuan KTP"><i class="fas fa-clipboard-check"></i></button>';
+                    btnAksi = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-primary vktp-btn-proses" data-id="' + row.id_ajuan + '" title="Verifikasi Ajuan KTP"><i class="fas fa-clipboard-check"></i></button>';
                 }
 
                 return [
@@ -385,7 +381,7 @@
             Sultan.bacaCatatan(row.catatan);
         };
 
-        window.vktp_bukaModalProses = function(idAjuan) {
+        function vktp_bukaModalProses(idAjuan) {
             $('#global_modalVerifikasi').removeClass('vktp-layout-split-vertical');
             $('#vktp_verifFooter').appendTo('#vktp_formProses');
             $('#vktp_formProses').appendTo('#vktp_templates');
