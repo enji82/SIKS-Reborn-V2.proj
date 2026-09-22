@@ -37,21 +37,21 @@
 
                 <!-- FILTER BAR (STANDAR GLOBAL SULTAN) -->
                 <div class="sultan-filter-pill-container shadow-sm mb-4">
-                    <div class="sultan-filter-item">
+                    <div class="sultan-filter-item" style="min-width: 220px; max-width: 360px;">
                         <select id="unggahcuti_filterUnit" class="form-control" disabled>
-                            <option value="">- Memvalidasi Akses... -</option>
+                            <option value="">Memvalidasi Akses...</option>
                         </select>
                         <i class="fas fa-chevron-down"></i>
                     </div>
 
-                    <div class="sultan-filter-item">
-                        <select id="unggahcuti_filterTahun" class="form-control"></select>
+                    <div class="sultan-filter-item sultan-filter-auto">
+                        <select id="unggahcuti_filterTahun" class="form-control" style="min-width: 65px !important; max-width: 95px !important;"></select>
                         <i class="fas fa-chevron-down"></i>
                     </div>
 
                     <div class="sultan-filter-item">
                         <select id="unggahcuti_filterBulan" class="form-control">
-                            <option value="">- Semua Bulan -</option>
+                            <option value="">Semua Bulan</option>
                             <option value="Januari">Januari</option>
                             <option value="Februari">Februari</option>
                             <option value="Maret">Maret</option>
@@ -70,7 +70,7 @@
 
                     <div class="sultan-filter-item">
                         <select id="unggahcuti_filterStatus" class="form-control">
-                            <option value="">- Status Unggah -</option>
+                            <option value="">Status Unggah</option>
                             <option value="Belum">Belum Unggah</option>
                             <option value="Diproses">Diproses</option>
                             <option value="Disetujui">Disetujui</option>
@@ -189,11 +189,21 @@
             <div class="sultan-detail-container mb-4">
                 <div class="sultan-detail-item">
                     <label class="sultan-detail-label">NAMA ASN</label>
-                    <div class="sultan-detail-value text-uppercase" id="unggahcuti_vNama">-</div>
+                    <div class="sultan-detail-value text-uppercase d-flex align-items-center justify-content-between">
+                        <span id="unggahcuti_vNama">-</span>
+                        <button type="button" class="btn-copy-sultan ml-2" onclick="SultanUI.copyToClipboard('unggahcuti_vNama', 'Nama')" title="Salin Nama">
+                            <i class="far fa-copy"></i>
+                        </button>
+                    </div>
                 </div>
                 <div class="sultan-detail-item">
                     <label class="sultan-detail-label">NIP</label>
-                    <div class="sultan-detail-value" id="unggahcuti_vNip">-</div>
+                    <div class="sultan-detail-value d-flex align-items-center justify-content-between">
+                        <span id="unggahcuti_vNip">-</span>
+                        <button type="button" class="btn-copy-sultan ml-2" onclick="SultanUI.copyToClipboard('unggahcuti_vNip', 'NIP')" title="Salin NIP">
+                            <i class="far fa-copy"></i>
+                        </button>
+                    </div>
                 </div>
                 <div class="sultan-detail-item">
                     <label class="sultan-detail-label">JENIS CUTI</label>
@@ -220,7 +230,7 @@
                 <label class="modal-verifikasi-form-label">Keputusan Verifikasi <span
                         class="text-danger">*</span></label>
                 <select class="modal-verifikasi-select" id="unggahcuti_verStatus" required>
-                    <option value="">-- Pilih Keputusan --</option>
+                    <option value="">Pilih Keputusan</option>
                     <option value="Disetujui">Disetujui</option>
                     <option value="Revisi">Revisi</option>
                     <option value="Ditolak">Ditolak</option>
@@ -267,6 +277,7 @@
     var UNGGAHCUTI_IS_ADMIN = false;
     var UNGGAHCUTI_UNIT_TERKUNCI = "";
     var UNGGAHCUTI_USER_NPSN = "";
+    var UNGGAHCUTI_IS_LOADING = false; // GUARD: Mencegah load ganda
 
     // =================================================================
     // 1. INITIALIZATION & SPA VACCINE
@@ -328,7 +339,7 @@
     function unggahcuti_validasiAksesUser() {
         if (UNGGAHCUTI_IS_ADMIN) {
             $('#unggahcuti_loadingText').html('Mempersiapkan Akses Admin...');
-            $('#unggahcuti_filterUnit').empty().append('<option value="SEMUA">- Semua Unit Kerja -</option>').prop('disabled', false).removeClass('bg-light text-maroon font-weight-bold');
+            $('#unggahcuti_filterUnit').empty().append('<option value="SEMUA">Semua Unit Kerja</option>').prop('disabled', false).removeClass('bg-light text-maroon font-weight-bold');
             unggahcuti_tarikDataServer();
         } else {
             if (!UNGGAHCUTI_USER_NPSN) {
@@ -375,9 +386,12 @@
     }
 
     function unggahcuti_tarikDataServer() {
+        if (UNGGAHCUTI_IS_LOADING) return;
+
         var th = $('#unggahcuti_filterTahun').val();
         if (!th) return;
 
+        UNGGAHCUTI_IS_LOADING = true;
         var btn = $('#unggahcuti_btnRefresh');
         btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin text-maroon"></i>');
 
@@ -389,6 +403,7 @@
 
         // Tarik Setahun Penuh
         google.script.run.withSuccessHandler(function (jsonStr) {
+            UNGGAHCUTI_IS_LOADING = false;
             btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
 
             var data;
@@ -431,6 +446,7 @@
             }
 
         }).withFailureHandler(function (err) {
+            UNGGAHCUTI_IS_LOADING = false;
             btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
             $('#unggahcuti_tableState').hide();
             SultanUI.showLoading('#unggahcuti_loadingState');
@@ -448,7 +464,7 @@
         var select = $('#unggahcuti_filterUnit');
         var currentVal = select.val();
 
-        select.empty().append('<option value="SEMUA">- Semua Unit Kerja -</option>');
+        select.empty().append('<option value="SEMUA">Semua Unit Kerja</option>');
         sortedUnits.forEach(function (u) { select.append(`<option value="${unggahcuti_escapeHtml(u)}">${unggahcuti_escapeHtml(u)}</option>`); });
 
         select.prop('disabled', false).removeClass('bg-light text-maroon font-weight-bold');
@@ -660,26 +676,6 @@
         Sultan.bacaCatatan(pesan);
     }
 
-    function unggahcuti_buildBadgeStatus(status, ket, id) {
-        var s = String(status || "").toLowerCase();
-        var style = 'badge-sultan-diproses';
-        var icon = 'clock';
-        var labelStatus = status || 'Belum Unggah';
-
-        if (s.includes('setuju')) { style = 'badge-sultan-disetujui'; icon = 'check-circle'; }
-        else if (s.includes('revisi')) { style = 'badge-sultan-revisi'; icon = 'sync-alt'; }
-        else if (s.includes('tolak')) { style = 'badge-sultan-ditolak'; icon = 'times-circle'; }
-        else if (s === "" || s === "belum") { style = 'badge-sultan-belum'; icon = 'clock'; labelStatus = 'Belum Unggah'; }
-
-        var badgeHtml = `<span class="${style}"><i class="fas fa-${icon} mr-1"></i>${unggahcuti_escapeHtml(labelStatus)}</span>`;
-
-        if (ket && String(ket).trim().length > 2) {
-            var btnCatatan = `<div class="mt-2"><button type="button" class="sultan-btn-note unggahcuti-btn-catatan" data-id="${id}"><i class="fas fa-comment-dots mr-1"></i> Baca Catatan</button></div>`;
-            return badgeHtml + btnCatatan;
-        }
-        return badgeHtml;
-    }
-
     function unggahcuti_previewFile(rowId) {
         try {
             var row = UNGGAHCUTI_DATA_MASTER[rowId];
@@ -740,7 +736,7 @@
         UNGGAHCUTI_FILE_BLOB = null;
 
         // Setup global modal headers & titles
-        $('#global_modalFormHeader').removeClass('modal-header-edit modal-header-sultan-warning').addClass('modal-header-tambah-edit');
+        $('#global_modalFormHeader').removeClass().addClass('modal-header modal-header-sultan-primary');
         $('#global_modalFormTitle').html('<i class="fas fa-cloud-upload-alt mr-2"></i>Unggah Surat Cuti');
 
         // Attach form to global modal
