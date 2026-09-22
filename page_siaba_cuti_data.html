@@ -34,7 +34,7 @@
                 <div class="sultan-filter-pill-container shadow-sm mb-4">
                     <div class="sultan-filter-item">
                         <select id="cuti_filterUnit" class="form-control" disabled>
-                            <option value="">- Memvalidasi Akses... -</option>
+                            <option value="">Memvalidasi Akses...</option>
                         </select>
                         <i class="fas fa-chevron-down"></i>
                     </div>
@@ -46,7 +46,7 @@
 
                     <div class="sultan-filter-item">
                         <select id="cuti_filterBulan" class="form-control">
-                            <option value="">- Semua Bulan -</option>
+                            <option value="">Semua Bulan</option>
                             <option value="Januari">Januari</option>
                             <option value="Februari">Februari</option>
                             <option value="Maret">Maret</option>
@@ -65,7 +65,7 @@
 
                     <div class="sultan-filter-item">
                         <select id="cuti_filterStatus" class="form-control">
-                            <option value="">- Semua Status -</option>
+                            <option value="">Semua Status</option>
                             <option value="Diproses">Diproses</option>
                             <option value="Disetujui">Disetujui</option>
                             <option value="Revisi">Revisi</option>
@@ -137,13 +137,13 @@
                 <div class="form-group col-md-6">
                     <label class="form-label-sultan">UNIT KERJA <span class="text-danger">*</span></label>
                     <select id="cuti_inputUnit" class="form-control form-control-sultan" disabled>
-                        <option value="">- Pilih Unit -</option>
+                        <option value="">Pilih Unit Kerja</option>
                     </select>
                 </div>
                 <div class="form-group col-md-6">
                     <label class="form-label-sultan">NAMA ASN <span class="text-danger">*</span></label>
                     <select id="cuti_inputNama" class="form-control form-control-sultan" disabled required>
-                        <option value="">- Pilih Unit Dulu -</option>
+                        <option value="">Pilih Unit Dulu</option>
                     </select>
                 </div>
             </div>
@@ -151,7 +151,7 @@
                 <div class="form-group col-md-6">
                     <label class="form-label-sultan">NIP</label>
                     <select id="cuti_inputNIP" class="form-control form-control-sultan" disabled required>
-                        <option value="">- Otomatis -</option>
+                        <option value="">Otomatis</option>
                     </select>
                 </div>
                 <div class="form-group col-md-6">
@@ -165,7 +165,7 @@
                 <div class="form-group col-md-6">
                     <label class="form-label-sultan">JENIS CUTI <span class="text-danger">*</span></label>
                     <select id="cuti_inputJenisCuti" class="form-control form-control-sultan" required>
-                        <option value="">- Pilih Jenis Cuti -</option>
+                        <option value="">Pilih Jenis Cuti</option>
                     </select>
                     <small class="text-muted font-italic mt-1 d-block"><i class="fas fa-info-circle mr-1"></i>
                         Pilihan cuti menyesuaikan status kepegawaian.</small>
@@ -326,6 +326,7 @@
     var CUTI_IS_ADMIN = false;
     var CUTI_UNIT_TERKUNCI = "";
     var CUTI_USER_NPSN = "";
+    var CUTI_IS_LOADING = false; // GUARD: Mencegah load ganda
 
     // =================================================================
     // 1. INISIALISASI & DELEGASI EVENT JQUERY (ANTI-BUG SPA)
@@ -422,8 +423,8 @@
             $('#cuti_loadingText').html('Mempersiapkan Database Admin...');
 
             var unikUnit = [...new Set(CUTI_DB_PEGAWAI_CUTI.map(function (item) { return String(item.unit).trim(); }))].filter(Boolean).sort();
-            var $inUnit = $('#cuti_inputUnit').empty().append('<option value="">- Pilih Unit -</option>');
-            var $filUnit = $('#cuti_filterUnit').empty().append('<option value="SEMUA">- Semua Unit Kerja -</option>');
+            var $inUnit = $('#cuti_inputUnit').empty().append('<option value="">Pilih Unit Kerja</option>');
+            var $filUnit = $('#cuti_filterUnit').empty().append('<option value="SEMUA">Semua Unit Kerja</option>');
 
             unikUnit.forEach(function (u) {
                 $inUnit.append($('<option>', { value: u, text: u }));
@@ -482,9 +483,12 @@
     }
 
     function cuti_loadDataServer() {
+        if (CUTI_IS_LOADING) return;
+
         var thn = $('#cuti_filterTahun').val();
         if (!thn) return;
 
+        CUTI_IS_LOADING = true;
         var btn = $('#cuti_btnRefresh');
         btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin text-maroon"></i>');
 
@@ -496,6 +500,7 @@
 
         google.script.run
             .withSuccessHandler(function (response) {
+                CUTI_IS_LOADING = false;
                 btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
                 var resData;
                 try { resData = (typeof response === 'string') ? JSON.parse(response) : response; }
@@ -536,6 +541,7 @@
                 }
             })
             .withFailureHandler(function (err) {
+                CUTI_IS_LOADING = false;
                 btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
                 $('#cuti_loadingText').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Terputus.</span>');
             }).getDataCuti(thn, "", "");
@@ -781,7 +787,7 @@
     function cuti_bukaModalTambah(showModal) {
         try {
             $('#cuti_editRowId').val("");
-            $('#global_modalFormHeader').removeClass('modal-header-edit modal-header-sultan-warning').addClass('modal-header-tambah-edit');
+            $('#global_modalFormHeader').removeClass().addClass('modal-header modal-header-sultan-primary');
             $('#global_modalFormTitle').html('<i class="fas fa-file-signature mr-2"></i>FORM PENGAJUAN CUTI');
             $('#cuti_btnSimpanForm').removeClass('modal-btn-perbarui').addClass('modal-btn-simpan').html('<i class="fas fa-paper-plane mr-2"></i> KIRIM ');
 
@@ -789,7 +795,7 @@
 
             if (CUTI_IS_ADMIN) {
                 $('#cuti_inputUnit').val('').prop('disabled', false);
-                $('#cuti_inputNama').empty().append('<option value="">- Pilih Unit Dulu -</option>').prop('disabled', true);
+                $('#cuti_inputNama').empty().append('<option value="">Pilih Unit Dulu</option>').prop('disabled', true);
             } else {
                 $('#cuti_inputUnit').val(CUTI_UNIT_TERKUNCI).prop('disabled', true);
                 cuti_filterNamaByUnit();
@@ -801,8 +807,8 @@
                 }
             }
 
-            $('#cuti_inputNIP').empty().append('<option value="">- Otomatis -</option>').prop('disabled', true);
-            $('#cuti_inputJenisCuti').html('<option value="">- Pilih -</option>').prop('disabled', true);
+            $('#cuti_inputNIP').empty().append('<option value="">Otomatis</option>').prop('disabled', true);
+            $('#cuti_inputJenisCuti').html('<option value="">Pilih Jenis Cuti</option>').prop('disabled', true);
             
             var todayStr = new Date().toISOString().split('T')[0];
             $('#cuti_inputTglPengajuan').val(todayStr);
@@ -831,7 +837,7 @@
             cuti_bukaModalTambah(false);
             $('#cuti_editRowId').val(rowIdx);
 
-            $('#global_modalFormHeader').removeClass('modal-header-tambah-edit').addClass('modal-header-edit');
+            $('#global_modalFormHeader').removeClass().addClass('modal-header modal-header-sultan-warning');
             $('#global_modalFormTitle').html('<i class="fas fa-pencil-alt mr-2"></i>EDIT PENGAJUAN CUTI');
             $('#cuti_btnSimpanForm').removeClass('modal-btn-simpan').addClass('modal-btn-perbarui').html('<i class="fas fa-edit mr-2"></i> PERBARUI');
 
@@ -1131,10 +1137,10 @@
     // =================================================================
     function cuti_filterNamaByUnit() {
         var valUnit = String($('#cuti_inputUnit').val() || "").trim();
-        var $selNama = $('#cuti_inputNama').empty().append('<option value="">- Pilih Nama -</option>').prop('disabled', true);
-        $('#cuti_inputNIP').empty().append('<option value="">- Otomatis -</option>').prop('disabled', true);
+        var $selNama = $('#cuti_inputNama').empty().append('<option value="">Pilih Nama</option>').prop('disabled', true);
+        $('#cuti_inputNIP').empty().append('<option value="">Otomatis</option>').prop('disabled', true);
         $('#cuti_inputStatusPegawai').val('');
-        $('#cuti_inputJenisCuti').html('<option value="">- Pilih -</option>').prop('disabled', true);
+        $('#cuti_inputJenisCuti').html('<option value="">Pilih Jenis Cuti</option>').prop('disabled', true);
 
         if (!valUnit) return;
 
@@ -1152,7 +1158,7 @@
         var valNama = String($('#cuti_inputNama').val() || "").trim();
         var $selNip = $('#cuti_inputNIP').empty().prop('disabled', true);
         $('#cuti_inputStatusPegawai').val('');
-        $('#cuti_inputJenisCuti').html('<option value="">- Pilih -</option>').prop('disabled', true);
+        $('#cuti_inputJenisCuti').html('<option value="">Pilih Jenis Cuti</option>').prop('disabled', true);
 
         if (valNama) {
             var pegawai = CUTI_DB_PEGAWAI_CUTI.filter(function (x) {
@@ -1164,7 +1170,7 @@
                 $selNip.append($('<option>', { value: cNip, text: cNip }));
                 cuti_setPegawaiDetails();
             } else if (pegawai.length > 1) {
-                $selNip.append('<option value="">- Pilih NIP -</option>');
+                $selNip.append('<option value="">Pilih NIP</option>');
                 pegawai.forEach(function (p) {
                     var mNip = String(p.nip).trim();
                     $selNip.append($('<option>', { value: mNip, text: mNip }));
@@ -1197,7 +1203,7 @@
             opsi = ["Cuti Tahunan", "Cuti Sakit", "Cuti Melahirkan", "Cuti Umroh"];
         }
 
-        var h = '<option value="">- Pilih Jenis Cuti -</option>';
+        var h = '<option value="">Pilih Jenis Cuti</option>';
         opsi.forEach(function (o) { h += `<option value="${o}">${o}</option>`; });
 
         $('#cuti_inputJenisCuti').html(h).prop('disabled', false);
@@ -1272,32 +1278,4 @@
     function cuti_escapeJs(str) { if (!str) return ""; return String(str).replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/"/g, "&quot;").replace(/(\r\n|\n|\r)/gm, "<br>"); }
 
     function cuti_lihatCatatanSultan(pesan) { Sultan.bacaCatatan(pesan); }
-
-    function cuti_renderBadgeSultan(status, ket) {
-        var s = String(status || "Diproses").toLowerCase();
-        var style = 'sultan-badge-warning';
-        var icon = 'clock';
-        var labelStatus = status || 'Diproses';
-
-        if (s === "usul batal") {
-            style = 'sultan-badge-warning" style="background:#fd7e14; color:#fff;'; icon = 'hand-paper';
-        } else if (s.includes('batal')) {
-            style = 'sultan-badge-danger" style="background:#c92a2a;'; icon = 'ban';
-        } else if (s.includes('ok') || s.includes('setuju') || s.includes('acc')) {
-            style = 'sultan-badge-success'; icon = 'check-circle';
-        } else if (s.includes('revisi')) {
-            style = 'sultan-badge-info'; icon = 'sync-alt';
-        } else if (s.includes('tolak')) {
-            style = 'sultan-badge-danger'; icon = 'times-circle';
-        }
-
-        var badgeHtml = `<span class="sultan-badge ${style}"><i class="fas fa-${icon} mr-1"></i>${cuti_escapeHtml(labelStatus)}</span>`;
-
-        if (ket && ket.trim().length > 2 && (s.includes('revisi') || s.includes('tolak'))) {
-            var safeKet = cuti_escapeJs(ket);
-            var btnCatatan = `<div class="mt-2"><button type="button" class="sultan-btn-note cuti-btn-catatan" data-pesan="${safeKet}"><i class="fas fa-comment-dots mr-1"></i> Baca Catatan</button></div>`;
-            return badgeHtml + btnCatatan;
-        }
-        return badgeHtml;
-    }
 </script>
