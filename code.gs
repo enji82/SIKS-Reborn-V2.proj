@@ -110,7 +110,11 @@ function getScriptUrl() {
 function getHalaman(namaFile) {
   try {
     const prefix = "page_";
-    const realName = namaFile.startsWith(prefix) ? namaFile : prefix + namaFile;
+    var targetFile = namaFile;
+    if (String(namaFile).indexOf("kombel_info_") === 0) {
+      targetFile = "kombel_info";
+    }
+    const realName = targetFile.startsWith(prefix) ? targetFile : prefix + targetFile;
     return HtmlService.createTemplateFromFile(realName).evaluate().getContent();
   } catch (err) {
     return '<div class="alert alert-danger p-3">Halaman <b>' + namaFile + '</b> belum dibuat atau nama file salah.</div>';
