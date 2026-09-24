@@ -598,53 +598,363 @@ function kombeldash_initDropdownTahun() {
 }
 
 function kombeldash_terapkanFilterLokal() {
-  if (typeof SultanDashboard !== 'undefined' && SultanDashboard.applyLocalFilter) {
-    SultanDashboard.applyLocalFilter({
-      pageKey: 'komBelDash',
-      cacheRekap: KOMBELDASH_CACHE_REKAP,
-      cacheBelum: KOMBELDASH_CACHE_BELUM,
-      filterTahunId: '#komBelDash_filterTahun',
-      filterPeriodeId: '#komBelDash_filterPeriode',
-      jenisPeriode: KOMBELDASH_JENIS_PERIODE,
-      masterSekolah: KOMBELDASH_MASTER_SEKOLAH
-    });
+  var isPermanen = (KOMBELDASH_JENIS_PERIODE === "PERMANEN" || KOMBELDASH_JENIS_PERIODE === "TMT");
+  var fTahun = isPermanen ? "SEMUA" : String($('#komBelDash_filterTahun').val() || "").trim().toUpperCase();
+  var fPeriode = String($('#komBelDash_filterPeriode').val() || "").trim().toUpperCase();
+
+  var filterRekap = KOMBELDASH_CACHE_REKAP.filter(function(r) {
+    var rTahun = String(r.tahun || "").trim().toUpperCase();
+    if (!isPermanen && fTahun !== "SEMUA" && fTahun !== "" && rTahun !== fTahun) return false;
+    if (fPeriode !== "SEMUA" && fPeriode !== "" && String(r.periode || "").trim().toUpperCase() !== fPeriode) return false;
+    return true;
+  });
+
+  var filterBelum = KOMBELDASH_CACHE_BELUM.filter(function(r) {
+    var rTahun = String(r.tahun || "").trim().toUpperCase();
+    if (!isPermanen && fTahun !== "SEMUA" && fTahun !== "" && rTahun !== fTahun) return false;
+    if (fPeriode !== "SEMUA" && fPeriode !== "" && String(r.periode || "").trim().toUpperCase() !== fPeriode) return false;
+    return true;
+  });
+
+  kombeldash_renderDashboard(filterRekap, filterBelum, fTahun, fPeriode);
+}
+
+function kombeldash_renderDashboard(dataRekap, dataBelum, fTahun, fPeriode) {
+  fTahun  = String(fTahun  || $('#komBelDash_filterTahun').val()  || "").trim().toUpperCase();
+  fPeriode= String(fPeriode|| $('#komBelDash_filterPeriode').val() || "").trim().toUpperCase();
+
+  var disetujuiList = [], diprosesList = [], revisiList = [], ditolakList = [], belumList = [];
+  var npsnSudahSet = new Set();
+  var totSudah = 0;
+
+  dataRekap.forEach(function(r) {
+    var npsn = String(r.npsn || "").trim();
+    var st   = String(r.status || "").toLowerCase();
+    npsnSudahSet.add(npsn);
+    totSudah++;
+
+    if (st.includes("disetujui") || st.includes("setuju") || st.includes("ok") || st.includes("valid")) {
+      disetujuiList.push(r);
+    } else if (st.includes("revisi")) {
+      revisiList.push(r);
+    } else if (st.includes("tolak") || st.includes("ditolak")) {
+      ditolakList.push(r);
+    } else {
+      diprosesList.push(r);
+    }
+  });
+
+  (dataBelum || []).forEach(function(b) {
+    var npsn = String(b.npsn || "").trim();
+    if (!npsnSudahSet.has(npsn) && !belumList.some(function(x){ return String(x.npsn||"").trim()===npsn; })) {
+      belumList.push(b);
+    }
+  });
+
+  var totSekolah   = KOMBELDASH_MASTER_SEKOLAH.length || (dataRekap.length + dataBelum.length);
+  var totBelum     = belumList.length;
+  var totDiproses  = diprosesList.length;
+  var totDisetujui = disetujuiList.length;
+  var totRevisi    = revisiList.length;
+  var totDitolak   = ditolakList.length;
+  var percentage   = totSekolah > 0 ? Math.round((totSudah / totSekolah) * 100) : 0;
+
+  kombeldash_animateValue('komBelDash_cardTotalSekolah', totSekolah);
+  kombeldash_animateValue('komBelDash_cardSudah', totSudah);
+  kombeldash_animateValue('komBelDash_cardBelum', totBelum);
+  kombeldash_animateValue('komBelDash_cardProgress', percentage, '%');
+  kombeldash_animateValue('komBelDash_cardTotalDokumen', totSudah);
+  kombeldash_animateValue('komBelDash_cardDiproses', totDiproses);
+  kombeldash_animateValue('komBelDash_cardDisetujui', totDisetujui);
+  kombeldash_animateValue('komBelDash_cardRevisi', totRevisi);
+  kombeldash_animateValue('komBelDash_cardDitolak', totDitolak);
+
+  var pBar = $('#komBelDash_progressBar');
+  pBar.css('width', percentage + '%').attr('aria-valuenow', percentage);
+  $('#komBelDash_progressText').text(percentage + '% Selesai');
+  if (percentage < 30) pBar.css('background-color','#d11a2a');
+  else if (percentage < 70) pBar.css('background-color','#ffc107');
+  else pBar.css('background-color','#28a745');
+
+  $('#komBelDash_ratioSekolah').text(totSudah + ' / ' + totSekolah + ' Sekolah');
+
+  window.KOMBELDASH_LIST_DISETUJUI_CACHE = disetujuiList;
+  window.KOMBELDASH_LIST_DIPROSES_CACHE  = diprosesList;
+  window.KOMBELDASH_LIST_REVISI_CACHE    = revisiList;
+  window.KOMBELDASH_LIST_DITOLAK_CACHE   = ditolakList;
+  window.KOMBELDASH_LIST_BELUM_CACHE     = belumList;
+
+  kombeldash_renderStatusList('Disetujui', disetujuiList);
+  kombeldash_renderStatusList('Diproses',  diprosesList);
+  kombeldash_renderStatusList('Revisi',    revisiList);
+  kombeldash_renderStatusList('Ditolak',   ditolakList);
+}
+
+function kombeldash_renderStatusList(statusKey, list, isFiltered) {
+  var ul    = $('#komBelDash_list' + statusKey);
+  var badge = $('#komBelDash_count' + statusKey);
+  ul.empty();
+  if (!isFiltered) badge.text(list ? list.length : 0);
+
+  if (!list || list.length === 0) {
+    var emptyMsg = isFiltered ? 'Tidak ada yang cocok' : 'Belum ada data';
+    ul.html(typeof SultanUI !== 'undefined' && SultanUI.renderListEmptyInfo
+      ? SultanUI.renderListEmptyInfo(emptyMsg)
+      : '<li class="list-group-item bg-transparent text-center text-muted py-4 border-0" style="font-size:11px;"><i class="fas fa-info-circle mb-1 d-block" style="font-size:1.25rem;opacity:0.4;"></i><span>' + emptyMsg + '</span></li>');
+    return;
+  }
+  list.forEach(function(item, i) {
+    var namaSekolah = (typeof item === 'string') ? item : (item.nama || item.unit || "-");
+    var delay = Math.min(i * 25, 300);
+    ul.append('<li class="list-group-item bg-transparent py-2 px-3 font-weight-bold dashlapbul-list-item d-flex align-items-start animate__animated animate__fadeIn" style="font-size:12px;line-height:1.4;animation-delay:' + delay + 'ms;">'
+      + '<span class="badge dashlapbul-badge-idx mr-2 mt-0" style="width:25px;min-width:25px;flex-shrink:0;">' + (i+1) + '</span>'
+      + '<span class="school-name flex-grow-1" style="word-break:break-word;">' + kombeldash_escapeHtml(namaSekolah) + '</span>'
+      + '</li>');
+  });
+}
+
+function kombeldash_filterStatusList(statusKey, keyword) {
+  var rawCache = window['KOMBELDASH_LIST_' + statusKey.toUpperCase() + '_CACHE'] || [];
+  var kw = (keyword || '').toLowerCase().trim();
+  var filtered = rawCache.filter(function(item) {
+    var nama = (typeof item === 'string') ? item : (item.nama || item.unit || '');
+    return nama.toLowerCase().indexOf(kw) > -1;
+  });
+  kombeldash_renderStatusList(statusKey, filtered, kw.length > 0);
+}
+
+function kombeldash_filterUnitStatusList(statusKey, keyword) {
+  var rawCache = window['KOMBELDASH_UNIT_LIST_' + statusKey.toUpperCase() + '_CACHE'] || [];
+  var kw = (keyword || '').toLowerCase().trim();
+  var filtered = rawCache.filter(function(doc) {
+    var nama = (doc && doc.nama) ? doc.nama : '';
+    return nama.toLowerCase().indexOf(kw) > -1;
+  });
+
+  var containerId = 'komBelDash_unit_list' + statusKey;
+  if (filtered.length === 0) {
+    var emptyMsg = kw.length > 0 ? 'Tidak ada yang cocok' : 'Belum ada data';
+    $('#' + containerId).html(typeof SultanUI !== 'undefined' && SultanUI.renderListEmptyInfo
+      ? SultanUI.renderListEmptyInfo(emptyMsg)
+      : '<li class="list-group-item bg-transparent text-center text-muted py-4 border-0" style="font-size:11px;"><i class="fas fa-info-circle mb-1 d-block" style="font-size:1.25rem;opacity:0.4;"></i><span>' + emptyMsg + '</span></li>');
+  } else {
+    $('#' + containerId).html(filtered.map(function(item, idx) {
+      var delay = Math.min(idx * 25, 300);
+      return '<li class="list-group-item bg-transparent py-2 px-3 font-weight-bold dashlapbul-list-item d-flex align-items-start animate__animated animate__fadeIn" style="font-size:12px;line-height:1.4;animation-delay:' + delay + 'ms;">'
+        + '<span class="badge dashlapbul-badge-idx mr-2 mt-0" style="width:25px;min-width:25px;flex-shrink:0;">' + (idx+1) + '</span>'
+        + '<span class="school-name flex-grow-1" style="word-break:break-word;">' + kombeldash_escapeHtml(item.nama) + '</span>'
+        + '</li>';
+    }).join(''));
   }
 }
 
 function kombeldash_resetUnitView() {
-  if (typeof SultanDashboard !== 'undefined' && SultanDashboard.resetUnitView) {
-    SultanDashboard.resetUnitView('komBelDash');
-  }
+  $('#komBelDash_unitCardProgress').text('0%');
+  $('#komBelDash_unitProgressBar').css('width','0%');
+  $('#komBelDash_unitProgressSub').text('0 dari 0 Selesai');
+  $('#komBelDash_unitCardTotal').text('0');
+  $('#komBelDash_unitCardDisetujui').text('0');
+  $('#komBelDash_unitCardDiproses').text('0');
+  $('#komBelDash_unitCardRevisi').text('0');
+  $('#komBelDash_unitCardDitolak').text('0');
+  $('#komBelDash_unitHeaderStatusText').text('Silakan pilih sekolah pada filter di atas');
+
+  var emptyHtml = '<li class="list-group-item border-0 px-3 py-4 bg-transparent text-center">'
+    + '<i class="fas fa-folder-open text-muted mb-2" style="font-size:22px;opacity:0.5;"></i><br>'
+    + '<span class="small text-muted font-weight-bold" style="letter-spacing:0.5px;text-transform:uppercase;font-size:11px;">Pilih Sekolah</span></li>';
+  $('#komBelDash_unit_listDisetujui,#komBelDash_unit_listDiproses,#komBelDash_unit_listRevisi,#komBelDash_unit_listDitolak').html(emptyHtml);
+  $('#komBelDash_unit_countDisetujui,#komBelDash_unit_countDiproses,#komBelDash_unit_countRevisi,#komBelDash_unit_countDitolak').text('0');
+  $('#komBelDash_unit_inputCariDisetujui,#komBelDash_unit_inputCariDiproses,#komBelDash_unit_inputCariRevisi,#komBelDash_unit_inputCariDitolak').val('');
 }
 
 function kombeldash_loadUnitData(npsn, forceRefresh) {
-  if (typeof SultanDashboard !== 'undefined' && SultanDashboard.loadUnitData) {
-    SultanDashboard.loadUnitData({
-      pageKey: 'komBelDash',
-      npsn: npsn,
-      forceRefresh: !!forceRefresh,
-      fnGetData: 'getKombelData'
-    });
+  if (!npsn) { kombeldash_resetUnitView(); return; }
+
+  if (typeof SultanUI !== 'undefined') {
+    SultanUI.startLottery('#komBelDash_unitCardTotal,#komBelDash_unitCardDisetujui,#komBelDash_unitCardDiproses,#komBelDash_unitCardRevisi,#komBelDash_unitCardDitolak', 2);
+    SultanUI.startLottery('#komBelDash_unitCardProgress', 2, '%');
+  }
+  $('#komBelDash_unitProgressBar').css('width','50%');
+  $('#komBelDash_unitProgressSub').text('Memuat kelengkapan...');
+  $('#komBelDash_unitHeaderStatusText').html('Memeriksa kelengkapan dokumen...');
+  $('#komBelDash_btnRefresh').prop('disabled',true).addClass('loading').find('i').addClass('fa-spin');
+
+  var loadingHtml = (typeof SultanUI !== 'undefined' && SultanUI.renderListLoading)
+    ? SultanUI.renderListLoading('MEMUAT...')
+    : '<li class="list-group-item border-0 px-3 py-4 bg-transparent text-center"><i class="fas fa-circle-notch fa-spin text-muted mb-2 opacity-50"></i><br><span class="small text-muted font-weight-bold" style="letter-spacing:0.5px;text-transform:uppercase;font-size:11px;">Memuat...</span></li>';
+  $('#komBelDash_unit_listDisetujui,#komBelDash_unit_listDiproses,#komBelDash_unit_listRevisi,#komBelDash_unit_listDitolak').html(loadingHtml);
+  $('#komBelDash_unit_inputCariDisetujui,#komBelDash_unit_inputCariDiproses,#komBelDash_unit_inputCariRevisi,#komBelDash_unit_inputCariDitolak').val('');
+
+  var npsnSafe = String(npsn).trim();
+
+  google.script.run.withSuccessHandler(function(jsonStr) {
+    $('#komBelDash_btnRefresh').prop('disabled',false).removeClass('loading').find('i').removeClass('fa-spin');
+    var data;
+    try { data = JSON.parse(jsonStr); } catch(e) {
+      if (typeof Sultan !== 'undefined') Sultan.alert('error','Gagal','Respon server tidak valid.');
+      kombeldash_resetUnitView(); return;
+    }
+    if (!data.success) {
+      if (typeof Sultan !== 'undefined') Sultan.alert('warning','Informasi', data.message || 'Gagal memuat data unit.');
+      kombeldash_resetUnitView(); return;
+    }
+    kombeldash_renderUnitView(data);
+  }).withFailureHandler(function(err) {
+    $('#komBelDash_btnRefresh').prop('disabled',false).removeClass('loading').find('i').removeClass('fa-spin');
+    if (typeof Sultan !== 'undefined') Sultan.alert('error','Koneksi Terputus', err.message || 'Gagal terhubung ke server.');
+    kombeldash_resetUnitView();
+  }).getKombelData(npsnSafe);
+}
+
+function kombeldash_renderUnitView(data) {
+  var files = data.data || [];
+
+  var filesDisetujui = [], filesDiproses = [], filesRevisi = [], filesDitolak = [];
+  files.forEach(function(f) {
+    var namaKat  = f.nama_kategori || f.file_name || 'Dokumen';
+    var tahun    = String(f.tahun || '').trim();
+    var periode  = String(f.periode || '').trim();
+    var labelTahun = "";
+    if (tahun && tahun !== '-' && tahun !== 'SEMUA') {
+      labelTahun = tahun + (periode && periode !== '-' ? ' (' + periode + ')' : '');
+    } else if (periode && periode !== '-' && periode !== 'SEMUA') {
+      labelTahun = periode;
+    }
+    var fullDocName = namaKat + (labelTahun ? ' — ' + labelTahun : '');
+    var docObj = { nama: fullDocName, url: f.url, status: f.status || 'Diproses', catatan: f.catatan || '' };
+    var st = String(f.status || '').toLowerCase();
+    if (st.includes('tolak') || st.includes('ditolak')) filesDitolak.push(docObj);
+    else if (st.includes('revisi')) filesRevisi.push(docObj);
+    else if (st.includes('setuju') || st.includes('valid') || st.includes('disetujui')) filesDisetujui.push(docObj);
+    else filesDiproses.push(docObj);
+  });
+
+  var totalDok     = files.length;
+  var countDisetujui = filesDisetujui.length;
+  var countDiproses  = filesDiproses.length;
+  var countRevisi    = filesRevisi.length;
+  var countDitolak   = filesDitolak.length;
+  var pct = totalDok > 0 ? Math.round((countDisetujui / totalDok) * 100) : 0;
+
+  if (totalDok === 0) {
+    $('#komBelDash_unitHeaderStatusText').html('<span class="text-muted"><i class="fas fa-info-circle mr-1"></i>Belum ada dokumen yang diunggah</span>');
+  } else if ((countRevisi + countDitolak) > 0) {
+    $('#komBelDash_unitHeaderStatusText').html('<span class="text-warning font-weight-bold"><i class="fas fa-exclamation-triangle mr-1"></i>' + (countRevisi+countDitolak) + ' Dokumen Perlu Tindakan</span> &middot; ' + countDisetujui + ' Disetujui');
+  } else if (pct === 100) {
+    $('#komBelDash_unitHeaderStatusText').html('<span class="text-success font-weight-bold"><i class="fas fa-check-circle mr-1"></i>Seluruh Dokumen Lengkap & Valid (100%)</span>');
+  } else {
+    $('#komBelDash_unitHeaderStatusText').html('<span class="text-info font-weight-bold"><i class="fas fa-hourglass-half mr-1"></i>' + countDiproses + ' Dokumen Diproses</span> &middot; ' + countDisetujui + ' Disetujui');
+  }
+
+  kombeldash_animateValue('komBelDash_unitCardProgress', pct, '%');
+  kombeldash_animateValue('komBelDash_unitCardTotal', totalDok);
+  kombeldash_animateValue('komBelDash_unitCardDisetujui', countDisetujui);
+  kombeldash_animateValue('komBelDash_unitCardDiproses', countDiproses);
+  kombeldash_animateValue('komBelDash_unitCardRevisi', countRevisi);
+  kombeldash_animateValue('komBelDash_unitCardDitolak', countDitolak);
+
+  $('#komBelDash_unitTotalSub').text('Sudah Diunggah');
+  var uPBar = $('#komBelDash_unitProgressBar');
+  uPBar.css('width', pct + '%').attr('aria-valuenow', pct);
+  if (pct < 30) uPBar.css('background-color','#dc2626');
+  else if (pct < 70) uPBar.css('background-color','#f59e0b');
+  else uPBar.css('background-color','#10b981');
+  $('#komBelDash_unitProgressSub').text(countDisetujui + ' dari ' + totalDok + ' Selesai');
+
+  $('#komBelDash_unit_countDisetujui').text(countDisetujui);
+  $('#komBelDash_unit_countDiproses').text(countDiproses);
+  $('#komBelDash_unit_countRevisi').text(countRevisi);
+  $('#komBelDash_unit_countDitolak').text(countDitolak);
+
+  window.KOMBELDASH_UNIT_LIST_DISETUJUI_CACHE = filesDisetujui;
+  window.KOMBELDASH_UNIT_LIST_DIPROSES_CACHE  = filesDiproses;
+  window.KOMBELDASH_UNIT_LIST_REVISI_CACHE    = filesRevisi;
+  window.KOMBELDASH_UNIT_LIST_DITOLAK_CACHE   = filesDitolak;
+
+  function populateColumn(containerId, items) {
+    if (items.length === 0) {
+      $('#' + containerId).html(typeof SultanUI !== 'undefined' && SultanUI.renderListEmptyInfo
+        ? SultanUI.renderListEmptyInfo('Belum ada data')
+        : '<li class="list-group-item bg-transparent text-center text-muted py-4 border-0" style="font-size:11px;"><i class="fas fa-info-circle mb-1 d-block" style="font-size:1.25rem;opacity:0.4;"></i><span>Belum ada data</span></li>');
+    } else {
+      $('#' + containerId).html(items.map(function(item, idx) {
+        var delay = Math.min(idx * 25, 300);
+        return '<li class="list-group-item bg-transparent py-2 px-3 font-weight-bold dashlapbul-list-item d-flex align-items-start animate__animated animate__fadeIn" style="font-size:12px;line-height:1.4;animation-delay:' + delay + 'ms;">'
+          + '<span class="badge dashlapbul-badge-idx mr-2 mt-0" style="width:25px;min-width:25px;flex-shrink:0;">' + (idx+1) + '</span>'
+          + '<span class="school-name flex-grow-1" style="word-break:break-word;">' + kombeldash_escapeHtml(item.nama) + '</span>'
+          + '</li>';
+      }).join(''));
+    }
+  }
+  populateColumn('komBelDash_unit_listDisetujui', filesDisetujui);
+  populateColumn('komBelDash_unit_listDiproses',  filesDiproses);
+  populateColumn('komBelDash_unit_listRevisi',    filesRevisi);
+  populateColumn('komBelDash_unit_listDitolak',   filesDitolak);
+}
+
+function kombeldash_animateValue(id, endValue, suffix) {
+  if (typeof SultanUI !== 'undefined' && SultanUI.animateValue) {
+    SultanUI.animateValue(id, endValue, suffix, 1200);
+  } else {
+    var obj = document.getElementById(id);
+    if (!obj) return;
+    obj.innerHTML = (parseInt(endValue,10)||0).toLocaleString('id-ID') + (suffix ? '<small class="ml-1">' + suffix + '</small>' : '');
   }
 }
 
 function kombeldash_salinKeWA() {
-  if (typeof SultanDashboard !== 'undefined' && SultanDashboard.salinKeWA) {
-    var katNama = $('#komBelDash_filterKategori option:selected').text();
-    SultanDashboard.salinKeWA({ pageKey: 'komBelDash', judulDokumen: katNama, cacheBelum: KOMBELDASH_CACHE_BELUM });
-  }
-}
+  var isPermanen = (KOMBELDASH_JENIS_PERIODE === "PERMANEN" || KOMBELDASH_JENIS_PERIODE === "TMT");
+  var fTahun     = isPermanen ? "-" : ($('#komBelDash_filterTahun').val() === "SEMUA" ? "-" : $('#komBelDash_filterTahun').val());
+  var fPeriode   = ($('#komBelDash_filterPeriode').val() === "SEMUA" || isPermanen) ? "-" : $('#komBelDash_filterPeriode').val();
+  var selNamaKat = $('#komBelDash_filterKategori option:selected').text().toUpperCase();
 
-function kombeldash_filterStatusList(status, q) {
-  if (typeof SultanDashboard !== 'undefined' && SultanDashboard.filterStatusList) {
-    SultanDashboard.filterStatusList('komBelDash', status, q);
-  }
-}
+  var belumList   = window.KOMBELDASH_LIST_BELUM_CACHE   || [];
+  var revisiList  = window.KOMBELDASH_LIST_REVISI_CACHE  || [];
+  var ditolakList = window.KOMBELDASH_LIST_DITOLAK_CACHE || [];
 
-function kombeldash_filterUnitStatusList(status, q) {
-  if (typeof SultanDashboard !== 'undefined' && SultanDashboard.filterStatusList) {
-    SultanDashboard.filterStatusList('komBelDash_unit', status, q);
+  if (belumList.length === 0 && revisiList.length === 0 && ditolakList.length === 0) {
+    if (typeof Sultan !== 'undefined') Sultan.notif.info('Semua sekolah telah mengunggah dokumen dan berstatus valid.');
+    return;
   }
+
+  var timeNow = new Date().toLocaleDateString('id-ID', {day:'numeric',month:'long',year:'numeric'})
+              + ' ' + new Date().toLocaleTimeString('id-ID', {hour:'2-digit',minute:'2-digit'});
+
+  var txt = "*📢 REKAP STATUS KOMUNITAS BELAJAR*\n";
+  txt += "📁 *Dokumen:* " + selNamaKat + "\n";
+  if (!isPermanen) txt += "📅 *Periode:* " + (fPeriode !== "-" ? fPeriode + " " : "") + "Tahun " + fTahun + "\n";
+  txt += "⏱️ *Data per:* " + timeNow + " WIB\n";
+  txt += "=========================================\n\n";
+
+  if (belumList.length > 0) {
+    txt += "🔴 *BELUM UNGGAH (" + belumList.length + " Sekolah):*\n";
+    belumList.forEach(function(item, i) { txt += (i+1) + ". " + (typeof item==='string'?item:(item.nama||item.unit||"-")) + "\n"; });
+    txt += "\n";
+  }
+  if (revisiList.length > 0) {
+    txt += "🟡 *PERLU REVISI (" + revisiList.length + " Sekolah):*\n";
+    revisiList.forEach(function(item, i) {
+      var ket = (item.catatan || item.keterangan || item.alasan) ? " _(Catatan: " + (item.catatan||item.keterangan||item.alasan) + ")_" : "";
+      txt += (i+1) + ". " + (item.nama||item.unit||"-") + ket + "\n";
+    });
+    txt += "\n";
+  }
+  if (ditolakList.length > 0) {
+    txt += "⛔ *DITOLAK (" + ditolakList.length + " Sekolah):*\n";
+    ditolakList.forEach(function(item, i) {
+      var ket = (item.catatan || item.keterangan || item.alasan) ? " _(Alasan: " + (item.catatan||item.keterangan||item.alasan) + ")_" : "";
+      txt += (i+1) + ". " + (item.nama||item.unit||"-") + ket + "\n";
+    });
+    txt += "\n";
+  }
+  txt += "=========================================\n";
+  txt += "ℹ️ _Bagi sekolah yang terdaftar di atas, mohon segera menindaklanjuti dan mengunggah dokumen komunitas belajar melalui SIKS-Reborn._\n_Terima kasih._";
+
+  navigator.clipboard.writeText(txt).then(function() {
+    if (typeof Sultan !== 'undefined') Sultan.notif.sukses('Rekap berhasil disalin!');
+  }).catch(function() {
+    if (typeof Sultan !== 'undefined') Sultan.alert('error','Gagal Salin','Browser memblokir izin clipboard.');
+  });
 }
 
 function kombeldash_escapeHtml(t) {
