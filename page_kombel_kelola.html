@@ -554,7 +554,7 @@ function kombelkelola_tarikDataServer() {
 
 function kombelkelola_initTable() {
   KOMBELKELOLA_TABEL_INSTANCE = SultanTable.init('#kombelkelola_tabelUtama', {
-    destroy: true, ordering: false, pageLength: 25, autoWidth: false,
+    destroy: true, ordering: false, pageLength: 10, autoWidth: false,
     dom: "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
          "<'row'<'col-sm-12'<'table-responsive sultan-scroll'tr>>>" +
          "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
@@ -611,7 +611,7 @@ function kombelkelola_renderTabel(data) {
     var uiSekolah = `
       <div class="text-left">
         <div class="sultan-table-primary font-weight-bold" style="color: #800000; font-size: 12.5px; line-height: 1.2;">${kombelkelola_esc(unitNama)}</div>
-        <div class="sultan-table-secondary text-muted" style="font-size: 11px; margin-top: 2px;">NPSN: ${kombelkelola_esc(unitNpsn)}</div>
+        <div class="sultan-table-secondary text-muted" style="font-size: 11px; margin-top: 2px;">${kombelkelola_esc(unitNpsn)}</div>
       </div>
     `;
 
@@ -965,28 +965,65 @@ function kombelkelola_bukaModalVerif(rowId) {
   if (!KOMBELKELOLA_IS_ADMIN) { Sultan.alert('warning','Perhatian','Akses verifikasi hanya untuk admin.'); return; }
   var d = KOMBELKELOLA_CACHE_DATA.find(function(x){ return x.rowId == rowId; });
   if (!d) return;
+
   var $form = $('#kombelkelola_formVerif'); $form[0].reset(); $form.removeClass('was-validated');
   $('#kombelkelola_v_rowid').val(d.rowId);
-  $('#kombelkelola_v_nama').text(d.nama_sekolah||d.npsn);
-  $('#kombelkelola_v_npsn').text(d.npsn);
-  $('#kombelkelola_v_kategori').text(d.nama_kategori||d.id_kategori);
-  $('#kombelkelola_v_kelas').text(d.kelas||"Umum");
-  $('#kombelkelola_v_tahun').text(d.tahun||"-");
-  if (d.periode && d.periode !== "-") { $('#kombelkelola_v_periode_wrapper').show(); $('#kombelkelola_v_periode').text(d.periode); }
-  else { $('#kombelkelola_v_periode_wrapper').hide(); }
-  if (d.catatan) { $('#kombelkelola_prevCatatanWrap').show(); $('#kombelkelola_prevCatatan').text(d.catatan); }
-  else { $('#kombelkelola_prevCatatanWrap').hide(); }
-  $('#kombelkelola_v_status').val('').trigger('change');
-  $('#global_modalFormSize').removeClass('modal-xl modal-lg').addClass('modal-lg');
-  $('#global_modalFormHeader').removeClass('modal-header-sultan-primary modal-header-sultan-warning modal-header-sultan-danger modal-header-sultan-success modal-header-sultan-info modal-header-sultan-dark modal-header-edit modal-header-tambah-edit modal-header-hapus').addClass('modal-header-sultan-success');
-  $('#global_modalFormTitle').html('<i class="fas fa-check-double mr-2"></i>Verifikasi Dokumen Kombel');
-  $('#global_modalFormBody, #global_modalFormFooter').hide();
-  $('#kombelkelola_formVerif').appendTo('#global_modalFormSize .modal-content');
-  $('#global_modalForm').off('hidden.bs.modal.kombelverif').on('hidden.bs.modal.kombelverif', function() {
-    $('#kombelkelola_formVerif').appendTo('#kombelkelola_templates');
-    $('#global_modalFormBody, #global_modalFormFooter').show();
+  $('#kombelkelola_v_nama').text(d.nama_sekolah || d.npsn || "-");
+  $('#kombelkelola_v_npsn').text(d.npsn || "-");
+  $('#kombelkelola_v_kategori').text(d.nama_kategori || d.id_kategori || "-");
+  $('#kombelkelola_v_kelas').text(d.kelas || "Umum");
+  $('#kombelkelola_v_tahun').text(d.tahun || "-");
+
+  if (d.periode && d.periode !== "-") {
+    $('#kombelkelola_v_periode').text(d.periode);
+    $('#kombelkelola_v_periode_wrapper').show();
+  } else {
+    $('#kombelkelola_v_periode_wrapper').hide();
+  }
+
+  var st = String(d.status || "").toLowerCase();
+  $('#kombelkelola_v_status').val('');
+  var catatanLama = d.catatan || "";
+  if (catatanLama) {
+    $('#kombelkelola_prevCatatan').text(catatanLama);
+    $('#kombelkelola_prevCatatanWrap').show();
+  } else {
+    $('#kombelkelola_prevCatatan').text('');
+    $('#kombelkelola_prevCatatanWrap').hide();
+  }
+  $('#kombelkelola_v_catatan').val("");
+  $('#kombelkelola_reqCatatan').hide();
+
+  if (st.includes('setuju') || st.includes('ok') || st.includes('valid')) {
+    $('#kombelkelola_v_status').val('Disetujui');
+  } else if (st.includes('revisi')) {
+    $('#kombelkelola_v_status').val('Revisi');
+  } else if (st.includes('tolak')) {
+    $('#kombelkelola_v_status').val('Ditolak');
+  }
+
+  if ($('#kombelkelola_v_status').val() === 'Revisi' || $('#kombelkelola_v_status').val() === 'Ditolak') {
+    $('#kombelkelola_reqCatatan').show();
+    $('#kombelkelola_v_catatan').prop('required', true);
+  }
+
+  var url = d.url || "";
+
+  Sultan.modal.verifikasi({
+    title: 'VERIFIKASI DOKUMEN KOMUNITAS BELAJAR',
+    url: url,
+    isImage: url.toLowerCase().endsWith('.jpg') || url.toLowerCase().endsWith('.png') || url.toLowerCase().endsWith('.jpeg')
   });
-  $('#global_modalForm').modal('show');
+
+  $('#kombelkelola_formVerif').appendTo('#global_verifikasiFormArea');
+  $('#kombelkelola_verifFooter').appendTo('#global_verifikasiFooterArea');
+  $('#global_verifikasiFooterArea').show();
+
+  $('#global_modalVerifikasi').off('hidden.bs.modal.kombelverif').on('hidden.bs.modal.kombelverif', function() {
+    $('#kombelkelola_verifFooter').appendTo('#kombelkelola_formVerif');
+    $('#kombelkelola_formVerif').appendTo('#kombelkelola_templates');
+    $('#global_verifikasiFooterArea').hide();
+  });
 }
 
 function kombelkelola_submitVerif(e) {
@@ -998,18 +1035,16 @@ function kombelkelola_submitVerif(e) {
   if ((status === 'Revisi' || status === 'Ditolak') && !catatan.trim()) { Sultan.alert('warning','Perhatian','Catatan wajib diisi untuk keputusan Revisi/Ditolak.'); return; }
   var btn = $('#kombelkelola_btnVerifikasi'); var btnTxt = btn.html();
   btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i>MEMVERIFIKASI...');
-  Sultan.notif.loading("Menyimpan verifikasi...");
   google.script.run.withSuccessHandler(function(json) {
-    Sultan.notif.tutup(); btn.prop('disabled',false).html(btnTxt);
+    btn.prop('disabled', false).html(btnTxt);
     var res = JSON.parse(json);
     if (res.success) {
-      if (typeof Sultan !== 'undefined' && Sultan.modal) Sultan.modal.tutupForm();
-      else $('#global_modalForm').modal('hide');
+      $('#global_modalVerifikasi').modal('hide');
       Sultan.notif.crud.simpan(true);
       setTimeout(kombelkelola_tarikDataServer, 400);
     } else { Sultan.notif.crud.gagal(res.message); }
   }).withFailureHandler(function(err) {
-    Sultan.notif.tutup(); btn.prop('disabled',false).html(btnTxt); Sultan.notif.crud.gagal(err.message);
+    btn.prop('disabled', false).html(btnTxt); Sultan.notif.crud.gagal(err.message);
   }).verifikasiKombelDokumen(rowId, status, catatan);
 }
 
@@ -1034,8 +1069,32 @@ function kombelkelola_bukaModalHapus(rowId) {
 }
 
 function kombelkelola_bukaPreview(url) {
-  if (!url || url === "#") { Sultan.alert('warning','Perhatian','URL dokumen tidak tersedia.'); return; }
-  window.open(url, '_blank');
+  if (!url || url === "#") { Sultan.notif.info("URL dokumen tidak tersedia."); return; }
+  var finalUrl = url;
+  var downloadUrl = "";
+  var isGoogleDrive = url.indexOf('drive.google.com') > -1;
+  var isImage = url.toLowerCase().endsWith('.jpg') || url.toLowerCase().endsWith('.png') || url.toLowerCase().endsWith('.jpeg');
+  
+  if (isGoogleDrive) {
+    var match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    if (match && match[1]) {
+      finalUrl = 'https://drive.google.com/file/d/' + match[1] + '/preview';
+      downloadUrl = 'https://drive.google.com/uc?export=download&id=' + match[1];
+    }
+  } else {
+    downloadUrl = url;
+  }
+
+  if (typeof Sultan !== 'undefined' && Sultan.modal && Sultan.modal.preview) {
+    Sultan.modal.preview({
+      url: finalUrl,
+      title: 'Pratinjau Dokumen Komunitas Belajar',
+      downloadUrl: downloadUrl,
+      isImage: isImage
+    });
+  } else {
+    window.open(finalUrl, '_blank');
+  }
 }
 
 function kombelkelola_lihatCatatan(pesan) {
