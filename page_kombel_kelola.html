@@ -57,22 +57,44 @@
   <!-- Form Upload (Tambah) -->
   <form id="kombelkelola_formUpload" novalidate>
     <div class="modal-body modal-body-sultan p-4">
-      <!-- Pilih Sekolah (Admin) -->
-      <div class="form-group mb-4 position-relative" id="kombelkelola_pilih_sekolah_container">
-        <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">
-          Pilih Sekolah <span class="text-danger">*</span>
-        </label>
+      <!-- Target Sekolah & KKG Header -->
+      <div class="form-group mb-4 position-relative" id="kombelkelola_header_target_container">
         <div class="row">
-          <div class="col-md-4">
-            <select id="kombelkelola_in_jenjang" class="form-control form-control-sultan border-maroon font-weight-bold text-dark">
-              <option value="">- Pilih Jenjang -</option>
-              <option value="PAUD">PAUD</option>
-              <option value="SD">SD</option>
-            </select>
+          <!-- Pilih Sekolah (Admin) -->
+          <div class="col-md-8" id="kombelkelola_pilih_sekolah_container">
+            <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">
+              Pilih Sekolah <span class="text-danger">*</span>
+            </label>
+            <div class="row">
+              <div class="col-md-4">
+                <select id="kombelkelola_in_jenjang" class="form-control form-control-sultan border-maroon font-weight-bold text-dark">
+                  <option value="">Pilih Jenjang</option>
+                  <option value="PAUD">PAUD</option>
+                  <option value="SD">SD</option>
+                </select>
+              </div>
+              <div class="col-md-8">
+                <select id="kombelkelola_in_sekolah" class="form-control form-control-sultan border-maroon font-weight-bold text-dark" required disabled>
+                  <option value="">Pilih Sekolah</option>
+                </select>
+              </div>
+            </div>
           </div>
-          <div class="col-md-8">
-            <select id="kombelkelola_in_sekolah" class="form-control form-control-sultan border-maroon font-weight-bold text-dark" required disabled>
-              <option value="">- Pilih Sekolah -</option>
+          <!-- Target KKG / Kelas -->
+          <div class="col-md-4" id="kombelkelola_pilih_kkg_container">
+            <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">
+              Sasaran KKG <span class="text-danger">*</span>
+            </label>
+            <select id="kombelkelola_in_kkg" class="form-control form-control-sultan border-maroon font-weight-bold text-dark" required>
+              <option value="Semua KKG">Semua KKG / Umum</option>
+              <option value="KKG Kelas 1">KKG Kelas 1</option>
+              <option value="KKG Kelas 2">KKG Kelas 2</option>
+              <option value="KKG Kelas 3">KKG Kelas 3</option>
+              <option value="KKG Kelas 4">KKG Kelas 4</option>
+              <option value="KKG Kelas 5">KKG Kelas 5</option>
+              <option value="KKG Kelas 6">KKG Kelas 6</option>
+              <option value="KKG PJOK">KKG PJOK</option>
+              <option value="KKG PAI">KKG PAI</option>
             </select>
           </div>
         </div>
@@ -291,7 +313,7 @@ $(document).ready(function() {
   $(document).off('change','#kombelkelola_in_jenjang').on('change','#kombelkelola_in_jenjang', function() {
     var jenjang = $(this).val();
     var $sek = $('#kombelkelola_in_sekolah');
-    $sek.empty().append('<option value="">- Pilih Sekolah -</option>');
+    $sek.empty().append('<option value="">Pilih Sekolah</option>');
     if (jenjang) {
       var filtered = KOMBELKELOLA_MASTER_SEKOLAH.filter(function(s) {
         var jjg = String(s.jenjang || "").toUpperCase();
@@ -318,6 +340,34 @@ $(document).ready(function() {
       $('#kombelkelola_uploadContainer').html('<div class="text-center text-muted p-3" id="kombelkelola_msgPilihSekolah"><i class="fas fa-info-circle mr-1"></i> Pilih sekolah terlebih dahulu.</div>');
       $('#kombelkelola_btnAddRow, #kombelkelola_btnSimpan').prop('disabled', true);
     }
+  });
+
+  $(document).off('change','#kombelkelola_in_kkg').on('change','#kombelkelola_in_kkg', function() {
+    // Apabila KKG di header diubah, perbarui daftar kategori/nama dokumen di seluruh baris
+    $('.kombelkelola-upload-row').each(function() {
+      var row = $(this);
+      var currentVal = row.find('.kombelkelola-kategori-select').val();
+      var selectedKkg = $('#kombelkelola_in_kkg').val() || "Semua KKG";
+      var newKatOpts = '<option value="">Pilih Kategori</option>';
+
+      KOMBELKELOLA_MASTER_KAT.forEach(function(k) {
+        if (k.isAktif !== false && k.status !== "Nonaktif") {
+          var kkgTarget = String(k.kelas || "").trim();
+          var matchKkg = (!kkgTarget || kkgTarget === "Semua KKG" || kkgTarget === "Umum" || selectedKkg === "Semua KKG" || kkgTarget.toLowerCase() === selectedKkg.toLowerCase());
+          if (matchKkg) {
+            newKatOpts += '<option value="'+k.idKat+'">'+k.namaKat+'</option>';
+          }
+        }
+      });
+
+      var katSelect = row.find('.kombelkelola-kategori-select');
+      katSelect.html(newKatOpts);
+      if (currentVal && katSelect.find('option[value="'+currentVal+'"]').length > 0) {
+        katSelect.val(currentVal);
+      } else {
+        katSelect.val('').trigger('change');
+      }
+    });
   });
 
   $(document).off('click','#kombelkelola_btnAddRow').on('click','#kombelkelola_btnAddRow', kombelkelola_createUploadRow);
@@ -360,7 +410,7 @@ $(document).ready(function() {
       if (isTapel) {
         thnWrapEl.find('.form-label-sultan').html('Thn Pelajaran <span class="text-danger">*</span>');
         var nowY = new Date().getFullYear();
-        var tapelOpts = '<option value="">- Pilih -</option>';
+        var tapelOpts = '<option value="">Pilih Tahun</option>';
         for (var y = nowY + 2; y >= nowY - 4; y--) {
           var tStr = y + "/" + (y + 1);
           tapelOpts += '<option value="' + tStr + '">' + tStr + '</option>';
@@ -369,40 +419,40 @@ $(document).ready(function() {
       } else {
         thnWrapEl.find('.form-label-sultan').html('Tahun <span class="text-danger">*</span>');
         var nowY2 = new Date().getFullYear();
-        var thnOpts = '<option value="">- Pilih -</option>';
+        var thnOpts = '<option value="">Pilih Tahun</option>';
         for (var y2 = nowY2 + 2; y2 >= nowY2 - 5; y2--) {
           thnOpts += '<option value="' + y2 + '" ' + (y2 === nowY2 ? 'selected' : '') + '>' + y2 + '</option>';
         }
         row.find('.kombelkelola-tahun-input').replaceWith('<select class="form-control form-control-sultan border-maroon kombelkelola-tahun-input" required>' + thnOpts + '</select>');
       }
 
-      var bulanOpts = '<option value="">-</option><option>Jan</option><option>Feb</option><option>Mar</option><option>Apr</option><option>Mei</option><option>Jun</option><option>Jul</option><option>Agu</option><option>Sep</option><option>Okt</option><option>Nov</option><option>Des</option>';
+      var bulanOpts = '<option value="">Pilih</option><option>Jan</option><option>Feb</option><option>Mar</option><option>Apr</option><option>Mei</option><option>Jun</option><option>Jul</option><option>Agu</option><option>Sep</option><option>Okt</option><option>Nov</option><option>Des</option>';
 
       if (jPeriode.includes("TMT")) {
-        katWrapEl.removeClass('col-md-4').addClass('col-md-3');
-        pWrap.removeClass('col-md-4').addClass('col-md-3').show(); pLabel.text("TMT");
+        katWrapEl.removeClass('col-md-6').addClass('col-md-4');
+        pWrap.removeClass('col-md-6').addClass('col-md-4').show(); pLabel.text("TMT");
         pInput.replaceWith('<input type="date" class="form-control form-control-sultan border-maroon kombelkelola-periode-input" required>');
         row.find('.kombelkelola-periode-input').prop("required",true).val("");
       } else if (jPeriode.includes("PERIODE")) {
-        katWrapEl.removeClass('col-md-4').addClass('col-md-3');
-        pWrap.removeClass('col-md-4').addClass('col-md-3').show();
+        katWrapEl.removeClass('col-md-6').addClass('col-md-4');
+        pWrap.removeClass('col-md-6').addClass('col-md-4').show();
         pInput.replaceWith('<div class="d-flex align-items-center kombelkelola-periode-input" style="gap:4px;"><select class="form-control form-control-sultan border-maroon kombelkelola-periode-mulai" required style="min-width:65px;padding:2px 4px;height:31px;font-size:12px;">'+bulanOpts+'</select><span class="font-weight-bold text-muted px-1" style="font-size:12px;">&ndash;</span><select class="form-control form-control-sultan border-maroon kombelkelola-periode-akhir" required style="min-width:65px;padding:2px 4px;height:31px;font-size:12px;">'+bulanOpts+'</select></div>');
         pLabel.text("Periode (Bln)");
       } else if (jPeriode === "SEMESTER_TAPEL" || (jPeriode.includes("TAPEL") && jPeriode.includes("SEMESTER"))) {
-        katWrapEl.removeClass('col-md-4').addClass('col-md-3');
-        pWrap.removeClass('col-md-4').addClass('col-md-3').show(); pLabel.text("Semester");
-        pInput.replaceWith('<select class="form-control form-control-sultan border-maroon kombelkelola-periode-input" required><option value="">- Pilih -</option><option value="Semester 1">Semester 1 (Ganjil)</option><option value="Semester 2">Semester 2 (Genap)</option></select>');
+        katWrapEl.removeClass('col-md-6').addClass('col-md-4');
+        pWrap.removeClass('col-md-6').addClass('col-md-4').show(); pLabel.text("Semester");
+        pInput.replaceWith('<select class="form-control form-control-sultan border-maroon kombelkelola-periode-input" required><option value="">Pilih Semester</option><option value="Semester 1">Semester 1 (Ganjil)</option><option value="Semester 2">Semester 2 (Genap)</option></select>');
       } else if (jPeriode === "SEMESTER_KALENDER" || (jPeriode.includes("KALENDER") && jPeriode.includes("SEMESTER"))) {
-        katWrapEl.removeClass('col-md-4').addClass('col-md-3');
-        pWrap.removeClass('col-md-4').addClass('col-md-3').show(); pLabel.text("Semester");
-        pInput.replaceWith('<select class="form-control form-control-sultan border-maroon kombelkelola-periode-input" required><option value="">- Pilih -</option><option value="Semester 1">Semester 1 (Jan - Jun)</option><option value="Semester 2">Semester 2 (Jul - Des)</option></select>');
+        katWrapEl.removeClass('col-md-6').addClass('col-md-4');
+        pWrap.removeClass('col-md-6').addClass('col-md-4').show(); pLabel.text("Semester");
+        pInput.replaceWith('<select class="form-control form-control-sultan border-maroon kombelkelola-periode-input" required><option value="">Pilih Semester</option><option value="Semester 1">Semester 1 (Jan - Jun)</option><option value="Semester 2">Semester 2 (Jul - Des)</option></select>');
       } else if (jPeriode.includes("TRIWULAN")) {
-        katWrapEl.removeClass('col-md-4').addClass('col-md-3');
-        pWrap.removeClass('col-md-4').addClass('col-md-3').show(); pLabel.text("Triwulan");
-        pInput.replaceWith('<select class="form-control form-control-sultan border-maroon kombelkelola-periode-input" required><option value="">- Pilih -</option><option value="Triwulan 1">Triwulan 1</option><option value="Triwulan 2">Triwulan 2</option><option value="Triwulan 3">Triwulan 3</option><option value="Triwulan 4">Triwulan 4</option></select>');
+        katWrapEl.removeClass('col-md-6').addClass('col-md-4');
+        pWrap.removeClass('col-md-6').addClass('col-md-4').show(); pLabel.text("Triwulan");
+        pInput.replaceWith('<select class="form-control form-control-sultan border-maroon kombelkelola-periode-input" required><option value="">Pilih Triwulan</option><option value="Triwulan 1">Triwulan 1</option><option value="Triwulan 2">Triwulan 2</option><option value="Triwulan 3">Triwulan 3</option><option value="Triwulan 4">Triwulan 4</option></select>');
       } else {
-        katWrapEl.removeClass('col-md-3').addClass('col-md-4');
-        pWrap.removeClass('col-md-3').addClass('col-md-4').hide();
+        katWrapEl.removeClass('col-md-4').addClass('col-md-6');
+        pWrap.removeClass('col-md-4').addClass('col-md-6').hide();
         pInput.prop("required",false).val("-");
       }
 
@@ -410,17 +460,6 @@ $(document).ready(function() {
       if (katData.keterangan && katData.keterangan.trim() !== "") {
         keterBx.html('<i class="fas fa-info-circle mr-1"></i>' + $('<span>').text(katData.keterangan).html()).show();
       } else { keterBx.hide().html(''); }
-
-      // Sinkronisasi otomatis KKG/Kelas jika kategori menetapkan kelas khusus
-      var kelasSel = row.find('.kombelkelola-kelas-select');
-      if (katData.kelas && katData.kelas.trim() !== "" && katData.kelas !== "Semua KKG" && katData.kelas !== "Umum") {
-        var foundOpt = kelasSel.find('option').filter(function() {
-          return $(this).val().toLowerCase() === String(katData.kelas).toLowerCase() || $(this).text().toLowerCase() === String(katData.kelas).toLowerCase();
-        });
-        if (foundOpt.length > 0) {
-          kelasSel.val(foundOpt.val());
-        }
-      }
     }
   });
 
@@ -748,7 +787,8 @@ function kombelkelola_renderTabel(data) {
 function kombelkelola_bukaModalTambah() {
   if (!KOMBELKELOLA_IS_ADMIN && !KOMBELKELOLA_NPSN_TERKUNCI) { Sultan.alert('warning','Perhatian','Sesi login tidak valid.'); return; }
   var $form = $('#kombelkelola_formUpload'); $form[0].reset(); $form.removeClass('was-validated');
-  $('#kombelkelola_in_jenjang').val(''); $('#kombelkelola_in_sekolah').val('').prop('disabled', true).empty().append('<option value="">- Pilih Sekolah -</option>');
+  $('#kombelkelola_in_jenjang').val(''); $('#kombelkelola_in_sekolah').val('').prop('disabled', true).empty().append('<option value="">Pilih Sekolah</option>');
+  $('#kombelkelola_in_kkg').val('Semua KKG');
   $('#kombelkelola_uploadContainer').html('<div class="text-center text-muted p-3" id="kombelkelola_msgPilihSekolah"><i class="fas fa-info-circle mr-1"></i> Pilih sekolah terlebih dahulu.</div>');
   $('#kombelkelola_btnAddRow, #kombelkelola_btnSimpan').prop('disabled', true);
   KOMBELKELOLA_ROW_COUNT = 0;
@@ -770,13 +810,18 @@ function kombelkelola_bukaModalTambah() {
 function kombelkelola_createUploadRow() {
   KOMBELKELOLA_ROW_COUNT++;
   var idx = KOMBELKELOLA_ROW_COUNT;
-  var katOpts = '<option value="">- Pilih Kategori -</option>';
-  KOMBELKELOLA_MASTER_KAT.forEach(function(k){
-    if (k.isAktif !== false && k.status !== "Nonaktif") katOpts += '<option value="'+k.idKat+'">'+k.namaKat+'</option>';
-  });
+  var selectedKkg = $('#kombelkelola_in_kkg').val() || "Semua KKG";
+  var katOpts = '<option value="">Pilih Kategori</option>';
 
-  var kelasOpts = '';
-  KOMBELKELOLA_KELAS_OPTS.forEach(function(opt){ kelasOpts += '<option value="'+opt.value+'">'+opt.label+'</option>'; });
+  KOMBELKELOLA_MASTER_KAT.forEach(function(k){
+    if (k.isAktif !== false && k.status !== "Nonaktif") {
+      var kkgTarget = String(k.kelas || "").trim();
+      var matchKkg = (!kkgTarget || kkgTarget === "Semua KKG" || kkgTarget === "Umum" || selectedKkg === "Semua KKG" || kkgTarget.toLowerCase() === selectedKkg.toLowerCase());
+      if (matchKkg) {
+        katOpts += '<option value="'+k.idKat+'">'+k.namaKat+'</option>';
+      }
+    }
+  });
 
   var rowHtml = `
     <div class="kombelkelola-upload-row border rounded p-3 mb-3 shadow-sm" data-idx="${idx}">
@@ -785,23 +830,17 @@ function kombelkelola_createUploadRow() {
         ${idx > 1 ? '<button type="button" class="btn btn-sm btn-outline-danger kombelkelola-btn-del-row rounded-pill"><i class="fas fa-trash-alt mr-1"></i>Hapus</button>' : ''}
       </div>
       <div class="row">
-        <div class="col-md-4 mb-2 kombelkelola-kat-wrapper">
+        <div class="col-md-6 mb-2 kombelkelola-kat-wrapper">
           <label class="form-label-sultan small font-weight-bold text-uppercase">Nama Dokumen <span class="text-danger">*</span></label>
           <select class="form-control form-control-sultan border-maroon kombelkelola-kategori-select" required>
             ${katOpts}
           </select>
           <div class="small text-info font-italic mt-1 kombelkelola-kat-keterangan" style="display:none;"></div>
         </div>
-        <div class="col-md-4 mb-2">
-          <label class="form-label-sultan small font-weight-bold text-uppercase">Kelas <span class="text-danger">*</span></label>
-          <select class="form-control form-control-sultan border-maroon kombelkelola-kelas-select" required>
-            ${kelasOpts}
-          </select>
-        </div>
-        <div class="col-md-4 mb-2 kombelkelola-tahun-wrapper">
+        <div class="col-md-6 mb-2 kombelkelola-tahun-wrapper">
           <label class="form-label-sultan small font-weight-bold text-uppercase">Tahun <span class="text-danger">*</span></label>
           <select class="form-control form-control-sultan border-maroon kombelkelola-tahun-input" required>
-            <option value="">- Pilih -</option>
+            <option value="">Pilih Tahun</option>
           </select>
         </div>
         <div class="col-md-4 mb-2 kombelkelola-periode-wrapper" style="display:none;">
@@ -831,6 +870,8 @@ function kombelkelola_submitBatchUpload(e) {
   var npsn = KOMBELKELOLA_IS_ADMIN ? $('#kombelkelola_in_sekolah').val() : KOMBELKELOLA_NPSN_TERKUNCI;
   if (!npsn) { Sultan.alert('warning','Perhatian','Pilih sekolah terlebih dahulu.'); return; }
 
+  var selectedKkg = $('#kombelkelola_in_kkg').val() || "Semua KKG";
+
   var rows = $('.kombelkelola-upload-row');
   if (rows.length === 0) { Sultan.alert('warning','Perhatian','Tambahkan minimal satu dokumen.'); return; }
 
@@ -842,7 +883,6 @@ function kombelkelola_submitBatchUpload(e) {
     var katData = KOMBELKELOLA_MASTER_KAT.find(function(k){ return k.idKat === katSel.val(); });
     var tahunInput = row.find('.kombelkelola-tahun-input');
     var periodeInput = row.find('.kombelkelola-periode-input');
-    var kelasInput = row.find('.kombelkelola-kelas-select');
     var fileInput = row.find('.kombelkelola-file-input')[0];
 
     if (!katSel.val()) { Sultan.alert('warning','Perhatian','Pilih kategori dokumen untuk setiap baris.'); valid=false; return false; }
@@ -862,7 +902,7 @@ function kombelkelola_submitBatchUpload(e) {
 
     payloads.push({
       npsn: npsn, idKat: katSel.val(), namaKat: katData ? katData.namaKat : katSel.val(),
-      kelas: kelasInput.val() || "Umum",
+      kelas: selectedKkg,
       tahun: tahunInput.val(), periode: periodeVal,
       uploader: KOMBELKELOLA_USER_AKTIF,
       file: fileInput.files[0]
