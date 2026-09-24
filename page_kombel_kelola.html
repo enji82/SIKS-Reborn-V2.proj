@@ -601,41 +601,120 @@ function kombelkelola_terapkanFilterLokal() {
 function kombelkelola_renderTabel(data) {
   var dtArr = [];
   data.forEach(function(d) {
-    var s = String(d.status||"Diproses").trim();
-    var sLow = s.toLowerCase();
-    var badgeSts = '';
-    if (sLow === "disetujui") badgeSts = '<span class="badge badge-sultan-disetujui"><i class="fas fa-check-circle mr-1"></i>Disetujui</span>';
-    else if (sLow === "revisi") badgeSts = '<span class="badge badge-sultan-revisi"><i class="fas fa-edit mr-1"></i>Revisi</span>';
-    else if (sLow === "ditolak") badgeSts = '<span class="badge badge-sultan-ditolak"><i class="fas fa-times-circle mr-1"></i>Ditolak</span>';
-    else badgeSts = '<span class="badge badge-sultan-diproses"><i class="fas fa-hourglass-half mr-1"></i>Diproses</span>';
+    var id = d.rowId;
+    var st = String(d.status || "Diproses").toLowerCase();
+    var isDisetujui = st === "disetujui";
+    var unitNama = d.nama_sekolah || d.npsn || "-";
+    var unitNpsn = d.npsn || "-";
 
-    var tglAktifitas = d.tgl_verif && d.tgl_verif !== "-" ? d.tgl_verif : d.tgl_upload;
-    var aktifitasHtml = '<div style="font-size:11px;"><div class="text-muted">' + kombelkelola_esc(String(d.uploader||"-").split("@")[0]) + '</div>' +
-                        '<div class="text-muted font-italic">' + kombelkelola_esc(String(tglAktifitas||"-").split(" ")[0]) + '</div></div>';
+    // 1. Kolom NAMA SEKOLAH
+    var uiSekolah = `
+      <div class="text-left">
+        <div class="sultan-table-primary font-weight-bold" style="color: #800000; font-size: 12.5px; line-height: 1.2;">${kombelkelola_esc(unitNama)}</div>
+        <div class="sultan-table-secondary text-muted" style="font-size: 11px; margin-top: 2px;">NPSN: ${kombelkelola_esc(unitNpsn)}</div>
+      </div>
+    `;
 
-    var btnPreview = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-info kombelkelola-btn-preview" data-url="' + kombelkelola_esc(d.url||"#") + '" title="Lihat Dokumen"><i class="fas fa-eye"></i></button>';
-    var btnPerbaiki = (sLow === "revisi" || sLow === "ditolak") ? '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning kombelkelola-btn-perbaiki" data-id="'+d.rowId+'" title="Perbaiki"><i class="fas fa-edit"></i></button>' : '';
-    var btnVerif = KOMBELKELOLA_IS_ADMIN ? '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-success kombelkelola-btn-verif" data-id="'+d.rowId+'" title="Verifikasi"><i class="fas fa-check-double"></i></button>' : '';
-    var btnCatatan = (d.catatan && d.catatan.trim() !== "") ? '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-secondary kombelkelola-btn-catatan" data-pesan="'+kombelkelola_esc(d.catatan)+'" title="Lihat Catatan"><i class="fas fa-comment-alt"></i></button>' : '';
-    var btnHapus = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-danger kombelkelola-btn-hapus" data-id="'+d.rowId+'" title="Hapus"><i class="fas fa-trash-alt"></i></button>';
-    var aksi = '<div class="d-flex flex-nowrap justify-content-center" style="gap:3px;">'+btnPreview+btnPerbaiki+btnVerif+btnCatatan+btnHapus+'</div>';
+    // 2. Kolom JENIS DOKUMEN
+    var teksPeriode = String(d.periode || "").trim();
+    if (teksPeriode.match(/^\d{4}-\d{2}-\d{2}$/) && typeof Sultan !== 'undefined' && Sultan.format) {
+      teksPeriode = Sultan.format.tanggal(teksPeriode);
+    }
+    var periodeSub = (teksPeriode && teksPeriode !== "-" && teksPeriode !== "SEMUA")
+      ? `<div class="text-muted font-weight-normal" style="font-size: 11px; margin-top: 2px;">${kombelkelola_esc(teksPeriode)}</div>`
+      : '';
+    var uiJenisDokumen = `
+      <div class="text-left">
+        <div class="font-weight-bold text-dark" style="font-size: 12px; line-height: 1.2;">
+          ${kombelkelola_esc(d.nama_kategori || d.id_kategori || '-')}
+        </div>
+        ${periodeSub}
+      </div>
+    `;
 
-    var namaFile = d.file_name ? '<a href="'+kombelkelola_esc(d.url)+'" target="_blank" class="text-primary" style="font-size:11px;" title="'+kombelkelola_esc(d.file_name)+'"><i class="fas fa-file mr-1"></i>'+kombelkelola_esc(String(d.file_name).length>20?String(d.file_name).substring(0,20)+'...':d.file_name)+'</a>' : '<span class="text-muted font-italic">-</span>';
-    var tahunPeriode = d.tahun || "-";
-    if (d.periode && d.periode !== "-") tahunPeriode += '<br><small class="text-muted">'+kombelkelola_esc(d.periode)+'</small>';
+    // 3. Kolom KELAS
+    var uiKelas = `<span class="badge badge-secondary" style="font-size:11px;">${kombelkelola_esc(d.kelas || "Umum")}</span>`;
+
+    // 4. Kolom TAHUN
+    var valTahun = (d.tahun && String(d.tahun).trim() !== "" && String(d.tahun).trim() !== "-")
+      ? kombelkelola_esc(String(d.tahun).trim())
+      : '-';
+    var uiTahun = `<div class="text-center font-weight-bold text-dark" style="font-size: 12px;">${valTahun}</div>`;
+
+    // 5. Kolom DOKUMEN (Tombol LIHAT Standar SultanUI)
+    var fn = String(d.file_name || "").toLowerCase();
+    var fi = "fa-file-pdf text-danger"; 
+    if (fn.endsWith('.jpg') || fn.endsWith('.png') || fn.endsWith('.jpeg')) fi = "fa-file-image text-success";
+    if (fn.endsWith('.xlsx') || fn.endsWith('.xls')) fi = "fa-file-excel text-success";
+    var btnFile = `<button type="button" class="sultan-btn-pdf kombelkelola-btn-preview" data-url="${kombelkelola_esc(d.url)}" data-toggle="tooltip" title="Lihat Dokumen"><i class="fas ${fi} mr-1"></i> LIHAT</button>`;
+
+    // 6. Kolom STATUS (Badge Status Interaktif SultanUI dengan Tombol Catatan jika ada)
+    var badgeStatus = SultanUI.renderBadgeStatus(d.status, d.catatan, {
+      unit: unitNama,
+      dokumen: 'Dokumen ' + (d.nama_kategori || '') + ' - ' + unitNama,
+      verifikator: d.verifikator,
+      waktu: d.tgl_verif
+    });
+
+    // 7. Kolom AKTIVITAS (Audit Trail Cerdas)
+    var auditWaktu = "-";
+    var auditUser = "-";
+    var auditLabel = "Diunggah";
+
+    if (d.tgl_verif && String(d.tgl_verif).trim() !== "" && String(d.tgl_verif).trim() !== "-") {
+      auditLabel = "Verif";
+      auditWaktu = d.tgl_verif;
+      auditUser = d.verifikator || "-";
+    } else if (d.tgl_edit && String(d.tgl_edit).trim() !== "" && String(d.tgl_edit).trim() !== "-") {
+      auditLabel = "Diubah";
+      auditWaktu = d.tgl_edit;
+      auditUser = d.user_edit || "-";
+    } else if (d.tgl_upload && String(d.tgl_upload).trim() !== "" && String(d.tgl_upload).trim() !== "-") {
+      auditLabel = "Diunggah";
+      auditWaktu = d.tgl_upload;
+      auditUser = d.uploader || "-";
+    }
+
+    var tooltipAudit = kombelkelola_esc(
+      `Diunggah: ${d.tgl_upload || '-'}` + (d.uploader ? ` (${d.uploader})` : '') + `\n` +
+      `Diubah: ${d.tgl_edit || '-'}` + (d.user_edit ? ` (${d.user_edit})` : '') + `\n` +
+      `Verifikasi: ${d.tgl_verif || '-'}` + (d.verifikator ? ` (${d.verifikator})` : '')
+    );
+
+    var uiAktivitas = `
+      <div class="text-left" data-toggle="tooltip" data-placement="top" title="${tooltipAudit}">
+        <div class="font-weight-bold text-dark" style="font-size: 11.5px; line-height: 1.2;">${kombelkelola_esc(auditWaktu)}</div>
+        <div class="text-muted text-lowercase" style="font-size: 11px; line-height: 1.2;">
+          <span class="font-weight-semibold text-secondary">${auditLabel}:</span> ${kombelkelola_esc(auditUser).toLowerCase()}
+        </div>
+      </div>
+    `;
+
+    // 8. Kolom AKSI (Tombol Bulat Berwarna Presisi SultanUI)
+    var btnV = "";
+    if (KOMBELKELOLA_IS_ADMIN) {
+      btnV = `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-primary kombelkelola-btn-verif" data-id="${id}" data-toggle="tooltip" title="${st.includes('proses') ? 'Verifikasi Dokumen' : 'Edit Verifikasi'}"><i class="fas fa-clipboard-check"></i></button>`;
+    }
+    var btnP = `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning kombelkelola-btn-perbaiki" data-id="${id}" ${isDisetujui ? 'disabled style="opacity:0.4; cursor:not-allowed;" title="Terkunci (Sudah Disetujui)"' : 'data-toggle="tooltip" title="Edit Dokumen"'}><i class="fas fa-pencil-alt"></i></button>`;
+    var btnH = `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon kombelkelola-btn-hapus" data-id="${id}" ${isDisetujui ? 'disabled style="opacity:0.4; cursor:not-allowed;" title="Terkunci (Sudah Disetujui)"' : 'data-toggle="tooltip" title="Hapus Dokumen"'}><i class="fas fa-trash-alt"></i></button>`;
+    var aksi = `<div class="d-flex flex-nowrap justify-content-center" style="gap:4px;">${btnV}${btnP}${btnH}</div>`;
 
     dtArr.push([
-      '<div class="font-weight-bold text-wrap" style="font-size:12px;">'+kombelkelola_esc(d.nama_sekolah||d.npsn)+'</div><small class="text-muted">NPSN: '+kombelkelola_esc(d.npsn)+'</small>',
-      '<div class="text-wrap" style="font-size:12px;">'+kombelkelola_esc(d.nama_kategori||d.id_kategori)+'</div>',
-      '<span class="badge badge-secondary" style="font-size:11px;">'+kombelkelola_esc(d.kelas||"Umum")+'</span>',
-      tahunPeriode,
-      namaFile,
-      badgeSts,
-      aktifitasHtml,
+      uiSekolah,
+      uiJenisDokumen,
+      uiKelas,
+      uiTahun,
+      btnFile,
+      badgeStatus,
+      uiAktivitas,
       aksi
     ]);
   });
+
   KOMBELKELOLA_TABEL_INSTANCE.clear().rows.add(dtArr).draw(false);
+  if (typeof $('[data-toggle="tooltip"]').tooltip === 'function') {
+    $('[data-toggle="tooltip"]').tooltip();
+  }
 }
 
 function kombelkelola_bukaModalTambah() {
