@@ -1,0 +1,949 @@
+<section class="content">
+  <div class="container-fluid">
+    <div class="row justify-content-center">
+      <div class="col-12">
+
+        <!-- FILTER BAR (dirender oleh SultanUI) -->
+        <div id="kombelkelola_filterBarArea"></div>
+
+        <div class="card-sultan w-100 overflow-hidden">
+          <div class="card-body p-3 w-100">
+            <div id="kombelkelola_loadingState"></div>
+            <div id="kombelkelola_tableState" style="display:none;">
+              <table id="kombelkelola_tabelUtama"
+                     class="table table-hover table-premium table-sultan-compact mb-0 w-100">
+                <thead class="thead-sultan-premium text-uppercase font-weight-bold">
+                  <tr>
+                    <th class="text-left align-middle col-sticky-left" style="width:20%;">
+                      <span class="sultan-th-title">NAMA SEKOLAH</span>
+                    </th>
+                    <th class="text-left align-middle" style="width:18%;">
+                      <span class="sultan-th-title">JENIS DOKUMEN</span>
+                    </th>
+                    <th class="text-center align-middle text-nowrap" style="width:7%;">
+                      <span class="sultan-th-title">KELAS</span>
+                    </th>
+                    <th class="text-center align-middle text-nowrap" style="width:8%;">
+                      <span class="sultan-th-title">TAHUN</span>
+                    </th>
+                    <th class="text-center align-middle text-nowrap" style="width:9%;">
+                      <span class="sultan-th-title">DOKUMEN</span>
+                    </th>
+                    <th class="text-left align-middle text-nowrap" style="width:11%;">
+                      <span class="sultan-th-title">STATUS</span>
+                    </th>
+                    <th class="text-left align-middle text-nowrap" style="width:11%;">
+                      <span class="sultan-th-title">AKTIVITAS</span>
+                    </th>
+                    <th class="text-center align-middle text-nowrap" style="width:16%;">
+                      <span class="sultan-th-title">AKSI</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TEMPLATE MODAL -->
+<div id="kombelkelola_templates" style="display:none;">
+
+  <!-- Form Upload (Tambah) -->
+  <form id="kombelkelola_formUpload" novalidate>
+    <div class="modal-body modal-body-sultan p-4">
+      <!-- Pilih Sekolah (Admin) -->
+      <div class="form-group mb-4 position-relative" id="kombelkelola_pilih_sekolah_container">
+        <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">
+          Pilih Sekolah <span class="text-danger">*</span>
+        </label>
+        <div class="row">
+          <div class="col-md-4">
+            <select id="kombelkelola_in_jenjang" class="form-control form-control-sultan border-maroon font-weight-bold text-dark">
+              <option value="">- Pilih Jenjang -</option>
+              <option value="PAUD">PAUD</option>
+              <option value="SD">SD</option>
+            </select>
+          </div>
+          <div class="col-md-8">
+            <select id="kombelkelola_in_sekolah" class="form-control form-control-sultan border-maroon font-weight-bold text-dark" required disabled>
+              <option value="">- Pilih Sekolah -</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2">
+        <h6 class="font-weight-bold text-dark m-0">
+          <i class="fas fa-layer-group mr-1 text-primary"></i> Daftar Dokumen Baru
+        </h6>
+        <button type="button" id="kombelkelola_btnAddRow"
+                class="btn btn-sm btn-outline-primary font-weight-bold rounded-pill px-3 shadow-sm" disabled>
+          <i class="fas fa-plus mr-1"></i> Tambah Dokumen
+        </button>
+      </div>
+
+      <div id="kombelkelola_uploadContainer" class="mt-3">
+        <div class="text-center text-muted p-3" id="kombelkelola_msgPilihSekolah">
+          <i class="fas fa-info-circle mr-1"></i> Pilih sekolah terlebih dahulu.
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer modal-footer-tambah-edit justify-content-between">
+      <button type="button" class="modal-btn-batal" data-dismiss="modal">
+        <i class="fas fa-times mr-2"></i>BATAL
+      </button>
+      <button type="button" id="kombelkelola_btnSimpan" class="modal-btn-simpan" disabled>
+        <i class="fas fa-cloud-upload-alt mr-2"></i>UNGGAH
+      </button>
+    </div>
+  </form>
+
+  <!-- Form Perbaiki (Edit) -->
+  <form id="kombelkelola_formPerbaiki" novalidate>
+    <div class="modal-body modal-body-sultan p-4">
+      <input type="hidden" id="kombelkelola_p_rowid">
+      <input type="hidden" id="kombelkelola_p_npsn">
+      <table class="table table-sm table-borderless text-sm mb-3">
+        <tr><td class="font-weight-bold text-muted w-25">Sekolah</td><td class="font-weight-bold text-dark text-uppercase" id="kombelkelola_p_nama">-</td></tr>
+        <tr><td class="font-weight-bold text-muted">Kategori</td><td class="font-weight-bold text-primary" id="kombelkelola_p_kategori">-</td></tr>
+        <tr><td class="font-weight-bold text-muted">Kelas</td><td class="font-weight-bold text-dark" id="kombelkelola_p_kelas">-</td></tr>
+        <tr><td class="font-weight-bold text-muted">Catatan Admin</td><td class="font-weight-bold text-danger bg-white p-2 rounded border border-danger" id="kombelkelola_p_catatan">-</td></tr>
+      </table>
+      <div class="row mb-3">
+        <div class="col-md-6" id="kombelkelola_p_tahun_wrapper">
+          <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">
+            Tahun <span class="text-danger">*</span>
+          </label>
+          <input type="number" id="kombelkelola_p_tahun_input"
+                 class="form-control form-control-sultan border-warning" required>
+        </div>
+        <div class="col-md-6" id="kombelkelola_p_periode_wrapper" style="display:none;">
+          <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">
+            <span id="kombelkelola_p_periode_label">Periode</span>
+            <span class="text-danger">*</span>
+          </label>
+          <input type="text" id="kombelkelola_p_periode_input"
+                 class="form-control form-control-sultan border-warning">
+        </div>
+      </div>
+      <div class="form-group mb-0 border p-3 bg-white rounded shadow-sm">
+        <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">
+          <i class="fas fa-file-upload text-danger mr-1" id="kombelkelola_p_iconFormat"></i>
+          <span id="kombelkelola_p_lblFormat">Dokumen (Maks 2MB)</span>
+        </label>
+        <div class="small text-muted mb-2 font-italic">
+          Biarkan kosong jika tidak ingin mengubah file asli.
+        </div>
+        <div class="custom-file">
+          <input type="file" class="custom-file-input border-warning kombelkelola-file-input"
+                 id="kombelkelola_p_file">
+          <label class="custom-file-label text-truncate">Pilih file baru...</label>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer modal-footer-tambah-edit justify-content-between">
+      <button type="button" class="modal-btn-batal" data-dismiss="modal">
+        <i class="fas fa-times mr-2"></i>BATAL
+      </button>
+      <button type="button" id="kombelkelola_btnSimpanPerbaiki" class="modal-btn-perbarui">
+        <i class="fas fa-edit mr-2"></i>PERBARUI
+      </button>
+    </div>
+  </form>
+
+  <!-- Form Verifikasi -->
+  <form id="kombelkelola_formVerif" class="d-flex flex-column flex-grow-1 overflow-hidden m-0 p-0" novalidate>
+    <div class="px-4 pb-4 flex-grow-1 overflow-auto" style="padding-top:15px!important;">
+      <input type="hidden" id="kombelkelola_v_rowid">
+
+      <h6 class="modal-verifikasi-section-title">
+        <i class="fas fa-list-alt mr-2"></i>Detail Dokumen
+      </h6>
+
+      <div class="sultan-detail-container mb-4">
+        <div class="sultan-detail-item">
+          <label class="sultan-detail-label">NAMA SEKOLAH</label>
+          <div class="sultan-detail-value text-uppercase" id="kombelkelola_v_nama">-</div>
+        </div>
+        <div class="sultan-detail-item">
+          <label class="sultan-detail-label">NPSN</label>
+          <div class="sultan-detail-value font-weight-bold" id="kombelkelola_v_npsn">-</div>
+        </div>
+        <div class="sultan-detail-item">
+          <label class="sultan-detail-label">KATEGORI</label>
+          <div class="sultan-detail-value text-maroon" id="kombelkelola_v_kategori">-</div>
+        </div>
+        <div class="sultan-detail-item">
+          <label class="sultan-detail-label">KELAS</label>
+          <div class="sultan-detail-value font-weight-bold" id="kombelkelola_v_kelas">-</div>
+        </div>
+        <div class="sultan-detail-item">
+          <label class="sultan-detail-label">TAHUN</label>
+          <div class="sultan-detail-value font-weight-bold" id="kombelkelola_v_tahun">-</div>
+        </div>
+        <div class="sultan-detail-item" id="kombelkelola_v_periode_wrapper">
+          <label class="sultan-detail-label">PERIODE</label>
+          <div class="sultan-detail-value font-weight-bold text-primary" id="kombelkelola_v_periode">-</div>
+        </div>
+      </div>
+
+      <h6 class="modal-verifikasi-section-title">
+        <i class="fas fa-check-circle mr-2"></i>Verifikasi
+      </h6>
+
+      <div class="form-group mb-3">
+        <label class="modal-verifikasi-form-label">Keputusan Verifikasi <span class="text-danger">*</span></label>
+        <select class="modal-verifikasi-select font-weight-bold" id="kombelkelola_v_status" required>
+          <option value="">-- Pilih Keputusan --</option>
+          <option value="Disetujui">Disetujui</option>
+          <option value="Revisi">Revisi</option>
+          <option value="Ditolak">Ditolak</option>
+        </select>
+      </div>
+
+      <div class="form-group mb-3" id="kombelkelola_prevCatatanWrap" style="display:none;">
+        <label class="modal-verifikasi-form-label text-muted">
+          <i class="fas fa-history mr-1"></i>Keterangan Verifikasi Sebelumnya
+        </label>
+        <div class="modal-verifikasi-prev-catatan" id="kombelkelola_prevCatatan"></div>
+      </div>
+
+      <div class="form-group mb-0">
+        <label class="modal-verifikasi-form-label">
+          Catatan Admin <span id="kombelkelola_reqCatatan" class="text-danger" style="display:none;">*</span>
+        </label>
+        <textarea class="modal-verifikasi-textarea" id="kombelkelola_v_catatan" rows="3"
+                  placeholder="Wajib diisi jika ditolak / direvisi..."></textarea>
+      </div>
+
+      <div class="modal-verifikasi-footer" id="kombelkelola_verifFooter">
+        <button type="button" class="modal-btn-batal" data-dismiss="modal">
+          <i class="fas fa-times mr-2"></i>BATAL
+        </button>
+        <button type="submit" id="kombelkelola_btnVerifikasi" class="modal-verifikasi-btn-verifikasi"
+                form="kombelkelola_formVerif">
+          <i class="fas fa-check-circle mr-2"></i>VERIFIKASI
+        </button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script>
+/* ================================================================
+   KELOLA DOKUMEN KOMUNITAS BELAJAR — JAVASCRIPT
+   (Mengikuti pola identik page_adm_sekolah_kelola)
+   ================================================================ */
+
+var KOMBELKELOLA_CACHE_DATA = [], KOMBELKELOLA_MASTER_SEKOLAH = [], KOMBELKELOLA_MASTER_KAT = [];
+var KOMBELKELOLA_TABEL_INSTANCE = null, KOMBELKELOLA_ROW_COUNT = 0;
+var KOMBELKELOLA_USER_AKTIF = "", KOMBELKELOLA_IS_ADMIN = false, KOMBELKELOLA_NPSN_TERKUNCI = "";
+var KOMBELKELOLA_SELECTED_SEKOLAH_FILES = [];
+
+// Daftar opsi kelas
+var KOMBELKELOLA_KELAS_OPTS = [
+  { value: "Umum",     label: "Umum" },
+  { value: "Kelas 1",  label: "Kelas 1" },
+  { value: "Kelas 2",  label: "Kelas 2" },
+  { value: "Kelas 3",  label: "Kelas 3" },
+  { value: "Kelas 4",  label: "Kelas 4" },
+  { value: "Kelas 5",  label: "Kelas 5" },
+  { value: "Kelas 6",  label: "Kelas 6" }
+];
+
+$(document).ready(function() {
+  $('#kombelkelola_tableState').hide();
+  SultanUI.showLoading('#kombelkelola_loadingState');
+
+  try {
+    var user = typeof getSesiUser === 'function' ? getSesiUser() : {};
+    KOMBELKELOLA_USER_AKTIF = user.nama_lengkap || user.username || "User Web";
+    var rStr = String(user.role || "").toLowerCase();
+    KOMBELKELOLA_IS_ADMIN = (typeof checkUserRoleIsAdmin === 'function' && checkUserRoleIsAdmin()) || rStr.includes("admin") || rStr.includes("verifikator");
+    KOMBELKELOLA_NPSN_TERKUNCI = user.npsn || user.unit || user.username || "";
+  } catch(e) { KOMBELKELOLA_NPSN_TERKUNCI = ""; KOMBELKELOLA_IS_ADMIN = false; }
+
+  kombelkelola_renderFilterBar();
+
+  $(document).off('click','#kombelkelola_btnRefresh').on('click','#kombelkelola_btnRefresh', kombelkelola_tarikDataServer);
+  $(document).off('click','#kombelkelola_btnTambah').on('click','#kombelkelola_btnTambah', kombelkelola_bukaModalTambah);
+  $(document).off('click','#kombelkelola_btnSimpan').on('click','#kombelkelola_btnSimpan', function(){ $('#kombelkelola_formUpload').submit(); });
+  $(document).off('click','#kombelkelola_btnSimpanPerbaiki').on('click','#kombelkelola_btnSimpanPerbaiki', function(){ $('#kombelkelola_formPerbaiki').submit(); });
+  $(document).off('click','#kombelkelola_btnVerifikasi').on('click','#kombelkelola_btnVerifikasi', function(){ $('#kombelkelola_formVerif').submit(); });
+
+  $(document).off('change','#kombelkelola_filterKategori, #kombelkelola_filterTahun, #kombelkelola_filterStatus').on('change','#kombelkelola_filterKategori, #kombelkelola_filterTahun, #kombelkelola_filterStatus', kombelkelola_terapkanFilterLokal);
+
+  if (KOMBELKELOLA_IS_ADMIN) {
+    $(document).off('change','#kombelkelola_filterJenjang').on('change','#kombelkelola_filterJenjang', function() {
+      kombelkelola_updateSekolahDropdown(); kombelkelola_terapkanFilterLokal();
+    });
+    $(document).off('change','#kombelkelola_filterSekolah').on('change','#kombelkelola_filterSekolah', kombelkelola_terapkanFilterLokal);
+  }
+
+  $(document).off('change','#kombelkelola_in_jenjang').on('change','#kombelkelola_in_jenjang', function() {
+    var jenjang = $(this).val();
+    var $sek = $('#kombelkelola_in_sekolah');
+    $sek.empty().append('<option value="">- Pilih Sekolah -</option>');
+    if (jenjang) {
+      var filtered = KOMBELKELOLA_MASTER_SEKOLAH.filter(function(s) {
+        var jjg = String(s.jenjang || "").toUpperCase();
+        if (jenjang === "PAUD") return jjg === "TK" || jjg === "KB" || jjg === "SPS" || jjg === "TPA" || jjg.includes("PAUD");
+        if (jenjang === "SD") return jjg === "SD" || jjg.includes("SD");
+        return jjg === jenjang;
+      });
+      filtered.forEach(function(s){ $sek.append($('<option>', { value: s.npsn, text: s.nama })); });
+      $sek.prop('disabled', false);
+    } else { $sek.prop('disabled', true); }
+    $('#kombelkelola_uploadContainer').html('<div class="text-center text-muted p-3" id="kombelkelola_msgPilihSekolah"><i class="fas fa-info-circle mr-1"></i> Pilih sekolah terlebih dahulu.</div>');
+    $('#kombelkelola_btnAddRow, #kombelkelola_btnSimpan').prop('disabled', true);
+  });
+
+  $(document).off('change','#kombelkelola_in_sekolah').on('change','#kombelkelola_in_sekolah', function() {
+    var npsn = $(this).val();
+    if (npsn) {
+      KOMBELKELOLA_SELECTED_SEKOLAH_FILES = KOMBELKELOLA_CACHE_DATA.filter(function(r){ return String(r.npsn).trim() === String(npsn).trim(); });
+      $('#kombelkelola_uploadContainer').empty();
+      $('#kombelkelola_btnAddRow, #kombelkelola_btnSimpan').prop('disabled', false);
+      KOMBELKELOLA_ROW_COUNT = 0;
+      kombelkelola_createUploadRow();
+    } else {
+      $('#kombelkelola_uploadContainer').html('<div class="text-center text-muted p-3" id="kombelkelola_msgPilihSekolah"><i class="fas fa-info-circle mr-1"></i> Pilih sekolah terlebih dahulu.</div>');
+      $('#kombelkelola_btnAddRow, #kombelkelola_btnSimpan').prop('disabled', true);
+    }
+  });
+
+  $(document).off('click','#kombelkelola_btnAddRow').on('click','#kombelkelola_btnAddRow', kombelkelola_createUploadRow);
+  $(document).off('click','.kombelkelola-btn-del-row').on('click','.kombelkelola-btn-del-row', function(){
+    $(this).closest('.kombelkelola-upload-row').slideUp(200, function(){ $(this).remove(); });
+  });
+
+  $(document).off('change','.kombelkelola-kategori-select').on('change','.kombelkelola-kategori-select', function() {
+    var val = String($(this).val()||"").trim();
+    var katData = KOMBELKELOLA_MASTER_KAT.find(function(k){ return String(k.idKat).trim() === val; });
+    var row = $(this).closest('.kombelkelola-upload-row');
+    var fileIn = row.find('.kombelkelola-file-input');
+    var fText = row.find('.kombelkelola-format-text');
+    var fIcon = row.find('.kombelkelola-format-icon');
+    var pWrap = row.find('.kombelkelola-periode-wrapper');
+    var pLabel = row.find('.kombelkelola-periode-label');
+    var pInput = row.find('.kombelkelola-periode-input');
+
+    fileIn.val('').next('.custom-file-label').html('Pilih file...').removeClass('text-success font-weight-bold');
+
+    if (katData) {
+      var fmt = String(katData.format).toUpperCase();
+      var ukuran = katData.ukuran || "2";
+      if (fmt.includes('IMG') || fmt.includes('JPG') || fmt.includes('PNG')) {
+        fileIn.attr('accept','image/jpeg,image/png,image/jpg'); fText.text('JPG/PNG (Maks '+ukuran+'MB)'); fIcon.removeClass('fa-file-pdf fa-file-upload fa-file-excel').addClass('fa-file-image');
+      } else if (fmt.includes('ALL') || fmt.includes('BEBAS')) {
+        fileIn.attr('accept','application/pdf,image/jpeg,image/png,image/jpg'); fText.text('PDF/JPG/PNG (Maks '+ukuran+'MB)'); fIcon.removeClass('fa-file-pdf fa-file-image fa-file-excel').addClass('fa-file-upload');
+      } else if (fmt.includes('EXCEL')) {
+        fileIn.attr('accept','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel'); fText.text('EXCEL (Maks '+ukuran+'MB)'); fIcon.removeClass('fa-file-image fa-file-upload fa-file-pdf').addClass('fa-file-excel');
+      } else {
+        fileIn.attr('accept','application/pdf'); fText.text('PDF (Maks '+ukuran+'MB)'); fIcon.removeClass('fa-file-image fa-file-upload fa-file-excel').addClass('fa-file-pdf');
+      }
+      fileIn.attr('data-max-size', ukuran * 1024 * 1024);
+
+      var jPeriode = String(katData.jenisPeriode).toUpperCase();
+      var katWrapEl = row.find('.kombelkelola-kat-wrapper');
+      var thnWrapEl = row.find('.kombelkelola-tahun-wrapper');
+
+      thnWrapEl.find('.form-label-sultan').html('Tahun <span class="text-danger">*</span>');
+      row.find('.kombelkelola-tahun-input').replaceWith('<input type="number" class="form-control form-control-sultan border-maroon kombelkelola-tahun-input" placeholder="202X" min="1980" max="2050" required>');
+
+      var bulanOpts = '<option value="">-</option><option>Jan</option><option>Feb</option><option>Mar</option><option>Apr</option><option>Mei</option><option>Jun</option><option>Jul</option><option>Agu</option><option>Sep</option><option>Okt</option><option>Nov</option><option>Des</option>';
+
+      if (jPeriode.includes("TMT")) {
+        katWrapEl.removeClass('col-md-5').addClass('col-md-3');
+        pWrap.removeClass('col-md-2').addClass('col-md-3').show(); pLabel.text("TMT");
+        pInput.replaceWith('<input type="date" class="form-control form-control-sultan border-maroon kombelkelola-periode-input" required>');
+        row.find('.kombelkelola-periode-input').prop("required",true).val("");
+      } else if (jPeriode.includes("PERIODE")) {
+        katWrapEl.removeClass('col-md-5').addClass('col-md-3');
+        pWrap.removeClass('col-md-2').addClass('col-md-3').show();
+        pInput.replaceWith('<div class="d-flex align-items-center kombelkelola-periode-input" style="gap:4px;"><select class="form-control form-control-sultan border-maroon kombelkelola-periode-mulai" required style="min-width:65px;padding:2px 4px;height:31px;font-size:12px;">'+bulanOpts+'</select><span class="font-weight-bold text-muted px-1" style="font-size:12px;">&ndash;</span><select class="form-control form-control-sultan border-maroon kombelkelola-periode-akhir" required style="min-width:65px;padding:2px 4px;height:31px;font-size:12px;">'+bulanOpts+'</select></div>');
+        pLabel.text("Periode (Bln)");
+      } else if (jPeriode === "SEMESTER_TAPEL" || (jPeriode.includes("TAPEL") && jPeriode.includes("SEMESTER"))) {
+        katWrapEl.removeClass('col-md-5').addClass('col-md-3');
+        pWrap.removeClass('col-md-2').addClass('col-md-3').show(); pLabel.text("Semester");
+        pInput.replaceWith('<select class="form-control form-control-sultan border-maroon kombelkelola-periode-input" required><option value="">- Pilih -</option><option value="Semester 1">Semester 1 (Ganjil)</option><option value="Semester 2">Semester 2 (Genap)</option></select>');
+        thnWrapEl.find('.form-label-sultan').html('Thn Pelajaran <span class="text-danger">*</span>');
+        row.find('.kombelkelola-tahun-input').replaceWith('<input type="text" class="form-control form-control-sultan border-maroon kombelkelola-tahun-input" placeholder="Contoh: 2026/2027" required pattern="^[0-9]{4}/[0-9]{4}$" title="Format harus YYYY/YYYY">');
+      } else if (jPeriode === "SEMESTER_KALENDER" || (jPeriode.includes("KALENDER") && jPeriode.includes("SEMESTER"))) {
+        katWrapEl.removeClass('col-md-5').addClass('col-md-3');
+        pWrap.removeClass('col-md-2').addClass('col-md-3').show(); pLabel.text("Semester");
+        pInput.replaceWith('<select class="form-control form-control-sultan border-maroon kombelkelola-periode-input" required><option value="">- Pilih -</option><option value="Semester 1">Semester 1 (Jan - Jun)</option><option value="Semester 2">Semester 2 (Jul - Des)</option></select>');
+      } else if (jPeriode.includes("TRIWULAN")) {
+        katWrapEl.removeClass('col-md-5').addClass('col-md-3');
+        pWrap.removeClass('col-md-2').addClass('col-md-3').show(); pLabel.text("Triwulan");
+        pInput.replaceWith('<select class="form-control form-control-sultan border-maroon kombelkelola-periode-input" required><option value="">- Pilih -</option><option value="Triwulan 1">Triwulan 1</option><option value="Triwulan 2">Triwulan 2</option><option value="Triwulan 3">Triwulan 3</option><option value="Triwulan 4">Triwulan 4</option></select>');
+      } else {
+        katWrapEl.removeClass('col-md-3').addClass('col-md-5');
+        pWrap.removeClass('col-md-3').addClass('col-md-2').hide();
+        pInput.prop("required",false).val("-");
+      }
+
+      var keterBx = row.find('.kombelkelola-kat-keterangan');
+      if (katData.keterangan && katData.keterangan.trim() !== "") {
+        keterBx.html('<i class="fas fa-info-circle mr-1"></i>' + $('<span>').text(katData.keterangan).html()).show();
+      } else { keterBx.hide().html(''); }
+    }
+  });
+
+  $(document).off("change",".kombelkelola-file-input").on("change",".kombelkelola-file-input", function() {
+    var file = $(this)[0].files[0]; var lbl = $(this).next(".custom-file-label");
+    var acc = $(this).attr('accept') || "";
+    var maxS = parseInt($(this).attr('data-max-size') || (2 * 1024 * 1024));
+    var maxSMb = Math.round(maxS / (1024*1024));
+    if (file) {
+      var val = false; var t = file.type.toLowerCase();
+      if (acc.includes('pdf') && t === "application/pdf") val = true;
+      if (acc.includes('image') && (t === "image/jpeg" || t === "image/png" || t === "image/jpg")) val = true;
+      if (acc.includes('excel') && (t.includes('excel') || t.includes('spreadsheet'))) val = true;
+      if (!val) { Sultan.alert('warning','Ditolak','Format tidak sesuai kategori.'); $(this).val(''); lbl.html('Pilih file...').removeClass('text-success font-weight-bold'); return; }
+      if (file.size > maxS) { Sultan.alert('warning','Terlalu Besar','Maksimal '+maxSMb+' MB.'); $(this).val(''); lbl.html('Pilih file...').removeClass('text-success font-weight-bold'); return; }
+      lbl.addClass("text-success font-weight-bold").html('<i class="fas fa-check mr-1"></i> ' + file.name);
+    } else { lbl.html('Pilih file...').removeClass('text-success font-weight-bold'); }
+  });
+
+  $(document).off('submit','#kombelkelola_formUpload').on('submit','#kombelkelola_formUpload', kombelkelola_submitBatchUpload);
+  $(document).off('submit','#kombelkelola_formPerbaiki').on('submit','#kombelkelola_formPerbaiki', kombelkelola_submitPerbaiki);
+  $(document).off('submit','#kombelkelola_formVerif').on('submit','#kombelkelola_formVerif', kombelkelola_submitVerif);
+  $(document).off('change','#kombelkelola_v_status').on('change','#kombelkelola_v_status', function() {
+    var v = $(this).val();
+    if (v === 'Revisi' || v === 'Ditolak') { $('#kombelkelola_reqCatatan').show(); $('#kombelkelola_v_catatan').prop('required',true); }
+    else { $('#kombelkelola_reqCatatan').hide(); $('#kombelkelola_v_catatan').prop('required',false); }
+  });
+
+  $(document).off('click','.kombelkelola-btn-verif').on('click','.kombelkelola-btn-verif', function(){ kombelkelola_bukaModalVerif($(this).attr('data-id')); });
+  $(document).off('click','.kombelkelola-btn-hapus').on('click','.kombelkelola-btn-hapus', function(){ kombelkelola_bukaModalHapus($(this).attr('data-id')); });
+  $(document).off('click','.kombelkelola-btn-preview').on('click','.kombelkelola-btn-preview', function(){ kombelkelola_bukaPreview($(this).attr('data-url')); });
+  $(document).off('click','.kombelkelola-btn-perbaiki').on('click','.kombelkelola-btn-perbaiki', function(){ kombelkelola_bukaModalPerbaiki($(this).attr('data-id')); });
+  $(document).off('click','.kombelkelola-btn-catatan').on('click','.kombelkelola-btn-catatan', function() {
+    var pesan = $(this).attr('data-pesan'); if (pesan) kombelkelola_lihatCatatan(pesan);
+  });
+
+  kombelkelola_initMasterData();
+});
+
+function kombelkelola_renderFilterBar() {
+  var filtersConfig = [];
+  if (KOMBELKELOLA_IS_ADMIN) {
+    filtersConfig = [
+      { id: 'kombelkelola_filterKategori', placeholder: 'Semua Dokumen', disabled: true },
+      { id: 'kombelkelola_filterTahun', placeholder: 'Semua Tahun', disabled: true },
+      { id: 'kombelkelola_filterJenjang', placeholder: 'Semua Jenjang', disabled: true },
+      { id: 'kombelkelola_filterSekolah', placeholder: 'Semua Sekolah', disabled: true },
+      { id: 'kombelkelola_filterStatus', placeholder: 'Semua Status', disabled: true }
+    ];
+  } else {
+    filtersConfig = [
+      { id: 'kombelkelola_filterKategori', placeholder: 'Semua Dokumen', disabled: true },
+      { id: 'kombelkelola_filterTahun', placeholder: 'Semua Tahun', disabled: true },
+      { id: 'kombelkelola_filterStatus', placeholder: 'Semua Status', disabled: true }
+    ];
+  }
+  var extraButtons = '<div class="divider-vertical d-none d-md-block mx-2"></div><button type="button" id="kombelkelola_btnRefresh" class="sultan-btn-refresh" title="Segarkan Data" disabled><i class="fas fa-sync-alt"></i></button><div class="ml-auto d-none d-md-block"></div><button type="button" id="kombelkelola_btnTambah" class="sultan-btn-tambah" disabled><i class="fas fa-plus"></i> TAMBAH</button>';
+  if (typeof SultanUI !== 'undefined') $('#kombelkelola_filterBarArea').html(SultanUI.renderFilterBar(filtersConfig, extraButtons));
+  if (KOMBELKELOLA_IS_ADMIN) $('#kombelkelola_filterSekolah_container').addClass('sultan-filter-unit-width');
+}
+
+function kombelkelola_initMasterData() {
+  if (!KOMBELKELOLA_IS_ADMIN && !KOMBELKELOLA_NPSN_TERKUNCI) {
+    $('#kombelkelola_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-ban mb-2"></i><br>Akses ditolak.</span>');
+    return;
+  }
+
+  google.script.run.withSuccessHandler(function(json) {
+    var res = JSON.parse(json);
+    if (!res.success) { $('#kombelkelola_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>' + kombelkelola_esc(res.message) + '</span>'); return; }
+
+    KOMBELKELOLA_MASTER_KAT = res.kategori || [];
+    KOMBELKELOLA_MASTER_SEKOLAH = res.sekolah || [];
+
+    if (!KOMBELKELOLA_IS_ADMIN) {
+      var lockVal = String(KOMBELKELOLA_NPSN_TERKUNCI || "").trim().toUpperCase();
+      var foundSek = KOMBELKELOLA_MASTER_SEKOLAH.find(function(s){
+        return String(s.npsn).trim().toUpperCase() === lockVal || String(s.nama||"").trim().toUpperCase() === lockVal;
+      });
+      if (foundSek && foundSek.npsn) KOMBELKELOLA_NPSN_TERKUNCI = foundSek.npsn;
+    }
+
+    var hk = '<option value="SEMUA">Semua Dokumen</option>';
+    KOMBELKELOLA_MASTER_KAT.forEach(function(k){ hk += '<option value="'+k.idKat+'">'+k.namaKat+'</option>'; });
+    $('#kombelkelola_filterKategori').html(hk).prop('disabled', false);
+
+    var hs = '<option value="SEMUA">Semua Status</option><option value="diproses">Diproses</option><option value="disetujui">Disetujui</option><option value="revisi">Revisi</option><option value="ditolak">Ditolak</option>';
+    $('#kombelkelola_filterStatus').html(hs).prop('disabled', false);
+
+    if (KOMBELKELOLA_IS_ADMIN) {
+      kombelkelola_setupJenjangDropdown();
+      kombelkelola_updateSekolahDropdown();
+    }
+
+    $('#kombelkelola_btnRefresh').prop('disabled', false);
+    $('#kombelkelola_btnTambah').prop('disabled', false);
+    kombelkelola_tarikDataServer();
+
+  }).withFailureHandler(function(err) {
+    $('#kombelkelola_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>'+kombelkelola_esc(err.message)+'</span>');
+  }).getKombelMasterData("");
+}
+
+function kombelkelola_setupJenjangDropdown() {
+  var jenjangSet = new Set();
+  KOMBELKELOLA_MASTER_SEKOLAH.forEach(function(s){ var j=String(s.jenjang||"").toUpperCase(); if(j) jenjangSet.add(j); });
+  var hj = '<option value="SEMUA">Semua Jenjang</option>';
+  Array.from(jenjangSet).sort().forEach(function(j){ hj += '<option value="'+j+'">'+j+'</option>'; });
+  $('#kombelkelola_filterJenjang').html(hj).prop('disabled', false);
+}
+
+function kombelkelola_updateSekolahDropdown() {
+  var fJ = String($('#kombelkelola_filterJenjang').val()||"SEMUA").toUpperCase();
+  var filtered = fJ === "SEMUA" ? KOMBELKELOLA_MASTER_SEKOLAH : KOMBELKELOLA_MASTER_SEKOLAH.filter(function(s){ return String(s.jenjang||"").toUpperCase() === fJ; });
+  var hs = '<option value="SEMUA">Semua Sekolah</option>';
+  filtered.sort(function(a,b){return String(a.nama).localeCompare(String(b.nama));}).forEach(function(s){ hs += '<option value="'+s.npsn+'">'+s.nama+'</option>'; });
+  $('#kombelkelola_filterSekolah').html(hs).prop('disabled', false);
+}
+
+function kombelkelola_tarikDataServer() {
+  var btn = $('#kombelkelola_btnRefresh');
+  btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin text-maroon"></i>');
+  if (!$.fn.DataTable.isDataTable('#kombelkelola_tabelUtama')) {
+    $('#kombelkelola_tableState').hide(); SultanUI.showLoading('#kombelkelola_loadingState', "Memuat Data Dokumen Komunitas Belajar...");
+  }
+
+  var targetNpsn = KOMBELKELOLA_IS_ADMIN ? "SEMUA" : KOMBELKELOLA_NPSN_TERKUNCI;
+
+  google.script.run.withSuccessHandler(function(json) {
+    btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
+    var res = JSON.parse(json);
+    if (!res.success) { $('#kombelkelola_loadingState').html('<div class="text-center text-danger py-5"><i class="fas fa-exclamation-triangle fa-3x mb-3"></i><br>'+kombelkelola_esc(res.message)+'</div>'); return; }
+    KOMBELKELOLA_CACHE_DATA = res.data || [];
+    if (!$.fn.DataTable.isDataTable('#kombelkelola_tabelUtama')) kombelkelola_initTable();
+    kombelkelola_terapkanFilterLokal();
+    SultanUI.hideLoading('#kombelkelola_loadingState');
+    $('#kombelkelola_tableState').show();
+    if (KOMBELKELOLA_TABEL_INSTANCE) setTimeout(function(){ KOMBELKELOLA_TABEL_INSTANCE.columns.adjust(); }, 150);
+  }).withFailureHandler(function(err) {
+    btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
+    $('#kombelkelola_loadingState').html('<div class="text-center text-danger py-5"><i class="fas fa-wifi fa-3x mb-3"></i><br>Koneksi: '+kombelkelola_esc(err.message)+'</div>');
+  }).getKombelData(targetNpsn);
+}
+
+function kombelkelola_initTable() {
+  KOMBELKELOLA_TABEL_INSTANCE = SultanTable.init('#kombelkelola_tabelUtama', {
+    destroy: true, ordering: false, pageLength: 25, autoWidth: false,
+    dom: "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
+         "<'row'<'col-sm-12'<'table-responsive sultan-scroll'tr>>>" +
+         "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+    columnDefs: [
+      { targets: 0, width: "20%", className: "text-left align-middle text-wrap col-sticky-left" },
+      { targets: 1, width: "18%", className: "text-left align-middle text-wrap" },
+      { targets: [2,3,4], width: "8%", className: "text-center align-middle text-nowrap" },
+      { targets: [5,6], width: "11%", className: "text-left align-middle text-nowrap" },
+      { targets: 7, width: "16%", className: "text-center align-middle text-nowrap" }
+    ],
+    language: { emptyTable: "Belum ada dokumen yang sesuai filter." }
+  });
+}
+
+function kombelkelola_terapkanFilterLokal() {
+  if (!KOMBELKELOLA_TABEL_INSTANCE) return;
+  var fKat = String($('#kombelkelola_filterKategori').val()||"SEMUA").trim();
+  var fThn = String($('#kombelkelola_filterTahun').val()||"SEMUA").trim().toUpperCase();
+  var fSts = String($('#kombelkelola_filterStatus').val()||"SEMUA").trim().toLowerCase();
+  var fJ   = KOMBELKELOLA_IS_ADMIN ? String($('#kombelkelola_filterJenjang').val()||"SEMUA").toUpperCase() : "SEMUA";
+  var fSek = KOMBELKELOLA_IS_ADMIN ? String($('#kombelkelola_filterSekolah').val()||"SEMUA") : (KOMBELKELOLA_NPSN_TERKUNCI||"SEMUA");
+
+  // Populate dropdown Tahun
+  var uniqueTahun = new Set();
+  KOMBELKELOLA_CACHE_DATA.forEach(function(d){ var t=String(d.tahun||"").trim(); if(t&&t!=="-") uniqueTahun.add(t); });
+  var selThn = $('#kombelkelola_filterTahun'); var curThn = selThn.val();
+  selThn.empty().append('<option value="SEMUA">Semua Tahun</option>');
+  var sortedT = Array.from(uniqueTahun).sort(function(a,b){return String(b).localeCompare(String(a));});
+  sortedT.forEach(function(t){selThn.append($('<option>',{value:t,text:t}));});
+  if (curThn && (curThn==="SEMUA"||uniqueTahun.has(curThn))) selThn.val(curThn);
+  selThn.prop('disabled', false);
+
+  var hasil = KOMBELKELOLA_CACHE_DATA.filter(function(d) {
+    if (fSek !== "SEMUA" && String(d.npsn).trim() !== fSek) return false;
+    if (fKat !== "SEMUA" && String(d.id_kategori).trim() !== fKat) return false;
+    if (fThn !== "SEMUA" && String(d.tahun||"").trim().toUpperCase() !== fThn) return false;
+    if (fSts !== "semua" && String(d.status||"").trim().toLowerCase() !== fSts) return false;
+    return true;
+  });
+
+  kombelkelola_renderTabel(hasil);
+}
+
+function kombelkelola_renderTabel(data) {
+  var dtArr = [];
+  data.forEach(function(d) {
+    var s = String(d.status||"Diproses").trim();
+    var sLow = s.toLowerCase();
+    var badgeSts = '';
+    if (sLow === "disetujui") badgeSts = '<span class="badge badge-sultan-disetujui"><i class="fas fa-check-circle mr-1"></i>Disetujui</span>';
+    else if (sLow === "revisi") badgeSts = '<span class="badge badge-sultan-revisi"><i class="fas fa-edit mr-1"></i>Revisi</span>';
+    else if (sLow === "ditolak") badgeSts = '<span class="badge badge-sultan-ditolak"><i class="fas fa-times-circle mr-1"></i>Ditolak</span>';
+    else badgeSts = '<span class="badge badge-sultan-diproses"><i class="fas fa-hourglass-half mr-1"></i>Diproses</span>';
+
+    var tglAktifitas = d.tgl_verif && d.tgl_verif !== "-" ? d.tgl_verif : d.tgl_upload;
+    var aktifitasHtml = '<div style="font-size:11px;"><div class="text-muted">' + kombelkelola_esc(String(d.uploader||"-").split("@")[0]) + '</div>' +
+                        '<div class="text-muted font-italic">' + kombelkelola_esc(String(tglAktifitas||"-").split(" ")[0]) + '</div></div>';
+
+    var btnPreview = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-info kombelkelola-btn-preview" data-url="' + kombelkelola_esc(d.url||"#") + '" title="Lihat Dokumen"><i class="fas fa-eye"></i></button>';
+    var btnPerbaiki = (sLow === "revisi" || sLow === "ditolak") ? '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning kombelkelola-btn-perbaiki" data-id="'+d.rowId+'" title="Perbaiki"><i class="fas fa-edit"></i></button>' : '';
+    var btnVerif = KOMBELKELOLA_IS_ADMIN ? '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-success kombelkelola-btn-verif" data-id="'+d.rowId+'" title="Verifikasi"><i class="fas fa-check-double"></i></button>' : '';
+    var btnCatatan = (d.catatan && d.catatan.trim() !== "") ? '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-secondary kombelkelola-btn-catatan" data-pesan="'+kombelkelola_esc(d.catatan)+'" title="Lihat Catatan"><i class="fas fa-comment-alt"></i></button>' : '';
+    var btnHapus = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-danger kombelkelola-btn-hapus" data-id="'+d.rowId+'" title="Hapus"><i class="fas fa-trash-alt"></i></button>';
+    var aksi = '<div class="d-flex flex-nowrap justify-content-center" style="gap:3px;">'+btnPreview+btnPerbaiki+btnVerif+btnCatatan+btnHapus+'</div>';
+
+    var namaFile = d.file_name ? '<a href="'+kombelkelola_esc(d.url)+'" target="_blank" class="text-primary" style="font-size:11px;" title="'+kombelkelola_esc(d.file_name)+'"><i class="fas fa-file mr-1"></i>'+kombelkelola_esc(String(d.file_name).length>20?String(d.file_name).substring(0,20)+'...':d.file_name)+'</a>' : '<span class="text-muted font-italic">-</span>';
+    var tahunPeriode = d.tahun || "-";
+    if (d.periode && d.periode !== "-") tahunPeriode += '<br><small class="text-muted">'+kombelkelola_esc(d.periode)+'</small>';
+
+    dtArr.push([
+      '<div class="font-weight-bold text-wrap" style="font-size:12px;">'+kombelkelola_esc(d.nama_sekolah||d.npsn)+'</div><small class="text-muted">NPSN: '+kombelkelola_esc(d.npsn)+'</small>',
+      '<div class="text-wrap" style="font-size:12px;">'+kombelkelola_esc(d.nama_kategori||d.id_kategori)+'</div>',
+      '<span class="badge badge-secondary" style="font-size:11px;">'+kombelkelola_esc(d.kelas||"Umum")+'</span>',
+      tahunPeriode,
+      namaFile,
+      badgeSts,
+      aktifitasHtml,
+      aksi
+    ]);
+  });
+  KOMBELKELOLA_TABEL_INSTANCE.clear().rows.add(dtArr).draw(false);
+}
+
+function kombelkelola_bukaModalTambah() {
+  if (!KOMBELKELOLA_IS_ADMIN && !KOMBELKELOLA_NPSN_TERKUNCI) { Sultan.alert('warning','Perhatian','Sesi login tidak valid.'); return; }
+  var $form = $('#kombelkelola_formUpload'); $form[0].reset(); $form.removeClass('was-validated');
+  $('#kombelkelola_in_jenjang').val(''); $('#kombelkelola_in_sekolah').val('').prop('disabled', true).empty().append('<option value="">- Pilih Sekolah -</option>');
+  $('#kombelkelola_uploadContainer').html('<div class="text-center text-muted p-3" id="kombelkelola_msgPilihSekolah"><i class="fas fa-info-circle mr-1"></i> Pilih sekolah terlebih dahulu.</div>');
+  $('#kombelkelola_btnAddRow, #kombelkelola_btnSimpan').prop('disabled', true);
+  KOMBELKELOLA_ROW_COUNT = 0;
+
+  if (!KOMBELKELOLA_IS_ADMIN && KOMBELKELOLA_NPSN_TERKUNCI) {
+    var sek = KOMBELKELOLA_MASTER_SEKOLAH.find(function(s){ return s.npsn === KOMBELKELOLA_NPSN_TERKUNCI; });
+    $('#kombelkelola_pilih_sekolah_container').hide();
+    $('#kombelkelola_uploadContainer').empty();
+    $('#kombelkelola_btnAddRow, #kombelkelola_btnSimpan').prop('disabled', false);
+    KOMBELKELOLA_SELECTED_SEKOLAH_FILES = KOMBELKELOLA_CACHE_DATA.filter(function(r){ return String(r.npsn).trim() === KOMBELKELOLA_NPSN_TERKUNCI; });
+    kombelkelola_createUploadRow();
+  } else {
+    $('#kombelkelola_pilih_sekolah_container').show();
+  }
+
+  kombelkelola_bukaModal('tambah', 'Tambah Dokumen Komunitas Belajar');
+}
+
+function kombelkelola_createUploadRow() {
+  KOMBELKELOLA_ROW_COUNT++;
+  var idx = KOMBELKELOLA_ROW_COUNT;
+  var katOpts = '<option value="">- Pilih Kategori -</option>';
+  KOMBELKELOLA_MASTER_KAT.forEach(function(k){
+    if (k.isAktif !== false && k.status !== "Nonaktif") katOpts += '<option value="'+k.idKat+'">'+k.namaKat+'</option>';
+  });
+
+  var kelasOpts = '';
+  KOMBELKELOLA_KELAS_OPTS.forEach(function(opt){ kelasOpts += '<option value="'+opt.value+'">'+opt.label+'</option>'; });
+
+  var rowHtml = `
+    <div class="kombelkelola-upload-row border rounded p-3 mb-3 bg-white shadow-sm" data-idx="${idx}">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <span class="badge badge-secondary font-weight-bold" style="font-size:11px;">DOKUMEN #${idx}</span>
+        ${idx > 1 ? '<button type="button" class="btn btn-sm btn-outline-danger kombelkelola-btn-del-row rounded-pill"><i class="fas fa-trash-alt mr-1"></i>Hapus</button>' : ''}
+      </div>
+      <div class="row">
+        <div class="col-md-5 kombelkelola-kat-wrapper">
+          <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Nama Dokumen <span class="text-danger">*</span></label>
+          <select class="form-control form-control-sultan border-maroon kombelkelola-kategori-select" required>
+            ${katOpts}
+          </select>
+          <div class="small text-info font-italic mt-1 kombelkelola-kat-keterangan" style="display:none;"></div>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Kelas <span class="text-danger">*</span></label>
+          <select class="form-control form-control-sultan border-maroon kombelkelola-kelas-select" required>
+            ${kelasOpts}
+          </select>
+        </div>
+        <div class="col-md-2 kombelkelola-tahun-wrapper">
+          <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Tahun <span class="text-danger">*</span></label>
+          <input type="number" class="form-control form-control-sultan border-maroon kombelkelola-tahun-input" placeholder="202X" min="1980" max="2050" required>
+        </div>
+        <div class="col-md-2 kombelkelola-periode-wrapper" style="display:none;">
+          <label class="form-label-sultan small font-weight-bold text-muted text-uppercase kombelkelola-periode-label">Periode</label>
+          <input type="text" class="form-control form-control-sultan border-maroon kombelkelola-periode-input">
+        </div>
+      </div>
+      <div class="row mt-3">
+        <div class="col-12">
+          <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">
+            <i class="fas fa-file-pdf text-danger mr-1 kombelkelola-format-icon"></i>
+            <span class="kombelkelola-format-text">Pilih Kategori Dulu</span>
+          </label>
+          <div class="custom-file">
+            <input type="file" class="custom-file-input kombelkelola-file-input" accept="application/pdf" required data-max-size="${2*1024*1024}">
+            <label class="custom-file-label text-truncate">Pilih file...</label>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  $('#kombelkelola_uploadContainer').append(rowHtml);
+}
+
+function kombelkelola_submitBatchUpload(e) {
+  e.preventDefault();
+  var npsn = KOMBELKELOLA_IS_ADMIN ? $('#kombelkelola_in_sekolah').val() : KOMBELKELOLA_NPSN_TERKUNCI;
+  if (!npsn) { Sultan.alert('warning','Perhatian','Pilih sekolah terlebih dahulu.'); return; }
+
+  var rows = $('.kombelkelola-upload-row');
+  if (rows.length === 0) { Sultan.alert('warning','Perhatian','Tambahkan minimal satu dokumen.'); return; }
+
+  var payloads = [];
+  var valid = true;
+  rows.each(function() {
+    var row = $(this);
+    var katSel = row.find('.kombelkelola-kategori-select');
+    var katData = KOMBELKELOLA_MASTER_KAT.find(function(k){ return k.idKat === katSel.val(); });
+    var tahunInput = row.find('.kombelkelola-tahun-input');
+    var periodeInput = row.find('.kombelkelola-periode-input');
+    var kelasInput = row.find('.kombelkelola-kelas-select');
+    var fileInput = row.find('.kombelkelola-file-input')[0];
+
+    if (!katSel.val()) { Sultan.alert('warning','Perhatian','Pilih kategori dokumen untuk setiap baris.'); valid=false; return false; }
+    if (!tahunInput.val()) { Sultan.alert('warning','Perhatian','Isi tahun untuk setiap baris.'); valid=false; return false; }
+    if (!fileInput || !fileInput.files[0]) { Sultan.alert('warning','Perhatian','Pilih file untuk setiap baris dokumen.'); valid=false; return false; }
+
+    var periodeVal = "-";
+    if (row.find('.kombelkelola-periode-wrapper').is(':visible')) {
+      if (periodeInput.hasClass('kombelkelola-periode-input') && periodeInput.is('input,select')) {
+        periodeVal = periodeInput.val() || "-";
+      } else {
+        var mulai = row.find('.kombelkelola-periode-mulai').val() || "";
+        var akhir = row.find('.kombelkelola-periode-akhir').val() || "";
+        periodeVal = mulai && akhir ? mulai + " - " + akhir : "-";
+      }
+    }
+
+    payloads.push({
+      npsn: npsn, idKat: katSel.val(), namaKat: katData ? katData.namaKat : katSel.val(),
+      kelas: kelasInput.val() || "Umum",
+      tahun: tahunInput.val(), periode: periodeVal,
+      uploader: KOMBELKELOLA_USER_AKTIF,
+      file: fileInput.files[0]
+    });
+  });
+  if (!valid) return;
+
+  var btn = $('#kombelkelola_btnSimpan'); var btnTxt = btn.html();
+  btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i>MENGUPLOAD...');
+  Sultan.notif.loading("Mengunggah dokumen...");
+
+  var idx = 0;
+  function uploadNext() {
+    if (idx >= payloads.length) {
+      Sultan.notif.tutup();
+      if (typeof Sultan !== 'undefined' && Sultan.modal) Sultan.modal.tutupForm();
+      else $('#global_modalForm').modal('hide');
+      btn.prop('disabled', false).html(btnTxt);
+      Sultan.notif.crud.simpan(false);
+      setTimeout(kombelkelola_tarikDataServer, 400);
+      return;
+    }
+    var p = payloads[idx];
+    var reader = new FileReader();
+    reader.onload = function(evt) {
+      var base64 = evt.target.result.split(',')[1];
+      google.script.run.withSuccessHandler(function(json) {
+        var res = JSON.parse(json);
+        if (!res.success) { Sultan.notif.tutup(); btn.prop('disabled',false).html(btnTxt); Sultan.notif.crud.gagal(res.message); return; }
+        idx++; uploadNext();
+      }).withFailureHandler(function(err) {
+        Sultan.notif.tutup(); btn.prop('disabled',false).html(btnTxt); Sultan.notif.crud.gagal(err.message);
+      }).uploadKombelDokumen({ npsn:p.npsn, idKat:p.idKat, namaKat:p.namaKat, kelas:p.kelas, tahun:p.tahun, periode:p.periode, uploader:p.uploader }, base64, p.file.name, p.file.type);
+    };
+    reader.readAsDataURL(p.file);
+  }
+  uploadNext();
+}
+
+function kombelkelola_bukaModalPerbaiki(rowId) {
+  var d = KOMBELKELOLA_CACHE_DATA.find(function(x){ return x.rowId == rowId; });
+  if (!d) return;
+  var $form = $('#kombelkelola_formPerbaiki'); $form[0].reset(); $form.removeClass('was-validated');
+  $('#kombelkelola_p_rowid').val(d.rowId); $('#kombelkelola_p_npsn').val(d.npsn);
+  $('#kombelkelola_p_nama').text(d.nama_sekolah||d.npsn);
+  $('#kombelkelola_p_kategori').text(d.nama_kategori||d.id_kategori);
+  $('#kombelkelola_p_kelas').text(d.kelas||"Umum");
+  $('#kombelkelola_p_catatan').text(d.catatan||"Tidak ada catatan");
+  $('#kombelkelola_p_tahun_input').val(d.tahun||"");
+  var katData = KOMBELKELOLA_MASTER_KAT.find(function(k){ return k.idKat === d.id_kategori; });
+  if (katData) {
+    $('#kombelkelola_p_iconFormat').removeClass().addClass('fas fa-file-upload text-danger mr-1 kombelkelola-format-icon');
+    $('#kombelkelola_p_lblFormat').text('Dokumen (Maks '+( katData.ukuran||"2")+' MB)');
+    var accMap = { PDF:'application/pdf', IMG:'image/jpeg,image/png,image/jpg', EXCEL:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', ALL:'application/pdf,image/jpeg,image/png,image/jpg' };
+    var fmt = String(katData.format||"PDF").toUpperCase();
+    var acc = accMap[fmt] || (fmt.includes('IMG')?accMap.IMG:fmt.includes('ALL')?accMap.ALL:fmt.includes('EXCEL')?accMap.EXCEL:accMap.PDF);
+    $('#kombelkelola_p_file').attr('accept', acc).attr('data-max-size', (katData.ukuran||2)*1024*1024);
+  }
+  var jPeriode = katData ? String(katData.jenisPeriode||"TAHUNAN_TAPEL").toUpperCase() : "TAHUNAN_TAPEL";
+  var isPermanen = jPeriode.includes("PERMANEN") || jPeriode.includes("TMT");
+  if (isPermanen) { $('#kombelkelola_p_tahun_wrapper').hide(); $('#kombelkelola_p_periode_wrapper').hide(); }
+  else { $('#kombelkelola_p_tahun_wrapper').show(); }
+
+  var isEdit = true;
+  $('#global_modalFormSize').removeClass('modal-xl modal-lg').addClass('modal-lg');
+  $('#global_modalFormHeader').removeClass('modal-header-sultan-primary modal-header-sultan-warning modal-header-sultan-danger modal-header-sultan-success modal-header-sultan-info modal-header-sultan-dark modal-header-edit modal-header-tambah-edit modal-header-hapus').addClass('modal-header-sultan-warning');
+  $('#global_modalFormTitle').html('<i class="fas fa-edit mr-2"></i>Perbaiki Dokumen');
+  $('#global_modalFormBody, #global_modalFormFooter').hide();
+  $('#kombelkelola_formPerbaiki').appendTo('#global_modalFormSize .modal-content');
+  $('#global_modalForm').off('hidden.bs.modal.kombelkelola').on('hidden.bs.modal.kombelkelola', function() {
+    $('#kombelkelola_formPerbaiki').appendTo('#kombelkelola_templates');
+    $('#global_modalFormBody, #global_modalFormFooter').show();
+  });
+  $('#global_modalForm').modal('show');
+}
+
+function kombelkelola_submitPerbaiki(e) {
+  e.preventDefault();
+  var rowId = $('#kombelkelola_p_rowid').val();
+  var tahun = $('#kombelkelola_p_tahun_input').val();
+  var periode = $('#kombelkelola_p_periode_input').val() || "-";
+  var fileEl = $('#kombelkelola_p_file')[0];
+  var btn = $('#kombelkelola_btnSimpanPerbaiki'); var btnTxt = btn.html();
+  btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i>MEMPERBARUI...');
+  Sultan.notif.loading("Memperbarui dokumen...");
+
+  var doSubmit = function(b64, fname, ftype) {
+    google.script.run.withSuccessHandler(function(json) {
+      Sultan.notif.tutup(); btn.prop('disabled',false).html(btnTxt);
+      var res = JSON.parse(json);
+      if (res.success) {
+        if (typeof Sultan !== 'undefined' && Sultan.modal) Sultan.modal.tutupForm();
+        else $('#global_modalForm').modal('hide');
+        Sultan.notif.crud.simpan(true);
+        setTimeout(kombelkelola_tarikDataServer, 400);
+      } else { Sultan.notif.crud.gagal(res.message); }
+    }).withFailureHandler(function(err) {
+      Sultan.notif.tutup(); btn.prop('disabled',false).html(btnTxt); Sultan.notif.crud.gagal(err.message);
+    }).perbaikiKombelDokumen(rowId, tahun, periode, b64, fname, ftype, KOMBELKELOLA_USER_AKTIF);
+  };
+
+  if (fileEl && fileEl.files[0]) {
+    var reader = new FileReader();
+    reader.onload = function(evt) { doSubmit(evt.target.result.split(',')[1], fileEl.files[0].name, fileEl.files[0].type); };
+    reader.readAsDataURL(fileEl.files[0]);
+  } else { doSubmit(null, null, null); }
+}
+
+function kombelkelola_bukaModalVerif(rowId) {
+  if (!KOMBELKELOLA_IS_ADMIN) { Sultan.alert('warning','Perhatian','Akses verifikasi hanya untuk admin.'); return; }
+  var d = KOMBELKELOLA_CACHE_DATA.find(function(x){ return x.rowId == rowId; });
+  if (!d) return;
+  var $form = $('#kombelkelola_formVerif'); $form[0].reset(); $form.removeClass('was-validated');
+  $('#kombelkelola_v_rowid').val(d.rowId);
+  $('#kombelkelola_v_nama').text(d.nama_sekolah||d.npsn);
+  $('#kombelkelola_v_npsn').text(d.npsn);
+  $('#kombelkelola_v_kategori').text(d.nama_kategori||d.id_kategori);
+  $('#kombelkelola_v_kelas').text(d.kelas||"Umum");
+  $('#kombelkelola_v_tahun').text(d.tahun||"-");
+  if (d.periode && d.periode !== "-") { $('#kombelkelola_v_periode_wrapper').show(); $('#kombelkelola_v_periode').text(d.periode); }
+  else { $('#kombelkelola_v_periode_wrapper').hide(); }
+  if (d.catatan) { $('#kombelkelola_prevCatatanWrap').show(); $('#kombelkelola_prevCatatan').text(d.catatan); }
+  else { $('#kombelkelola_prevCatatanWrap').hide(); }
+  $('#kombelkelola_v_status').val('').trigger('change');
+  $('#global_modalFormSize').removeClass('modal-xl modal-lg').addClass('modal-lg');
+  $('#global_modalFormHeader').removeClass('modal-header-sultan-primary modal-header-sultan-warning modal-header-sultan-danger modal-header-sultan-success modal-header-sultan-info modal-header-sultan-dark modal-header-edit modal-header-tambah-edit modal-header-hapus').addClass('modal-header-sultan-success');
+  $('#global_modalFormTitle').html('<i class="fas fa-check-double mr-2"></i>Verifikasi Dokumen Kombel');
+  $('#global_modalFormBody, #global_modalFormFooter').hide();
+  $('#kombelkelola_formVerif').appendTo('#global_modalFormSize .modal-content');
+  $('#global_modalForm').off('hidden.bs.modal.kombelverif').on('hidden.bs.modal.kombelverif', function() {
+    $('#kombelkelola_formVerif').appendTo('#kombelkelola_templates');
+    $('#global_modalFormBody, #global_modalFormFooter').show();
+  });
+  $('#global_modalForm').modal('show');
+}
+
+function kombelkelola_submitVerif(e) {
+  e.preventDefault();
+  var $form = $(this); if (!$form[0].checkValidity()) { $form.addClass('was-validated'); return; }
+  var rowId = $('#kombelkelola_v_rowid').val();
+  var status = $('#kombelkelola_v_status').val();
+  var catatan = $('#kombelkelola_v_catatan').val();
+  if ((status === 'Revisi' || status === 'Ditolak') && !catatan.trim()) { Sultan.alert('warning','Perhatian','Catatan wajib diisi untuk keputusan Revisi/Ditolak.'); return; }
+  var btn = $('#kombelkelola_btnVerifikasi'); var btnTxt = btn.html();
+  btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i>MEMVERIFIKASI...');
+  Sultan.notif.loading("Menyimpan verifikasi...");
+  google.script.run.withSuccessHandler(function(json) {
+    Sultan.notif.tutup(); btn.prop('disabled',false).html(btnTxt);
+    var res = JSON.parse(json);
+    if (res.success) {
+      if (typeof Sultan !== 'undefined' && Sultan.modal) Sultan.modal.tutupForm();
+      else $('#global_modalForm').modal('hide');
+      Sultan.notif.crud.simpan(true);
+      setTimeout(kombelkelola_tarikDataServer, 400);
+    } else { Sultan.notif.crud.gagal(res.message); }
+  }).withFailureHandler(function(err) {
+    Sultan.notif.tutup(); btn.prop('disabled',false).html(btnTxt); Sultan.notif.crud.gagal(err.message);
+  }).verifikasiKombelDokumen(rowId, status, catatan);
+}
+
+function kombelkelola_bukaModalHapus(rowId) {
+  var d = KOMBELKELOLA_CACHE_DATA.find(function(x){ return x.rowId == rowId; });
+  if (!d) return;
+  if (typeof Sultan !== 'undefined' && Sultan.modal && Sultan.modal.konfirmasiHapus) {
+    Sultan.modal.konfirmasiHapus({
+      title: 'HAPUS DOKUMEN KOMUNITAS BELAJAR',
+      kode: null,
+      detail: { 'SEKOLAH': d.nama_sekolah||d.npsn, 'DOKUMEN': d.nama_kategori||d.id_kategori, 'KELAS': d.kelas||'Umum', 'TAHUN': d.tahun||'-' },
+      onConfirm: function() {
+        Sultan.notif.loading("Menghapus dokumen...");
+        google.script.run.withSuccessHandler(function(json) {
+          Sultan.notif.tutup(); var res=JSON.parse(json);
+          if (res.success) { Sultan.notif.crud.hapus(); kombelkelola_tarikDataServer(); }
+          else Sultan.notif.crud.gagal(res.message);
+        }).withFailureHandler(function(err){ Sultan.notif.tutup(); Sultan.notif.crud.gagal(err.message); }).hapusKombelDokumen(rowId);
+      }
+    });
+  }
+}
+
+function kombelkelola_bukaPreview(url) {
+  if (!url || url === "#") { Sultan.alert('warning','Perhatian','URL dokumen tidak tersedia.'); return; }
+  window.open(url, '_blank');
+}
+
+function kombelkelola_lihatCatatan(pesan) {
+  Sultan.alert('info', 'Catatan Admin', pesan);
+}
+
+function kombelkelola_bukaModal(tipe, judul) {
+  var isEdit = tipe === 'edit';
+  $('#global_modalFormSize').removeClass('modal-xl modal-lg').addClass('modal-lg');
+  $('#global_modalFormHeader').removeClass('modal-header-sultan-primary modal-header-sultan-warning modal-header-sultan-danger modal-header-sultan-success modal-header-sultan-info modal-header-sultan-dark modal-header-edit modal-header-tambah-edit modal-header-hapus').addClass(isEdit ? 'modal-header-sultan-warning' : 'modal-header-tambah-edit');
+  $('#global_modalFormTitle').html('<i class="fas fa-'+(isEdit?'edit':'plus')+' mr-2"></i>'+kombelkelola_esc(judul));
+  $('#global_modalFormBody, #global_modalFormFooter').hide();
+  $('#kombelkelola_formUpload').appendTo('#global_modalFormSize .modal-content');
+  $('#global_modalForm').off('hidden.bs.modal.kombelkelola').on('hidden.bs.modal.kombelkelola', function() {
+    $('#kombelkelola_formUpload').appendTo('#kombelkelola_templates');
+    $('#global_modalFormBody, #global_modalFormFooter').show();
+    $('#kombelkelola_pilih_sekolah_container').show();
+  });
+  $('#global_modalForm').modal('show');
+}
+
+function kombelkelola_esc(t) {
+  return t ? String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;') : '';
+}
+</script>

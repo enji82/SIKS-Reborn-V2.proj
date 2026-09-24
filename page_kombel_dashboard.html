@@ -1,0 +1,653 @@
+<style>
+  /* ================================================================
+     DASBOR KOMUNITAS BELAJAR — STYLES
+     (Mengikuti standar SultanUI terpusat — mirip page_adm_sekolah_dashboard)
+     ================================================================ */
+  body.dark-mode #komBelDash_unitJenjangBadge {
+    background: rgba(255,255,255,0.1) !important; color: #e2e8f0 !important;
+    border-color: rgba(255,255,255,0.15) !important;
+  }
+  body.dark-mode .kombeldash-link-lihat {
+    color: #fca5a5 !important; border-color: #fca5a5 !important;
+  }
+  body.dark-mode .kombeldash-link-lihat:hover {
+    background: #991b1b !important; color: #fff !important; border-color: #991b1b !important;
+  }
+</style>
+
+<section class="content">
+  <div class="container-fluid">
+    <div class="row justify-content-center">
+      <div class="col-12">
+
+        <!-- ================================================================
+             FILTER BAR UTAMA DASHBOARD (TERPUSAT SULTAN UI)
+             ================================================================ -->
+        <div class="sultan-filter-bar-balanced mb-4 sultan-page-transition d-none" id="komBelDash_filterBar">
+          <div class="filter-controls-group">
+            <!-- Segmented Switcher Mode (Unit vs Rekap) -->
+            <div class="sultan-segmented-switch">
+              <button type="button" class="sultan-segmented-btn" data-mode="unit" id="komBelDash_btnModeUnit">
+                <i class="fas fa-school"></i> Unit
+              </button>
+              <button type="button" class="sultan-segmented-btn active" data-mode="rekap" id="komBelDash_btnModeRekap">
+                <i class="fas fa-chart-pie"></i> Rekap
+              </button>
+            </div>
+
+            <!-- Filter Kategori Dokumen (mode Rekap) -->
+            <div class="sultan-filter-item" id="komBelDash_filterKategoriContainer">
+              <select id="komBelDash_filterKategori" class="form-control" aria-label="Pilih Kategori Dokumen">
+                <option value="">- Memuat Kategori... -</option>
+              </select>
+              <i class="fas fa-chevron-down"></i>
+            </div>
+
+            <!-- Filter Tahun (mode Rekap) -->
+            <div class="sultan-filter-item" id="komBelDash_filterTahunContainer">
+              <select id="komBelDash_filterTahun" class="form-control" aria-label="Pilih Tahun">
+                <option value="SEMUA">- Semua Tahun -</option>
+              </select>
+              <i class="fas fa-chevron-down"></i>
+            </div>
+
+            <!-- Filter Periode (opsional) -->
+            <div class="sultan-filter-item" id="komBelDash_filterPeriodeContainer" style="display:none;">
+              <select id="komBelDash_filterPeriode" class="form-control" aria-label="Pilih Periode">
+                <option value="SEMUA">- Semua Periode -</option>
+              </select>
+              <i class="fas fa-chevron-down"></i>
+            </div>
+
+            <!-- Filter Jenjang Unit (Admin) -->
+            <div class="sultan-filter-item d-none" id="komBelDash_filterJenjangUnitContainer">
+              <select id="komBelDash_filterJenjangUnit" class="form-control" aria-label="Pilih Jenjang">
+                <option value="">Pilih Jenjang...</option>
+              </select>
+              <i class="fas fa-chevron-down"></i>
+            </div>
+
+            <!-- Filter Sekolah Unit (Admin) -->
+            <div class="sultan-filter-item d-none" id="komBelDash_filterUnitSekolahContainer" style="min-width:220px;max-width:340px;">
+              <select id="komBelDash_filterUnitSekolah" class="form-control" aria-label="Pilih Sekolah">
+                <option value="">Pilih Sekolah...</option>
+              </select>
+              <i class="fas fa-chevron-down"></i>
+            </div>
+
+            <div class="divider-vertical d-none d-md-block mx-1"></div>
+
+            <button type="button" id="komBelDash_btnRefresh" class="sultan-btn-refresh" title="Refresh Data">
+              <i class="fas fa-sync-alt"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- ================================================================
+             VIEW REKAP
+             ================================================================ -->
+        <div id="komBelDash_viewRekap" class="py-1">
+
+          <div id="komBelDash_loadingState" class="sultan-loading-box sultan-page-transition">
+            <div class="sultan-spinner-icon"><i class="fas fa-circle-notch fa-spin"></i></div>
+            <h6 class="text-muted font-weight-bold sultan-loading-text mb-0"
+                style="letter-spacing:0.5px;text-transform:uppercase;font-size:11px;">
+              Memuat Data Dashboard Komunitas Belajar...
+            </h6>
+          </div>
+
+          <div id="komBelDash_dashboardState" style="display:none;">
+            <!-- 1. KARTU HIGHLIGHT UTAMA -->
+            <div class="row mb-4">
+              <div class="col-lg-3 col-6 mb-3">
+                <div class="sultan-metric-card-minimal minimal-slate h-100">
+                  <div class="minimal-label"><i class="fas fa-school mr-1"></i>Target Sasaran</div>
+                  <div class="minimal-value" id="komBelDash_cardTotalSekolah">0</div>
+                  <div class="minimal-sub text-muted">Total Satuan Pendidikan</div>
+                </div>
+              </div>
+              <div class="col-lg-3 col-6 mb-3">
+                <div class="sultan-metric-card-minimal minimal-success h-100">
+                  <div class="minimal-label"><i class="fas fa-check-circle mr-1"></i>Sudah Unggah</div>
+                  <div class="minimal-value" id="komBelDash_cardSudah">0</div>
+                  <div class="minimal-sub text-muted" id="komBelDash_ratioSekolah">0 / 0 Sekolah</div>
+                </div>
+              </div>
+              <div class="col-lg-3 col-6 mb-3">
+                <div class="sultan-metric-card-minimal minimal-maroon h-100">
+                  <div class="minimal-label"><i class="fas fa-times-circle mr-1"></i>Belum Unggah</div>
+                  <div class="minimal-value" id="komBelDash_cardBelum">0</div>
+                  <div class="minimal-sub text-muted">Perlu Ditindaklanjuti</div>
+                </div>
+              </div>
+              <div class="col-lg-3 col-6 mb-3">
+                <div class="sultan-metric-card-minimal minimal-info h-100">
+                  <div class="minimal-label"><i class="fas fa-chart-line mr-1"></i>Progres Unggah</div>
+                  <div class="minimal-value" id="komBelDash_cardProgress">0%</div>
+                  <div class="progress mt-2" style="height:6px;border-radius:4px;background:rgba(0,0,0,0.06);">
+                    <div id="komBelDash_progressBar" class="progress-bar"
+                         style="width:0%;border-radius:4px;transition:width 0.6s ease;background:#0284c7;"></div>
+                  </div>
+                  <span id="komBelDash_progressText" style="display:none;">0% Selesai</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 2. STATUS DETIL 5 KOLOM MINIMAL -->
+            <div id="komBelDash_metricRow2"></div>
+
+            <!-- 3. DAFTAR SEKOLAH SUDAH UNGGAH -->
+            <div class="col-12 mt-2 px-0">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="font-weight-bold text-sultan-utama m-0 text-uppercase" style="letter-spacing:0.5px;">
+                  <i class="fas fa-clipboard-list mr-2"></i>Daftar Sekolah Sudah Unggah
+                </h6>
+                <button type="button" class="sultan-btn-wa-circular shadow-sm" id="komBelDash_btnSalinWa"
+                        title="Salin rekap ke WhatsApp">
+                  <i class="fab fa-whatsapp"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- 4. KARTU STATUS (DISETUJUI, DIPROSES, REVISI, DITOLAK) -->
+            <div id="komBelDash_statusCardsContainer"></div>
+          </div>
+        </div>
+
+        <!-- ================================================================
+             VIEW UNIT
+             ================================================================ -->
+        <div id="komBelDash_viewUnit" class="d-none py-1">
+          <div id="komBelDash_unitContent">
+            <!-- Metric Row 6 Kartu -->
+            <div class="row mb-4" id="komBelDash_unitMetricRow">
+              <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 col-6 mb-3">
+                <div class="sultan-metric-card-minimal minimal-primary shadow-xs" style="border-radius:18px!important;padding:1.1rem 0.9rem!important;">
+                  <div class="minimal-label text-truncate"><i class="fas fa-chart-pie mr-1"></i>Kelengkapan</div>
+                  <div class="minimal-value" id="komBelDash_unitCardProgress">0%</div>
+                  <div class="minimal-sub text-truncate" id="komBelDash_unitProgressSub">0 dari 0 Selesai</div>
+                  <div class="progress mt-2" style="height:4px;border-radius:4px;background:rgba(79,70,229,0.15);">
+                    <div id="komBelDash_unitProgressBar" class="progress-bar" role="progressbar"
+                         style="width:0%;border-radius:4px;background-color:#4f46e5;transition:width 0.6s ease;"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 col-6 mb-3">
+                <div class="sultan-metric-card-minimal minimal-slate shadow-xs" style="border-radius:18px!important;padding:1.1rem 0.9rem!important;">
+                  <div class="minimal-label text-truncate"><i class="fas fa-folder mr-1"></i>Jml Dokumen</div>
+                  <div class="minimal-value" id="komBelDash_unitCardTotal">0</div>
+                  <div class="minimal-sub text-truncate" id="komBelDash_unitTotalSub">Sudah Diunggah</div>
+                </div>
+              </div>
+              <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 col-6 mb-3">
+                <div class="sultan-metric-card-minimal minimal-info shadow-xs" style="border-radius:18px!important;padding:1.1rem 0.9rem!important;">
+                  <div class="minimal-label text-truncate"><i class="fas fa-hourglass-half mr-1"></i>Diproses</div>
+                  <div class="minimal-value" id="komBelDash_unitCardDiproses">0</div>
+                  <div class="minimal-sub text-truncate">Verifikasi</div>
+                </div>
+              </div>
+              <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 col-6 mb-3">
+                <div class="sultan-metric-card-minimal minimal-success shadow-xs" style="border-radius:18px!important;padding:1.1rem 0.9rem!important;">
+                  <div class="minimal-label text-truncate"><i class="fas fa-check-circle mr-1"></i>Disetujui</div>
+                  <div class="minimal-value" id="komBelDash_unitCardDisetujui">0</div>
+                  <div class="minimal-sub text-truncate">Dokumen Valid</div>
+                </div>
+              </div>
+              <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 col-6 mb-3">
+                <div class="sultan-metric-card-minimal minimal-warning shadow-xs" style="border-radius:18px!important;padding:1.1rem 0.9rem!important;">
+                  <div class="minimal-label text-truncate"><i class="fas fa-edit mr-1"></i>Revisi</div>
+                  <div class="minimal-value" id="komBelDash_unitCardRevisi">0</div>
+                  <div class="minimal-sub text-truncate">Perlu Perbaikan</div>
+                </div>
+              </div>
+              <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 col-6 mb-3">
+                <div class="sultan-metric-card-minimal minimal-maroon shadow-xs" style="border-radius:18px!important;padding:1.1rem 0.9rem!important;">
+                  <div class="minimal-label text-truncate"><i class="fas fa-times-circle mr-1"></i>Ditolak</div>
+                  <div class="minimal-value" id="komBelDash_unitCardDitolak">0</div>
+                  <div class="minimal-sub text-truncate">Tidak Valid</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Daftar Dokumen Terunggah -->
+            <div class="col-12 mt-2 px-0 mb-4">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                  <h6 class="font-weight-bold text-sultan-utama m-0 text-uppercase" style="letter-spacing:0.5px;">
+                    <i class="fas fa-folder-open mr-2"></i>Daftar Dokumen Terunggah
+                  </h6>
+                  <small class="text-muted" id="komBelDash_unitHeaderStatusText">
+                    Distribusi status seluruh dokumen komunitas belajar
+                  </small>
+                </div>
+              </div>
+              <div id="komBelDash_unitStatusCardsContainer"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+/* ================================================================
+   DASBOR KOMUNITAS BELAJAR — JAVASCRIPT
+   (Mengikuti pola identik page_adm_sekolah_dashboard)
+   ================================================================ */
+
+var KOMBELDASH_CACHE_REKAP = [];
+var KOMBELDASH_CACHE_BELUM = [];
+var KOMBELDASH_KATEGORI_MAP = [];
+var KOMBELDASH_TABEL_INSTANCE = null;
+var KOMBELDASH_PENDING_REQ = 0;
+var KOMBELDASH_JENIS_PERIODE = "TAHUNAN_TAPEL";
+var KOMBELDASH_TAHUN_DEFAULTED = false;
+var KOMBELDASH_USER_AKTIF = "";
+var KOMBELDASH_IS_ADMIN = false;
+var KOMBELDASH_UNIT_TERKUNCI = "";
+var KOMBELDASH_USER_NPSN = "";
+var KOMBELDASH_MASTER_SEKOLAH = [];
+var KOMBELDASH_MODE = "rekap";
+
+window.KOMBELDASH_LIST_DISETUJUI_CACHE = window.KOMBELDASH_LIST_DISETUJUI_CACHE || [];
+window.KOMBELDASH_LIST_DIPROSES_CACHE  = window.KOMBELDASH_LIST_DIPROSES_CACHE  || [];
+window.KOMBELDASH_LIST_REVISI_CACHE    = window.KOMBELDASH_LIST_REVISI_CACHE    || [];
+window.KOMBELDASH_LIST_DITOLAK_CACHE   = window.KOMBELDASH_LIST_DITOLAK_CACHE   || [];
+
+$(document).ready(function() {
+  KOMBELDASH_TABEL_INSTANCE = null;
+
+  if (typeof SultanUI !== 'undefined') {
+    $('#komBelDash_metricRow2').html(SultanUI.renderDashboardRow2Minimal('komBelDash'));
+    $('#komBelDash_statusCardsContainer').html(SultanUI.renderDashboardStatusCards4('komBelDash'));
+    $('#komBelDash_unitStatusCardsContainer').html(SultanUI.renderDashboardStatusCards4('komBelDash_unit', {
+      placeholderCari: 'Cari dokumen...', emptyText: 'PILIH SEKOLAH'
+    }));
+    $('#komBelDash_jenisPeriodeBadge').hide();
+    SultanUI.startLottery('#komBelDash_cardTotalSekolah, #komBelDash_cardSudah, #komBelDash_cardBelum, #komBelDash_cardTotalDokumen, #komBelDash_cardDiproses, #komBelDash_cardDisetujui, #komBelDash_cardRevisi, #komBelDash_cardDitolak', 3);
+    SultanUI.startLottery('#komBelDash_cardProgress', 2, '%');
+  }
+
+  try {
+    var user = typeof getSesiUser === 'function' ? getSesiUser() : {};
+    KOMBELDASH_USER_AKTIF = user.nama_lengkap || user.fullname || user.nama || user.username || "User";
+    var rStr = String(user.role || "").toLowerCase();
+    KOMBELDASH_IS_ADMIN = (typeof checkUserRoleIsAdmin === 'function' && checkUserRoleIsAdmin()) || rStr.includes("admin") || rStr.includes("verifikator");
+    KOMBELDASH_USER_NPSN = String(user.npsn || user.unit || user.username || "").trim();
+  } catch(e) { KOMBELDASH_USER_NPSN = ""; KOMBELDASH_IS_ADMIN = false; }
+
+  var dashState = SultanDashboard.initDualMode({
+    pageKey: 'komBelDash',
+    tabType: 'multi_tab',
+    unitViewId: '#komBelDash_viewUnit',
+    rekapViewId: '#komBelDash_viewRekap',
+    switchSelector: '.sultan-segmented-btn',
+    onInit: function(state) {
+      KOMBELDASH_IS_ADMIN   = state.isAdmin;
+      KOMBELDASH_USER_NPSN  = state.userNpsn;
+      KOMBELDASH_MODE       = state.currentMode;
+
+      SultanDashboard.setupUnitSchoolPicker({
+        pageKey: 'komBelDash',
+        wrapperJenjangId: '#komBelDash_filterJenjangUnitContainer',
+        selectJenjangId: '#komBelDash_filterJenjangUnit',
+        wrapperSekolahId: '#komBelDash_filterUnitSekolahContainer',
+        selectSekolahId: '#komBelDash_filterUnitSekolah',
+        btnActionId: '#komBelDash_btnRefresh',
+        masterSekolah: KOMBELDASH_MASTER_SEKOLAH,
+        onSelectSchool: function(npsn, nama) {
+          if (npsn) kombeldash_loadUnitData(npsn);
+          else kombeldash_resetUnitView();
+        }
+      });
+      kombeldash_updateFilterBarControls();
+    },
+    onSwitchMode: function(mode, state, isFirstLoad) {
+      KOMBELDASH_MODE = mode;
+      kombeldash_updateFilterBarControls();
+      if (mode === 'unit') {
+        if (!KOMBELDASH_IS_ADMIN && KOMBELDASH_USER_NPSN) {
+          kombeldash_loadUnitData(KOMBELDASH_USER_NPSN);
+        } else if (KOMBELDASH_IS_ADMIN) {
+          var curSel = $('#komBelDash_filterUnitSekolah').val();
+          if (curSel) kombeldash_loadUnitData(curSel);
+          else kombeldash_resetUnitView();
+        }
+      } else {
+        var k = $('#komBelDash_filterKategori').val();
+        if (k && !isFirstLoad) kombeldash_loadDataKategori(k);
+      }
+    }
+  });
+
+  kombeldash_setupEventListeners();
+  kombeldash_initMasterAccess();
+});
+
+function kombeldash_updateFilterBarControls() {
+  var isUnit = (KOMBELDASH_MODE === 'unit');
+  if (isUnit) {
+    $('#komBelDash_filterKategoriContainer, #komBelDash_filterTahunContainer, #komBelDash_filterPeriodeContainer').addClass('d-none');
+    if (KOMBELDASH_IS_ADMIN) {
+      $('#komBelDash_filterBar').removeClass('d-none');
+      $('#komBelDash_filterJenjangUnitContainer, #komBelDash_filterUnitSekolahContainer').removeClass('d-none');
+    } else {
+      $('#komBelDash_filterBar').addClass('d-none');
+      $('#komBelDash_filterJenjangUnitContainer, #komBelDash_filterUnitSekolahContainer').addClass('d-none');
+    }
+  } else {
+    $('#komBelDash_filterBar').removeClass('d-none');
+    $('#komBelDash_filterKategoriContainer, #komBelDash_filterTahunContainer').removeClass('d-none');
+    var isPermanen = (KOMBELDASH_JENIS_PERIODE === "PERMANEN" || KOMBELDASH_JENIS_PERIODE === "TMT");
+    if (isPermanen) {
+      $('#komBelDash_filterTahunContainer').addClass('d-none');
+      $('#komBelDash_filterPeriodeContainer').addClass('d-none');
+    } else {
+      $('#komBelDash_filterTahunContainer').removeClass('d-none');
+      if (KOMBELDASH_JENIS_PERIODE === "TAHUNAN_TAPEL" || KOMBELDASH_JENIS_PERIODE === "TAHUNAN_KALENDER") {
+        $('#komBelDash_filterPeriodeContainer').addClass('d-none');
+      } else {
+        $('#komBelDash_filterPeriodeContainer').removeClass('d-none');
+      }
+    }
+    $('#komBelDash_filterJenjangUnitContainer, #komBelDash_filterUnitSekolahContainer').addClass('d-none');
+  }
+}
+
+function kombeldash_setupEventListeners() {
+  $(document).off('click','#komBelDash_btnRefresh').on('click','#komBelDash_btnRefresh', function(e) {
+    e.preventDefault();
+    if (KOMBELDASH_MODE === 'rekap') {
+      var k = $('#komBelDash_filterKategori').val();
+      if (k) kombeldash_loadDataKategori(k, true);
+    } else {
+      var tN = KOMBELDASH_IS_ADMIN ? $('#komBelDash_filterUnitSekolah').val() : KOMBELDASH_USER_NPSN;
+      if (!tN) { if (typeof Sultan !== 'undefined') Sultan.notif.info('Silakan pilih sekolah terlebih dahulu.'); return; }
+      kombeldash_loadUnitData(tN, true);
+    }
+  });
+
+  $(document).off('click','#komBelDash_btnSalinWa').on('click','#komBelDash_btnSalinWa', function(e) {
+    e.preventDefault(); kombeldash_salinKeWA();
+  });
+
+  $(document).off('change','#komBelDash_filterKategori').on('change','#komBelDash_filterKategori', function() {
+    var k = $(this).val(); if (k) kombeldash_loadDataKategori(k);
+  });
+
+  $(document).off('change','#komBelDash_filterTahun, #komBelDash_filterPeriode').on('change','#komBelDash_filterTahun, #komBelDash_filterPeriode', function() {
+    kombeldash_terapkanFilterLokal();
+  });
+
+  $(document).off('change','#komBelDash_filterJenjangUnit').on('change','#komBelDash_filterJenjangUnit', function() {
+    kombeldash_updateSekolahDropdown('unit');
+    var n = $('#komBelDash_filterUnitSekolah').val();
+    if (n) kombeldash_loadUnitData(n); else kombeldash_resetUnitView();
+  });
+
+  $(document).off('change','#komBelDash_filterUnitSekolah').on('change','#komBelDash_filterUnitSekolah', function() {
+    var n = $(this).val(); if (n) kombeldash_loadUnitData(n); else kombeldash_resetUnitView();
+  });
+
+  // Search filter 4 kolom Rekap
+  var statusListRekap = ['Disetujui','Diproses','Revisi','Ditolak'];
+  statusListRekap.forEach(function(s) {
+    $(document).off('input','#komBelDash_inputCari'+s).on('input','#komBelDash_inputCari'+s, function() {
+      kombeldash_filterStatusList(s, $(this).val());
+    });
+    $(document).off('input','#komBelDash_unit_inputCari'+s).on('input','#komBelDash_unit_inputCari'+s, function() {
+      kombeldash_filterUnitStatusList(s, $(this).val());
+    });
+  });
+}
+
+function kombeldash_switchMode(mode) {
+  SultanDashboard.switchMode('komBelDash', mode);
+}
+
+function kombeldash_initMasterAccess() {
+  if (!KOMBELDASH_IS_ADMIN && !KOMBELDASH_USER_NPSN) {
+    $('#komBelDash_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-ban mb-2"></i><br>Akses ditolak: Sesi login tidak valid.</span>');
+    return;
+  }
+
+  google.script.run.withSuccessHandler(function(json) {
+    var res = JSON.parse(json);
+    if (!res.success) {
+      $('#komBelDash_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>' + kombeldash_escapeHtml(res.message) + '</span>');
+      return;
+    }
+
+    KOMBELDASH_MASTER_SEKOLAH = res.sekolah || [];
+    KOMBELDASH_KATEGORI_MAP = (res.kategori || [])
+      .filter(function(k) { return k.idKat && (String(k.integrasiDashboard || "TRUE").toUpperCase() !== "FALSE"); })
+      .map(function(k) { return { idKat: k.idKat, namaKategori: k.namaKat, jenisPeriode: k.jenisPeriode }; });
+
+    kombeldash_setupJenjangDropdowns();
+    kombeldash_setupUnitSekolahDropdown();
+
+    if (KOMBELDASH_KATEGORI_MAP.length === 0) {
+      $('#komBelDash_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>Belum ada Kategori yang berintegrasi ke Dashboard.</span>');
+      return;
+    }
+
+    var selectKat = $('#komBelDash_filterKategori');
+    selectKat.empty();
+    KOMBELDASH_KATEGORI_MAP.forEach(function(k) {
+      selectKat.append($('<option>', { value: k.idKat, text: k.namaKategori }));
+    });
+
+    if (!KOMBELDASH_IS_ADMIN) {
+      kombeldash_switchMode('unit');
+      kombeldash_loadUnitData(KOMBELDASH_USER_NPSN);
+    } else {
+      kombeldash_switchMode('rekap');
+      kombeldash_loadDataKategori($('#komBelDash_filterKategori').val());
+    }
+
+  }).withFailureHandler(function(err) {
+    $('#komBelDash_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Terputus: ' + kombeldash_escapeHtml(err.message) + '</span>');
+  }).getKombelMasterData("");
+}
+
+function kombeldash_setupJenjangDropdowns() {
+  var jenjangSet = new Set();
+  KOMBELDASH_MASTER_SEKOLAH.forEach(function(s) {
+    var j = String(s.jenjang || "").trim().toUpperCase(); if (j) jenjangSet.add(j);
+  });
+  var selJenjangUnit = $('#komBelDash_filterJenjangUnit');
+  selJenjangUnit.empty().append('<option value="">Pilih Jenjang...</option>');
+  Array.from(jenjangSet).sort().forEach(function(j) {
+    selJenjangUnit.append($('<option>', { value: j, text: j }));
+  });
+}
+
+function kombeldash_setupUnitSekolahDropdown() {
+  kombeldash_updateSekolahDropdown('unit');
+}
+
+function kombeldash_updateSekolahDropdown(mode) {
+  if (mode !== 'unit') return;
+  var filterJenjangUnit = String($('#komBelDash_filterJenjangUnit').val() || "SEMUA").toUpperCase();
+  var selUnit = $('#komBelDash_filterUnitSekolah');
+  var curValUnit = selUnit.val();
+
+  var filteredUnit = KOMBELDASH_MASTER_SEKOLAH.filter(function(s) {
+    if (filterJenjangUnit === "SEMUA") return true;
+    return String(s.jenjang || "").trim().toUpperCase() === filterJenjangUnit;
+  });
+
+  if (!KOMBELDASH_IS_ADMIN && KOMBELDASH_USER_NPSN) {
+    filteredUnit = filteredUnit.filter(function(s) {
+      return String(s.npsn || "").trim() === KOMBELDASH_USER_NPSN ||
+             String(s.npsn || "").trim().toUpperCase() === KOMBELDASH_USER_NPSN.toUpperCase();
+    });
+  }
+
+  selUnit.empty();
+  if (KOMBELDASH_IS_ADMIN) selUnit.append('<option value="">Pilih Sekolah...</option>');
+  filteredUnit.sort(function(a,b){return String(a.nama).localeCompare(String(b.nama));});
+  filteredUnit.forEach(function(s) { selUnit.append($('<option>', { value: s.npsn, text: s.nama })); });
+
+  if (!KOMBELDASH_IS_ADMIN && KOMBELDASH_USER_NPSN) {
+    selUnit.val(KOMBELDASH_USER_NPSN);
+    if (!selUnit.val()) selUnit.val(selUnit.find('option:first').val());
+    selUnit.prop('disabled', true).addClass('bg-light text-maroon font-weight-bold');
+  } else {
+    selUnit.prop('disabled', false).removeClass('bg-light text-maroon font-weight-bold');
+    if (curValUnit && selUnit.find('option[value="' + curValUnit + '"]').length) selUnit.val(curValUnit);
+  }
+}
+
+function kombeldash_loadDataKategori(idKategori, forceRefresh) {
+  if (KOMBELDASH_PENDING_REQ > 0) return;
+  KOMBELDASH_PENDING_REQ = 1; forceRefresh = !!forceRefresh;
+
+  var mapData = KOMBELDASH_KATEGORI_MAP.find(function(k) { return k.idKat === idKategori; });
+  if (!mapData) { KOMBELDASH_PENDING_REQ = 0; return; }
+
+  var btn = $('#komBelDash_btnRefresh');
+  btn.prop('disabled', true).addClass('loading').find('i').addClass('fa-spin');
+  $('#komBelDash_filterKategori, #komBelDash_filterTahun, #komBelDash_filterPeriode').prop('disabled', true);
+
+  if (typeof SultanUI !== 'undefined') {
+    SultanUI.startLottery('#komBelDash_cardTotalSekolah, #komBelDash_cardSudah, #komBelDash_cardBelum, #komBelDash_cardTotalDokumen, #komBelDash_cardDiproses, #komBelDash_cardDisetujui, #komBelDash_cardRevisi, #komBelDash_cardDitolak', 3);
+    SultanUI.startLottery('#komBelDash_cardProgress', 2, '%');
+  }
+
+  var listLoadingHtml = (typeof SultanUI !== 'undefined' && SultanUI.renderListLoading)
+    ? SultanUI.renderListLoading('MEMUAT...')
+    : '<li class="list-group-item border-0 px-3 py-4 bg-transparent text-center"><i class="fas fa-circle-notch fa-spin text-muted mb-2 opacity-50"></i><br><span class="small text-muted font-weight-bold" style="letter-spacing:0.5px;text-transform:uppercase;font-size:11px;">MEMUAT...</span></li>';
+  $('#komBelDash_listDisetujui, #komBelDash_listDiproses, #komBelDash_listRevisi, #komBelDash_listDitolak').html(listLoadingHtml);
+  $('#komBelDash_countDisetujui, #komBelDash_countDiproses, #komBelDash_countRevisi, #komBelDash_countDitolak').text('...');
+
+  if (!$('#komBelDash_dashboardState').is(':visible')) {
+    $('#komBelDash_loadingState').show(); $('#komBelDash_dashboardState').hide();
+  }
+
+  google.script.run.withSuccessHandler(function(jsonStr) {
+    KOMBELDASH_PENDING_REQ = 0;
+    btn.prop('disabled', false).removeClass('loading').find('i').removeClass('fa-spin');
+    $('#komBelDash_filterKategori, #komBelDash_filterTahun, #komBelDash_filterPeriode').prop('disabled', false);
+    $('.card-loading-overlay').remove();
+
+    var data = JSON.parse(jsonStr);
+    if (!data.success) {
+      $('#komBelDash_loadingState').html('<div class="text-center p-4"><span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>' + kombeldash_escapeHtml(data.message) + '</span></div>');
+      return;
+    }
+
+    KOMBELDASH_JENIS_PERIODE = data.jenisPeriode || "TAHUNAN_TAPEL";
+    KOMBELDASH_CACHE_REKAP = data.rekap || [];
+    KOMBELDASH_CACHE_BELUM = data.belum || [];
+
+    if ($('#komBelDash_metricRow2').children().length === 0) {
+      $('#komBelDash_metricRow2').html(SultanUI.renderDashboardRow2Minimal('komBelDash'));
+    }
+    if (typeof SultanUI !== 'undefined') {
+      SultanUI.startLottery('#komBelDash_cardTotalSekolah, #komBelDash_cardSudah, #komBelDash_cardBelum, #komBelDash_cardTotalDokumen, #komBelDash_cardDiproses, #komBelDash_cardDisetujui, #komBelDash_cardRevisi, #komBelDash_cardDitolak', 3);
+      SultanUI.startLottery('#komBelDash_cardProgress', 2, '%');
+    }
+
+    $('#komBelDash_loadingState').hide();
+    $('#komBelDash_dashboardState').fadeIn(250);
+
+    kombeldash_initDropdownTahun();
+    kombeldash_terapkanFilterLokal();
+
+  }).withFailureHandler(function(err) {
+    KOMBELDASH_PENDING_REQ = 0;
+    btn.prop('disabled', false).removeClass('loading').find('i').removeClass('fa-spin');
+    $('#komBelDash_filterKategori').prop('disabled', false);
+    $('.card-loading-overlay').remove();
+    $('#komBelDash_loadingState').html('<div class="text-center p-4"><span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Terputus: ' + kombeldash_escapeHtml(err.message) + '</span></div>');
+  }).getKombelDashboardData(idKategori, forceRefresh);
+}
+
+function kombeldash_initDropdownTahun() {
+  var uniqueTahun = new Set(), uniquePeriode = new Set();
+  var isPermanen = (KOMBELDASH_JENIS_PERIODE === "PERMANEN" || KOMBELDASH_JENIS_PERIODE === "TMT");
+  KOMBELDASH_CACHE_REKAP.concat(KOMBELDASH_CACHE_BELUM).forEach(function(r) {
+    var thn = String(r.tahun || "").trim();
+    if (thn && thn !== "-" && thn !== "PERMANEN") uniqueTahun.add(thn);
+    var per = String(r.periode || "").trim(); if (per && per !== "-") uniquePeriode.add(per);
+  });
+
+  var selTahun = $('#komBelDash_filterTahun');
+  var curTahun = selTahun.val();
+  selTahun.empty().append('<option value="SEMUA">Semua Tahun</option>');
+  var selPeriode = $('#komBelDash_filterPeriode');
+  var curPeriode = selPeriode.val();
+  selPeriode.empty().append('<option value="SEMUA">Semua Periode</option>');
+
+  var sortedTahun = Array.from(uniqueTahun).sort(function(a,b){
+    var na=parseInt(a.split('/')[0],10), nb=parseInt(b.split('/')[0],10);
+    if (!isNaN(na)&&!isNaN(nb)) return nb-na; return String(b).localeCompare(String(a));
+  });
+  sortedTahun.forEach(function(t){selTahun.append($('<option>',{value:t,text:t}));});
+
+  if (isPermanen) { selTahun.val("SEMUA"); KOMBELDASH_TAHUN_DEFAULTED=true; }
+  else if (!KOMBELDASH_TAHUN_DEFAULTED && sortedTahun.length > 0) { selTahun.val(sortedTahun[0]); KOMBELDASH_TAHUN_DEFAULTED=true; }
+  else if (curTahun && (curTahun==="SEMUA"||uniqueTahun.has(curTahun))) selTahun.val(curTahun);
+
+  Array.from(uniquePeriode).sort(function(a,b){return String(b).localeCompare(String(a));})
+    .forEach(function(p){selPeriode.append($('<option>',{value:p,text:p}));});
+  if (curPeriode && uniquePeriode.has(curPeriode)) selPeriode.val(curPeriode); else selPeriode.val("SEMUA");
+}
+
+function kombeldash_terapkanFilterLokal() {
+  if (typeof SultanDashboard !== 'undefined' && SultanDashboard.applyLocalFilter) {
+    SultanDashboard.applyLocalFilter({
+      pageKey: 'komBelDash',
+      cacheRekap: KOMBELDASH_CACHE_REKAP,
+      cacheBelum: KOMBELDASH_CACHE_BELUM,
+      filterTahunId: '#komBelDash_filterTahun',
+      filterPeriodeId: '#komBelDash_filterPeriode',
+      jenisPeriode: KOMBELDASH_JENIS_PERIODE,
+      masterSekolah: KOMBELDASH_MASTER_SEKOLAH
+    });
+  }
+}
+
+function kombeldash_resetUnitView() {
+  if (typeof SultanDashboard !== 'undefined' && SultanDashboard.resetUnitView) {
+    SultanDashboard.resetUnitView('komBelDash');
+  }
+}
+
+function kombeldash_loadUnitData(npsn, forceRefresh) {
+  if (typeof SultanDashboard !== 'undefined' && SultanDashboard.loadUnitData) {
+    SultanDashboard.loadUnitData({
+      pageKey: 'komBelDash',
+      npsn: npsn,
+      forceRefresh: !!forceRefresh,
+      fnGetData: 'getKombelData'
+    });
+  }
+}
+
+function kombeldash_salinKeWA() {
+  if (typeof SultanDashboard !== 'undefined' && SultanDashboard.salinKeWA) {
+    var katNama = $('#komBelDash_filterKategori option:selected').text();
+    SultanDashboard.salinKeWA({ pageKey: 'komBelDash', judulDokumen: katNama, cacheBelum: KOMBELDASH_CACHE_BELUM });
+  }
+}
+
+function kombeldash_filterStatusList(status, q) {
+  if (typeof SultanDashboard !== 'undefined' && SultanDashboard.filterStatusList) {
+    SultanDashboard.filterStatusList('komBelDash', status, q);
+  }
+}
+
+function kombeldash_filterUnitStatusList(status, q) {
+  if (typeof SultanDashboard !== 'undefined' && SultanDashboard.filterStatusList) {
+    SultanDashboard.filterStatusList('komBelDash_unit', status, q);
+  }
+}
+
+function kombeldash_escapeHtml(t) {
+  return t ? String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;') : '';
+}
+</script>
