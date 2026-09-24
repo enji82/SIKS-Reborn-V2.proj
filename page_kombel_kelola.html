@@ -354,8 +354,25 @@ $(document).ready(function() {
       var katWrapEl = row.find('.kombelkelola-kat-wrapper');
       var thnWrapEl = row.find('.kombelkelola-tahun-wrapper');
 
-      thnWrapEl.find('.form-label-sultan').html('Tahun <span class="text-danger">*</span>');
-      row.find('.kombelkelola-tahun-input').replaceWith('<input type="number" class="form-control form-control-sultan border-maroon kombelkelola-tahun-input" placeholder="202X" min="1980" max="2050" required>');
+      var isTapel = jPeriode.includes("TAPEL");
+      if (isTapel) {
+        thnWrapEl.find('.form-label-sultan').html('Thn Pelajaran <span class="text-danger">*</span>');
+        var nowY = new Date().getFullYear();
+        var tapelOpts = '<option value="">- Pilih -</option>';
+        for (var y = nowY + 2; y >= nowY - 4; y--) {
+          var tStr = y + "/" + (y + 1);
+          tapelOpts += '<option value="' + tStr + '">' + tStr + '</option>';
+        }
+        row.find('.kombelkelola-tahun-input').replaceWith('<select class="form-control form-control-sultan border-maroon kombelkelola-tahun-input" required>' + tapelOpts + '</select>');
+      } else {
+        thnWrapEl.find('.form-label-sultan').html('Tahun <span class="text-danger">*</span>');
+        var nowY2 = new Date().getFullYear();
+        var thnOpts = '<option value="">- Pilih -</option>';
+        for (var y2 = nowY2 + 2; y2 >= nowY2 - 5; y2--) {
+          thnOpts += '<option value="' + y2 + '" ' + (y2 === nowY2 ? 'selected' : '') + '>' + y2 + '</option>';
+        }
+        row.find('.kombelkelola-tahun-input').replaceWith('<select class="form-control form-control-sultan border-maroon kombelkelola-tahun-input" required>' + thnOpts + '</select>');
+      }
 
       var bulanOpts = '<option value="">-</option><option>Jan</option><option>Feb</option><option>Mar</option><option>Apr</option><option>Mei</option><option>Jun</option><option>Jul</option><option>Agu</option><option>Sep</option><option>Okt</option><option>Nov</option><option>Des</option>';
 
@@ -373,8 +390,6 @@ $(document).ready(function() {
         katWrapEl.removeClass('col-md-5').addClass('col-md-3');
         pWrap.removeClass('col-md-2').addClass('col-md-3').show(); pLabel.text("Semester");
         pInput.replaceWith('<select class="form-control form-control-sultan border-maroon kombelkelola-periode-input" required><option value="">- Pilih -</option><option value="Semester 1">Semester 1 (Ganjil)</option><option value="Semester 2">Semester 2 (Genap)</option></select>');
-        thnWrapEl.find('.form-label-sultan').html('Thn Pelajaran <span class="text-danger">*</span>');
-        row.find('.kombelkelola-tahun-input').replaceWith('<input type="text" class="form-control form-control-sultan border-maroon kombelkelola-tahun-input" placeholder="Contoh: 2026/2027" required pattern="^[0-9]{4}/[0-9]{4}$" title="Format harus YYYY/YYYY">');
       } else if (jPeriode === "SEMESTER_KALENDER" || (jPeriode.includes("KALENDER") && jPeriode.includes("SEMESTER"))) {
         katWrapEl.removeClass('col-md-5').addClass('col-md-3');
         pWrap.removeClass('col-md-2').addClass('col-md-3').show(); pLabel.text("Semester");
@@ -678,7 +693,9 @@ function kombelkelola_createUploadRow() {
         </div>
         <div class="col-md-2 kombelkelola-tahun-wrapper">
           <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Tahun <span class="text-danger">*</span></label>
-          <input type="number" class="form-control form-control-sultan border-maroon kombelkelola-tahun-input" placeholder="202X" min="1980" max="2050" required>
+          <select class="form-control form-control-sultan border-maroon kombelkelola-tahun-input" required>
+            <option value="">- Pilih -</option>
+          </select>
         </div>
         <div class="col-md-2 kombelkelola-periode-wrapper" style="display:none;">
           <label class="form-label-sultan small font-weight-bold text-muted text-uppercase kombelkelola-periode-label">Periode</label>
@@ -800,7 +817,25 @@ function kombelkelola_bukaModalPerbaiki(rowId) {
   var jPeriode = katData ? String(katData.jenisPeriode||"TAHUNAN_TAPEL").toUpperCase() : "TAHUNAN_TAPEL";
   var isPermanen = jPeriode.includes("PERMANEN") || jPeriode.includes("TMT");
   if (isPermanen) { $('#kombelkelola_p_tahun_wrapper').hide(); $('#kombelkelola_p_periode_wrapper').hide(); }
-  else { $('#kombelkelola_p_tahun_wrapper').show(); }
+  else {
+    $('#kombelkelola_p_tahun_wrapper').show();
+    var isTapelP = jPeriode.includes("TAPEL");
+    var nowYP = new Date().getFullYear();
+    var pThnOpts = '<option value="">- Pilih -</option>';
+    if (isTapelP) {
+      $('#kombelkelola_p_tahun_wrapper label').html('Thn Pelajaran <span class="text-danger">*</span>');
+      for (var yP = nowYP + 2; yP >= nowYP - 4; yP--) {
+        var tStrP = yP + "/" + (yP + 1);
+        pThnOpts += '<option value="' + tStrP + '" ' + (String(d.tahun).trim() === tStrP ? 'selected' : '') + '>' + tStrP + '</option>';
+      }
+    } else {
+      $('#kombelkelola_p_tahun_wrapper label').html('Tahun <span class="text-danger">*</span>');
+      for (var yP2 = nowYP + 2; yP2 >= nowYP - 5; yP2--) {
+        pThnOpts += '<option value="' + yP2 + '" ' + (String(d.tahun).trim() === String(yP2) ? 'selected' : '') + '>' + yP2 + '</option>';
+      }
+    }
+    $('#kombelkelola_p_tahun_input').replaceWith('<select id="kombelkelola_p_tahun_input" class="form-control form-control-sultan border-warning" required>' + pThnOpts + '</select>');
+  }
 
   var isEdit = true;
   $('#global_modalFormSize').removeClass('modal-xl modal-lg').addClass('modal-lg');
