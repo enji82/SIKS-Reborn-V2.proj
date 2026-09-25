@@ -293,7 +293,12 @@ $(document).ready(function() {
   $(document).off('click','#kombelkelola_btnSimpanPerbaiki').on('click','#kombelkelola_btnSimpanPerbaiki', function(){ $('#kombelkelola_formPerbaiki').submit(); });
   $(document).off('click','#kombelkelola_btnVerifikasi').on('click','#kombelkelola_btnVerifikasi', function(){ $('#kombelkelola_formVerif').submit(); });
 
-  $(document).off('change','#kombelkelola_filterKelas, #kombelkelola_filterKategori, #kombelkelola_filterTahun, #kombelkelola_filterStatus').on('change','#kombelkelola_filterKelas, #kombelkelola_filterKategori, #kombelkelola_filterTahun, #kombelkelola_filterStatus', kombelkelola_terapkanFilterLokal);
+  $(document).off('change','#kombelkelola_filterKelas').on('change','#kombelkelola_filterKelas', function() {
+    kombelkelola_updateFilterKategoriOptions();
+    kombelkelola_terapkanFilterLokal();
+  });
+
+  $(document).off('change','#kombelkelola_filterKategori, #kombelkelola_filterTahun, #kombelkelola_filterStatus').on('change','#kombelkelola_filterKategori, #kombelkelola_filterTahun, #kombelkelola_filterStatus', kombelkelola_terapkanFilterLokal);
 
   if (KOMBELKELOLA_IS_ADMIN) {
     $(document).off('change','#kombelkelola_filterJenjang').on('change','#kombelkelola_filterJenjang', function() {
@@ -495,7 +500,7 @@ function kombelkelola_renderFilterBar() {
   var filtersConfig = [];
   if (KOMBELKELOLA_IS_ADMIN) {
     filtersConfig = [
-      { id: 'kombelkelola_filterKelas', placeholder: 'Semua KKG', disabled: true },
+      { id: 'kombelkelola_filterKelas', placeholder: 'Semua Kelas / Mapel', disabled: true },
       { id: 'kombelkelola_filterKategori', placeholder: 'Semua Dokumen', disabled: true },
       { id: 'kombelkelola_filterTahun', placeholder: 'Semua Tahun', disabled: true },
       { id: 'kombelkelola_filterJenjang', placeholder: 'Semua Jenjang', disabled: true },
@@ -504,7 +509,7 @@ function kombelkelola_renderFilterBar() {
     ];
   } else {
     filtersConfig = [
-      { id: 'kombelkelola_filterKelas', placeholder: 'Semua KKG', disabled: true },
+      { id: 'kombelkelola_filterKelas', placeholder: 'Semua Kelas / Mapel', disabled: true },
       { id: 'kombelkelola_filterKategori', placeholder: 'Semua Dokumen', disabled: true },
       { id: 'kombelkelola_filterTahun', placeholder: 'Semua Tahun', disabled: true },
       { id: 'kombelkelola_filterStatus', placeholder: 'Semua Status', disabled: true }
@@ -536,11 +541,8 @@ function kombelkelola_initMasterData() {
       if (foundSek && foundSek.npsn) KOMBELKELOLA_NPSN_TERKUNCI = foundSek.npsn;
     }
 
-    var hk = '<option value="SEMUA">Semua Dokumen</option>';
-    KOMBELKELOLA_MASTER_KAT.forEach(function(k){ hk += '<option value="'+k.idKat+'">'+k.namaKat+'</option>'; });
-    $('#kombelkelola_filterKategori').html(hk).prop('disabled', false);
-
     kombelkelola_setupKkgDropdowns();
+    kombelkelola_updateFilterKategoriOptions();
 
     var hs = '<option value="SEMUA">Semua Status</option><option value="diproses">Diproses</option><option value="disetujui">Disetujui</option><option value="revisi">Revisi</option><option value="ditolak">Ditolak</option>';
     $('#kombelkelola_filterStatus').html(hs).prop('disabled', false);
@@ -562,34 +564,73 @@ function kombelkelola_initMasterData() {
 function kombelkelola_setupKkgDropdowns() {
   var kkgSet = new Set();
   
-  // Selalu sertakan daftar KKG standar lengkap
-  KOMBELKELOLA_KELAS_OPTS.forEach(function(opt) {
-    if (opt.value !== "Umum") kkgSet.add(opt.value);
-  });
-
-  // Tambahkan KKG lain dari master kategori jika ada
+  // Tambahkan KKG dari master kategori
   KOMBELKELOLA_MASTER_KAT.forEach(function(k) {
-    var kkg = String(k.kelas || "").trim();
-    if (kkg && kkg !== "Semua KKG" && kkg !== "Umum") {
-      kkgSet.add(kkg);
+    var rawKkg = String(k.kelas || "").trim();
+    if (rawKkg) {
+      var arr = rawKkg.split(',');
+      arr.forEach(function(item) {
+        var trimmed = item.trim();
+        if (trimmed && trimmed.toUpperCase() !== "SEMUA KKG" && trimmed.toUpperCase() !== "SEMUA KELAS / MAPEL" && trimmed !== "Umum") {
+          kkgSet.add(trimmed);
+        }
+      });
     }
   });
 
-  var sortedKkg = Array.from(kkgSet);
+  // Jika tidak ada di master kategori, gunakan daftar opsi standar
+  if (kkgSet.size === 0) {
+    KOMBELKELOLA_KELAS_OPTS.forEach(function(opt) {
+      if (opt.value !== "Umum") kkgSet.add(opt.value);
+    });
+  }
+
+  var sortedKkg = Array.from(kkgSet).sort(function(a, b) {
+    return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+  });
 
   // Dropdown filter bar
-  var hFilterKkg = '<option value="SEMUA">Semua KKG</option>';
+  var hFilterKkg = '<option value="SEMUA">Semua Kelas / Mapel</option>';
   sortedKkg.forEach(function(kkg) {
     hFilterKkg += '<option value="' + kombelkelola_esc(kkg) + '">' + kombelkelola_esc(kkg) + '</option>';
   });
   $('#kombelkelola_filterKelas').html(hFilterKkg).prop('disabled', false);
 
-  // Dropdown modal upload (tanpa opsi Semua KKG)
+  // Dropdown modal upload (tanpa opsi Semua Kelas / Mapel)
   var hModalKkg = '<option value="">Pilih Kelas / Mapel</option>';
   sortedKkg.forEach(function(kkg) {
     hModalKkg += '<option value="' + kombelkelola_esc(kkg) + '">' + kombelkelola_esc(kkg) + '</option>';
   });
   $('#kombelkelola_in_kkg').html(hModalKkg);
+}
+
+function kombelkelola_updateFilterKategoriOptions() {
+  var selectedKelas = String($('#kombelkelola_filterKelas').val() || "SEMUA").trim();
+  var selectKat = $('#kombelkelola_filterKategori');
+  var currentKat = selectKat.val();
+
+  var filteredKategori = KOMBELKELOLA_MASTER_KAT.filter(function(k) {
+    if (selectedKelas === "SEMUA" || !selectedKelas) return true;
+    var rawKelas = String(k.kelas || "").trim();
+    if (!rawKelas || rawKelas.toUpperCase() === "SEMUA KKG" || rawKelas.toUpperCase() === "SEMUA KELAS / MAPEL" || rawKelas === "Umum") {
+      return true;
+    }
+    var listArr = rawKelas.split(',').map(function(s) { return s.trim().toUpperCase(); });
+    return listArr.indexOf(selectedKelas.toUpperCase()) !== -1;
+  });
+
+  var hk = '<option value="SEMUA">Semua Dokumen</option>';
+  filteredKategori.forEach(function(k) {
+    hk += '<option value="' + k.idKat + '">' + kombelkelola_esc(k.namaKat) + '</option>';
+  });
+
+  selectKat.html(hk).prop('disabled', false);
+
+  if (currentKat && (currentKat === "SEMUA" || filteredKategori.some(function(k) { return String(k.idKat) === String(currentKat); }))) {
+    selectKat.val(currentKat);
+  } else {
+    selectKat.val("SEMUA");
+  }
 }
 
 function kombelkelola_setupJenjangDropdown() {
