@@ -397,7 +397,7 @@ function kombeldash_initMasterAccess() {
     KOMBELDASH_MASTER_SEKOLAH = res.sekolah || [];
     KOMBELDASH_KATEGORI_MAP = (res.kategori || [])
       .filter(function(k) { return k.idKat && (String(k.integrasiDashboard || "TRUE").toUpperCase() !== "FALSE"); })
-      .map(function(k) { return { idKat: k.idKat, namaKategori: k.namaKat, jenisPeriode: k.jenisPeriode, kelas: k.kelas || k.kkg || "Semua KKG" }; });
+      .map(function(k) { return { idKat: k.idKat, namaKategori: k.namaKat, jenisPeriode: k.jenisPeriode, jenjang: k.jenjang || "SD", kelas: k.kelas || k.kkg || "Semua KKG" }; });
 
     kombeldash_setupJenjangDropdowns();
     kombeldash_setupUnitSekolahDropdown();
@@ -735,14 +735,31 @@ function kombeldash_renderDashboard(dataRekap, dataBelum, fTahun, fPeriode) {
     }
   });
 
-  // Hitung jumlah unik target sekolah (Target Sasaran) yang relevan dengan kategori/filter ini
-  var allTargetNpsnSet = new Set();
-  dataRekap.concat(dataBelum || []).forEach(function(item) {
+  // Hitung Target Sasaran:
+  // 1. Jika backend mengembalikan daftar `dataBelum`, maka Target Sasaran = jumlah unik sekolah dari (dataRekap + dataBelum).
+  // 2. Jika `dataBelum` kosong atau hanya menyaring data lokal rekap, filter master sekolah berdasarkan jenjang dari data/kategori.
+  var targetNpsnSet = new Set();
+  (dataRekap || []).concat(dataBelum || []).forEach(function(item) {
     var n = String(item.npsn || "").trim();
-    if (n) allTargetNpsnSet.add(n);
+    if (n) targetNpsnSet.add(n);
   });
 
-  var totSekolah   = allTargetNpsnSet.size || KOMBELDASH_MASTER_SEKOLAH.length || (dataRekap.length + (dataBelum || []).length);
+  var curKatId = $('#komBelDash_filterKategori').val();
+  var curKatObj = KOMBELDASH_KATEGORI_MAP.find(function(k){ return k.idKat === curKatId; });
+  var katJenjang = curKatObj ? String(curKatObj.jenjang || "").trim().toUpperCase() : "";
+
+  var totSekolah = 0;
+  if (targetNpsnSet.size > 1) {
+    totSekolah = targetNpsnSet.size;
+  } else if (katJenjang && katJenjang !== "SEMUA") {
+    var filteredSekolah = KOMBELDASH_MASTER_SEKOLAH.filter(function(s) {
+      return String(s.jenjang || "").trim().toUpperCase() === katJenjang;
+    });
+    totSekolah = filteredSekolah.length || KOMBELDASH_MASTER_SEKOLAH.length;
+  } else {
+    totSekolah = targetNpsnSet.size || KOMBELDASH_MASTER_SEKOLAH.length;
+  }
+
   var totBelum     = belumList.length;
   var totDiproses  = diprosesList.length;
   var totDisetujui = disetujuiList.length;
