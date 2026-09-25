@@ -178,6 +178,20 @@ function getKemitraanData(npsnFilter) {
   } catch(e) { return JSON.stringify({ success: false, message: e.message }); }
 }
 
+function getOrCreateSubFolderKemitraan(parentFolderId, namaDokumen, tahun) {
+  var parentFolder = DriveApp.getFolderById(parentFolderId);
+  var folderName = String(namaDokumen || "Dokumen").trim() + " - " + String(tahun || "").trim();
+  folderName = folderName.replace(/[\/\\:*?"<>|]/g, "_").trim();
+  var folders = parentFolder.getFoldersByName(folderName);
+  if (folders.hasNext()) {
+    return folders.next();
+  } else {
+    var newFolder = parentFolder.createFolder(folderName);
+    newFolder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    return newFolder;
+  }
+}
+
 function uploadKemitraanDokumen(payload, fileDataBase64, fileName, mimeType) {
   var lock = LockService.getScriptLock();
   try {
@@ -186,9 +200,10 @@ function uploadKemitraanDokumen(payload, fileDataBase64, fileName, mimeType) {
     if (!sheet) return JSON.stringify({ success: false, message: "Sheet tidak ditemukan." });
     var cek = kemitraanCheckDuplikat(sheet, payload.npsn, payload.idKat, payload.tahun||"");
     if (cek.ada && cek.status === "Diproses") return JSON.stringify({ success: false, message: "Dokumen sudah ada dan sedang Diproses. Tunggu verifikasi atau hubungi admin." });
-    var folder = DriveApp.getFolderById(KONFIG_KEMITRAAN.FOLDER_ID);
+    
+    var subFolder = getOrCreateSubFolderKemitraan(KONFIG_KEMITRAAN.FOLDER_ID, payload.namaKat, payload.tahun);
     var blob = Utilities.newBlob(Utilities.base64Decode(fileDataBase64), mimeType, fileName);
-    var file = folder.createFile(blob);
+    var file = subFolder.createFile(blob);
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     var now = new Date();
     var timestamp = Utilities.formatDate(now, Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss");
@@ -244,12 +259,14 @@ function perbaikiKemitraanDokumen(rowId, tahun, fileDataBase64, fileName, mimeTy
     var row = sheet.getRange(rowId,1,1,16).getValues()[0];
     var tNow = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss");
     var user = userEdit || Session.getActiveUser().getEmail() || "User";
+    var valTahun = tahun || String(row[5]||"").trim();
+    var namaKat = String(row[4]||"Dokumen").trim();
     if (tahun) sheet.getRange(rowId,6).setValue(tahun);
     if (fileDataBase64 && fileName && mimeType) {
       try { var oldId=String(row[8]||"").trim(); if(oldId) DriveApp.getFileById(oldId).setTrashed(true); } catch(e2) {}
-      var folder=DriveApp.getFolderById(KONFIG_KEMITRAAN.FOLDER_ID);
-      var blob=Utilities.newBlob(Utilities.base64Decode(fileDataBase64),mimeType,fileName);
-      var nf=folder.createFile(blob); nf.setSharing(DriveApp.Access.ANYONE_WITH_LINK,DriveApp.Permission.VIEW);
+      var subFolder = getOrCreateSubFolderKemitraan(KONFIG_KEMITRAAN.FOLDER_ID, namaKat, valTahun);
+      var blob = Utilities.newBlob(Utilities.base64Decode(fileDataBase64), mimeType, fileName);
+      var nf = subFolder.createFile(blob); nf.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
       sheet.getRange(rowId,7).setValue(nf.getName()); sheet.getRange(rowId,8).setValue(nf.getUrl()); sheet.getRange(rowId,9).setValue(nf.getId());
     }
     sheet.getRange(rowId,11).setValue("Diproses"); sheet.getRange(rowId,12).setValue(""); sheet.getRange(rowId,13).setValue(""); sheet.getRange(rowId,14).setValue("");
