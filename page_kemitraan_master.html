@@ -314,10 +314,12 @@ function kemitraanmaster_renderFilterBar() {
 }
 
 function kemitraanmaster_bukaModalTambah() {
+  var $form = $('#kemitraanmaster_formInputUtama');
+  $form[0].reset(); 
+  $form.removeClass('was-validated');
   $('#kemitraanmaster_modeEdit').val('false');
   $('#kemitraanmaster_originalId').val('');
-  $('#kemitraanmaster_in_id').val('').prop('readonly', false).focus();
-  $('#kemitraanmaster_in_nama').val('');
+  $('#kemitraanmaster_in_id').prop('readonly', false).val('');
   $('#kemitraanmaster_in_jenjang').val('SEMUA');
   $('#kemitraanmaster_in_jenis_periode').val('TAHUNAN_KALENDER');
   $('#kemitraanmaster_in_format').val('PDF');
@@ -326,15 +328,7 @@ function kemitraanmaster_bukaModalTambah() {
   $('#kemitraanmaster_in_integrasi').val('TRUE');
   $('#kemitraanmaster_in_keterangan').val('');
 
-  var formHtml = $('#kemitraanmaster_formInputUtama');
-  if (typeof showSultanModal === 'function') {
-    showSultanModal({
-      title: "TAMBAH MASTER KATEGORI KEMITRAAN & KERJA SAMA",
-      icon: "fas fa-handshake text-warning",
-      content: formHtml,
-      width: "modal-lg font-sultan-main"
-    });
-  }
+  kemitraanmaster_bukaModal('tambah', 'Tambah Master Kategori Kemitraan & Kerja Sama');
 
   $('#kemitraanmaster_btnSimpan').off('click').on('click', function() {
     kemitraanmaster_prosesSimpan();
@@ -345,9 +339,13 @@ function kemitraanmaster_bukaModalEdit(idKat) {
   var item = KEMITRAANMASTER_CACHE_DATA.find(function(x) { return x.idKat === idKat; });
   if (!item) return;
 
+  var $form = $('#kemitraanmaster_formInputUtama');
+  $form[0].reset(); 
+  $form.removeClass('was-validated');
+
   $('#kemitraanmaster_modeEdit').val('true');
   $('#kemitraanmaster_originalId').val(item.idKat);
-  $('#kemitraanmaster_in_id').val(item.idKat).prop('readonly', true);
+  $('#kemitraanmaster_in_id').prop('readonly', true).val(item.idKat);
   $('#kemitraanmaster_in_nama').val(item.namaKat);
   $('#kemitraanmaster_in_jenjang').val(item.jenjang || 'SEMUA');
   $('#kemitraanmaster_in_jenis_periode').val(item.jenisPeriode || 'TAHUNAN_KALENDER');
@@ -357,19 +355,26 @@ function kemitraanmaster_bukaModalEdit(idKat) {
   $('#kemitraanmaster_in_integrasi').val(item.integrasiDashboard || 'TRUE');
   $('#kemitraanmaster_in_keterangan').val(item.keterangan || '');
 
-  var formHtml = $('#kemitraanmaster_formInputUtama');
-  if (typeof showSultanModal === 'function') {
-    showSultanModal({
-      title: "EDIT MASTER KATEGORI: " + item.idKat,
-      icon: "fas fa-edit text-warning",
-      content: formHtml,
-      width: "modal-lg font-sultan-main"
-    });
-  }
+  kemitraanmaster_bukaModal('edit', 'Edit Master Kategori: ' + item.namaKat);
 
   $('#kemitraanmaster_btnSimpan').off('click').on('click', function() {
     kemitraanmaster_prosesSimpan();
   });
+}
+
+function kemitraanmaster_bukaModal(tipe, judul) {
+  var isEdit = tipe === 'edit';
+  $('#global_modalFormSize').removeClass('modal-xl modal-lg').addClass('modal-lg');
+  $('#global_modalFormHeader').removeClass('modal-header-sultan-primary modal-header-sultan-warning modal-header-sultan-danger modal-header-sultan-success modal-header-sultan-info modal-header-sultan-dark modal-header-edit modal-header-tambah-edit modal-header-hapus').addClass(isEdit ? 'modal-header-sultan-warning' : 'modal-header-tambah-edit');
+  $('#global_modalFormTitle').html('<i class="fas fa-' + (isEdit ? 'edit' : 'handshake') + ' mr-2"></i>' + escapeHtml(judul));
+  $('#global_modalFormBody, #global_modalFormFooter').hide();
+  $('#kemitraanmaster_formInputUtama').appendTo('#global_modalFormSize .modal-content');
+  $('#global_modalForm').off('hidden.bs.modal.kemitraanmaster').on('hidden.bs.modal.kemitraanmaster', function() {
+    $('#kemitraanmaster_formInputUtama').appendTo('#kemitraanmaster_templates');
+    $('#global_modalFormBody, #global_modalFormFooter').show();
+  });
+  $('#global_modalForm').modal('show');
+  if (!isEdit) setTimeout(function() { $('#kemitraanmaster_in_id').focus(); }, 150);
 }
 
 function kemitraanmaster_prosesSimpan() {
@@ -415,6 +420,7 @@ function kemitraanmaster_prosesSimpan() {
       try {
         var res = typeof resRaw === 'string' ? JSON.parse(resRaw) : resRaw;
         if (res.success) {
+          $('#global_modalForm').modal('hide');
           if (typeof closeSultanModal === 'function') closeSultanModal();
           if (typeof Swal !== 'undefined') {
             Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message, timer: 1500, showConfirmButton: false });
