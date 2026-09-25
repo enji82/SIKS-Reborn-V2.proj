@@ -340,9 +340,16 @@ function getKemitraanDashboardData(idKategori, forceRefresh) {
       if (!npsnHadUpload[rNpsn]) npsnHadUpload[rNpsn]=[];
       npsnHadUpload[rNpsn].push(String(dataDok[i][10]||"Diproses").trim());
     }
-    var jenjangKat=String(katInfo.jenjang||"SEMUA").toUpperCase();
+    var jenjangKat = String(katInfo.jenjang || "SEMUA").trim().toUpperCase();
     allSekolah.forEach(function(sk){
-      if (jenjangKat!=="SEMUA"&&sk.jenjang.indexOf(jenjangKat)===-1&&jenjangKat!==sk.jenjang) return;
+      var skJenjang = String(sk.jenjang || "").trim().toUpperCase();
+      var isMatch = (jenjangKat === "SEMUA" || jenjangKat === "" ||
+        skJenjang === jenjangKat ||
+        skJenjang.indexOf(jenjangKat) !== -1 ||
+        jenjangKat.indexOf(skJenjang) !== -1 ||
+        (jenjangKat === "SD" && (skJenjang === "SDN" || skJenjang === "SDS")) ||
+        (jenjangKat === "SMP" && (skJenjang === "SMPN" || skJenjang === "SMPS")));
+      if (!isMatch) return;
       if (!npsnHadUpload[sk.npsn]) belum.push({npsn:sk.npsn,nama:sk.nama,jenjang:sk.jenjang});
     });
     return JSON.stringify({success:true,rekap:rekap,belum:belum,jenisPeriode:katInfo.jenisPeriode,kategori:katDashboard,sekolah:allSekolah});

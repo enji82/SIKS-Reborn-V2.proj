@@ -658,34 +658,42 @@ function kemitraandash_renderDashboard(dataRekap, dataBelum, fTahun, fPeriode) {
     }
   });
 
-  (dataBelum || []).forEach(function(b) {
+  // Ambil kategori terpilih dan jenjangnya
+  var curKatId = $('#kemitraanDash_filterKategori').val();
+  var curKatObj = KEMITRAANDASH_KATEGORI_MAP.find(function(k){ return k.idKat === curKatId; });
+  var katJenjang = curKatObj ? String(curKatObj.jenjang || "").trim().toUpperCase() : "SEMUA";
+
+  // Filter daftar sekolah dari master berdasarkan jenjang kategori
+  var targetSekolahList = KEMITRAANDASH_MASTER_SEKOLAH.filter(function(s) {
+    if (!katJenjang || katJenjang === "SEMUA") return true;
+    var sj = String(s.jenjang || "").trim().toUpperCase();
+    if (sj === katJenjang || sj.indexOf(katJenjang) !== -1 || katJenjang.indexOf(sj) !== -1) return true;
+    if (katJenjang === "SD" && (sj === "SDN" || sj === "SDS")) return true;
+    if (katJenjang === "SMP" && (sj === "SMPN" || sj === "SMPS")) return true;
+    return false;
+  });
+
+  // Target Sasaran = jumlah sekolah di master yang sesuai jenjang kategori
+  var totSekolah = targetSekolahList.length;
+  if (totSekolah === 0 && KEMITRAANDASH_MASTER_SEKOLAH.length > 0) {
+    totSekolah = KEMITRAANDASH_MASTER_SEKOLAH.length;
+  }
+
+  // Sekolah Belum Unggah = sekolah dari targetSekolahList yang belum ada di npsnSudahSet
+  targetSekolahList.forEach(function(b) {
     var npsn = String(b.npsn || "").trim();
-    if (!npsnSudahSet.has(npsn) && !belumList.some(function(x){ return String(x.npsn||"").trim()===npsn; })) {
+    if (!npsnSudahSet.has(npsn) && !belumList.some(function(x){ return String(x.npsn||"").trim() === npsn; })) {
       belumList.push(b);
     }
   });
 
-  var targetNpsnSet = new Set();
-  (dataRekap || []).concat(dataBelum || []).forEach(function(item) {
-    var n = String(item.npsn || "").trim();
-    if (n) targetNpsnSet.add(n);
+  // Tambahkan pula dataBelum dari server jika ada yang belum tercantum
+  (dataBelum || []).forEach(function(b) {
+    var npsn = String(b.npsn || "").trim();
+    if (!npsnSudahSet.has(npsn) && !belumList.some(function(x){ return String(x.npsn||"").trim() === npsn; })) {
+      belumList.push(b);
+    }
   });
-
-  var curKatId = $('#kemitraanDash_filterKategori').val();
-  var curKatObj = KEMITRAANDASH_KATEGORI_MAP.find(function(k){ return k.idKat === curKatId; });
-  var katJenjang = curKatObj ? String(curKatObj.jenjang || "").trim().toUpperCase() : "";
-
-  var totSekolah = 0;
-  if (targetNpsnSet.size > 1) {
-    totSekolah = targetNpsnSet.size;
-  } else if (katJenjang && katJenjang !== "SEMUA") {
-    var filteredSekolah = KEMITRAANDASH_MASTER_SEKOLAH.filter(function(s) {
-      return String(s.jenjang || "").trim().toUpperCase() === katJenjang;
-    });
-    totSekolah = filteredSekolah.length || KEMITRAANDASH_MASTER_SEKOLAH.length;
-  } else {
-    totSekolah = targetNpsnSet.size || KEMITRAANDASH_MASTER_SEKOLAH.length;
-  }
 
   var totBelum     = belumList.length;
   var totDiproses  = diprosesList.length;
