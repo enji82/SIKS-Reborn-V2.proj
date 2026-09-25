@@ -589,45 +589,56 @@ function kemitraankelola_bukaModalTambah() {
   });
   $('#global_modalForm').modal('show');
 
-  // Jika user adalah User Sekolah biasa, otomatis set sekolahnya
-  var userNpsn = KEMITRAANKELOLA_USER_NPSN || ((typeof USER_NPSN !== 'undefined' && USER_NPSN) ? USER_NPSN : '');
-  if (userNpsn && !KEMITRAANKELOLA_IS_ADMIN) {
+  // Cek apakah user adalah User Sekolah (Non-Admin)
+  if (!KEMITRAANKELOLA_IS_ADMIN) {
+    var userObj = typeof getSesiUser === 'function' ? getSesiUser() : {};
+    var uNpsn = String(KEMITRAANKELOLA_USER_NPSN || userObj.npsn || userObj.unit || userObj.username || '').trim();
+    var uNama = String(userObj.nama_sekolah || userObj.nama || userObj.fullname || userObj.nama_lengkap || KEMITRAANKELOLA_USER_AKTIF || uNpsn).trim();
+
     var infoSek = KEMITRAANKELOLA_DATA_SEKOLAH.find(function(s) {
-      return String(s.npsn).trim() === userNpsn || String(s.npsn).trim().toUpperCase() === userNpsn.toUpperCase();
+      var sNpsn = String(s.npsn || "").trim().toUpperCase();
+      var sNama = String(s.nama || "").trim().toUpperCase();
+      var targets = [uNpsn.toUpperCase(), uNama.toUpperCase()].filter(Boolean);
+      return targets.some(function(t) { return sNpsn === t || sNama === t; });
     });
-    if (infoSek) {
-      selJenjang.val(infoSek.jenjang).prop('disabled', true);
-      selSekolah.empty().append('<option value="' + infoSek.npsn + '">' + escapeHtml(infoSek.nama) + '</option>').val(infoSek.npsn).prop('disabled', true);
-      kemitraankelola_onSekolahSelected(infoSek.npsn, infoSek.jenjang);
-    }
+
+    var fixNpsn = infoSek ? infoSek.npsn : (uNpsn || "USER");
+    var fixNama = infoSek ? infoSek.nama : (uNama || "Sekolah Saya");
+    var fixJenjang = infoSek ? infoSek.jenjang : (userObj.jenjang || "SD");
+
+    selJenjang.empty().append('<option value="' + fixJenjang + '">' + fixJenjang + '</option>').val(fixJenjang).prop('disabled', true);
+    selSekolah.empty().append('<option value="' + fixNpsn + '">' + escapeHtml(fixNama) + '</option>').val(fixNpsn).prop('disabled', true);
+
+    kemitraankelola_onSekolahSelected(fixNpsn, fixJenjang);
+  } else {
+    // Admin: Izinkan memilih jenjang & sekolah mana saja
+    selJenjang.prop('disabled', false).off('change').on('change', function() {
+      var jjg = $(this).val();
+      selSekolah.empty().append('<option value="">Pilih Sekolah</option>');
+      if (!jjg) {
+        selSekolah.prop('disabled', true);
+        uploadContainer.empty().append('<div class="text-center text-muted p-3"><i class="fas fa-info-circle mr-1"></i> Pilih jenjang & sekolah terlebih dahulu.</div>');
+        btnAdd.prop('disabled', true); btnSimpan.prop('disabled', true);
+        return;
+      }
+      var list = KEMITRAANKELOLA_DATA_SEKOLAH.filter(function(s) { return s.jenjang === jjg; });
+      list.forEach(function(s) {
+        selSekolah.append('<option value="' + s.npsn + '">' + escapeHtml(s.nama) + '</option>');
+      });
+      selSekolah.prop('disabled', false);
+    });
+
+    selSekolah.off('change').on('change', function() {
+      var npsn = $(this).val();
+      var jjg = selJenjang.val();
+      if (npsn) {
+        kemitraankelola_onSekolahSelected(npsn, jjg);
+      } else {
+        uploadContainer.empty().append('<div class="text-center text-muted p-3"><i class="fas fa-info-circle mr-1"></i> Pilih sekolah terlebih dahulu.</div>');
+        btnAdd.prop('disabled', true); btnSimpan.prop('disabled', true);
+      }
+    });
   }
-
-  selJenjang.off('change').on('change', function() {
-    var jjg = $(this).val();
-    selSekolah.empty().append('<option value="">Pilih Sekolah</option>');
-    if (!jjg) {
-      selSekolah.prop('disabled', true);
-      uploadContainer.empty().append('<div class="text-center text-muted p-3"><i class="fas fa-info-circle mr-1"></i> Pilih jenjang & sekolah terlebih dahulu.</div>');
-      btnAdd.prop('disabled', true); btnSimpan.prop('disabled', true);
-      return;
-    }
-    var list = KEMITRAANKELOLA_DATA_SEKOLAH.filter(function(s) { return s.jenjang === jjg; });
-    list.forEach(function(s) {
-      selSekolah.append('<option value="' + s.npsn + '">' + escapeHtml(s.nama) + '</option>');
-    });
-    selSekolah.prop('disabled', false);
-  });
-
-  selSekolah.off('change').on('change', function() {
-    var npsn = $(this).val();
-    var jjg = selJenjang.val();
-    if (npsn) {
-      kemitraankelola_onSekolahSelected(npsn, jjg);
-    } else {
-      uploadContainer.empty().append('<div class="text-center text-muted p-3"><i class="fas fa-info-circle mr-1"></i> Pilih sekolah terlebih dahulu.</div>');
-      btnAdd.prop('disabled', true); btnSimpan.prop('disabled', true);
-    }
-  });
 }
 
 function kemitraankelola_onSekolahSelected(npsn, jenjang) {
