@@ -149,21 +149,53 @@ function getKemitraanData(npsnFilter) {
     var rawTarget = String(npsnFilter || "").trim().toUpperCase();
     var targetNpsn = "", targetNama = "";
     if (rawTarget && rawTarget !== "SEMUA") {
-      if (sekolahMap[rawTarget]) { targetNpsn = rawTarget; targetNama = (sekolahMap[rawTarget].nama || "").toUpperCase(); }
-      else if (nameToNpsnMap[rawTarget]) { targetNpsn = nameToNpsnMap[rawTarget]; targetNama = rawTarget; }
-      else { targetNpsn = rawTarget; targetNama = rawTarget; }
+      if (sekolahMap[rawTarget]) {
+        targetNpsn = rawTarget;
+        targetNama = (sekolahMap[rawTarget].nama || "").toUpperCase();
+      } else if (nameToNpsnMap[rawTarget]) {
+        targetNpsn = nameToNpsnMap[rawTarget];
+        targetNama = rawTarget;
+      } else {
+        targetNpsn = rawTarget;
+        targetNama = rawTarget;
+      }
     }
     for (var i = 1; i < data.length; i++) {
-      if (String(data[i][1]).trim() === "") continue;
-      var rNpsn = String(data[i][1]).trim().toUpperCase();
-      var infoSekolah = sekolahMap[rNpsn] || { nama: data[i][2] || rNpsn, jenjang: "-", status: "-" };
-      var rSekolahNama = (infoSekolah.nama || "").toUpperCase();
-      var isMatch = (!targetNpsn || targetNpsn === "SEMUA") ||
-        (rNpsn === targetNpsn || (targetNama && rSekolahNama === targetNama));
+      var colNpsn = String(data[i][1] || "").trim();
+      var colNama = String(data[i][2] || "").trim();
+      if (!colNpsn && !colNama) continue;
+
+      var rNpsn = colNpsn.toUpperCase();
+      var rNama = colNama.toUpperCase();
+
+      var resolvedNpsn = colNpsn;
+      var infoSekolah = null;
+      if (sekolahMap[rNpsn]) {
+        infoSekolah = sekolahMap[rNpsn];
+        resolvedNpsn = rNpsn;
+      } else if (nameToNpsnMap[rNpsn]) {
+        resolvedNpsn = nameToNpsnMap[rNpsn];
+        infoSekolah = sekolahMap[resolvedNpsn];
+      } else if (nameToNpsnMap[rNama]) {
+        resolvedNpsn = nameToNpsnMap[rNama];
+        infoSekolah = sekolahMap[resolvedNpsn];
+      }
+
+      var displayNama = infoSekolah ? infoSekolah.nama : (colNama || colNpsn);
+
+      var isMatch = false;
+      if (!targetNpsn || targetNpsn === "SEMUA") {
+        isMatch = true;
+      } else {
+        if (rNpsn === targetNpsn || rNpsn === targetNama) isMatch = true;
+        else if (rNama === targetNama || rNama === targetNpsn) isMatch = true;
+        else if (resolvedNpsn.toUpperCase() === targetNpsn || resolvedNpsn.toUpperCase() === targetNama) isMatch = true;
+      }
+
       if (isMatch) {
         result.push({
-          rowId: i+1, timestamp: data[i][0], npsn: rNpsn,
-          nama_sekolah: infoSekolah.nama, id_kategori: data[i][3],
+          rowId: i+1, timestamp: data[i][0], npsn: resolvedNpsn,
+          nama_sekolah: displayNama, id_kategori: data[i][3],
           nama_kategori: data[i][4], tahun: data[i][5],
           file_name: data[i][6], url: data[i][7],
           status: data[i][10] || "Diproses", catatan: data[i][11] || "",
@@ -211,7 +243,16 @@ function uploadKemitraanDokumen(payload, fileDataBase64, fileName, mimeType) {
     var namaSekolah = "";
     try {
       var shSek = getSheet("USER_DB","Data_Sekolah"); var dSek = shSek ? shSek.getDataRange().getDisplayValues() : [];
-      for (var s=1;s<dSek.length;s++) { if (String(dSek[s][0]).trim()===String(payload.npsn).trim()) { namaSekolah=String(dSek[s][2]).trim(); break; } }
+      var targetP = String(payload.npsn || "").trim().toUpperCase();
+      for (var s=1;s<dSek.length;s++) {
+        var sNpsn = String(dSek[s][0]).trim().toUpperCase();
+        var sNama = String(dSek[s][2]).trim().toUpperCase();
+        if (sNpsn === targetP || sNama === targetP) {
+          payload.npsn = String(dSek[s][0]).trim();
+          namaSekolah = String(dSek[s][2]).trim();
+          break;
+        }
+      }
     } catch(e2) {}
     sheet.appendRow([timestamp, payload.npsn, namaSekolah, payload.idKat, payload.namaKat,
       payload.tahun||"",
