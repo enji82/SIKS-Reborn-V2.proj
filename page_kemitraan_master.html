@@ -268,61 +268,49 @@ $(document).ready(function() {
     $('#kemitraanmaster_aksesDitolak').hide();
     $('#kemitraanmaster_mainContent').show();
 
-    kemitraanmaster_initFilterBar();
+    kemitraanmaster_renderFilterBar();
     kemitraanmaster_muatData();
   } catch(err) {
     console.error("Inisialisasi Master Kemitraan gagal:", err);
   }
 });
 
-function kemitraanmaster_initFilterBar() {
-  var configFB = {
-    containerId: "kemitraanmaster_filterBarArea",
-    searchPlaceholder: "Cari ID, Nama Dokumen, Keterangan...",
-    searchId: "kemitraanmaster_inCari",
-    selects: [
-      {
-        id: "kemitraanmaster_selJenjang",
-        label: "Jenjang",
-        options: [
-          { value: "SEMUA", text: "Semua Jenjang" },
-          { value: "PAUD", text: "PAUD" },
-          { value: "SD", text: "SD" }
-        ]
-      },
-      {
-        id: "kemitraanmaster_selStatus",
-        label: "Status",
-        options: [
-          { value: "SEMUA", text: "Semua Status" },
-          { value: "Aktif", text: "Aktif" },
-          { value: "Nonaktif", text: "Nonaktif" }
-        ]
-      }
-    ],
-    buttons: [
-      {
-        id: "kemitraanmaster_btnRefresh",
-        icon: "fas fa-sync-alt",
-        title: "Muat Ulang Data",
-        onClick: "kemitraanmaster_muatData()"
-      },
-      {
-        id: "kemitraanmaster_btnTambah",
-        text: "Tambah Master Kategori",
-        icon: "fas fa-plus",
-        class: "btn-sultan-primary font-weight-bold ml-auto",
-        onClick: "kemitraanmaster_bukaModalTambah()"
-      }
-    ]
-  };
+function kemitraanmaster_renderFilterBar() {
+  var filtersConfig = [
+    { id: 'kemitraanmaster_selJenjang', placeholder: 'Semua Jenjang', disabled: false },
+    { id: 'kemitraanmaster_selStatus', placeholder: 'Semua Status', disabled: false }
+  ];
 
-  if (typeof renderSultanFilterBar === 'function') {
-    renderSultanFilterBar(configFB);
+  var extraButtons = `
+    <div class="divider-vertical d-none d-md-block mx-2"></div>
+    <button type="button" id="kemitraanmaster_btnRefresh" class="sultan-btn-refresh" title="Segarkan Data">
+      <i class="fas fa-sync-alt"></i>
+    </button>
+    <div class="ml-auto d-none d-md-block"></div>
+    <button type="button" id="kemitraanmaster_btnTambah" class="sultan-btn-tambah">
+      <i class="fas fa-plus"></i> TAMBAH KATEGORI
+    </button>
+  `;
+
+  if (typeof SultanUI !== 'undefined') {
+    $('#kemitraanmaster_filterBarArea').html(SultanUI.renderFilterBar(filtersConfig, extraButtons));
   }
 
-  $('#kemitraanmaster_inCari').on('keyup input', function() { kemitraanmaster_terapkanFilter(); });
-  $('#kemitraanmaster_selJenjang, #kemitraanmaster_selStatus').on('change', function() { kemitraanmaster_terapkanFilter(); });
+  $('#kemitraanmaster_selJenjang').html(`
+    <option value="SEMUA" selected>Semua Jenjang</option>
+    <option value="PAUD">PAUD</option>
+    <option value="SD">SD</option>
+  `);
+
+  $('#kemitraanmaster_selStatus').html(`
+    <option value="SEMUA" selected>Semua Status</option>
+    <option value="Aktif">Aktif</option>
+    <option value="Nonaktif">Nonaktif</option>
+  `);
+
+  $(document).off('click.kmitmaster', '#kemitraanmaster_btnRefresh').on('click.kmitmaster', '#kemitraanmaster_btnRefresh', kemitraanmaster_muatData);
+  $(document).off('click.kmitmaster', '#kemitraanmaster_btnTambah').on('click.kmitmaster', '#kemitraanmaster_btnTambah', kemitraanmaster_bukaModalTambah);
+  $(document).off('change.kmitmaster', '#kemitraanmaster_selJenjang, #kemitraanmaster_selStatus').on('change.kmitmaster', '#kemitraanmaster_selJenjang, #kemitraanmaster_selStatus', kemitraanmaster_terapkanFilter);
 }
 
 function kemitraanmaster_bukaModalTambah() {
