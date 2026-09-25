@@ -35,18 +35,10 @@
               </button>
             </div>
 
-            <!-- Filter KKG / Kelas (mode Rekap) -->
+            <!-- Filter Kelas / Mapel (mode Rekap) -->
             <div class="sultan-filter-item" id="komBelDash_filterKelasContainer">
-              <select id="komBelDash_filterKelas" class="form-control" aria-label="Pilih KKG">
-                <option value="SEMUA">- Semua KKG -</option>
-                <option value="KKG Kelas 1">KKG Kelas 1</option>
-                <option value="KKG Kelas 2">KKG Kelas 2</option>
-                <option value="KKG Kelas 3">KKG Kelas 3</option>
-                <option value="KKG Kelas 4">KKG Kelas 4</option>
-                <option value="KKG Kelas 5">KKG Kelas 5</option>
-                <option value="KKG Kelas 6">KKG Kelas 6</option>
-                <option value="KKG PJOK">KKG PJOK</option>
-                <option value="KKG PAI">KKG PAI</option>
+              <select id="komBelDash_filterKelas" class="form-control" aria-label="Pilih Kelas / Mapel">
+                <option value="SEMUA">Semua Kelas / Mapel</option>
               </select>
               <i class="fas fa-chevron-down"></i>
             </div>
@@ -349,7 +341,17 @@ function kombeldash_setupEventListeners() {
     var k = $(this).val(); if (k) kombeldash_loadDataKategori(k);
   });
 
-  $(document).off('change','#komBelDash_filterKelas, #komBelDash_filterTahun, #komBelDash_filterPeriode').on('change','#komBelDash_filterKelas, #komBelDash_filterTahun, #komBelDash_filterPeriode', function() {
+  $(document).off('change','#komBelDash_filterKelas').on('change','#komBelDash_filterKelas', function() {
+    kombeldash_updateFilterKategoriOptions();
+    var k = $('#komBelDash_filterKategori').val();
+    if (k) {
+      kombeldash_loadDataKategori(k);
+    } else {
+      kombeldash_terapkanFilterLokal();
+    }
+  });
+
+  $(document).off('change','#komBelDash_filterTahun, #komBelDash_filterPeriode').on('change','#komBelDash_filterTahun, #komBelDash_filterPeriode', function() {
     kombeldash_terapkanFilterLokal();
   });
 
@@ -395,21 +397,18 @@ function kombeldash_initMasterAccess() {
     KOMBELDASH_MASTER_SEKOLAH = res.sekolah || [];
     KOMBELDASH_KATEGORI_MAP = (res.kategori || [])
       .filter(function(k) { return k.idKat && (String(k.integrasiDashboard || "TRUE").toUpperCase() !== "FALSE"); })
-      .map(function(k) { return { idKat: k.idKat, namaKategori: k.namaKat, jenisPeriode: k.jenisPeriode }; });
+      .map(function(k) { return { idKat: k.idKat, namaKategori: k.namaKat, jenisPeriode: k.jenisPeriode, kelas: k.kelas || k.kkg || "Semua KKG" }; });
 
     kombeldash_setupJenjangDropdowns();
     kombeldash_setupUnitSekolahDropdown();
+    kombeldash_setupKelasDropdown();
 
     if (KOMBELDASH_KATEGORI_MAP.length === 0) {
       $('#komBelDash_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>Belum ada Kategori yang berintegrasi ke Dashboard.</span>');
       return;
     }
 
-    var selectKat = $('#komBelDash_filterKategori');
-    selectKat.empty();
-    KOMBELDASH_KATEGORI_MAP.forEach(function(k) {
-      selectKat.append($('<option>', { value: k.idKat, text: k.namaKategori }));
-    });
+    kombeldash_updateFilterKategoriOptions();
 
     SultanDashboard.initDualMode({
       pageKey: 'komBelDash',
@@ -466,6 +465,72 @@ function kombeldash_initMasterAccess() {
   }).withFailureHandler(function(err) {
     $('#komBelDash_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Terputus: ' + kombeldash_escapeHtml(err.message) + '</span>');
   }).getKombelMasterData("");
+}
+
+function kombeldash_setupKelasDropdown() {
+  var kelasSet = new Set();
+  KOMBELDASH_KATEGORI_MAP.forEach(function(k) {
+    var rawKelas = String(k.kelas || "").trim();
+    if (rawKelas) {
+      var arr = rawKelas.split(',');
+      arr.forEach(function(item) {
+        var trimmed = item.trim();
+        if (trimmed && trimmed.toUpperCase() !== "SEMUA KKG" && trimmed.toUpperCase() !== "SEMUA KELAS / MAPEL") {
+          kelasSet.add(trimmed);
+        }
+      });
+    }
+  });
+
+  var selKelas = $('#komBelDash_filterKelas');
+  var curVal = selKelas.val() || "SEMUA";
+  selKelas.empty().append('<option value="SEMUA">Semua Kelas / Mapel</option>');
+  
+  var sortedKelas = Array.from(kelasSet).sort(function(a, b) {
+    return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+  });
+
+  sortedKelas.forEach(function(kStr) {
+    selKelas.append($('<option>', { value: kStr, text: kStr }));
+  });
+
+  if (curVal && (curVal === "SEMUA" || kelasSet.has(curVal))) {
+    selKelas.val(curVal);
+  } else {
+    selKelas.val("SEMUA");
+  }
+}
+
+function kombeldash_updateFilterKategoriOptions() {
+  var selectedKelas = String($('#komBelDash_filterKelas').val() || "SEMUA").trim();
+  var selectKat = $('#komBelDash_filterKategori');
+  var currentKat = selectKat.val();
+
+  var filteredKategori = KOMBELDASH_KATEGORI_MAP.filter(function(k) {
+    if (selectedKelas === "SEMUA" || !selectedKelas) return true;
+    var rawKelas = String(k.kelas || "").trim();
+    if (!rawKelas || rawKelas.toUpperCase() === "SEMUA KKG" || rawKelas.toUpperCase() === "SEMUA KELAS / MAPEL") {
+      return true;
+    }
+    var listArr = rawKelas.split(',').map(function(s) { return s.trim().toUpperCase(); });
+    return listArr.indexOf(selectedKelas.toUpperCase()) !== -1;
+  });
+
+  selectKat.empty();
+  if (filteredKategori.length === 0) {
+    selectKat.append($('<option>', { value: "", text: "Tidak ada kategori untuk " + selectedKelas }));
+  } else {
+    filteredKategori.forEach(function(k) {
+      selectKat.append($('<option>', { value: k.idKat, text: k.namaKategori }));
+    });
+  }
+
+  // Jika opsi kategori terpilih sebelumnya masih ada di daftar hasil filter, pertahankan. Jika tidak, pilih yang pertama.
+  if (currentKat && filteredKategori.some(function(k) { return k.idKat === currentKat; })) {
+    selectKat.val(currentKat);
+  } else if (filteredKategori.length > 0) {
+    selectKat.val(filteredKategori[0].idKat);
+  }
 }
 
 function kombeldash_setupJenjangDropdowns() {
