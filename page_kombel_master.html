@@ -103,7 +103,7 @@
             <label class="form-label-sultan small font-weight-bold text-muted text-uppercase mb-0">
               Kelas / Mapel <span class="text-danger">*</span>
             </label>
-            <button type="button" id="kombelmaster_btnTambahKkgKustom" class="btn btn-xs btn-outline-primary rounded-pill px-2 py-0" style="font-size:10px;" title="Tambah Kelas/Mapel Baru">
+            <button type="button" id="kombelmaster_btnTambahKkgKustom" class="btn btn-sm btn-outline-primary font-weight-bold rounded-pill px-2 py-0" style="font-size:11px;" title="Tambah Kelas/Mapel Baru">
               <i class="fas fa-plus mr-1"></i>Tambah
             </button>
           </div>
@@ -213,6 +213,26 @@
       </button>
       <button type="submit" id="kombelmaster_btnSimpan" class="modal-btn-simpan">
         <i class="fas fa-save mr-2"></i>SIMPAN
+      </button>
+    </div>
+  <!-- Modal Tambah Kelas / Mapel Kustom -->
+  <form id="kombelmaster_formTambahKkgKustom" novalidate>
+    <div class="modal-body modal-body-sultan p-4">
+      <div class="form-group mb-0">
+        <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">
+          Nama Kelas / Mapel Baru <span class="text-danger">*</span>
+        </label>
+        <input type="text" id="kombelmaster_in_kkgKustomNama" class="form-control form-control-sultan border-maroon font-weight-bold"
+               placeholder="Contoh: KKG Bahasa Inggris / KKG Seni Budaya" required maxlength="60">
+        <small class="text-muted">Nama ini akan ditambahkan ke daftar opsi pilihan Kelas/Mapel.</small>
+      </div>
+    </div>
+    <div class="modal-footer modal-footer-tambah-edit justify-content-between">
+      <button type="button" class="modal-btn-batal" data-dismiss="modal">
+        <i class="fas fa-times mr-2"></i>BATAL
+      </button>
+      <button type="submit" class="modal-btn-simpan">
+        <i class="fas fa-plus mr-2"></i>TAMBAHKAN
       </button>
     </div>
   </form>
@@ -355,17 +375,44 @@ function kombelmaster_getSelectedKkgValues() {
 }
 
 function kombelmaster_tambahKkgKustom() {
-  var namaKkg = prompt("Masukkan nama Kelas / Mapel baru (contoh: KKG Bahasa Inggris / KKG Seni Budaya):");
-  if (namaKkg && namaKkg.trim() !== "") {
-    var val = namaKkg.trim();
-    if (!KOMBELMASTER_DAFTAR_KELAS_MAPEL.includes(val)) {
-      KOMBELMASTER_DAFTAR_KELAS_MAPEL.push(val);
+  var $form = $('#kombelmaster_formTambahKkgKustom');
+  $form[0].reset();
+  $form.removeClass('was-validated');
+
+  $('#global_modalFormSize').removeClass('modal-xl modal-lg').addClass('modal-md');
+  $('#global_modalFormHeader').removeClass('modal-header-sultan-primary modal-header-sultan-warning modal-header-sultan-danger modal-header-sultan-success modal-header-sultan-info modal-header-sultan-dark modal-header-edit modal-header-tambah-edit modal-header-hapus').addClass('modal-header-tambah-edit');
+  $('#global_modalFormTitle').html('<i class="fas fa-plus-circle mr-2"></i>Tambah Kelas / Mapel Baru');
+  $('#global_modalFormBody, #global_modalFormFooter').hide();
+  $form.appendTo('#global_modalFormSize .modal-content');
+
+  $('#global_modalForm').off('hidden.bs.modal.kombelmasterkkg').on('hidden.bs.modal.kombelmasterkkg', function() {
+    $form.appendTo('#kombelmaster_templates');
+    $('#global_modalFormBody, #global_modalFormFooter').show();
+  });
+
+  $form.off('submit').on('submit', function(e) {
+    e.preventDefault();
+    if (!this.checkValidity()) { $(this).addClass('was-validated'); return; }
+    var val = $('#kombelmaster_in_kkgKustomNama').val().trim();
+    if (val) {
+      if (!KOMBELMASTER_DAFTAR_KELAS_MAPEL.includes(val)) {
+        KOMBELMASTER_DAFTAR_KELAS_MAPEL.push(val);
+      }
+      var currentSelected = [];
+      $('.kombelmaster-chk-kkg:checked').each(function() { currentSelected.push($(this).val()); });
+      if (!currentSelected.includes(val)) currentSelected.push(val);
+      
+      $('#global_modalForm').modal('hide');
+      setTimeout(function() {
+        kombelmaster_renderKkgCheckboxList(currentSelected);
+        $('#kombelmaster_formInputUtama').appendTo('#global_modalFormSize .modal-content');
+        $('#global_modalFormTitle').html('<i class="fas fa-plus mr-2"></i>Tambah Master Kategori Kombel');
+        $('#global_modalForm').modal('show');
+      }, 350);
     }
-    var currentSelected = [];
-    $('.kombelmaster-chk-kkg:checked').each(function() { currentSelected.push($(this).val()); });
-    if (!currentSelected.includes(val)) currentSelected.push(val);
-    kombelmaster_renderKkgCheckboxList(currentSelected);
-  }
+  });
+
+  $('#global_modalForm').modal('show');
 }
 
 function kombelmaster_tarikDataServer() {
