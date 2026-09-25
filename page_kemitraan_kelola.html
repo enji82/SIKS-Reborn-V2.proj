@@ -774,32 +774,45 @@ function kemitraankelola_prosesUploadMultibaris(npsn) {
   });
 
   if (!valid || itemsToUpload.length === 0) {
-    if (typeof Swal !== 'undefined') Swal.fire('Perhatian', 'Mohon lengkapi semua baris dokumen dan file yang diunggah.', 'warning');
-    else alert('Mohon lengkapi semua baris dokumen!');
+    if (typeof Sultan !== 'undefined' && Sultan.alert) {
+      Sultan.alert('warning', 'Perhatian', 'Mohon lengkapi semua baris dokumen dan file yang diunggah.');
+    } else if (typeof Swal !== 'undefined') {
+      Swal.fire('Perhatian', 'Mohon lengkapi semua baris dokumen dan file yang diunggah.', 'warning');
+    } else {
+      alert('Mohon lengkapi semua baris dokumen!');
+    }
     return;
   }
 
-  kemitraankelola_eksekusiUploadAntrian(npsn, itemsToUpload, 0);
+  // Animasi Tombol UNGGAH (Spiner Button Sultan UI)
+  var $btn = $('#kemitraankelola_btnSimpan');
+  var txtAwal = $btn.html();
+  $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i>MENGUNGGAH...');
+
+  kemitraankelola_eksekusiUploadAntrian(npsn, itemsToUpload, 0, $btn, txtAwal);
 }
 
-function kemitraankelola_eksekusiUploadAntrian(npsn, items, index) {
+function kemitraankelola_eksekusiUploadAntrian(npsn, items, index, $btn, txtAwal) {
   if (index >= items.length) {
-    if (typeof Sultan !== 'undefined' && Sultan.notif) Sultan.notif.tutup();
-    $('#global_modalForm').modal('hide');
+    if ($btn) $btn.prop('disabled', false).html(txtAwal);
+    if (typeof Sultan !== 'undefined' && Sultan.modal && typeof Sultan.modal.tutupForm === 'function') {
+      Sultan.modal.tutupForm();
+    } else {
+      $('#global_modalForm').modal('hide');
+    }
+
     setTimeout(function() {
-      if (typeof Sultan !== 'undefined' && Sultan.notif) {
-        Sultan.notif.crud('tambah', 'Semua dokumen kemitraan berhasil diunggah.');
+      if (typeof Sultan !== 'undefined' && Sultan.notif && Sultan.notif.crud) {
+        Sultan.notif.crud.simpan(false);
+      } else if (typeof NotifSultan !== 'undefined') {
+        NotifSultan.toast('success', 'Data baru berhasil ditambahkan!');
       }
       kemitraankelola_muatData();
-    }, 300);
+    }, 400);
     return;
   }
 
   var current = items[index];
-  if (typeof Sultan !== 'undefined' && Sultan.notif) {
-    Sultan.notif.loading('Mengunggah berkas ' + (index + 1) + ' dari ' + items.length + ': ' + current.namaKat);
-  }
-
   var reader = new FileReader();
   reader.onload = function(e) {
     var base64 = e.target.result.split(',')[1];
@@ -816,18 +829,26 @@ function kemitraankelola_eksekusiUploadAntrian(npsn, items, index) {
         try {
           var res = typeof resRaw === 'string' ? JSON.parse(resRaw) : resRaw;
           if (res.success) {
-            kemitraankelola_eksekusiUploadAntrian(npsn, items, index + 1);
+            kemitraankelola_eksekusiUploadAntrian(npsn, items, index + 1, $btn, txtAwal);
           } else {
-            if (typeof Sultan !== 'undefined' && Sultan.notif) Sultan.notif.tutup();
-            if (typeof Sultan !== 'undefined' && Sultan.notif) Sultan.notif.crud.gagal(res.message);
+            if ($btn) $btn.prop('disabled', false).html(txtAwal);
+            if (typeof Sultan !== 'undefined' && Sultan.notif && Sultan.notif.crud) {
+              Sultan.notif.crud.gagal(res.message);
+            } else if (typeof Swal !== 'undefined') {
+              Swal.fire('Gagal Unggah', res.message, 'error');
+            }
           }
         } catch(err) {
-          if (typeof Sultan !== 'undefined' && Sultan.notif) Sultan.notif.tutup();
+          if ($btn) $btn.prop('disabled', false).html(txtAwal);
         }
       })
       .withFailureHandler(function(err) {
-        if (typeof Sultan !== 'undefined' && Sultan.notif) Sultan.notif.tutup();
-        if (typeof Sultan !== 'undefined' && Sultan.notif) Sultan.notif.crud.gagal(err.message || 'Gagal koneksi server');
+        if ($btn) $btn.prop('disabled', false).html(txtAwal);
+        if (typeof Sultan !== 'undefined' && Sultan.notif && Sultan.notif.crud) {
+          Sultan.notif.crud.gagal(err.message || 'Gagal koneksi server');
+        } else if (typeof Swal !== 'undefined') {
+          Swal.fire('Error', err.message || 'Gagal koneksi server', 'error');
+        }
       })
       .uploadKemitraanDokumen(payload, base64, current.file.name, current.file.type);
   };
