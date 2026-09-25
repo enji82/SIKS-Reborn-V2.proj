@@ -221,6 +221,7 @@ var KEMITRAANKELOLA_MASTER_KAT = [];
 var KEMITRAANKELOLA_DATA_SEKOLAH = [];
 var KEMITRAANKELOLA_IS_ADMIN = false;
 var KEMITRAANKELOLA_USER_AKTIF = "";
+var KEMITRAANKELOLA_USER_NPSN = "";
 
 $(document).ready(function() {
   try {
@@ -228,6 +229,7 @@ $(document).ready(function() {
     KEMITRAANKELOLA_USER_AKTIF = user.nama_lengkap || user.nama || user.username || user.email || "User Web";
     var rStr = String(user.role || '').toLowerCase();
     KEMITRAANKELOLA_IS_ADMIN = (typeof checkUserRoleIsAdmin === 'function' && checkUserRoleIsAdmin()) || rStr.includes('admin') || rStr.includes('verifikator');
+    KEMITRAANKELOLA_USER_NPSN = String(user.npsn || user.unit || user.username || '').trim();
 
     kemitraankelola_initFilterBar();
     kemitraankelola_muatMasterData();
@@ -352,12 +354,20 @@ function kemitraankelola_muatData() {
     ).show();
   }
 
+  var npsnTarget = KEMITRAANKELOLA_IS_ADMIN ? "" : KEMITRAANKELOLA_USER_NPSN;
+
   google.script.run
     .withSuccessHandler(function(resRaw) {
       try {
         var res = typeof resRaw === 'string' ? JSON.parse(resRaw) : resRaw;
         if (res.success) {
-          KEMITRAANKELOLA_CACHE_DATA = res.data || [];
+          var rawData = res.data || [];
+          if (!KEMITRAANKELOLA_IS_ADMIN && KEMITRAANKELOLA_USER_NPSN) {
+            rawData = rawData.filter(function(d) {
+              return String(d.npsn).trim() === KEMITRAANKELOLA_USER_NPSN;
+            });
+          }
+          KEMITRAANKELOLA_CACHE_DATA = rawData;
 
           // Populate Filter Tahun
           var thnList = Array.from(new Set(KEMITRAANKELOLA_CACHE_DATA.map(function(d){ return d.tahun; }).filter(Boolean))).sort().reverse();
@@ -381,7 +391,7 @@ function kemitraankelola_muatData() {
       if (typeof SultanUI !== 'undefined') SultanUI.hideLoading('#kemitraankelola_loadingState');
       $('#kemitraankelola_loadingState').html('<div class="alert alert-danger m-3">Koneksi gagal: ' + err.message + '</div>').show();
     })
-    .getKemitraanData();
+    .getKemitraanData(npsnTarget);
 }
 
 var KEMITRAANKELOLA_TABEL_INSTANCE = null;
@@ -580,9 +590,11 @@ function kemitraankelola_bukaModalTambah() {
   $('#global_modalForm').modal('show');
 
   // Jika user adalah User Sekolah biasa, otomatis set sekolahnya
-  var userNpsn = (typeof USER_NPSN !== 'undefined' && USER_NPSN) ? USER_NPSN : '';
+  var userNpsn = KEMITRAANKELOLA_USER_NPSN || ((typeof USER_NPSN !== 'undefined' && USER_NPSN) ? USER_NPSN : '');
   if (userNpsn && !KEMITRAANKELOLA_IS_ADMIN) {
-    var infoSek = KEMITRAANKELOLA_DATA_SEKOLAH.find(function(s) { return s.npsn === userNpsn; });
+    var infoSek = KEMITRAANKELOLA_DATA_SEKOLAH.find(function(s) {
+      return String(s.npsn).trim() === userNpsn || String(s.npsn).trim().toUpperCase() === userNpsn.toUpperCase();
+    });
     if (infoSek) {
       selJenjang.val(infoSek.jenjang).prop('disabled', true);
       selSekolah.empty().append('<option value="' + infoSek.npsn + '">' + escapeHtml(infoSek.nama) + '</option>').val(infoSek.npsn).prop('disabled', true);
