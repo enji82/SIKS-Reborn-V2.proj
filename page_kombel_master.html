@@ -23,8 +23,8 @@
                     <th class="text-center align-middle text-nowrap" style="width:7%;">
                       <span class="sultan-th-title">JENJANG</span>
                     </th>
-                    <th class="text-center align-middle text-nowrap" style="width:7%;">
-                      <span class="sultan-th-title">KELAS</span>
+                    <th class="text-center align-middle text-nowrap" style="width:12%;">
+                      <span class="sultan-th-title">KELAS / MAPEL</span>
                     </th>
                     <th class="text-center align-middle text-nowrap" style="width:8%;">
                       <span class="sultan-th-title">FORMAT</span>
@@ -97,21 +97,34 @@
             <option value="SD">SD</option>
           </select>
         </div>
-        <!-- Kelas -->
+        <!-- Kelas / Mapel -->
         <div class="col-md-4 mb-3">
-          <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">
-            Kelas <span class="text-danger">*</span>
-          </label>
-          <select id="kombelmaster_in_kelas" class="form-control form-control-sultan border-maroon" required>
-            <option value="KKG Kelas 1">KKG Kelas 1</option>
-            <option value="KKG Kelas 2">KKG Kelas 2</option>
-            <option value="KKG Kelas 3">KKG Kelas 3</option>
-            <option value="KKG Kelas 4">KKG Kelas 4</option>
-            <option value="KKG Kelas 5">KKG Kelas 5</option>
-            <option value="KKG Kelas 6">KKG Kelas 6</option>
-            <option value="KKG PJOK">KKG PJOK</option>
-            <option value="KKG PAI">KKG PAI</option>
-          </select>
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <label class="form-label-sultan small font-weight-bold text-muted text-uppercase mb-0">
+              Kelas / Mapel <span class="text-danger">*</span>
+            </label>
+            <button type="button" id="kombelmaster_btnTambahKkgKustom" class="btn btn-xs btn-outline-primary rounded-pill px-2 py-0" style="font-size:10px;" title="Tambah Kelas/Mapel Baru">
+              <i class="fas fa-plus mr-1"></i>Tambah
+            </button>
+          </div>
+          <!-- Dropdown Multi-Select SultanUI -->
+          <div class="dropdown w-100" id="kombelmaster_kkgMultiDropdown">
+            <button class="btn btn-block form-control-sultan border-maroon text-left d-flex justify-content-between align-items-center dropdown-toggle bg-white" type="button" id="kombelmaster_btnMultiKkg" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="height: auto; min-height: 38px;">
+              <span id="kombelmaster_lblSelectedKkg" class="text-truncate font-weight-bold text-dark">Pilih Kelas / Mapel</span>
+            </button>
+            <div class="dropdown-menu p-3 shadow-lg w-100 border-maroon" aria-labelledby="kombelmaster_btnMultiKkg" style="max-height: 250px; overflow-y: auto;">
+              <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
+                <div class="custom-control custom-checkbox small">
+                  <input type="checkbox" class="custom-control-input" id="kombelmaster_chkSelectAllKkg">
+                  <label class="custom-control-label font-weight-bold text-primary cursor-pointer" for="kombelmaster_chkSelectAllKkg">Pilih Semua</label>
+                </div>
+                <span class="small text-muted font-weight-bold" id="kombelmaster_cntSelectedKkg">0 Dipilih</span>
+              </div>
+              <div id="kombelmaster_kkgCheckboxList" class="d-flex flex-column" style="gap:6px;">
+                <!-- Diisi via JS -->
+              </div>
+            </div>
+          </div>
         </div>
         <!-- Format File -->
         <div class="col-md-4 mb-3">
@@ -212,20 +225,11 @@
    (Mengikuti pola identik page_adm_sekolah_master)
    ================================================================ */
 
-var KOMBELMASTER_CACHE_DATA = [];
-var KOMBELMASTER_TABEL_INSTANCE = null;
-var KOMBELMASTER_SEARCH_TIMEOUT = null;
-
-var KOMBEL_JENIS_PERIODE_LABELS = {
-  "TAHUNAN_TAPEL"     : "Tahunan (Tapel)",
-  "TAHUNAN_KALENDER"  : "Tahunan (Kalender)",
-  "SEMESTER_TAPEL"    : "Semester (Tapel)",
-  "SEMESTER_KALENDER" : "Semester (Kalender)",
-  "TRIWULAN"          : "Triwulanan",
-  "PERIODE"           : "Bulanan / Rentang",
-  "TMT"               : "TMT",
-  "PERMANEN"          : "Permanen (1×)"
-};
+var KOMBELMASTER_DAFTAR_KELAS_MAPEL = [
+  "KKG Kelas 1", "KKG Kelas 2", "KKG Kelas 3",
+  "KKG Kelas 4", "KKG Kelas 5", "KKG Kelas 6",
+  "KKG PJOK", "KKG PAI"
+];
 
 $(document).ready(function() {
   $('#kombelmaster_tableState').hide();
@@ -251,6 +255,20 @@ $(document).ready(function() {
     var v = $(this).val().toUpperCase().replace(/[^A-Z0-9\-_]/g, '');
     $(this).val(v);
   });
+
+  // Listener Multi-Select Checkbox & Tambah Kustom
+  $(document).off('change','.kombelmaster-chk-kkg').on('change','.kombelmaster-chk-kkg', kombelmaster_updateSelectedKkgLabel);
+  $(document).off('change','#kombelmaster_chkSelectAllKkg').on('change','#kombelmaster_chkSelectAllKkg', function() {
+    var isChecked = $(this).is(':checked');
+    $('.kombelmaster-chk-kkg').prop('checked', isChecked);
+    kombelmaster_updateSelectedKkgLabel();
+  });
+  $(document).off('click','#kombelmaster_btnTambahKkgKustom').on('click','#kombelmaster_btnTambahKkgKustom', kombelmaster_tambahKkgKustom);
+  
+  // Cegah dropdown tertutup saat mengkliknya
+  $(document).off('click','#kombelmaster_kkgMultiDropdown .dropdown-menu').on('click','#kombelmaster_kkgMultiDropdown .dropdown-menu', function(e) {
+    e.stopPropagation();
+  });
 });
 
 function kombelmaster_renderFilterBar() {
@@ -273,6 +291,68 @@ function kombelmaster_renderFilterBar() {
   }
 }
 
+function kombelmaster_renderKkgCheckboxList(selectedArray) {
+  selectedArray = selectedArray || [];
+  // Ekstrak KKG kustom jika ada di selectedArray yang belum masuk di master list
+  selectedArray.forEach(function(item) {
+    var trimmed = String(item).trim();
+    if (trimmed && !KOMBELMASTER_DAFTAR_KELAS_MAPEL.includes(trimmed)) {
+      KOMBELMASTER_DAFTAR_KELAS_MAPEL.push(trimmed);
+    }
+  });
+
+  var html = '';
+  KOMBELMASTER_DAFTAR_KELAS_MAPEL.forEach(function(item, idx) {
+    var isChecked = selectedArray.includes(item) ? 'checked' : '';
+    html += `
+      <div class="custom-control custom-checkbox small">
+        <input type="checkbox" class="custom-control-input kombelmaster-chk-kkg" id="kombelmaster_chk_kkg_${idx}" value="${kombelmaster_esc(item)}" ${isChecked}>
+        <label class="custom-control-label font-weight-bold text-dark cursor-pointer" for="kombelmaster_chk_kkg_${idx}">${kombelmaster_esc(item)}</label>
+      </div>
+    `;
+  });
+  $('#kombelmaster_kkgCheckboxList').html(html);
+  kombelmaster_updateSelectedKkgLabel();
+}
+
+function kombelmaster_updateSelectedKkgLabel() {
+  var selected = [];
+  $('.kombelmaster-chk-kkg:checked').each(function() {
+    selected.push($(this).val());
+  });
+  var totalAll = $('.kombelmaster-chk-kkg').length;
+  $('#kombelmaster_chkSelectAllKkg').prop('checked', selected.length > 0 && selected.length === totalAll);
+  $('#kombelmaster_cntSelectedKkg').text(selected.length + ' Dipilih');
+
+  if (selected.length === 0) {
+    $('#kombelmaster_lblSelectedKkg').text('Pilih Kelas / Mapel').addClass('text-muted').removeClass('text-dark');
+  } else {
+    $('#kombelmaster_lblSelectedKkg').text(selected.join(', ')).removeClass('text-muted').addClass('text-dark');
+  }
+}
+
+function kombelmaster_getSelectedKkgValues() {
+  var selected = [];
+  $('.kombelmaster-chk-kkg:checked').each(function() {
+    selected.push($(this).val());
+  });
+  return selected.join(', ');
+}
+
+function kombelmaster_tambahKkgKustom() {
+  var namaKkg = prompt("Masukkan nama Kelas / Mapel baru (contoh: KKG Bahasa Inggris / KKG Seni Budaya):");
+  if (namaKkg && namaKkg.trim() !== "") {
+    var val = namaKkg.trim();
+    if (!KOMBELMASTER_DAFTAR_KELAS_MAPEL.includes(val)) {
+      KOMBELMASTER_DAFTAR_KELAS_MAPEL.push(val);
+    }
+    var currentSelected = [];
+    $('.kombelmaster-chk-kkg:checked').each(function() { currentSelected.push($(this).val()); });
+    if (!currentSelected.includes(val)) currentSelected.push(val);
+    kombelmaster_renderKkgCheckboxList(currentSelected);
+  }
+}
+
 function kombelmaster_tarikDataServer() {
   var btn = $('#kombelmaster_btnRefresh');
   btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin text-maroon"></i>');
@@ -288,6 +368,20 @@ function kombelmaster_tarikDataServer() {
       return;
     }
     KOMBELMASTER_CACHE_DATA = res.kategori || [];
+    
+    // Kumpulkan KKG unik yang ada di database cache
+    KOMBELMASTER_CACHE_DATA.forEach(function(d) {
+      if (d.kelas) {
+        var parts = d.kelas.split(',');
+        parts.forEach(function(p) {
+          var trimmed = p.trim();
+          if (trimmed && trimmed !== "Semua KKG" && trimmed !== "Umum" && !KOMBELMASTER_DAFTAR_KELAS_MAPEL.includes(trimmed)) {
+            KOMBELMASTER_DAFTAR_KELAS_MAPEL.push(trimmed);
+          }
+        });
+      }
+    });
+
     if (!$.fn.DataTable.isDataTable('#kombelmaster_tabelUtama')) kombelmaster_initTable();
     kombelmaster_terapkanFilterLokal();
     SultanUI.hideLoading('#kombelmaster_loadingState');
@@ -350,7 +444,16 @@ function kombelmaster_renderTabel(data) {
     var fmt = String(d.format||"PDF").toUpperCase(); var fmtText = fmtLabel[fmt] || fmt;
 
     var jPeriodeLbl = KOMBEL_JENIS_PERIODE_LABELS[String(d.jenisPeriode||"").toUpperCase()] || String(d.jenisPeriode||"-");
-    var kelasText = d.kelas || "Umum";
+    
+    // Tampilkan list Kelas/Mapel dengan badge cantik
+    var rawKelas = d.kelas || "Semua KKG";
+    var kelasArr = rawKelas.split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+    var kelasBadge = '';
+    if (kelasArr.length <= 2) {
+      kelasArr.forEach(function(k){ kelasBadge += '<span class="badge badge-dark font-weight-bold mr-1" style="font-size:10.5px;">'+kombelmaster_esc(k)+'</span>'; });
+    } else {
+      kelasBadge = '<span class="badge badge-dark font-weight-bold" style="font-size:10.5px;" title="'+kombelmaster_esc(rawKelas)+'">'+kelasArr.length+' Kelas/Mapel Terpilih</span>';
+    }
 
     var keterHtml = (d.keterangan && d.keterangan.trim() !== "")
       ? '<br><small class="text-muted font-italic" title="'+kombelmaster_esc(d.keterangan)+'" style="font-size:10px;"><i class="fas fa-info-circle mr-1"></i>' + kombelmaster_esc(String(d.keterangan).length > 60 ? String(d.keterangan).substring(0,60)+'...' : d.keterangan) + '</small>'
@@ -364,7 +467,7 @@ function kombelmaster_renderTabel(data) {
       '<span class="badge badge-dark font-weight-bold font-monospace" style="font-size:11px;letter-spacing:0.5px;">'+kombelmaster_esc(d.idKat)+'</span>',
       '<div class="font-weight-bold text-wrap" style="font-size:12px;">'+kombelmaster_esc(d.namaKat)+keterHtml+'</div>',
       '<span class="badge badge-secondary font-weight-bold" style="font-size:11px;">'+kombelmaster_esc(d.jenjang||"SEMUA")+'</span>',
-      '<span class="badge badge-dark font-weight-bold" style="font-size:11px;">'+kombelmaster_esc(kelasText)+'</span>',
+      kelasBadge,
       '<span class="badge badge-info font-weight-bold" style="font-size:11px;">'+kombelmaster_esc(fmtText)+'</span>',
       '<span class="font-weight-bold" style="font-size:11px;">'+kombelmaster_esc(jPeriodeLbl)+'</span>',
       bSts, bInteg, aksi
@@ -380,7 +483,7 @@ function kombelmaster_bukaModalTambah() {
   $('#kombelmaster_in_id').prop('disabled', false).val('');
   $('#kombelmaster_in_nama').val('');
   $('#kombelmaster_in_jenjang').val('');
-  $('#kombelmaster_in_kelas').val('KKG Kelas 1');
+  kombelmaster_renderKkgCheckboxList(KOMBELMASTER_DAFTAR_KELAS_MAPEL);
   $('#kombelmaster_in_format').val('');
   $('#kombelmaster_in_ukuran').val('2');
   $('#kombelmaster_in_jenis_periode').val('');
@@ -398,7 +501,10 @@ function kombelmaster_bukaModalEdit(d) {
   $('#kombelmaster_in_id').prop('disabled', true).val(d.idKat);
   $('#kombelmaster_in_nama').val(d.namaKat);
   $('#kombelmaster_in_jenjang').val(d.jenjang||"");
-  $('#kombelmaster_in_kelas').val(d.kelas||"KKG Kelas 1");
+  
+  var selectedKkgArr = (d.kelas || "").split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+  kombelmaster_renderKkgCheckboxList(selectedKkgArr);
+
   $('#kombelmaster_in_format').val(d.format||"PDF");
   $('#kombelmaster_in_ukuran').val(d.ukuran||"2");
   $('#kombelmaster_in_jenis_periode').val(d.jenisPeriode||"");
@@ -429,6 +535,9 @@ function kombelmaster_submitForm(e) {
   var $form = $('#kombelmaster_formInputUtama');
   if (!$form[0].checkValidity()) { $form.addClass('was-validated'); return; }
 
+  var selectedKkgVal = kombelmaster_getSelectedKkgValues();
+  if (!selectedKkgVal) { Sultan.alert('warning','Perhatian','Pilih minimal 1 Kelas / Mapel.'); return; }
+
   var modeEdit = $('#kombelmaster_modeEdit').val() === 'edit';
   var idKat = modeEdit ? $('#kombelmaster_originalId').val() : $('#kombelmaster_in_id').val().trim().toUpperCase();
   if (!idKat) { Sultan.alert('warning','Perhatian','ID Dokumen tidak boleh kosong.'); return; }
@@ -442,7 +551,7 @@ function kombelmaster_submitForm(e) {
     idKat      : idKat,
     namaKat    : $('#kombelmaster_in_nama').val().trim(),
     jenjang    : $('#kombelmaster_in_jenjang').val() || "SEMUA",
-    kelas      : $('#kombelmaster_in_kelas').val() || "KKG Kelas 1",
+    kelas      : selectedKkgVal,
     format     : $('#kombelmaster_in_format').val() || "PDF",
     ukuran     : $('#kombelmaster_in_ukuran').val() || "2",
     jenisPeriode: $('#kombelmaster_in_jenis_periode').val() || "TAHUNAN_TAPEL",
