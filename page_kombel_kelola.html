@@ -86,15 +86,7 @@
               Sasaran KKG <span class="text-danger">*</span>
             </label>
             <select id="kombelkelola_in_kkg" class="form-control form-control-sultan border-maroon font-weight-bold text-dark" required>
-              <option value="Semua KKG">Semua KKG / Umum</option>
-              <option value="KKG Kelas 1">KKG Kelas 1</option>
-              <option value="KKG Kelas 2">KKG Kelas 2</option>
-              <option value="KKG Kelas 3">KKG Kelas 3</option>
-              <option value="KKG Kelas 4">KKG Kelas 4</option>
-              <option value="KKG Kelas 5">KKG Kelas 5</option>
-              <option value="KKG Kelas 6">KKG Kelas 6</option>
-              <option value="KKG PJOK">KKG PJOK</option>
-              <option value="KKG PAI">KKG PAI</option>
+              <option value="">Pilih KKG</option>
             </select>
           </div>
         </div>
@@ -548,16 +540,7 @@ function kombelkelola_initMasterData() {
     KOMBELKELOLA_MASTER_KAT.forEach(function(k){ hk += '<option value="'+k.idKat+'">'+k.namaKat+'</option>'; });
     $('#kombelkelola_filterKategori').html(hk).prop('disabled', false);
 
-    var hKkg = '<option value="SEMUA">Semua KKG</option>'
-      + '<option value="KKG Kelas 1">KKG Kelas 1</option>'
-      + '<option value="KKG Kelas 2">KKG Kelas 2</option>'
-      + '<option value="KKG Kelas 3">KKG Kelas 3</option>'
-      + '<option value="KKG Kelas 4">KKG Kelas 4</option>'
-      + '<option value="KKG Kelas 5">KKG Kelas 5</option>'
-      + '<option value="KKG Kelas 6">KKG Kelas 6</option>'
-      + '<option value="KKG PJOK">KKG PJOK</option>'
-      + '<option value="KKG PAI">KKG PAI</option>';
-    $('#kombelkelola_filterKelas').html(hKkg).prop('disabled', false);
+    kombelkelola_setupKkgDropdowns();
 
     var hs = '<option value="SEMUA">Semua Status</option><option value="diproses">Diproses</option><option value="disetujui">Disetujui</option><option value="revisi">Revisi</option><option value="ditolak">Ditolak</option>';
     $('#kombelkelola_filterStatus').html(hs).prop('disabled', false);
@@ -574,6 +557,39 @@ function kombelkelola_initMasterData() {
   }).withFailureHandler(function(err) {
     $('#kombelkelola_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>'+kombelkelola_esc(err.message)+'</span>');
   }).getKombelMasterData("");
+}
+
+function kombelkelola_setupKkgDropdowns() {
+  var kkgSet = new Set();
+  KOMBELKELOLA_MASTER_KAT.forEach(function(k) {
+    var kkg = String(k.kelas || "").trim();
+    if (kkg && kkg !== "Semua KKG" && kkg !== "Umum") {
+      kkgSet.add(kkg);
+    }
+  });
+
+  // Jika master data belum mendefinisikan kelas khusus, sertakan opsi dari KOMBELKELOLA_KELAS_OPTS
+  if (kkgSet.size === 0) {
+    KOMBELKELOLA_KELAS_OPTS.forEach(function(opt) {
+      if (opt.value !== "Umum") kkgSet.add(opt.value);
+    });
+  }
+
+  var sortedKkg = Array.from(kkgSet).sort();
+
+  // Dropdown filter bar
+  var hFilterKkg = '<option value="SEMUA">Semua KKG</option>';
+  sortedKkg.forEach(function(kkg) {
+    hFilterKkg += '<option value="' + kombelkelola_esc(kkg) + '">' + kombelkelola_esc(kkg) + '</option>';
+  });
+  $('#kombelkelola_filterKelas').html(hFilterKkg).prop('disabled', false);
+
+  // Dropdown modal upload
+  var hModalKkg = '<option value="Semua KKG">Semua KKG / Umum</option>';
+  sortedKkg.forEach(function(kkg) {
+    hModalKkg += '<option value="' + kombelkelola_esc(kkg) + '">' + kombelkelola_esc(kkg) + '</option>';
+  });
+  $('#kombelkelola_in_kkg').html(hModalKkg);
 }
 
 function kombelkelola_setupJenjangDropdown() {
@@ -793,6 +809,7 @@ function kombelkelola_bukaModalTambah() {
   if (!KOMBELKELOLA_IS_ADMIN && !KOMBELKELOLA_NPSN_TERKUNCI) { Sultan.alert('warning','Perhatian','Sesi login tidak valid.'); return; }
   var $form = $('#kombelkelola_formUpload'); $form[0].reset(); $form.removeClass('was-validated');
   $('#kombelkelola_in_jenjang').val(''); $('#kombelkelola_in_sekolah').val('').prop('disabled', true).empty().append('<option value="">Pilih Sekolah</option>');
+  kombelkelola_setupKkgDropdowns();
   $('#kombelkelola_in_kkg').val('Semua KKG');
   $('#kombelkelola_uploadContainer').html('<div class="text-center text-muted p-3" id="kombelkelola_msgPilihSekolah"><i class="fas fa-info-circle mr-1"></i> Pilih sekolah terlebih dahulu.</div>');
   $('#kombelkelola_btnAddRow, #kombelkelola_btnSimpan').prop('disabled', true);
