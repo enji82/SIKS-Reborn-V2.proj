@@ -341,10 +341,14 @@ function kemitraankelola_muatMasterData() {
 }
 
 function kemitraankelola_muatData() {
-  $('#kemitraankelola_loadingState').html(
-    '<div class="text-center py-5"><i class="fas fa-circle-notch fa-spin fa-2x text-maroon mb-2"></i><div class="small font-weight-bold text-muted">Memuat Dokumen Kemitraan...</div></div>'
-  ).show();
   $('#kemitraankelola_tableState').hide();
+  if (typeof SultanUI !== 'undefined' && typeof SultanUI.showLoading === 'function') {
+    SultanUI.showLoading('#kemitraankelola_loadingState', 'Memuat Dokumen Kemitraan...');
+  } else {
+    $('#kemitraankelola_loadingState').html(
+      '<div class="text-center py-5"><i class="fas fa-circle-notch fa-spin fa-2x text-maroon mb-2"></i><div class="small font-weight-bold text-muted">Memuat Dokumen Kemitraan...</div></div>'
+    ).show();
+  }
 
   google.script.run
     .withSuccessHandler(function(resRaw) {
@@ -363,14 +367,17 @@ function kemitraankelola_muatData() {
 
           kemitraankelola_renderTabel(KEMITRAANKELOLA_CACHE_DATA);
         } else {
-          $('#kemitraankelola_loadingState').html('<div class="alert alert-danger m-3">' + res.message + '</div>');
+          if (typeof SultanUI !== 'undefined') SultanUI.hideLoading('#kemitraankelola_loadingState');
+          $('#kemitraankelola_loadingState').html('<div class="alert alert-danger m-3">' + res.message + '</div>').show();
         }
       } catch(e) {
-        $('#kemitraankelola_loadingState').html('<div class="alert alert-danger m-3">Gagal membaca data dari server.</div>');
+        if (typeof SultanUI !== 'undefined') SultanUI.hideLoading('#kemitraankelola_loadingState');
+        $('#kemitraankelola_loadingState').html('<div class="alert alert-danger m-3">Gagal membaca data dari server.</div>').show();
       }
     })
     .withFailureHandler(function(err) {
-      $('#kemitraankelola_loadingState').html('<div class="alert alert-danger m-3">Koneksi gagal: ' + err.message + '</div>');
+      if (typeof SultanUI !== 'undefined') SultanUI.hideLoading('#kemitraankelola_loadingState');
+      $('#kemitraankelola_loadingState').html('<div class="alert alert-danger m-3">Koneksi gagal: ' + err.message + '</div>').show();
     })
     .getKemitraanData();
 }
@@ -472,7 +479,11 @@ function kemitraankelola_renderTabel(dataRows) {
   });
 
   KEMITRAANKELOLA_TABEL_INSTANCE.clear().rows.add(dtArray).draw(false);
-  $('#kemitraankelola_loadingState').hide();
+  if (typeof SultanUI !== 'undefined') {
+    SultanUI.hideLoading('#kemitraankelola_loadingState');
+  } else {
+    $('#kemitraankelola_loadingState').hide();
+  }
   $('#kemitraankelola_tableState').show();
   if (KEMITRAANKELOLA_TABEL_INSTANCE) {
     setTimeout(function() { KEMITRAANKELOLA_TABEL_INSTANCE.columns.adjust(); }, 100);
