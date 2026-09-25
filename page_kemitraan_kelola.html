@@ -448,18 +448,34 @@ function kemitraankelola_terapkanFilter() {
 }
 
 function kemitraankelola_bukaModalTambah() {
-  var formHtml = $('#kemitraankelola_formUpload');
-  var uploadContainer = formHtml.find('#kemitraankelola_uploadContainer');
+  var $form = $('#kemitraankelola_formUpload');
+  $form[0].reset();
+  $form.removeClass('was-validated');
+
+  var uploadContainer = $form.find('#kemitraankelola_uploadContainer');
   uploadContainer.empty().append('<div class="text-center text-muted p-3" id="kemitraankelola_msgPilihSekolah"><i class="fas fa-info-circle mr-1"></i> Pilih sekolah terlebih dahulu.</div>');
 
-  var btnAdd = formHtml.find('#kemitraankelola_btnAddRow').prop('disabled', true);
-  var btnSimpan = formHtml.find('#kemitraankelola_btnSimpan').prop('disabled', true);
+  var btnAdd = $form.find('#kemitraankelola_btnAddRow').prop('disabled', true);
+  var btnSimpan = $form.find('#kemitraankelola_btnSimpan').prop('disabled', true);
 
-  var selJenjang = formHtml.find('#kemitraankelola_in_jenjang');
-  var selSekolah = formHtml.find('#kemitraankelola_in_sekolah');
+  var selJenjang = $form.find('#kemitraankelola_in_jenjang');
+  var selSekolah = $form.find('#kemitraankelola_in_sekolah');
 
   selJenjang.val('');
   selSekolah.empty().append('<option value="">Pilih Sekolah</option>').prop('disabled', true);
+
+  $('#global_modalFormSize').removeClass('modal-xl modal-md').addClass('modal-lg');
+  $('#global_modalFormHeader').removeClass('modal-header-sultan-primary modal-header-sultan-warning modal-header-sultan-danger modal-header-sultan-success modal-header-sultan-info modal-header-sultan-dark modal-header-edit modal-header-tambah-edit modal-header-hapus').addClass('modal-header-tambah-edit');
+  $('#global_modalFormTitle').html('<i class="fas fa-cloud-upload-alt mr-2"></i> Unggah Dokumen Kemitraan & Kerja Sama');
+
+  $('#global_modalFormBody, #global_modalFormFooter').hide();
+  $form.appendTo('#global_modalFormSize .modal-content');
+
+  $('#global_modalForm').off('hidden.bs.modal.kemitraanupload').on('hidden.bs.modal.kemitraanupload', function() {
+    $form.appendTo('#kemitraankelola_templates');
+    $('#global_modalFormBody, #global_modalFormFooter').show();
+  });
+  $('#global_modalForm').modal('show');
 
   // Jika user adalah User Sekolah biasa, otomatis set sekolahnya
   var userNpsn = (typeof USER_NPSN !== 'undefined' && USER_NPSN) ? USER_NPSN : '';
@@ -498,15 +514,6 @@ function kemitraankelola_bukaModalTambah() {
       btnAdd.prop('disabled', true); btnSimpan.prop('disabled', true);
     }
   });
-
-  if (typeof showSultanModal === 'function') {
-    showSultanModal({
-      title: "UNGGAH DOKUMEN KEMITRAAN & KERJA SAMA",
-      icon: "fas fa-upload text-warning",
-      content: formHtml,
-      width: "modal-lg font-sultan-main"
-    });
-  }
 }
 
 function kemitraankelola_onSekolahSelected(npsn, jenjang) {
@@ -615,10 +622,10 @@ function kemitraankelola_prosesUploadMultibaris(npsn) {
 
 function kemitraankelola_eksekusiUploadAntrian(npsn, items, index) {
   if (index >= items.length) {
-    if (typeof closeSultanLoading === 'function') closeSultanLoading();
-    if (typeof closeSultanModal === 'function') closeSultanModal();
-    if (typeof Swal !== 'undefined') {
-      Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Semua dokumen kemitraan berhasil diunggah.', timer: 1500, showConfirmButton: false });
+    if (typeof SultanUI !== 'undefined') SultanUI.hideLoading('#kemitraankelola_loadingState');
+    $('#global_modalForm').modal('hide');
+    if (typeof Sultan !== 'undefined' && Sultan.notif) {
+      Sultan.notif.crud('tambah', 'Semua dokumen kemitraan berhasil diunggah.');
     }
     kemitraankelola_muatData();
     return;
@@ -667,6 +674,9 @@ function kemitraankelola_bukaModalEdit(rowId) {
   var item = KEMITRAANKELOLA_CACHE_DATA.find(function(x) { return x.rowId === rowId; });
   if (!item) return;
 
+  var $form = $('#kemitraankelola_formPerbaiki');
+  $form[0].reset();
+
   $('#kemitraankelola_p_rowid').val(item.rowId);
   $('#kemitraankelola_p_npsn').val(item.npsn);
   $('#kemitraankelola_p_nama').text(item.nama_sekolah || item.npsn);
@@ -675,15 +685,18 @@ function kemitraankelola_bukaModalEdit(rowId) {
   $('#kemitraankelola_p_tahun_input').val(item.tahun || new Date().getFullYear());
   $('#kemitraankelola_p_file').val('').siblings('.custom-file-label').text('Pilih file baru...');
 
-  var formHtml = $('#kemitraankelola_formPerbaiki');
-  if (typeof showSultanModal === 'function') {
-    showSultanModal({
-      title: "PERBAIKI DOKUMEN KEMITRAAN",
-      icon: "fas fa-edit text-warning",
-      content: formHtml,
-      width: "modal-md font-sultan-main"
-    });
-  }
+  $('#global_modalFormSize').removeClass('modal-xl modal-lg').addClass('modal-md');
+  $('#global_modalFormHeader').removeClass('modal-header-sultan-primary modal-header-sultan-warning modal-header-sultan-danger modal-header-sultan-success modal-header-sultan-info modal-header-sultan-dark modal-header-edit modal-header-tambah-edit modal-header-hapus').addClass('modal-header-tambah-edit');
+  $('#global_modalFormTitle').html('<i class="fas fa-edit mr-2"></i> Perbaiki Dokumen Kemitraan');
+
+  $('#global_modalFormBody, #global_modalFormFooter').hide();
+  $form.appendTo('#global_modalFormSize .modal-content');
+
+  $('#global_modalForm').off('hidden.bs.modal.kemitraanedit').on('hidden.bs.modal.kemitraanedit', function() {
+    $form.appendTo('#kemitraankelola_templates');
+    $('#global_modalFormBody, #global_modalFormFooter').show();
+  });
+  $('#global_modalForm').modal('show');
 
   $('#kemitraankelola_btnSimpanPerbaiki').off('click').on('click', function() {
     kemitraankelola_prosesPerbaiki();
@@ -700,7 +713,7 @@ function kemitraankelola_prosesPerbaiki() {
     return;
   }
 
-  if (typeof showSultanLoading === 'function') showSultanLoading("Memperbarui dokumen...");
+  if (typeof SultanUI !== 'undefined') SultanUI.showLoading('#kemitraankelola_loadingState');
 
   if (fileInput.files && fileInput.files[0]) {
     var file = fileInput.files[0];
@@ -722,12 +735,12 @@ function kemitraankelola_prosesPerbaiki() {
 }
 
 function kemitraankelola_handlePerbaikiSuccess(resRaw) {
-  if (typeof closeSultanLoading === 'function') closeSultanLoading();
+  if (typeof SultanUI !== 'undefined') SultanUI.hideLoading('#kemitraankelola_loadingState');
   try {
     var res = typeof resRaw === 'string' ? JSON.parse(resRaw) : resRaw;
     if (res.success) {
-      if (typeof closeSultanModal === 'function') closeSultanModal();
-      if (typeof Swal !== 'undefined') Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message, timer: 1500, showConfirmButton: false });
+      $('#global_modalForm').modal('hide');
+      if (typeof Sultan !== 'undefined' && Sultan.notif) Sultan.notif.crud('edit', 'Dokumen berhasil diperbarui.');
       kemitraankelola_muatData();
     } else {
       if (typeof Swal !== 'undefined') Swal.fire('Gagal', res.message, 'error');
@@ -736,13 +749,16 @@ function kemitraankelola_handlePerbaikiSuccess(resRaw) {
 }
 
 function kemitraankelola_handlePerbaikiFailure(err) {
-  if (typeof closeSultanLoading === 'function') closeSultanLoading();
+  if (typeof SultanUI !== 'undefined') SultanUI.hideLoading('#kemitraankelola_loadingState');
   if (typeof Swal !== 'undefined') Swal.fire('Error', err.message || 'Gagal koneksi server', 'error');
 }
 
 function kemitraankelola_bukaModalVerif(rowId) {
   var item = KEMITRAANKELOLA_CACHE_DATA.find(function(x) { return x.rowId === rowId; });
   if (!item) return;
+
+  var $form = $('#kemitraankelola_formVerif');
+  $form[0].reset();
 
   $('#kemitraankelola_v_rowid').val(item.rowId);
   $('#kemitraankelola_v_nama').text(item.nama_sekolah || item.npsn);
@@ -760,15 +776,18 @@ function kemitraankelola_bukaModalVerif(rowId) {
     $('#kemitraankelola_prevCatatanWrap').hide();
   }
 
-  var formHtml = $('#kemitraankelola_formVerif');
-  if (typeof showSultanModal === 'function') {
-    showSultanModal({
-      title: "VERIFIKASI DOKUMEN KEMITRAAN",
-      icon: "fas fa-check-circle text-success",
-      content: formHtml,
-      width: "modal-md font-sultan-main"
-    });
-  }
+  $('#global_modalFormSize').removeClass('modal-xl modal-lg').addClass('modal-md');
+  $('#global_modalFormHeader').removeClass('modal-header-sultan-primary modal-header-sultan-warning modal-header-sultan-danger modal-header-sultan-success modal-header-sultan-info modal-header-sultan-dark modal-header-edit modal-header-tambah-edit modal-header-hapus').addClass('modal-header-tambah-edit');
+  $('#global_modalFormTitle').html('<i class="fas fa-check-circle mr-2"></i> Verifikasi Dokumen Kemitraan');
+
+  $('#global_modalFormBody, #global_modalFormFooter').hide();
+  $form.appendTo('#global_modalFormSize .modal-content');
+
+  $('#global_modalForm').off('hidden.bs.modal.kemitraanverif').on('hidden.bs.modal.kemitraanverif', function() {
+    $form.appendTo('#kemitraankelola_templates');
+    $('#global_modalFormBody, #global_modalFormFooter').show();
+  });
+  $('#global_modalForm').modal('show');
 
   $('#kemitraankelola_btnVerifikasi').off('click').on('click', function() {
     kemitraankelola_prosesVerifikasi();
@@ -790,16 +809,16 @@ function kemitraankelola_prosesVerifikasi() {
     return;
   }
 
-  if (typeof showSultanLoading === 'function') showSultanLoading("Menyimpan verifikasi...");
+  if (typeof SultanUI !== 'undefined') SultanUI.showLoading('#kemitraankelola_loadingState');
 
   google.script.run
     .withSuccessHandler(function(resRaw) {
-      if (typeof closeSultanLoading === 'function') closeSultanLoading();
+      if (typeof SultanUI !== 'undefined') SultanUI.hideLoading('#kemitraankelola_loadingState');
       try {
         var res = typeof resRaw === 'string' ? JSON.parse(resRaw) : resRaw;
         if (res.success) {
-          if (typeof closeSultanModal === 'function') closeSultanModal();
-          if (typeof Swal !== 'undefined') Swal.fire({ icon: 'success', title: 'Verifikasi Berhasil', text: res.message, timer: 1500, showConfirmButton: false });
+          $('#global_modalForm').modal('hide');
+          if (typeof Sultan !== 'undefined' && Sultan.notif) Sultan.notif.crud('edit', 'Verifikasi berhasil disimpan.');
           kemitraankelola_muatData();
         } else {
           if (typeof Swal !== 'undefined') Swal.fire('Gagal', res.message, 'error');
@@ -807,7 +826,7 @@ function kemitraankelola_prosesVerifikasi() {
       } catch(e) {}
     })
     .withFailureHandler(function(err) {
-      if (typeof closeSultanLoading === 'function') closeSultanLoading();
+      if (typeof SultanUI !== 'undefined') SultanUI.hideLoading('#kemitraankelola_loadingState');
       if (typeof Swal !== 'undefined') Swal.fire('Error', err.message || 'Gagal koneksi server', 'error');
     })
     .verifikasiKemitraanDokumen(rowId, status, catatan);
