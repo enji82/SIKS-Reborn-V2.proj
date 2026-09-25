@@ -47,6 +47,7 @@ const SPREADSHEET_IDS = {
   PPPK_PW_DB: "1uIcRgqDbozFoI6_Lf24Ijlq0QbrQFwmcLTMYRzqTNrg",
   EMADING_DB: "1OUIfYXgcI3aK6bz4woyQohG26cKJMK-KikLBr13Tbwk",
   KOMBEL_DB: "1YhanZZ_AGcxh1_tH_EJuvX0R2Hq6Dn9L7-cq9HWyAfI", // Database Komunitas Belajar
+  KEMITRAAN_DB: "1YhanZZ_AGcxh1_tH_EJuvX0R2Hq6Dn9L7-cq9HWyAfI", // Database Kemitraan & Kerja Sama
 };
 
 // 2. FOLDER CONFIG (Digunakan oleh semua file .gs lainnya)
@@ -85,6 +86,7 @@ const FOLDER_CONFIG = {
   PPPK_PW_EMETERAI: "1DttLjGkQxQhB8BgM1wOYTPhEh2NYY6ln",
   EMADING_DOCS: "1bo3ni66ZZ7ybAgzVT8oMhkg0MXKOb9Dq",
   KOMBEL_DOCS: "1qqKITNC5i82yNJoaOu05R0CpRtRt2oCi", // Folder Dokumen Komunitas Belajar
+  KEMITRAAN_DOCS: "1qqKITNC5i82yNJoaOu05R0CpRtRt2oCi", // Folder Dokumen Kemitraan & Kerja Sama
 };
 
 // ==========================================
