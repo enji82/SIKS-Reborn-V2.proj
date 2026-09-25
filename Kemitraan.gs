@@ -336,7 +336,7 @@ function getKemitraanDashboardData(idKategori, forceRefresh) {
     for (var i=1;i<dataDok.length;i++) {
       if (String(dataDok[i][3]).trim()!==idKategori) continue;
       var rNpsn=String(dataDok[i][1]).trim(); var info=sekolahMap[rNpsn]||{nama:rNpsn,jenjang:"-"};
-      rekap.push({npsn:rNpsn,nama:info.nama,jenjang:info.jenjang,tahun:String(dataDok[i][5]||"").trim(),status:String(dataDok[i][10]||"Diproses").trim()});
+      rekap.push({npsn:rNpsn,nama:info.nama,jenjang:info.jenjang,tahun:String(dataDok[i][5]||"").trim(),status:String(dataDok[i][10]||"Diproses").trim(),catatan:String(dataDok[i][11]||"").trim()});
       if (!npsnHadUpload[rNpsn]) npsnHadUpload[rNpsn]=[];
       npsnHadUpload[rNpsn].push(String(dataDok[i][10]||"Diproses").trim());
     }
