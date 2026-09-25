@@ -236,51 +236,64 @@ $(document).ready(function() {
 });
 
 function kemitraankelola_initFilterBar() {
-  var configFB = {
-    containerId: "kemitraankelola_filterBarArea",
-    searchPlaceholder: "Cari Sekolah, Kategori, Tahun...",
-    searchId: "kemitraankelola_inCari",
-    selects: [
-      {
-        id: "kemitraankelola_selStatus",
-        label: "Status",
-        options: [
-          { value: "SEMUA", text: "Semua Status" },
-          { value: "Diproses", text: "Diproses" },
-          { value: "Disetujui", text: "Disetujui" },
-          { value: "Revisi", text: "Revisi" },
-          { value: "Ditolak", text: "Ditolak" }
-        ]
-      },
-      {
-        id: "kemitraankelola_selSekolah",
-        label: "Sekolah",
-        options: [{ value: "SEMUA", text: "Semua Sekolah" }]
-      }
-    ],
-    buttons: [
-      {
-        id: "kemitraankelola_btnRefresh",
-        icon: "fas fa-sync-alt",
-        title: "Muat Ulang Data",
-        onClick: "kemitraankelola_muatData()"
-      },
-      {
-        id: "kemitraankelola_btnTambah",
-        text: "Tambah Dokumen",
-        icon: "fas fa-plus",
-        class: "btn-sultan-primary font-weight-bold ml-auto",
-        onClick: "kemitraankelola_bukaModalTambah()"
-      }
-    ]
-  };
-
-  if (typeof renderSultanFilterBar === 'function') {
-    renderSultanFilterBar(configFB);
+  var filtersConfig = [];
+  if (KEMITRAANKELOLA_IS_ADMIN) {
+    filtersConfig = [
+      { id: 'kemitraankelola_filterKategori', placeholder: 'Semua Dokumen', disabled: true },
+      { id: 'kemitraankelola_filterTahun', placeholder: 'Semua Tahun', disabled: true },
+      { id: 'kemitraankelola_filterJenjang', placeholder: 'Semua Jenjang', disabled: true },
+      { id: 'kemitraankelola_filterSekolah', placeholder: 'Semua Sekolah', disabled: true },
+      { id: 'kemitraankelola_filterStatus', placeholder: 'Semua Status', disabled: true }
+    ];
+  } else {
+    filtersConfig = [
+      { id: 'kemitraankelola_filterKategori', placeholder: 'Semua Dokumen', disabled: true },
+      { id: 'kemitraankelola_filterTahun', placeholder: 'Semua Tahun', disabled: true },
+      { id: 'kemitraankelola_filterStatus', placeholder: 'Semua Status', disabled: true }
+    ];
   }
 
-  $('#kemitraankelola_inCari').on('keyup input', function() { kemitraankelola_terapkanFilter(); });
-  $('#kemitraankelola_selStatus, #kemitraankelola_selSekolah').on('change', function() { kemitraankelola_terapkanFilter(); });
+  var extraButtons = `
+    <div class="divider-vertical d-none d-md-block mx-2"></div>
+    <button type="button" id="kemitraankelola_btnRefresh" class="sultan-btn-refresh" title="Segarkan Data" disabled>
+      <i class="fas fa-sync-alt"></i>
+    </button>
+    <div class="ml-auto d-none d-md-block"></div>
+    <button type="button" id="kemitraankelola_btnTambah" class="sultan-btn-tambah" disabled>
+      <i class="fas fa-plus"></i> TAMBAH
+    </button>
+  `;
+
+  if (typeof SultanUI !== 'undefined') {
+    $('#kemitraankelola_filterBarArea').html(SultanUI.renderFilterBar(filtersConfig, extraButtons));
+  }
+
+  $(document).off('click', '#kemitraankelola_btnRefresh').on('click', '#kemitraankelola_btnRefresh', kemitraankelola_muatData);
+  $(document).off('click', '#kemitraankelola_btnTambah').on('click', '#kemitraankelola_btnTambah', kemitraankelola_bukaModalTambah);
+
+  $(document).off('change', '#kemitraankelola_filterKategori, #kemitraankelola_filterTahun, #kemitraankelola_filterStatus').on('change', '#kemitraankelola_filterKategori, #kemitraankelola_filterTahun, #kemitraankelola_filterStatus', kemitraankelola_terapkanFilter);
+
+  if (KEMITRAANKELOLA_IS_ADMIN) {
+    $(document).off('change', '#kemitraankelola_filterJenjang').on('change', '#kemitraankelola_filterJenjang', function() {
+      kemitraankelola_updateSekolahFilterDropdown();
+      kemitraankelola_terapkanFilter();
+    });
+    $(document).off('change', '#kemitraankelola_filterSekolah').on('change', '#kemitraankelola_filterSekolah', kemitraankelola_terapkanFilter);
+  }
+}
+
+function kemitraankelola_updateSekolahFilterDropdown() {
+  var jjg = $('#kemitraankelola_filterJenjang').val();
+  var selSek = $('#kemitraankelola_filterSekolah');
+  selSek.empty().append('<option value="">Semua Sekolah</option>');
+  
+  var list = KEMITRAANKELOLA_DATA_SEKOLAH;
+  if (jjg) {
+    list = list.filter(function(s) { return s.jenjang === jjg; });
+  }
+  list.forEach(function(s) {
+    selSek.append('<option value="' + s.npsn + '">' + escapeHtml(s.nama) + '</option>');
+  });
 }
 
 function kemitraankelola_muatMasterData() {
@@ -292,11 +305,35 @@ function kemitraankelola_muatMasterData() {
           KEMITRAANKELOLA_MASTER_KAT = (res.kategori || []).filter(function(x) { return x.isAktif; });
           KEMITRAANKELOLA_DATA_SEKOLAH = res.sekolah || [];
 
-          var selSek = $('#kemitraankelola_selSekolah');
-          selSek.empty().append('<option value="SEMUA">Semua Sekolah</option>');
-          KEMITRAANKELOLA_DATA_SEKOLAH.forEach(function(s) {
-            selSek.append('<option value="' + s.npsn + '">' + escapeHtml(s.nama) + '</option>');
+          // Populate Filter Kategori
+          var selKat = $('#kemitraankelola_filterKategori');
+          selKat.empty().append('<option value="">Semua Dokumen</option>').prop('disabled', false);
+          KEMITRAANKELOLA_MASTER_KAT.forEach(function(k) {
+            selKat.append('<option value="' + k.idKat + '">' + escapeHtml(k.namaKat) + '</option>');
           });
+
+          // Populate Filter Jenjang & Sekolah (Admin)
+          if (KEMITRAANKELOLA_IS_ADMIN) {
+            var selJjg = $('#kemitraankelola_filterJenjang');
+            selJjg.empty().append('<option value="">Semua Jenjang</option>')
+                  .append('<option value="PAUD">PAUD</option>')
+                  .append('<option value="SD">SD</option>')
+                  .prop('disabled', false);
+
+            kemitraankelola_updateSekolahFilterDropdown();
+            $('#kemitraankelola_filterSekolah').prop('disabled', false);
+          }
+
+          // Populate Filter Status
+          var selSt = $('#kemitraankelola_filterStatus');
+          selSt.empty().append('<option value="">Semua Status</option>')
+               .append('<option value="Diproses">Diproses</option>')
+               .append('<option value="Disetujui">Disetujui</option>')
+               .append('<option value="Revisi">Revisi</option>')
+               .append('<option value="Ditolak">Ditolak</option>')
+               .prop('disabled', false);
+
+          $('#kemitraankelola_btnRefresh, #kemitraankelola_btnTambah').prop('disabled', false);
         }
       } catch(e) {}
     })
@@ -315,6 +352,15 @@ function kemitraankelola_muatData() {
         var res = typeof resRaw === 'string' ? JSON.parse(resRaw) : resRaw;
         if (res.success) {
           KEMITRAANKELOLA_CACHE_DATA = res.data || [];
+
+          // Populate Filter Tahun
+          var thnList = Array.from(new Set(KEMITRAANKELOLA_CACHE_DATA.map(function(d){ return d.tahun; }).filter(Boolean))).sort().reverse();
+          var selThn = $('#kemitraankelola_filterTahun');
+          selThn.empty().append('<option value="">Semua Tahun</option>').prop('disabled', false);
+          thnList.forEach(function(t) {
+            selThn.append('<option value="' + t + '">' + t + '</option>');
+          });
+
           kemitraankelola_renderTabel(KEMITRAANKELOLA_CACHE_DATA);
         } else {
           $('#kemitraankelola_loadingState').html('<div class="alert alert-danger m-3">' + res.message + '</div>');
@@ -377,20 +423,25 @@ function kemitraankelola_renderTabel(data) {
 }
 
 function kemitraankelola_terapkanFilter() {
-  var keyword = ($('#kemitraankelola_inCari').val() || '').toLowerCase().trim();
-  var selStatus = $('#kemitraankelola_selStatus').val() || 'SEMUA';
-  var selSekolah = $('#kemitraankelola_selSekolah').val() || 'SEMUA';
+  var selKat = $('#kemitraankelola_filterKategori').val();
+  var selTahun = $('#kemitraankelola_filterTahun').val();
+  var selJenjang = $('#kemitraankelola_filterJenjang').val();
+  var selSekolah = $('#kemitraankelola_filterSekolah').val();
+  var selStatus = $('#kemitraankelola_filterStatus').val();
 
   var filtered = KEMITRAANKELOLA_CACHE_DATA.filter(function(item) {
-    var matchSearch = !keyword ||
-      (item.nama_sekolah && item.nama_sekolah.toLowerCase().indexOf(keyword) !== -1) ||
-      (item.nama_kategori && item.nama_kategori.toLowerCase().indexOf(keyword) !== -1) ||
-      (item.tahun && String(item.tahun).indexOf(keyword) !== -1);
+    var matchKat = !selKat || (item.id_kategori === selKat);
+    var matchTahun = !selTahun || (String(item.tahun) === String(selTahun));
+    var matchStatus = !selStatus || (item.status === selStatus);
+    var matchSekolah = !selSekolah || (item.npsn === selSekolah);
 
-    var matchStatus = (selStatus === 'SEMUA') || (item.status === selStatus);
-    var matchSekolah = (selSekolah === 'SEMUA') || (item.npsn === selSekolah);
+    var matchJenjang = true;
+    if (selJenjang && KEMITRAANKELOLA_DATA_SEKOLAH.length > 0) {
+      var sekInfo = KEMITRAANKELOLA_DATA_SEKOLAH.find(function(s) { return s.npsn === item.npsn; });
+      matchJenjang = sekInfo ? (sekInfo.jenjang === selJenjang) : true;
+    }
 
-    return matchSearch && matchStatus && matchSekolah;
+    return matchKat && matchTahun && matchStatus && matchSekolah && matchJenjang;
   });
 
   kemitraankelola_renderTabel(filtered);
