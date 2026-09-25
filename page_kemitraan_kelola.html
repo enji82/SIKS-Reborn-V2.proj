@@ -1102,18 +1102,28 @@ function kemitraankelola_bukaModalHapus(rowId) {
             if (res.success) {
               var dIdx = KEMITRAANKELOLA_CACHE_DATA.findIndex(function(r) { return String(r.rowId) === String(rowId); });
               if (dIdx !== -1) {
+                var deletedRowId = parseInt(KEMITRAANKELOLA_CACHE_DATA[dIdx].rowId, 10);
                 KEMITRAANKELOLA_CACHE_DATA.splice(dIdx, 1);
+                // Shift rowId for items after the deleted row
+                KEMITRAANKELOLA_CACHE_DATA.forEach(function(item) {
+                  var currentNum = parseInt(item.rowId, 10);
+                  if (currentNum > deletedRowId) {
+                    item.rowId = currentNum - 1;
+                  }
+                });
               }
               Sultan.notif.crud.hapus();
               kemitraankelola_renderTabel(KEMITRAANKELOLA_CACHE_DATA);
             } else {
-              Sultan.notif.crud.gagal(res.message);
+              Sultan.notif.crud.gagal(res.message || "Gagal menghapus berkas.");
             }
-          } catch(e) {}
+          } catch(e) {
+            Sultan.notif.crud.gagal("Terjadi kesalahan pengolahan data.");
+          }
         })
         .withFailureHandler(function(err) {
           Sultan.notif.tutup();
-          Sultan.notif.crud.gagal(err.message);
+          Sultan.notif.crud.gagal(err ? (err.message || err) : "Gagal terhubung ke server.");
         })
         .hapusKemitraanDokumen(rowId);
     }

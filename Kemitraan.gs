@@ -283,12 +283,29 @@ function hapusKemitraanDokumen(rowId) {
     lock.waitLock(10000);
     var sheet = getOrCreateSheetKemitraan("Database_Dokumen");
     if (!sheet) return JSON.stringify({ success: false, message: "Sheet tidak ditemukan." });
-    var row = sheet.getRange(rowId,1,1,16).getValues()[0];
-    try { var fid=String(row[8]||"").trim(); if(fid) DriveApp.getFileById(fid).setTrashed(true); } catch(e2) {}
-    sheet.deleteRow(rowId); SpreadsheetApp.flush(); invalidateKemitraanDashboardCache();
+    
+    var rIdx = parseInt(rowId, 10);
+    if (isNaN(rIdx) || rIdx <= 1 || rIdx > sheet.getLastRow()) {
+      return JSON.stringify({ success: false, message: "Baris data tidak valid atau sudah tidak ada." });
+    }
+
+    try {
+      var row = sheet.getRange(rIdx, 1, 1, 16).getValues()[0];
+      var fid = String(row[8] || "").trim();
+      if (fid && fid.length > 5) {
+        DriveApp.getFileById(fid).setTrashed(true);
+      }
+    } catch(e2) {}
+
+    sheet.deleteRow(rIdx);
+    SpreadsheetApp.flush();
+    invalidateKemitraanDashboardCache();
     return JSON.stringify({ success: true, message: "Dokumen berhasil dihapus." });
-  } catch(e) { return JSON.stringify({ success: false, message: e.message }); }
-  finally { lock.releaseLock(); }
+  } catch(e) {
+    return JSON.stringify({ success: false, message: e.message || "Gagal menghapus dokumen." });
+  } finally {
+    try { lock.releaseLock(); } catch(eLock) {}
+  }
 }
 
 function getKemitraanDashboardData(idKategori, forceRefresh) {
