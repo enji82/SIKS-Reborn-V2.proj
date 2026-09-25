@@ -13,13 +13,13 @@
               <table id="kemitraankelola_tabelUtama" class="table table-hover table-premium table-sultan-compact text-nowrap mb-0 w-100" style="font-size: 13px;">
                 <thead class="thead-sultan-premium text-uppercase font-weight-bold">
                   <tr>
-                    <th class="col-sticky-left text-center align-middle" style="width: 5%;"><span class="sultan-th-title">NO</span></th>
-                    <th class="text-left align-middle" style="width: 22%; min-width: 180px;"><span class="sultan-th-title">NAMA SEKOLAH</span></th>
-                    <th class="text-left align-middle" style="width: 20%; min-width: 160px;"><span class="sultan-th-title">KATEGORI DOKUMEN</span></th>
-                    <th class="text-center align-middle" style="width: 8%;"><span class="sultan-th-title">TAHUN</span></th>
-                    <th class="text-center align-middle" style="width: 15%; min-width: 120px;"><span class="sultan-th-title">BERKAS</span></th>
-                    <th class="text-center align-middle" style="width: 10%;"><span class="sultan-th-title">STATUS VERIFIKASI</span></th>
-                    <th class="text-center align-middle" style="width: 20%; min-width: 150px;"><span class="sultan-th-title">AKSI</span></th>
+                    <th class="text-left align-middle col-sticky-left" style="width: 24%;"><span class="sultan-th-title">NAMA SEKOLAH</span></th>
+                    <th class="text-left align-middle" style="width: 24%;"><span class="sultan-th-title">NAMA DOKUMEN</span></th>
+                    <th class="text-center align-middle text-nowrap" style="width: 8%;"><span class="sultan-th-title">TAHUN</span></th>
+                    <th class="text-center align-middle text-nowrap" style="width: 9%;"><span class="sultan-th-title">DOKUMEN</span></th>
+                    <th class="text-left align-middle text-nowrap" style="width: 11%;"><span class="sultan-th-title">STATUS</span></th>
+                    <th class="text-left align-middle text-nowrap" style="width: 11%;"><span class="sultan-th-title">AKTIVITAS</span></th>
+                    <th class="text-center align-middle text-nowrap" style="width: 13%;"><span class="sultan-th-title">AKSI</span></th>
                   </tr>
                 </thead>
                 <tbody></tbody>
@@ -387,13 +387,13 @@ var KEMITRAANKELOLA_TABEL_INSTANCE = null;
 function kemitraankelola_initDataTables() {
   KEMITRAANKELOLA_TABEL_INSTANCE = SultanTable.init('#kemitraankelola_tabelUtama', {
     "columnDefs": [
-      { "targets": 0, "className": "text-center align-middle col-sticky-left font-weight-bold", "width": "5%" },
-      { "targets": 1, "className": "text-left align-middle", "width": "22%" },
-      { "targets": 2, "className": "text-left align-middle", "width": "20%" },
-      { "targets": 3, "className": "text-center align-middle font-weight-bold", "width": "8%" },
-      { "targets": 4, "className": "text-center align-middle", "width": "15%" },
-      { "targets": 5, "className": "text-center align-middle", "width": "10%" },
-      { "targets": 6, "className": "text-center align-middle", "width": "20%" }
+      { "targets": 0, "className": "text-left align-middle col-sticky-left", "width": "24%" },
+      { "targets": 1, "className": "text-left align-middle", "width": "24%" },
+      { "targets": 2, "className": "text-center align-middle text-nowrap", "width": "8%" },
+      { "targets": 3, "className": "text-center align-middle text-nowrap", "width": "9%" },
+      { "targets": 4, "className": "text-left align-middle text-nowrap", "width": "11%" },
+      { "targets": 5, "className": "text-left align-middle text-nowrap", "width": "11%" },
+      { "targets": 6, "className": "text-center align-middle text-nowrap", "width": "13%" }
     ],
     "language": { "emptyTable": "Belum ada dokumen kemitraan yang diunggah." }
   });
@@ -405,49 +405,48 @@ function kemitraankelola_renderTabel(dataRows) {
   }
 
   var dtArray = [];
-  dataRows.forEach(function(item, idx) {
+  dataRows.forEach(function(item) {
     var id = item.rowId;
     var st = String(item.status || "Diproses");
     var isDisetujui = st.toLowerCase().includes('setuju') || st.toLowerCase().includes('ok');
 
-    // 1. NO
-    var uiNo = (idx + 1);
-
-    // 2. NAMA SEKOLAH
+    // 1. NAMA SEKOLAH (Sticky Left: Nama Sekolah + NPSN tanpa kata 'NPSN:')
     var rawNpsn = String(item.npsn || "").trim();
     var sek = KEMITRAANKELOLA_DATA_SEKOLAH.find(function(s) {
       return String(s.npsn).trim() === rawNpsn || String(s.nama || "").trim().toUpperCase() === rawNpsn.toUpperCase();
     });
     var unitNama = sek ? sek.nama : (item.nama_sekolah && item.nama_sekolah !== "Unknown" ? item.nama_sekolah : rawNpsn);
     var unitNpsn = sek ? sek.npsn : (rawNpsn !== unitNama ? rawNpsn : "-");
+    var npsnFormatted = (unitNpsn && unitNpsn !== "-") ? escapeHtml(unitNpsn) : '-';
+
     var uiSekolah = `
       <div class="text-left">
         <div class="sultan-table-primary font-weight-bold text-uppercase" style="color: #800000; font-size: 12.5px; line-height: 1.2;">${escapeHtml(unitNama)}</div>
-        <div class="sultan-table-secondary text-muted" style="font-size: 11px; margin-top: 2px;">NPSN: ${escapeHtml(unitNpsn)}</div>
+        <div class="sultan-table-secondary text-muted" style="font-size: 11px; margin-top: 2px;">${npsnFormatted}</div>
       </div>
     `;
 
-    // 3. KATEGORI DOKUMEN
+    // 2. NAMA DOKUMEN (Header: NAMA DOKUMEN)
     var uiKategori = `
-      <div class="text-left font-weight-bold text-maroon" style="font-size: 12px;">
+      <div class="text-left font-weight-bold text-dark" style="font-size: 12px; line-height: 1.2;">
         ${escapeHtml(item.nama_kategori || item.id_kategori)}
       </div>
     `;
 
-    // 4. TAHUN
+    // 3. TAHUN
     var uiTahun = `<div class="text-center font-weight-bold text-dark" style="font-size: 12px;">${escapeHtml(String(item.tahun || '-'))}</div>`;
 
-    // 5. BERKAS (Preview Sultan)
+    // 4. DOKUMEN (Sultan Preview Modal Engine)
     var fn = String(item.file_name || "").toLowerCase();
     var fi = "fa-file-pdf text-danger";
     if (fn.endsWith('.jpg') || fn.endsWith('.png') || fn.endsWith('.jpeg')) fi = "fa-file-image text-success";
     if (fn.endsWith('.xlsx') || fn.endsWith('.xls')) fi = "fa-file-excel text-success";
 
-    var linkFile = item.url ?
-      `<a href="${item.url}" target="_blank" class="sultan-btn-pdf text-truncate" style="max-width:140px;" title="${escapeHtml(item.file_name)}"><i class="fas ${fi} mr-1"></i> LIHAT</a>` :
+    var btnFile = item.url ?
+      `<button type="button" class="sultan-btn-pdf" onclick="kemitraankelola_bukaPreview('${item.url}')" data-toggle="tooltip" title="Pratinjau Dokumen"><i class="fas ${fi} mr-1"></i> LIHAT</button>` :
       '<span class="text-muted small">-</span>';
 
-    // 6. STATUS VERIFIKASI (SultanUI Badge Standard)
+    // 5. STATUS (SultanUI Badge Standard)
     var badgeStatus = (typeof SultanUI !== 'undefined' && typeof SultanUI.renderBadgeStatus === 'function') ?
       SultanUI.renderBadgeStatus(st, item.catatan, {
         unit: unitNama,
@@ -455,25 +454,58 @@ function kemitraankelola_renderTabel(dataRows) {
       }) :
       `<span class="badge badge-warning px-2 py-1">${escapeHtml(st)}</span>`;
 
+    // 6. AKTIVITAS (Audit Trail SultanUI)
+    var auditWaktu = "-";
+    var auditUser = "-";
+    var auditLabel = "Diunggah";
+
+    if (item.tgl_verif && String(item.tgl_verif).trim() !== "" && String(item.tgl_verif).trim() !== "-") {
+      auditLabel = "Verif";
+      auditWaktu = item.tgl_verif;
+      auditUser = item.verifikator || "-";
+    } else if (item.tgl_edit && String(item.tgl_edit).trim() !== "" && String(item.tgl_edit).trim() !== "-") {
+      auditLabel = "Diubah";
+      auditWaktu = item.tgl_edit;
+      auditUser = item.user_edit || "-";
+    } else if (item.tgl_upload && String(item.tgl_upload).trim() !== "" && String(item.tgl_upload).trim() !== "-") {
+      auditLabel = "Diunggah";
+      auditWaktu = item.tgl_upload;
+      auditUser = item.uploader || "-";
+    }
+
+    var tooltipAudit = escapeHtml(
+      `Diunggah: ${item.tgl_upload || '-'}\n` +
+      `Diubah: ${item.tgl_edit || '-'}\n` +
+      `Verifikasi: ${item.tgl_verif || '-'}`
+    );
+
+    var uiAktivitas = `
+      <div class="text-left" data-toggle="tooltip" data-placement="top" title="${tooltipAudit}">
+        <div class="font-weight-bold text-dark" style="font-size: 11.5px; line-height: 1.2;">${escapeHtml(auditWaktu)}</div>
+        <div class="text-muted text-lowercase" style="font-size: 11px; line-height: 1.2;">
+          <span class="font-weight-semibold text-secondary">${auditLabel}:</span> ${escapeHtml(auditUser).toLowerCase()}
+        </div>
+      </div>
+    `;
+
     // 7. AKSI (Sultan Action Buttons)
     var btnVerif = KEMITRAANKELOLA_IS_ADMIN ?
-      `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-primary mr-1" onclick="kemitraankelola_bukaModalVerif(${id})" data-toggle="tooltip" title="Verifikasi Dokumen"><i class="fas fa-clipboard-check"></i></button>` : '';
+      `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-primary" onclick="kemitraankelola_bukaModalVerif(${id})" data-toggle="tooltip" title="Verifikasi Dokumen"><i class="fas fa-clipboard-check"></i></button>` : '';
 
-    var btnEdit = (st === 'Revisi' || KEMITRAANKELOLA_IS_ADMIN) ?
-      `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning mr-1" onclick="kemitraankelola_bukaModalEdit(${id})" ${isDisetujui && !KEMITRAANKELOLA_IS_ADMIN ? 'disabled style="opacity:0.4; cursor:not-allowed;"' : ''} data-toggle="tooltip" title="Edit / Perbaiki"><i class="fas fa-pencil-alt"></i></button>` : '';
+    var btnEdit = `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning" onclick="kemitraankelola_bukaModalEdit(${id})" ${isDisetujui && !KEMITRAANKELOLA_IS_ADMIN ? 'disabled style="opacity:0.4; cursor:not-allowed;" title="Terkunci (Sudah Disetujui)"' : 'data-toggle="tooltip" title="Edit / Perbaiki"'}><i class="fas fa-pencil-alt"></i></button>`;
 
     var btnHapus = KEMITRAANKELOLA_IS_ADMIN ?
-      `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon" onclick="kemitraankelola_hapusDokumen(${id})" data-toggle="tooltip" title="Hapus Dokumen"><i class="fas fa-trash-alt"></i></button>` : '';
+      `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon" onclick="kemitraankelola_bukaModalHapus(${id})" ${isDisetujui ? 'disabled style="opacity:0.4; cursor:not-allowed;" title="Terkunci (Sudah Disetujui)"' : 'data-toggle="tooltip" title="Hapus Dokumen"'}><i class="fas fa-trash-alt"></i></button>` : '';
 
     var uiAksi = `<div class="d-flex flex-nowrap justify-content-center" style="gap:4px;">${btnVerif}${btnEdit}${btnHapus}</div>`;
 
     dtArray.push([
-      uiNo,
       uiSekolah,
       uiKategori,
       uiTahun,
-      linkFile,
+      btnFile,
       badgeStatus,
+      uiAktivitas,
       uiAksi
     ]);
   });
@@ -890,127 +922,174 @@ function kemitraankelola_handlePerbaikiFailure(err) {
 }
 
 function kemitraankelola_bukaModalVerif(rowId) {
-  var item = KEMITRAANKELOLA_CACHE_DATA.find(function(x) { return x.rowId === rowId; });
+  var item = KEMITRAANKELOLA_CACHE_DATA.find(function(x) { return String(x.rowId) === String(rowId); });
   if (!item) return;
 
   var $form = $('#kemitraankelola_formVerif');
   $form[0].reset();
+  $form.removeClass('was-validated');
 
   $('#kemitraankelola_v_rowid').val(item.rowId);
-  $('#kemitraankelola_v_nama').text(item.nama_sekolah || item.npsn);
-  $('#kemitraankelola_v_npsn').text(item.npsn);
+  var sek = KEMITRAANKELOLA_DATA_SEKOLAH.find(function(s) { return s.npsn === item.npsn; });
+  $('#kemitraankelola_v_nama').text(sek ? sek.nama : (item.nama_sekolah || item.npsn));
+  $('#kemitraankelola_v_npsn').text(item.npsn || "-");
   $('#kemitraankelola_v_kategori').text(item.nama_kategori || item.id_kategori);
-  $('#kemitraankelola_v_tahun').text(item.tahun || '-');
+  $('#kemitraankelola_v_tahun').text(item.tahun || "-");
 
+  var st = String(item.status || "").toLowerCase();
   $('#kemitraankelola_v_status').val('');
-  $('#kemitraankelola_v_catatan').val('');
-
-  if (item.catatan) {
+  var catatanLama = item.catatan || "";
+  if (catatanLama) {
+    $('#kemitraankelola_prevCatatan').text(catatanLama);
     $('#kemitraankelola_prevCatatanWrap').show();
-    $('#kemitraankelola_prevCatatan').text(item.catatan);
   } else {
+    $('#kemitraankelola_prevCatatan').text('');
     $('#kemitraankelola_prevCatatanWrap').hide();
   }
+  $('#kemitraankelola_v_catatan').val("");
+  $('#kemitraankelola_reqCatatan').hide();
 
-  $('#global_modalFormSize').removeClass('modal-xl modal-lg').addClass('modal-md');
-  $('#global_modalFormHeader').removeClass('modal-header-sultan-primary modal-header-sultan-warning modal-header-sultan-danger modal-header-sultan-success modal-header-sultan-info modal-header-sultan-dark modal-header-edit modal-header-tambah-edit modal-header-hapus').addClass('modal-header-tambah-edit');
-  $('#global_modalFormTitle').html('<i class="fas fa-check-circle mr-2"></i> Verifikasi Dokumen Kemitraan');
+  if (st.includes('setuju') || st.includes('ok') || st.includes('valid')) {
+    $('#kemitraankelola_v_status').val('Disetujui');
+  } else if (st.includes('revisi')) {
+    $('#kemitraankelola_v_status').val('Revisi');
+  } else if (st.includes('tolak')) {
+    $('#kemitraankelola_v_status').val('Ditolak');
+  }
 
-  $('#global_modalFormBody, #global_modalFormFooter').hide();
-  $form.appendTo('#global_modalFormSize .modal-content');
+  if ($('#kemitraankelola_v_status').val() === 'Revisi' || $('#kemitraankelola_v_status').val() === 'Ditolak') {
+    $('#kemitraankelola_reqCatatan').show();
+    $('#kemitraankelola_v_catatan').prop('required', true);
+  }
 
-  $('#global_modalForm').off('hidden.bs.modal.kemitraanverif').on('hidden.bs.modal.kemitraanverif', function() {
-    $form.appendTo('#kemitraankelola_templates');
-    $('#global_modalFormBody, #global_modalFormFooter').show();
+  var url = item.url || "";
+  var fn = String(item.file_name || url).toLowerCase();
+  var isImg = fn.endsWith('.jpg') || fn.endsWith('.png') || fn.endsWith('.jpeg');
+
+  Sultan.modal.verifikasi({
+    title: 'VERIFIKASI DOKUMEN KEMITRAAN & KERJA SAMA',
+    url: url,
+    isImage: isImg
   });
-  $('#global_modalForm').modal('show');
 
-  $('#kemitraankelola_btnVerifikasi').off('click').on('click', function() {
-    kemitraankelola_prosesVerifikasi();
+  $('#kemitraankelola_formVerif').appendTo('#global_verifikasiFormArea');
+  $('#kemitraankelola_verifFooter').appendTo('#global_verifikasiFooterArea');
+  $('#global_verifikasiFooterArea').show();
+
+  $('#global_modalVerifikasi').off('hidden.bs.modal.kemitraanverif').on('hidden.bs.modal.kemitraanverif', function() {
+    $('#kemitraankelola_verifFooter').appendTo('#kemitraankelola_formVerif');
+    $('#kemitraankelola_formVerif').appendTo('#kemitraankelola_templates');
+    $('#global_verifikasiFooterArea').hide();
   });
 }
 
-function kemitraankelola_prosesVerifikasi() {
+function kemitraankelola_submitVerif(e) {
+  if (e) e.preventDefault();
+  var $form = $('#kemitraankelola_formVerif');
+  if (!$form[0].checkValidity()) {
+    $form.addClass('was-validated');
+    return;
+  }
+
   var rowId = $('#kemitraankelola_v_rowid').val();
   var status = $('#kemitraankelola_v_status').val();
-  var catatan = $('#kemitraankelola_v_catatan').val().trim();
+  var catatan = $('#kemitraankelola_v_catatan').val();
 
-  if (!status) {
-    if (typeof Swal !== 'undefined') Swal.fire('Perhatian', 'Mohon pilih keputusan verifikasi.', 'warning');
-    return;
-  }
-
-  if ((status === 'Revisi' || status === 'Ditolak') && !catatan) {
-    if (typeof Swal !== 'undefined') Swal.fire('Perhatian', 'Mohon isi catatan admin jika Revisi / Ditolak.', 'warning');
-    return;
-  }
-
-  if (typeof SultanUI !== 'undefined') SultanUI.showLoading('#kemitraankelola_loadingState');
+  var btn = $('#kemitraankelola_btnVerifikasi');
+  var txt = btn.html();
+  btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i> Memverifikasi...');
 
   google.script.run
     .withSuccessHandler(function(resRaw) {
-      if (typeof SultanUI !== 'undefined') SultanUI.hideLoading('#kemitraankelola_loadingState');
+      btn.prop('disabled', false).html(txt);
       try {
         var res = typeof resRaw === 'string' ? JSON.parse(resRaw) : resRaw;
         if (res.success) {
-          $('#global_modalForm').modal('hide');
-          if (typeof Sultan !== 'undefined' && Sultan.notif) Sultan.notif.crud('edit', 'Verifikasi berhasil disimpan.');
+          $('#global_modalVerifikasi').modal('hide');
+          if (typeof Sultan !== 'undefined' && Sultan.notif) Sultan.notif.crud.simpan(true);
           kemitraankelola_muatData();
         } else {
-          if (typeof Swal !== 'undefined') Swal.fire('Gagal', res.message, 'error');
+          if (typeof Sultan !== 'undefined' && Sultan.notif) Sultan.notif.crud.gagal(res.message);
         }
       } catch(e) {}
     })
     .withFailureHandler(function(err) {
-      if (typeof SultanUI !== 'undefined') SultanUI.hideLoading('#kemitraankelola_loadingState');
-      if (typeof Swal !== 'undefined') Swal.fire('Error', err.message || 'Gagal koneksi server', 'error');
+      btn.prop('disabled', false).html(txt);
+      if (typeof Sultan !== 'undefined' && Sultan.notif) Sultan.notif.crud.gagal(err.message);
     })
     .verifikasiKemitraanDokumen(rowId, status, catatan);
 }
 
-function kemitraankelola_hapusDokumen(rowId) {
-  if (typeof Swal !== 'undefined') {
-    Swal.fire({
-      title: 'Hapus Dokumen?',
-      text: 'Dokumen yang dihapus tidak dapat dikembalikan!',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#d33',
-      confirmButtonText: 'Ya, Hapus!',
-      cancelButtonText: 'Batal'
-    }).then(function(result) {
-      if (result.isConfirmed) {
-        kemitraankelola_eksekusiHapus(rowId);
-      }
-    });
-  } else {
-    if (confirm('Hapus dokumen ini?')) {
-      kemitraankelola_eksekusiHapus(rowId);
-    }
+function kemitraankelola_bukaPreview(url) {
+  if (!url) {
+    if (typeof Sultan !== 'undefined' && Sultan.notif) Sultan.notif.info("URL dokumen tidak tersedia.");
+    return;
   }
+  var finalUrl = url;
+  var downloadUrl = "";
+  var isGoogleDrive = url.indexOf('drive.google.com') > -1;
+  var fn = url.toLowerCase();
+  var isImage = fn.endsWith('.jpg') || fn.endsWith('.png') || fn.endsWith('.jpeg');
+
+  if (isGoogleDrive) {
+    var match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    if (match && match[1]) {
+      finalUrl = 'https://drive.google.com/file/d/' + match[1] + '/preview';
+      downloadUrl = 'https://drive.google.com/uc?export=download&id=' + match[1];
+    }
+  } else {
+    downloadUrl = url;
+  }
+
+  Sultan.modal.preview({
+    url: finalUrl,
+    title: 'Pratinjau Dokumen Kemitraan',
+    downloadUrl: downloadUrl,
+    isImage: isImage
+  });
 }
 
-function kemitraankelola_eksekusiHapus(rowId) {
-  if (typeof showSultanLoading === 'function') showSultanLoading("Menghapus dokumen...");
+function kemitraankelola_bukaModalHapus(rowId) {
+  var item = KEMITRAANKELOLA_CACHE_DATA.find(function(r) { return String(r.rowId) === String(rowId); });
+  if (!item) return;
 
-  google.script.run
-    .withSuccessHandler(function(resRaw) {
-      if (typeof closeSultanLoading === 'function') closeSultanLoading();
-      try {
-        var res = typeof resRaw === 'string' ? JSON.parse(resRaw) : resRaw;
-        if (res.success) {
-          if (typeof Swal !== 'undefined') Swal.fire({ icon: 'success', title: 'Terhapus', text: res.message, timer: 1500, showConfirmButton: false });
-          kemitraankelola_muatData();
-        } else {
-          if (typeof Swal !== 'undefined') Swal.fire('Gagal', res.message, 'error');
-        }
-      } catch(e) {}
-    })
-    .withFailureHandler(function(err) {
-      if (typeof closeSultanLoading === 'function') closeSultanLoading();
-      if (typeof Swal !== 'undefined') Swal.fire('Error', err.message || 'Gagal koneksi server', 'error');
-    })
-    .hapusKemitraanDokumen(rowId);
+  var sek = KEMITRAANKELOLA_DATA_SEKOLAH.find(function(s) { return s.npsn === item.npsn; });
+  var namaSek = sek ? sek.nama : (item.nama_sekolah || item.npsn);
+
+  Sultan.modal.konfirmasiHapus({
+    title: 'HAPUS DOKUMEN KEMITRAAN',
+    pesan: 'Apakah Anda yakin ingin menghapus berkas dokumen ini secara permanen?',
+    dataInfo: {
+      'SEKOLAH': namaSek,
+      'KATEGORI': item.nama_kategori || item.id_kategori,
+      'TAHUN': item.tahun || '-'
+    },
+    onConfirm: function() {
+      Sultan.notif.loading("Menghapus berkas...");
+      google.script.run
+        .withSuccessHandler(function(resRaw) {
+          Sultan.notif.tutup();
+          try {
+            var res = typeof resRaw === 'string' ? JSON.parse(resRaw) : resRaw;
+            if (res.success) {
+              var dIdx = KEMITRAANKELOLA_CACHE_DATA.findIndex(function(r) { return String(r.rowId) === String(rowId); });
+              if (dIdx !== -1) {
+                KEMITRAANKELOLA_CACHE_DATA.splice(dIdx, 1);
+              }
+              Sultan.notif.crud.hapus();
+              kemitraankelola_renderTabel(KEMITRAANKELOLA_CACHE_DATA);
+            } else {
+              Sultan.notif.crud.gagal(res.message);
+            }
+          } catch(e) {}
+        })
+        .withFailureHandler(function(err) {
+          Sultan.notif.tutup();
+          Sultan.notif.crud.gagal(err.message);
+        })
+        .hapusKemitraanDokumen(rowId);
+    }
+  });
 }
 
 function escapeHtml(text) {
