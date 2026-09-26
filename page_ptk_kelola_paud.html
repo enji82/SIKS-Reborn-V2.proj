@@ -187,22 +187,37 @@
                     <input type="hidden" id="ptkpaud_inputMode" name="mode">
                     <input type="hidden" id="ptkpaud_inputUserLogin" name="user_login">
 
-                    <div class="alert alert-sultan-adaptive shadow-sm mb-3"
-                        style="border-left: 4px solid var(--warna-maroon);">
-                        <div class="form-group mb-0">
-                            <label
-                                class="form-label-sultan small font-weight-bold text-primary text-uppercase">PENEMPATAN
-                                / LEMBAGA <span class="text-danger">*</span></label>
-                            <select id="ptkpaud_inputUnit" class="form-control form-control-sultan font-weight-bold"
-                                required>
-                                <option value="">- Memuat Data -</option>
-                            </select>
-                            <small id="ptkpaud_hintMutasiAdmin" class="text-muted mt-2 d-none">
-                                <i class="fas fa-info-circle text-info mr-1"></i> <b>Mode Admin:</b> Ubah sekolah untuk
-                                melakukan mutasi PTK PAUD.
-                            </small>
+                    <div class="row align-items-end mb-3">
+                        <div class="col-md-3">
+                            <div class="form-group form-group-sultan mb-0">
+                                <label class="form-label-sultan">JENJANG <span class="text-danger">*</span></label>
+                                <select name="jenjang" id="ptkpaud_inputJenjang" class="form-control form-control-sultan font-weight-bold" required>
+                                    <option value="">-Pilih-</option>
+                                    <option value="TK">TK</option>
+                                    <option value="KB">KB</option>
+                                    <option value="SPS">SPS</option>
+                                    <option value="TPA">TPA</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group form-group-sultan mb-0">
+                                <label class="form-label-sultan">NAMA LEMBAGA <span class="text-danger">*</span></label>
+                                <select id="ptkpaud_inputUnit" class="form-control form-control-sultan font-weight-bold" required>
+                                    <option value="">- Memuat Data Lembaga... -</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group form-group-sultan mb-0">
+                                <label class="form-label-sultan">NPSN</label>
+                                <input type="text" id="ptkpaud_inputNpsn" class="form-control form-control-sultan font-weight-bold" readonly placeholder="Otomatis">
+                            </div>
                         </div>
                     </div>
+                    <small id="ptkpaud_hintMutasiAdmin" class="text-muted mb-3 d-none">
+                        <i class="fas fa-info-circle text-info mr-1"></i> <b>Mode Admin:</b> Ubah sekolah untuk melakukan mutasi PTK PAUD.
+                    </small>
 
                     <div class="card card-sultan shadow-sm mb-3">
                         <div class="card-header card-header-sultan-adaptive py-2">
@@ -217,7 +232,7 @@
                                     <input type="text" name="gelar_depan" class="form-control form-control-sultan"
                                         placeholder="-">
                                 </div>
-                                <div class="col-md-5 mb-3">
+                                <div class="col-md-8 mb-3">
                                     <label
                                         class="form-label-sultan small font-weight-bold text-muted text-uppercase">Nama
                                         Lengkap (Tanpa Gelar) <span class="text-danger">*</span></label>
@@ -230,21 +245,6 @@
                                         Belakang</label>
                                     <input type="text" name="gelar_belakang" class="form-control form-control-sultan"
                                         placeholder="-">
-                                </div>
-                                <div class="col-md-3 mb-3">
-                                    <label
-                                        class="form-label-sultan small font-weight-bold text-muted text-uppercase">Jenjang
-                                        <span class="text-danger">*</span></label>
-                                    <select name="jenjang" id="ptkpaud_inputJenjang"
-                                        class="form-control form-control-sultan" required>
-                                        <option value="">-Pilih-</option>
-                                        <option value="TK">TK</option>
-                                        <option value="KB">KB</option>
-                                        <option value="SPS">SPS</option>
-                                        <option value="TPA">TPA</option>
-                                    </select>
-                                    <small class="text-muted font-italic" id="ptkpaud_hintJenjangAdmin"
-                                        style="display:none;">Admin dapat mengubah jenjang secara manual.</small>
                                 </div>
                             </div>
 
@@ -914,6 +914,17 @@
         return y + '-' + m + '-' + d;
     }
 
+    function ptkpaud_updateNpsnFromUnit() {
+        var selUnit = $('#ptkpaud_inputUnit').val();
+        var npsn = "";
+        if (selUnit && PTKPAUD_MAP_UNIT_NPSN[selUnit]) {
+            npsn = PTKPAUD_MAP_UNIT_NPSN[selUnit];
+        } else if (!PTKPAUD_IS_ADMIN && PTKPAUD_USER_NPSN && /^\d+$/.test(PTKPAUD_USER_NPSN)) {
+            npsn = PTKPAUD_USER_NPSN;
+        }
+        $('#ptkpaud_inputNpsn').val(npsn);
+    }
+
     // =================================================================
     // 6. CRUD: TAMBAH, EDIT & HAPUS (MODAL BAB V)
     // =================================================================
@@ -929,7 +940,7 @@
         if (PTKPAUD_IS_ADMIN) {
             var $selUnit = $('#ptkpaud_inputUnit').empty().append('<option value="">- Pilih Lembaga -</option>');
             Object.keys(PTKPAUD_MAP_UNIT_NPSN).sort().forEach(function (u) { $selUnit.append($('<option>', { value: u, text: u })); });
-            $selUnit.prop('disabled', false);
+            $selUnit.prop('disabled', false).off('change.npsn').on('change.npsn', ptkpaud_updateNpsnFromUnit);
             $('#ptkpaud_hintMutasiAdmin').removeClass('d-none');
             $('#ptkpaud_hintJenjangAdmin').show();
             $('#ptkpaud_inputJenjang').prop('disabled', false);
@@ -943,6 +954,7 @@
             }).getJenjangByNPSN(PTKPAUD_USER_NPSN);
         }
 
+        ptkpaud_updateNpsnFromUnit();
         ptkpaud_cekJurusan();
         $('#ptkpaud_modalForm').modal('show');
     }
@@ -961,7 +973,7 @@
         if (PTKPAUD_IS_ADMIN) {
             var $selUnit = $('#ptkpaud_inputUnit').empty().append('<option value="">- Pilih Lembaga -</option>');
             Object.keys(PTKPAUD_MAP_UNIT_NPSN).sort().forEach(function (u) { $selUnit.append($('<option>', { value: u, text: u })); });
-            $selUnit.prop('disabled', false).val(row.unit);
+            $selUnit.prop('disabled', false).val(row.unit).off('change.npsn').on('change.npsn', ptkpaud_updateNpsnFromUnit);
             $('#ptkpaud_hintMutasiAdmin').removeClass('d-none');
             $('#ptkpaud_hintJenjangAdmin').show();
             $('#ptkpaud_inputJenjang').prop('disabled', false).val(row.jenjang);
@@ -971,6 +983,8 @@
             $('#ptkpaud_inputJenjang').val(row.jenjang).prop('disabled', true);
             $('#ptkpaud_hintJenjangAdmin').hide();
         }
+
+        ptkpaud_updateNpsnFromUnit();
 
         $('[name="gelar_depan"]').val(row.gelar_depan);
         $('[name="nama_lengkap"]').val(row.nama_no_gelar);
@@ -1079,8 +1093,11 @@
         formData['unit_kerja'] = selUnit;
 
         if (!PTKPAUD_IS_ADMIN) formData['jenjang'] = $('#ptkpaud_inputJenjang').val();
-        if (PTKPAUD_IS_ADMIN) { formData['npsn_baru'] = PTKPAUD_MAP_UNIT_NPSN[selUnit] || PTKPAUD_USER_NPSN; }
-        else { formData['npsn_baru'] = PTKPAUD_USER_NPSN; }
+        if (PTKPAUD_IS_ADMIN) {
+            formData['npsn_baru'] = PTKPAUD_MAP_UNIT_NPSN[selUnit] || $('#ptkpaud_inputNpsn').val() || "";
+        } else {
+            formData['npsn_baru'] = PTKPAUD_USER_NPSN;
+        }
 
         var cbSuccess = function (res) {
             btn.prop('disabled', false).html(txt);
