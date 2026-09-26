@@ -104,22 +104,33 @@
                     <input type="hidden" id="ptksds_inputMode" name="mode">
                     <input type="hidden" id="ptksds_inputUserLogin" name="user_login">
 
-                    <div class="alert alert-sultan-adaptive shadow-sm mb-3"
-                        style="border-left: 4px solid var(--warna-maroon);">
-                        <div class="form-group mb-0">
-                            <label
-                                class="form-label-sultan small font-weight-bold text-primary text-uppercase">PENEMPATAN
-                                / UNIT KERJA <span class="text-danger">*</span></label>
-                            <select id="ptksds_inputUnit"
-                                class="form-control form-control-sultan font-weight-bold text-dark" required>
-                                <option value="">- Memuat Data -</option>
-                            </select>
-                            <small id="ptksds_hintMutasiAdmin" class="text-muted mt-2 d-none">
-                                <i class="fas fa-info-circle text-info mr-1"></i> <b>Mode Admin:</b> Ubah sekolah untuk
-                                melakukan mutasi PTK.
-                            </small>
+                    <div class="row align-items-end mb-3">
+                        <div class="col-md-3">
+                            <div class="form-group form-group-sultan mb-0">
+                                <label class="form-label-sultan">JENJANG <span class="text-danger">*</span></label>
+                                <select id="ptksds_inputJenjang" class="form-control form-control-sultan font-weight-bold" required>
+                                    <option value="SD">SD</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group form-group-sultan mb-0">
+                                <label class="form-label-sultan">NAMA SEKOLAH <span class="text-danger">*</span></label>
+                                <select id="ptksds_inputUnit" class="form-control form-control-sultan font-weight-bold" required>
+                                    <option value="">- Memuat Data Sekolah... -</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group form-group-sultan mb-0">
+                                <label class="form-label-sultan">NPSN</label>
+                                <input type="text" id="ptksds_inputNpsn" class="form-control form-control-sultan font-weight-bold" readonly placeholder="Otomatis">
+                            </div>
                         </div>
                     </div>
+                    <small id="ptksds_hintMutasiAdmin" class="text-muted mb-3 d-none">
+                        <i class="fas fa-info-circle text-info mr-1"></i> <b>Mode Admin:</b> Ubah sekolah untuk melakukan mutasi PTK.
+                    </small>
 
                     <div class="card card-sultan shadow-sm mb-3">
                         <div class="card-header card-header-sultan-adaptive py-2">
@@ -876,6 +887,17 @@
         return y + '-' + m + '-' + d;
     }
 
+    function ptksds_updateNpsnFromUnit() {
+        var selUnit = $('#ptksds_inputUnit').val();
+        var npsn = "";
+        if (selUnit && PTKSDS_MAP_UNIT_NPSN[selUnit]) {
+            npsn = PTKSDS_MAP_UNIT_NPSN[selUnit];
+        } else if (!PTKSDS_IS_ADMIN && PTKSDS_USER_NPSN && /^\d+$/.test(PTKSDS_USER_NPSN)) {
+            npsn = PTKSDS_USER_NPSN;
+        }
+        $('#ptksds_inputNpsn').val(npsn);
+    }
+
     // =================================================================
     // 6. CRUD: TAMBAH, EDIT & MUTASI, HAPUS (MODAL BAB V)
     // =================================================================
@@ -891,13 +913,14 @@
         if (PTKSDS_IS_ADMIN) {
             var $selUnit = $('#ptksds_inputUnit').empty().append('<option value="">- Pilih Unit Kerja -</option>');
             Object.keys(PTKSDS_MAP_UNIT_NPSN).sort().forEach(function (u) { $selUnit.append($('<option>', { value: u, text: u })); });
-            $selUnit.prop('disabled', false);
+            $selUnit.prop('disabled', false).off('change.npsn').on('change.npsn', ptksds_updateNpsnFromUnit);
             $('#ptksds_hintMutasiAdmin').removeClass('d-none');
         } else {
             $('#ptksds_inputUnit').html('<option value="' + ptksds_escapeHtml(PTKSDS_UNIT_TERKUNCI) + '">' + ptksds_escapeHtml(PTKSDS_UNIT_TERKUNCI) + '</option>').prop('disabled', true);
             $('#ptksds_hintMutasiAdmin').addClass('d-none');
         }
 
+        ptksds_updateNpsnFromUnit();
         ptksds_cekJurusan();
 
         $('#ptksds_modalForm').modal('show');
@@ -915,12 +938,13 @@
         if (PTKSDS_IS_ADMIN) {
             var $selUnit = $('#ptksds_inputUnit').empty().append('<option value="">- Pilih Unit Kerja -</option>');
             Object.keys(PTKSDS_MAP_UNIT_NPSN).sort().forEach(function (u) { $selUnit.append($('<option>', { value: u, text: u })); });
-            $selUnit.prop('disabled', false).val(row.unit);
+            $selUnit.prop('disabled', false).val(row.unit).off('change.npsn').on('change.npsn', ptksds_updateNpsnFromUnit);
             $('#ptksds_hintMutasiAdmin').removeClass('d-none');
         } else {
             $('#ptksds_inputUnit').html('<option value="' + ptksds_escapeHtml(row.unit) + '">' + ptksds_escapeHtml(row.unit) + '</option>').prop('disabled', true);
             $('#ptksds_hintMutasiAdmin').addClass('d-none');
         }
+        ptksds_updateNpsnFromUnit();
 
         $('[name="gelar_depan"]').val(row.gelar_depan);
         $('[name="nama_lengkap"]').val(row.nama_no_gelar);
@@ -1044,8 +1068,11 @@
         var selUnit = $('#ptksds_inputUnit').val();
         formData['unit_kerja'] = selUnit;
 
-        if (PTKSDS_IS_ADMIN) { formData['npsn_baru'] = PTKSDS_MAP_UNIT_NPSN[selUnit] || PTKSDS_USER_NPSN; }
-        else { formData['npsn_baru'] = PTKSDS_USER_NPSN; }
+        if (PTKSDS_IS_ADMIN) {
+            formData['npsn_baru'] = PTKSDS_MAP_UNIT_NPSN[selUnit] || $('#ptksds_inputNpsn').val() || "";
+        } else {
+            formData['npsn_baru'] = PTKSDS_USER_NPSN;
+        }
 
         var mode = $('#ptksds_inputMode').val();
 
