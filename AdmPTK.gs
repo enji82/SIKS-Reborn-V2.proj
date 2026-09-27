@@ -179,8 +179,9 @@ function getAdmPtkMasterData(npsnFilter) {
       for (var j = 1; j < dataSekolah.length; j++) {
         var rNpsn = String(dataSekolah[j][0]).trim();
         var rNama = String(dataSekolah[j][2]).trim();
+        var rJenjang = String(dataSekolah[j][1] || "").trim();
         if (rNpsn !== "") {
-          resSekolah.push({ npsn: rNpsn, nama: rNama });
+          resSekolah.push({ npsn: rNpsn, nama: rNama, jenjang: rJenjang });
         }
       }
       resSekolah.sort(function(a, b) { return a.nama.localeCompare(b.nama); });
