@@ -44,8 +44,6 @@
                         <label class="form-label-sultan">JENJANG <span class="text-danger">*</span></label>
                         <select id="admsekolahkelola_in_jenjang" class="form-control form-control-sultan font-weight-bold" required>
                             <option value="">- Pilih Jenjang -</option>
-                            <option value="PAUD">PAUD</option>
-                            <option value="SD">SD</option>
                         </select>
                     </div>
                 </div>
@@ -813,11 +811,8 @@ function admsekolahkelola_bukaModalTambah() {
         var lockVal = String(ADMSEKOLAHKELOLA_NPSN_TERKUNCI).trim();
         var sek = ADMSEKOLAHKELOLA_MASTER_SEKOLAH.find(s => String(s.npsn).trim() === lockVal || String(s.nama || "").trim().toUpperCase() === lockVal.toUpperCase());
         if (sek) {
-            var jjgRaw = String(sek.jenjang || "").toUpperCase();
-            var jjgVal = "SD";
-            if (jjgRaw === "TK" || jjgRaw === "KB" || jjgRaw === "SPS" || jjgRaw === "TPA" || jjgRaw.includes("PAUD")) {
-                jjgVal = "PAUD";
-            }
+            admsekolahkelola_setupModalJenjangDropdown();
+            var jjgVal = String(sek.jenjang || "").toUpperCase();
             
             // Populate Read-Only Banner untuk User Sekolah
             $('#admsekolahkelola_user_banner_nama').text(sek.nama || lockVal);
@@ -839,7 +834,25 @@ function admsekolahkelola_bukaModalTambah() {
         // Tampilkan container pilih sekolah untuk admin
         $('#admsekolahkelola_pilih_sekolah_container').show();
         $('#admsekolahkelola_user_sekolah_banner').hide();
+        admsekolahkelola_setupModalJenjangDropdown();
     }
+}
+
+function admsekolahkelola_setupModalJenjangDropdown() {
+    var jenjangSet = new Set();
+    ADMSEKOLAHKELOLA_MASTER_SEKOLAH.forEach(function(s) {
+        var j = String(s.jenjang || "").trim().toUpperCase();
+        if (j) jenjangSet.add(j);
+    });
+    var jenjangList = Array.from(jenjangSet).sort();
+
+    var hj = '<option value="">- Pilih Jenjang -</option>';
+    jenjangList.forEach(function(j) {
+        hj += `<option value="${j}">${j}</option>`;
+    });
+    $('#admsekolahkelola_in_jenjang').html(hj);
+    $('#admsekolahkelola_in_sekolah').empty().append('<option value="">- Pilih Sekolah -</option>').prop('disabled', true);
+    $('#admsekolahkelola_in_npsn').val('');
 }
 
 function admsekolahkelola_searchSekolahLocal() {
