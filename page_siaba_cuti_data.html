@@ -141,9 +141,6 @@
                         <label class="form-label-sultan">JENJANG <span class="text-danger">*</span></label>
                         <select id="cuti_in_jenjang" class="form-control form-control-sultan font-weight-bold" required>
                             <option value="">- Pilih Jenjang -</option>
-                            <option value="SD">SD</option>
-                            <option value="SMP">SMP</option>
-                            <option value="PAUD">PAUD</option>
                         </select>
                     </div>
                 </div>
@@ -863,7 +860,7 @@
             if (CUTI_IS_ADMIN) {
                 $('#cuti_user_sekolah_banner').hide();
                 $('#cuti_admin_sekolah_container').show();
-                $('#cuti_in_jenjang').val('');
+                cuti_populateJenjang();
                 $('#cuti_in_npsn').val('');
                 $('#cuti_inputUnit').empty().append('<option value="">- Pilih Sekolah -</option>').prop('disabled', true);
                 $('#cuti_inputNama').empty().append('<option value="">Pilih Sekolah Dulu</option>').prop('disabled', true);
@@ -1221,6 +1218,28 @@
     // =================================================================
     // 6. LOGIKA DROPDOWN CASCADING (MENGGUNAKAN DB CUTI)
     // =================================================================
+    function cuti_populateJenjang() {
+        var $selJenjang = $('#cuti_in_jenjang').empty().append('<option value="">- Pilih Jenjang -</option>');
+        var setJenjang = new Set();
+
+        CUTI_DB_PEGAWAI_CUTI.forEach(function(x) {
+            var unit = String(x.unit || "").trim().toUpperCase();
+            if (!unit) return;
+            if (unit.includes("TK") || unit.includes("PAUD") || unit.includes("KOBER") || unit.includes("TKN")) setJenjang.add("PAUD / TK");
+            else if (unit.includes("SD") || unit.includes("SDN")) setJenjang.add("SD");
+            else if (unit.includes("SMP") || unit.includes("SMPN")) setJenjang.add("SMP");
+            else if (unit.includes("SMA") || unit.includes("SMAN")) setJenjang.add("SMA");
+            else if (unit.includes("SMK") || unit.includes("SMKN")) setJenjang.add("SMK");
+            else if (unit.includes("SKB") || unit.includes("PKBM")) setJenjang.add("NON-FORMAL / SKB");
+            else setJenjang.add("LAINNYA");
+        });
+
+        var arrJenjang = Array.from(setJenjang).sort();
+        arrJenjang.forEach(function(j) {
+            $selJenjang.append($('<option>', { value: j, text: j }));
+        });
+    }
+
     function cuti_filterUnitByJenjang() {
         var jenjang = $('#cuti_in_jenjang').val();
         var $selUnit = $('#cuti_inputUnit').empty().append('<option value="">- Pilih Sekolah -</option>');
@@ -1234,8 +1253,19 @@
             return;
         }
 
-        var units = [...new Set(CUTI_DB_PEGAWAI_CUTI.map(function(x) { return String(x.unit || "").trim(); }))].filter(Boolean).sort();
-        units.forEach(function(u) {
+        var units = CUTI_DB_PEGAWAI_CUTI.filter(function(x) {
+            var unit = String(x.unit || "").trim().toUpperCase();
+            if (jenjang === "PAUD / TK") return (unit.includes("TK") || unit.includes("PAUD") || unit.includes("KOBER") || unit.includes("TKN"));
+            if (jenjang === "SD") return (unit.includes("SD") || unit.includes("SDN"));
+            if (jenjang === "SMP") return (unit.includes("SMP") || unit.includes("SMPN"));
+            if (jenjang === "SMA") return (unit.includes("SMA") || unit.includes("SMAN"));
+            if (jenjang === "SMK") return (unit.includes("SMK") || unit.includes("SMKN"));
+            if (jenjang === "NON-FORMAL / SKB") return (unit.includes("SKB") || unit.includes("PKBM"));
+            return true;
+        }).map(function(x) { return String(x.unit || "").trim(); });
+
+        var unikUnits = [...new Set(units)].filter(Boolean).sort();
+        unikUnits.forEach(function(u) {
             $selUnit.append($('<option>', { value: u, text: u }));
         });
         $selUnit.prop('disabled', false);
