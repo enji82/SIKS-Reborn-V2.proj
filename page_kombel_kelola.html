@@ -1001,16 +1001,28 @@ function kombelkelola_submitBatchUpload(e) {
 
   var payloads = [];
   var valid = true;
+  var tracker = {};
+  var hasDup = false;
+  var dupMsg = "";
+
+  var existingFiles = KOMBELKELOLA_CACHE_DATA.filter(function(r) {
+    return String(r.npsn).trim() === String(npsn).trim();
+  });
+
   rows.each(function() {
+    if (hasDup) return false;
     var row = $(this);
     var katSel = row.find('.kombelkelola-kategori-select');
-    var katData = KOMBELKELOLA_MASTER_KAT.find(function(k){ return k.idKat === katSel.val(); });
+    var idKat = String(katSel.val() || "").trim();
+    var katData = KOMBELKELOLA_MASTER_KAT.find(function(k){ return k.idKat === idKat; });
+    var namaKat = katData ? katData.namaKat : idKat;
     var tahunInput = row.find('.kombelkelola-tahun-input');
+    var thn = String(tahunInput.val() || "").trim();
     var periodeInput = row.find('.kombelkelola-periode-input');
     var fileInput = row.find('.kombelkelola-file-input')[0];
 
-    if (!katSel.val()) { Sultan.alert('warning','Perhatian','Pilih kategori dokumen untuk setiap baris.'); valid=false; return false; }
-    if (!tahunInput.val()) { Sultan.alert('warning','Perhatian','Isi tahun untuk setiap baris.'); valid=false; return false; }
+    if (!idKat) { Sultan.alert('warning','Perhatian','Pilih kategori dokumen untuk setiap baris.'); valid=false; return false; }
+    if (!thn) { Sultan.alert('warning','Perhatian','Isi tahun untuk setiap baris.'); valid=false; return false; }
     if (!fileInput || !fileInput.files[0]) { Sultan.alert('warning','Perhatian','Pilih file untuk setiap baris dokumen.'); valid=false; return false; }
 
     var periodeVal = "-";
@@ -1024,14 +1036,41 @@ function kombelkelola_submitBatchUpload(e) {
       }
     }
 
+    // 1. Cek Duplikasi di Form Multi-Upload
+    var uni = idKat + "_" + thn + "_" + String(periodeVal).toLowerCase();
+    if (tracker[uni]) {
+      hasDup = true;
+      dupMsg = 'Anda memilih kategori <b>' + kombelkelola_esc(namaKat) + '</b> periode <b>' + kombelkelola_esc(thn) + ' ' + (periodeVal !== '-' ? kombelkelola_esc(periodeVal) : '') + '</b> lebih dari satu kali di form ini!';
+      return false;
+    }
+    tracker[uni] = true;
+
+    // 2. Cek Duplikasi dengan Database yang Sudah Ada
+    var inDb = existingFiles.find(function(f) {
+      var dKat = String(f.id_kategori || f.nama_kategori || "").trim();
+      var dThn = String(f.tahun || "").trim();
+      var dPer = String(f.periode || "-").trim().toLowerCase();
+      return (dKat === idKat || dKat === namaKat) && dThn === thn && dPer === String(periodeVal).toLowerCase();
+    });
+    if (inDb) {
+      hasDup = true;
+      dupMsg = 'Dokumen <b>' + kombelkelola_esc(namaKat) + '</b> periode <b>' + kombelkelola_esc(thn) + ' ' + (periodeVal !== '-' ? kombelkelola_esc(periodeVal) : '') + '</b> sudah pernah diunggah sebelumnya (Status: ' + kombelkelola_esc(inDb.status || "Diproses") + ').';
+      return false;
+    }
+
     payloads.push({
-      npsn: npsn, idKat: katSel.val(), namaKat: katData ? katData.namaKat : katSel.val(),
+      npsn: npsn, idKat: idKat, namaKat: namaKat,
       kelas: selectedKkg,
-      tahun: tahunInput.val(), periode: periodeVal,
+      tahun: thn, periode: periodeVal,
       uploader: KOMBELKELOLA_USER_AKTIF,
       file: fileInput.files[0]
     });
   });
+
+  if (hasDup) {
+    Sultan.alert('warning', 'Duplikasi Dokumen', dupMsg);
+    return;
+  }
   if (!valid) return;
 
   var btn = $('#kombelkelola_btnSimpan'); var btnTxt = btn.html();

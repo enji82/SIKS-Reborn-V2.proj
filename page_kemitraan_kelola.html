@@ -832,15 +832,43 @@ function kemitraankelola_prosesUploadMultibaris(npsn) {
 
   var valid = true;
   var itemsToUpload = [];
+  var tracker = {};
+  var hasDup = false;
+  var dupMsg = "";
+
+  // Ambil cache data dokumen milik sekolah yang sedang dipilih
+  var existingFiles = KEMITRAANKELOLA_CACHE_DATA.filter(function(r) {
+    return String(r.npsn).trim() === String(npsn).trim();
+  });
 
   rows.each(function() {
-    var idKat = $(this).find('.input-kategori').val();
-    var namaKat = $(this).find('.input-kategori option:selected').text();
-    var tahun = $(this).find('.input-tahun').val();
+    if (hasDup) return false;
+    var idKat = String($(this).find('.input-kategori').val() || "").trim();
+    var namaKat = String($(this).find('.input-kategori option:selected').text() || idKat).trim();
+    var tahun = String($(this).find('.input-tahun').val() || "").trim();
     var fileInput = $(this).find('.input-file')[0];
 
     if (!idKat || !tahun || !fileInput.files || !fileInput.files[0]) {
       valid = false;
+      return false;
+    }
+
+    // 1. Cek Duplikasi di Form Multi-Upload
+    var uni = idKat + "_" + tahun;
+    if (tracker[uni]) {
+      hasDup = true;
+      dupMsg = 'Anda memilih kategori <b>' + escapeHtml(namaKat) + '</b> tahun <b>' + escapeHtml(tahun) + '</b> lebih dari satu kali di form upload ini!';
+      return false;
+    }
+    tracker[uni] = true;
+
+    // 2. Cek Duplikasi dengan Database yang Sudah Ada
+    var inDb = existingFiles.find(function(f) {
+      return String(f.id_kategori || "").trim() === idKat && String(f.tahun || "").trim() === tahun;
+    });
+    if (inDb) {
+      hasDup = true;
+      dupMsg = 'Dokumen <b>' + escapeHtml(namaKat) + '</b> tahun <b>' + escapeHtml(tahun) + '</b> sudah pernah diunggah sebelumnya (Status: ' + escapeHtml(inDb.status || "Diproses") + ').';
       return false;
     }
 
@@ -851,6 +879,17 @@ function kemitraankelola_prosesUploadMultibaris(npsn) {
       file: fileInput.files[0]
     });
   });
+
+  if (hasDup) {
+    if (typeof Sultan !== 'undefined' && Sultan.alert) {
+      Sultan.alert('warning', 'Duplikasi Dokumen', dupMsg);
+    } else if (typeof Swal !== 'undefined') {
+      Swal.fire('Duplikasi Dokumen', dupMsg, 'warning');
+    } else {
+      alert(dupMsg.replace(/<\/?[^>]+(>|$)/g, ""));
+    }
+    return;
+  }
 
   if (!valid || itemsToUpload.length === 0) {
     if (typeof Sultan !== 'undefined' && Sultan.alert) {
