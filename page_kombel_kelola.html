@@ -59,35 +59,59 @@
     <div class="modal-body modal-body-sultan p-4">
       <!-- Target Sekolah & KKG Header -->
       <div class="form-group mb-4 position-relative" id="kombelkelola_header_target_container">
-        <div class="row">
-          <!-- Pilih Sekolah (Admin) -->
-          <div class="col-md-8" id="kombelkelola_pilih_sekolah_container">
-            <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">
-              Pilih Sekolah <span class="text-danger">*</span>
-            </label>
-            <div class="row">
-              <div class="col-md-4">
-                <select id="kombelkelola_in_jenjang" class="form-control form-control-sultan border-maroon font-weight-bold text-dark">
-                  <option value="">Pilih Jenjang</option>
-                  <option value="PAUD">PAUD</option>
-                  <option value="SD">SD</option>
-                </select>
+        <!-- Baris 1 Layout Admin (Pilih Jenjang, Pilih Sekolah, NPSN & KKG) -->
+        <div class="row align-items-end" id="kombelkelola_pilih_sekolah_container">
+          <div class="col-md-3">
+            <div class="form-group form-group-sultan mb-0">
+              <label class="form-label-sultan">JENJANG <span class="text-danger">*</span></label>
+              <select id="kombelkelola_in_jenjang" class="form-control form-control-sultan font-weight-bold" required>
+                <option value="">- Pilih Jenjang -</option>
+              </select>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="form-group form-group-sultan mb-0">
+              <label class="form-label-sultan">NAMA SEKOLAH <span class="text-danger">*</span></label>
+              <select id="kombelkelola_in_sekolah" class="form-control form-control-sultan font-weight-bold" required disabled>
+                <option value="">- Pilih Sekolah -</option>
+              </select>
+            </div>
+          </div>
+          <div class="col-md-2">
+            <div class="form-group form-group-sultan mb-0">
+              <label class="form-label-sultan">NPSN</label>
+              <input type="text" id="kombelkelola_in_npsn" class="form-control form-control-sultan font-weight-bold" readonly placeholder="Otomatis">
+            </div>
+          </div>
+          <div class="col-md-3" id="kombelkelola_pilih_kkg_container">
+            <div class="form-group form-group-sultan mb-0">
+              <label class="form-label-sultan">KELAS / MAPEL <span class="text-danger">*</span></label>
+              <select id="kombelkelola_in_kkg" class="form-control form-control-sultan font-weight-bold" required>
+                <option value="">- Pilih Kelas / Mapel -</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Read-Only Banner Info Sekolah (Khusus User Sekolah) -->
+        <div class="card card-sultan shadow-sm mb-0" id="kombelkelola_user_sekolah_banner" style="display:none;">
+          <div class="card-body p-3">
+            <div class="row align-items-center">
+              <div class="col-md-6">
+                <small class="text-muted font-weight-bold text-uppercase d-block mb-1"><i class="fas fa-school text-primary mr-1"></i> SEKOLAH PENGUNGGAH</small>
+                <div class="font-weight-bold text-dark text-uppercase h6 m-0" id="kombelkelola_user_banner_nama">-</div>
               </div>
-              <div class="col-md-8">
-                <select id="kombelkelola_in_sekolah" class="form-control form-control-sultan border-maroon font-weight-bold text-dark" required disabled>
-                  <option value="">Pilih Sekolah</option>
+              <div class="col-md-3 text-md-center mt-2 mt-md-0">
+                <small class="text-muted font-weight-bold text-uppercase d-block mb-1">NPSN</small>
+                <span class="badge badge-pill badge-warning px-3 py-2 font-weight-bold text-dark" style="font-size: 0.88rem;" id="kombelkelola_user_banner_npsn">-</span>
+              </div>
+              <div class="col-md-3 text-md-right mt-2 mt-md-0">
+                <label class="form-label-sultan small font-weight-bold text-muted text-uppercase mb-1">KELAS / MAPEL <span class="text-danger">*</span></label>
+                <select id="kombelkelola_in_kkg_user" class="form-control form-control-sultan font-weight-bold" required>
+                  <option value="">- Pilih Kelas / Mapel -</option>
                 </select>
               </div>
             </div>
-          </div>
-          <!-- Target KKG / Kelas -->
-          <div class="col-md-4" id="kombelkelola_pilih_kkg_container">
-            <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">
-              Kelas / Mapel <span class="text-danger">*</span>
-            </label>
-            <select id="kombelkelola_in_kkg" class="form-control form-control-sultan border-maroon font-weight-bold text-dark" required>
-              <option value="">Pilih Kelas / Mapel</option>
-            </select>
           </div>
         </div>
       </div>
@@ -310,14 +334,17 @@ $(document).ready(function() {
   $(document).off('change','#kombelkelola_in_jenjang').on('change','#kombelkelola_in_jenjang', function() {
     var jenjang = $(this).val();
     var $sek = $('#kombelkelola_in_sekolah');
-    $sek.empty().append('<option value="">Pilih Sekolah</option>');
+    $('#kombelkelola_in_npsn').val('');
+    $sek.empty().append('<option value="">- Pilih Sekolah -</option>');
     if (jenjang) {
       var filtered = KOMBELKELOLA_MASTER_SEKOLAH.filter(function(s) {
+        if (jenjang === "SEMUA" || !jenjang) return true;
         var jjg = String(s.jenjang || "").toUpperCase();
         if (jenjang === "PAUD") return jjg === "TK" || jjg === "KB" || jjg === "SPS" || jjg === "TPA" || jjg.includes("PAUD");
         if (jenjang === "SD") return jjg === "SD" || jjg.includes("SD");
         return jjg === jenjang;
       });
+      filtered.sort(function(a,b){ return String(a.nama).localeCompare(String(b.nama)); });
       filtered.forEach(function(s){ $sek.append($('<option>', { value: s.npsn, text: s.nama })); });
       $sek.prop('disabled', false);
     } else { $sek.prop('disabled', true); }
@@ -327,6 +354,7 @@ $(document).ready(function() {
 
   $(document).off('change','#kombelkelola_in_sekolah').on('change','#kombelkelola_in_sekolah', function() {
     var npsn = $(this).val();
+    $('#kombelkelola_in_npsn').val(npsn || '');
     if (npsn) {
       KOMBELKELOLA_SELECTED_SEKOLAH_FILES = KOMBELKELOLA_CACHE_DATA.filter(function(r){ return String(r.npsn).trim() === String(npsn).trim(); });
       $('#kombelkelola_uploadContainer').empty();
@@ -339,12 +367,15 @@ $(document).ready(function() {
     }
   });
 
-  $(document).off('change','#kombelkelola_in_kkg').on('change','#kombelkelola_in_kkg', function() {
+  $(document).off('change','#kombelkelola_in_kkg, #kombelkelola_in_kkg_user').on('change','#kombelkelola_in_kkg, #kombelkelola_in_kkg_user', function() {
+    var val = $(this).val();
+    $('#kombelkelola_in_kkg, #kombelkelola_in_kkg_user').val(val);
+    var selectedKkg = val || "Semua KKG";
+    
     // Apabila KKG di header diubah, perbarui daftar kategori/nama dokumen di seluruh baris
     $('.kombelkelola-upload-row').each(function() {
       var row = $(this);
       var currentVal = row.find('.kombelkelola-kategori-select').val();
-      var selectedKkg = $('#kombelkelola_in_kkg').val() || "Semua KKG";
       var newKatOpts = '<option value="">Pilih Kategori</option>';
 
       KOMBELKELOLA_MASTER_KAT.forEach(function(k) {
@@ -636,9 +667,14 @@ function kombelkelola_updateFilterKategoriOptions() {
 function kombelkelola_setupJenjangDropdown() {
   var jenjangSet = new Set();
   KOMBELKELOLA_MASTER_SEKOLAH.forEach(function(s){ var j=String(s.jenjang||"").toUpperCase(); if(j) jenjangSet.add(j); });
-  var hj = '<option value="SEMUA">Semua Jenjang</option>';
-  Array.from(jenjangSet).sort().forEach(function(j){ hj += '<option value="'+j+'">'+j+'</option>'; });
-  $('#kombelkelola_filterJenjang').html(hj).prop('disabled', false);
+  var hjFilter = '<option value="SEMUA">Semua Jenjang</option>';
+  var hjModal = '<option value="">- Pilih Jenjang -</option>';
+  Array.from(jenjangSet).sort().forEach(function(j){ 
+    hjFilter += '<option value="'+j+'">'+j+'</option>'; 
+    hjModal += '<option value="'+j+'">'+j+'</option>'; 
+  });
+  $('#kombelkelola_filterJenjang').html(hjFilter).prop('disabled', false);
+  $('#kombelkelola_in_jenjang').html(hjModal);
 }
 
 function kombelkelola_updateSekolahDropdown() {
@@ -849,25 +885,43 @@ function kombelkelola_renderTabel(data) {
 function kombelkelola_bukaModalTambah() {
   if (!KOMBELKELOLA_IS_ADMIN && !KOMBELKELOLA_NPSN_TERKUNCI) { Sultan.alert('warning','Perhatian','Sesi login tidak valid.'); return; }
   var $form = $('#kombelkelola_formUpload'); $form[0].reset(); $form.removeClass('was-validated');
-  $('#kombelkelola_in_jenjang').val(''); $('#kombelkelola_in_sekolah').val('').prop('disabled', true).empty().append('<option value="">Pilih Sekolah</option>');
+  $('#kombelkelola_in_jenjang').val(''); 
+  $('#kombelkelola_in_sekolah').val('').prop('disabled', true).empty().append('<option value="">- Pilih Sekolah -</option>');
+  $('#kombelkelola_in_npsn').val('');
   kombelkelola_setupKkgDropdowns();
-  $('#kombelkelola_in_kkg').val('');
+  $('#kombelkelola_in_kkg, #kombelkelola_in_kkg_user').val('');
   $('#kombelkelola_uploadContainer').html('<div class="text-center text-muted p-3" id="kombelkelola_msgPilihSekolah"><i class="fas fa-info-circle mr-1"></i> Pilih sekolah terlebih dahulu.</div>');
   $('#kombelkelola_btnAddRow, #kombelkelola_btnSimpan').prop('disabled', true);
   KOMBELKELOLA_ROW_COUNT = 0;
 
   if (!KOMBELKELOLA_IS_ADMIN && KOMBELKELOLA_NPSN_TERKUNCI) {
-    var sek = KOMBELKELOLA_MASTER_SEKOLAH.find(function(s){ return s.npsn === KOMBELKELOLA_NPSN_TERKUNCI; });
     $('#kombelkelola_pilih_sekolah_container').hide();
-    $('#kombelkelola_uploadContainer').empty();
-    $('#kombelkelola_btnAddRow, #kombelkelola_btnSimpan').prop('disabled', false);
-    KOMBELKELOLA_SELECTED_SEKOLAH_FILES = KOMBELKELOLA_CACHE_DATA.filter(function(r){ return String(r.npsn).trim() === KOMBELKELOLA_NPSN_TERKUNCI; });
-    kombelkelola_createUploadRow();
+    $('#kombelkelola_user_sekolah_banner').show();
+
+    var lockVal = String(KOMBELKELOLA_NPSN_TERKUNCI).trim();
+    var sek = KOMBELKELOLA_MASTER_SEKOLAH.find(function(s){ return String(s.npsn).trim() === lockVal || String(s.nama || "").trim().toUpperCase() === lockVal.toUpperCase(); });
+    if (sek) {
+      var jjgRaw = String(sek.jenjang || "").toUpperCase();
+      var jjgVal = "SD";
+      if (jjgRaw === "TK" || jjgRaw === "KB" || jjgRaw === "SPS" || jjgRaw === "TPA" || jjgRaw.includes("PAUD")) {
+        jjgVal = "PAUD";
+      }
+      $('#kombelkelola_user_banner_nama').text(sek.nama || lockVal);
+      $('#kombelkelola_user_banner_npsn').text(sek.npsn || lockVal);
+      $('#kombelkelola_in_jenjang').val(jjgVal).trigger('change');
+      $('#kombelkelola_in_sekolah').val(sek.npsn).trigger('change');
+    } else {
+      $('#kombelkelola_user_banner_nama').text(KOMBELKELOLA_NPSN_TERKUNCI);
+      $('#kombelkelola_user_banner_npsn').text(KOMBELKELOLA_NPSN_TERKUNCI);
+      $('#kombelkelola_in_sekolah').empty().append($('<option>', {value: KOMBELKELOLA_NPSN_TERKUNCI, text: KOMBELKELOLA_NPSN_TERKUNCI}));
+      $('#kombelkelola_in_sekolah').val(KOMBELKELOLA_NPSN_TERKUNCI).trigger('change');
+    }
   } else {
     $('#kombelkelola_pilih_sekolah_container').show();
+    $('#kombelkelola_user_sekolah_banner').hide();
   }
 
-  kombelkelola_bukaModal('tambah', 'Tambah Dokumen Komunitas Belajar');
+  kombelkelola_bukaModal('tambah', 'UNGGAH DOKUMEN KOMUNITAS BELAJAR');
 }
 
 function kombelkelola_createUploadRow() {
@@ -1235,15 +1289,14 @@ function kombelkelola_lihatCatatan(pesan) {
 
 function kombelkelola_bukaModal(tipe, judul) {
   var isEdit = tipe === 'edit';
-  $('#global_modalFormSize').removeClass('modal-xl modal-lg').addClass('modal-lg');
+  $('#global_modalFormSize').removeClass('modal-xl modal-lg modal-md').addClass('modal-xl');
   $('#global_modalFormHeader').removeClass('modal-header-sultan-primary modal-header-sultan-warning modal-header-sultan-danger modal-header-sultan-success modal-header-sultan-info modal-header-sultan-dark modal-header-edit modal-header-tambah-edit modal-header-hapus').addClass(isEdit ? 'modal-header-sultan-warning' : 'modal-header-tambah-edit');
-  $('#global_modalFormTitle').html('<i class="fas fa-'+(isEdit?'edit':'plus')+' mr-2"></i>'+kombelkelola_esc(judul));
+  $('#global_modalFormTitle').html('<i class="fas fa-'+(isEdit?'edit':'cloud-upload-alt')+' mr-2"></i>'+kombelkelola_esc(judul));
   $('#global_modalFormBody, #global_modalFormFooter').hide();
   $('#kombelkelola_formUpload').appendTo('#global_modalFormSize .modal-content');
   $('#global_modalForm').off('hidden.bs.modal.kombelkelola').on('hidden.bs.modal.kombelkelola', function() {
     $('#kombelkelola_formUpload').appendTo('#kombelkelola_templates');
     $('#global_modalFormBody, #global_modalFormFooter').show();
-    $('#kombelkelola_pilih_sekolah_container').show();
   });
   $('#global_modalForm').modal('show');
 }
