@@ -400,7 +400,13 @@ $(document).ready(function() {
 
   $(document).off('click','#kombelkelola_btnAddRow').on('click','#kombelkelola_btnAddRow', kombelkelola_createUploadRow);
   $(document).off('click','.kombelkelola-btn-del-row').on('click','.kombelkelola-btn-del-row', function(){
-    $(this).closest('.kombelkelola-upload-row').slideUp(200, function(){ $(this).remove(); });
+    var $c = $(this).closest('#kombelkelola_uploadContainer');
+    $(this).closest('.kombelkelola-upload-row').slideUp(200, function(){ 
+      $(this).remove(); 
+      $c.find('.kombelkelola-upload-row').each(function(idx) {
+        $(this).find('.badge-maroon').text('Dokumen #' + (idx + 1));
+      });
+    });
   });
 
   $(document).off('change','.kombelkelola-kategori-select').on('change','.kombelkelola-kategori-select', function() {
@@ -924,11 +930,12 @@ function kombelkelola_bukaModalTambah() {
   kombelkelola_bukaModal('tambah', 'UNGGAH DOKUMEN KOMUNITAS BELAJAR');
 }
 
-function kombelkelola_createUploadRow() {
-  KOMBELKELOLA_ROW_COUNT++;
-  var idx = KOMBELKELOLA_ROW_COUNT;
+function kombelkelola_createUploadRowContext($c) {
+  if ($c.find('.kombelkelola-upload-row').length >= 10) { Sultan.notif.info('Maksimal 10 dokumen.'); return; }
+  KOMBELKELOLA_ROW_COUNT++; 
+  var rId = "uprow_kombel_" + KOMBELKELOLA_ROW_COUNT;
   var selectedKkg = $('#kombelkelola_in_kkg').val() || "Semua KKG";
-  var katOpts = '<option value="">Pilih Kategori</option>';
+  var katOpts = '<option value="">- Pilih Kategori -</option>';
 
   KOMBELKELOLA_MASTER_KAT.forEach(function(k){
     if (k.isAktif !== false && k.status !== "Nonaktif") {
@@ -940,47 +947,46 @@ function kombelkelola_createUploadRow() {
     }
   });
 
+  var delBtn = $c.find('.kombelkelola-upload-row').length > 0 ? `<button type="button" class="btn btn-sultan-del-row kombelkelola-btn-del-row" title="Hapus Baris Dokumen"><i class="fas fa-trash-alt"></i></button>` : `<div style="width: 38px;"></div>`;
+
   var rowHtml = `
-    <div class="kombelkelola-upload-row border rounded p-3 mb-3 shadow-sm" data-idx="${idx}">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <span class="badge badge-secondary font-weight-bold" style="font-size:11px;">DOKUMEN #${idx}</span>
-        ${idx > 1 ? '<button type="button" class="btn btn-sm btn-outline-danger kombelkelola-btn-del-row rounded-pill"><i class="fas fa-trash-alt mr-1"></i>Hapus</button>' : ''}
-      </div>
-      <div class="row">
-        <div class="col-md-6 mb-2 kombelkelola-kat-wrapper">
-          <label class="form-label-sultan small font-weight-bold text-uppercase">Nama Dokumen <span class="text-danger">*</span></label>
-          <select class="form-control form-control-sultan border-maroon kombelkelola-kategori-select" required>
-            ${katOpts}
-          </select>
-          <div class="small text-info font-italic mt-1 kombelkelola-kat-keterangan" style="display:none;"></div>
+    <div class="kombelkelola-upload-row bg-white border p-3 mb-3 rounded shadow-sm position-relative" id="${rId}" style="display:none;">
+      <span class="position-absolute badge badge-maroon shadow-sm" style="top:-10px; left:15px; font-size:12px;">Dokumen #${$c.find('.kombelkelola-upload-row').length + 1}</span>
+      <div class="row align-items-end">
+        <div class="col-md-5 mb-2 mb-md-0 kombelkelola-kat-wrapper">
+          <label class="form-label-sultan small text-muted text-uppercase mb-1">Kategori <span class="text-danger">*</span></label>
+          <select class="form-control form-control-sultan border-maroon kombelkelola-kategori-select" required>${katOpts}</select>
         </div>
-        <div class="col-md-6 mb-2 kombelkelola-tahun-wrapper">
-          <label class="form-label-sultan small font-weight-bold text-uppercase">Tahun <span class="text-danger">*</span></label>
+        <div class="col-md-2 mb-2 mb-md-0 kombelkelola-tahun-wrapper">
+          <label class="form-label-sultan small text-muted text-uppercase mb-1">Tahun <span class="text-danger">*</span></label>
           <select class="form-control form-control-sultan border-maroon kombelkelola-tahun-input" required>
-            <option value="">Pilih Tahun</option>
+            <option value="">- Pilih -</option>
           </select>
         </div>
-        <div class="col-md-4 mb-2 kombelkelola-periode-wrapper" style="display:none;">
-          <label class="form-label-sultan small font-weight-bold text-uppercase kombelkelola-periode-label">Periode</label>
+        <div class="col-md-2 mb-2 mb-md-0 kombelkelola-periode-wrapper" style="display:none;">
+          <label class="form-label-sultan small text-muted text-uppercase mb-1"><span class="kombelkelola-periode-label">Periode</span> <span class="text-danger">*</span></label>
           <input type="text" class="form-control form-control-sultan border-maroon kombelkelola-periode-input">
         </div>
-      </div>
-      <div class="row mt-2">
-        <div class="col-12">
-          <label class="form-label-sultan small font-weight-bold text-uppercase">
+        <div class="col-md-4 mb-2 mb-md-0 kombelkelola-file-wrapper">
+          <label class="form-label-sultan small text-muted text-uppercase mb-1">
             <i class="fas fa-file-pdf text-danger mr-1 kombelkelola-format-icon"></i>
-            <span class="kombelkelola-format-text">Pilih Kategori Dulu</span>
+            <span class="kombelkelola-format-text">File PDF (2MB)</span> <span class="text-danger">*</span>
           </label>
           <div class="custom-file">
-            <input type="file" class="custom-file-input kombelkelola-file-input" accept="application/pdf" required data-max-size="${2*1024*1024}">
+            <input type="file" class="custom-file-input border-maroon kombelkelola-file-input" accept="application/pdf" required data-max-size="${2*1024*1024}">
             <label class="custom-file-label text-truncate">Pilih file...</label>
           </div>
         </div>
+        <div class="col-md-1 text-right">${delBtn}</div>
       </div>
+      <div class="kombelkelola-kat-keterangan alert-soft-info rounded px-3 py-2 mt-2" style="display:none; font-size:13px; line-height: 1.4;"></div>
     </div>
   `;
-  $('#kombelkelola_uploadContainer').append(rowHtml);
+  $c.append(rowHtml); 
+  $c.find('#' + rId).slideDown(200);
 }
+
+function kombelkelola_createUploadRow() { kombelkelola_createUploadRowContext($('#kombelkelola_uploadContainer')); }
 
 function kombelkelola_submitBatchUpload(e) {
   e.preventDefault();
