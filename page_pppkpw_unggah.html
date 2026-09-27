@@ -663,18 +663,35 @@ function pppkpwunggah_renderTable(data, keepPage) {
    ======================================================================= */
 function pppkpwunggah_populateJenjang() {
   const jenjangSelect = $('#pppkpwunggah_in_jenjang');
-  if (jenjangSelect.children('option').length > 1) return;
   jenjangSelect.empty().append('<option value="">- Pilih Jenjang -</option>');
   
-  if (PPPKPWUNGGAH_INIT_DATA && PPPKPWUNGGAH_INIT_DATA.jenjangList && PPPKPWUNGGAH_INIT_DATA.jenjangList.length > 0) {
-    PPPKPWUNGGAH_INIT_DATA.jenjangList.forEach(function (j) {
-      jenjangSelect.append('<option value="' + j + '">' + j + '</option>');
-    });
-  } else {
-    ['SD', 'PAUD', 'SMP'].forEach(function (j) {
-      jenjangSelect.append('<option value="' + j + '">' + j + '</option>');
+  var setJenjang = new Set();
+  var rawList = (PPPKPWUNGGAH_INIT_DATA && PPPKPWUNGGAH_INIT_DATA.unitList) ? PPPKPWUNGGAH_INIT_DATA.unitList : [];
+
+  if (rawList && rawList.length > 0) {
+    rawList.forEach(function (u) {
+      var jenjangUnit = typeof u === 'object' ? (u.jenjang || '') : '';
+      if (!jenjangUnit) {
+        var unitName = String(typeof u === 'string' ? u : u.nama || '').toUpperCase();
+        if (unitName.includes("TK") || unitName.includes("PAUD") || unitName.includes("KOBER") || unitName.includes("TKN")) jenjangUnit = "PAUD";
+        else if (unitName.includes("SD") || unitName.includes("SDN")) jenjangUnit = "SD";
+        else if (unitName.includes("SMP") || unitName.includes("SMPN")) jenjangUnit = "SMP";
+        else if (unitName.includes("SMA") || unitName.includes("SMAN")) jenjangUnit = "SMA";
+        else if (unitName.includes("SMK") || unitName.includes("SMKN")) jenjangUnit = "SMK";
+      }
+      if (jenjangUnit) setJenjang.add(jenjangUnit.toUpperCase());
     });
   }
+
+  // Jika tidak ditemukan dari unitList, cek jenjangList atau fallback default dari database unit
+  if (setJenjang.size === 0 && PPPKPWUNGGAH_INIT_DATA && PPPKPWUNGGAH_INIT_DATA.jenjangList && PPPKPWUNGGAH_INIT_DATA.jenjangList.length > 0) {
+    PPPKPWUNGGAH_INIT_DATA.jenjangList.forEach(function (j) { setJenjang.add(String(j).toUpperCase()); });
+  }
+
+  var arrJenjang = Array.from(setJenjang).sort();
+  arrJenjang.forEach(function (j) {
+    jenjangSelect.append('<option value="' + j + '">' + j + '</option>');
+  });
 }
 
 function pppkpwunggah_filterUnitByJenjang(jenjangVal, selectedUnit) {
