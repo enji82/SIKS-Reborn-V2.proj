@@ -445,7 +445,8 @@
 
         $(document).off('change', '#cuti_filterStatus, #cuti_filterBulan, #cuti_filterTahun, #cuti_filterUnit').on('change', '#cuti_filterStatus, #cuti_filterBulan, #cuti_filterTahun, #cuti_filterUnit', cuti_applyFilter);
 
-        $(document).off('change', '#cuti_inputUnit').on('change', '#cuti_inputUnit', cuti_filterNamaByUnit);
+        $(document).off('change', '#cuti_in_jenjang').on('change', '#cuti_in_jenjang', cuti_filterUnitByJenjang);
+        $(document).off('change', '#cuti_inputUnit').on('change', '#cuti_inputUnit', cuti_handleUnitChange);
         $(document).off('change', '#cuti_inputNama').on('change', '#cuti_inputNama', cuti_filterNipByNama);
         $(document).off('change', '#cuti_inputNIP').on('change', '#cuti_inputNIP', cuti_setPegawaiDetails);
         $(document).off('change', '#cuti_inputJenisCuti').on('change', '#cuti_inputJenisCuti', cuti_cekStatusReadOnlyHari);
@@ -851,16 +852,26 @@
     function cuti_bukaModalTambah(showModal) {
         try {
             $('#cuti_editRowId').val("");
-            $('#global_modalFormHeader').removeClass().addClass('modal-header modal-header-sultan-primary');
-            $('#global_modalFormTitle').html('<i class="fas fa-file-signature mr-2"></i>FORM PENGAJUAN CUTI');
-            $('#cuti_btnSimpanForm').removeClass('modal-btn-perbarui').addClass('modal-btn-simpan').html('<i class="fas fa-paper-plane mr-2"></i> KIRIM ');
+
+            $('#global_modalFormSize').removeClass('modal-xl modal-md').addClass('modal-lg');
+            $('#global_modalFormHeader').removeClass().addClass('modal-header modal-header-tambah-edit');
+            $('#global_modalFormTitle').html('<i class="fas fa-file-signature mr-2"></i> TAMBAH PENGAJUAN CUTI');
+            $('#cuti_btnSimpanForm').removeClass('modal-btn-perbarui').addClass('modal-btn-simpan').html('<i class="fas fa-cloud-upload-alt mr-2"></i> SIMPAN');
 
             cuti_resetModal();
 
             if (CUTI_IS_ADMIN) {
-                $('#cuti_inputUnit').val('').prop('disabled', false);
-                $('#cuti_inputNama').empty().append('<option value="">Pilih Unit Dulu</option>').prop('disabled', true);
+                $('#cuti_user_sekolah_banner').hide();
+                $('#cuti_admin_sekolah_container').show();
+                $('#cuti_in_jenjang').val('');
+                $('#cuti_in_npsn').val('');
+                $('#cuti_inputUnit').empty().append('<option value="">- Pilih Sekolah -</option>').prop('disabled', true);
+                $('#cuti_inputNama').empty().append('<option value="">Pilih Sekolah Dulu</option>').prop('disabled', true);
             } else {
+                $('#cuti_admin_sekolah_container').hide();
+                $('#cuti_user_sekolah_banner').show();
+                $('#cuti_user_banner_nama').text(CUTI_UNIT_TERKUNCI || "SEKOLAH SAYA");
+                $('#cuti_user_banner_npsn').text(CUTI_USER_NPSN || "-");
                 $('#cuti_inputUnit').val(CUTI_UNIT_TERKUNCI).prop('disabled', true);
                 cuti_filterNamaByUnit();
                 if (typeof CUTI_USER_AKTIF !== 'undefined' && CUTI_USER_AKTIF) {
@@ -871,6 +882,7 @@
                 }
             }
 
+            $('#cuti_inputNipDisplay').val('');
             $('#cuti_inputNIP').empty().append('<option value="">Otomatis</option>').prop('disabled', true);
             $('#cuti_inputJenisCuti').html('<option value="">Pilih Jenis Cuti</option>').prop('disabled', true);
             
@@ -880,7 +892,6 @@
             cuti_cekStatusReadOnlyHari();
 
             // Tempelkan form ke global modal
-            $('#global_modalFormSize').removeClass('modal-xl modal-md').addClass('modal-lg');
             $('#global_modalFormBody, #global_modalFormFooter').hide();
             $('#cuti_formUtama').appendTo('#global_modalFormSize .modal-content');
 
@@ -901,18 +912,29 @@
             cuti_bukaModalTambah(false);
             $('#cuti_editRowId').val(rowIdx);
 
-            $('#global_modalFormHeader').removeClass().addClass('modal-header modal-header-sultan-warning');
-            $('#global_modalFormTitle').html('<i class="fas fa-pencil-alt mr-2"></i>EDIT PENGAJUAN CUTI');
+            $('#global_modalFormHeader').removeClass().addClass('modal-header modal-header-edit');
+            $('#global_modalFormTitle').html('<i class="fas fa-edit mr-2"></i> EDIT PENGAJUAN CUTI');
             $('#cuti_btnSimpanForm').removeClass('modal-btn-simpan').addClass('modal-btn-perbarui').html('<i class="fas fa-edit mr-2"></i> PERBARUI');
 
             var tUnit = String(data.unit).trim();
-            if ($('#cuti_inputUnit option').filter(function () { return $(this).val() === tUnit; }).length === 0) { $('#cuti_inputUnit').append($('<option>', { value: tUnit, text: tUnit })); }
-            $('#cuti_inputUnit').val(tUnit).prop('disabled', true);
+            if (CUTI_IS_ADMIN) {
+                $('#cuti_admin_sekolah_container').show();
+                $('#cuti_user_sekolah_banner').hide();
+                $('#cuti_in_jenjang').val('').prop('disabled', true);
+                $('#cuti_inputUnit').empty().append($('<option>', { value: tUnit, text: tUnit })).val(tUnit).prop('disabled', true);
+                $('#cuti_in_npsn').val(data.npsn || 'Auto-fill');
+            } else {
+                $('#cuti_admin_sekolah_container').hide();
+                $('#cuti_user_sekolah_banner').show();
+                $('#cuti_user_banner_nama').text(tUnit);
+                $('#cuti_user_banner_npsn').text(data.npsn || CUTI_USER_NPSN || "-");
+            }
 
             setTimeout(() => {
                 var tNama = String(data.nama).trim(); var tNip = String(data.nip).trim();
                 $('#cuti_inputNama').empty().append($('<option>', { value: cuti_escapeHtml(tNama), text: cuti_escapeHtml(tNama) })).prop('disabled', true);
                 $('#cuti_inputNIP').empty().append($('<option>', { value: cuti_escapeHtml(tNip), text: cuti_escapeHtml(tNip) })).prop('disabled', true);
+                $('#cuti_inputNipDisplay').val(tNip);
                 cuti_setPegawaiDetails();
             }, 200);
 
@@ -1199,6 +1221,43 @@
     // =================================================================
     // 6. LOGIKA DROPDOWN CASCADING (MENGGUNAKAN DB CUTI)
     // =================================================================
+    function cuti_filterUnitByJenjang() {
+        var jenjang = $('#cuti_in_jenjang').val();
+        var $selUnit = $('#cuti_inputUnit').empty().append('<option value="">- Pilih Sekolah -</option>');
+        $('#cuti_in_npsn').val('');
+        $('#cuti_inputNama').empty().append('<option value="">Pilih Sekolah Dulu</option>').prop('disabled', true);
+        $('#cuti_inputNipDisplay').val('');
+        $('#cuti_inputNIP').empty().append('<option value="">Otomatis</option>').prop('disabled', true);
+
+        if (!jenjang) {
+            $selUnit.prop('disabled', true);
+            return;
+        }
+
+        var units = [...new Set(CUTI_DB_PEGAWAI_CUTI.map(function(x) { return String(x.unit || "").trim(); }))].filter(Boolean).sort();
+        units.forEach(function(u) {
+            $selUnit.append($('<option>', { value: u, text: u }));
+        });
+        $selUnit.prop('disabled', false);
+    }
+
+    function cuti_handleUnitChange() {
+        var valUnit = String($('#cuti_inputUnit').val() || "").trim();
+        if (valUnit) {
+            var sample = CUTI_DB_PEGAWAI_CUTI.find(function(x) {
+                return String(x.unit || "").trim().toUpperCase() === valUnit.toUpperCase();
+            });
+            if (sample && sample.npsn) {
+                $('#cuti_in_npsn').val(sample.npsn);
+            } else {
+                $('#cuti_in_npsn').val('Auto-fill');
+            }
+        } else {
+            $('#cuti_in_npsn').val('');
+        }
+        cuti_filterNamaByUnit();
+    }
+
     function cuti_filterNamaByUnit() {
         var valUnit = String($('#cuti_inputUnit').val() || "").trim();
         var $selNama = $('#cuti_inputNama').empty().append('<option value="">Pilih Nama</option>').prop('disabled', true);
@@ -1245,7 +1304,9 @@
     }
 
     function cuti_setPegawaiDetails() {
-        var valNip = $('#cuti_inputNIP').val(); if (!valNip) return;
+        var valNip = $('#cuti_inputNIP').val();
+        $('#cuti_inputNipDisplay').val(valNip || '');
+        if (!valNip) return;
 
         var p = CUTI_DB_PEGAWAI_CUTI.find(function (x) { return String(x.nip).trim() === String(valNip).trim(); });
         var defStatus = p && p.status ? p.status : "PNS/PPPK";
