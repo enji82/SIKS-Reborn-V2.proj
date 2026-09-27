@@ -69,20 +69,62 @@
   <!-- Form Upload Batch -->
   <form id="admptk_kelola_formUpload" novalidate>
     <div class="modal-body modal-body-sultan p-4">
-      <div class="form-group mb-4 position-relative" id="admptk_kelola_pilih_ptk_container">
-        <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Pilih PTK <span class="text-danger">*</span></label>
-        <div class="d-flex flex-wrap gap-2 align-items-center" style="gap:8px;">
-          <div style="min-width:160px; flex:0 0 auto;" id="admptk_kelola_jenjang_container">
-            <select id="admptk_kelola_in_jenjang" class="form-control form-control-sultan border-maroon font-weight-bold text-dark">
-              <option value="">Pilih Jenjang</option>
-              <option value="PAUD">PAUD</option>
-              <option value="SD">SD</option>
+      <!-- BARIS 1: Admin Mode (3-Kolom Jenjang, Sekolah, NPSN) -->
+      <div class="row align-items-end mb-3" id="admptk_kelola_admin_sekolah_container" style="display:none;">
+        <div class="col-md-3">
+          <div class="form-group form-group-sultan mb-0">
+            <label class="form-label-sultan">JENJANG <span class="text-danger">*</span></label>
+            <select id="admptk_kelola_in_jenjang" class="form-control form-control-sultan font-weight-bold" required>
+              <option value="">- Pilih Jenjang -</option>
             </select>
           </div>
-          <div style="flex:1 1 auto; min-width:200px;">
-            <select id="admptk_kelola_in_ptk" class="form-control form-control-sultan border-maroon font-weight-bold text-dark" required disabled>
-              <option value="">Pilih PTK</option>
+        </div>
+        <div class="col-md-6">
+          <div class="form-group form-group-sultan mb-0">
+            <label class="form-label-sultan">NAMA SEKOLAH / UNIT KERJA <span class="text-danger">*</span></label>
+            <select id="admptk_kelola_in_sekolah" class="form-control form-control-sultan font-weight-bold" required disabled>
+              <option value="">- Pilih Sekolah -</option>
             </select>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="form-group form-group-sultan mb-0">
+            <label class="form-label-sultan">NPSN</label>
+            <input type="text" id="admptk_kelola_in_npsn" class="form-control form-control-sultan font-weight-bold" readonly placeholder="Otomatis">
+          </div>
+        </div>
+      </div>
+
+      <!-- BARIS 1: User Sekolah Mode (Read-Only Context Banner Info Sekolah) -->
+      <div class="card card-sultan shadow-sm mb-3" id="admptk_kelola_user_sekolah_banner" style="display:none;">
+        <div class="card-body p-3">
+          <div class="row align-items-center">
+            <div class="col-md-8">
+              <small class="text-muted font-weight-bold text-uppercase d-block mb-1"><i class="fas fa-school text-primary mr-1"></i> SEKOLAH / UNIT KERJA</small>
+              <div class="font-weight-bold text-dark text-uppercase h6 m-0" id="admptk_kelola_user_banner_nama">-</div>
+            </div>
+            <div class="col-md-4 text-md-right mt-2 mt-md-0">
+              <small class="text-muted font-weight-bold text-uppercase d-block mb-1">NPSN</small>
+              <span class="badge badge-pill badge-warning px-3 py-2 font-weight-bold text-dark" style="font-size: 0.88rem;" id="admptk_kelola_user_banner_npsn">-</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BARIS 2: Pilihan PTK (Nama PTK & NIP) -->
+      <div class="row align-items-end mb-4" id="admptk_kelola_pilih_ptk_container">
+        <div class="col-md-8">
+          <div class="form-group form-group-sultan mb-0">
+            <label class="form-label-sultan">NAMA PTK / PEGAWAI <span class="text-danger">*</span></label>
+            <select id="admptk_kelola_in_ptk" class="form-control form-control-sultan font-weight-bold" required disabled>
+              <option value="">- Pilih PTK -</option>
+            </select>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="form-group form-group-sultan mb-0">
+            <label class="form-label-sultan">NIP / NIY</label>
+            <input type="text" id="admptk_kelola_in_nip" class="form-control form-control-sultan font-weight-bold" readonly placeholder="Otomatis">
           </div>
         </div>
       </div>
@@ -535,23 +577,115 @@ function admptk_kelola_renderTabel(dataRows) {
 }
 
 var ADMPTK_KELOLA_ROW_COUNT = 0;
+function admptk_kelola_populateJenjang() {
+    var $j = $('#admptk_kelola_in_jenjang');
+    $j.empty().append('<option value="">- Pilih Jenjang -</option>');
+    if (window.ADMPTK_KELOLA_MASTER_SEK && window.ADMPTK_KELOLA_MASTER_SEK.length > 0) {
+        var setJ = new Set();
+        window.ADMPTK_KELOLA_MASTER_SEK.forEach(function(s) {
+            if (s.jenjang && s.jenjang.trim() !== '') {
+                setJ.add(s.jenjang.trim().toUpperCase());
+            }
+        });
+        Array.from(setJ).sort().forEach(function(jVal) {
+            $j.append($('<option>', { value: jVal, text: jVal }));
+        });
+    }
+}
+
+function admptk_kelola_filterSekolahByJenjang(jVal) {
+    var $sek = $('#admptk_kelola_in_sekolah');
+    $sek.empty().append('<option value="">- Pilih Sekolah -</option>');
+    $('#admptk_kelola_in_npsn').val('');
+    $('#admptk_kelola_in_ptk').empty().append('<option value="">- Pilih PTK -</option>').prop('disabled', true);
+    $('#admptk_kelola_in_nip').val('');
+    $('#admptk_kelola_uploadContainer').html('<div class="text-center text-muted p-3" id="admptk_kelola_msgPilihPtk"><i class="fas fa-info-circle mr-1"></i> Pilih PTK terlebih dahulu.</div>');
+    $('#admptk_kelola_btnAddRow, #admptk_kelola_btnSimpan').prop('disabled', true);
+
+    if (!jVal) {
+        $sek.prop('disabled', true);
+        return;
+    }
+
+    if (window.ADMPTK_KELOLA_MASTER_SEK && window.ADMPTK_KELOLA_MASTER_SEK.length > 0) {
+        var filtered = window.ADMPTK_KELOLA_MASTER_SEK.filter(function(s) {
+            return String(s.jenjang || "").toUpperCase().trim() === String(jVal).toUpperCase().trim();
+        });
+        filtered.forEach(function(s) {
+            $sek.append($('<option>', { value: s.npsn, text: s.nama }));
+        });
+        $sek.prop('disabled', false);
+    }
+}
+
+function admptk_kelola_populatePtkForSekolah(npsn) {
+    var $ptk = $('#admptk_kelola_in_ptk');
+    $ptk.empty().append('<option value="">- Pilih PTK -</option>');
+    $('#admptk_kelola_in_nip').val('');
+    $('#admptk_kelola_uploadContainer').html('<div class="text-center text-muted p-3" id="admptk_kelola_msgPilihPtk"><i class="fas fa-info-circle mr-1"></i> Pilih PTK terlebih dahulu.</div>');
+    $('#admptk_kelola_btnAddRow, #admptk_kelola_btnSimpan').prop('disabled', true);
+
+    if (!npsn) {
+        $ptk.prop('disabled', true);
+        return;
+    }
+
+    var cached = ADMPTK_KELOLA_MASTER_PTK.filter(function(p) { return String(p.npsn).trim().toUpperCase() === String(npsn).trim().toUpperCase(); });
+    if (cached.length > 0) {
+        cached.forEach(function(p) {
+            $ptk.append($('<option>', { value: p.id, text: p.nama + (p.nip ? ' (' + p.nip + ')' : ''), 'data-nip': p.nip, 'data-npsn': p.npsn, 'data-folderkey': p.folderKey }));
+        });
+        $ptk.prop('disabled', false);
+    } else {
+        $ptk.prop('disabled', true).empty().append('<option value="">Memuat data guru...</option>');
+        google.script.run.withSuccessHandler(function(json) {
+            var res = JSON.parse(json);
+            if (res.success && res.ptk && res.ptk.length > 0) {
+                res.ptk.forEach(function(np) {
+                    if (!ADMPTK_KELOLA_MASTER_PTK.find(function(xp) { return xp.id === np.id; })) {
+                        ADMPTK_KELOLA_MASTER_PTK.push(np);
+                    }
+                });
+                $ptk.empty().append('<option value="">- Pilih PTK -</option>');
+                res.ptk.forEach(function(p) {
+                    $ptk.append($('<option>', { value: p.id, text: p.nama + (p.nip ? ' (' + p.nip + ')' : ''), 'data-nip': p.nip, 'data-npsn': p.npsn, 'data-folderkey': p.folderKey }));
+                });
+                $ptk.prop('disabled', false);
+            } else {
+                $ptk.empty().append('<option value="">Tidak ada data PTK</option>');
+            }
+        }).withFailureHandler(function() {
+            $ptk.empty().append('<option value="">Gagal memuat</option>');
+        }).getAdmPtkMasterData(npsn);
+    }
+}
+
+var ADMPTK_KELOLA_ROW_COUNT = 0;
 function admptk_kelola_bukaModalTambah() {
     var $form = $('#admptk_kelola_formUpload'); $form[0].reset(); $form.removeClass('was-validated');
-    $('#admptk_kelola_in_ptk').empty().append('<option value="">Pilih PTK</option>').prop('disabled', true);
+    $('#admptk_kelola_in_npsn').val('');
+    $('#admptk_kelola_in_nip').val('');
+    $('#admptk_kelola_in_ptk').empty().append('<option value="">- Pilih PTK -</option>').prop('disabled', true);
     $('#admptk_kelola_uploadContainer').html('<div class="text-center text-muted p-3"><i class="fas fa-info-circle mr-1"></i> Pilih PTK terlebih dahulu.</div>');
     $('#admptk_kelola_btnAddRow, #admptk_kelola_btnSimpan').prop('disabled', true);
+    
     $('#global_modalFormSize').removeClass('modal-xl modal-md').addClass('modal-xl');
     $('#global_modalFormHeader').removeClass('modal-header-sultan-primary modal-header-sultan-warning modal-header-sultan-danger modal-header-sultan-success modal-header-sultan-info modal-header-sultan-dark modal-header-edit modal-header-tambah-edit modal-header-hapus').addClass('modal-header-tambah-edit');
-    $('#global_modalFormTitle').html('<i class="fas fa-cloud-upload-alt mr-2"></i> Unggah Dokumen PTK');
+    $('#global_modalFormTitle').html('<i class="fas fa-cloud-upload-alt mr-3 shadow-sm"></i> UNGGAH ARSIP DOKUMEN PTK');
     $('#global_modalFormBody, #global_modalFormFooter').hide();
     $('#admptk_kelola_formUpload').appendTo('#global_modalFormSize .modal-content');
     $('#global_modalForm').off('hidden.bs.modal.admptkupload').on('hidden.bs.modal.admptkupload', function() { $('#admptk_kelola_formUpload').appendTo('#admptk_kelola_templates'); $('#global_modalFormBody, #global_modalFormFooter').show(); });
     $('#global_modalForm').modal('show');
-    if (!ADMPTK_KELOLA_IS_ADMIN && ADMPTK_KELOLA_NPSN_TERKUNCI) {
-        // Tampilkan container pilih PTK, tapi sembunyikan dropdown jenjang karena terikat ke sekolah login
-        $('#admptk_kelola_pilih_ptk_container').show();
+
+    if (ADMPTK_KELOLA_IS_ADMIN) {
+        $('#admptk_kelola_user_sekolah_banner').hide();
+        $('#admptk_kelola_admin_sekolah_container').show();
+        admptk_kelola_populateJenjang();
+        $('#admptk_kelola_in_sekolah').empty().append('<option value="">- Pilih Sekolah -</option>').prop('disabled', true);
+    } else {
+        $('#admptk_kelola_admin_sekolah_container').hide();
+        $('#admptk_kelola_user_sekolah_banner').show();
         
-        // Dapatkan nama sekolah/unit dari sesi user atau cache master PTK
         var userObj = typeof getSesiUser === 'function' ? getSesiUser() : null;
         var unitName = (userObj && userObj.unit) ? userObj.unit : "";
         if (!unitName && ADMPTK_KELOLA_MASTER_PTK && ADMPTK_KELOLA_MASTER_PTK[0]) {
@@ -559,117 +693,47 @@ function admptk_kelola_bukaModalTambah() {
         }
         if (!unitName) unitName = "Sekolah Pengguna";
         
-        // Ubah tampilan kolom Jenjang menjadi label Sekolah (readonly)
-        $('#admptk_kelola_jenjang_container').html('<input type="text" class="form-control form-control-sultan border-maroon font-weight-bold text-maroon bg-light" value="' + admptk_kelola_esc(unitName) + '" readonly>');
-        
-        // Isi dropdown PTK secara langsung dengan semua PTK dari sekolah ini
-        var $ptk = $('#admptk_kelola_in_ptk');
-        $ptk.empty().append('<option value="">Pilih PTK</option>');
-        if (ADMPTK_KELOLA_MASTER_PTK && ADMPTK_KELOLA_MASTER_PTK.length > 0) {
-            ADMPTK_KELOLA_MASTER_PTK.forEach(function(p) {
-                $ptk.append($('<option>', { 
-                    value: p.id, 
-                    text: p.nama + (p.nip ? ' (' + p.nip + ')' : ''), 
-                    'data-nip': p.nip, 
-                    'data-npsn': p.npsn, 
-                    'data-folderkey': p.folderKey 
-                }));
-            });
-            $ptk.prop('disabled', false);
-        } else {
-            // Jika data master PTK belum termuat, panggil server untuk reload
-            $ptk.prop('disabled', true);
-            google.script.run.withSuccessHandler(function(json) {
-                var res = JSON.parse(json);
-                if (res.success && res.ptk) {
-                    ADMPTK_KELOLA_MASTER_PTK = res.ptk;
-                    $ptk.empty().append('<option value="">Pilih PTK</option>');
-                    ADMPTK_KELOLA_MASTER_PTK.forEach(function(p) {
-                        $ptk.append($('<option>', { 
-                            value: p.id, 
-                            text: p.nama + (p.nip ? ' (' + p.nip + ')' : ''), 
-                            'data-nip': p.nip, 
-                            'data-npsn': p.npsn, 
-                            'data-folderkey': p.folderKey 
-                        }));
-                    });
-                    $ptk.prop('disabled', false);
-                }
-            }).getAdmPtkMasterData(ADMPTK_KELOLA_NPSN_TERKUNCI);
-        }
-    } else {
-        $('#admptk_kelola_pilih_ptk_container').show();
-        // Ganti kolom jenjang di kiri menjadi pilihan Nama Sekolah untuk Admin
-        var selectHtml = '<select id="admptk_kelola_in_sekolah" class="form-control form-control-sultan border-maroon font-weight-bold text-dark" required>' +
-                         '<option value="">Pilih Sekolah</option>' +
-                         '</select>';
-        $('#admptk_kelola_jenjang_container').html(selectHtml);
-        
-        // Populasi list sekolah dari cache (sudah diisi oleh initMasterData)
-        var $sek = $('#admptk_kelola_in_sekolah');
-        $sek.empty().append('<option value="">Pilih Sekolah</option>');
-        if (window.ADMPTK_KELOLA_MASTER_SEK && window.ADMPTK_KELOLA_MASTER_SEK.length > 0) {
-            window.ADMPTK_KELOLA_MASTER_SEK.forEach(function(s) {
-                $sek.append($('<option>', { value: s.npsn, text: s.nama }));
-            });
-        } else {
-            // Fallback: jika initMasterData belum selesai, panggil ulang
-            google.script.run.withSuccessHandler(function(json) {
-                var res = JSON.parse(json);
-                if (res.success) {
-                    if (res.sekolah) window.ADMPTK_KELOLA_MASTER_SEK = res.sekolah;
-                    if (res.ptk) ADMPTK_KELOLA_MASTER_PTK = res.ptk;
-                    $sek.empty().append('<option value="">Pilih Sekolah</option>');
-                    (window.ADMPTK_KELOLA_MASTER_SEK || []).forEach(function(s) {
-                        $sek.append($('<option>', { value: s.npsn, text: s.nama }));
-                    });
-                }
-            }).getAdmPtkMasterData("SEMUA");
-        }
+        $('#admptk_kelola_user_banner_nama').text(unitName);
+        $('#admptk_kelola_user_banner_npsn').text(ADMPTK_KELOLA_NPSN_TERKUNCI || '-');
 
-        // Listener ketika Admin mengubah pilihan sekolah di modal tambah
-        $(document).off('change', '#admptk_kelola_in_sekolah').on('change', '#admptk_kelola_in_sekolah', function() {
-            var npsn = $(this).val(); var $ptk = $('#admptk_kelola_in_ptk');
-            $ptk.empty().append('<option value="">Pilih PTK</option>');
-            $('#admptk_kelola_uploadContainer').html('<div class="text-center text-muted p-3" id="admptk_kelola_msgPilihPtk"><i class="fas fa-info-circle mr-1"></i> Pilih PTK terlebih dahulu.</div>');
-            $('#admptk_kelola_btnAddRow, #admptk_kelola_btnSimpan').prop('disabled', true);
-            if (!npsn) { $ptk.prop('disabled', true); return; }
-
-            // Cek cache lokal dulu
-            var cached = ADMPTK_KELOLA_MASTER_PTK.filter(function(p) { return String(p.npsn).trim().toUpperCase() === String(npsn).trim().toUpperCase(); });
-            if (cached.length > 0) {
-                cached.forEach(function(p) {
-                    $ptk.append($('<option>', { value: p.id, text: p.nama + (p.nip ? ' (' + p.nip + ')' : ''), 'data-nip': p.nip, 'data-npsn': p.npsn, 'data-folderkey': p.folderKey }));
-                });
-                $ptk.prop('disabled', false);
-            } else {
-                // Tidak ada di cache → panggil server khusus NPSN ini
-                $ptk.prop('disabled', true);
-                $ptk.empty().append('<option value="">Memuat data guru...</option>');
-                google.script.run.withSuccessHandler(function(json) {
-                    var res = JSON.parse(json);
-                    if (res.success && res.ptk && res.ptk.length > 0) {
-                        // Tambahkan ke cache global
-                        res.ptk.forEach(function(np) {
-                            if (!ADMPTK_KELOLA_MASTER_PTK.find(function(xp) { return xp.id === np.id; })) {
-                                ADMPTK_KELOLA_MASTER_PTK.push(np);
-                            }
-                        });
-                        $ptk.empty().append('<option value="">Pilih PTK</option>');
-                        res.ptk.forEach(function(p) {
-                            $ptk.append($('<option>', { value: p.id, text: p.nama + (p.nip ? ' (' + p.nip + ')' : ''), 'data-nip': p.nip, 'data-npsn': p.npsn, 'data-folderkey': p.folderKey }));
-                        });
-                        $ptk.prop('disabled', false);
-                    } else {
-                        $ptk.empty().append('<option value="">Tidak ada data PTK</option>');
-                    }
-                }).withFailureHandler(function(e) {
-                    $ptk.empty().append('<option value="">Gagal memuat</option>');
-                }).getAdmPtkMasterData(npsn);
-            }
-        });
+        admptk_kelola_populatePtkForSekolah(ADMPTK_KELOLA_NPSN_TERKUNCI);
     }
 }
+
+// Event handlers untuk cascading dropdown di modal tambah
+$(document).off('change', '#admptk_kelola_in_jenjang').on('change', '#admptk_kelola_in_jenjang', function() {
+    var jVal = $(this).val();
+    admptk_kelola_filterSekolahByJenjang(jVal);
+});
+
+$(document).off('change', '#admptk_kelola_in_sekolah').on('change', '#admptk_kelola_in_sekolah', function() {
+    var npsn = $(this).val();
+    $('#admptk_kelola_in_npsn').val(npsn || '');
+    admptk_kelola_populatePtkForSekolah(npsn);
+});
+
+$(document).off('change', '#admptk_kelola_in_ptk').on('change', '#admptk_kelola_in_ptk', function() {
+    var $opt = $(this).find('option:selected');
+    var nip = $opt.attr('data-nip') || '';
+    $('#admptk_kelola_in_nip').val(nip);
+    var idPtk = $(this).val();
+
+    if (!idPtk) {
+        $('#admptk_kelola_uploadContainer').html('<div class="text-center text-muted p-3" id="admptk_kelola_msgPilihPtk"><i class="fas fa-info-circle mr-1"></i> Pilih PTK terlebih dahulu.</div>');
+        $('#admptk_kelola_btnAddRow, #admptk_kelola_btnSimpan').prop('disabled', true);
+        ADMPTK_KELOLA_SELECTED_PTK_FILES = [];
+        return;
+    }
+
+    $('#admptk_kelola_uploadContainer').empty();
+    ADMPTK_KELOLA_ROW_COUNT = 0;
+    admptk_kelola_createUploadRowContext($('#admptk_kelola_uploadContainer'));
+    $('#admptk_kelola_btnAddRow, #admptk_kelola_btnSimpan').prop('disabled', false);
+
+    ADMPTK_KELOLA_SELECTED_PTK_FILES = ADMPTK_KELOLA_CACHE_DATA.filter(function(f) {
+        return String(f.id_ptk).trim() === String(idPtk).trim();
+    });
+});
 
 function admptk_kelola_createUploadRowContext($c) {
     if ($c.find('.admptk_kelola-upload-row').length >= 10) { Sultan.notif.info('Maksimal 10 dokumen.'); return; }
@@ -833,7 +897,7 @@ function admptk_kelola_bukaModalPerbaiki(rowId) {
     $('#admptk_kelola_p_file').val('').next('.custom-file-label').html('Pilih file baru...').removeClass('text-success font-weight-bold');
     $('#global_modalFormSize').removeClass('modal-xl modal-md').addClass('modal-md');
     $('#global_modalFormHeader').removeClass('modal-header-sultan-primary modal-header-sultan-warning modal-header-sultan-danger modal-header-sultan-success modal-header-sultan-info modal-header-sultan-dark modal-header-edit modal-header-tambah-edit modal-header-hapus').addClass('modal-header-edit');
-    $('#global_modalFormTitle').html('<i class="fas fa-edit mr-2"></i> Perbaiki Dokumen PTK');
+    $('#global_modalFormTitle').html('<i class="fas fa-edit mr-3 shadow-sm"></i> EDIT DOKUMEN PTK');
     $('#global_modalFormBody, #global_modalFormFooter').hide(); $('#admptk_kelola_formPerbaiki').appendTo('#global_modalFormSize .modal-content');
     $('#global_modalForm').off('hidden.bs.modal.admptkperbaiki').on('hidden.bs.modal.admptkperbaiki', function() { $('#admptk_kelola_formPerbaiki').appendTo('#admptk_kelola_templates'); $('#global_modalFormBody, #global_modalFormFooter').show(); });
     $('#global_modalForm').modal('show');
