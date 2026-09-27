@@ -81,10 +81,6 @@
                     <div class="sultan-filter-item sultan-filter-auto">
                         <select id="ptkpaud_filterJenjang">
                             <option value="SEMUA">Semua Jenjang</option>
-                            <option value="TK">TK</option>
-                            <option value="KB">KB</option>
-                            <option value="SPS">SPS</option>
-                            <option value="TPA">TPA</option>
                         </select>
                         <i class="fas fa-chevron-down"></i>
                     </div>
@@ -577,8 +573,12 @@
         $(document).off('click', '#ptkpaud_btnSync').on('click', '#ptkpaud_btnSync', ptkpaud_tarikDataServer);
         $(document).off('click', '#ptkpaud_btnTambah').on('click', '#ptkpaud_btnTambah', function () { ptkpaud_bukaModalTambah(); });
 
-        $(document).off('change', '#ptkpaud_filterJenjang, #ptkpaud_filterUnit, #ptkpaud_filterStatus, #ptkpaud_filterJabatan')
-            .on('change', '#ptkpaud_filterJenjang, #ptkpaud_filterUnit, #ptkpaud_filterStatus, #ptkpaud_filterJabatan', ptkpaud_terapkanFilterLokal);
+        $(document).off('change', '#ptkpaud_filterJenjang').on('change', '#ptkpaud_filterJenjang', function () {
+            ptkpaud_updateUnitDropdown();
+            ptkpaud_terapkanFilterLokal();
+        });
+        $(document).off('change', '#ptkpaud_filterUnit, #ptkpaud_filterStatus, #ptkpaud_filterJabatan')
+            .on('change', '#ptkpaud_filterUnit, #ptkpaud_filterStatus, #ptkpaud_filterJabatan', ptkpaud_terapkanFilterLokal);
 
         $(document).off('change', '#ptkpaud_selPendidikan').on('change', '#ptkpaud_selPendidikan', ptkpaud_cekJurusan);
 
@@ -708,28 +708,32 @@
     // 4. VAKSIN FILTER DROPDOWN & LOGIKA PENCARIAN MUTLAK
     // =================================================================
     function ptkpaud_populateFilterOptions() {
-        var uniqueUnits = new Set();
+        var uniqueJenjang = new Set();
         var uniqueStatus = new Set();
         var uniqueJabatan = new Set();
         PTKPAUD_MAP_UNIT_NPSN = {};
 
         PTKPAUD_CACHE_DATA.forEach(function (row) {
             var u = String(row.unit || "").trim();
+            var jg = String(row.jenjang || "").trim().toUpperCase();
             var s = String(row.status_peg || "").trim();
             var j = String(row.jabatan || "").trim();
             var n = String(row.npsn || "").trim();
 
-            if (u) { uniqueUnits.add(u); if (n) PTKPAUD_MAP_UNIT_NPSN[u] = n; }
+            if (u && n) { PTKPAUD_MAP_UNIT_NPSN[u] = n; }
+            if (jg && jg !== "SD" && !jg.includes("SD")) { uniqueJenjang.add(jg); }
             if (s) uniqueStatus.add(s);
             if (j) uniqueJabatan.add(j);
         });
 
-        if (PTKPAUD_IS_ADMIN) {
-            var curUnit = $('#ptkpaud_filterUnit').val();
-            var $selUnit = $('#ptkpaud_filterUnit').empty().append('<option value="SEMUA">- Semua Lembaga -</option>');
-            Array.from(uniqueUnits).sort().forEach(function (u) { $selUnit.append($('<option>', { value: u, text: u })); });
-            if (curUnit && uniqueUnits.has(curUnit)) $selUnit.val(curUnit);
-        }
+        // Setup Dropdown Jenjang (Dinamis dari Database, tanpa SD)
+        var curJenjang = $('#ptkpaud_filterJenjang').val();
+        var $selJenjang = $('#ptkpaud_filterJenjang').empty().append('<option value="SEMUA">Semua Jenjang</option>');
+        Array.from(uniqueJenjang).sort().forEach(function (jg) { $selJenjang.append($('<option>', { value: jg, text: jg })); });
+        if (curJenjang && uniqueJenjang.has(curJenjang)) $selJenjang.val(curJenjang);
+
+        // Populate Dropdown Unit Lembaga sesuai Jenjang terpilih
+        ptkpaud_updateUnitDropdown();
 
         var curStat = $('#ptkpaud_filterStatus').val();
         var $selStatus = $('#ptkpaud_filterStatus').empty().append('<option value="SEMUA">- Semua Status -</option>');
@@ -740,6 +744,32 @@
         var $selJabatan = $('#ptkpaud_filterJabatan').empty().append('<option value="SEMUA">- Semua Jabatan -</option>');
         Array.from(uniqueJabatan).sort().forEach(function (j) { $selJabatan.append($('<option>', { value: j, text: j })); });
         if (curJab && uniqueJabatan.has(curJab)) $selJabatan.val(curJab);
+    }
+
+    function ptkpaud_updateUnitDropdown() {
+        if (!PTKPAUD_IS_ADMIN) return;
+        var selectedJenjang = ptkpaud_cleanString($('#ptkpaud_filterJenjang').val() || "SEMUA");
+        var curUnit = $('#ptkpaud_filterUnit').val();
+
+        var filteredUnits = new Set();
+        PTKPAUD_CACHE_DATA.forEach(function (row) {
+            var u = String(row.unit || "").trim();
+            var jg = ptkpaud_cleanString(row.jenjang);
+            if (u && (selectedJenjang === "SEMUA" || jg === selectedJenjang)) {
+                filteredUnits.add(u);
+            }
+        });
+
+        var $selUnit = $('#ptkpaud_filterUnit').empty().append('<option value="SEMUA">- Semua Lembaga -</option>');
+        Array.from(filteredUnits).sort().forEach(function (u) {
+            $selUnit.append($('<option>', { value: u, text: u }));
+        });
+
+        if (curUnit && filteredUnits.has(curUnit)) {
+            $selUnit.val(curUnit);
+        } else {
+            $selUnit.val("SEMUA");
+        }
     }
 
     function ptkpaud_terapkanFilterLokal() {
