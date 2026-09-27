@@ -148,27 +148,60 @@
 
 
 
-      <div class="row mb-3">
-        <div class="col-md-6">
-          <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Sekolah <span
-              class="text-danger">*</span></label>
-          <!-- Tampil untuk Admin -->
-          <select id="admmuridijazah_in_sekolah"
-            class="form-control form-control-sultan border-maroon font-weight-bold d-none" required></select>
-          <!-- Tampil untuk Sekolah (Readonly) -->
-          <input type="text" id="admmuridijazah_in_sekolah_display"
-            class="form-control form-control-sultan border-maroon font-weight-bold d-none" readonly>
-          <input type="hidden" id="admmuridijazah_in_sekolah_hidden">
+      <!-- BARIS 1: Admin Mode (3-Kolom Jenjang, Sekolah, NPSN) -->
+      <div class="row align-items-end mb-3" id="admmuridijazah_admin_sekolah_container" style="display:none;">
+        <div class="col-md-3">
+          <div class="form-group form-group-sultan mb-0">
+            <label class="form-label-sultan">JENJANG <span class="text-danger">*</span></label>
+            <select id="admmuridijazah_in_jenjang" class="form-control form-control-sultan font-weight-bold" required>
+              <option value="">- Pilih Jenjang -</option>
+            </select>
+          </div>
         </div>
         <div class="col-md-6">
-          <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Tahun Ajaran <span
-              class="text-danger">*</span></label>
-          <select id="admmuridijazah_in_tahun" class="form-control form-control-sultan border-maroon font-weight-bold"
-            required>
-            <option value="2023/2024">2023/2024</option>
-            <option value="2024/2025" selected>2024/2025</option>
-            <option value="2025/2026">2025/2026</option>
-          </select>
+          <div class="form-group form-group-sultan mb-0">
+            <label class="form-label-sultan">NAMA SEKOLAH / UNIT KERJA <span class="text-danger">*</span></label>
+            <select id="admmuridijazah_in_sekolah" class="form-control form-control-sultan font-weight-bold" required disabled>
+              <option value="">- Pilih Sekolah -</option>
+            </select>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="form-group form-group-sultan mb-0">
+            <label class="form-label-sultan">NPSN</label>
+            <input type="text" id="admmuridijazah_in_npsn" class="form-control form-control-sultan font-weight-bold" readonly placeholder="Otomatis">
+          </div>
+        </div>
+      </div>
+
+      <!-- BARIS 1: User Sekolah Mode (Read-Only Context Banner Info Sekolah) -->
+      <div class="card card-sultan shadow-sm mb-3" id="admmuridijazah_user_sekolah_banner" style="display:none;">
+        <div class="card-body p-3">
+          <div class="row align-items-center">
+            <div class="col-md-8">
+              <small class="text-muted font-weight-bold text-uppercase d-block mb-1"><i class="fas fa-school text-primary mr-1"></i> SEKOLAH / UNIT KERJA</small>
+              <div class="font-weight-bold text-dark text-uppercase h6 m-0" id="admmuridijazah_user_banner_nama">-</div>
+            </div>
+            <div class="col-md-4 text-md-right mt-2 mt-md-0">
+              <small class="text-muted font-weight-bold text-uppercase d-block mb-1">NPSN</small>
+              <span class="badge badge-pill badge-warning px-3 py-2 font-weight-bold text-dark" style="font-size: 0.88rem;" id="admmuridijazah_user_banner_npsn">-</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <input type="hidden" id="admmuridijazah_in_sekolah_hidden">
+
+      <!-- BARIS 2: Tahun Ajaran -->
+      <div class="row mb-3">
+        <div class="col-md-12">
+          <div class="form-group form-group-sultan mb-0">
+            <label class="form-label-sultan">TAHUN AJARAN <span class="text-danger">*</span></label>
+            <select id="admmuridijazah_in_tahun" class="form-control form-control-sultan font-weight-bold" required>
+              <option value="2023/2024">2023/2024</option>
+              <option value="2024/2025" selected>2024/2025</option>
+              <option value="2025/2026">2025/2026</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -1204,25 +1237,83 @@
 
     // Handler .btn-catatan dipindahkan ke javascript.html (global)
 
-    function admmuridijazah_repopulateSekolah() {
-      var inSekolah = $('#admmuridijazah_in_sekolah');
-      if (ADMMURIDIJAZAH_IS_ADMIN) {
-        inSekolah.empty();
-        inSekolah.append('<option value="">Pilih Sekolah</option>');
+    function admmuridijazah_populateJenjang() {
+      var selJenjang = $('#admmuridijazah_in_jenjang');
+      selJenjang.empty().append('<option value="">- Pilih Jenjang -</option>');
+      var setJenjang = new Set();
+      if (typeof listMasterSekolah !== 'undefined' && Array.isArray(listMasterSekolah)) {
         listMasterSekolah.forEach(function (s) {
-          var isSD = String(s.jenjang || "").toUpperCase() === "SD";
-          if (isSD) {
-            inSekolah.append('<option value="' + s.npsn + '" data-nama="' + s.nama + '">' + s.nama + '</option>');
+          if (s.jenjang && String(s.jenjang).trim() !== '') {
+            setJenjang.add(String(s.jenjang).trim().toUpperCase());
           }
         });
-        inSekolah.val('');
+      }
+      Array.from(setJenjang).sort().forEach(function (j) {
+        selJenjang.append('<option value="' + j + '">' + j + '</option>');
+      });
+    }
+
+    function admmuridijazah_filterSekolahByJenjang(selectedJenjang, selectedNpsn) {
+      var selSekolah = $('#admmuridijazah_in_sekolah');
+      selSekolah.empty().append('<option value="">- Pilih Sekolah -</option>');
+      $('#admmuridijazah_in_npsn').val('');
+      
+      if (!selectedJenjang) {
+        selSekolah.prop('disabled', true);
+        return;
+      }
+      
+      selSekolah.prop('disabled', false);
+      if (typeof listMasterSekolah !== 'undefined' && Array.isArray(listMasterSekolah)) {
+        listMasterSekolah.forEach(function (s) {
+          if (String(s.jenjang || '').toUpperCase() === String(selectedJenjang).toUpperCase()) {
+            selSekolah.append('<option value="' + s.npsn + '" data-nama="' + s.nama + '">' + s.nama + '</option>');
+          }
+        });
+      }
+      if (selectedNpsn) {
+        selSekolah.val(selectedNpsn);
+        $('#admmuridijazah_in_npsn').val(selectedNpsn);
+      }
+    }
+
+    function admmuridijazah_getNpsnForSekolah(npsn) {
+      if (typeof listMasterSekolah !== 'undefined' && Array.isArray(listMasterSekolah)) {
+        var found = listMasterSekolah.find(function (s) { return String(s.npsn) === String(npsn); });
+        return found ? (found.jenjang || '') : '';
+      }
+      return '';
+    }
+
+    function admmuridijazah_repopulateSekolah() {
+      if (ADMMURIDIJAZAH_IS_ADMIN) {
+        $('#admmuridijazah_admin_sekolah_container').show();
+        $('#admmuridijazah_user_sekolah_banner').hide();
+        admmuridijazah_populateJenjang();
+        $('#admmuridijazah_in_jenjang').val('').prop('disabled', false);
+        $('#admmuridijazah_in_sekolah').empty().append('<option value="">- Pilih Sekolah -</option>').prop('disabled', true);
+        $('#admmuridijazah_in_npsn').val('');
       } else {
+        $('#admmuridijazah_admin_sekolah_container').hide();
+        $('#admmuridijazah_user_sekolah_banner').show();
         var namaSekolah = userLogin.unit || userLogin.nama || '-';
         var userNpsn = userLogin.npsn || userLogin.username || "";
-        $('#admmuridijazah_in_sekolah_display').val(namaSekolah);
+        $('#admmuridijazah_user_banner_nama').text(namaSekolah);
+        $('#admmuridijazah_user_banner_npsn').text(userNpsn);
         $('#admmuridijazah_in_sekolah_hidden').val(userNpsn);
       }
     }
+
+    // Event listeners untuk cascading select Jenjang & Sekolah Admin Mode
+    $(document).off('change', '#admmuridijazah_in_jenjang').on('change', '#admmuridijazah_in_jenjang', function () {
+      var jenjang = $(this).val();
+      admmuridijazah_filterSekolahByJenjang(jenjang);
+    });
+
+    $(document).off('change', '#admmuridijazah_in_sekolah').on('change', '#admmuridijazah_in_sekolah', function () {
+      var npsn = $(this).val();
+      $('#admmuridijazah_in_npsn').val(npsn || '');
+    });
 
     function admmuridijazah_resetFormModal() {
       $('#admmuridijazah_form')[0].reset();
@@ -1266,7 +1357,7 @@
       // Pindahkan form utama ke global modal
       $('#global_modalFormSize').removeClass('modal-xl modal-md').addClass('modal-lg');
       $('#global_modalFormHeader').removeClass('modal-header-sultan-primary modal-header-sultan-warning modal-header-sultan-danger modal-header-sultan-success modal-header-sultan-info modal-header-sultan-dark modal-header-edit modal-header-tambah-edit modal-header-hapus').addClass('modal-header-tambah-edit');
-      $('#global_modalFormTitle').html('<i class="fas fa-plus-circle mr-3 shadow-sm"></i> UNGGAH PERMOHONAN IJAZAH & TRANSKRIP');
+      $('#global_modalFormTitle').html('<i class="fas fa-cloud-upload-alt mr-3 shadow-sm"></i> TAMBAH PERMOHONAN IJAZAH & TRANSKRIP');
       $('#global_modalFormBody, #global_modalFormFooter').hide();
       $('#admmuridijazah_form').appendTo('#global_modalFormSize .modal-content');
 
@@ -1293,7 +1384,7 @@
       }
 
       var finalNpsn = ADMMURIDIJAZAH_IS_ADMIN ? $('#admmuridijazah_in_sekolah').val() : (userLogin.npsn || $('#admmuridijazah_in_sekolah_hidden').val());
-      var finalNama = (ADMMURIDIJAZAH_IS_ADMIN ? ($('#admmuridijazah_in_sekolah option:selected').data('nama') || "") : $('#admmuridijazah_in_sekolah_display').val()).toUpperCase();
+      var finalNama = (ADMMURIDIJAZAH_IS_ADMIN ? ($('#admmuridijazah_in_sekolah option:selected').data('nama') || "") : $('#admmuridijazah_user_banner_nama').text()).toUpperCase();
 
       var payload = {
         rowId: rowId,
@@ -1408,9 +1499,13 @@
 
       $('#admmuridijazah_rowId').val(raw.rowId);
       if (ADMMURIDIJAZAH_IS_ADMIN) {
-        $('#admmuridijazah_in_sekolah').val(raw.npsn).prop('disabled', true);
+        var jenjangVal = admmuridijazah_getNpsnForSekolah(raw.npsn);
+        $('#admmuridijazah_in_jenjang').val(jenjangVal).prop('disabled', true);
+        admmuridijazah_filterSekolahByJenjang(jenjangVal, raw.npsn);
+        $('#admmuridijazah_in_sekolah').prop('disabled', true);
       } else {
-        $('#admmuridijazah_in_sekolah_display').val(raw.nama_sekolah || '-');
+        $('#admmuridijazah_user_banner_nama').text(raw.nama_sekolah || '-');
+        $('#admmuridijazah_user_banner_npsn').text(raw.npsn || '-');
         $('#admmuridijazah_in_sekolah_hidden').val(raw.npsn);
       }
       $('#admmuridijazah_in_tahun').val(raw.tahun_ajaran);
