@@ -185,14 +185,48 @@
             <input type="hidden" id="aduan_unit_kerja" name="unit_kerja">
             <input type="hidden" id="aduan_npsn" name="npsn">
 
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label class="form-label-sultan small font-weight-bold text-muted text-uppercase mb-1">Nama Pengaju</label>
-                    <input type="text" id="aduan_displayNama" class="form-control form-control-sultan bg-light" readonly>
+            <!-- Baris 1 Input Dynamic Admin (3-Kolom: Jenjang, Nama Sekolah, NPSN Auto-fill) -->
+            <div id="aduan_admin_sekolah_container" class="form-group-sultan bg-light p-3 rounded border mb-3">
+                <div class="row align-items-end">
+                    <div class="col-md-3 mb-2 mb-md-0">
+                        <div class="form-group form-group-sultan mb-0">
+                            <label class="form-label-sultan">Jenjang <span class="text-danger">*</span></label>
+                            <select id="aduan_in_jenjang" class="form-control form-control-sultan font-weight-bold border-maroon">
+                                <option value="">- Pilih Jenjang -</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-2 mb-md-0">
+                        <div class="form-group form-group-sultan mb-0">
+                            <label class="form-label-sultan">Sekolah / Unit Kerja <span class="text-danger">*</span></label>
+                            <select id="aduan_in_sekolah" class="form-control form-control-sultan font-weight-bold border-maroon" disabled>
+                                <option value="">- Pilih Sekolah -</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group form-group-sultan mb-0">
+                            <label class="form-label-sultan">NPSN</label>
+                            <input type="text" id="aduan_in_npsn" class="form-control form-control-sultan font-weight-bold" readonly placeholder="Otomatis">
+                        </div>
+                    </div>
                 </div>
-                <div class="col-md-6 mb-3">
-                    <label class="form-label-sultan small font-weight-bold text-muted text-uppercase mb-1">Unit Kerja / Sekolah</label>
-                    <input type="text" id="aduan_displayUnit" class="form-control form-control-sultan bg-light" readonly>
+            </div>
+
+            <!-- Read-Only Banner Info Sekolah (Khusus User Sekolah / ASN Non-Admin) -->
+            <div class="card card-sultan shadow-sm mb-3" id="aduan_user_sekolah_banner" style="display:none;">
+                <div class="card-body p-3">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <small class="text-muted font-weight-bold text-uppercase d-block mb-1"><i class="fas fa-user-circle text-primary mr-1"></i> IDENTITAS PENGAJU</small>
+                            <div class="font-weight-bold text-dark text-uppercase h6 m-0" id="aduan_user_banner_nama">-</div>
+                            <small class="text-muted font-weight-semibold" id="aduan_user_banner_unit">-</small>
+                        </div>
+                        <div class="col-md-4 text-md-right mt-2 mt-md-0">
+                            <small class="text-muted font-weight-bold text-uppercase d-block mb-1">NIP / NPSN</small>
+                            <span class="badge badge-pill badge-warning px-3 py-2 font-weight-bold text-dark" style="font-size: 0.88rem;" id="aduan_user_banner_npsn">-</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -357,14 +391,86 @@
             try {
                 userLogin = JSON.parse(userLocal);
                 if (typeof userLogin === 'string') userLogin = JSON.parse(userLogin);
-                var userNpsnVal = userLogin.npsn || userLogin.username || "";
-                $('#aduan_displayNama').val(userLogin.nama || userLogin.username);
-                $('#aduan_displayUnit').val(userLogin.unit || "");
-                $('#aduan_nip_asn').val(userLogin.username || "");
-                $('#aduan_nama_asn').val(userLogin.nama || userLogin.username);
-                $('#aduan_unit_kerja').val(userLogin.unit || "");
-                $('#aduan_npsn').val(userNpsnVal);
             } catch (e) { }
+        }
+
+        var isAdminCheck = userLogin && (String(userLogin.role).toLowerCase().includes('admin') || userLogin.isAdmin === true);
+
+        if (!isAdminCheck) {
+            // User Sekolah / ASN Non-Admin
+            $('#aduan_admin_sekolah_container').hide();
+            $('#aduan_user_sekolah_banner').show();
+
+            var uNpsn = userLogin ? (userLogin.npsn || userLogin.username || "") : "";
+            var uNama = userLogin ? (userLogin.nama || userLogin.username || "Pengaju") : "Pengaju";
+            var uUnit = userLogin ? (userLogin.unit || "-") : "-";
+
+            $('#aduan_user_banner_nama').text(uNama);
+            $('#aduan_user_banner_unit').text(uUnit);
+            $('#aduan_user_banner_npsn').text(uNpsn || "-");
+
+            $('#aduan_nip_asn').val(userLogin ? userLogin.username || "" : "");
+            $('#aduan_nama_asn').val(uNama);
+            $('#aduan_unit_kerja').val(uUnit);
+            $('#aduan_npsn').val(uNpsn);
+        } else {
+            // Role Admin: Layout 3-Kolom Interaktif
+            $('#aduan_admin_sekolah_container').show();
+            $('#aduan_user_sekolah_banner').hide();
+
+            var selJenjang = $('#aduan_in_jenjang');
+            var selSekolah = $('#aduan_in_sekolah');
+            var inputNpsn = $('#aduan_in_npsn');
+
+            inputNpsn.val('');
+            selSekolah.empty().append('<option value="">- Pilih Sekolah -</option>').prop('disabled', true);
+
+            var dataMasterSekolah = window.KEMITRAANKELOLA_DATA_SEKOLAH || window.DATA_SEKOLAH_GLOBAL || [];
+            
+            // Populasi Jenjang
+            selJenjang.empty().append('<option value="">- Pilih Jenjang -</option>');
+            var jenjangSet = new Set();
+            dataMasterSekolah.forEach(function(s) {
+                var j = String(s.jenjang || "").trim().toUpperCase();
+                if (j) jenjangSet.add(j);
+            });
+            Array.from(jenjangSet).sort().forEach(function(j) {
+                selJenjang.append('<option value="' + j + '">' + j + '</option>');
+            });
+
+            selJenjang.off('change').on('change', function() {
+                var jjg = $(this).val();
+                inputNpsn.val('');
+                selSekolah.empty().append('<option value="">- Pilih Sekolah -</option>');
+                if (!jjg) {
+                    selSekolah.prop('disabled', true);
+                    return;
+                }
+                var list = dataMasterSekolah.filter(function(s) {
+                    if (jjg === "SEMUA" || !jjg) return true;
+                    var sJ = String(s.jenjang || "").toUpperCase();
+                    if (jjg === "PAUD") return sJ === "TK" || sJ === "KB" || sJ === "SPS" || sJ === "TPA" || sJ.includes("PAUD");
+                    if (jjg === "SD") return sJ === "SD" || sJ.includes("SD");
+                    return sJ === jjg;
+                });
+                list.sort(function(a,b){ return String(a.nama).localeCompare(String(b.nama)); });
+                list.forEach(function(s) {
+                    selSekolah.append('<option value="' + s.npsn + '" data-nama="' + aduan_esc(s.nama) + '">' + aduan_esc(s.nama) + '</option>');
+                });
+                selSekolah.prop('disabled', false);
+            });
+
+            selSekolah.off('change').on('change', function() {
+                var npsn = $(this).val();
+                var namaSek = $(this).find('option:selected').data('nama') || $(this).find('option:selected').text();
+                inputNpsn.val(npsn || '');
+                if (npsn) {
+                    $('#aduan_npsn').val(npsn);
+                    $('#aduan_unit_kerja').val(namaSek);
+                    $('#aduan_nama_asn').val(userLogin ? (userLogin.nama || userLogin.username || "Admin") : "Admin");
+                    $('#aduan_nip_asn').val(userLogin ? (userLogin.username || "") : "");
+                }
+            });
         }
     }
 
@@ -759,6 +865,7 @@
         $('#aduan_kategori').val(kategori);
         $('#aduan_detail').val(detail);
         resetFileRaw();
+        initUserSession();
 
         // Buka lewat global modal terpusat (Blueprint V5.1)
         $('#global_modalFormSize').removeClass('modal-xl modal-md').addClass('modal-lg');
