@@ -188,11 +188,7 @@
                             <div class="form-group form-group-sultan mb-0">
                                 <label class="form-label-sultan">JENJANG <span class="text-danger">*</span></label>
                                 <select name="jenjang" id="ptkpaud_inputJenjang" class="form-control form-control-sultan font-weight-bold" required>
-                                    <option value="">-Pilih-</option>
-                                    <option value="TK">TK</option>
-                                    <option value="KB">KB</option>
-                                    <option value="SPS">SPS</option>
-                                    <option value="TPA">TPA</option>
+                                    <option value="">- Pilih Jenjang -</option>
                                 </select>
                             </div>
                         </div>
@@ -646,36 +642,51 @@
         });
     }
 
+    var PTKPAUD_MASTER_SEKOLAH = [];
+
     // =================================================================
     // 3. GATEKEEPER & FETCH
     // =================================================================
     function ptkpaud_validasiAksesUser() {
-        if (PTKPAUD_IS_ADMIN) {
-            $('#ptkpaud_filterUnit').empty().append('<option value="SEMUA">- Semua Lembaga -</option>').prop('disabled', false).removeClass('bg-light text-maroon font-weight-bold');
-            $('#ptkpaud_btnSync, #ptkpaud_btnTambah').prop('disabled', false);
-            ptkpaud_tarikDataServer();
-        } else {
-            if (!PTKPAUD_USER_NPSN) {
-                $('#ptkpaud_filterUnit').empty().append('<option value="">AKSES DITOLAK (NPSN KOSONG)</option>');
-                ptkpaud_updateTabelKosong('<div class="text-danger"><i class="fas fa-ban fa-2x mb-2"></i><br>Akses ditolak: Sesi login tidak valid.</div>');
-                return;
-            }
-            google.script.run.withSuccessHandler(function (resUnit) {
-                var dataUnit = JSON.parse(resUnit);
-                if (dataUnit.error) {
-                    $('#ptkpaud_filterUnit').empty().append('<option value="">AKSES DITOLAK</option>');
-                    ptkpaud_updateTabelKosong('<div class="text-danger"><i class="fas fa-exclamation-triangle fa-2x mb-2"></i><br>' + ptkpaud_escapeHtml(dataUnit.error) + '</div>');
-                    return;
+        // Ambil Master Data Sekolah untuk konsistensi Jenjang & Lembaga Modal/Filter
+        google.script.run.withSuccessHandler(function (jsonMaster) {
+            try {
+                var resM = JSON.parse(jsonMaster);
+                if (resM.success && resM.sekolah) {
+                    PTKPAUD_MASTER_SEKOLAH = resM.sekolah.filter(function(s) {
+                        var jg = String(s.jenjang || "").toUpperCase();
+                        return jg !== "SD" && !jg.includes("SD");
+                    });
                 }
-                PTKPAUD_UNIT_TERKUNCI = dataUnit.unitKerja;
-                $('#ptkpaud_filterUnit').empty().append('<option value="' + ptkpaud_escapeHtml(PTKPAUD_UNIT_TERKUNCI) + '">' + ptkpaud_escapeHtml(PTKPAUD_UNIT_TERKUNCI) + '</option>').prop('disabled', true);
+            } catch(e) {}
+
+            if (PTKPAUD_IS_ADMIN) {
+                $('#ptkpaud_filterUnit').empty().append('<option value="SEMUA">- Semua Lembaga -</option>').prop('disabled', false).removeClass('bg-light text-maroon font-weight-bold');
                 $('#ptkpaud_btnSync, #ptkpaud_btnTambah').prop('disabled', false);
                 ptkpaud_tarikDataServer();
-            }).withFailureHandler(function (err) {
-                $('#ptkpaud_filterUnit').empty().append('<option value="">ERROR SERVER</option>');
-                ptkpaud_updateTabelKosong('<div class="text-danger"><i class="fas fa-wifi fa-2x mb-2"></i><br>Koneksi Terputus: ' + ptkpaud_escapeHtml(err.message) + '</div>');
-            }).getUnitKerjaByNpsnPTK(PTKPAUD_USER_NPSN);
-        }
+            } else {
+                if (!PTKPAUD_USER_NPSN) {
+                    $('#ptkpaud_filterUnit').empty().append('<option value="">AKSES DITOLAK (NPSN KOSONG)</option>');
+                    ptkpaud_updateTabelKosong('<div class="text-danger"><i class="fas fa-ban fa-2x mb-2"></i><br>Akses ditolak: Sesi login tidak valid.</div>');
+                    return;
+                }
+                google.script.run.withSuccessHandler(function (resUnit) {
+                    var dataUnit = JSON.parse(resUnit);
+                    if (dataUnit.error) {
+                        $('#ptkpaud_filterUnit').empty().append('<option value="">AKSES DITOLAK</option>');
+                        ptkpaud_updateTabelKosong('<div class="text-danger"><i class="fas fa-exclamation-triangle fa-2x mb-2"></i><br>' + ptkpaud_escapeHtml(dataUnit.error) + '</div>');
+                        return;
+                    }
+                    PTKPAUD_UNIT_TERKUNCI = dataUnit.unitKerja;
+                    $('#ptkpaud_filterUnit').empty().append('<option value="' + ptkpaud_escapeHtml(PTKPAUD_UNIT_TERKUNCI) + '">' + ptkpaud_escapeHtml(PTKPAUD_UNIT_TERKUNCI) + '</option>').prop('disabled', true);
+                    $('#ptkpaud_btnSync, #ptkpaud_btnTambah').prop('disabled', false);
+                    ptkpaud_tarikDataServer();
+                }).withFailureHandler(function (err) {
+                    $('#ptkpaud_filterUnit').empty().append('<option value="">ERROR SERVER</option>');
+                    ptkpaud_updateTabelKosong('<div class="text-danger"><i class="fas fa-wifi fa-2x mb-2"></i><br>Koneksi Terputus: ' + ptkpaud_escapeHtml(err.message) + '</div>');
+                }).getUnitKerjaByNpsnPTK(PTKPAUD_USER_NPSN);
+            }
+        }).getAdmSekolahMasterData("");
     }
 
     function ptkpaud_tarikDataServer() {
@@ -713,6 +724,15 @@
         var uniqueJabatan = new Set();
         PTKPAUD_MAP_UNIT_NPSN = {};
 
+        // Ambil daftar jenjang unik dari Master Data Sekolah (tanpa SD)
+        if (PTKPAUD_MASTER_SEKOLAH && PTKPAUD_MASTER_SEKOLAH.length > 0) {
+            PTKPAUD_MASTER_SEKOLAH.forEach(function(s) {
+                var jg = String(s.jenjang || "").trim().toUpperCase();
+                if (jg && jg !== "SD" && !jg.includes("SD")) uniqueJenjang.add(jg);
+                if (s.nama && s.npsn) PTKPAUD_MAP_UNIT_NPSN[s.nama] = s.npsn;
+            });
+        }
+
         PTKPAUD_CACHE_DATA.forEach(function (row) {
             var u = String(row.unit || "").trim();
             var jg = String(row.jenjang || "").trim().toUpperCase();
@@ -726,7 +746,7 @@
             if (j) uniqueJabatan.add(j);
         });
 
-        // Setup Dropdown Jenjang (Dinamis dari Database, tanpa SD)
+        // Setup Dropdown Jenjang Filter Bar (Dinamis dari Database, tanpa SD)
         var curJenjang = $('#ptkpaud_filterJenjang').val();
         var $selJenjang = $('#ptkpaud_filterJenjang').empty().append('<option value="SEMUA">Semua Jenjang</option>');
         Array.from(uniqueJenjang).sort().forEach(function (jg) { $selJenjang.append($('<option>', { value: jg, text: jg })); });
@@ -752,6 +772,19 @@
         var curUnit = $('#ptkpaud_filterUnit').val();
 
         var filteredUnits = new Set();
+
+        // 1. Ambil dari Master Data Sekolah jika tersedia
+        if (PTKPAUD_MASTER_SEKOLAH && PTKPAUD_MASTER_SEKOLAH.length > 0) {
+            PTKPAUD_MASTER_SEKOLAH.forEach(function (s) {
+                var u = String(s.nama || "").trim();
+                var jg = ptkpaud_cleanString(s.jenjang);
+                if (u && (selectedJenjang === "SEMUA" || jg === selectedJenjang)) {
+                    filteredUnits.add(u);
+                }
+            });
+        }
+
+        // 2. Gabungkan dari Cache Data PTK PAUD
         PTKPAUD_CACHE_DATA.forEach(function (row) {
             var u = String(row.unit || "").trim();
             var jg = ptkpaud_cleanString(row.jenjang);
@@ -981,17 +1014,73 @@
 
         $('#ptkpaud_headerModalForm').removeClass('modal-header-sultan-warning').addClass('modal-header-tambah-edit');
         $('#ptkpaud_judulModalForm').html('<i class="fas fa-user-plus mr-2"></i>Tambah Data PTK PAUD');
-        $('#ptkpaud_btnSimpanForm').removeClass('modal-btn-perbarui').addClass('modal-btn-simpan').html('<i class="fas fa-save mr-2"></i>SIMPAN');
+    function ptkpaud_updateModalLembagaFromJenjang(curUnitVal) {
+        if (!PTKPAUD_IS_ADMIN) return;
+        var selectedJenjang = ptkpaud_cleanString($('#ptkpaud_inputJenjang').val() || "");
+        var $selUnit = $('#ptkpaud_inputUnit').empty().append('<option value="">- Pilih Lembaga -</option>');
+        $('#ptkpaud_inputNpsn').val('');
+
+        var filteredUnits = new Set();
+        if (PTKPAUD_MASTER_SEKOLAH && PTKPAUD_MASTER_SEKOLAH.length > 0) {
+            PTKPAUD_MASTER_SEKOLAH.forEach(function (s) {
+                var u = String(s.nama || "").trim();
+                var jg = ptkpaud_cleanString(s.jenjang);
+                if (u && (!selectedJenjang || jg === selectedJenjang)) {
+                    filteredUnits.add(u);
+                }
+            });
+        } else {
+            Object.keys(PTKPAUD_MAP_UNIT_NPSN).sort().forEach(function (u) { filteredUnits.add(u); });
+        }
+
+        Array.from(filteredUnits).sort().forEach(function (u) {
+            $selUnit.append($('<option>', { value: u, text: u }));
+        });
+
+        if (curUnitVal && filteredUnits.has(curUnitVal)) {
+            $selUnit.val(curUnitVal);
+        }
+        ptkpaud_updateNpsnFromUnit();
+    }
+
+    // =================================================================
+    // 6. CRUD: TAMBAH, EDIT & HAPUS (MODAL BAB V)
+    // =================================================================
+    function ptkpaud_bukaModalTambah() {
+        $('#ptkpaud_formUtama')[0].reset();
+        $('#ptkpaud_formUtama').removeClass('was-validated');
+        $('#ptkpaud_inputMode').val('insert'); $('#ptkpaud_inputIdData').val('');
+
+        $('#ptkpaud_headerModalForm').removeClass('modal-header-sultan-warning').addClass('modal-header-tambah-edit');
+        $('#ptkpaud_judulModalForm').html('<i class="fas fa-user-plus mr-2"></i>Tambah Data PTK PAUD');
+        $('#ptkpaud_btnSimpanForm').removeClass('modal-btn-simpan').addClass('modal-btn-perbarui').html('<i class="fas fa-save mr-2"></i>SIMPAN');
 
         if (PTKPAUD_IS_ADMIN) {
             $('#ptkpaud_pilih_sekolah_container').show();
             $('#ptkpaud_user_sekolah_banner').hide();
-            var $selUnit = $('#ptkpaud_inputUnit').empty().append('<option value="">- Pilih Lembaga -</option>');
-            Object.keys(PTKPAUD_MAP_UNIT_NPSN).sort().forEach(function (u) { $selUnit.append($('<option>', { value: u, text: u })); });
-            $selUnit.prop('disabled', false).off('change.npsn').on('change.npsn', ptkpaud_updateNpsnFromUnit);
+
+            // Setup Options Jenjang Modal Tambah murni dari Database Master Sekolah (tanpa SD)
+            var uniqueJg = new Set();
+            if (PTKPAUD_MASTER_SEKOLAH && PTKPAUD_MASTER_SEKOLAH.length > 0) {
+                PTKPAUD_MASTER_SEKOLAH.forEach(function(s) {
+                    var jg = String(s.jenjang || "").trim().toUpperCase();
+                    if (jg && jg !== "SD" && !jg.includes("SD")) uniqueJg.add(jg);
+                });
+            }
+            var $selJenjang = $('#ptkpaud_inputJenjang').empty().append('<option value="">- Pilih Jenjang -</option>');
+            Array.from(uniqueJg).sort().forEach(function(jg) {
+                $selJenjang.append($('<option>', { value: jg, text: jg }));
+            });
+
+            ptkpaud_updateModalLembagaFromJenjang("");
+
+            $('#ptkpaud_inputJenjang').prop('disabled', false).off('change.modalLembaga').on('change.modalLembaga', function() {
+                ptkpaud_updateModalLembagaFromJenjang("");
+            });
+            $('#ptkpaud_inputUnit').prop('disabled', false).off('change.npsn').on('change.npsn', ptkpaud_updateNpsnFromUnit);
+
             $('#ptkpaud_hintMutasiAdmin').removeClass('d-none');
             $('#ptkpaud_hintJenjangAdmin').show();
-            $('#ptkpaud_inputJenjang').prop('disabled', false);
         } else {
             $('#ptkpaud_pilih_sekolah_container').hide();
             $('#ptkpaud_user_sekolah_banner').show();
@@ -1002,7 +1091,7 @@
             $('#ptkpaud_hintMutasiAdmin').addClass('d-none');
 
             google.script.run.withSuccessHandler(function (jenjangRes) {
-                $('#ptkpaud_inputJenjang').val(jenjangRes).prop('disabled', true);
+                $('#ptkpaud_inputJenjang').empty().append('<option value="' + jenjangRes + '">' + jenjangRes + '</option>').val(jenjangRes).prop('disabled', true);
                 $('#ptkpaud_hintJenjangAdmin').hide();
             }).getJenjangByNPSN(PTKPAUD_USER_NPSN);
         }
@@ -1024,16 +1113,33 @@
         $('#ptkpaud_btnSimpanForm').removeClass('modal-btn-simpan').addClass('modal-btn-perbarui').html('<i class="fas fa-edit mr-2"></i>PERBARUI');
 
         if (PTKPAUD_IS_ADMIN) {
-            var $selUnit = $('#ptkpaud_inputUnit').empty().append('<option value="">- Pilih Lembaga -</option>');
-            Object.keys(PTKPAUD_MAP_UNIT_NPSN).sort().forEach(function (u) { $selUnit.append($('<option>', { value: u, text: u })); });
-            $selUnit.prop('disabled', false).val(row.unit).off('change.npsn').on('change.npsn', ptkpaud_updateNpsnFromUnit);
+            // Setup Options Jenjang Modal Edit murni dari Database Master Sekolah (tanpa SD)
+            var uniqueJg = new Set();
+            if (PTKPAUD_MASTER_SEKOLAH && PTKPAUD_MASTER_SEKOLAH.length > 0) {
+                PTKPAUD_MASTER_SEKOLAH.forEach(function(s) {
+                    var jg = String(s.jenjang || "").trim().toUpperCase();
+                    if (jg && jg !== "SD" && !jg.includes("SD")) uniqueJg.add(jg);
+                });
+            }
+            var $selJenjang = $('#ptkpaud_inputJenjang').empty().append('<option value="">- Pilih Jenjang -</option>');
+            Array.from(uniqueJg).sort().forEach(function(jg) {
+                $selJenjang.append($('<option>', { value: jg, text: jg }));
+            });
+            $selJenjang.val(row.jenjang).prop('disabled', false);
+
+            ptkpaud_updateModalLembagaFromJenjang(row.unit);
+
+            $('#ptkpaud_inputJenjang').off('change.modalLembaga').on('change.modalLembaga', function() {
+                ptkpaud_updateModalLembagaFromJenjang("");
+            });
+            $('#ptkpaud_inputUnit').prop('disabled', false).off('change.npsn').on('change.npsn', ptkpaud_updateNpsnFromUnit);
+
             $('#ptkpaud_hintMutasiAdmin').removeClass('d-none');
             $('#ptkpaud_hintJenjangAdmin').show();
-            $('#ptkpaud_inputJenjang').prop('disabled', false).val(row.jenjang);
         } else {
             $('#ptkpaud_inputUnit').html('<option value="' + ptkpaud_escapeHtml(row.unit) + '">' + ptkpaud_escapeHtml(row.unit) + '</option>').prop('disabled', true);
             $('#ptkpaud_hintMutasiAdmin').addClass('d-none');
-            $('#ptkpaud_inputJenjang').val(row.jenjang).prop('disabled', true);
+            $('#ptkpaud_inputJenjang').empty().append('<option value="' + row.jenjang + '">' + row.jenjang + '</option>').val(row.jenjang).prop('disabled', true);
             $('#ptkpaud_hintJenjangAdmin').hide();
         }
 
