@@ -69,7 +69,7 @@
             <div class="ml-auto d-none d-md-block"></div>
             
             <button type="button" id="efilekelola_btnTambah" class="sultan-btn-tambah" disabled>
-                <i class="fas fa-upload"></i> UNGGAH
+                <i class="fas fa-plus mr-1"></i> UNGGAH
             </button>
 
             <button type="button" id="efilekelola_btnToggleSurvey" class="btn btn-sm btn-outline-secondary font-weight-bold ml-2 shadow-none" style="display:none; border-radius:20px; padding: 4px 12px; font-size:12px; height: 36px; transition: all 0.2s ease;" title="Klik untuk Aktif/Nonaktifkan Survei Scanner">
@@ -118,8 +118,6 @@
                         <label class="form-label-sultan">JENJANG <span class="text-danger">*</span></label>
                         <select id="efilekelola_in_jenjang" class="form-control form-control-sultan font-weight-bold" required>
                             <option value="">- Pilih Jenjang -</option>
-                            <option value="PAUD">PAUD</option>
-                            <option value="SD">SD</option>
                         </select>
                     </div>
                 </div>
@@ -604,6 +602,33 @@ $(document).ready(function() {
         }
     });
 
+    function efilekelola_populateJenjang() {
+        var selJenjang = $('#efilekelola_in_jenjang');
+        selJenjang.empty().append('<option value="">- Pilih Jenjang -</option>');
+        var setJenjang = new Set();
+        
+        // Coba dari EFILEKELOLA_MASTER_PTK
+        if (typeof EFILEKELOLA_MASTER_PTK !== 'undefined' && Array.isArray(EFILEKELOLA_MASTER_PTK)) {
+            EFILEKELOLA_MASTER_PTK.forEach(function (p) {
+                if (p.jenjang && String(p.jenjang).trim() !== '') {
+                    setJenjang.add(String(p.jenjang).trim().toUpperCase());
+                }
+            });
+        }
+        // Coba juga dari listMasterSekolah / TUGAS_MASTER_SEKOLAH jika tersedia
+        if (typeof listMasterSekolah !== 'undefined' && Array.isArray(listMasterSekolah)) {
+            listMasterSekolah.forEach(function (s) {
+                if (s.jenjang && String(s.jenjang).trim() !== '') {
+                    setJenjang.add(String(s.jenjang).trim().toUpperCase());
+                }
+            });
+        }
+        
+        Array.from(setJenjang).sort().forEach(function (j) {
+            selJenjang.append('<option value="' + j + '">' + j + '</option>');
+        });
+    }
+
     // Admin Mode: Change Jenjang -> Filter Dropdown Sekolah
     $(document).off('change', '#efilekelola_in_jenjang').on('change', '#efilekelola_in_jenjang', function() {
         var jenjang = $(this).val();
@@ -622,11 +647,9 @@ $(document).ready(function() {
             EFILEKELOLA_MASTER_PTK.forEach(function(p) {
                 if (!p.npsn || !p.unit) return;
                 var jg = String(p.jenjang || "").toUpperCase();
-                var match = false;
-                if (jenjang === "PAUD" && (jg.includes("PAUD") || jg.includes("TK") || jg.includes("KB") || jg.includes("TPA") || jg.includes("SPS"))) match = true;
-                else if (jenjang === "SD" && (jg.includes("SD") || jg.includes("SEKOLAH DASAR"))) match = true;
-
-                if (match) unitsMap[p.npsn] = p.unit;
+                if (jg === String(jenjang).toUpperCase() || jg.includes(String(jenjang).toUpperCase())) {
+                    unitsMap[p.npsn] = p.unit;
+                }
             });
 
             Object.keys(unitsMap).sort().forEach(function(npsn) {
@@ -1146,6 +1169,7 @@ function efilekelola_bukaModalTambah() {
     if (EFILEKELOLA_IS_ADMIN) {
         $('#efilekelola_pilih_sekolah_container').show();
         $('#efilekelola_user_sekolah_banner').hide();
+        efilekelola_populateJenjang();
         $jenjangSelect.val('').prop('disabled', false);
         $unitSelect.empty().append('<option value="">- Pilih Sekolah -</option>').prop('disabled', true);
     } else {
