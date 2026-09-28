@@ -679,6 +679,12 @@ function insertDataPTK(form, base64Data, fileName, jenisDokumen, userPengusul) {
           var rowNik = String(data[i][10]).replace(/[^0-9]/g, ''); // Kolom K (10)
           if (rowNik === inputNik) return "Gagal: NIK " + inputNik + " sudah terdaftar atas nama " + data[i][6];
         }
+        
+        // Cek apakah terdaftar di sheet non-aktif SD Negeri
+        var resCheckNonAktif = JSON.parse(checkAndGetPtkNonAktifSDNByNIK(inputNik));
+        if (resCheckNonAktif.found) {
+          return "NON_AKTIF_FOUND:" + JSON.stringify(resCheckNonAktif);
+        }
     }
 
     var newId = "GTK-" + new Date().getTime();
@@ -975,6 +981,143 @@ function parseIndoDate(dateStr) {
   if (parts.length >= 3) { var dayRaw = parts[0].replace(/[^0-9]/g, ''); var day = dayRaw.length === 1 ? "0" + dayRaw : dayRaw; var month = months[parts[1]]; if (month && parts[2].match(/^\d{4}$/)) return parts[2] + "-" + month + "-" + day; }
   try { var d = new Date(dateStr); if (!isNaN(d.getTime())) return Utilities.formatDate(d, Session.getScriptTimeZone(), "yyyy-MM-dd"); } catch(e) {}
   return "";
+}
+
+function checkAndGetPtkNonAktifSDNByNIK(nik) {
+  try {
+    var sheetTarget = getSheet(KONFIG_PTK.DB_KEY, "gtk_non_aktif");
+    if (!sheetTarget) return JSON.stringify({ found: false });
+    var dataDisplay = sheetTarget.getDataRange().getDisplayValues();
+    var inputNik = String(nik).replace(/'/g, "").trim();
+    if (!inputNik) return JSON.stringify({ found: false });
+
+    for (var i = 1; i < dataDisplay.length; i++) {
+      var rowNik = String(dataDisplay[i][10] || "").replace(/'/g, "").trim();
+      if (rowNik === inputNik) {
+        var row = dataDisplay[i];
+        var lastColIdx = row.length - 1;
+        return JSON.stringify({
+          found: true,
+          id: row[0],
+          nama_lengkap: row[6] || row[4] || "",
+          nik: rowNik,
+          lembaga_lama: row[2] || "",
+          alasan_non_aktif: row[lastColIdx - 2] || "Mutasi / Non-Aktif",
+          tgl_non_aktif: row[lastColIdx - 1] || "",
+          data: {
+            gelar_depan: row[3] || "",
+            nama_no_gelar: row[4] || "",
+            gelar_belakang: row[5] || "",
+            nip: row[7] || "",
+            tmp_lahir: row[8] || "",
+            tgl_lahir: row[9] || "",
+            lp: row[11] || "",
+            agama: row[12] || "",
+            pendidikan: row[13] || "",
+            jurusan: row[14] || "",
+            thn_lulus: row[15] || "",
+            alamat_ktp: row[16] || "",
+            alamat_domisili: row[17] || "",
+            hp: row[18] || "",
+            status_peg: row[19] || "",
+            jabatan: row[20] || "",
+            tmt_jabatan: row[21] || "",
+            pangkat: row[22] || "",
+            tmt_gol: row[23] || "",
+            mkg: row[24] || "",
+            tugas: row[25] || "",
+            nuptk: row[26] || "",
+            serdik: row[27] || "",
+            dapodik: row[28] || "",
+            tugtam: row[29] || "",
+            email: row[30] || ""
+          }
+        });
+      }
+    }
+    return JSON.stringify({ found: false });
+  } catch(e) { return JSON.stringify({ found: false, error: e.message }); }
+}
+
+function reactivatePtkSDN(form) {
+  try {
+    var sheetNonAktif = getSheet(KONFIG_PTK.DB_KEY, "gtk_non_aktif");
+    var sheetAktif = getSheet(KONFIG_PTK.DB_KEY, KONFIG_PTK.SHEET_PTK);
+    if (!sheetNonAktif || !sheetAktif) return "Error: Sheet database tidak ditemukan.";
+
+    var inputNik = String(form.nik).replace(/'/g, "").trim();
+    var dataDisplay = sheetNonAktif.getDataRange().getDisplayValues();
+    var dataValues = sheetNonAktif.getDataRange().getValues();
+    var rowIdx = -1;
+    var originalRow = [];
+
+    for (var i = 1; i < dataDisplay.length; i++) {
+      var rowNik = String(dataDisplay[i][10] || "").replace(/'/g, "").trim();
+      if (rowNik === inputNik) {
+        rowIdx = i + 1;
+        originalRow = dataValues[i];
+        break;
+      }
+    }
+
+    if (rowIdx === -1) return "Error: Data non-aktif dengan NIK ini tidak ditemukan.";
+
+    var timestamp = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss");
+    var rawNpsn = form.npsn_baru || form.npsn_login || form.npsn || "";
+    var npsnNum = parseInt(String(rawNpsn).replace(/[^0-9]/g, ''), 10);
+    var finalNpsn = isNaN(npsnNum) ? rawNpsn : npsnNum;
+    var finalUnit = form.unit_kerja || form.unit_login || form.unit || "";
+
+    var namaFull = (form.gelar_depan ? form.gelar_depan + " " : "") + form.nama_lengkap + (form.gelar_belakang ? ", " + form.gelar_belakang : "");
+    var mkg = ""; if (form.mkg_thn || form.mkg_bln) { mkg = (form.mkg_thn || "0") + " Tahun " + (form.mkg_bln || "0") + " Bulan"; }
+
+    var activeRowData = [
+      originalRow[0], // ID lama tetap dipertahankan
+      finalNpsn,
+      finalUnit,
+      form.gelar_depan || originalRow[3] || "",
+      form.nama_lengkap || originalRow[4] || "",
+      form.gelar_belakang || originalRow[5] || "",
+      namaFull || originalRow[6] || "",
+      "'" + (form.nip || originalRow[7] || ""),
+      form.tmp_lahir || originalRow[8] || "",
+      convertStringToDate_(form.tgl_lahir || originalRow[9]),
+      "'" + (form.nik || originalRow[10] || ""),
+      form.lp || originalRow[11] || "",
+      form.agama || originalRow[12] || "",
+      form.pendidikan || originalRow[13] || "",
+      form.jurusan || originalRow[14] || "",
+      form.thn_lulus || originalRow[15] || "",
+      form.alamat_ktp || originalRow[16] || "",
+      form.alamat_domisili || originalRow[17] || "",
+      "'" + (form.hp || originalRow[18] || ""),
+      form.status_peg || originalRow[19] || "",
+      form.jabatan || originalRow[20] || "",
+      convertStringToDate_(form.tmt_jabatan || originalRow[21]),
+      form.pangkat || originalRow[22] || "",
+      convertStringToDate_(form.tmt_gol || originalRow[23]),
+      mkg || originalRow[24] || "",
+      form.tugas || originalRow[25] || "",
+      "'" + (form.nuptk || originalRow[26] || ""),
+      form.serdik || originalRow[27] || "",
+      form.dapodik || originalRow[28] || "",
+      form.tugtam || originalRow[29] || "",
+      form.email || originalRow[30] || "",
+      originalRow[31] || timestamp, // Diinput
+      originalRow[32] || form.user_login || "", // User input
+      timestamp, // Diedit / Reaktif
+      form.user_login || "", // User edit / Reaktif
+      originalRow[35] || "", // jenisDok
+      originalRow[36] || "", // fileUrl
+      ""
+    ];
+
+    sheetAktif.appendRow(activeRowData);
+    sheetNonAktif.deleteRow(rowIdx);
+    SpreadsheetApp.flush();
+    invalidatePtkSdnDataCache_();
+    return "Sukses";
+  } catch(e) { return "Error: " + e.message; }
 }
 
 function moveDataPTKToNonAktif(id, reason, userLogin) {

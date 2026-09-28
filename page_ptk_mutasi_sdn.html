@@ -219,6 +219,7 @@ var PTKSDN_USER_NPSN = "";
 var PTKSDN_UNIT_TERKUNCI = "";
 var PTKSDN_CACHE_MASTER = [];
 var PTKSDN_CACHE_USULAN = [];
+var PTKSDN_MASTER_SEKOLAH = [];
 var PTKSDN_ALREADY_FETCHING = false;
 var PTKSDN_CURRENT_EDIT_ROW = null;
 var PTKSDN_CURRENT_VERIFIKASI_ROW = null;
@@ -339,9 +340,16 @@ function ptksdn_bukaModalMutasi(showModal = true) {
     $('#ptksdn_grpMutasiTujuanDropdown, #ptksdn_grpMutasiTujuanText, #ptksdn_grpMutasiTMT, #ptksdn_grpMutasiTglMeninggal, #ptksdn_grpMutasiTglTidakAktif, #ptksdn_grpMutasiFile').hide();
     
     var uniqueUnits = new Set();
-    PTKSDN_CACHE_MASTER.forEach(function(row) {
-        if (row.unit) uniqueUnits.add(row.unit);
-    });
+    if (PTKSDN_MASTER_SEKOLAH && PTKSDN_MASTER_SEKOLAH.length > 0) {
+        PTKSDN_MASTER_SEKOLAH.forEach(function(s) {
+            var nm = s.nama || s.nama_lembaga;
+            if (nm) uniqueUnits.add(nm);
+        });
+    } else {
+        PTKSDN_CACHE_MASTER.forEach(function(row) {
+            if (row.unit) uniqueUnits.add(row.unit);
+        });
+    }
     
     var $selUnit = $('#ptksdn_mutasiUnitKerja').empty().append('<option value="">- Pilih Unit Kerja -</option>');
     Array.from(uniqueUnits).sort().forEach(function(u) {
@@ -406,21 +414,28 @@ function ptksdn_bukaModalEditUsulan(idUsulan) {
     $('#ptksdn_mutasiTujuanDropdown, #ptksdn_mutasiTujuanText, #ptksdn_mutasiTMT, #ptksdn_mutasiTglMeninggal, #ptksdn_mutasiTglTidakAktif, #ptksdn_mutasiFile').prop('required', false);
 
     var uniqueUnits = new Set();
-    PTKSDN_CACHE_MASTER.forEach(function(r) {
-        if (r.unit) uniqueUnits.add(r.unit);
-    });
-
+    if (PTKSDN_MASTER_SEKOLAH && PTKSDN_MASTER_SEKOLAH.length > 0) {
+        PTKSDN_MASTER_SEKOLAH.forEach(function(s) {
+            var nm = s.nama || s.nama_lembaga;
+            if (nm) uniqueUnits.add(nm);
+        });
+    } else {
+        PTKSDN_CACHE_MASTER.forEach(function(r) {
+            if (r.unit) uniqueUnits.add(r.unit);
+        });
+    }
+    
     var $selUnit = $('#ptksdn_mutasiUnitKerja').empty().append('<option value="">- Pilih Unit Kerja -</option>');
     Array.from(uniqueUnits).sort().forEach(function(u) {
         $selUnit.append($('<option>', {value: u, text: u}));
     });
-
+    
     if (!PTKSDN_IS_ADMIN && PTKSDN_UNIT_TERKUNCI) {
         $selUnit.val(PTKSDN_UNIT_TERKUNCI).prop('disabled', true);
     } else {
         $selUnit.prop('disabled', false);
     }
-
+    
     var $selTarget = $('#ptksdn_mutasiTujuanDropdown').empty().append('<option value="">- Pilih Unit Kerja Tujuan -</option>');
     Array.from(uniqueUnits).sort().forEach(function(u) {
         $selTarget.append($('<option>', {value: u, text: u}));
@@ -750,33 +765,46 @@ function ptksdn_tarikDataUsulan() {
     SultanUI.showLoading('#ptksdn_loadingUsulan');
     $('#ptksdn_tableUsulanState').hide();
 
-    // Fetch Master Data first (getDataPTKSD)
-    google.script.run
-        .withSuccessHandler(function(resMaster){
-            PTKSDN_CACHE_MASTER = JSON.parse(resMaster);
-            
-            // Now fetch Usulan data
-            google.script.run
-                .withSuccessHandler(function(resUsulan){
-                    PTKSDN_ALREADY_FETCHING = false;
-                    $('#ptksdn_loadingUsulan').hide();
-                    PTKSDN_CACHE_USULAN = JSON.parse(resUsulan);
-                    ptksdn_populateFilterLembaga();
-                    ptksdn_terapkanFilterLokal();
-                })
-                .withFailureHandler(function(err){
-                    PTKSDN_ALREADY_FETCHING = false;
-                    $('#ptksdn_loadingUsulan').hide();
-                    Sultan.notif.crud.gagal(err.message || err || 'Gagal memuat data');
-                })
-                .getUsulanMutasiPTKSDN();
-        })
-        .withFailureHandler(function(err){
-            PTKSDN_ALREADY_FETCHING = false;
-            $('#ptksdn_loadingUsulan').hide();
-            Sultan.notif.crud.gagal(err.message || err || 'Gagal memuat data master');
-        })
-        .getDataPTKSD();
+    var masterPromise = new Promise(function(resolve, reject) {
+        google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler(reject)
+            .getDataPTKSD();
+    });
+
+    var usulanPromise = new Promise(function(resolve, reject) {
+        google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler(reject)
+            .getUsulanMutasiPTKSDN();
+    });
+
+    var sekolahPromise = new Promise(function(resolve, reject) {
+        google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler(reject)
+            .getAdmSekolahMasterData("");
+    });
+
+    Promise.all([masterPromise, usulanPromise, sekolahPromise]).then(function(results) {
+        PTKSDN_CACHE_MASTER = JSON.parse(results[0]);
+        PTKSDN_CACHE_USULAN = JSON.parse(results[1]);
+        var sekolahRes = results[2];
+        if (sekolahRes && sekolahRes.sekolah) {
+            PTKSDN_MASTER_SEKOLAH = sekolahRes.sekolah.filter(function(s) {
+                var jg = String(s.jenjang || "").trim().toUpperCase();
+                return jg === "SD" || jg.includes("SD");
+            });
+        }
+        PTKSDN_ALREADY_FETCHING = false;
+        $('#ptksdn_loadingUsulan').hide();
+        ptksdn_populateFilterLembaga();
+        ptksdn_terapkanFilterLokal();
+    }).catch(function(err) {
+        PTKSDN_ALREADY_FETCHING = false;
+        $('#ptksdn_loadingUsulan').hide();
+        Sultan.notif.crud.gagal(err.message || err || 'Gagal memuat data');
+    });
 }
 
 function ptksdn_populateFilterLembaga() {
