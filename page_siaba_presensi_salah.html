@@ -175,9 +175,6 @@
                         <label class="form-label-sultan">JENJANG <span class="text-danger">*</span></label>
                         <select id="salah_in_jenjang" class="form-control form-control-sultan font-weight-bold" required>
                             <option value="">- Pilih Jenjang -</option>
-                            <option value="SD">SD</option>
-                            <option value="SMP">SMP</option>
-                            <option value="PAUD">PAUD</option>
                         </select>
                     </div>
                 </div>
@@ -400,10 +397,16 @@
             if (!jg) { $selUnit.prop('disabled', true); return; }
 
             var listUnit = [...new Set(SALAH_DB_PEGAWAI.filter(x => {
-                var u = String(x.unit || "").toUpperCase();
-                if (jg === "SD") return u.includes("SD");
-                if (jg === "SMP") return u.includes("SMP");
-                if (jg === "PAUD") return u.includes("PAUD") || u.includes("TK") || u.includes("KB");
+                var u = String(x.unit || "").trim().toUpperCase();
+                var j = String(x.jenjang || "").trim().toUpperCase();
+                if (j) return j === jg.toUpperCase();
+
+                if (jg === "PAUD / TK" || jg === "PAUD") return (u.includes("TK") || u.includes("PAUD") || u.includes("KOBER") || u.includes("TKN"));
+                if (jg === "SD") return (u.includes("SD") || u.includes("SDN"));
+                if (jg === "SMP") return (u.includes("SMP") || u.includes("SMPN"));
+                if (jg === "SMA") return (u.includes("SMA") || u.includes("SMAN"));
+                if (jg === "SMK") return (u.includes("SMK") || u.includes("SMKN"));
+                if (jg === "NON-FORMAL / SKB") return (u.includes("SKB") || u.includes("PKBM"));
                 return true;
             }).map(x => String(x.unit || "").trim()))].sort();
 
@@ -507,6 +510,7 @@
                         $('#salah_filterUnit').html(optFilter);
                         $('#salah_inputUnit').html(optInput);
                     }
+                    salah_populateJenjang();
                 }
 
                 $('#salah_btnRefresh, #salah_btnTambah').prop('disabled', false);
@@ -833,6 +837,7 @@
         if (SALAH_IS_ADMIN) {
             $('#salah_user_sekolah_banner').hide();
             $('#salah_admin_sekolah_container').show();
+            salah_populateJenjang();
             $('#salah_in_jenjang').val('');
             $('#salah_in_npsn').val('');
             $('#salah_inputUnit').val('').prop('disabled', true);
@@ -875,7 +880,26 @@
         if (SALAH_IS_ADMIN) {
             $('#salah_admin_sekolah_container').show();
             $('#salah_user_sekolah_banner').hide();
-            $('#salah_in_jenjang').val('').prop('disabled', true);
+
+            salah_populateJenjang();
+            var valUnit = String(row.unit || "").trim().toUpperCase();
+            var samplePgw = SALAH_DB_PEGAWAI.find(x => String(x.unit || "").trim().toUpperCase() === valUnit);
+            var autoJenjang = (samplePgw && samplePgw.jenjang) ? String(samplePgw.jenjang).trim().toUpperCase() : "";
+
+            if (!autoJenjang) {
+                if (valUnit.includes("TK") || valUnit.includes("PAUD") || valUnit.includes("KOBER") || valUnit.includes("TKN")) autoJenjang = "PAUD / TK";
+                else if (valUnit.includes("SD") || valUnit.includes("SDN")) autoJenjang = "SD";
+                else if (valUnit.includes("SMP") || valUnit.includes("SMPN")) autoJenjang = "SMP";
+                else if (valUnit.includes("SMA") || valUnit.includes("SMAN")) autoJenjang = "SMA";
+                else if (valUnit.includes("SMK") || valUnit.includes("SMKN")) autoJenjang = "SMK";
+                else if (valUnit.includes("SKB") || valUnit.includes("PKBM")) autoJenjang = "NON-FORMAL / SKB";
+            }
+
+            var $selJenjang = $('#salah_in_jenjang');
+            if (autoJenjang && $selJenjang.find('option[value="' + autoJenjang + '"]').length === 0) {
+                $selJenjang.append('<option value="' + salah_escapeHtml(autoJenjang) + '">' + salah_escapeHtml(autoJenjang) + '</option>');
+            }
+            $selJenjang.val(autoJenjang || '').prop('disabled', true);
             $('#salah_in_npsn').val(row.npsn || '-');
         } else {
             $('#salah_admin_sekolah_container').hide();
@@ -1127,6 +1151,33 @@
     // =================================================================
     // 5. HELPER UTILITIES & VAKSIN DROPDOWN
     // =================================================================
+    function salah_populateJenjang() {
+        var $selJenjang = $('#salah_in_jenjang').empty().append('<option value="">- Pilih Jenjang -</option>');
+        var setJenjang = new Set();
+
+        if (Array.isArray(SALAH_DB_PEGAWAI) && SALAH_DB_PEGAWAI.length > 0) {
+            SALAH_DB_PEGAWAI.forEach(function(x) {
+                if (x.jenjang && String(x.jenjang).trim()) {
+                    setJenjang.add(String(x.jenjang).trim().toUpperCase());
+                } else {
+                    var unit = String(x.unit || "").trim().toUpperCase();
+                    if (!unit) return;
+                    if (unit.includes("TK") || unit.includes("PAUD") || unit.includes("KOBER") || unit.includes("TKN")) setJenjang.add("PAUD / TK");
+                    else if (unit.includes("SD") || unit.includes("SDN")) setJenjang.add("SD");
+                    else if (unit.includes("SMP") || unit.includes("SMPN")) setJenjang.add("SMP");
+                    else if (unit.includes("SMA") || unit.includes("SMAN")) setJenjang.add("SMA");
+                    else if (unit.includes("SMK") || unit.includes("SMKN")) setJenjang.add("SMK");
+                    else if (unit.includes("SKB") || unit.includes("PKBM")) setJenjang.add("NON-FORMAL / SKB");
+                }
+            });
+        }
+
+        var arrJenjang = Array.from(setJenjang).sort();
+        arrJenjang.forEach(function(j) {
+            $selJenjang.append('<option value="' + salah_escapeHtml(j) + '">' + salah_escapeHtml(j) + '</option>');
+        });
+    }
+
     function salah_formatTanggalIndo(tglStr) { if (!tglStr) return '-'; var parts = tglStr.split('-'); if (parts.length !== 3) return tglStr; var thn = parts[0].length === 4 ? parts[0] : parts[2]; var bln = parts[0].length === 4 ? parts[1] : parts[1]; var tgl = parts[0].length === 4 ? parts[2] : parts[0]; var namaBulan = ["", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"]; return parseInt(tgl, 10) + " " + namaBulan[parseInt(bln, 10)] + " " + thn; }
 
     function salah_filterDropdownNama() {
