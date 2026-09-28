@@ -324,7 +324,7 @@
                 <textarea class="modal-verifikasi-textarea" id="salah_verifCatatan" rows="3" placeholder="Wajib diisi jika Ditolak/Revisi..."></textarea>
             </div>
         </div>
-        <div class="modal-verifikasi-footer" id="salah_verifFooter">
+        <div class="modal-footer modal-footer-tambah-edit justify-content-between" id="salah_verifFooter">
             <button type="button" class="modal-btn-batal" data-dismiss="modal">
                 <i class="fas fa-times mr-2"></i>BATAL</button>
             <button type="submit" id="salah_btnVerifEksekusi" class="modal-verifikasi-btn-verifikasi" form="salah_formVerif">
@@ -1072,29 +1072,26 @@
         $('#salah_vJam').text(row.jam ? String(row.jam).substring(0, 5) : '-');
         $('#salah_vJenis').html((row.jenis || "").includes('Datang') ? '<i class="fas fa-sun mr-2 text-warning"></i>Datang' : '<i class="fas fa-moon mr-2 text-dark"></i>Pulang');
 
-        // Panggil Global Verifikasi
-        Sultan.modal.verifikasi({
-            title: 'VERIFIKASI DATA SALAH PRESENSI',
-            url: '',
-            isImage: false
-        });
+        // Gunakan Global Form Modal Biasa (Tanpa Split PDF Preview)
+        $('#global_modalFormSize').removeClass('modal-xl modal-lg').addClass('modal-md');
+        $('#global_modalFormHeader').removeClass().addClass('modal-header modal-header-verifikasi');
+        $('#global_modalFormTitle').html('<i class="fas fa-check-double mr-2"></i> VERIFIKASI DATA SALAH PRESENSI');
 
-        // Pindahkan form & footer ke Global Verifikasi Area
-        $('#salah_formVerif').appendTo('#global_verifikasiFormArea');
-        $('#salah_verifFooter').appendTo('#global_verifikasiFooterArea');
-        $('#global_verifikasiFooterArea').show();
+        $('#global_modalFormBody, #global_modalFormFooter').hide();
+        $('#salah_formVerif').appendTo('#global_modalFormSize .modal-content');
 
         // Reset state tombol eksekusi
         $('#salah_btnVerifEksekusi').prop('disabled', false).html('<i class="fas fa-check mr-2"></i>VERIFIKASI');
 
         salah_cekStatusVerif($('#salah_verifStatus').val());
 
-        // Pastikan form dikembalikan saat modal ditutup
-        $('#global_modalVerifikasi').off('hidden.bs.modal.salahverif').on('hidden.bs.modal.salahverif', function () {
-            $('#salah_verifFooter').appendTo('#salah_formVerif');
-            $('#salah_formVerif').appendTo('#salah_templates');
-            $('#global_verifikasiFooterArea').hide();
+        // Clean-up handler saat modal ditutup
+        $('#global_modalForm').off('hidden.bs.modal.salahverif').on('hidden.bs.modal.salahverif', function () {
+            salah_kembalikanFormKeTemplate();
+            $('#global_modalFormBody, #global_modalFormFooter').show();
         });
+
+        $('#global_modalForm').modal('show');
     }
     function salah_cekStatusVerif(val) {
         if (val === 'Revisi' || val === 'Ditolak') {
