@@ -952,7 +952,26 @@
         if (LUPA_IS_ADMIN) {
             $('#lupa_admin_sekolah_container').show();
             $('#lupa_user_sekolah_banner').hide();
-            $('#lupa_in_jenjang').val('').prop('disabled', true);
+            
+            lupa_populateJenjang();
+            var valUnit = String(row.unit || "").trim().toUpperCase();
+            var samplePgw = LUPA_DB_PEGAWAI.find(x => String(x.unit || "").trim().toUpperCase() === valUnit);
+            var autoJenjang = (samplePgw && samplePgw.jenjang) ? String(samplePgw.jenjang).trim().toUpperCase() : "";
+            
+            if (!autoJenjang) {
+                if (valUnit.includes("TK") || valUnit.includes("PAUD") || valUnit.includes("KOBER") || valUnit.includes("TKN")) autoJenjang = "PAUD / TK";
+                else if (valUnit.includes("SD") || valUnit.includes("SDN")) autoJenjang = "SD";
+                else if (valUnit.includes("SMP") || valUnit.includes("SMPN")) autoJenjang = "SMP";
+                else if (valUnit.includes("SMA") || valUnit.includes("SMAN")) autoJenjang = "SMA";
+                else if (valUnit.includes("SMK") || valUnit.includes("SMKN")) autoJenjang = "SMK";
+                else if (valUnit.includes("SKB") || valUnit.includes("PKBM")) autoJenjang = "NON-FORMAL / SKB";
+            }
+
+            var $selJenjang = $('#lupa_in_jenjang');
+            if (autoJenjang && $selJenjang.find('option[value="' + autoJenjang + '"]').length === 0) {
+                $selJenjang.append('<option value="' + lupa_escapeHtml(autoJenjang) + '">' + lupa_escapeHtml(autoJenjang) + '</option>');
+            }
+            $selJenjang.val(autoJenjang || '').prop('disabled', true);
             $('#lupa_in_npsn').val(row.npsn || '-');
         } else {
             $('#lupa_admin_sekolah_container').hide();
