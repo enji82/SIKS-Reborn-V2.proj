@@ -1101,6 +1101,46 @@
 
         var cbSuccess = function (res) {
             btn.prop('disabled', false).html(txt);
+            if (typeof res === "string" && res.indexOf("NON_AKTIF_FOUND:") === 0) {
+                var jsonStr = res.substring("NON_AKTIF_FOUND:".length);
+                var nonAktifInfo = JSON.parse(jsonStr);
+                
+                Swal.fire({
+                    title: 'PTK Non-Aktif Ditemukan!',
+                    html: '<div class="text-left font-size-14">' +
+                          '<p>NIK <b>' + ptksds_escapeHtml(formData.nik) + '</b> terdaftar di Arsip PTK Non-Aktif:</p>' +
+                          '<table class="table table-sm table-bordered text-left font-size-13">' +
+                          '<tr><th width="35%">Nama PTK</th><td>' + ptksds_escapeHtml(nonAktifInfo.nama_lengkap) + '</td></tr>' +
+                          '<tr><th>Lembaga Lama</th><td>' + ptksds_escapeHtml(nonAktifInfo.lembaga_lama) + '</td></tr>' +
+                          '<tr><th>Alasan Non-Aktif</th><td>' + ptksds_escapeHtml(nonAktifInfo.alasan_non_aktif) + '</td></tr>' +
+                          '<tr><th>Tgl Non-Aktif</th><td>' + ptksds_escapeHtml(nonAktifInfo.tgl_non_aktif) + '</td></tr>' +
+                          '</table>' +
+                          '<p class="mb-0 text-primary font-weight-bold">Apakah Anda ingin MENGAKTIFKAN KEMBALI PTK ini ke lembaga <u>' + ptksds_escapeHtml(formData.unit_kerja) + '</u>?</p>' +
+                          '</div>',
+                    icon: 'info',
+                    showCancelButton: true,
+                    confirmButtonColor: '#28a745',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: '<i class="fas fa-user-check mr-1"></i> Ya, Aktifkan Kembali!',
+                    cancelButtonText: 'Batal'
+                }).then(function(result) {
+                    if (result.isConfirmed) {
+                        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Mengaktifkan...');
+                        google.script.run.withSuccessHandler(function(reactRes) {
+                            btn.prop('disabled', false).html(txt);
+                            if (reactRes === "Sukses") {
+                                Sultan.alert('success', 'Berhasil Reaktivasi', 'Data PTK atas nama ' + nonAktifInfo.nama_lengkap + ' berhasil diaktifkan kembali ke ' + formData.unit_kerja + '!');
+                                ptksds_tarikDataServer();
+                                $('#ptksds_modalForm').modal('hide');
+                            } else {
+                                Sultan.notif.crud.gagal(reactRes);
+                            }
+                        }).withFailureHandler(cbFail).reactivatePtkSDS(formData);
+                    }
+                });
+                return;
+            }
+
             if (res === "Sukses") {
                 Sultan.notif.crud.simpan($('#ptksds_inputIdData').val() !== "");
                 
