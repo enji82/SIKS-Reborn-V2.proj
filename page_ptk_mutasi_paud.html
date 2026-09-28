@@ -436,9 +436,15 @@ function ptkpaud_bukaModalMutasi(showModal = true) {
     $('#ptkpaud_grpMutasiTujuanDropdown, #ptkpaud_grpMutasiTujuanText, #ptkpaud_grpMutasiTMT, #ptkpaud_grpMutasiTglMeninggal, #ptkpaud_grpMutasiTglTidakAktif, #ptkpaud_grpMutasiFile').hide();
     
     var uniqueUnits = new Set();
-    PTKPAUD_CACHE_MASTER.forEach(function(row) {
-        if (row.unit) uniqueUnits.add(row.unit);
-    });
+    if (PTKPAUD_MASTER_SEKOLAH && PTKPAUD_MASTER_SEKOLAH.length > 0) {
+        PTKPAUD_MASTER_SEKOLAH.forEach(function(s) {
+            if (s.nama_lembaga) uniqueUnits.add(s.nama_lembaga);
+        });
+    } else {
+        PTKPAUD_CACHE_MASTER.forEach(function(row) {
+            if (row.unit) uniqueUnits.add(row.unit);
+        });
+    }
     
     var $selUnit = $('#ptkpaud_mutasiUnitKerja').empty().append('<option value="">- Pilih Unit Kerja -</option>');
     Array.from(uniqueUnits).sort().forEach(function(u) {
@@ -493,9 +499,15 @@ function ptkpaud_bukaModalEditMutasi(row) {
     $('#ptkpaud_mutasiTujuanDropdown, #ptkpaud_mutasiTujuanText, #ptkpaud_mutasiTMT, #ptkpaud_mutasiTglMeninggal, #ptkpaud_mutasiTglTidakAktif, #ptkpaud_mutasiFile').prop('required', false);
     
     var uniqueUnits = new Set();
-    PTKPAUD_CACHE_MASTER.forEach(function(r) {
-        if (r.unit) uniqueUnits.add(r.unit);
-    });
+    if (PTKPAUD_MASTER_SEKOLAH && PTKPAUD_MASTER_SEKOLAH.length > 0) {
+        PTKPAUD_MASTER_SEKOLAH.forEach(function(s) {
+            if (s.nama_lembaga) uniqueUnits.add(s.nama_lembaga);
+        });
+    } else {
+        PTKPAUD_CACHE_MASTER.forEach(function(r) {
+            if (r.unit) uniqueUnits.add(r.unit);
+        });
+    }
     
     var $selUnit = $('#ptkpaud_mutasiUnitKerja').empty().append('<option value="">- Pilih Unit Kerja -</option>');
     Array.from(uniqueUnits).sort().forEach(function(u) {
@@ -885,9 +897,23 @@ function ptkpaud_tarikDataUsulan() {
             .getUsulanMutasiPTKPAUD();
     });
 
-    Promise.all([masterPromise, usulanPromise]).then(function(results) {
+    var sekolahPromise = new Promise(function(resolve, reject) {
+        google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler(reject)
+            .getAdmSekolahMasterData("");
+    });
+
+    Promise.all([masterPromise, usulanPromise, sekolahPromise]).then(function(results) {
         PTKPAUD_CACHE_MASTER = JSON.parse(results[0]);
         PTKPAUD_CACHE_USULAN = JSON.parse(results[1]);
+        var sekolahRes = results[2];
+        if (sekolahRes && sekolahRes.sekolah) {
+            PTKPAUD_MASTER_SEKOLAH = sekolahRes.sekolah.filter(function(s) {
+                var jg = String(s.jenjang || "").trim().toUpperCase();
+                return jg !== "SD" && !jg.includes("SD");
+            });
+        }
         PTKPAUD_ALREADY_FETCHING = false;
         $('#ptkpaud_loadingUsulan').hide();
         ptkpaud_populateFilterLembaga();
