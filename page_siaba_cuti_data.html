@@ -919,7 +919,13 @@
                 $('#cuti_user_sekolah_banner').hide();
                 $('#cuti_in_jenjang').val('').prop('disabled', true);
                 $('#cuti_inputUnit').empty().append($('<option>', { value: tUnit, text: tUnit })).val(tUnit).prop('disabled', true);
-                $('#cuti_in_npsn').val(data.npsn || 'Auto-fill');
+                
+                var npsnEdit = data.npsn || "";
+                if (!npsnEdit && Array.isArray(CUTI_DB_PEGAWAI)) {
+                    var sPeg = CUTI_DB_PEGAWAI.find(x => String(x.unit || "").trim().toUpperCase() === tUnit.toUpperCase());
+                    if (sPeg && sPeg.npsn) npsnEdit = sPeg.npsn;
+                }
+                $('#cuti_in_npsn').val(npsnEdit || '-');
             } else {
                 $('#cuti_admin_sekolah_container').hide();
                 $('#cuti_user_sekolah_banner').show();
@@ -1277,11 +1283,16 @@
             var sample = CUTI_DB_PEGAWAI_CUTI.find(function(x) {
                 return String(x.unit || "").trim().toUpperCase() === valUnit.toUpperCase();
             });
-            if (sample && sample.npsn) {
-                $('#cuti_in_npsn').val(sample.npsn);
-            } else {
-                $('#cuti_in_npsn').val('Auto-fill');
+            var npsnVal = (sample && sample.npsn) ? sample.npsn : "";
+            
+            if (!npsnVal && Array.isArray(CUTI_DB_PEGAWAI)) {
+                var samplePeg = CUTI_DB_PEGAWAI.find(function(x) {
+                    return String(x.unit || "").trim().toUpperCase() === valUnit.toUpperCase();
+                });
+                if (samplePeg && samplePeg.npsn) npsnVal = samplePeg.npsn;
             }
+            
+            $('#cuti_in_npsn').val(npsnVal || '-');
         } else {
             $('#cuti_in_npsn').val('');
         }
