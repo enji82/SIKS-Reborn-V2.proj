@@ -188,9 +188,6 @@
                         <label class="form-label-sultan">JENJANG <span class="text-danger">*</span></label>
                         <select id="lupa_in_jenjang" class="form-control form-control-sultan font-weight-bold" required>
                             <option value="">- Pilih Jenjang -</option>
-                            <option value="SD">SD</option>
-                            <option value="SMP">SMP</option>
-                            <option value="PAUD">PAUD</option>
                         </select>
                     </div>
                 </div>
@@ -451,10 +448,16 @@
             if (!jg) { $selUnit.prop('disabled', true); return; }
 
             var listUnit = [...new Set(LUPA_DB_PEGAWAI.filter(x => {
-                var u = String(x.unit || "").toUpperCase();
-                if (jg === "SD") return u.includes("SD");
-                if (jg === "SMP") return u.includes("SMP");
-                if (jg === "PAUD") return u.includes("PAUD") || u.includes("TK") || u.includes("KB");
+                var u = String(x.unit || "").trim().toUpperCase();
+                var j = String(x.jenjang || "").trim().toUpperCase();
+                if (j) return j === jg.toUpperCase();
+
+                if (jg === "PAUD / TK" || jg === "PAUD") return (u.includes("TK") || u.includes("PAUD") || u.includes("KOBER") || u.includes("TKN"));
+                if (jg === "SD") return (u.includes("SD") || u.includes("SDN"));
+                if (jg === "SMP") return (u.includes("SMP") || u.includes("SMPN"));
+                if (jg === "SMA") return (u.includes("SMA") || u.includes("SMAN"));
+                if (jg === "SMK") return (u.includes("SMK") || u.includes("SMKN"));
+                if (jg === "NON-FORMAL / SKB") return (u.includes("SKB") || u.includes("PKBM"));
                 return true;
             }).map(x => String(x.unit || "").trim()))].sort();
 
@@ -537,6 +540,7 @@
                         $('#lupa_filterUnit').html(optFilter);
                         $('#lupa_inputUnit').html(optInput);
                     }
+                    lupa_populateJenjang();
                 }
 
                 $('#lupa_btnRefresh, #lupa_btnTambah').prop('disabled', false);
@@ -905,6 +909,7 @@
         if (LUPA_IS_ADMIN) {
             $('#lupa_user_sekolah_banner').hide();
             $('#lupa_admin_sekolah_container').show();
+            lupa_populateJenjang();
             $('#lupa_in_jenjang').val('');
             $('#lupa_in_npsn').val('');
             $('#lupa_inputUnit').val('').prop('disabled', true);
@@ -1225,6 +1230,33 @@
     // =================================================================
     // HELPER UTILITIES
     // =================================================================
+    function lupa_populateJenjang() {
+        var $selJenjang = $('#lupa_in_jenjang').empty().append('<option value="">- Pilih Jenjang -</option>');
+        var setJenjang = new Set();
+
+        if (Array.isArray(LUPA_DB_PEGAWAI) && LUPA_DB_PEGAWAI.length > 0) {
+            LUPA_DB_PEGAWAI.forEach(function(x) {
+                if (x.jenjang && String(x.jenjang).trim()) {
+                    setJenjang.add(String(x.jenjang).trim().toUpperCase());
+                } else {
+                    var unit = String(x.unit || "").trim().toUpperCase();
+                    if (!unit) return;
+                    if (unit.includes("TK") || unit.includes("PAUD") || unit.includes("KOBER") || unit.includes("TKN")) setJenjang.add("PAUD / TK");
+                    else if (unit.includes("SD") || unit.includes("SDN")) setJenjang.add("SD");
+                    else if (unit.includes("SMP") || unit.includes("SMPN")) setJenjang.add("SMP");
+                    else if (unit.includes("SMA") || unit.includes("SMAN")) setJenjang.add("SMA");
+                    else if (unit.includes("SMK") || unit.includes("SMKN")) setJenjang.add("SMK");
+                    else if (unit.includes("SKB") || unit.includes("PKBM")) setJenjang.add("NON-FORMAL / SKB");
+                }
+            });
+        }
+
+        var arrJenjang = Array.from(setJenjang).sort();
+        arrJenjang.forEach(function(j) {
+            $selJenjang.append('<option value="' + lupa_escapeHtml(j) + '">' + lupa_escapeHtml(j) + '</option>');
+        });
+    }
+
     function lupa_formatTanggalIndo(tglStr) { if (!tglStr) return '-'; var parts = tglStr.split('-'); if (parts.length !== 3) return tglStr; var thn = parts[0].length === 4 ? parts[0] : parts[2]; var bln = parts[0].length === 4 ? parts[1] : parts[1]; var tgl = parts[0].length === 4 ? parts[2] : parts[0]; var namaBulan = ["", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"]; return parseInt(tgl, 10) + " " + namaBulan[parseInt(bln, 10)] + " " + thn; }
 
     function lupa_prosesPilihFile(input) {
