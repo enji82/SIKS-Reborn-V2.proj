@@ -104,6 +104,29 @@ function pppkpw_getInitData(unitFilter) {
   try {
     var unitList = [];
     var pegawaiMap = {};
+    var npsnMap = {};
+    var jenjangMap = {};
+    var sekolahMasterList = [];
+
+    // 0. Ambil Data Sekolah Resmi dari Master USER_DB -> Data_Sekolah
+    try {
+      var shSekolah = getSheet("USER_DB", "Data_Sekolah");
+      if (shSekolah && shSekolah.getLastRow() >= 2) {
+        var dSekolah = shSekolah.getRange(2, 1, shSekolah.getLastRow() - 1, 4).getDisplayValues();
+        dSekolah.forEach(function(r) {
+          var npsn = String(r[0] || "").trim();
+          var jenjang = String(r[1] || "").trim();
+          var nama = String(r[2] || "").trim();
+          if (nama) {
+            if (npsn) npsnMap[nama] = npsn;
+            if (jenjang) jenjangMap[nama] = jenjang;
+            sekolahMasterList.push({ npsn: npsn, jenjang: jenjang, nama: nama });
+          }
+        });
+      }
+    } catch (eSek) {
+      Logger.log("pppkpw_getInitData sekolah master error: " + eSek.message);
+    }
 
     // 1. Coba ambil dari Master Data Pegawai Terpadu (PPPK Paruh Waktu)
     var successUnified = false;
@@ -125,6 +148,9 @@ function pppkpw_getInitData(unitFilter) {
             if (unitList.indexOf(unit) === -1) unitList.push(unit);
             if (!pegawaiMap[unit]) pegawaiMap[unit] = [];
             pegawaiMap[unit].push({ nama: nama, nip: nip, jabatan: jabatan });
+
+            // Lengkapi npsnMap dari data pegawai jika belum ada
+            if (p.npsn && !npsnMap[unit]) npsnMap[unit] = String(p.npsn).trim();
           });
           successUnified = unitList.length > 0;
         }
@@ -161,12 +187,36 @@ function pppkpw_getInitData(unitFilter) {
       }
     }
 
+    // Bangun unitObjects (gabungan unitList dengan jenjang & npsn dari Data_Sekolah)
+    var unitObjects = unitList.map(function(u) {
+      return {
+        nama: u,
+        jenjang: jenjangMap[u] || "",
+        npsn: npsnMap[u] || ""
+      };
+    });
+
+    // Ambil daftar unik seluruh jenjang dari sekolahMasterList / unitObjects
+    var setJenjangMaster = new Set();
+    sekolahMasterList.forEach(function(s) { if (s.jenjang) setJenjangMaster.add(s.jenjang.toUpperCase()); });
+    unitObjects.forEach(function(u) { if (u.jenjang) setJenjangMaster.add(u.jenjang.toUpperCase()); });
+    var jenjangList = Array.from(setJenjangMaster).sort();
+
     unitList.sort();
     Object.keys(pegawaiMap).forEach(function(u) {
       pegawaiMap[u].sort(function(a, b) { return a.nama.localeCompare(b.nama); });
     });
     var tahunList = pppkpw_getAvailableTahun();
-    return JSON.stringify({ success: true, unitList: unitList, pegawaiMap: pegawaiMap, tahunList: tahunList });
+    return JSON.stringify({
+      success: true,
+      unitList: unitList,
+      unitObjects: unitObjects,
+      sekolahMasterList: sekolahMasterList,
+      jenjangList: jenjangList,
+      npsnMap: npsnMap,
+      pegawaiMap: pegawaiMap,
+      tahunList: tahunList
+    });
   } catch(e) {
     return JSON.stringify({ success: false, message: e.message });
   }

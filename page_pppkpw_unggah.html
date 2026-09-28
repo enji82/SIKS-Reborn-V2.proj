@@ -666,28 +666,37 @@ function pppkpwunggah_populateJenjang() {
   jenjangSelect.empty().append('<option value="">- Pilih Jenjang -</option>');
   
   var setJenjang = new Set();
-  var rawList = (PPPKPWUNGGAH_INIT_DATA && PPPKPWUNGGAH_INIT_DATA.unitList) ? PPPKPWUNGGAH_INIT_DATA.unitList : [];
-
-  if (rawList && rawList.length > 0) {
-    rawList.forEach(function (u) {
-      var jenjangUnit = typeof u === 'object' ? (u.jenjang || '') : '';
-      if (!jenjangUnit) {
-        var unitName = String(typeof u === 'string' ? u : u.nama || '').toUpperCase();
-        if (unitName.includes("TK") || unitName.includes("PAUD") || unitName.includes("KOBER") || unitName.includes("TKN")) jenjangUnit = "PAUD / TK";
-        else if (unitName.includes("SD") || unitName.includes("SDN")) jenjangUnit = "SD";
-        else if (unitName.includes("SMP") || unitName.includes("SMPN")) jenjangUnit = "SMP";
-        else if (unitName.includes("SMA") || unitName.includes("SMAN")) jenjangUnit = "SMA";
-        else if (unitName.includes("SMK") || unitName.includes("SMKN")) jenjangUnit = "SMK";
-        else if (unitName.includes("SKB") || unitName.includes("PKBM")) jenjangUnit = "NON-FORMAL / SKB";
-        else jenjangUnit = "LAINNYA";
-      }
-      if (jenjangUnit) setJenjang.add(jenjangUnit.toUpperCase());
+  
+  // 1. Ambil dari master jenjangList backend Data_Sekolah
+  if (PPPKPWUNGGAH_INIT_DATA && PPPKPWUNGGAH_INIT_DATA.jenjangList && PPPKPWUNGGAH_INIT_DATA.jenjangList.length > 0) {
+    PPPKPWUNGGAH_INIT_DATA.jenjangList.forEach(function (j) {
+      if (j) setJenjang.add(String(j).trim().toUpperCase());
     });
   }
 
-  // Fallback ke jenjangList dari backend jika unitList belum ter-load
-  if (setJenjang.size === 0 && PPPKPWUNGGAH_INIT_DATA && PPPKPWUNGGAH_INIT_DATA.jenjangList && PPPKPWUNGGAH_INIT_DATA.jenjangList.length > 0) {
-    PPPKPWUNGGAH_INIT_DATA.jenjangList.forEach(function (j) { setJenjang.add(String(j).toUpperCase()); });
+  // 2. Ambil dari unitObjects / sekolahMasterList
+  var masterSekolah = (PPPKPWUNGGAH_INIT_DATA && PPPKPWUNGGAH_INIT_DATA.sekolahMasterList) ? PPPKPWUNGGAH_INIT_DATA.sekolahMasterList : [];
+  masterSekolah.forEach(function(s) {
+    if (s.jenjang) setJenjang.add(String(s.jenjang).trim().toUpperCase());
+  });
+
+  var unitObjs = (PPPKPWUNGGAH_INIT_DATA && PPPKPWUNGGAH_INIT_DATA.unitObjects) ? PPPKPWUNGGAH_INIT_DATA.unitObjects : [];
+  unitObjs.forEach(function(u) {
+    if (u.jenjang) setJenjang.add(String(u.jenjang).trim().toUpperCase());
+  });
+
+  // Fallback parsial jika belum ada kolom jenjang
+  if (setJenjang.size === 0) {
+    var rawList = (PPPKPWUNGGAH_INIT_DATA && PPPKPWUNGGAH_INIT_DATA.unitList) ? PPPKPWUNGGAH_INIT_DATA.unitList : [];
+    rawList.forEach(function (u) {
+      var unitName = String(typeof u === 'string' ? u : u.nama || '').toUpperCase();
+      if (unitName.includes("TK") || unitName.includes("PAUD") || unitName.includes("KOBER") || unitName.includes("TKN")) setJenjang.add("TK");
+      else if (unitName.includes("SD") || unitName.includes("SDN")) setJenjang.add("SD");
+      else if (unitName.includes("SMP") || unitName.includes("SMPN")) setJenjang.add("SMP");
+      else if (unitName.includes("SMA") || unitName.includes("SMAN")) setJenjang.add("SMA");
+      else if (unitName.includes("SMK") || unitName.includes("SMKN")) setJenjang.add("SMK");
+      else if (unitName.includes("SKB") || unitName.includes("PKBM")) setJenjang.add("NON-FORMAL / SKB");
+    });
   }
 
   var arrJenjang = Array.from(setJenjang).sort();
@@ -711,31 +720,63 @@ function pppkpwunggah_filterUnitByJenjang(jenjangVal, selectedUnit) {
   unitSelect.prop('disabled', false);
   var jg = String(jenjangVal).toUpperCase();
 
-  var rawList = (PPPKPWUNGGAH_INIT_DATA && PPPKPWUNGGAH_INIT_DATA.unitList) ? PPPKPWUNGGAH_INIT_DATA.unitList : [];
-  rawList.forEach(function (u) {
-    var namaUnit = typeof u === 'string' ? u : u.nama;
-    var jenjangUnit = typeof u === 'object' ? (u.jenjang || '') : '';
-    
-    if (!jenjangUnit) {
-      var uName = String(namaUnit || '').toUpperCase();
-      if (jg === "PAUD / TK" || jg === "PAUD") {
-        if (uName.includes("TK") || uName.includes("PAUD") || uName.includes("KOBER") || uName.includes("TKN")) jenjangUnit = jg;
+  // Pari-mutuel matching: Ambil sekolah yang jenjangnya sesuai dari master Data_Sekolah / unitObjects
+  var matchedUnits = new Set();
+  var sekolahMaster = (PPPKPWUNGGAH_INIT_DATA && PPPKPWUNGGAH_INIT_DATA.sekolahMasterList) ? PPPKPWUNGGAH_INIT_DATA.sekolahMasterList : [];
+  sekolahMaster.forEach(function(s) {
+    var j = String(s.jenjang || '').toUpperCase();
+    if (j === jg) {
+      matchedUnits.add(s.nama);
+    }
+  });
+
+  var unitObjs = (PPPKPWUNGGAH_INIT_DATA && PPPKPWUNGGAH_INIT_DATA.unitObjects) ? PPPKPWUNGGAH_INIT_DATA.unitObjects : [];
+  unitObjs.forEach(function(u) {
+    var j = String(u.jenjang || '').toUpperCase();
+    if (j === jg) {
+      matchedUnits.add(u.nama);
+    } else if (!j) {
+      // Fallback matching
+      var uName = String(u.nama || '').toUpperCase();
+      if (jg === "TK" || jg === "PAUD / TK" || jg === "PAUD") {
+        if (uName.includes("TK") || uName.includes("PAUD") || uName.includes("KOBER") || uName.includes("TKN")) matchedUnits.add(u.nama);
       } else if (jg === "SD") {
-        if (uName.includes("SD") || uName.includes("SDN")) jenjangUnit = jg;
+        if (uName.includes("SD") || uName.includes("SDN")) matchedUnits.add(u.nama);
       } else if (jg === "SMP") {
-        if (uName.includes("SMP") || uName.includes("SMPN")) jenjangUnit = jg;
+        if (uName.includes("SMP") || uName.includes("SMPN")) matchedUnits.add(u.nama);
       } else if (jg === "SMA") {
-        if (uName.includes("SMA") || uName.includes("SMAN")) jenjangUnit = jg;
+        if (uName.includes("SMA") || uName.includes("SMAN")) matchedUnits.add(u.nama);
       } else if (jg === "SMK") {
-        if (uName.includes("SMK") || uName.includes("SMKN")) jenjangUnit = jg;
-      } else if (jg === "NON-FORMAL / SKB") {
-        if (uName.includes("SKB") || uName.includes("PKBM")) jenjangUnit = jg;
+        if (uName.includes("SMK") || uName.includes("SMKN")) matchedUnits.add(u.nama);
       }
     }
+  });
 
-    if (!jenjangUnit || jenjangUnit.toUpperCase() === jg) {
-      unitSelect.append('<option value="' + namaUnit + '">' + namaUnit + '</option>');
-    }
+  // Jika matchedUnits kosong, tampilkan unitList yang mengandung kata jenjang
+  if (matchedUnits.size === 0) {
+    var rawList = (PPPKPWUNGGAH_INIT_DATA && PPPKPWUNGGAH_INIT_DATA.unitList) ? PPPKPWUNGGAH_INIT_DATA.unitList : [];
+    rawList.forEach(function(u) {
+      var namaUnit = typeof u === 'string' ? u : u.nama;
+      var uName = String(namaUnit || '').toUpperCase();
+      if (jg === "TK" || jg === "PAUD / TK" || jg === "PAUD") {
+        if (uName.includes("TK") || uName.includes("PAUD") || uName.includes("KOBER") || uName.includes("TKN")) matchedUnits.add(namaUnit);
+      } else if (jg === "SD") {
+        if (uName.includes("SD") || uName.includes("SDN")) matchedUnits.add(namaUnit);
+      } else if (jg === "SMP") {
+        if (uName.includes("SMP") || uName.includes("SMPN")) matchedUnits.add(namaUnit);
+      } else if (jg === "SMA") {
+        if (uName.includes("SMA") || uName.includes("SMAN")) matchedUnits.add(namaUnit);
+      } else if (jg === "SMK") {
+        if (uName.includes("SMK") || uName.includes("SMKN")) matchedUnits.add(namaUnit);
+      } else {
+        matchedUnits.add(namaUnit);
+      }
+    });
+  }
+
+  var sortedUnits = Array.from(matchedUnits).sort();
+  sortedUnits.forEach(function(uName) {
+    unitSelect.append('<option value="' + uName + '">' + uName + '</option>');
   });
 
   if (selectedUnit) {
