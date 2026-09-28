@@ -453,6 +453,7 @@
     var PTKSDS_UNIT_TERKUNCI = "";
     var PTKSDS_USER_NPSN = "";
     var PTKSDS_MAP_UNIT_NPSN = {};
+    var PTKSDS_MASTER_SEKOLAH = [];
 
     // Jalankan inisialisasi secara langsung untuk menjamin keaktifan di SPA saat kembali dari menu lain
     (function () {
@@ -584,22 +585,45 @@
         $('#ptksds_loadingText').html('Mengambil data SDS dari server...');
         SultanUI.showLoading('#ptksds_loadingState');
 
-        google.script.run.withSuccessHandler(function (jsonStr) {
+        var ptkPromise = new Promise(function(resolve, reject) {
+            google.script.run
+                .withSuccessHandler(resolve)
+                .withFailureHandler(reject)
+                .getDataPTKSDS();
+        });
+
+        var sekolahPromise = new Promise(function(resolve, reject) {
+            google.script.run
+                .withSuccessHandler(resolve)
+                .withFailureHandler(reject)
+                .getAdmSekolahMasterData("");
+        });
+
+        Promise.all([ptkPromise, sekolahPromise]).then(function(results) {
             btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-maroon"></i>');
             try {
-                var res = JSON.parse(jsonStr);
+                var res = JSON.parse(results[0]);
                 if (res.error) { ptksds_updateTabelKosong('<div class="text-danger font-weight-bold py-3"><i class="fas fa-exclamation-triangle fa-2x mb-3"></i><br>' + ptksds_escapeHtml(res.error) + '</div>'); return; }
                 PTKSDS_CACHE_DATA = res;
+
+                var sekolahRes = results[1];
+                if (sekolahRes && sekolahRes.sekolah) {
+                    PTKSDS_MASTER_SEKOLAH = sekolahRes.sekolah.filter(function(s) {
+                        var jg = String(s.jenjang || "").trim().toUpperCase();
+                        return jg === "SD" || jg.includes("SD");
+                    });
+                }
+
                 ptksds_populateFilterOptions();
                 ptksds_terapkanFilterLokal();
 
                 SultanUI.hideLoading('#ptksds_loadingState');
                 $('#ptksds_tableState').show();
             } catch (e) { ptksds_updateTabelKosong('<div class="text-danger">Format JSON gagal diparsing.</div>'); }
-        }).withFailureHandler(function (e) {
+        }).catch(function(e) {
             btn.prop('disabled', false).html('<i class="fas fa-sync-alt text-danger"></i>');
             ptksds_updateTabelKosong('<div class="p-4 text-center text-danger font-weight-bold"><i class="fas fa-exclamation-triangle mr-2"></i>Koneksi Server Terputus.</div>');
-        }).getDataPTKSDS();
+        });
     }
 
     // =================================================================
@@ -930,7 +954,17 @@
             $('#ptksds_pilih_sekolah_container').show();
             $('#ptksds_user_sekolah_banner').hide();
             var $selUnit = $('#ptksds_inputUnit').empty().append('<option value="">- Pilih Unit Kerja -</option>');
-            Object.keys(PTKSDS_MAP_UNIT_NPSN).sort().forEach(function (u) { $selUnit.append($('<option>', { value: u, text: u })); });
+            var unitList = new Set(Object.keys(PTKSDS_MAP_UNIT_NPSN));
+            if (unitList.size === 0 && PTKSDS_MASTER_SEKOLAH && PTKSDS_MASTER_SEKOLAH.length > 0) {
+                PTKSDS_MASTER_SEKOLAH.forEach(function(s) {
+                    var nm = s.nama || s.nama_lembaga;
+                    if (nm) {
+                        unitList.add(nm);
+                        if (s.npsn) PTKSDS_MAP_UNIT_NPSN[nm] = s.npsn;
+                    }
+                });
+            }
+            Array.from(unitList).sort().forEach(function (u) { $selUnit.append($('<option>', { value: u, text: u })); });
             $selUnit.prop('disabled', false).off('change.npsn').on('change.npsn', ptksds_updateNpsnFromUnit);
             $('#ptksds_hintMutasiAdmin').removeClass('d-none');
         } else {
@@ -960,7 +994,17 @@
 
         if (PTKSDS_IS_ADMIN) {
             var $selUnit = $('#ptksds_inputUnit').empty().append('<option value="">- Pilih Unit Kerja -</option>');
-            Object.keys(PTKSDS_MAP_UNIT_NPSN).sort().forEach(function (u) { $selUnit.append($('<option>', { value: u, text: u })); });
+            var unitList = new Set(Object.keys(PTKSDS_MAP_UNIT_NPSN));
+            if (unitList.size === 0 && PTKSDS_MASTER_SEKOLAH && PTKSDS_MASTER_SEKOLAH.length > 0) {
+                PTKSDS_MASTER_SEKOLAH.forEach(function(s) {
+                    var nm = s.nama || s.nama_lembaga;
+                    if (nm) {
+                        unitList.add(nm);
+                        if (s.npsn) PTKSDS_MAP_UNIT_NPSN[nm] = s.npsn;
+                    }
+                });
+            }
+            Array.from(unitList).sort().forEach(function (u) { $selUnit.append($('<option>', { value: u, text: u })); });
             $selUnit.prop('disabled', false).val(row.unit).off('change.npsn').on('change.npsn', ptksds_updateNpsnFromUnit);
             $('#ptksds_hintMutasiAdmin').removeClass('d-none');
         } else {
