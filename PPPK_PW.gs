@@ -640,7 +640,13 @@ function pppkpw_getDashboardData(unitFilter, tahun, forceRefresh) {
     });
 
     var detailUnit = [];
-    Object.keys(unitMap).forEach(function(k) { detailUnit.push(unitMap[k]); });
+    Object.keys(unitMap).forEach(function(k) {
+      var item = unitMap[k];
+      item.npsn = npsnMap[k] || k;
+      item.namaSekolah = k;
+      item.jenjang = jenjangMap[k] || "";
+      detailUnit.push(item);
+    });
     detailUnit.sort(function(a, b) { return a.unit.localeCompare(b.unit); });
 
     var totPegawai = 0, totSudah = 0, totBelum = 0, totDiverifikasi = 0, totDiproses = 0, totDitolak = 0;
@@ -1338,7 +1344,13 @@ function pppkpw_spmt_getDashboardData(unitFilter, tahun, forceRefresh) {
     });
 
     var detailUnit = [];
-    Object.keys(unitMap).forEach(function(k) { detailUnit.push(unitMap[k]); });
+    Object.keys(unitMap).forEach(function(k) {
+      var item = unitMap[k];
+      item.npsn = k;
+      item.namaSekolah = k;
+      item.jenjang = "";
+      detailUnit.push(item);
+    });
     detailUnit.sort(function(a, b) { return a.unit.localeCompare(b.unit); });
 
     var totPegawai = 0, totSudah = 0, totBelum = 0, totDiverifikasi = 0, totDiproses = 0, totDitolak = 0;
