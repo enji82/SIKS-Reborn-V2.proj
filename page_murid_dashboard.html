@@ -505,30 +505,30 @@ body.dark-mode #muriddash_loadingState .sultan-skeleton {
 
   // ─── Tampilkan Skeleton Screen ────────────────────────────────────────────
   function muriddash_showSkeleton() {
-    $('#muriddash_dashboardState').hide();
-    $('#muriddash_loadingState').show();
+    if ($("#muriddash_dashboardState").is(":visible") || MURIDDASH_HAS_LOADED) {
+      $("#muriddash_dashboardState").css({"opacity": "0.45", "pointer-events": "none", "transition": "opacity 0.2s ease"});
+    } else {
+      $("#muriddash_dashboardState").hide();
+      $("#muriddash_loadingState").show();
+    }
   }
 
   // ─── Update visibilitas filter bar sesuai mode & role ────────────────────
   function muriddash_updateFilterBarControls() {
-    $('#muriddash_filterBar').removeClass('d-none');
+    $("#muriddash_filterBar").removeClass("d-none");
 
-    if (MURIDDASH_CURRENT_MODE === 'rekap') {
-      // Rekap: tampilkan filter jenjang rekap, sembunyikan semua filter unit
-      $('#muriddash_filterJenjangRekapContainer').removeClass('d-none');
-      $('#muriddash_filterJenjangUnitContainer').addClass('d-none');
-      $('#muriddash_filterUnitSekolahContainer').addClass('d-none');
+    if (MURIDDASH_CURRENT_MODE === "rekap") {
+      $("#muriddash_filterJenjangRekapContainer").removeClass("d-none");
+      $("#muriddash_filterJenjangUnitContainer").addClass("d-none");
+      $("#muriddash_filterUnitSekolahContainer").addClass("d-none");
     } else {
-      // Unit: sembunyikan jenjang rekap
-      $('#muriddash_filterJenjangRekapContainer').addClass('d-none');
+      $("#muriddash_filterJenjangRekapContainer").addClass("d-none");
       if (MURIDDASH_IS_ADMIN) {
-        // Admin — tampilkan jenjang unit & pilih sekolah
-        $('#muriddash_filterJenjangUnitContainer').removeClass('d-none');
-        $('#muriddash_filterUnitSekolahContainer').removeClass('d-none');
+        $("#muriddash_filterJenjangUnitContainer").removeClass("d-none");
+        $("#muriddash_filterUnitSekolahContainer").removeClass("d-none");
       } else {
-        // User — sembunyikan semua filter (data otomatis sekolah sendiri)
-        $('#muriddash_filterJenjangUnitContainer').addClass('d-none');
-        $('#muriddash_filterUnitSekolahContainer').addClass('d-none');
+        $("#muriddash_filterJenjangUnitContainer").addClass("d-none");
+        $("#muriddash_filterUnitSekolahContainer").addClass("d-none");
       }
     }
     muriddash_updateViewTab();
@@ -537,26 +537,26 @@ body.dark-mode #muriddash_loadingState .sultan-skeleton {
   // ─── Update tampilan konten SD vs PAUD ───────────────────────────────────
   function muriddash_updateViewTab() {
     var jenjangVal;
-    if (MURIDDASH_CURRENT_MODE === 'rekap') {
-      jenjangVal = $('#muriddash_filterJenjangRekap').val() || 'SD';
+    if (MURIDDASH_CURRENT_MODE === "rekap") {
+      jenjangVal = $("#muriddash_filterJenjangRekap").val() || "SD";
     } else {
       if (MURIDDASH_IS_ADMIN) {
-        var jUnit = $('#muriddash_filterJenjangUnit').val() || '';
-        jenjangVal = (jUnit === 'SD') ? 'SD' : (jUnit ? 'PAUD' : 'SD');
+        var jUnit = $("#muriddash_filterJenjangUnit").val() || "";
+        jenjangVal = (jUnit === "SD") ? "SD" : (jUnit ? "PAUD" : "SD");
       } else {
-        jenjangVal = MURIDDASH_USER_JENJANG || 'SD';
+        jenjangVal = MURIDDASH_USER_JENJANG || "SD";
       }
     }
 
-    if (jenjangVal === 'SD') {
-      $('#muriddash_viewSd').show();
-      $('#muriddash_viewPaud').hide();
+    if (jenjangVal === "SD") {
+      $("#muriddash_viewSd").show();
+      $("#muriddash_viewPaud").hide();
     } else {
-      $('#muriddash_viewSd').hide();
-      $('#muriddash_viewPaud').show();
+      $("#muriddash_viewSd").hide();
+      $("#muriddash_viewPaud").show();
     }
 
-    if (typeof MURIDDASH_CACHE_CHART !== 'undefined' && MURIDDASH_CACHE_CHART) {
+    if (typeof MURIDDASH_CACHE_CHART !== "undefined" && MURIDDASH_CACHE_CHART) {
       muriddash_renderChart(MURIDDASH_CACHE_CHART);
     }
   }
@@ -567,79 +567,79 @@ body.dark-mode #muriddash_loadingState .sultan-skeleton {
     var master = window.DASHSK_MASTER_SEKOLAH || [];
     var jenjangSet = {};
     master.forEach(function(s) {
-      var j = String(s.jenjang || '').trim().toUpperCase();
+      var j = String(s.jenjang || "").trim().toUpperCase();
       if (j) jenjangSet[j] = true;
     });
-    var $selJenjangUnit = $('#muriddash_filterJenjangUnit');
+    var $selJenjangUnit = $("#muriddash_filterJenjangUnit");
     if (Object.keys(jenjangSet).length > 0) {
-      $selJenjangUnit.empty().append('<option value="">Pilih Jenjang...</option>');
-      ['SD', 'TK', 'KB', 'SPS'].forEach(function(j) {
-        if (jenjangSet[j]) $selJenjangUnit.append('<option value="' + j + '">' + j + '</option>');
+      $selJenjangUnit.empty().append("<option value=\"\">Pilih Jenjang...</option>");
+      ["SD", "TK", "KB", "SPS"].forEach(function(j) {
+        if (jenjangSet[j]) $selJenjangUnit.append("<option value=\"" + j + "\">" + j + "</option>");
       });
     }
-    muriddash_populateSekolahByJenjang($selJenjangUnit.val() || '');
+    muriddash_populateSekolahByJenjang($selJenjangUnit.val() || "");
   }
 
   function muriddash_populateSekolahByJenjang(jenjangFilter) {
     var master = window.DASHSK_MASTER_SEKOLAH || [];
-    var $sel = $('#muriddash_filterUnitSekolah');
-    $sel.empty().append('<option value="">Pilih Sekolah...</option>');
+    var $sel = $("#muriddash_filterUnitSekolah");
+    $sel.empty().append("<option value=\"\">Pilih Sekolah...</option>");
     var list = jenjangFilter
-      ? master.filter(function(s) { return String(s.jenjang || '').toUpperCase() === jenjangFilter.toUpperCase(); })
+      ? master.filter(function(s) { return String(s.jenjang || "").toUpperCase() === jenjangFilter.toUpperCase(); })
       : master;
-    list.sort(function(a, b) { return String(a.namaSekolah || a.nama || '').localeCompare(String(b.namaSekolah || b.nama || '')); });
+    list.sort(function(a, b) { return String(a.namaSekolah || a.nama || "").localeCompare(String(b.namaSekolah || b.nama || "")); });
     list.forEach(function(s) {
-      var npsn = s.npsn || s.id || '';
+      var npsn = s.npsn || s.id || "";
       var nama = s.namaSekolah || s.nama || s.unit || npsn;
-      $sel.append('<option value="' + npsn + '">' + nama + '</option>');
+      $sel.append("<option value=\"" + npsn + "\">" + nama + "</option>");
     });
-    $sel.val('');
+    $sel.val("");
   }
 
   // ─── Load Data Dashboard ──────────────────────────────────────────────────
   function muriddash_loadDashboard() {
-    var th = $('#muriddash_filterTahun').val() || new Date().getFullYear();
-    var bl = $('#muriddash_filterBulan').val();
-    var namaBulan = $('#muriddash_filterBulan option:selected').text();
+    var th = $("#muriddash_filterTahun").val() || new Date().getFullYear();
+    var bl = $("#muriddash_filterBulan").val();
+    var namaBulan = $("#muriddash_filterBulan option:selected").text();
 
-    if (typeof SultanUI !== 'undefined' && SultanUI.setRefreshLoading) {
-      SultanUI.setRefreshLoading('#muriddash_btnRefresh', true);
+    if (typeof SultanUI !== "undefined" && SultanUI.setRefreshLoading) {
+      SultanUI.setRefreshLoading("#muriddash_btnRefresh", true);
     }
     muriddash_showSkeleton();
 
-    $('#muriddash_labelBulanSd, #muriddash_labelBulanPaud').text(namaBulan.toUpperCase());
-    $('#muriddash_labelTahunGrafik').text(th);
+    $("#muriddash_labelBulanSd, #muriddash_labelBulanPaud").text(namaBulan.toUpperCase());
+    $("#muriddash_labelTahunGrafik").text(th);
 
-    var filterNpsn = (MURIDDASH_CURRENT_MODE === 'unit') ? (MURIDDASH_IS_ADMIN ? MURIDDASH_SELECTED_NPSN : MURIDDASH_USER_NPSN) : "";
-    var filterUnit = (MURIDDASH_CURRENT_MODE === 'unit') ? (MURIDDASH_IS_ADMIN ? "" : MURIDDASH_USER_UNIT) : "";
+    var filterNpsn = (MURIDDASH_CURRENT_MODE === "unit") ? (MURIDDASH_IS_ADMIN ? MURIDDASH_SELECTED_NPSN : MURIDDASH_USER_NPSN) : "";
+    var filterUnit = (MURIDDASH_CURRENT_MODE === "unit") ? (MURIDDASH_IS_ADMIN ? "" : MURIDDASH_USER_UNIT) : "";
 
     google.script.run
       .withSuccessHandler(function(jsonString) {
-        if (typeof SultanUI !== 'undefined' && SultanUI.setRefreshLoading) {
-          SultanUI.setRefreshLoading('#muriddash_btnRefresh', false);
+        if (typeof SultanUI !== "undefined" && SultanUI.setRefreshLoading) {
+          SultanUI.setRefreshLoading("#muriddash_btnRefresh", false);
         }
-        if (typeof SultanUI !== 'undefined') {
-          SultanUI.hideLoading('#muriddash_loadingState');
-        } else {
-          $('#muriddash_loadingState').hide();
-        }
+        $("#muriddash_loadingState").hide();
+        $("#muriddash_dashboardState").css({"opacity": "1", "pointer-events": "auto"}).show();
         try {
-          var data = typeof jsonString === 'string' ? JSON.parse(jsonString) : jsonString;
-          MURIDDASH_HAS_LOADED = true; MURIDDASH_CACHE_CHART = data.chart;
+          var data = typeof jsonString === "string" ? JSON.parse(jsonString) : jsonString;
+          MURIDDASH_HAS_LOADED = true;
+          MURIDDASH_CACHE_CHART = data.chart;
           muriddash_renderCards(data.cards);
           muriddash_updateViewTab();
           muriddash_renderChart(data.chart);
-          $('#muriddash_dashboardState').fadeIn();
         } catch(e) {
           console.error("Gagal membaca struktur data murid: ", e);
         }
       })
       .withFailureHandler(function(e) {
-        if (typeof SultanUI !== 'undefined' && SultanUI.setRefreshLoading) {
-          SultanUI.setRefreshLoading('#muriddash_btnRefresh', false);
+        if (typeof SultanUI !== "undefined" && SultanUI.setRefreshLoading) {
+          SultanUI.setRefreshLoading("#muriddash_btnRefresh", false);
         }
-        if (typeof SultanUI !== 'undefined') {
-          SultanUI.showLoadingError('#muriddash_loadingState', e.message || 'Gagal memuat data');
+        $("#muriddash_dashboardState").css({"opacity": "1", "pointer-events": "auto"}).show();
+        if (typeof SultanUI !== "undefined" && SultanUI.showToast) {
+          SultanUI.showToast("Gagal memuat data: " + (e.message || "Server error"), "error");
+        } else {
+          alert("Gagal memuat data: " + (e.message || "Server error"));
         }
       })
       .getDashboardMuridData(th, bl, filterNpsn, filterUnit);
