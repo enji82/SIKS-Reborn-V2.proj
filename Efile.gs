@@ -801,7 +801,7 @@ function getEfileDashboardInit(npsnFilter) {
       var rNama = String(dataSekolah[s][2]).trim();
       if (rNama && !mapSekolahSeen[rNama]) {
         mapSekolahSeen[rNama] = true;
-        listSekolahMaster.push({ npsn: rNpsn, unit: rNama, jenjang: rJenjang });
+        listSekolahMaster.push({ npsn: rNpsn, namaSekolah: rNama, nama: rNama, unit: rNama, jenjang: rJenjang });
       }
     }
 
@@ -813,10 +813,10 @@ function getEfileDashboardInit(npsnFilter) {
     ptkListRaw.forEach(function(p) {
       if (p.unit && !mapUnitSeen[p.unit]) {
         mapUnitSeen[p.unit] = true;
-        listUnitKerja.push({ npsn: p.npsn, unit: p.unit, jenjang: p.jenjang || "" });
+        listUnitKerja.push({ npsn: p.npsn, namaSekolah: p.unit, nama: p.unit, unit: p.unit, jenjang: p.jenjang || "" });
         if (!mapSekolahSeen[p.unit]) {
           mapSekolahSeen[p.unit] = true;
-          listSekolahMaster.push({ npsn: p.npsn, unit: p.unit, jenjang: p.jenjang || "" });
+          listSekolahMaster.push({ npsn: p.npsn, namaSekolah: p.unit, nama: p.unit, unit: p.unit, jenjang: p.jenjang || "" });
         }
       }
       if (npsnFilter && npsnFilter !== "SEMUA" && (p.npsn === npsnFilter || p.unit === npsnFilter)) {
