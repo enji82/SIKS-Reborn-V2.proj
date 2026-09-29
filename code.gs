@@ -1458,3 +1458,84 @@ function hapusAdmSekolah(rowId, securityCode) {
     return JSON.stringify({ success: false, message: e.message });
   }
 }
+
+/* ======================================================================
+   HELPER UTAMA CACHING DATA BESAR TERPUSAT (CHUNKING CacheService)
+   Mendukung data string berukuran > 100KB tanpa batas bawaan Gas
+   ====================================================================== */
+function putLargeCache(cacheKey, dataString, ttlSeconds) {
+  if (!cacheKey || typeof dataString !== 'string') return;
+  var ttl = ttlSeconds || 1800;
+  var cache = CacheService.getScriptCache();
+  var chunkSize = 85000;
+
+  if (dataString.length <= chunkSize) {
+    try {
+      cache.put(cacheKey, dataString, ttl);
+      cache.remove(cacheKey + "_meta");
+    } catch(e) {
+      Logger.log("putLargeCache single put error: " + e.message);
+    }
+    return;
+  }
+
+  var numChunks = Math.ceil(dataString.length / chunkSize);
+  var chunksMap = {};
+  chunksMap[cacheKey + "_meta"] = JSON.stringify({ count: numChunks, len: dataString.length });
+  for (var i = 0; i < numChunks; i++) {
+    chunksMap[cacheKey + "_chunk_" + i] = dataString.substring(i * chunkSize, (i + 1) * chunkSize);
+  }
+
+  try {
+    cache.putAll(chunksMap, ttl);
+    cache.remove(cacheKey);
+  } catch(e) {
+    Logger.log("putLargeCache chunk putAll error: " + e.message);
+  }
+}
+
+function getLargeCache(cacheKey) {
+  if (!cacheKey) return null;
+  var cache = CacheService.getScriptCache();
+  var metaStr = cache.get(cacheKey + "_meta");
+  if (metaStr) {
+    try {
+      var meta = JSON.parse(metaStr);
+      var chunkKeys = [];
+      for (var i = 0; i < meta.count; i++) {
+        chunkKeys.push(cacheKey + "_chunk_" + i);
+      }
+      var chunks = cache.getAll(chunkKeys);
+      var result = "";
+      for (var j = 0; j < meta.count; j++) {
+        var part = chunks[cacheKey + "_chunk_" + j];
+        if (!part) return null;
+        result += part;
+      }
+      return result;
+    } catch(e) {
+      Logger.log("getLargeCache error: " + e.message);
+    }
+  }
+  return cache.get(cacheKey);
+}
+
+function removeLargeCache(cacheKey) {
+  if (!cacheKey) return;
+  var cache = CacheService.getScriptCache();
+  try {
+    var metaStr = cache.get(cacheKey + "_meta");
+    if (metaStr) {
+      var meta = JSON.parse(metaStr);
+      var keysToRemove = [cacheKey, cacheKey + "_meta"];
+      for (var i = 0; i < meta.count; i++) {
+        keysToRemove.push(cacheKey + "_chunk_" + i);
+      }
+      cache.removeAll(keysToRemove);
+    } else {
+      cache.remove(cacheKey);
+    }
+  } catch(e) {
+    cache.remove(cacheKey);
+  }
+}

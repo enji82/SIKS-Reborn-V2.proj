@@ -33,7 +33,17 @@ function getOrCreateSheetKombel(sheetName) {
 }
 
 function invalidateKombelDashboardCache() {
-  try { CacheService.getScriptCache().remove("KOMBEL_DASHBOARD_CACHE"); } catch(e) {}
+  try {
+    removeLargeCache("KOMBEL_DASHBOARD_CACHE");
+    var shKat = getOrCreateSheetKombel("Master_Kategori");
+    if (shKat) {
+      var dataKat = shKat.getDataRange().getDisplayValues();
+      for (var i = 1; i < dataKat.length; i++) {
+        var idKat = String(dataKat[i][0]).trim();
+        if (idKat) removeLargeCache("KOMBEL_DASH_" + idKat);
+      }
+    }
+  } catch(e) {}
 }
 
 /* ---------------------------------------------------------------------- */
@@ -283,6 +293,12 @@ function hapusKombelDokumen(rowId) {
 
 function getKombelDashboardData(idKategori, forceRefresh) {
   try {
+    var cacheKey = "KOMBEL_DASH_" + (idKategori || "ALL");
+    if (!forceRefresh) {
+      var cached = getLargeCache(cacheKey);
+      if (cached) return cached;
+    }
+
     var shSekolah = getSheet("USER_DB","Data_Sekolah");
     var dataSekolah = shSekolah ? shSekolah.getDataRange().getDisplayValues() : [];
     var sekolahMap = {}, allSekolah = [];
@@ -318,6 +334,8 @@ function getKombelDashboardData(idKategori, forceRefresh) {
       if (jenjangKat!=="SEMUA"&&sk.jenjang.indexOf(jenjangKat)===-1&&jenjangKat!==sk.jenjang) return;
       if (!npsnHadUpload[sk.npsn]) belum.push({npsn:sk.npsn,nama:sk.nama,jenjang:sk.jenjang});
     });
-    return JSON.stringify({success:true,rekap:rekap,belum:belum,jenisPeriode:katInfo.jenisPeriode,kategori:katDashboard,sekolah:allSekolah});
+    var resString = JSON.stringify({success:true,rekap:rekap,belum:belum,jenisPeriode:katInfo.jenisPeriode,kategori:katDashboard,sekolah:allSekolah});
+    try { putLargeCache(cacheKey, resString, 1800); } catch(ce) {}
+    return resString;
   } catch(e) { return JSON.stringify({success:false,message:e.message}); }
 }

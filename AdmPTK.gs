@@ -41,24 +41,22 @@ function getOrCreateSheetAdmPtk(sheetName) {
    Filter: berdasarkan NPSN jika user bukan admin
    ----------------------------------------------------------------------- */
 function admPtk_getDaftarPtk(npsnFilter) {
-  /* Mapping DB key yang benar per jenjang:
-     - SD & SDS  → PTK_DB      (1t0-Lmy0YD_GxHzimFWJGh5R5x6RhGL13uqKeVwWoCYE)
-     - PAUD      → PTK_PAUD_DB (1XetGkBymmN2NZQlXpzZ2MQyG0nhhZ0sXEPcNsLffhEU)
-     Kolom berbeda antar jenjang:
-     - SD/SDS : A=ID(0) B=NPSN(1) C=Unit(2) G=NamaLengkap(6) H=NIP(7)  T=StatusPeg(19) Z=Tugas(25)
-     - PAUD   : A=ID(0) B=NPSN(1) C=Unit(2) H=NamaLengkap(7) I=NIY(8)  U=StatusPeg(20)
-     CATATAN: filter bisa berupa NPSN angka ATAU nama unit/sekolah (dari user.unit sesi login).
-     Gunakan try/catch per-sheet agar error satu jenjang tidak mempengaruhi lainnya. */
+  var targetNpsn = String(npsnFilter || "").trim().toUpperCase();
+  var cacheKey = "ADM_PTK_LIST_" + (targetNpsn || "ALL");
+  var cachedStr = getLargeCache(cacheKey);
+  if (cachedStr) {
+    try { return JSON.parse(cachedStr); } catch(ce) {}
+  }
+
   var sheets = [
     { dbKey: "PTK_DB",      sheetName: "Master Data GTK",      jenjang: "SD",   namaCol: 6, namaNoGelarCol: 4, nipCol: 7,  statusCol: 19, tugasCol: 25, colCount: 26 },
     { dbKey: "PTK_PAUD_DB", sheetName: "Master Data GTK PAUD", jenjang: "PAUD", namaCol: 7, namaNoGelarCol: 5, nipCol: 8,  statusCol: 20, tugasCol: -1, colCount: 26 },
     { dbKey: "PTK_DB",      sheetName: "Master Data GTK SDS",  jenjang: "SDS",  namaCol: 6, namaNoGelarCol: 4, nipCol: 7,  statusCol: 19, tugasCol: 20, colCount: 26 }
   ];
   var result = [];
-  var targetNpsn = String(npsnFilter || "").trim().toUpperCase();
   // Cek apakah filter berupa angka NPSN murni atau nama sekolah
   var filterIsNpsn = /^[0-9]+$/.test(targetNpsn);
- 
+
   sheets.forEach(function(s) {
     try {
       var sheet = getSheet(s.dbKey, s.sheetName);
@@ -103,6 +101,7 @@ function admPtk_getDaftarPtk(npsnFilter) {
   });
 
   result.sort(function(a, b) { return a.nama.localeCompare(b.nama); });
+  try { putLargeCache(cacheKey, JSON.stringify(result), 1800); } catch(ce) {}
   return result;
 }
 
@@ -513,7 +512,7 @@ function getAdmPtkDashboardData(idKategori, npsnFilter, jenjangFilter, forceRefr
   try {
     var cacheKey = "ADM_PTK_DASH_" + idKategori + "_" + (npsnFilter || "ALL") + "_" + (jenjangFilter || "ALL");
     if (!forceRefresh) {
-      var cached = CacheService.getScriptCache().get(cacheKey);
+      var cached = getLargeCache(cacheKey);
       if (cached) return cached;
     }
 
@@ -572,16 +571,14 @@ function getAdmPtkDashboardData(idKategori, npsnFilter, jenjangFilter, forceRefr
     var dataDoc = shDoc ? shDoc.getDataRange().getDisplayValues() : [];
 
     // Bangun set periode
-    // Dapatkan Tahun Pelajaran saat ini secara dinamis berdasarkan bulan
     var curDate = new Date();
-    var curMonth = curDate.getMonth(); // 0 = Jan, 6 = Jul
+    var curMonth = curDate.getMonth();
     var baseYear = curDate.getFullYear();
     var curYearVal = (curMonth >= 6) ? baseYear : (baseYear - 1);
     
-    // Tapel berjalan
-    var tapel0 = curYearVal + "/" + (curYearVal + 1);      // misal 2026/2027
-    var tapel1 = (curYearVal - 1) + "/" + curYearVal;      // misal 2025/2026
-    var tapel2 = (curYearVal - 2) + "/" + (curYearVal - 1);  // misal 2024/2025
+    var tapel0 = curYearVal + "/" + (curYearVal + 1);
+    var tapel1 = (curYearVal - 1) + "/" + curYearVal;
+    var tapel2 = (curYearVal - 2) + "/" + (curYearVal - 1);
     var periodsSet = new Set();
 
     if (jPeriode === "BULANAN") {
@@ -668,23 +665,24 @@ function getAdmPtkDashboardData(idKategori, npsnFilter, jenjangFilter, forceRefr
       rules: { rJenjang: rJenjang, rKepegawaian: rKepegawaian, rTugas: rTugas }
     };
     var responseString = JSON.stringify({ success: true, rekap: arrRekap, belum: arrBelum, jenisPeriode: jPeriode, debugInfo: debugInfo });
-    try { CacheService.getScriptCache().put(cacheKey, responseString, 1800); } catch(ce) {}
+    try { putLargeCache(cacheKey, responseString, 1800); } catch(ce) {}
     return responseString;
   } catch(e) { return JSON.stringify({ success: false, message: e.message }); }
 }
 
 function invalidateAdmPtkDashboardCache() {
   try {
-    var cache = CacheService.getScriptCache();
+    removeLargeCache("ADM_PTK_LIST_ALL");
     var shKat = getOrCreateSheetAdmPtk("Master_Kategori");
     if (shKat) {
       var dataKat = shKat.getDataRange().getDisplayValues();
       for (var i = 1; i < dataKat.length; i++) {
         var idKat = String(dataKat[i][0]).trim();
         if (idKat) {
-          cache.remove("ADM_PTK_DASH_" + idKat + "_ALL_ALL");
-          cache.remove("ADM_PTK_DASH_" + idKat + "_ALL_SD");
-          cache.remove("ADM_PTK_DASH_" + idKat + "_ALL_PAUD");
+          removeLargeCache("ADM_PTK_DASH_" + idKat + "_ALL_ALL");
+          removeLargeCache("ADM_PTK_DASH_" + idKat + "_ALL_SD");
+          removeLargeCache("ADM_PTK_DASH_" + idKat + "_ALL_PAUD");
+          removeLargeCache("ADM_PTK_DASH_" + idKat + "_ALL_SDS");
         }
       }
     }
