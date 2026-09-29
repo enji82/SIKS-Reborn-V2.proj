@@ -610,6 +610,25 @@ function pppkpw_getDashboardData(unitFilter, tahun, forceRefresh) {
       }
     });
 
+    // Bangun npsnMap dan jenjangMap dari Data_Sekolah
+    var npsnMap = {};
+    var jenjangMap = {};
+    try {
+      var shSekolah = getSheet("USER_DB", "Data_Sekolah");
+      if (shSekolah && shSekolah.getLastRow() >= 2) {
+        var dSekolah = shSekolah.getRange(2, 1, shSekolah.getLastRow() - 1, 4).getDisplayValues();
+        dSekolah.forEach(function(r) {
+          var npsn = String(r[0] || "").trim();
+          var jenjang = String(r[1] || "").trim();
+          var nama = String(r[2] || "").trim();
+          if (nama) {
+            if (npsn) npsnMap[nama] = npsn;
+            if (jenjang) jenjangMap[nama] = jenjang;
+          }
+        });
+      }
+    } catch(esk) { Logger.log("pppkpw_getDashboardData sekolah map error: " + esk.message); }
+
     var unitMap = {};
     allPegawai.forEach(function(p) {
       if (!unitMap[p.unit]) unitMap[p.unit] = { unit: p.unit, total: 0, sudah: 0, belum: 0, diverifikasi: 0, diproses: 0, ditolak: 0, listSudah: [], listBelum: [] };
@@ -1314,6 +1333,25 @@ function pppkpw_spmt_getDashboardData(unitFilter, tahun, forceRefresh) {
       }
     });
 
+    // Bangun npsnMap dan jenjangMap dari Data_Sekolah
+    var npsnMap = {};
+    var jenjangMap = {};
+    try {
+      var shSekolah2 = getSheet("USER_DB", "Data_Sekolah");
+      if (shSekolah2 && shSekolah2.getLastRow() >= 2) {
+        var dSekolah2 = shSekolah2.getRange(2, 1, shSekolah2.getLastRow() - 1, 4).getDisplayValues();
+        dSekolah2.forEach(function(r) {
+          var npsn = String(r[0] || "").trim();
+          var jenjang = String(r[1] || "").trim();
+          var nama = String(r[2] || "").trim();
+          if (nama) {
+            if (npsn) npsnMap[nama] = npsn;
+            if (jenjang) jenjangMap[nama] = jenjang;
+          }
+        });
+      }
+    } catch(esk) { Logger.log("pppkpw_spmt_getDashboardData sekolah map error: " + esk.message); }
+
     var unitMap = {};
     allPegawai.forEach(function(p) {
       if (!unitMap[p.unit]) unitMap[p.unit] = { unit: p.unit, total: 0, sudah: 0, belum: 0, diverifikasi: 0, diproses: 0, ditolak: 0, listSudah: [], listBelum: [] };
@@ -1346,9 +1384,9 @@ function pppkpw_spmt_getDashboardData(unitFilter, tahun, forceRefresh) {
     var detailUnit = [];
     Object.keys(unitMap).forEach(function(k) {
       var item = unitMap[k];
-      item.npsn = k;
+      item.npsn = npsnMap[k] || k;
       item.namaSekolah = k;
-      item.jenjang = "";
+      item.jenjang = jenjangMap[k] || "";
       detailUnit.push(item);
     });
     detailUnit.sort(function(a, b) { return a.unit.localeCompare(b.unit); });
