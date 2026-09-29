@@ -1027,14 +1027,18 @@ function admMurid_getDashboardData(npsnFilter, tahunFilter, forceRefresh) {
       var rNama = String(sekolahData[j][2]).trim();
       
       if (rNpsn !== "") {
-        countSD++;
-        if (!targetNpsn || targetNpsn === "SEMUA" || rNpsn === targetNpsn || rNama.toUpperCase() === targetNpsn) {
-          listSekolah.push({
-            npsn: rNpsn,
-            nama: rNama,
-            jenjang: rJenjang || "SD",
-            kecamatan: sekolahData[j][4] || "-"
-          });
+        // SPMB, Cetak Ijazah, Arsip Ijazah, dan Arsip TKA merupakan kewajiban tingkat SD
+        var isTargetCategory = (rJenjang === "SD" || rJenjang === "SDS" || rJenjang === "SDN");
+        if (isTargetCategory) {
+          countSD++;
+          if (!targetNpsn || targetNpsn === "SEMUA" || rNpsn === targetNpsn || rNama.toUpperCase() === targetNpsn) {
+            listSekolah.push({
+              npsn: rNpsn,
+              nama: rNama,
+              jenjang: rJenjang || "SD",
+              kecamatan: sekolahData[j][4] || "-"
+            });
+          }
         }
       }
     }
