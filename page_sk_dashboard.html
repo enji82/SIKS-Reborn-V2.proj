@@ -823,14 +823,22 @@
         $('#dashsk_countDisetujui, #dashsk_countDiproses, #dashsk_countRevisi, #dashsk_countDitolak').text('0');
 
         $('.sultan-metric-card-minimal').css('opacity', '0.85');
-        $('#dashsk_btnRefresh').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
+        if (typeof SultanUI !== 'undefined' && SultanUI.setRefreshLoading) {
+            SultanUI.setRefreshLoading('#dashsk_btnRefresh', true);
+        } else {
+            $('#dashsk_btnRefresh').prop('disabled', true).find('i').addClass('fa-spin');
+        }
     }
 
     function dashsk_removeLoadingUI() {
         $('#dashsk_loadingState').hide();
         $('#dashsk_dashboardState').fadeIn(250);
         $('.sultan-metric-card-minimal').css('opacity', '1');
-        $('#dashsk_btnRefresh').prop('disabled', false).html('<i class="fas fa-sync-alt"></i>');
+        if (typeof SultanUI !== 'undefined' && SultanUI.setRefreshLoading) {
+            SultanUI.setRefreshLoading('#dashsk_btnRefresh', false);
+        } else {
+            $('#dashsk_btnRefresh').prop('disabled', false).find('i').removeClass('fa-spin');
+        }
         var timeNow = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
         $('#dashsk_syncTime').text(`Sinkron ${timeNow}`);
     }
@@ -922,12 +930,19 @@
        FETCH & RENDER MODE UNIT (PERSONAL RIWAYAT SEKOLAH)
        ================================================================= */
     function dashsk_loadDataUnitSekolah(forceSync) {
-        var btn = $('#dashsk_btnRefresh');
-        btn.prop('disabled', true).find('i').removeClass('fa-sync-alt').addClass('fa-spinner fa-spin');
+        if (typeof SultanUI !== 'undefined' && SultanUI.setRefreshLoading) {
+            SultanUI.setRefreshLoading('#dashsk_btnRefresh', true);
+        } else {
+            $('#dashsk_btnRefresh').prop('disabled', true).find('i').addClass('fa-spin');
+        }
 
         google.script.run.withSuccessHandler(function (dataSK) {
             window.DASHSK_ALL_TRANSAKSI_SK = dataSK || [];
-            btn.prop('disabled', false).find('i').removeClass('fa-spinner fa-spin').addClass('fa-sync-alt');
+            if (typeof SultanUI !== 'undefined' && SultanUI.setRefreshLoading) {
+                SultanUI.setRefreshLoading('#dashsk_btnRefresh', false);
+            } else {
+                $('#dashsk_btnRefresh').prop('disabled', false).find('i').removeClass('fa-spin');
+            }
 
             var setupWithMaster = function (masterSekolah) {
                 window.DASHSK_MASTER_SEKOLAH = masterSekolah || [];
@@ -943,7 +958,11 @@
             }
 
         }).withFailureHandler(function (err) {
-            btn.prop('disabled', false).find('i').removeClass('fa-spinner fa-spin').addClass('fa-sync-alt');
+            if (typeof SultanUI !== 'undefined' && SultanUI.setRefreshLoading) {
+                SultanUI.setRefreshLoading('#dashsk_btnRefresh', false);
+            } else {
+                $('#dashsk_btnRefresh').prop('disabled', false).find('i').removeClass('fa-spin');
+            }
             $('#dashsk_userMultiYearContainer').html(SultanUI.emptyState('Gagal Memuat Data', err.message || 'Tidak dapat memuat berkas SK.', 'fa-exclamation-circle'));
         }).getDaftarSK();
     }
