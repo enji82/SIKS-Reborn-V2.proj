@@ -994,8 +994,14 @@ function admMurid_ajukanKoreksiDenganFile(payload) {
    3. DASHBOARD REKAPITULASI ADMINISTRASI MURID
    ========================================== */
 
-function admMurid_getDashboardData(npsnFilter, tahunFilter) {
+function admMurid_getDashboardData(npsnFilter, tahunFilter, forceRefresh) {
   try {
+    var cacheKey = "ADM_MURID_DASH_" + (npsnFilter || "ALL") + "_" + (tahunFilter || "ALL");
+    if (!forceRefresh) {
+      var cached = getLargeCache(cacheKey);
+      if (cached) return cached;
+    }
+
     var shSpmb = getOrCreateSheetAdmMurid("Database_SPMB");
     var shIjazah = getOrCreateSheetAdmMurid("Database_Ijazah");
     var shArsip = getOrCreateSheetAdmMurid("Arsip_Ijazah");
@@ -1228,7 +1234,7 @@ function admMurid_getDashboardData(npsnFilter, tahunFilter) {
     
     var finalSchoolList = Object.keys(schoolStatusMap).map(function(k) { return schoolStatusMap[k]; });
     
-    return JSON.stringify({
+    var responseString = JSON.stringify({
       success: true,
       targetSD: countSD,
       spmbStats: spmbStats,
@@ -1237,9 +1243,17 @@ function admMurid_getDashboardData(npsnFilter, tahunFilter) {
       arsipTkaStats: arsipTkaStats,
       detailSekolah: finalSchoolList
     });
+    try { putLargeCache(cacheKey, responseString, 1800); } catch(ce) {}
+    return responseString;
   } catch (e) {
     return JSON.stringify({ success: false, message: e.message });
   }
+}
+
+function invalidateAdmMuridDashboardCache() {
+  try {
+    removeLargeCache("ADM_MURID_DASH_ALL_ALL");
+  } catch(e) {}
 }
 
 /* ==========================================

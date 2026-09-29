@@ -1,23 +1,6 @@
 <style>
-  #admmuriddash_tabelRekap_wrapper,
-  #admmuriddash_tabelRekap_wrapper .dataTables_length,
-  #admmuriddash_tabelRekap_wrapper .dataTables_length select,
-  #admmuriddash_tabelRekap_wrapper .dataTables_filter,
-  #admmuriddash_tabelRekap_wrapper .dataTables_filter input,
-  #admmuriddash_tabelRekap_wrapper .dataTables_info,
-  #admmuriddash_tabelRekap_wrapper .dataTables_paginate,
-  #admmuriddash_tabelRekap_wrapper .pagination,
-  #admmuriddash_tabelRekap_wrapper .page-item,
-  #admmuriddash_tabelRekap_wrapper .page-link,
-  #admmuriddash_tabelRekap_wrapper table,
-  #admmuriddash_tabelRekap_wrapper table th,
-  #admmuriddash_tabelRekap_wrapper table td,
-  #admmuriddash_tabelRekap_wrapper table tr {
-    font-size: 13px !important;
-  }
-  
-  #admmuriddash_tabelRekap .badge {
-    font-size: 11px !important;
+  #admmuriddash_viewRekap, #admmuriddash_viewUnit {
+    transition: all 0.3s ease;
   }
 </style>
 
@@ -25,8 +8,18 @@
   <div class="container-fluid">
 
     <!-- FILTER BAR TERPUSAT SULTAN UI -->
-    <div class="sultan-filter-bar-balanced mb-4 sultan-page-transition" id="admmuriddash_filterBar">
+    <div class="sultan-filter-bar-balanced mb-4 sultan-page-transition d-none" id="admmuriddash_filterBar">
       <div class="filter-controls-group">
+
+        <!-- Segmented Switcher Mode (Unit vs Rekap) -->
+        <div class="sultan-segmented-switch">
+          <button type="button" class="sultan-segmented-btn" data-mode="unit" id="admmuriddash_btnModeUnit">
+            <i class="fas fa-school"></i> Unit
+          </button>
+          <button type="button" class="sultan-segmented-btn active" data-mode="rekap" id="admmuriddash_btnModeRekap">
+            <i class="fas fa-chart-pie"></i> Rekap
+          </button>
+        </div>
 
         <!-- 1. Filter Kategori Dokumen -->
         <div class="sultan-filter-item" id="admmuriddash_filterSubmenuContainer" style="min-width: 180px;">
@@ -47,18 +40,18 @@
           <i class="fas fa-chevron-down"></i>
         </div>
 
-        <!-- 3. Filter Jenjang (Khusus Admin) -->
-        <div class="sultan-filter-item" id="admmuriddash_filterJenjangContainer" style="min-width: 150px; display: none;">
-          <select id="admmuriddash_filterJenjang" class="form-control" aria-label="Pilih Jenjang">
-            <option value="SEMUA">Semua Jenjang</option>
+        <!-- 3. Filter Jenjang Unit (Admin) -->
+        <div class="sultan-filter-item d-none" id="admmuriddash_filterJenjangUnitContainer" style="min-width: 140px;">
+          <select id="admmuriddash_filterJenjangUnit" class="form-control" aria-label="Pilih Jenjang">
+            <option value="">Pilih Jenjang...</option>
           </select>
           <i class="fas fa-chevron-down"></i>
         </div>
 
-        <!-- 4. Filter Nama Sekolah (Khusus Admin) -->
-        <div class="sultan-filter-item" id="admmuriddash_filterSekolahContainer" style="min-width: 220px; max-width: 360px; display: none;">
-          <select id="admmuriddash_filterSekolah" class="form-control" aria-label="Pilih Nama Sekolah">
-            <option value="SEMUA">Semua Sekolah</option>
+        <!-- 4. Filter Nama Sekolah Unit (Admin) -->
+        <div class="sultan-filter-item d-none" id="admmuriddash_filterUnitSekolahContainer" style="min-width: 220px; max-width: 340px;">
+          <select id="admmuriddash_filterUnitSekolah" class="form-control" aria-label="Pilih Sekolah">
+            <option value="">Pilih Sekolah...</option>
           </select>
           <i class="fas fa-chevron-down"></i>
         </div>
@@ -72,61 +65,104 @@
       </div>
     </div>
 
-    <!-- Loading State Terpusat -->
-    <div id="admmuriddash_loadingState" class="sultan-loading-box sultan-page-transition">
-      <div class="sultan-spinner-icon">
-        <i class="fas fa-circle-notch fa-spin"></i>
+    <!-- VIEW REKAP -->
+    <div id="admmuriddash_viewRekap" class="py-1">
+
+      <!-- Loading State Terpusat -->
+      <div id="admmuriddash_loadingState" class="sultan-loading-box sultan-page-transition">
+        <div class="sultan-spinner-icon">
+          <i class="fas fa-circle-notch fa-spin"></i>
+        </div>
+        <h6 class="text-muted font-weight-bold sultan-loading-text mb-0" style="letter-spacing: 0.5px; text-transform: uppercase; font-size: 11px;">Memuat Data Dasbor Administrasi Murid...</h6>
       </div>
-      <h6 class="text-muted font-weight-bold sultan-loading-text mb-0" style="letter-spacing: 0.5px; text-transform: uppercase; font-size: 11px;">Memuat Data Dasbor Administrasi Murid...</h6>
+
+      <div id="admmuriddash_dashboardState" style="display: none;">
+
+        <!-- Row 1: Card Progress (4 Metric Cards Minimal) -->
+        <div id="admmuriddash_metricRow1"></div>
+
+        <!-- Row 2: Card Status Breakdown (5 Status Cards) -->
+        <div id="admmuriddash_metricRow2"></div>
+
+        <!-- Row 3: Card DAFTAR SEKOLAH SUDAH UNGGAH (4 Cards List Terpusat) -->
+        <div id="admmuriddash_statusCardsContainer" class="mb-4"></div>
+
+      </div>
+
     </div>
 
-    <div id="admmuriddash_dashboardState" style="display: none;">
-
-      <!-- Row 1: Card Progress (4 Metric Cards Minimal) -->
-      <div id="admmuriddash_metricRow1"></div>
-
-      <!-- Row 2: Card Status Breakdown (5 Status Cards) -->
-      <div id="admmuriddash_metricRow2"></div>
-
-      <!-- Row 3: Card DAFTAR SEKOLAH SUDAH UNGGAH (4 Cards List Terpusat) -->
-      <div id="admmuriddash_statusCardsContainer" class="mb-4"></div>
-
-      <!-- Row 4: Card Tabel Rekapitulasi Per Unit Kerja -->
-      <div class="row mb-4">
-        <div class="col-12">
-          <div class="card card-sultan-terpusat shadow-xs border-0">
-            <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center pt-3 pb-2 px-3">
-              <h6 class="font-weight-bold text-sultan-utama m-0 text-uppercase" id="admmuriddash_tableTitle" style="letter-spacing: 0.5px;">
-                <i class="fas fa-table mr-2"></i>REKAPITULASI PER UNIT KERJA
-              </h6>
-            </div>
-            <div class="card-body p-0">
-              <div class="table-responsive sultan-scroll">
-                <table id="admmuriddash_tabelRekap" class="table table-hover sultan-table-datatable text-nowrap mb-0 w-100">
-                  <thead>
-                    <tr>
-                      <th class="align-middle text-left font-weight-bold col-sticky-left" style="min-width: 250px;">NAMA SEKOLAH</th>
-                      <th class="align-middle text-center font-weight-bold">MURID L</th>
-                      <th class="align-middle text-center font-weight-bold">MURID P</th>
-                      <th class="align-middle text-center font-weight-bold">JML MURID</th>
-                    </tr>
-                  </thead>
-                  <tbody id="admmuriddash_tbodyRekap"></tbody>
-                  <tfoot class="bg-light font-weight-bold text-sultan-utama" style="font-size: 13px;">
-                    <tr>
-                      <td class="text-left align-middle font-weight-bold">JUMLAH TOTAL</td>
-                      <td class="text-center align-middle" id="admmuriddash_totalMuridL">0</td>
-                      <td class="text-center align-middle" id="admmuriddash_totalMuridP">0</td>
-                      <td class="text-center align-middle" id="admmuriddash_totalMuridAll">0</td>
-                    </tr>
-                  </tfoot>
-                </table>
+    <!-- VIEW UNIT -->
+    <div id="admmuriddash_viewUnit" class="d-none py-1">
+      <div id="admmuriddash_unitContent">
+        <!-- Modern Sultan Minimal Metric Cards (6 Cards Row Unit) -->
+        <div class="row mb-4" id="admmuriddash_unitMetricRow">
+          <!-- KARTU 1: KELENGKAPAN -->
+          <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 col-6 mb-3">
+            <div class="sultan-metric-card-minimal minimal-primary shadow-xs" style="border-radius:18px!important;padding:1.1rem 0.9rem!important;">
+              <div class="minimal-label text-truncate"><i class="fas fa-chart-pie mr-1"></i>Kelengkapan</div>
+              <div class="minimal-value" id="admmuriddash_unitCardProgress">0%</div>
+              <div class="minimal-sub text-truncate" id="admmuriddash_unitProgressSub">0 dari 0 Selesai</div>
+              <div class="progress mt-2" style="height:4px;border-radius:4px;background:rgba(79,70,229,0.15);width:100%;">
+                <div id="admmuriddash_unitProgressBar" class="progress-bar" role="progressbar" style="width:0%;border-radius:4px;background-color:#4f46e5;transition:width 0.6s ease;"></div>
               </div>
             </div>
           </div>
+          <!-- KARTU 2: JML DOKUMEN -->
+          <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 col-6 mb-3">
+            <div class="sultan-metric-card-minimal minimal-slate shadow-xs" style="border-radius:18px!important;padding:1.1rem 0.9rem!important;">
+              <div class="minimal-label text-truncate"><i class="fas fa-folder mr-1"></i>Jml Dokumen</div>
+              <div class="minimal-value" id="admmuriddash_unitCardTotal">0</div>
+              <div class="minimal-sub text-truncate" id="admmuriddash_unitTotalSub">Sudah Diunggah</div>
+            </div>
+          </div>
+          <!-- KARTU 3: DIPROSES -->
+          <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 col-6 mb-3">
+            <div class="sultan-metric-card-minimal minimal-info shadow-xs" style="border-radius:18px!important;padding:1.1rem 0.9rem!important;">
+              <div class="minimal-label text-truncate"><i class="fas fa-hourglass-half mr-1"></i>Diproses</div>
+              <div class="minimal-value" id="admmuriddash_unitCardDiproses">0</div>
+              <div class="minimal-sub text-truncate">Verifikasi</div>
+            </div>
+          </div>
+          <!-- KARTU 4: DISETUJUI -->
+          <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 col-6 mb-3">
+            <div class="sultan-metric-card-minimal minimal-success shadow-xs" style="border-radius:18px!important;padding:1.1rem 0.9rem!important;">
+              <div class="minimal-label text-truncate"><i class="fas fa-check-circle mr-1"></i>Disetujui</div>
+              <div class="minimal-value" id="admmuriddash_unitCardDisetujui">0</div>
+              <div class="minimal-sub text-truncate">Dokumen Valid</div>
+            </div>
+          </div>
+          <!-- KARTU 5: REVISI -->
+          <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 col-6 mb-3">
+            <div class="sultan-metric-card-minimal minimal-warning shadow-xs" style="border-radius:18px!important;padding:1.1rem 0.9rem!important;">
+              <div class="minimal-label text-truncate"><i class="fas fa-edit mr-1"></i>Revisi</div>
+              <div class="minimal-value" id="admmuriddash_unitCardRevisi">0</div>
+              <div class="minimal-sub text-truncate">Perlu Perbaikan</div>
+            </div>
+          </div>
+          <!-- KARTU 6: DITOLAK -->
+          <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 col-6 mb-3">
+            <div class="sultan-metric-card-minimal minimal-maroon shadow-xs" style="border-radius:18px!important;padding:1.1rem 0.9rem!important;">
+              <div class="minimal-label text-truncate"><i class="fas fa-times-circle mr-1"></i>Ditolak</div>
+              <div class="minimal-value" id="admmuriddash_unitCardDitolak">0</div>
+              <div class="minimal-sub text-truncate">Tidak Valid</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section Daftar Dokumen Terunggah Unit -->
+        <div class="col-12 mt-2 px-0 mb-4">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+              <h6 class="font-weight-bold text-sultan-utama m-0 text-uppercase" style="letter-spacing:0.5px;">
+                <i class="fas fa-folder-open mr-2"></i>Daftar Dokumen Administrasi Murid Terunggah
+              </h6>
+              <small class="text-muted" id="admmuriddash_unitHeaderStatusText">Distribusi status seluruh dokumen administrasi murid</small>
+            </div>
+          </div>
+
+          <div id="admmuriddash_unitStatusCardsContainer"></div>
         </div>
       </div>
-
     </div>
 
   </div>
@@ -134,54 +170,39 @@
 
 <script>
   var ADMMURIDDASH_CACHE_DATA = null;
-  var ADMMURIDDASH_TABEL_REKAP = null;
   var ADMMURIDDASH_IS_ADMIN = false;
+  var ADMMURIDDASH_USER_NPSN = "";
+  var ADMMURIDDASH_MODE = "rekap";
+  var ADMMURIDDASH_PENDING_REQ = 0;
 
   $(document).ready(function () {
-    var userLogin = typeof getSesiUser === 'function' ? getSesiUser() : {};
-    var rStr = String(userLogin.role || "").toLowerCase();
-    ADMMURIDDASH_IS_ADMIN = (rStr === "admin" || rStr === "superadmin");
+    try {
+      var user = typeof getSesiUser === 'function' ? getSesiUser() : {};
+      var rStr = String(user.role || "").toLowerCase();
+      ADMMURIDDASH_IS_ADMIN = (typeof checkUserRoleIsAdmin === 'function' && checkUserRoleIsAdmin()) || rStr.includes("admin") || rStr.includes("verifikator");
+      ADMMURIDDASH_USER_NPSN = String(user.npsn || user.unit || user.username || "").trim();
+    } catch(e) { ADMMURIDDASH_USER_NPSN = ""; ADMMURIDDASH_IS_ADMIN = false; }
 
-    // 1. Render Row 1: Card Progress (JML SEKOLAH, SUDAH UNGGAH, BELUM UNGGAH, PROGRESS)
-    if (typeof SultanUI !== 'undefined' && SultanUI.renderDashboardRow1Minimal) {
-      $('#admmuriddash_metricRow1').html(SultanUI.renderDashboardRow1Minimal('admmuriddash', {
-        totalLabel: 'JML SEKOLAH',
-        sudahLabel: 'SUDAH UNGGAH',
-        belumLabel: 'BELUM UNGGAH',
-        progressLabel: 'PROGRESS'
-      }));
-    }
-
-    // 2. Render Row 2: Card Status (JML DOKUMEN, DIPROSES, DISETUJUI, REVISI, DITOLAK)
-    if (typeof SultanUI !== 'undefined' && SultanUI.renderDashboardRow2Minimal) {
-      $('#admmuriddash_metricRow2').html(SultanUI.renderDashboardRow2Minimal('admmuriddash', {
-        totalLabel: 'JML DOKUMEN',
-        diprosesLabel: 'DIPROSES',
-        disetujuiLabel: 'DISETUJUI',
-        revisiLabel: 'REVISI',
-        ditolakLabel: 'DITOLAK'
-      }));
-    }
-
-    // 3. Render Row 3: Card DAFTAR SEKOLAH SUDAH UNGGAH (DIPROSES, DISETUJUI, REVISI, DITOLAK)
-    if (typeof SultanUI !== 'undefined' && SultanUI.renderDashboardStatusCards4) {
-      $('#admmuriddash_statusCardsContainer').html(SultanUI.renderDashboardStatusCards4('admmuriddash', {
-        title: 'DAFTAR SEKOLAH SUDAH UNGGAH',
-        diprosesLabel: 'DIPROSES',
-        disetujuiLabel: 'DISETUJUI',
-        revisiLabel: 'REVISI',
-        ditolakLabel: 'DITOLAK',
-        copyActionFn: 'admmuriddash_salinWaRekap()'
-      }));
-    }
-
-    // Filter Jenjang & Sekolah untuk Admin / User
-    if (ADMMURIDDASH_IS_ADMIN) {
-      $('#admmuriddash_filterJenjangContainer').show();
-      $('#admmuriddash_filterSekolahContainer').show();
-    } else {
-      $('#admmuriddash_filterJenjangContainer').hide();
-      $('#admmuriddash_filterSekolahContainer').hide();
+    // Render SultanUI components
+    if (typeof SultanUI !== 'undefined') {
+      if (SultanUI.renderDashboardRow1Minimal) {
+        $('#admmuriddash_metricRow1').html(SultanUI.renderDashboardRow1Minimal('admmuriddash', {
+          totalLabel: 'JML SASARAN', sudahLabel: 'SUDAH UNGGAH', belumLabel: 'BELUM UNGGAH', progressLabel: 'PROGRESS'
+        }));
+      }
+      if (SultanUI.renderDashboardRow2Minimal) {
+        $('#admmuriddash_metricRow2').html(SultanUI.renderDashboardRow2Minimal('admmuriddash', {
+          totalLabel: 'JML DOKUMEN', diprosesLabel: 'DIPROSES', disetujuiLabel: 'DISETUJUI', revisiLabel: 'REVISI', ditolakLabel: 'DITOLAK'
+        }));
+      }
+      if (SultanUI.renderDashboardStatusCards4) {
+        $('#admmuriddash_statusCardsContainer').html(SultanUI.renderDashboardStatusCards4('admmuriddash', {
+          title: 'DAFTAR SEKOLAH SUDAH UNGGAH', diprosesLabel: 'DIPROSES', disetujuiLabel: 'DISETUJUI', revisiLabel: 'REVISI', ditolakLabel: 'DITOLAK', copyActionFn: 'admmuriddash_salinWaRekap()'
+        }));
+        $('#admmuriddash_unitStatusCardsContainer').html(SultanUI.renderDashboardStatusCards4('admmuriddash_unit', {
+          placeholderCari: 'Cari dokumen...', emptyText: 'PILIH SEKOLAH'
+        }));
+      }
     }
 
     // Inisialisasi Filter Tahun Ajaran secara dinamis
@@ -193,42 +214,107 @@
       htmlTahun += '<option value="' + ta + '">' + ta + '</option>';
     }
     var initSub = $('#admmuriddash_filterSubmenu').val() || "SPMB";
-    $('#admmuriddash_filterTahun').html(htmlTahun).val(getDynamicDefaultTahun(initSub));
+    $('#admmuriddash_filterTahun').html(htmlTahun).val(admmuriddash_getDynamicDefaultTahun(initSub));
 
-    // Helper untuk kalkulasi default Tahun Ajaran secara dinamis
-    function getDynamicDefaultTahun(submenuVal) {
-      var d = new Date(); var y = d.getFullYear(); var m = d.getMonth();
-      var curTA = (m >= 6) ? y + "/" + (y + 1) : (y - 1) + "/" + y;
-      
-      if (submenuVal === "IJAZAH" || submenuVal === "ARSIP_IJAZAH" || submenuVal === "ARSIP_TKA") {
-        var parts = curTA.split("/");
-        var prevStart = parseInt(parts[0], 10) - 1;
-        var prevEnd = parseInt(parts[1], 10) - 1;
-        return prevStart + "/" + prevEnd;
+    SultanDashboard.initDualMode({
+      pageKey: 'admMuridDash',
+      tabType: 'single_tab',
+      unitViewId: '#admmuriddash_viewUnit',
+      rekapViewId: '#admmuriddash_viewRekap',
+      switchSelector: '.sultan-segmented-btn',
+      onInit: function(state) {
+        ADMMURIDDASH_IS_ADMIN   = state.isAdmin;
+        ADMMURIDDASH_USER_NPSN  = state.userNpsn;
+        ADMMURIDDASH_MODE       = state.currentMode;
+
+        var masterSekolah = (ADMMURIDDASH_CACHE_DATA && ADMMURIDDASH_CACHE_DATA.detailSekolah) ? ADMMURIDDASH_CACHE_DATA.detailSekolah : [];
+        SultanDashboard.setupUnitSchoolPicker({
+          pageKey: 'admMuridDash',
+          wrapperJenjangId: '#admmuriddash_filterJenjangUnitContainer',
+          selectJenjangId: '#admmuriddash_filterJenjangUnit',
+          wrapperSekolahId: '#admmuriddash_filterUnitSekolahContainer',
+          selectSekolahId: '#admmuriddash_filterUnitSekolah',
+          btnActionId: '#admmuriddash_btnRefresh',
+          masterSekolah: masterSekolah,
+          onSelectSchool: function(npsn, nama) {
+            if (npsn) admmuriddash_renderUnitView(npsn);
+            else admmuriddash_resetUnitView();
+          }
+        });
+        admmuriddash_updateFilterBarControls();
+      },
+      onSwitchMode: function(mode, state, isFirstLoad) {
+        ADMMURIDDASH_MODE = mode;
+        admmuriddash_updateFilterBarControls();
+        if (mode === 'unit') {
+          if (!ADMMURIDDASH_IS_ADMIN && ADMMURIDDASH_USER_NPSN) {
+            admmuriddash_renderUnitView(ADMMURIDDASH_USER_NPSN);
+          } else if (ADMMURIDDASH_IS_ADMIN) {
+            var curSel = $('#admmuriddash_filterUnitSekolah').val();
+            if (curSel) admmuriddash_renderUnitView(curSel);
+            else admmuriddash_resetUnitView();
+          }
+        } else {
+          if (!isFirstLoad) admmuriddash_terapkanFilterLokal();
+        }
       }
-      return curTA;
-    }
+    });
 
-    // Event handlers
-    $('#admmuriddash_btnRefresh').click(function () {
-      loadDashboardData(true);
+    admmuriddash_setupEventListeners();
+    admmuriddash_loadDashboardData();
+  });
+
+  function admmuriddash_getDynamicDefaultTahun(submenuVal) {
+    var d = new Date(); var y = d.getFullYear(); var m = d.getMonth();
+    var curTA = (m >= 6) ? y + "/" + (y + 1) : (y - 1) + "/" + y;
+    if (submenuVal === "IJAZAH" || submenuVal === "ARSIP_IJAZAH" || submenuVal === "ARSIP_TKA") {
+      var parts = curTA.split("/");
+      var prevStart = parseInt(parts[0], 10) - 1;
+      var prevEnd = parseInt(parts[1], 10) - 1;
+      return prevStart + "/" + prevEnd;
+    }
+    return curTA;
+  }
+
+  function admmuriddash_updateFilterBarControls() {
+    var isUnit = (ADMMURIDDASH_MODE === 'unit');
+    $('#admmuriddash_filterBar').removeClass('d-none');
+    $('#admmuriddash_filterSubmenuContainer, #admmuriddash_filterTahunContainer').removeClass('d-none');
+    if (isUnit && ADMMURIDDASH_IS_ADMIN) {
+      $('#admmuriddash_filterJenjangUnitContainer, #admmuriddash_filterUnitSekolahContainer').removeClass('d-none');
+    } else {
+      $('#admmuriddash_filterJenjangUnitContainer, #admmuriddash_filterUnitSekolahContainer').addClass('d-none');
+    }
+  }
+
+  function admmuriddash_setupEventListeners() {
+    $(document).off('click', '#admmuriddash_btnRefresh').on('click', '#admmuriddash_btnRefresh', function (e) {
+      e.preventDefault();
+      admmuriddash_loadDashboardData(true);
     });
 
     $('#admmuriddash_filterSubmenu').change(function () {
       var subVal = $(this).val();
-      var defaultTA = getDynamicDefaultTahun(subVal);
+      var defaultTA = admmuriddash_getDynamicDefaultTahun(subVal);
       $('#admmuriddash_filterTahun').val(defaultTA);
-      loadDashboardData();
-    });
-
-    $('#admmuriddash_filterTahun, #admmuriddash_filterJenjang, #admmuriddash_filterSekolah').change(function () {
-      if (this.id === 'admmuriddash_filterJenjang') {
-        populateSekolahDropdown();
+      if (ADMMURIDDASH_MODE === 'rekap') {
+        admmuriddash_terapkanFilterLokal();
+      } else {
+        var targetNpsn = ADMMURIDDASH_IS_ADMIN ? $('#admmuriddash_filterUnitSekolah').val() : ADMMURIDDASH_USER_NPSN;
+        if (targetNpsn) admmuriddash_renderUnitView(targetNpsn);
       }
-      admmuriddash_terapkanFilterLokal();
     });
 
-    // Live search listener 4 Card List Status
+    $('#admmuriddash_filterTahun').change(function () {
+      if (ADMMURIDDASH_MODE === 'rekap') {
+        admmuriddash_terapkanFilterLokal();
+      } else {
+        var targetNpsn = ADMMURIDDASH_IS_ADMIN ? $('#admmuriddash_filterUnitSekolah').val() : ADMMURIDDASH_USER_NPSN;
+        if (targetNpsn) admmuriddash_renderUnitView(targetNpsn);
+      }
+    });
+
+    // Live search listener Rekap
     $(document).off('keyup', '#admmuriddash_inputCariDiproses').on('keyup', '#admmuriddash_inputCariDiproses', function() {
       var val = $(this).val().toLowerCase().trim();
       $('#admmuriddash_listDiproses li.admmuriddash-item').filter(function() {
@@ -254,148 +340,107 @@
       });
     });
 
-    loadDashboardData();
-
-    function loadDashboardData(forceRefresh) {
-      if (typeof SultanUI !== 'undefined') {
-        SultanUI.showLoading('#admmuriddash_loadingState', 'Memuat Data Dasbor Administrasi Murid...');
-      } else {
-        $('#admmuriddash_loadingState').show();
-      }
-      $('#admmuriddash_dashboardState').hide();
-
-      var activeNpsn = !ADMMURIDDASH_IS_ADMIN ? (userLogin.npsn || userLogin.username || "") : "SEMUA";
-      var tahun = $('#admmuriddash_filterTahun').val();
-
-      google.script.run
-        .withSuccessHandler(function (resRaw) {
-          if (typeof SultanUI !== 'undefined') {
-            SultanUI.hideLoading('#admmuriddash_loadingState');
-          } else {
-            $('#admmuriddash_loadingState').hide();
-          }
-          
-          var res = typeof resRaw === 'string' ? JSON.parse(resRaw) : resRaw;
-          if (res.success) {
-            ADMMURIDDASH_CACHE_DATA = res;
-
-            // Populasi dropdown Jenjang & Sekolah jika Admin
-            if (ADMMURIDDASH_IS_ADMIN && res.detailSekolah) {
-              populateJenjangDropdown(res.detailSekolah);
-              populateSekolahDropdown();
-            }
-
-            $('#admmuriddash_dashboardState').fadeIn();
-            admmuriddash_terapkanFilterLokal();
-          } else {
-            if (typeof SultanUI !== 'undefined') {
-              SultanUI.showLoadingError('#admmuriddash_loadingState', 'Gagal memuat data: ' + (res.message || 'Unknown error'));
-            }
-          }
-        })
-        .withFailureHandler(function (err) {
-          if (typeof SultanUI !== 'undefined') {
-            SultanUI.showLoadingError('#admmuriddash_loadingState', 'Terjadi kesalahan: ' + (err.message || err));
-          }
-        })
-        .admMurid_getDashboardData(activeNpsn, tahun);
-    }
-  });
-
-  function populateJenjangDropdown(detailSekolah) {
-    var selJenjang = $('#admmuriddash_filterJenjang');
-    var curVal = selJenjang.val() || "SEMUA";
-    var jenjangSet = new Set();
-    
-    (detailSekolah || []).forEach(function(s) {
-      var j = (s.jenjang || s.bentuk || s.bentukPendidikan || "").toUpperCase().trim();
-      if (j && j !== '-') jenjangSet.add(j);
+    // Live search listener Unit
+    $(document).off('keyup', '#admmuriddash_unit_inputCariDiproses').on('keyup', '#admmuriddash_unit_inputCariDiproses', function() {
+      var val = $(this).val().toLowerCase().trim();
+      $('#admmuriddash_unit_listDiproses li.admmuriddash-item').filter(function() {
+        $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
+      });
     });
-
-    selJenjang.empty().append('<option value="SEMUA">Semua Jenjang</option>');
-    Array.from(jenjangSet).sort().forEach(function(j) {
-      selJenjang.append($('<option>', { value: j, text: j }));
+    $(document).off('keyup', '#admmuriddash_unit_inputCariDisetujui').on('keyup', '#admmuriddash_unit_inputCariDisetujui', function() {
+      var val = $(this).val().toLowerCase().trim();
+      $('#admmuriddash_unit_listDisetujui li.admmuriddash-item').filter(function() {
+        $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
+      });
     });
-    selJenjang.val(curVal);
+    $(document).off('keyup', '#admmuriddash_unit_inputCariRevisi').on('keyup', '#admmuriddash_unit_inputCariRevisi', function() {
+      var val = $(this).val().toLowerCase().trim();
+      $('#admmuriddash_unit_listRevisi li.admmuriddash-item').filter(function() {
+        $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
+      });
+    });
+    $(document).off('keyup', '#admmuriddash_unit_inputCariDitolak').on('keyup', '#admmuriddash_unit_inputCariDitolak', function() {
+      var val = $(this).val().toLowerCase().trim();
+      $('#admmuriddash_unit_listDitolak li.admmuriddash-item').filter(function() {
+        $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
+      });
+    });
   }
 
-  function populateSekolahDropdown() {
-    if (!ADMMURIDDASH_CACHE_DATA || !ADMMURIDDASH_CACHE_DATA.detailSekolah) return;
-    var selSekolah = $('#admmuriddash_filterSekolah');
-    var selJenjang = $('#admmuriddash_filterJenjang').val() || "SEMUA";
-    var curVal = selSekolah.val() || "SEMUA";
+  function admmuriddash_loadDashboardData(forceRefresh) {
+    if (ADMMURIDDASH_PENDING_REQ > 0) return;
+    ADMMURIDDASH_PENDING_REQ = 1;
 
-    selSekolah.empty().append('<option value="SEMUA">Semua Sekolah</option>');
-    
-    var filtered = ADMMURIDDASH_CACHE_DATA.detailSekolah.filter(function(s) {
-      if (selJenjang === "SEMUA") return true;
-      var j = (s.jenjang || s.bentuk || s.bentukPendidikan || "").toUpperCase().trim();
-      return j === selJenjang;
-    });
+    var htmlSpinner = '<div class="sultan-spinner-icon"><i class="fas fa-circle-notch fa-spin"></i></div>' +
+      '<h6 class="text-muted font-weight-bold sultan-loading-text mb-0" style="letter-spacing: 0.5px; text-transform: uppercase; font-size: 11px;">Memuat Data Dasbor Administrasi Murid...</h6>';
+    $('#admmuriddash_loadingState').html(htmlSpinner).show();
+    $('#admmuriddash_dashboardState').hide();
 
-    filtered.sort(function(a,b) { return String(a.nama || "").localeCompare(String(b.nama || "")); });
+    var activeNpsn = ""; // Mode Rekap memuat seluruh data wilayah untuk transparansi (User & Admin sama)
+    var tahun = "SEMUA";
 
-    filtered.forEach(function(s) {
-      selSekolah.append($('<option>', { value: s.npsn, text: s.nama }));
-    });
+    google.script.run
+      .withSuccessHandler(function (resRaw) {
+        ADMMURIDDASH_PENDING_REQ = 0;
+        $('#admmuriddash_loadingState').hide();
+        
+        var res = typeof resRaw === 'string' ? JSON.parse(resRaw) : resRaw;
+        if (res.success) {
+          ADMMURIDDASH_CACHE_DATA = res;
+          var masterSekolah = res.detailSekolah || [];
 
-    if (selSekolah.find('option[value="' + curVal + '"]').length > 0) {
-      selSekolah.val(curVal);
-    } else {
-      selSekolah.val("SEMUA");
-    }
+          SultanDashboard.setupUnitSchoolPicker({
+            pageKey: 'admMuridDash',
+            wrapperJenjangId: '#admmuriddash_filterJenjangUnitContainer',
+            selectJenjangId: '#admmuriddash_filterJenjangUnit',
+            wrapperSekolahId: '#admmuriddash_filterUnitSekolahContainer',
+            selectSekolahId: '#admmuriddash_filterUnitSekolah',
+            btnActionId: '#admmuriddash_btnRefresh',
+            masterSekolah: masterSekolah,
+            onSelectSchool: function(npsn, nama) {
+              if (npsn) admmuriddash_renderUnitView(npsn);
+              else admmuriddash_resetUnitView();
+            }
+          });
+
+          $('#admmuriddash_dashboardState').fadeIn();
+          if (ADMMURIDDASH_MODE === 'rekap') {
+            admmuriddash_terapkanFilterLokal();
+          } else {
+            var targetNpsn = ADMMURIDDASH_IS_ADMIN ? $('#admmuriddash_filterUnitSekolah').val() : ADMMURIDDASH_USER_NPSN;
+            if (targetNpsn) admmuriddash_renderUnitView(targetNpsn);
+            else admmuriddash_resetUnitView();
+          }
+        } else {
+          if (typeof SultanUI !== 'undefined') {
+            SultanUI.showLoadingError('#admmuriddash_loadingState', 'Gagal memuat data: ' + (res.message || 'Unknown error'));
+          }
+        }
+      })
+      .withFailureHandler(function (err) {
+        ADMMURIDDASH_PENDING_REQ = 0;
+        if (typeof SultanUI !== 'undefined') {
+          SultanUI.showLoadingError('#admmuriddash_loadingState', 'Terjadi kesalahan: ' + (err.message || err));
+        }
+      })
+      .admMurid_getDashboardData(activeNpsn, tahun, forceRefresh);
   }
 
   function admmuriddash_terapkanFilterLokal() {
     if (!ADMMURIDDASH_CACHE_DATA || !ADMMURIDDASH_CACHE_DATA.detailSekolah) return;
 
-    var submenu = $('#admmuriddash_filterSubmenu').val(); // "SPMB", "IJAZAH", "ARSIP_IJAZAH", atau "ARSIP_TKA"
-    var fJenjang = $('#admmuriddash_filterJenjang').val() || "SEMUA";
-    var fSekolah = $('#admmuriddash_filterSekolah').val() || "SEMUA";
-    
-    // Set table title
-    if (submenu === "SPMB") {
-      $('#admmuriddash_tableTitle').html('<i class="fas fa-table mr-2"></i>REKAPITULASI LAPORAN SPMB PER UNIT KERJA');
-    } else if (submenu === "IJAZAH") {
-      $('#admmuriddash_tableTitle').html('<i class="fas fa-table mr-2"></i>REKAPITULASI CETAK IJAZAH PER UNIT KERJA');
-    } else if (submenu === "ARSIP_IJAZAH") {
-      $('#admmuriddash_tableTitle').html('<i class="fas fa-table mr-2"></i>REKAPITULASI ARSIP IJAZAH PER UNIT KERJA');
-    } else {
-      $('#admmuriddash_tableTitle').html('<i class="fas fa-table mr-2"></i>REKAPITULASI ARSIP TKA PER UNIT KERJA');
-    }
+    var submenu = $('#admmuriddash_filterSubmenu').val();
+    var fTahun = $('#admmuriddash_filterTahun').val() || "SEMUA";
 
-    // Filter detailSekolah
-    var schools = ADMMURIDDASH_CACHE_DATA.detailSekolah.filter(function (s) {
-      var matchJenjang = (fJenjang === "SEMUA") || ((s.jenjang || s.bentuk || s.bentukPendidikan || "").toUpperCase().trim() === fJenjang);
-      var matchSekolah = (fSekolah === "SEMUA") || (s.npsn === fSekolah);
-      return matchJenjang && matchSekolah;
-    });
-
-    // Sort schools alphabetically by name (A-Z)
+    var schools = ADMMURIDDASH_CACHE_DATA.detailSekolah;
     schools.sort(function (a, b) {
       return String(a.nama || "").localeCompare(String(b.nama || ""));
     });
 
-    // Hitung statistik & kumpulkan status lists
     var totSekolah = schools.length;
-    var sudah = 0;
-    var belum = 0;
-    var diproses = 0;
-    var disetujui = 0;
-    var revisi = 0;
-    var ditolak = 0;
-    var jmlDokumen = 0;
-    var sumL = 0;
-    var sumP = 0;
-    var sumTotal = 0;
+    var sudah = 0, belum = 0, diproses = 0, disetujui = 0, revisi = 0, ditolak = 0, jmlDokumen = 0;
 
-    var listDiproses = [];
-    var listDisetujui = [];
-    var listRevisi = [];
-    var listDitolak = [];
-    var listBelum = [];
-
-    var dtArray = [];
+    var listDiproses = [], listDisetujui = [], listRevisi = [], listDitolak = [], listBelum = [];
 
     schools.forEach(function (s) {
       var doc = (submenu === "SPMB") ? s.spmb : ((submenu === "IJAZAH") ? s.ijazah : ((submenu === "ARSIP_IJAZAH") ? s.arsip_ijazah : s.arsip_tka));
@@ -417,12 +462,10 @@
           ditolak++;
           listDitolak.push({ nama: s.nama, npsn: s.npsn });
         } else {
-          // Status diproses / dicetak / pengajuan koreksi masuk diproses
           diproses++;
           listDiproses.push({ nama: s.nama, npsn: s.npsn });
         }
 
-        // Hitung Jml Dokumen
         if (submenu === "SPMB") {
           jmlDokumen++;
         } else if (submenu === "IJAZAH") {
@@ -439,61 +482,29 @@
           if (doc.fileUrl) jmlDokumen++;
         }
       }
-
-      // Kumpulkan data tabel
-      var l = 0;
-      var p = 0;
-      var t = 0;
-
-      if (doc.detail) {
-        l = parseInt(doc.detail.muridL || 0);
-        p = parseInt(doc.detail.muridP || 0);
-        t = parseInt(doc.detail.total || 0);
-      }
-
-      sumL += l;
-      sumP += p;
-      sumTotal += t;
-
-      var formatVal = function(val) {
-        var n = parseInt(val) || 0;
-        return n === 0 ? '<span class="text-muted opacity-50 font-weight-normal">-</span>' : '<span class="font-weight-bold">' + n.toLocaleString('id-ID') + '</span>';
-      };
-
-      dtArray.push([
-        '<span class="font-weight-bold sultan-table-primary">' + s.nama + '</span>',
-        formatVal(l),
-        formatVal(p),
-        t > 0 ? '<span class="font-weight-bold text-sultan-utama">' + t.toLocaleString('id-ID') + '</span>' : '<span class="text-muted opacity-50 font-weight-normal">-</span>'
-      ]);
     });
 
-    // Simpan cache untuk salin WA
     window.ADMMURIDDASH_LIST_BELUM_CACHE = listBelum;
     window.ADMMURIDDASH_LIST_REVISI_CACHE = listRevisi;
     window.ADMMURIDDASH_LIST_DITOLAK_CACHE = listDitolak;
 
-    // 1. Update Card Progress
     var percentage = totSekolah > 0 ? Math.round((sudah / totSekolah) * 100) : 0;
     $('#admmuriddash_cardTotalSekolah').text(totSekolah.toLocaleString('id-ID'));
     $('#admmuriddash_cardSudah').text(sudah.toLocaleString('id-ID'));
     $('#admmuriddash_cardBelum').text(belum.toLocaleString('id-ID'));
     $('#admmuriddash_cardProgress').text(percentage + '%');
 
-    // 2. Update Card Status Breakdown
     $('#admmuriddash_cardTotalDokumen').text(jmlDokumen.toLocaleString('id-ID'));
     $('#admmuriddash_cardDiproses').text(diproses.toLocaleString('id-ID'));
     $('#admmuriddash_cardDisetujui').text(disetujui.toLocaleString('id-ID'));
     $('#admmuriddash_cardRevisi').text(revisi.toLocaleString('id-ID'));
     $('#admmuriddash_cardDitolak').text(ditolak.toLocaleString('id-ID'));
 
-    // 3. Update Badges 4 Status Cards List
     $('#admmuriddash_badgeDiproses').text(diproses);
     $('#admmuriddash_badgeDisetujui').text(disetujui);
     $('#admmuriddash_badgeRevisi').text(revisi);
     $('#admmuriddash_badgeDitolak').text(ditolak);
 
-    // Populate 4 List Cards (Hanya nama sekolah saja)
     var categories = [
       { id: '#admmuriddash_listDiproses', list: listDiproses, emptyText: 'Tidak ada data diproses' },
       { id: '#admmuriddash_listDisetujui', list: listDisetujui, emptyText: 'Tidak ada data disetujui' },
@@ -526,41 +537,92 @@
         });
       }
     });
+  }
 
-    // 4. Render Tabel Rekapitulasi (Default 10 Entri)
-    if ($.fn.DataTable.isDataTable('#admmuriddash_tabelRekap')) {
-      $('#admmuriddash_tabelRekap').DataTable().destroy();
+  function admmuriddash_resetUnitView() {
+    if (typeof SultanUI !== 'undefined') {
+      SultanUI.stopLottery('#admmuriddash_unitCardTotal, #admmuriddash_unitCardDisetujui, #admmuriddash_unitCardDiproses, #admmuriddash_unitCardRevisi, #admmuriddash_unitCardDitolak, #admmuriddash_unitCardProgress');
     }
-    ADMMURIDDASH_TABEL_REKAP = $('#admmuriddash_tabelRekap').DataTable({
-      destroy: true,
-      data: dtArray,
-      ordering: true,
-      pageLength: 10,
-      autoWidth: false,
-      order: [[0, 'asc']],
-      columnDefs: [
-        { targets: 0, className: 'text-left align-middle' },
-        { targets: [1, 2, 3], className: 'text-center align-middle' }
-      ],
-      language: {
-        search: "Cari:",
-        lengthMenu: "Tampilkan _MENU_ data",
-        info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
-        emptyTable: "Tidak ada data yang tersedia pada tabel ini",
-        paginate: { previous: "Sebelumnya", next: "Berikutnya" }
-      },
-      dom: "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
-           "<'row'<'col-sm-12'tr>>" +
-           "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>"
-    });
+    $('#admmuriddash_unitCardTotal, #admmuriddash_unitCardDisetujui, #admmuriddash_unitCardDiproses, #admmuriddash_unitCardRevisi, #admmuriddash_unitCardDitolak').text('0');
+    $('#admmuriddash_unitCardProgress').text('0%');
+    $('#admmuriddash_unitProgressBar').css('width', '0%');
+    $('#admmuriddash_unitProgressSub').text('0 dari 0 Selesai');
+    $('#admmuriddash_unitHeaderStatusText').html('Distribusi status seluruh dokumen administrasi murid');
 
-    // Update Footer Totals
-    var formatTotal = function(val) {
-      return val === 0 ? "-" : val.toLocaleString('id-ID');
-    };
-    $('#admmuriddash_totalMuridL').text(formatTotal(sumL));
-    $('#admmuriddash_totalMuridP').text(formatTotal(sumP));
-    $('#admmuriddash_totalMuridAll').text(formatTotal(sumTotal));
+    var emptyHtml = SultanUI && SultanUI.renderListEmptyInfo ? SultanUI.renderListEmptyInfo('PILIH SEKOLAH') :
+      '<li class="list-group-item bg-transparent text-center text-muted py-4 border-0" style="font-size:11px;">PILIH SEKOLAH</li>';
+    $('#admmuriddash_unit_listDisetujui, #admmuriddash_unit_listDiproses, #admmuriddash_unit_listRevisi, #admmuriddash_unit_listDitolak').html(emptyHtml);
+  }
+
+  function admmuriddash_renderUnitView(npsn) {
+    if (typeof SultanUI !== 'undefined') {
+      SultanUI.stopLottery('#admmuriddash_unitCardTotal, #admmuriddash_unitCardDisetujui, #admmuriddash_unitCardDiproses, #admmuriddash_unitCardRevisi, #admmuriddash_unitCardDitolak, #admmuriddash_unitCardProgress');
+    }
+    if (!ADMMURIDDASH_CACHE_DATA || !ADMMURIDDASH_CACHE_DATA.detailSekolah) {
+      admmuriddash_resetUnitView();
+      return;
+    }
+
+    var school = ADMMURIDDASH_CACHE_DATA.detailSekolah.find(function(s) { return String(s.npsn).trim() === String(npsn).trim(); });
+    if (!school) {
+      admmuriddash_resetUnitView();
+      return;
+    }
+
+    var submenu = $('#admmuriddash_filterSubmenu').val();
+    var doc = (submenu === "SPMB") ? school.spmb : ((submenu === "IJAZAH") ? school.ijazah : ((submenu === "ARSIP_IJAZAH") ? school.arsip_ijazah : school.arsip_tka));
+
+    var disetujui = 0, diproses = 0, revisi = 0, ditolak = 0;
+    var listDisetujui = [], listDiproses = [], listRevisi = [], listDitolak = [];
+    var totalDok = 0;
+
+    var status = doc.status || "Belum Unggah";
+    var statusKey = status.toLowerCase().trim();
+
+    if (status !== "Belum Unggah") {
+      totalDok = 1;
+      var label = (submenu === "SPMB" ? "Laporan SPMB" : (submenu === "IJAZAH" ? "Cetak Ijazah" : (submenu === "ARSIP_IJAZAH" ? "Arsip Ijazah" : "Arsip TKA"))) + " — " + school.nama;
+      var docItem = { nama: label };
+
+      if (statusKey === "disetujui") { disetujui = 1; listDisetujui.push(docItem); }
+      else if (statusKey === "revisi") { revisi = 1; listRevisi.push(docItem); }
+      else if (statusKey === "ditolak") { ditolak = 1; listDitolak.push(docItem); }
+      else { diproses = 1; listDiproses.push(docItem); }
+    }
+
+    var pct = totalDok > 0 ? (disetujui > 0 ? 100 : 0) : 0;
+
+    $('#admmuriddash_unitCardProgress').text(pct + '%');
+    $('#admmuriddash_unitProgressBar').css('width', pct + '%');
+    $('#admmuriddash_unitProgressSub').text(disetujui + ' dari ' + (totalDok || 1) + ' Selesai');
+    $('#admmuriddash_unitCardTotal').text(totalDok);
+    $('#admmuriddash_unitCardDiproses').text(diproses);
+    $('#admmuriddash_unitCardDisetujui').text(disetujui);
+    $('#admmuriddash_unitCardRevisi').text(revisi);
+    $('#admmuriddash_unitCardDitolak').text(ditolak);
+
+    var cats = [
+      { id: '#admmuriddash_unit_listDiproses', list: listDiproses, emptyText: 'TIDAK ADA DATA DIPROSES' },
+      { id: '#admmuriddash_unit_listDisetujui', list: listDisetujui, emptyText: 'TIDAK ADA DATA DISETUJUI' },
+      { id: '#admmuriddash_unit_listRevisi', list: listRevisi, emptyText: 'TIDAK ADA DATA REVISI' },
+      { id: '#admmuriddash_unit_listDitolak', list: listDitolak, emptyText: 'TIDAK ADA DATA DITOLAK' }
+    ];
+
+    cats.forEach(function(cat) {
+      var $l = $(cat.id); $l.empty();
+      if (cat.list.length === 0) {
+        $l.html(SultanUI && SultanUI.renderListEmptyInfo ? SultanUI.renderListEmptyInfo(cat.emptyText) : '<li class="list-group-item bg-transparent text-center text-muted py-4 border-0">' + cat.emptyText + '</li>');
+      } else {
+        cat.list.forEach(function(item, idx) {
+          $l.append(
+            '<li class="list-group-item bg-transparent py-2 px-3 font-weight-bold dashlapbul-list-item d-flex align-items-center animate__animated animate__fadeIn admmuriddash-item" style="font-size:12px;line-height:1.4;">' +
+            '<span class="badge dashlapbul-badge-idx mr-2" style="width:25px;min-width:25px;flex-shrink:0;">' + (idx + 1) + '</span>' +
+            '<span class="school-name flex-grow-1 text-truncate">' + admmuriddash_esc(item.nama) + '</span>' +
+            '</li>'
+          );
+        });
+      }
+    });
   }
 
   function admmuriddash_salinWaRekap() {
@@ -638,5 +700,8 @@
       }
     }
   }
-</script>
 
+  function admmuriddash_esc(text) {
+    return text ? String(text).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;") : "";
+  }
+</script>
