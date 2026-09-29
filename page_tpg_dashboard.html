@@ -1,40 +1,51 @@
+<style>
+  #tpgdash_viewRekap, #tpgdash_viewUnit {
+    transition: all 0.3s ease;
+  }
+</style>
+
 <section class="content sultan-page-transition">
   <div class="container-fluid">
 
-    <!-- ================================================================
-         CARD FILTER DENGAN DUAL TAB SWITCHER (STANDAR SULTAN UI)
-         ================================================================ -->
-    <!-- ================================================================
-         FILTER BAR UTAMA DASHBOARD TPG (TERPUSAT SULTAN UI - SINGLE TAB)
-         ================================================================ -->
+    <!-- FILTER BAR TERPUSAT SULTAN UI DUAL MODE -->
     <div class="sultan-filter-bar-balanced mb-4 sultan-page-transition d-none" id="tpgdash_filterBar">
       <div class="filter-controls-group">
 
-        <!-- Filter Nama Dokumen / Jenis Dokumen -->
+        <!-- Segmented Switcher Mode (Unit vs Rekap) -->
+        <div class="sultan-segmented-switch">
+          <button type="button" class="sultan-segmented-btn" data-mode="unit" id="tpgdash_btnModeUnit">
+            <i class="fas fa-school"></i> Unit
+          </button>
+          <button type="button" class="sultan-segmented-btn active" data-mode="rekap" id="tpgdash_btnModeRekap">
+            <i class="fas fa-chart-pie"></i> Rekap
+          </button>
+        </div>
+
+        <!-- 1. Filter Jenis Dokumen TPG -->
         <div class="sultan-filter-item" id="tpgdash_filterJenisDokumenContainer" style="min-width: 180px;">
           <select id="tpgdash_filterJenisDokumen" class="form-control" aria-label="Jenis Dokumen">
-            <option value="Perbaikan Gaji" selected>Perbaikan Gaji</option>
+            <option value="Perbaikan Gaji" selected>Perbaikan Gaji Pokok</option>
           </select>
           <i class="fas fa-chevron-down"></i>
         </div>
 
-        <!-- Filter Jenjang (Khusus Admin) -->
-        <div class="sultan-filter-item d-none" id="tpgdash_filterJenjangContainer">
-          <select id="tpgdash_filterJenjang" class="form-control" aria-label="Pilih Jenjang">
-            <option value="SEMUA">Semua Jenjang</option>
+        <!-- 2. Filter Jenjang Unit (Admin) -->
+        <div class="sultan-filter-item d-none" id="tpgdash_filterJenjangUnitContainer" style="min-width: 140px;">
+          <select id="tpgdash_filterJenjangUnit" class="form-control" aria-label="Pilih Jenjang">
+            <option value="">Pilih Jenjang...</option>
           </select>
           <i class="fas fa-chevron-down"></i>
         </div>
 
-        <!-- Filter Sekolah (Khusus Admin - tergantung jenjang) -->
-        <div class="sultan-filter-item d-none" id="tpgdash_filterSekolahContainer" style="min-width: 240px; max-width: 380px;">
-          <select id="tpgdash_filterSekolah" class="form-control" aria-label="Pilih Sekolah">
-            <option value="SEMUA">Semua Sekolah</option>
+        <!-- 3. Filter Nama Sekolah Unit (Admin) -->
+        <div class="sultan-filter-item d-none" id="tpgdash_filterUnitSekolahContainer" style="min-width: 220px; max-width: 340px;">
+          <select id="tpgdash_filterUnitSekolah" class="form-control" aria-label="Pilih Sekolah">
+            <option value="">Pilih Sekolah...</option>
           </select>
           <i class="fas fa-chevron-down"></i>
         </div>
 
-        <div class="divider-vertical d-none d-md-block mx-1" id="tpgdash_dividerRefresh"></div>
+        <div class="divider-vertical d-none d-md-block mx-1"></div>
 
         <!-- Tombol Refresh Data -->
         <button type="button" id="tpgdash_btnRefresh" class="sultan-btn-refresh" title="Refresh Data">
@@ -43,503 +54,586 @@
       </div>
     </div>
 
-    <!-- Loading State Terpusat -->
-    <div id="tpgdash_loadingState" class="sultan-loading-box sultan-page-transition">
-      <div class="sultan-spinner-icon">
-        <i class="fas fa-circle-notch fa-spin"></i>
+    <!-- VIEW REKAP -->
+    <div id="tpgdash_viewRekap" class="py-1">
+
+      <!-- Loading State Terpusat -->
+      <div id="tpgdash_loadingState" class="sultan-loading-box sultan-page-transition">
+        <div class="sultan-spinner-icon">
+          <i class="fas fa-circle-notch fa-spin"></i>
+        </div>
+        <h6 class="text-muted font-weight-bold sultan-loading-text mb-0" style="letter-spacing: 0.5px; text-transform: uppercase; font-size: 11px;">Memuat Data Dasbor TPG...</h6>
       </div>
-      <h6 class="text-muted font-weight-bold sultan-loading-text mb-0" style="letter-spacing: 0.5px; text-transform: uppercase; font-size: 11px;">Memuat Data Dasbor TPG...</h6>
-    </div>
 
-    <!-- ================================================================
-         MAIN CONTENT DASHBOARD STATE
-         ================================================================ -->
-    <div id="tpgdash_dashboardState" style="display: none;">
+      <div id="tpgdash_dashboardState" style="display: none;">
+        <!-- Row 1: Card Progress (4 Metric Cards Minimal) -->
+        <div id="tpgdash_metricRow1"></div>
 
-      <!-- CARD TOTAL (KPI SUMMARY CARDS - SULTAN UI TERPUSAT) -->
-      <div id="tpgdash_metricRow2"></div>
+        <!-- Row 2: Card Status Breakdown (5 Status Cards) -->
+        <div id="tpgdash_metricRow2"></div>
 
-      <!-- ================================================================
-           2. DAFTAR PTK SUDAH UNGGAH (4 CARD STATUS TERPUSAT SULTAN UI)
-           ================================================================ -->
-      <div id="tpgdash_statusCardsContainer" class="mb-4"></div>
+        <!-- Row 3: Card DAFTAR USULAN TPG SUDAH UNGGAH (4 Cards List Terpusat) -->
+        <div id="tpgdash_statusCardsContainer" class="mb-4"></div>
 
-      <!-- ================================================================
-           3. CARD TABEL: DATATABLE REKAPITULASI (TANPA BARIS JUMLAH)
-           ================================================================ -->
-      <div class="row mb-4">
-        <div class="col-12">
-          <div class="card card-sultan-terpusat shadow-xs border-0">
-            <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center pt-3 pb-2 px-3">
-              <h6 class="font-weight-bold text-sultan-utama m-0 text-uppercase" style="letter-spacing: 0.5px;">
-                <i class="fas fa-table mr-2"></i>Rekapitulasi Usulan TPG: <span id="tpgdash_tableTitleLabel">Per Unit Kerja</span>
-              </h6>
-            </div>
-            <div class="card-body p-0">
-              <div class="table-responsive sultan-scroll">
-                <table id="tpgdash_rekapTable" class="table table-hover sultan-table-datatable text-center mb-0 w-100">
-                  <thead>
-                    <tr>
-                      <th class="align-middle text-left font-weight-bold col-sticky-left" style="min-width: 220px;">NAMA SEKOLAH</th>
-                      <th class="align-middle font-weight-bold" style="width: 120px;">JML USULAN</th>
-                      <th class="align-middle font-weight-bold" style="width: 110px;">DIPROSES</th>
-                      <th class="align-middle font-weight-bold" style="width: 110px;">DISETUJUI</th>
-                      <th class="align-middle font-weight-bold" style="width: 110px;">REVISI</th>
-                      <th class="align-middle font-weight-bold" style="width: 110px;">DITOLAK</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <!-- Populated via JS DataTable -->
-                  </tbody>
-                </table>
+        <!-- Row 4: Card DataTable Rekapitulasi Usulan TPG Per Unit Kerja -->
+        <div class="row mb-4">
+          <div class="col-12">
+            <div class="card card-sultan-terpusat shadow-xs border-0">
+              <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center pt-3 pb-2 px-3">
+                <h6 class="font-weight-bold text-sultan-utama m-0 text-uppercase" style="letter-spacing: 0.5px;">
+                  <i class="fas fa-table mr-2"></i>Rekapitulasi Usulan TPG: <span id="tpgdash_tableTitleLabel">Per Unit Kerja</span>
+                </h6>
+              </div>
+              <div class="card-body p-0">
+                <div class="table-responsive sultan-scroll">
+                  <table id="tpgdash_rekapTable" class="table table-hover sultan-table-datatable text-center mb-0 w-100">
+                    <thead>
+                      <tr>
+                        <th class="align-middle text-left font-weight-bold col-sticky-left" style="min-width: 220px;">NAMA SEKOLAH</th>
+                        <th class="align-middle font-weight-bold" style="width: 120px;">JML USULAN</th>
+                        <th class="align-middle font-weight-bold" style="width: 110px;">DIPROSES</th>
+                        <th class="align-middle font-weight-bold" style="width: 110px;">DISETUJUI</th>
+                        <th class="align-middle font-weight-bold" style="width: 110px;">REVISI</th>
+                        <th class="align-middle font-weight-bold" style="width: 110px;">DITOLAK</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <!-- Populated via JS DataTable -->
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>
         </div>
+
       </div>
 
+    </div>
+
+    <!-- VIEW UNIT -->
+    <div id="tpgdash_viewUnit" class="d-none py-1">
+      <div id="tpgdash_unitContent">
+        <!-- Modern Sultan Minimal Metric Cards (6 Cards Row Unit) -->
+        <div class="row mb-4" id="tpgdash_unitMetricRow">
+          <!-- KARTU 1: KELENGKAPAN -->
+          <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 col-6 mb-3">
+            <div class="sultan-metric-card-minimal minimal-primary shadow-xs" style="border-radius:18px!important;padding:1.1rem 0.9rem!important;">
+              <div class="minimal-label text-truncate"><i class="fas fa-chart-pie mr-1"></i>Kelengkapan</div>
+              <div class="minimal-value" id="tpgdash_unitCardProgress">0%</div>
+              <div class="minimal-sub text-truncate" id="tpgdash_unitProgressSub">0 dari 0 Selesai</div>
+              <div class="progress mt-2" style="height:4px;border-radius:4px;background:rgba(79,70,229,0.15);width:100%;">
+                <div id="tpgdash_unitProgressBar" class="progress-bar" role="progressbar" style="width:0%;border-radius:4px;background-color:#4f46e5;transition:width 0.6s ease;"></div>
+              </div>
+            </div>
+          </div>
+          <!-- KARTU 2: JML USULAN -->
+          <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 col-6 mb-3">
+            <div class="sultan-metric-card-minimal minimal-slate shadow-xs" style="border-radius:18px!important;padding:1.1rem 0.9rem!important;">
+              <div class="minimal-label text-truncate"><i class="fas fa-folder mr-1"></i>Jml Usulan</div>
+              <div class="minimal-value" id="tpgdash_unitCardTotal">0</div>
+              <div class="minimal-sub text-truncate" id="tpgdash_unitTotalSub">Sudah Diunggah</div>
+            </div>
+          </div>
+          <!-- KARTU 3: DIPROSES -->
+          <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 col-6 mb-3">
+            <div class="sultan-metric-card-minimal minimal-info shadow-xs" style="border-radius:18px!important;padding:1.1rem 0.9rem!important;">
+              <div class="minimal-label text-truncate"><i class="fas fa-hourglass-half mr-1"></i>Diproses</div>
+              <div class="minimal-value" id="tpgdash_unitCardDiproses">0</div>
+              <div class="minimal-sub text-truncate">Verifikasi</div>
+            </div>
+          </div>
+          <!-- KARTU 4: DISETUJUI -->
+          <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 col-6 mb-3">
+            <div class="sultan-metric-card-minimal minimal-success shadow-xs" style="border-radius:18px!important;padding:1.1rem 0.9rem!important;">
+              <div class="minimal-label text-truncate"><i class="fas fa-check-circle mr-1"></i>Disetujui</div>
+              <div class="minimal-value" id="tpgdash_unitCardDisetujui">0</div>
+              <div class="minimal-sub text-truncate">Dokumen Valid</div>
+            </div>
+          </div>
+          <!-- KARTU 5: REVISI -->
+          <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 col-6 mb-3">
+            <div class="sultan-metric-card-minimal minimal-warning shadow-xs" style="border-radius:18px!important;padding:1.1rem 0.9rem!important;">
+              <div class="minimal-label text-truncate"><i class="fas fa-edit mr-1"></i>Revisi</div>
+              <div class="minimal-value" id="tpgdash_unitCardRevisi">0</div>
+              <div class="minimal-sub text-truncate">Perlu Perbaikan</div>
+            </div>
+          </div>
+          <!-- KARTU 6: DITOLAK -->
+          <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 col-6 mb-3">
+            <div class="sultan-metric-card-minimal minimal-maroon shadow-xs" style="border-radius:18px!important;padding:1.1rem 0.9rem!important;">
+              <div class="minimal-label text-truncate"><i class="fas fa-times-circle mr-1"></i>Ditolak</div>
+              <div class="minimal-value" id="tpgdash_unitCardDitolak">0</div>
+              <div class="minimal-sub text-truncate">Tidak Valid</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section Daftar Dokumen Terunggah Unit -->
+        <div class="col-12 mt-2 px-0 mb-4">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+              <h6 class="font-weight-bold text-sultan-utama m-0 text-uppercase" style="letter-spacing:0.5px;">
+                <i class="fas fa-folder-open mr-2"></i>Daftar Guru Terunggah Usulan TPG
+              </h6>
+              <small class="text-muted" id="tpgdash_unitHeaderStatusText">Distribusi status dokumen usulan TPG per guru</small>
+            </div>
+          </div>
+
+          <div id="tpgdash_unitStatusCardsContainer"></div>
+        </div>
+      </div>
     </div>
 
   </div>
 </section>
 
 <script>
-  (function() {
-    var TPGDASH_RAW_DATA = [];
-    var TPGDASH_MASTER_SEKOLAH = [];
-    var TPGDASH_IS_ADMIN = false;
-    var TPGDASH_USER_UNIT = "";
-    var TPGDASH_USER_NPSN = "";
-    var tpgdash_dtInstance = null;
+var TPGDASH_CACHE = null;
+var TPGDASH_IS_ADMIN = false;
+var TPGDASH_USER_NPSN = "";
+var TPGDASH_MODE = "rekap";
+var tpgdash_dtInstance = null;
 
-    function tpgdash_init() {
-      var user = (typeof getSesiUser === 'function') ? getSesiUser() : {};
-      var role = String(user.role || "").toLowerCase();
-      TPGDASH_IS_ADMIN = (role.indexOf("admin") !== -1 || role.indexOf("verifikator") !== -1 || role.indexOf("korwil") !== -1 || role.indexOf("tpg") !== -1);
-      TPGDASH_USER_UNIT = String(user.unit || user.nama_lengkap || user.fullname || user.nama || "").trim();
-      TPGDASH_USER_NPSN = String(user.npsn || user.username || "").trim();
+$(document).ready(function () {
+  try {
+    var userLogin = typeof getSesiUser === 'function' ? getSesiUser() : {};
+    var rStr = String(userLogin.role || "").toLowerCase();
+    TPGDASH_IS_ADMIN = (typeof checkUserRoleIsAdmin === 'function' && checkUserRoleIsAdmin()) || rStr.includes("admin") || rStr.includes("verifikator") || rStr.includes("tpg") || rStr.includes("korwil");
+    TPGDASH_USER_NPSN = String(userLogin.npsn || userLogin.unit || userLogin.username || "").trim();
+  } catch(e) { TPGDASH_USER_NPSN = ""; TPGDASH_IS_ADMIN = false; }
 
-      // Inisialisasi Sultan UI Terpusat
-      if (typeof SultanUI !== 'undefined') {
-        if (SultanUI.renderDashboardRow2Minimal) {
-          $('#tpgdash_metricRow2').html(SultanUI.renderDashboardRow2Minimal('tpgdash'));
+  // Render komponen UI Terpusat Sultan UI
+  if (typeof SultanUI !== 'undefined') {
+    $('#tpgdash_metricRow1').html(SultanUI.renderDashboardRow1Minimal('tpgdash', {
+      totalLabel: 'TARGET USULAN', sudahLabel: 'SUDAH UNGGAH', belumLabel: 'BELUM UNGGAH', progressLabel: 'CAPAIAN PROGRES',
+      subTotal: 'Total Usulan TPG', subSudah: 'Guru Telah Mengunggah', subBelum: 'Guru Belum Mengunggah', subProgress: 'Tingkat Kepatuhan'
+    }));
+
+    $('#tpgdash_metricRow2').html(SultanUI.renderDashboardRow2Minimal('tpgdash'));
+
+    $('#tpgdash_statusCardsContainer').html(SultanUI.renderDashboardStatusCards4('tpgdash', {
+      title: 'DAFTAR GURU SUDAH UNGGAH USULAN TPG',
+      hasWaButton: false
+    }));
+
+    $('#tpgdash_unitStatusCardsContainer').html(SultanUI.renderDashboardStatusCards4('tpgdash_unit', {
+      placeholderCari: 'Cari nama guru...', emptyText: 'PILIH SEKOLAH'
+    }));
+  }
+
+  SultanDashboard.initDualMode({
+    pageKey: 'tpgDash',
+    tabType: 'single_tab',
+    unitViewId: '#tpgdash_viewUnit',
+    rekapViewId: '#tpgdash_viewRekap',
+    switchSelector: '.sultan-segmented-btn',
+    onInit: function(state) {
+      TPGDASH_IS_ADMIN   = state.isAdmin;
+      TPGDASH_USER_NPSN  = state.userNpsn;
+      TPGDASH_MODE       = state.currentMode;
+
+      var masterSekolah = (TPGDASH_CACHE && TPGDASH_CACHE.detailUnit) ? TPGDASH_CACHE.detailUnit : [];
+      SultanDashboard.setupUnitSchoolPicker({
+        pageKey: 'tpgDash',
+        wrapperJenjangId: '#tpgdash_filterJenjangUnitContainer',
+        selectJenjangId: '#tpgdash_filterJenjangUnit',
+        wrapperSekolahId: '#tpgdash_filterUnitSekolahContainer',
+        selectSekolahId: '#tpgdash_filterUnitSekolah',
+        btnActionId: '#tpgdash_btnRefresh',
+        masterSekolah: masterSekolah,
+        onSelectSchool: function(npsn, nama) {
+          if (npsn || nama) tpgdash_renderUnitView(npsn || nama);
+          else tpgdash_resetUnitView();
         }
-        if (SultanUI.renderDashboardStatusCards4) {
-          $('#tpgdash_statusCardsContainer').html(SultanUI.renderDashboardStatusCards4('tpgdash', { title: 'Daftar PTK Sudah Unggah' }));
+      });
+      tpgdash_updateFilterBarControls();
+    },
+    onSwitchMode: function(mode, state, isFirstLoad) {
+      TPGDASH_MODE = mode;
+      tpgdash_updateFilterBarControls();
+      if (mode === 'unit') {
+        if (!TPGDASH_IS_ADMIN && TPGDASH_USER_NPSN) {
+          tpgdash_renderUnitView(TPGDASH_USER_NPSN);
+        } else if (TPGDASH_IS_ADMIN) {
+          var curSel = $('#tpgdash_filterUnitSekolah').val();
+          if (curSel) tpgdash_renderUnitView(curSel);
+          else tpgdash_resetUnitView();
         }
-      }
-
-      tpgdash_setupControls();
-
-      // Inisialisasi SultanDashboard Single Mode
-      if (typeof SultanDashboard !== 'undefined' && SultanDashboard.initDualMode) {
-        SultanDashboard.initDualMode({
-          pageKey: 'tpgdash',
-          dashboardType: 'single_tab',
-          switchSelector: '.sultan-segmented-btn',
-          onInit: function(state) {
-            TPGDASH_IS_ADMIN = state.isAdmin;
-            tpgdash_updateFilterBarControls();
-          },
-          onSwitchMode: function(mode, state, isFirstLoad) {
-            tpgdash_updateFilterBarControls();
-          }
-        });
-      }
-
-      // Muat master sekolah dan data dasbor saat inisialisasi
-      tpgdash_loadMasterSekolahThenFetchData();
-    }
-
-    function tpgdash_updateFilterBarControls() {
-      $('#tpgdash_filterBar').removeClass('d-none');
-      $('#tpgdash_filterJenisDokumenContainer').removeClass('d-none');
-
-      if (TPGDASH_IS_ADMIN) {
-        // Admin: Tampilkan Filter Nama Dokumen + Jenjang + Sekolah
-        $('#tpgdash_filterJenjangContainer').removeClass('d-none');
-        $('#tpgdash_filterSekolahContainer').removeClass('d-none');
       } else {
-        // User: Hanya Filter Nama Dokumen (Sembunyikan Jenjang & Sekolah)
-        $('#tpgdash_filterJenjangContainer').addClass('d-none');
-        $('#tpgdash_filterSekolahContainer').addClass('d-none');
+        if (!isFirstLoad) tpgdash_terapkanFilterLokal();
       }
     }
+  });
 
-    function tpgdash_setupControls() {
-      // Event Refresh Button
-      $(document).off('click', '#tpgdash_btnRefresh').on('click', '#tpgdash_btnRefresh', function(e) {
-        e.preventDefault();
-        tpgdash_loadDashboardData();
-      });
+  tpgdash_setupEventListeners();
+  tpgdash_loadDashboard();
+});
 
-      // Event Change Jenis Dokumen
-      $(document).off('change', '#tpgdash_filterJenisDokumen').on('change', '#tpgdash_filterJenisDokumen', function() {
-        tpgdash_applyFiltersAndRender();
-      });
+function tpgdash_updateFilterBarControls() {
+  var isUnit = (TPGDASH_MODE === 'unit');
+  $('#tpgdash_filterBar').removeClass('d-none');
+  $('#tpgdash_filterJenisDokumenContainer').removeClass('d-none');
+  if (isUnit && TPGDASH_IS_ADMIN) {
+    $('#tpgdash_filterJenjangUnitContainer, #tpgdash_filterUnitSekolahContainer').removeClass('d-none');
+  } else {
+    $('#tpgdash_filterJenjangUnitContainer, #tpgdash_filterUnitSekolahContainer').addClass('d-none');
+  }
+}
 
-      // Event Change Jenjang
-      $(document).off('change', '#tpgdash_filterJenjang').on('change', '#tpgdash_filterJenjang', function() {
-        var selectedJenjang = $(this).val();
-        tpgdash_populateDropdownSekolah(selectedJenjang);
-        tpgdash_applyFiltersAndRender();
-      });
+function tpgdash_setupEventListeners() {
+  $(document).off('click', '#tpgdash_btnRefresh').on('click', '#tpgdash_btnRefresh', function(e) {
+    e.preventDefault();
+    tpgdash_loadDashboard(true);
+  });
 
-      // Event Change Sekolah
-      $(document).off('change', '#tpgdash_filterSekolah').on('change', '#tpgdash_filterSekolah', function() {
-        tpgdash_applyFiltersAndRender();
-      });
-
-      // Event Live Search untuk 4 Card List Status
-      $(document).off('keyup', '#tpgdash_inputCariDiproses').on('keyup', '#tpgdash_inputCariDiproses', function() {
-        var val = $(this).val().toLowerCase().trim();
-        $('#tpgdash_listDiproses li.tpgdash-item').filter(function() {
-          $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
-        });
-      });
-      $(document).off('keyup', '#tpgdash_inputCariDisetujui').on('keyup', '#tpgdash_inputCariDisetujui', function() {
-        var val = $(this).val().toLowerCase().trim();
-        $('#tpgdash_listDisetujui li.tpgdash-item').filter(function() {
-          $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
-        });
-      });
-      $(document).off('keyup', '#tpgdash_inputCariRevisi').on('keyup', '#tpgdash_inputCariRevisi', function() {
-        var val = $(this).val().toLowerCase().trim();
-        $('#tpgdash_listRevisi li.tpgdash-item').filter(function() {
-          $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
-        });
-      });
-      $(document).off('keyup', '#tpgdash_inputCariDitolak').on('keyup', '#tpgdash_inputCariDitolak', function() {
-        var val = $(this).val().toLowerCase().trim();
-        $('#tpgdash_listDitolak li.tpgdash-item').filter(function() {
-          $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
-        });
-      });
+  $('#tpgdash_filterJenisDokumen').change(function() {
+    if (TPGDASH_MODE === 'rekap') {
+      tpgdash_terapkanFilterLokal();
+    } else {
+      var target = TPGDASH_IS_ADMIN ? $('#tpgdash_filterUnitSekolah').val() : TPGDASH_USER_NPSN;
+      if (target) tpgdash_renderUnitView(target);
     }
+  });
 
-    function tpgdash_loadMasterSekolahThenFetchData() {
+  // Live Search Rekap
+  $(document).off('keyup', '#tpgdash_inputCariDiproses').on('keyup', '#tpgdash_inputCariDiproses', function() {
+    var val = $(this).val().toLowerCase().trim();
+    $('#tpgdash_listDiproses li.tpgdash-item').filter(function() {
+      $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
+    });
+  });
+  $(document).off('keyup', '#tpgdash_inputCariDisetujui').on('keyup', '#tpgdash_inputCariDisetujui', function() {
+    var val = $(this).val().toLowerCase().trim();
+    $('#tpgdash_listDisetujui li.tpgdash-item').filter(function() {
+      $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
+    });
+  });
+  $(document).off('keyup', '#tpgdash_inputCariRevisi').on('keyup', '#tpgdash_inputCariRevisi', function() {
+    var val = $(this).val().toLowerCase().trim();
+    $('#tpgdash_listRevisi li.tpgdash-item').filter(function() {
+      $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
+    });
+  });
+  $(document).off('keyup', '#tpgdash_inputCariDitolak').on('keyup', '#tpgdash_inputCariDitolak', function() {
+    var val = $(this).val().toLowerCase().trim();
+    $('#tpgdash_listDitolak li.tpgdash-item').filter(function() {
+      $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
+    });
+  });
+
+  // Live Search Unit
+  $(document).off('keyup', '#tpgdash_unit_inputCariDiproses').on('keyup', '#tpgdash_unit_inputCariDiproses', function() {
+    var val = $(this).val().toLowerCase().trim();
+    $('#tpgdash_unit_listDiproses li.tpgdash-item').filter(function() {
+      $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
+    });
+  });
+  $(document).off('keyup', '#tpgdash_unit_inputCariDisetujui').on('keyup', '#tpgdash_unit_inputCariDisetujui', function() {
+    var val = $(this).val().toLowerCase().trim();
+    $('#tpgdash_unit_listDisetujui li.tpgdash-item').filter(function() {
+      $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
+    });
+  });
+  $(document).off('keyup', '#tpgdash_unit_inputCariRevisi').on('keyup', '#tpgdash_unit_inputCariRevisi', function() {
+    var val = $(this).val().toLowerCase().trim();
+    $('#tpgdash_unit_listRevisi li.tpgdash-item').filter(function() {
+      $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
+    });
+  });
+  $(document).off('keyup', '#tpgdash_unit_inputCariDitolak').on('keyup', '#tpgdash_unit_inputCariDitolak', function() {
+    var val = $(this).val().toLowerCase().trim();
+    $('#tpgdash_unit_listDitolak li.tpgdash-item').filter(function() {
+      $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
+    });
+  });
+}
+
+function tpgdash_loadDashboard(forceRefresh) {
+  var htmlSpinner = '<div class="sultan-spinner-icon"><i class="fas fa-circle-notch fa-spin"></i></div>' +
+    '<h6 class="text-muted font-weight-bold sultan-loading-text mb-0" style="letter-spacing: 0.5px; text-transform: uppercase; font-size: 11px;">Memuat Data Dasbor TPG...</h6>';
+  $('#tpgdash_loadingState').html(htmlSpinner).show();
+  $('#tpgdash_dashboardState').hide();
+
+  google.script.run
+    .withSuccessHandler(function (resRaw) {
       if (typeof SultanUI !== 'undefined') {
-        SultanUI.showLoading('#tpgdash_loadingState', 'Memuat Master Data Sekolah...');
+        SultanUI.hideLoading('#tpgdash_loadingState');
       } else {
-        $('#tpgdash_loadingState').show();
-      }
-      $('#tpgdash_dashboardState').hide();
-
-      google.script.run
-        .withSuccessHandler(function(list) {
-          if (Array.isArray(list) && list.length > 0) {
-            TPGDASH_MASTER_SEKOLAH = list;
-          } else {
-            TPGDASH_MASTER_SEKOLAH = [];
-          }
-          tpgdash_initDropdownJenjang();
-          tpgdash_loadDashboardData();
-        })
-        .withFailureHandler(function(err) {
-          console.warn("Gagal memuat master sekolah, fallback data kosong:", err);
-          TPGDASH_MASTER_SEKOLAH = [];
-          tpgdash_initDropdownJenjang();
-          tpgdash_loadDashboardData();
-        })
-        .seragam_getSekolahList();
-    }
-
-    function tpgdash_initDropdownJenjang() {
-      var selectJenjang = $('#tpgdash_filterJenjang');
-      selectJenjang.empty().append('<option value="SEMUA">Semua Jenjang</option>');
-      var setJenjang = new Set();
-
-      if (TPGDASH_MASTER_SEKOLAH && TPGDASH_MASTER_SEKOLAH.length > 0) {
-        TPGDASH_MASTER_SEKOLAH.forEach(function(item) {
-          var j = String(item.jenjang || "").trim().toUpperCase();
-          if (j && j !== "-") setJenjang.add(j);
-        });
+        $('#tpgdash_loadingState').hide();
       }
 
-      Array.from(setJenjang).sort().forEach(function(j) {
-        selectJenjang.append($('<option>', { value: j, text: j }));
+      var res = typeof resRaw === 'string' ? JSON.parse(resRaw) : resRaw;
+      if (!res.success && res.status !== 'success') {
+        if (typeof SultanUI !== 'undefined') {
+          SultanUI.showLoadingError('#tpgdash_loadingState', 'Gagal memuat data: ' + (res.message || 'Unknown error'));
+        }
+        return;
+      }
+      TPGDASH_CACHE = res;
+      var masterSekolah = res.detailUnit || [];
+
+      SultanDashboard.setupUnitSchoolPicker({
+        pageKey: 'tpgDash',
+        wrapperJenjangId: '#tpgdash_filterJenjangUnitContainer',
+        selectJenjangId: '#tpgdash_filterJenjangUnit',
+        wrapperSekolahId: '#tpgdash_filterUnitSekolahContainer',
+        selectSekolahId: '#tpgdash_filterUnitSekolah',
+        btnActionId: '#tpgdash_btnRefresh',
+        masterSekolah: masterSekolah,
+        onSelectSchool: function(npsn, nama) {
+          if (npsn || nama) tpgdash_renderUnitView(npsn || nama);
+          else tpgdash_resetUnitView();
+        }
       });
 
-      tpgdash_populateDropdownSekolah("SEMUA");
-    }
+      $('#tpgdash_dashboardState').fadeIn();
+      if (TPGDASH_MODE === 'rekap') {
+        tpgdash_terapkanFilterLokal();
+      } else {
+        var targetUnit = TPGDASH_IS_ADMIN ? $('#tpgdash_filterUnitSekolah').val() : TPGDASH_USER_NPSN;
+        if (targetUnit) tpgdash_renderUnitView(targetUnit);
+        else tpgdash_resetUnitView();
+      }
+    })
+    .withFailureHandler(function (err) {
+      if (typeof SultanUI !== 'undefined') {
+        SultanUI.showLoadingError('#tpgdash_loadingState', 'Terjadi kesalahan: ' + (err.message || err));
+      }
+    })
+    .tpg_getDashboardData('SEMUA', !!forceRefresh);
+}
 
-    function tpgdash_populateDropdownSekolah(selectedJenjang) {
-      var selectSekolah = $('#tpgdash_filterSekolah');
-      selectSekolah.empty().append('<option value="SEMUA">Semua Sekolah</option>');
-      selectedJenjang = String(selectedJenjang || "SEMUA").trim().toUpperCase();
+function tpgdash_terapkanFilterLokal() {
+  if (!TPGDASH_CACHE || !TPGDASH_CACHE.detailUnit) return;
+  var res = TPGDASH_CACHE;
 
-      var filtered = TPGDASH_MASTER_SEKOLAH.filter(function(item) {
-        if (selectedJenjang === "SEMUA" || !selectedJenjang) return true;
-        return String(item.jenjang || "").trim().toUpperCase() === selectedJenjang;
-      });
+  var totPeg   = res.totalPegawai || 0;
+  var totSudah = res.totalSudah   || 0;
+  var totBelum = res.totalBelum   || 0;
+  var totVerif = res.totalDiverifikasi || res.totalDisetujui || 0;
+  var totProses= res.totalDiproses     || 0;
+  var totRevisi= res.totalRevisi       || 0;
+  var totTolak = res.totalDitolak      || 0;
+  var pct = totPeg > 0 ? Math.round((totSudah / totPeg) * 100) : 100;
 
-      filtered.sort(function(a, b) {
+  $('#tpgdash_cardTotalSekolah').text(totPeg.toLocaleString('id-ID'));
+  $('#tpgdash_cardSudah').text(totSudah.toLocaleString('id-ID'));
+  $('#tpgdash_cardBelum').text(totBelum.toLocaleString('id-ID'));
+  $('#tpgdash_cardProgress').text(pct + '%');
+
+  $('#tpgdash_cardTotalDokumen').text(totSudah.toLocaleString('id-ID'));
+  $('#tpgdash_cardDiproses').text(totProses.toLocaleString('id-ID'));
+  $('#tpgdash_cardDisetujui').text(totVerif.toLocaleString('id-ID'));
+  $('#tpgdash_cardRevisi').text(totRevisi.toLocaleString('id-ID'));
+  $('#tpgdash_cardDitolak').text(totTolak.toLocaleString('id-ID'));
+
+  var categories = {
+    'Diproses':  { list: [], countId: '#tpgdash_countDiproses',  listId: '#tpgdash_listDiproses',  emptyMsg: 'Tidak ada usulan TPG diproses' },
+    'Disetujui': { list: [], countId: '#tpgdash_countDisetujui', listId: '#tpgdash_listDisetujui', emptyMsg: 'Tidak ada usulan TPG disetujui' },
+    'Revisi':    { list: [], countId: '#tpgdash_countRevisi',    listId: '#tpgdash_listRevisi',    emptyMsg: 'Tidak ada usulan TPG revisi' },
+    'Ditolak':   { list: [], countId: '#tpgdash_countDitolak',   listId: '#tpgdash_listDitolak',   emptyMsg: 'Tidak ada usulan TPG ditolak' }
+  };
+
+  var units = res.detailUnit || [];
+  units.forEach(function (u) {
+    (u.listSudah || []).forEach(function (p) {
+      var st = String(p.status || 'Diproses').trim().toLowerCase();
+      if (st.includes('setuju') || st.includes('verifikasi') || st.includes('valid') || st.includes('ok')) {
+        categories['Disetujui'].list.push(p);
+      } else if (st.includes('revisi')) {
+        categories['Revisi'].list.push(p);
+      } else if (st.includes('tolak') || st.includes('ditolak')) {
+        categories['Ditolak'].list.push(p);
+      } else {
+        categories['Diproses'].list.push(p);
+      }
+    });
+  });
+
+  $('#tpgdash_countDiproses').text(categories['Diproses'].list.length);
+  $('#tpgdash_countDisetujui').text(categories['Disetujui'].list.length);
+  $('#tpgdash_countRevisi').text(categories['Revisi'].list.length);
+  $('#tpgdash_countDitolak').text(categories['Ditolak'].list.length);
+
+  Object.keys(categories).forEach(function(catKey) {
+    var cat = categories[catKey];
+    var $list = $(cat.listId);
+    $list.empty();
+
+    if (cat.list.length === 0) {
+      $list.html(SultanUI && SultanUI.renderListEmptyInfo ? SultanUI.renderListEmptyInfo(cat.emptyMsg) : '<li class="list-group-item bg-transparent text-center text-muted py-4 border-0">' + cat.emptyMsg + '</li>');
+    } else {
+      cat.list.sort(function(a, b) {
         return String(a.nama || "").localeCompare(String(b.nama || ""));
       });
 
-      filtered.forEach(function(item) {
-        selectSekolah.append($('<option>', { value: item.nama, text: item.nama }));
+      cat.list.forEach(function(r, index) {
+        var idxNum = index + 1;
+        var nama = String(r.nama || "-").toUpperCase();
+        var delay = Math.min(index * 25, 300);
+
+        var itemHtml = 
+          '<li class="list-group-item bg-transparent py-2 px-3 font-weight-bold dashlapbul-list-item d-flex align-items-center animate__animated animate__fadeIn tpgdash-item" style="font-size:12px;line-height:1.4;animation-delay:' + delay + 'ms;">' +
+            '<span class="badge dashlapbul-badge-idx mr-2" style="width:25px;min-width:25px;flex-shrink:0;">' + idxNum + '</span>' +
+            '<span class="school-name flex-grow-1 text-truncate" style="word-break:break-word;">' + nama + '</span>' +
+          '</li>';
+
+        $list.append(itemHtml);
       });
     }
+  });
 
-    function tpgdash_loadDashboardData() {
-      if (typeof SultanUI !== 'undefined') {
-        SultanUI.showLoading('#tpgdash_loadingState', 'Memuat Data Usulan TPG...');
-      } else {
-        $('#tpgdash_loadingState').show();
-      }
-      $('#tpgdash_dashboardState').hide();
+  // Render Tabel Rekapitulasi per Sekolah
+  tpgdash_renderRekapTable(units);
+}
 
-      google.script.run
-        .withSuccessHandler(function(response) {
-          if (typeof SultanUI !== 'undefined') {
-            SultanUI.hideLoading('#tpgdash_loadingState');
-          } else {
-            $('#tpgdash_loadingState').hide();
-          }
-
-          if (response && response.status === 'success') {
-            TPGDASH_RAW_DATA = Array.isArray(response.data) ? response.data : [];
-            $('#tpgdash_dashboardState').fadeIn();
-            tpgdash_applyFiltersAndRender();
-          } else {
-            if (typeof SultanUI !== 'undefined') {
-              SultanUI.showLoadingError('#tpgdash_loadingState', 'Gagal memuat data: ' + (response ? response.message : 'Unknown error'));
-            } else {
-              alert('Gagal memuat data');
-            }
-          }
-        })
-        .withFailureHandler(function(error) {
-          if (typeof SultanUI !== 'undefined') {
-            SultanUI.showLoadingError('#tpgdash_loadingState', 'Terjadi kesalahan sistem: ' + (error.message || error));
-          } else {
-            alert('Terjadi kesalahan: ' + error.message);
-          }
-        })
-        .tpg_getPerbaikanData("", true);
+function tpgdash_renderRekapTable(units) {
+  if (tpgdash_dtInstance) {
+    if ($.fn.DataTable.isDataTable('#tpgdash_rekapTable')) {
+      $('#tpgdash_rekapTable').DataTable().destroy();
     }
+    tpgdash_dtInstance = null;
+  }
 
-    function tpgdash_applyFiltersAndRender() {
-      var selectedJenis = $('#tpgdash_filterJenisDokumen').val() || "Perbaikan Gaji";
-      var selectedJenjang = $('#tpgdash_filterJenjang').val() || "SEMUA";
-      var selectedSekolah = $('#tpgdash_filterSekolah').val() || "SEMUA";
+  var tbody = $('#tpgdash_rekapTable tbody');
+  tbody.empty();
 
-      // 1. Filter Data berdasarkan Role Pengguna
-      var filteredData = TPGDASH_RAW_DATA.filter(function(row) {
-        var rowUnit = String(row.unitKerja || "").trim();
-
-        if (!TPGDASH_IS_ADMIN) {
-          // User: Hanya data milik unit kerjanya saja
-          if (TPGDASH_USER_UNIT && rowUnit.toLowerCase() !== TPGDASH_USER_UNIT.toLowerCase()) {
-            return false;
-          }
-        } else {
-          // Admin: Tergantung filter jenjang dan sekolah yang dipilih
-          if (selectedSekolah && selectedSekolah !== "SEMUA") {
-            if (rowUnit.toLowerCase() !== selectedSekolah.toLowerCase()) return false;
-          } else if (selectedJenjang && selectedJenjang !== "SEMUA") {
-            var matchSekolahJenjang = TPGDASH_MASTER_SEKOLAH.filter(function(s) {
-              return String(s.jenjang || "").toUpperCase() === selectedJenjang.toUpperCase();
-            }).map(function(s) { return String(s.nama).toLowerCase(); });
-
-            if (matchSekolahJenjang.indexOf(rowUnit.toLowerCase()) === -1) return false;
-          }
-        }
-        return true;
-      });
-
-      // 2. Kalkulasi KPI Cards
-      var countTotal = filteredData.length;
-      var countDiproses = 0;
-      var countDisetujui = 0;
-      var countRevisi = 0;
-      var countDitolak = 0;
-
-      var rekapPerSekolah = {};
-
-      filteredData.forEach(function(row) {
-        var st = String(row.status || "").trim();
-        var uk = String(row.unitKerja || "Tidak Diketahui").trim();
-
-        if (st === 'Disetujui') countDisetujui++;
-        else if (st === 'Revisi') countRevisi++;
-        else if (st === 'Ditolak') countDitolak++;
-        else countDiproses++; // 'Diproses', 'Menunggu', dll
-
-        if (!rekapPerSekolah[uk]) {
-          rekapPerSekolah[uk] = { usulan: 0, diproses: 0, disetujui: 0, revisi: 0, ditolak: 0 };
-        }
-        rekapPerSekolah[uk].usulan++;
-
-        if (st === 'Disetujui') rekapPerSekolah[uk].disetujui++;
-        else if (st === 'Revisi') rekapPerSekolah[uk].revisi++;
-        else if (st === 'Ditolak') rekapPerSekolah[uk].ditolak++;
-        else rekapPerSekolah[uk].diproses++;
-      });
-
-      // Update Angka KPI Card (SultanUI Terpusat)
-      $('#tpgdash_cardTotalDokumen').text(countTotal);
-      $('#tpgdash_cardDiproses').text(countDiproses);
-      $('#tpgdash_cardDisetujui').text(countDisetujui);
-      $('#tpgdash_cardRevisi').text(countRevisi);
-      $('#tpgdash_cardDitolak').text(countDitolak);
-
-      // Update Label Header Tabel
-      if (!TPGDASH_IS_ADMIN) {
-        $('#tpgdash_tableTitleLabel').text(TPGDASH_USER_UNIT || "Unit Kerja");
-      } else if (selectedSekolah && selectedSekolah !== "SEMUA") {
-        $('#tpgdash_tableTitleLabel').text(selectedSekolah);
-      } else if (selectedJenjang && selectedJenjang !== "SEMUA") {
-        $('#tpgdash_tableTitleLabel').text("Jenjang " + selectedJenjang);
-      } else {
-        $('#tpgdash_tableTitleLabel').text("Per Unit Kerja");
-      }
-
-      // 3. Render DataTable Rekapitulasi (Tanpa Baris Jumlah)
-      tpgdash_renderRekapTable(rekapPerSekolah);
-
-      // 4. Render Daftar PTK Sudah Unggah (4 Cards: Diproses, Disetujui, Revisi, Ditolak)
-      tpgdash_renderPtkLists(filteredData);
+  function formatValue(val, cssClass) {
+    var num = parseInt(val, 10) || 0;
+    if (num === 0) {
+      return '<span class="text-muted opacity-50 font-weight-normal" style="opacity: 0.45; font-size: 0.9rem;">-</span>';
     }
+    return '<span class="' + cssClass + ' font-weight-bold">' + num + '</span>';
+  }
 
-    function tpgdash_renderPtkLists(filteredData) {
-      var categories = {
-        'Diproses': { list: [], badgeId: '#tpgdash_countDiproses', listId: '#tpgdash_listDiproses', emptyMsg: 'Tidak ada PTK diproses' },
-        'Disetujui': { list: [], badgeId: '#tpgdash_countDisetujui', listId: '#tpgdash_listDisetujui', emptyMsg: 'Tidak ada PTK disetujui' },
-        'Revisi': { list: [], badgeId: '#tpgdash_countRevisi', listId: '#tpgdash_listRevisi', emptyMsg: 'Tidak ada PTK revisi' },
-        'Ditolak': { list: [], badgeId: '#tpgdash_countDitolak', listId: '#tpgdash_listDitolak', emptyMsg: 'Tidak ada PTK ditolak' }
-      };
+  var dataTableRows = [];
+  units.forEach(function(u) {
+    dataTableRows.push([
+      '<span class="font-weight-bold sultan-table-primary">' + u.unit + '</span>',
+      formatValue(u.total, ''),
+      formatValue(u.diproses, 'text-info'),
+      formatValue(u.diverifikasi, 'text-success'),
+      formatValue(u.revisi, 'text-warning'),
+      formatValue(u.ditolak, 'text-danger')
+    ]);
+  });
 
-      filteredData.forEach(function(row) {
-        var st = String(row.status || "").trim();
-        if (st === 'Disetujui') categories['Disetujui'].list.push(row);
-        else if (st === 'Revisi') categories['Revisi'].list.push(row);
-        else if (st === 'Ditolak') categories['Ditolak'].list.push(row);
-        else categories['Diproses'].list.push(row);
-      });
-
-      // Update badge counter di header masing-masing card
-      $('#tpgdash_countDiproses').text(categories['Diproses'].list.length);
-      $('#tpgdash_countDisetujui').text(categories['Disetujui'].list.length);
-      $('#tpgdash_countRevisi').text(categories['Revisi'].list.length);
-      $('#tpgdash_countDitolak').text(categories['Ditolak'].list.length);
-
-      // Reset input live search
-      $('#tpgdash_inputCariDiproses, #tpgdash_inputCariDisetujui, #tpgdash_inputCariRevisi, #tpgdash_inputCariDitolak').val('');
-
-      // Populate list di tiap-tiap card
-      Object.keys(categories).forEach(function(catKey) {
-        var cat = categories[catKey];
-        var $list = $(cat.listId);
-        $list.empty();
-
-        if (cat.list.length === 0) {
-          $list.append(
-            '<li class="list-group-item bg-transparent text-center text-muted py-5 border-0 d-flex flex-column align-items-center justify-content-center h-100">' +
-              '<i class="fas fa-info-circle mb-2" style="font-size: 1.8rem; opacity: 0.35;"></i>' +
-              '<span style="font-size: 11.5px; font-weight: 500;">' + cat.emptyMsg + '</span>' +
-            '</li>'
-          );
-        } else {
-          // Sort alfabetis berdasarkan nama
-          cat.list.sort(function(a, b) {
-            return String(a.namaAsn || "").localeCompare(String(b.namaAsn || ""));
-          });
-
-          cat.list.forEach(function(r, index) {
-            var idxNum = index + 1;
-            var nama = String(r.namaAsn || "-").toUpperCase();
-            var delay = Math.min(index * 25, 300);
-
-            var itemHtml = 
-              '<li class="list-group-item bg-transparent py-2 px-3 font-weight-bold dashlapbul-list-item d-flex align-items-center animate__animated animate__fadeIn tpgdash-item" style="font-size:12px;line-height:1.4;animation-delay:' + delay + 'ms;">' +
-                '<span class="badge dashlapbul-badge-idx mr-2" style="width:25px;min-width:25px;flex-shrink:0;">' + idxNum + '</span>' +
-                '<span class="school-name flex-grow-1 text-truncate" style="word-break:break-word;">' + nama + '</span>' +
-              '</li>';
-
-            $list.append(itemHtml);
-          });
-        }
-      });
-    }
-
-    function tpgdash_renderRekapTable(rekapObj) {
-      if (tpgdash_dtInstance) {
-        if ($.fn.DataTable.isDataTable('#tpgdash_rekapTable')) {
-          $('#tpgdash_rekapTable').DataTable().destroy();
-        }
-        tpgdash_dtInstance = null;
-      }
-
-      var tbody = $('#tpgdash_rekapTable tbody');
-      tbody.empty();
-
-      var rekapList = Object.keys(rekapObj).map(function(uk) {
-        return { sekolah: uk, data: rekapObj[uk] };
-      });
-
-      // Urutkan alfabetis berdasarkan Nama Sekolah
-      rekapList.sort(function(a, b) {
-        return a.sekolah.localeCompare(b.sekolah);
-      });
-
-      var dataTableRows = [];
-
-      function formatValue(val, cssClass) {
-        var num = parseInt(val, 10) || 0;
-        if (num === 0) {
-          return '<span class="text-muted opacity-50 font-weight-normal" style="opacity: 0.45; font-size: 0.9rem;">-</span>';
-        }
-        return '<span class="' + cssClass + ' font-weight-bold">' + num + '</span>';
-      }
-
-      if (rekapList.length === 0) {
-        tbody.append('<tr><td colspan="6" class="text-center text-muted py-4 font-italic">Tidak ada data usulan TPG yang sesuai dengan filter.</td></tr>');
-      } else {
-        rekapList.forEach(function(item) {
-          var d = item.data;
-          dataTableRows.push([
-            '<span class="font-weight-bold sultan-table-primary">' + item.sekolah + '</span>',
-            formatValue(d.usulan, ''),
-            formatValue(d.diproses, 'text-info'),
-            formatValue(d.disetujui, 'text-success'),
-            formatValue(d.revisi, 'text-warning'),
-            formatValue(d.ditolak, 'text-danger')
-          ]);
-        });
-      }
-
-      // Inisialisasi DataTable Standar Sultan dengan opsi data
-      if (dataTableRows.length > 0 && $.fn.DataTable) {
-        tpgdash_dtInstance = $('#tpgdash_rekapTable').DataTable({
-          "destroy": true,
-          "data": dataTableRows,
-          "ordering": true,
-          "pageLength": 10,
-          "autoWidth": false,
-          "order": [[0, 'asc']],
-          "columnDefs": [
-            { "className": "text-left align-middle", "targets": 0 },
-            { "className": "text-center align-middle", "targets": [1, 2, 3, 4, 5] }
-          ],
-          "language": {
-            "search": "Cari:",
-            "lengthMenu": "Tampilkan _MENU_ data",
-            "info": "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
-            "emptyTable": "Tidak ada data yang tersedia pada tabel ini",
-            "paginate": { "previous": "Sebelumnya", "next": "Berikutnya" }
-          },
-          "dom": "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
-                 "<'row'<'col-sm-12'tr>>" +
-                 "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>"
-        });
-      }
-    }
-
-    // Jalankan inisialisasi saat dokumen siap
-    $(document).ready(function() {
-      tpgdash_init();
+  if (dataTableRows.length > 0 && $.fn.DataTable) {
+    tpgdash_dtInstance = $('#tpgdash_rekapTable').DataTable({
+      "destroy": true,
+      "data": dataTableRows,
+      "ordering": true,
+      "pageLength": 10,
+      "autoWidth": false,
+      "order": [[0, 'asc']],
+      "columnDefs": [
+        { "className": "text-left align-middle", "targets": 0 },
+        { "className": "text-center align-middle", "targets": [1, 2, 3, 4, 5] }
+      ],
+      "language": {
+        "search": "Cari:",
+        "lengthMenu": "Tampilkan _MENU_ data",
+        "info": "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
+        "emptyTable": "Tidak ada data yang tersedia pada tabel ini",
+        "paginate": { "previous": "Sebelumnya", "next": "Berikutnya" }
+      },
+      "dom": "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
+             "<'row'<'col-sm-12'tr>>" +
+             "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>"
     });
-  })();
+  }
+}
+
+function tpgdash_resetUnitView() {
+  if (typeof SultanUI !== 'undefined') {
+    SultanUI.stopLottery('#tpgdash_unitCardTotal, #tpgdash_unitCardDisetujui, #tpgdash_unitCardDiproses, #tpgdash_unitCardRevisi, #tpgdash_unitCardDitolak, #tpgdash_unitCardProgress');
+  }
+  $('#tpgdash_unitCardTotal, #tpgdash_unitCardDisetujui, #tpgdash_unitCardDiproses, #tpgdash_unitCardRevisi, #tpgdash_unitCardDitolak').text('0');
+  $('#tpgdash_unitCardProgress').text('0%');
+  $('#tpgdash_unitProgressBar').css('width', '0%');
+  $('#tpgdash_unitProgressSub').text('0 dari 0 Selesai');
+
+  var emptyHtml = SultanUI && SultanUI.renderListEmptyInfo ? SultanUI.renderListEmptyInfo('PILIH SEKOLAH') :
+    '<li class="list-group-item bg-transparent text-center text-muted py-4 border-0" style="font-size:11px;">PILIH SEKOLAH</li>';
+  $('#tpgdash_unit_listDisetujui, #tpgdash_unit_listDiproses, #tpgdash_unit_listRevisi, #tpgdash_unit_listDitolak').html(emptyHtml);
+}
+
+function tpgdash_renderUnitView(unitTarget) {
+  if (typeof SultanUI !== 'undefined') {
+    SultanUI.stopLottery('#tpgdash_unitCardTotal, #tpgdash_unitCardDisetujui, #tpgdash_unitCardDiproses, #tpgdash_unitCardRevisi, #tpgdash_unitCardDitolak, #tpgdash_unitCardProgress');
+  }
+  if (!TPGDASH_CACHE || !TPGDASH_CACHE.detailUnit) {
+    tpgdash_resetUnitView();
+    return;
+  }
+
+  var targetNorm = String(unitTarget || "").trim().toLowerCase();
+  var uObj = TPGDASH_CACHE.detailUnit.find(function(u) {
+    var uUnit = String(u.unit || "").trim().toLowerCase();
+    var uNpsn = String(u.npsn || "").trim().toLowerCase();
+    var uNama = String(u.namaSekolah || u.nama || "").trim().toLowerCase();
+    return uUnit === targetNorm || uNpsn === targetNorm || uNama === targetNorm;
+  });
+
+  if (!uObj) {
+    tpgdash_resetUnitView();
+    return;
+  }
+
+  var totalPeg = uObj.total || 0;
+  var sudah = uObj.sudah || 0;
+  var diproses = uObj.diproses || 0;
+  var disetujui = uObj.diverifikasi || 0;
+  var revisi = uObj.revisi || 0;
+  var ditolak = uObj.ditolak || 0;
+  var pct = totalPeg > 0 ? Math.round((sudah / totalPeg) * 100) : 100;
+
+  $('#tpgdash_unitCardProgress').text(pct + '%');
+  $('#tpgdash_unitProgressBar').css('width', pct + '%');
+  $('#tpgdash_unitProgressSub').text(sudah + ' dari ' + totalPeg + ' Selesai');
+  $('#tpgdash_unitCardTotal').text(sudah);
+  $('#tpgdash_unitCardDiproses').text(diproses);
+  $('#tpgdash_unitCardDisetujui').text(disetujui);
+  $('#tpgdash_unitCardRevisi').text(revisi);
+  $('#tpgdash_unitCardDitolak').text(ditolak);
+
+  var listDisetujui = [], listDiproses = [], listRevisi = [], listDitolak = [];
+  (uObj.listSudah || []).forEach(function(p) {
+    var st = String(p.status || 'Diproses').trim().toLowerCase();
+    var docItem = { nama: p.nama };
+    if (st.includes('setuju') || st.includes('verifikasi') || st.includes('valid') || st.includes('ok')) {
+      listDisetujui.push(docItem);
+    } else if (st.includes('revisi')) {
+      listRevisi.push(docItem);
+    } else if (st.includes('tolak') || st.includes('ditolak')) {
+      listDitolak.push(docItem);
+    } else {
+      listDiproses.push(docItem);
+    }
+  });
+
+  var cats = [
+    { id: '#tpgdash_unit_listDiproses', list: listDiproses, emptyText: 'TIDAK ADA DATA DIPROSES' },
+    { id: '#tpgdash_unit_listDisetujui', list: listDisetujui, emptyText: 'TIDAK ADA DATA DISETUJUI' },
+    { id: '#tpgdash_unit_listRevisi', list: listRevisi, emptyText: 'TIDAK ADA DATA REVISI' },
+    { id: '#tpgdash_unit_listDitolak', list: listDitolak, emptyText: 'TIDAK ADA DATA DITOLAK' }
+  ];
+
+  cats.forEach(function(cat) {
+    var $l = $(cat.id); $l.empty();
+    if (cat.list.length === 0) {
+      $l.html(SultanUI && SultanUI.renderListEmptyInfo ? SultanUI.renderListEmptyInfo(cat.emptyText) : '<li class="list-group-item bg-transparent text-center text-muted py-4 border-0">' + cat.emptyText + '</li>');
+    } else {
+      cat.list.forEach(function(item, idx) {
+        $l.append(
+          '<li class="list-group-item bg-transparent py-2 px-3 font-weight-bold dashlapbul-list-item d-flex align-items-center animate__animated animate__fadeIn tpgdash-item" style="font-size:12px;line-height:1.4;">' +
+          '<span class="badge dashlapbul-badge-idx mr-2" style="width:25px;min-width:25px;flex-shrink:0;">' + (idx + 1) + '</span>' +
+          '<span class="school-name flex-grow-1 text-truncate">' + String(item.nama || "-").toUpperCase() + '</span>' +
+          '</li>'
+        );
+      });
+    }
+  });
+}
 </script>

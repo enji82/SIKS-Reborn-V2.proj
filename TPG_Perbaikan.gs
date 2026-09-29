@@ -583,3 +583,123 @@ function tandaiNotifPerbaikanGajiDibaca(rowId, role) {
     Logger.log("SULTAN Error tandaiNotifPerbaikanGajiDibaca: " + e.message);
   }
 }
+
+/**
+ * Mendapatkan data terstruktur untuk Dasbor TPG Dual-Mode (Unit & Rekap)
+ */
+function tpg_getDashboardData(unitFilter, forceRefresh) {
+  try {
+    var rawRes = tpg_getPerbaikanData("", true);
+    if (!rawRes || rawRes.status !== 'success') {
+      return JSON.stringify({ success: false, message: rawRes ? rawRes.message : "Gagal mengambil data TPG" });
+    }
+
+    var listData = rawRes.data || [];
+
+    // Map data sekolah untuk NPSN & Jenjang
+    var npsnMap = {};
+    var jenjangMap = {};
+    try {
+      var sheetSekolah = getSheet("USER_DB", "Data_Sekolah");
+      if (sheetSekolah) {
+        var dataSek = sheetSekolah.getDataRange().getValues();
+        for (var s = 1; s < dataSek.length; s++) {
+          var sNpsn = String(dataSek[s][0] || "").trim();
+          var sJenj = String(dataSek[s][1] || "").trim().toUpperCase();
+          var sNama = String(dataSek[s][2] || "").trim();
+          if (sNama) {
+            if (sNpsn) npsnMap[sNama] = sNpsn;
+            if (sJenj) jenjangMap[sNama] = sJenj;
+          }
+        }
+      }
+    } catch (eSek) {
+      Logger.log("tpg_getDashboardData sekolah map warning: " + eSek.message);
+    }
+
+    // Kelompokkan per Unit Kerja
+    var unitMap = {};
+
+    listData.forEach(function(row) {
+      var unit = String(row.unitKerja || "Tidak Diketahui").trim();
+      var st = String(row.status || "Diproses").trim();
+      var stNorm = st.toLowerCase();
+
+      if (!unitMap[unit]) {
+        unitMap[unit] = {
+          unit: unit,
+          npsn: npsnMap[unit] || "",
+          namaSekolah: unit,
+          jenjang: jenjangMap[unit] || "",
+          total: 0,
+          sudah: 0,
+          belum: 0,
+          diverifikasi: 0,
+          diproses: 0,
+          ditolak: 0,
+          revisi: 0,
+          listSudah: [],
+          listBelum: []
+        };
+      }
+
+      unitMap[unit].total++;
+      unitMap[unit].sudah++;
+
+      var itemData = {
+        nama: row.namaAsn,
+        nip: row.nip,
+        jenisSK: row.jenisSK,
+        status: st
+      };
+
+      unitMap[unit].listSudah.push(itemData);
+
+      if (stNorm.indexOf("setuju") !== -1 || stNorm.indexOf("verifikasi") !== -1) {
+        unitMap[unit].diverifikasi++;
+      } else if (stNorm.indexOf("revisi") !== -1) {
+        unitMap[unit].revisi++;
+      } else if (stNorm.indexOf("tolak") !== -1) {
+        unitMap[unit].ditolak++;
+      } else {
+        unitMap[unit].diproses++;
+      }
+    });
+
+    var detailUnit = Object.keys(unitMap).map(function(k) { return unitMap[k]; });
+    detailUnit.sort(function(a, b) { return a.unit.localeCompare(b.unit); });
+
+    var totalPegawai = listData.length;
+    var totalSudah = listData.length;
+    var totalBelum = 0;
+    var totalDiverifikasi = 0;
+    var totalDiproses = 0;
+    var totalRevisi = 0;
+    var totalDitolak = 0;
+
+    detailUnit.forEach(function(u) {
+      totalDiverifikasi += u.diverifikasi;
+      totalDiproses += u.diproses;
+      totalRevisi += u.revisi;
+      totalDitolak += u.ditolak;
+    });
+
+    return JSON.stringify({
+      success: true,
+      status: "success",
+      totalPegawai: totalPegawai,
+      totalSudah: totalSudah,
+      totalBelum: totalBelum,
+      totalDiverifikasi: totalDiverifikasi,
+      totalDisetujui: totalDiverifikasi,
+      totalDiproses: totalDiproses,
+      totalRevisi: totalRevisi,
+      totalDitolak: totalDitolak,
+      detailUnit: detailUnit,
+      data: listData
+    });
+  } catch (e) {
+    return JSON.stringify({ success: false, status: "error", message: e.message });
+  }
+}
+
