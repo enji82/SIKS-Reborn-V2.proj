@@ -110,38 +110,6 @@
         <!-- Row 3: Card DAFTAR PTK SUDAH UNGGAH E-FILE (4 Cards List Terpusat) -->
         <div id="efiledash_statusCardsContainer" class="mb-4"></div>
 
-        <!-- Row 4: Card DataTable Rekapitulasi E-File Per Unit Kerja -->
-        <div class="row mb-4">
-          <div class="col-12">
-            <div class="card card-sultan-terpusat shadow-xs border-0">
-              <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center pt-3 pb-2 px-3">
-                <h6 class="font-weight-bold text-sultan-utama m-0 text-uppercase" style="letter-spacing: 0.5px;">
-                  <i class="fas fa-table mr-2"></i>Rekapitulasi Capaian E-File: <span id="efiledash_tableTitleLabel">Per Unit Kerja</span>
-                </h6>
-              </div>
-              <div class="card-body p-0">
-                <div class="table-responsive sultan-scroll">
-                  <table id="efiledash_rekapTable" class="table table-hover sultan-table-datatable text-center mb-0 w-100">
-                    <thead>
-                      <tr>
-                        <th class="align-middle text-left font-weight-bold col-sticky-left" style="min-width: 220px;">NAMA SEKOLAH</th>
-                        <th class="align-middle font-weight-bold" style="width: 120px;">PEGAWAI</th>
-                        <th class="align-middle font-weight-bold" style="width: 110px;">UNGGAH</th>
-                        <th class="align-middle font-weight-bold" style="width: 110px;">BELUM</th>
-                        <th class="align-middle font-weight-bold" style="min-width: 130px;">PROGRES</th>
-                        <th class="align-middle font-weight-bold" style="width: 140px;">STATUS</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <!-- Populated via JS DataTable -->
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
       </div>
 
     </div>
@@ -584,77 +552,7 @@ function efiledash_terapkanFilterLokal() {
     }
   });
 
-  // Render DataTable Rekapitulasi Per Unit Kerja
-  efiledash_renderRekapTable(dataRekap);
-}
-
-function efiledash_renderRekapTable(dataRekap) {
-  if (efiledash_dtInstance) {
-    if ($.fn.DataTable.isDataTable('#efiledash_rekapTable')) {
-      $('#efiledash_rekapTable').DataTable().destroy();
-    }
-    efiledash_dtInstance = null;
-  }
-
-  var tbody = $('#efiledash_rekapTable tbody');
-  tbody.empty();
-
-  var dataTableRows = [];
-  (dataRekap || []).forEach(function(r) {
-    var uni = r.unit || r.namaSekolah || "Lainnya";
-    var j = parseInt(r.jml || r.total) || 0;
-    var u = parseInt(r.sudah) || 0;
-    var b = parseInt(r.belum) || Math.max(0, j - u);
-    var c = j > 0 ? Math.round((u / j) * 100) : 0;
-
-    var bg = c >= 80 ? 'bg-success' : (c >= 50 ? 'bg-warning' : 'bg-danger');
-    var progressHtml = '<div class="d-flex align-items-center justify-content-center" style="font-size:13px;">' +
-      '<span class="mr-2 font-weight-bold" style="min-width:38px;text-align:right;">' + c + '%</span>' +
-      '<div class="progress shadow-xs" style="width:60px;height:7px;border-radius:4px;background-color:rgba(0,0,0,0.06);">' +
-        '<div class="progress-bar ' + bg + '" role="progressbar" style="width:' + c + '%;border-radius:4px;"></div>' +
-      '</div>' +
-    '</div>';
-
-    var statusBadge = '';
-    if (c > 95) statusBadge = '<span class="sultan-badge sultan-badge-success"><i class="fas fa-check-double mr-1"></i>Sangat Baik</span>';
-    else if (c >= 85) statusBadge = '<span class="sultan-badge sultan-badge-info"><i class="fas fa-check mr-1"></i>Baik</span>';
-    else if (c >= 75) statusBadge = '<span class="sultan-badge sultan-badge-warning"><i class="fas fa-exclamation mr-1"></i>Cukup</span>';
-    else statusBadge = '<span class="sultan-badge sultan-badge-danger"><i class="fas fa-exclamation-triangle mr-1"></i>Perlu Perhatian</span>';
-
-    dataTableRows.push([
-      '<span class="font-weight-bold sultan-table-primary">' + uni + '</span>',
-      '<span class="font-weight-bold">' + (j === 0 ? '-' : j) + '</span>',
-      u > 0 ? '<span class="font-weight-bold text-success">' + u + '</span>' : '<span class="text-muted opacity-50 font-weight-normal">-</span>',
-      b > 0 ? '<span class="font-weight-bold text-danger">' + b + '</span>' : '<span class="text-muted opacity-50 font-weight-normal">-</span>',
-      progressHtml,
-      statusBadge
-    ]);
-  });
-
-  if (dataTableRows.length > 0 && $.fn.DataTable) {
-    efiledash_dtInstance = $('#efiledash_rekapTable').DataTable({
-      "destroy": true,
-      "data": dataTableRows,
-      "ordering": true,
-      "pageLength": 10,
-      "autoWidth": false,
-      "order": [[0, 'asc']],
-      "columnDefs": [
-        { "className": "text-left align-middle", "targets": 0 },
-        { "className": "text-center align-middle", "targets": [1, 2, 3, 4, 5] }
-      ],
-      "language": {
-        "search": "Cari:",
-        "lengthMenu": "Tampilkan _MENU_ data",
-        "info": "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
-        "emptyTable": "Tidak ada data yang tersedia pada tabel ini",
-        "paginate": { "previous": "Sebelumnya", "next": "Berikutnya" }
-      },
-      "dom": "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
-             "<'row'<'col-sm-12'tr>>" +
-             "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>"
-    });
-  }
+  // Selesai render list status
 }
 
 function efiledash_resetUnitView() {

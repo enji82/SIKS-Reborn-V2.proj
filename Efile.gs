@@ -883,9 +883,15 @@ function getEfileDashboardData(idKategori, namaKategori, forceRefresh) {
         if (targetJenjang.indexOf(String(p.jenjang || "").toUpperCase()) === -1) return;
       }
       
-      // 2. Evaluasi Filter Klasifikasi Kepegawaian
+      // 2. Evaluasi Filter Klasifikasi Kepegawaian (atau statusPegawaiWajib)
+      var pStatus = String(p.status || "").trim().toUpperCase();
       if (targetKepeg.length > 0) {
-        if (targetKepeg.indexOf(String(p.status || "").toUpperCase()) === -1) return;
+        if (targetKepeg.indexOf(pStatus) === -1) return;
+      } else if (statusFilterList.length > 0) {
+        var matchWajib = statusFilterList.some(function(sf) {
+          return pStatus.toLowerCase().indexOf(sf) !== -1 || sf.indexOf(pStatus.toLowerCase()) !== -1;
+        });
+        if (!matchWajib) return;
       }
       
       // 3. Evaluasi Filter Klasifikasi Tugas / Jabatan
