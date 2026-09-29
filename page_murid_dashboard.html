@@ -34,10 +34,22 @@
           </button>
         </div>
 
-        <!-- 1. Filter Jenjang -->
-        <div class="sultan-filter-item" id="muriddash_filterJenjangContainer" style="min-width: 140px;">
-          <select id="muriddash_filterJenjang" class="form-control" aria-label="Pilih Jenjang">
+        <!-- 1a. Filter Jenjang untuk Mode REKAP (SD, TK, KB, SPS) -->
+        <div class="sultan-filter-item d-none" id="muriddash_filterJenjangRekapContainer" style="min-width: 140px;">
+          <select id="muriddash_filterJenjangRekap" class="form-control" aria-label="Pilih Jenjang">
             <option value="SD" selected>SD</option>
+            <option value="TK">TK</option>
+            <option value="KB">KB</option>
+            <option value="SPS">SPS</option>
+          </select>
+          <i class="fas fa-chevron-down"></i>
+        </div>
+
+        <!-- 1b. Filter Jenjang untuk Mode UNIT (Admin saja — SD, TK, KB, SPS) -->
+        <div class="sultan-filter-item d-none" id="muriddash_filterJenjangUnitContainer" style="min-width: 140px;">
+          <select id="muriddash_filterJenjangUnit" class="form-control" aria-label="Pilih Jenjang">
+            <option value="">Pilih Jenjang...</option>
+            <option value="SD">SD</option>
             <option value="TK">TK</option>
             <option value="KB">KB</option>
             <option value="SPS">SPS</option>
@@ -370,27 +382,23 @@
     try {
       var user = typeof getSesiUser === 'function' ? getSesiUser() : {};
       var rStr = String(user.role || "").toLowerCase();
-      
-      // Admin/Verifikator check
-      MURIDDASH_IS_ADMIN = (typeof checkUserRoleIsAdmin === 'function' && checkUserRoleIsAdmin()) || rStr.includes("admin") || rStr.includes("verifikator") || rStr.includes("korwil") || rStr.includes("dinas");
-      
+
+      MURIDDASH_IS_ADMIN = (typeof checkUserRoleIsAdmin === 'function' && checkUserRoleIsAdmin())
+        || rStr.includes("admin") || rStr.includes("verifikator") || rStr.includes("korwil") || rStr.includes("dinas");
+
       MURIDDASH_USER_NPSN = String(user.npsn || user.NPSN || "").trim();
       MURIDDASH_USER_UNIT = String(user.unitKerja || user.unit || user.nama_sekolah || user.sekolah || user.namaSekolah || user.username || "").trim();
 
       var jStr = String(user.jenjang || user.bentuk || user.role || "").toUpperCase();
       var uStr = MURIDDASH_USER_UNIT.toUpperCase();
-      if (jStr.includes("TK") || jStr.includes("KB") || jStr.includes("SPS") || jStr.includes("TPA") || jStr.includes("PAUD") ||
-          uStr.includes("TK") || uStr.includes("KB") || uStr.includes("SPS") || uStr.includes("TPA") || uStr.includes("PAUD")) {
-        MURIDDASH_USER_JENJANG = "PAUD";
-      } else {
-        MURIDDASH_USER_JENJANG = "SD";
-      }
-    } catch(e) { 
-      MURIDDASH_IS_ADMIN = false; 
+      MURIDDASH_USER_JENJANG = (jStr.includes("TK") || jStr.includes("KB") || jStr.includes("SPS") || jStr.includes("PAUD") ||
+          uStr.includes("TK") || uStr.includes("KB") || uStr.includes("SPS") || uStr.includes("PAUD")) ? "PAUD" : "SD";
+    } catch(e) {
+      MURIDDASH_IS_ADMIN = false;
       MURIDDASH_USER_JENJANG = "SD";
     }
 
-    // Inisialisasi Dual Mode Terpusat
+    // ── Inisialisasi Dual Mode ────────────────────────────────────────────
     SultanDashboard.initDualMode({
       pageKey: 'muridDash',
       tabType: 'single_tab',
@@ -401,117 +409,184 @@
         MURIDDASH_IS_ADMIN = state.isAdmin;
         MURIDDASH_USER_NPSN = state.userNpsn;
         MURIDDASH_CURRENT_MODE = state.currentMode;
+        MURIDDASH_SELECTED_NPSN = (MURIDDASH_CURRENT_MODE === 'unit')
+          ? (MURIDDASH_IS_ADMIN ? ($('#muriddash_filterUnitSekolah').val() || '') : MURIDDASH_USER_NPSN)
+          : '';
 
-        if (MURIDDASH_CURRENT_MODE === 'unit') {
-          MURIDDASH_SELECTED_NPSN = MURIDDASH_IS_ADMIN ? ($('#muriddash_filterUnitSekolah').val() || '') : MURIDDASH_USER_NPSN;
-        } else {
-          MURIDDASH_SELECTED_NPSN = '';
-        }
-
-        SultanDashboard.setupUnitSchoolPicker({
-          pageKey: 'muridDash',
-          wrapperJenjangId: '#muriddash_filterJenjangContainer',
-          selectJenjangId: '#muriddash_filterJenjang',
-          wrapperSekolahId: '#muriddash_filterUnitSekolahContainer',
-          selectSekolahId: '#muriddash_filterUnitSekolah',
-          btnActionId: '#muriddash_btnRefresh',
-          masterSekolah: window.DASHSK_MASTER_SEKOLAH || [],
-          onSelectSchool: function(npsn, nama) {
-            MURIDDASH_SELECTED_NPSN = npsn || '';
-            muriddash_loadDashboard();
-          }
-        });
-
+        muriddash_populateSekolahDropdown();
         muriddash_updateFilterBarControls();
       },
       onSwitchMode: function(mode, state, isFirstLoad) {
         MURIDDASH_CURRENT_MODE = mode;
         muriddash_updateFilterBarControls();
-        if (mode === 'unit') {
-          MURIDDASH_SELECTED_NPSN = MURIDDASH_IS_ADMIN ? ($('#muriddash_filterUnitSekolah').val() || '') : MURIDDASH_USER_NPSN;
-        } else {
-          MURIDDASH_SELECTED_NPSN = '';
+        MURIDDASH_SELECTED_NPSN = (mode === 'unit')
+          ? (MURIDDASH_IS_ADMIN ? ($('#muriddash_filterUnitSekolah').val() || '') : MURIDDASH_USER_NPSN)
+          : '';
+        // Tampilkan skeleton saat ganti tab, lalu load
+        if (!isFirstLoad) {
+          muriddash_showSkeleton();
+          setTimeout(muriddash_loadDashboard, 80);
         }
-        muriddash_loadDashboard();
       }
     });
 
-    // Penentuan Tahun & Bulan Default (Bulan Lalu)
+    // ── Tahun & Bulan Default (Bulan Lalu) ────────────────────────────────
     var d = new Date();
     d.setDate(1);
-    d.setMonth(d.getMonth() - 1); // Bulan Lalu
-
+    d.setMonth(d.getMonth() - 1);
     var thnDefault = d.getFullYear();
-    var blnDefault = d.getMonth() + 1; // 1-indexed
-
+    var blnDefault = d.getMonth() + 1;
     var currentRealYear = new Date().getFullYear();
     var $selTahun = $('#muriddash_filterTahun').empty();
-
     for (var i = currentRealYear + 1; i >= 2022; i--) {
-      var selectedStr = (i === thnDefault) ? ' selected' : '';
-      $selTahun.append('<option value="' + i + '"' + selectedStr + '>' + i + '</option>');
+      $selTahun.append('<option value="' + i + '"' + (i === thnDefault ? ' selected' : '') + '>' + i + '</option>');
     }
-
     $('#muriddash_filterBulan').val(blnDefault);
 
-    // Event listener refresh
-    $(document).off('click', '#muriddash_btnRefresh').on('click', '#muriddash_btnRefresh', muriddash_loadDashboard);
-    $('#muriddash_filterJenjang, #muriddash_filterTahun, #muriddash_filterBulan').change(function() {
-      muriddash_updateViewTab();
-      muriddash_loadDashboard();
+    // ── Event Listeners ────────────────────────────────────────────────────
+    // Refresh
+    $(document).off('click', '#muriddash_btnRefresh').on('click', '#muriddash_btnRefresh', function() {
+      muriddash_showSkeleton();
+      setTimeout(muriddash_loadDashboard, 80);
     });
 
+    // Filter Jenjang Rekap (ganti view + reload)
+    $('#muriddash_filterJenjangRekap').off('change').on('change', function() {
+      muriddash_updateViewTab();
+      muriddash_showSkeleton();
+      setTimeout(muriddash_loadDashboard, 80);
+    });
+
+    // Filter Jenjang Unit Admin (populate sekolah, ganti view)
+    $('#muriddash_filterJenjangUnit').off('change').on('change', function() {
+      muriddash_populateSekolahByJenjang($(this).val());
+      MURIDDASH_SELECTED_NPSN = '';
+      muriddash_updateViewTab();
+    });
+
+    // Filter Sekolah Unit Admin
+    $('#muriddash_filterUnitSekolah').off('change').on('change', function() {
+      MURIDDASH_SELECTED_NPSN = $(this).val() || '';
+    });
+
+    // Filter Tahun & Bulan
+    $('#muriddash_filterTahun, #muriddash_filterBulan').off('change').on('change', function() {
+      muriddash_showSkeleton();
+      setTimeout(muriddash_loadDashboard, 80);
+    });
+
+    // ── Initial Load ───────────────────────────────────────────────────────
     if (typeof Chart === 'undefined') {
       $.getScript("https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js")
-       .done(function() { muriddash_loadDashboard(); });
+        .done(function() { muriddash_loadDashboard(); });
     } else {
       muriddash_loadDashboard();
     }
   });
 
-  function muriddash_updateFilterBarControls() {
-    $('#muriddash_filterBar').removeClass('d-none');
-    $('#muriddash_filterJenjangContainer').removeClass('d-none');
-    if (MURIDDASH_CURRENT_MODE === 'unit') {
-      if (MURIDDASH_IS_ADMIN) {
-        $('#muriddash_filterUnitSekolahContainer').removeClass('d-none');
-      } else {
-        $('#muriddash_filterUnitSekolahContainer').addClass('d-none');
-      }
-    } else {
-      // Mode Rekap: Filter jenjang tetap ada (SD, TK, KB, SPS), sembunyikan filter nama sekolah
-      $('#muriddash_filterUnitSekolahContainer').addClass('d-none');
-    }
+  // ─── Tampilkan Skeleton Screen ────────────────────────────────────────────
+  function muriddash_showSkeleton() {
+    $('#muriddash_dashboardState').hide();
+    $('#muriddash_loadingState').show();
   }
 
+  // ─── Update visibilitas filter bar sesuai mode & role ────────────────────
+  function muriddash_updateFilterBarControls() {
+    $('#muriddash_filterBar').removeClass('d-none');
+
+    if (MURIDDASH_CURRENT_MODE === 'rekap') {
+      // Rekap: tampilkan filter jenjang rekap, sembunyikan semua filter unit
+      $('#muriddash_filterJenjangRekapContainer').removeClass('d-none');
+      $('#muriddash_filterJenjangUnitContainer').addClass('d-none');
+      $('#muriddash_filterUnitSekolahContainer').addClass('d-none');
+    } else {
+      // Unit: sembunyikan jenjang rekap
+      $('#muriddash_filterJenjangRekapContainer').addClass('d-none');
+      if (MURIDDASH_IS_ADMIN) {
+        // Admin — tampilkan jenjang unit & pilih sekolah
+        $('#muriddash_filterJenjangUnitContainer').removeClass('d-none');
+        $('#muriddash_filterUnitSekolahContainer').removeClass('d-none');
+      } else {
+        // User — sembunyikan semua filter (data otomatis sekolah sendiri)
+        $('#muriddash_filterJenjangUnitContainer').addClass('d-none');
+        $('#muriddash_filterUnitSekolahContainer').addClass('d-none');
+      }
+    }
+    muriddash_updateViewTab();
+  }
+
+  // ─── Update tampilan konten SD vs PAUD ───────────────────────────────────
   function muriddash_updateViewTab() {
-    var jenjangSelected = $('#muriddash_filterJenjang').val() || "SD";
-    if (jenjangSelected === 'SD') {
+    var jenjangVal;
+    if (MURIDDASH_CURRENT_MODE === 'rekap') {
+      jenjangVal = $('#muriddash_filterJenjangRekap').val() || 'SD';
+    } else {
+      if (MURIDDASH_IS_ADMIN) {
+        var jUnit = $('#muriddash_filterJenjangUnit').val() || '';
+        jenjangVal = (jUnit === 'SD') ? 'SD' : (jUnit ? 'PAUD' : 'SD');
+      } else {
+        jenjangVal = MURIDDASH_USER_JENJANG || 'SD';
+      }
+    }
+
+    if (jenjangVal === 'SD') {
       $('#muriddash_viewSd').show();
       $('#muriddash_viewPaud').hide();
     } else {
-      // TK, KB, SPS, PAUD
       $('#muriddash_viewSd').hide();
       $('#muriddash_viewPaud').show();
     }
 
-    if (MURIDDASH_CACHE_CHART) {
+    if (typeof MURIDDASH_CACHE_CHART !== 'undefined' && MURIDDASH_CACHE_CHART) {
       muriddash_renderChart(MURIDDASH_CACHE_CHART);
     }
   }
 
+  // ─── Populate Dropdown Sekolah ────────────────────────────────────────────
+  function muriddash_populateSekolahDropdown() {
+    if (!MURIDDASH_IS_ADMIN) return;
+    var master = window.DASHSK_MASTER_SEKOLAH || [];
+    var jenjangSet = {};
+    master.forEach(function(s) {
+      var j = String(s.jenjang || '').trim().toUpperCase();
+      if (j) jenjangSet[j] = true;
+    });
+    var $selJenjangUnit = $('#muriddash_filterJenjangUnit');
+    if (Object.keys(jenjangSet).length > 0) {
+      $selJenjangUnit.empty().append('<option value="">Pilih Jenjang...</option>');
+      ['SD', 'TK', 'KB', 'SPS'].forEach(function(j) {
+        if (jenjangSet[j]) $selJenjangUnit.append('<option value="' + j + '">' + j + '</option>');
+      });
+    }
+    muriddash_populateSekolahByJenjang($selJenjangUnit.val() || '');
+  }
+
+  function muriddash_populateSekolahByJenjang(jenjangFilter) {
+    var master = window.DASHSK_MASTER_SEKOLAH || [];
+    var $sel = $('#muriddash_filterUnitSekolah');
+    $sel.empty().append('<option value="">Pilih Sekolah...</option>');
+    var list = jenjangFilter
+      ? master.filter(function(s) { return String(s.jenjang || '').toUpperCase() === jenjangFilter.toUpperCase(); })
+      : master;
+    list.sort(function(a, b) { return String(a.namaSekolah || a.nama || '').localeCompare(String(b.namaSekolah || b.nama || '')); });
+    list.forEach(function(s) {
+      var npsn = s.npsn || s.id || '';
+      var nama = s.namaSekolah || s.nama || s.unit || npsn;
+      $sel.append('<option value="' + npsn + '">' + nama + '</option>');
+    });
+    $sel.val('');
+  }
+
+  // ─── Load Data Dashboard ──────────────────────────────────────────────────
   function muriddash_loadDashboard() {
-    var th = $('#muriddash_filterTahun').val();
+    var th = $('#muriddash_filterTahun').val() || new Date().getFullYear();
     var bl = $('#muriddash_filterBulan').val();
     var namaBulan = $('#muriddash_filterBulan option:selected').text();
-
-    if (!th) th = new Date().getFullYear();
 
     if (typeof SultanUI !== 'undefined' && SultanUI.setRefreshLoading) {
       SultanUI.setRefreshLoading('#muriddash_btnRefresh', true);
     }
-    $('#muriddash_loadingState').show();
-    $('#muriddash_dashboardState').hide();
+    muriddash_showSkeleton();
 
     $('#muriddash_labelBulanSd, #muriddash_labelBulanPaud').text(namaBulan.toUpperCase());
     $('#muriddash_labelTahunGrafik').text(th);
@@ -529,18 +604,18 @@
         } else {
           $('#muriddash_loadingState').hide();
         }
-
         try {
           var data = typeof jsonString === 'string' ? JSON.parse(jsonString) : jsonString;
           MURIDDASH_CACHE_CHART = data.chart;
           muriddash_renderCards(data.cards);
+          muriddash_updateViewTab();
           muriddash_renderChart(data.chart);
           $('#muriddash_dashboardState').fadeIn();
-        } catch(e) { 
-          console.error("Gagal membaca struktur data murid: ", e); 
+        } catch(e) {
+          console.error("Gagal membaca struktur data murid: ", e);
         }
       })
-      .withFailureHandler(function(e) { 
+      .withFailureHandler(function(e) {
         if (typeof SultanUI !== 'undefined' && SultanUI.setRefreshLoading) {
           SultanUI.setRefreshLoading('#muriddash_btnRefresh', false);
         }
@@ -553,34 +628,22 @@
 
   function muriddash_renderCards(c) {
     if (!c) return;
-    
-    // --- SD CARDS ---
-    var totalSd = (c.sd_total && c.sd_total.t) ? c.sd_total.t : 0;
-    var negeriSd = (c.sd_total && c.sd_total.n) ? c.sd_total.n : 0;
-    var swastaSd = (c.sd_total && c.sd_total.s) ? c.sd_total.s : 0;
-    var totalL_SD = (c.sd_total && c.sd_total.l) ? c.sd_total.l : 0;
-    var totalP_SD = (c.sd_total && c.sd_total.p) ? c.sd_total.p : 0;
-
+    var totalSd   = (c.sd_total && c.sd_total.t) ? c.sd_total.t : 0;
+    var negeriSd  = (c.sd_total && c.sd_total.n) ? c.sd_total.n : 0;
+    var swastaSd  = (c.sd_total && c.sd_total.s) ? c.sd_total.s : 0;
     muriddash_animateValue("muriddash_sd_total_t", totalSd);
     muriddash_animateValue("muriddash_sd_total_n", negeriSd);
     muriddash_animateValue("muriddash_sd_total_s", swastaSd);
-    muriddash_animateValue("muriddash_sd_total_l", totalL_SD);
-    muriddash_animateValue("muriddash_sd_total_p", totalP_SD);
-
-
-
-    // Kelas SD (1-6)
+    muriddash_animateValue("muriddash_sd_total_l", (c.sd_total && c.sd_total.l) ? c.sd_total.l : 0);
+    muriddash_animateValue("muriddash_sd_total_p", (c.sd_total && c.sd_total.p) ? c.sd_total.p : 0);
     for (var i = 1; i <= 6; i++) {
       var key = 'sd_k' + i;
       if (c[key]) {
-        var valT = c[key].t || 0;
-        muriddash_animateValue("muriddash_" + key + "_t", valT);
+        muriddash_animateValue("muriddash_" + key + "_t", c[key].t || 0);
         muriddash_animateValue("muriddash_" + key + "_l", c[key].l || 0);
         muriddash_animateValue("muriddash_" + key + "_p", c[key].p || 0);
       }
     }
-
-    // --- PAUD CARDS ---
     if (c.paud_total) {
       muriddash_animateValue("muriddash_paud_total_t", c.paud_total.t || 0);
       muriddash_animateValue("muriddash_paud_total_l", c.paud_total.l || 0);
@@ -588,97 +651,67 @@
       muriddash_animateValue("muriddash_paud_jk_l", c.paud_total.l || 0);
       muriddash_animateValue("muriddash_paud_jk_p", c.paud_total.p || 0);
     }
-
-    if (c.paud_tk_a) {
-      muriddash_animateValue("muriddash_paud_tk_a_t", c.paud_tk_a.t || 0);
-      muriddash_animateValue("muriddash_paud_tk_a_l", c.paud_tk_a.l || 0);
-      muriddash_animateValue("muriddash_paud_tk_a_p", c.paud_tk_a.p || 0);
-    }
-
-    if (c.paud_tk_b) {
-      muriddash_animateValue("muriddash_paud_tk_b_t", c.paud_tk_b.t || 0);
-      muriddash_animateValue("muriddash_paud_tk_b_l", c.paud_tk_b.l || 0);
-      muriddash_animateValue("muriddash_paud_tk_b_p", c.paud_tk_b.p || 0);
-    }
-
-    if (c.paud_kb) {
-      muriddash_animateValue("muriddash_paud_kb_t", c.paud_kb.t || 0);
-      muriddash_animateValue("muriddash_paud_kb_l", c.paud_kb.l || 0);
-      muriddash_animateValue("muriddash_paud_kb_p", c.paud_kb.p || 0);
-    }
-
-    if (c.paud_sps) {
-      muriddash_animateValue("muriddash_paud_sps_t", c.paud_sps.t || 0);
-      muriddash_animateValue("muriddash_paud_sps_l", c.paud_sps.l || 0);
-      muriddash_animateValue("muriddash_paud_sps_p", c.paud_sps.p || 0);
-    }
+    ['paud_tk_a','paud_tk_b','paud_kb','paud_sps'].forEach(function(k) {
+      if (c[k]) {
+        muriddash_animateValue("muriddash_" + k + "_t", c[k].t || 0);
+        muriddash_animateValue("muriddash_" + k + "_l", c[k].l || 0);
+        muriddash_animateValue("muriddash_" + k + "_p", c[k].p || 0);
+      }
+    });
   }
 
   function muriddash_renderChart(c) {
     if (!c || typeof Chart === 'undefined') return;
     var canvasEl = document.getElementById('muriddash_chartMurid');
     if (!canvasEl) return;
-    var ctx = canvasEl.getContext('2d');
-
-    if (MURIDDASH_CHART) {
-      MURIDDASH_CHART.destroy();
-    }
+    if (MURIDDASH_CHART) { MURIDDASH_CHART.destroy(); }
 
     var isDark = $('body').hasClass('dark-mode');
     var textColor = isDark ? '#ffffff' : '#333333';
-    var gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)';
+    var gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)';
 
-    var jenjangSelected = $('#muriddash_filterJenjang').val() || "SD";
-    var chartDatasets = [];
+    var jenjangSelected;
+    if (MURIDDASH_CURRENT_MODE === 'rekap') {
+      jenjangSelected = $('#muriddash_filterJenjangRekap').val() || 'SD';
+    } else {
+      jenjangSelected = MURIDDASH_IS_ADMIN
+        ? ($('#muriddash_filterJenjangUnit').val() || 'SD')
+        : (MURIDDASH_USER_JENJANG || 'SD');
+    }
 
+    var datasets = [];
     if (jenjangSelected === "SD") {
-      chartDatasets = [
-        { label: 'SD Negeri', data: c.sd_negeri || [], borderColor: '#800000', backgroundColor: 'rgba(128, 0, 0, 0.08)', tension: 0.4, fill: true },
-        { label: 'SD Swasta', data: c.sd_swasta || [], borderColor: '#007bff', backgroundColor: 'rgba(0, 123, 255, 0.05)', tension: 0.4, borderDash: [5, 5] }
+      datasets = [
+        { label: 'SD Negeri', data: c.sd_negeri || [], borderColor: '#800000', backgroundColor: 'rgba(128,0,0,0.08)', tension: 0.4, fill: true },
+        { label: 'SD Swasta', data: c.sd_swasta || [], borderColor: '#007bff', backgroundColor: 'rgba(0,123,255,0.05)', tension: 0.4, borderDash: [5,5] }
       ];
     } else if (jenjangSelected === "TK") {
-      chartDatasets = [
-        { label: 'TK', data: c.tk || [], borderColor: '#ffc107', backgroundColor: 'rgba(255, 193, 7, 0.08)', tension: 0.4, fill: true }
-      ];
+      datasets = [{ label: 'TK', data: c.tk || [], borderColor: '#ffc107', backgroundColor: 'rgba(255,193,7,0.08)', tension: 0.4, fill: true }];
     } else if (jenjangSelected === "KB") {
-      chartDatasets = [
-        { label: 'KB', data: c.kb || [], borderColor: '#28a745', backgroundColor: 'rgba(40, 167, 69, 0.08)', tension: 0.4, fill: true }
-      ];
+      datasets = [{ label: 'KB', data: c.kb || [], borderColor: '#28a745', backgroundColor: 'rgba(40,167,69,0.08)', tension: 0.4, fill: true }];
     } else if (jenjangSelected === "SPS") {
-      chartDatasets = [
-        { label: 'SPS', data: c.sps || [], borderColor: '#17a2b8', backgroundColor: 'rgba(23, 162, 184, 0.08)', tension: 0.4, fill: true }
-      ];
+      datasets = [{ label: 'SPS', data: c.sps || [], borderColor: '#17a2b8', backgroundColor: 'rgba(23,162,184,0.08)', tension: 0.4, fill: true }];
     } else {
-      chartDatasets = [
+      datasets = [
         { label: 'TK', data: c.tk || [], borderColor: '#ffc107', backgroundColor: 'transparent', tension: 0.4 },
         { label: 'KB', data: c.kb || [], borderColor: '#28a745', backgroundColor: 'transparent', tension: 0.4 },
         { label: 'SPS', data: c.sps || [], borderColor: '#17a2b8', backgroundColor: 'transparent', tension: 0.4 }
       ];
     }
 
-    MURIDDASH_CHART = new Chart(ctx, {
+    MURIDDASH_CHART = new Chart(canvasEl.getContext('2d'), {
       type: 'line',
       data: {
-        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'],
-        datasets: chartDatasets
+        labels: ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'],
+        datasets: datasets
       },
       options: {
-        responsive: true, 
-        maintainAspectRatio: false,
+        responsive: true, maintainAspectRatio: false,
         interaction: { mode: 'index', intersect: false },
-        plugins: { 
-          legend: { position: 'bottom', labels: { color: textColor, font: { weight: 'bold' } } } 
-        },
-        scales: { 
-          y: { 
-            beginAtZero: true,
-            grid: { color: gridColor },
-            ticks: { color: textColor }
-          },
-          x: {
-            grid: { color: gridColor },
-            ticks: { color: textColor }
-          }
+        plugins: { legend: { position: 'bottom', labels: { color: textColor, font: { weight: 'bold' } } } },
+        scales: {
+          y: { beginAtZero: true, grid: { color: gridColor }, ticks: { color: textColor } },
+          x: { grid: { color: gridColor }, ticks: { color: textColor } }
         }
       }
     });
@@ -688,17 +721,11 @@
     var obj = document.getElementById(id);
     if (!obj) return;
     var numEnd = parseInt(end, 10);
-    if (isNaN(numEnd)) {
-      obj.innerHTML = String(end);
-      return;
-    }
-    var start = 0; 
-    var duration = 600; 
-    var startTime = null;
-    
-    function step(timestamp) {
-      if (!startTime) startTime = timestamp;
-      var progress = Math.min((timestamp - startTime) / duration, 1);
+    if (isNaN(numEnd)) { obj.innerHTML = String(end); return; }
+    var start = 0, duration = 600, startTime = null;
+    function step(ts) {
+      if (!startTime) startTime = ts;
+      var progress = Math.min((ts - startTime) / duration, 1);
       obj.innerHTML = Math.floor(progress * (numEnd - start) + start).toLocaleString('id-ID');
       if (progress < 1) window.requestAnimationFrame(step);
     }
