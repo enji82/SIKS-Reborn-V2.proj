@@ -284,30 +284,25 @@
 
   function admptk_dash_updateFilterBarControls() {
     var isUnit = (ADMPTK_DASH_MODE === 'unit');
-    if (isUnit) {
-      $('#admptk_dash_filterBar').removeClass('d-none');
-      $('#admptk_dash_filterKategoriContainer').removeClass('d-none');
-      $('#admptk_dash_filterTahunContainer, #admptk_dash_filterPeriodeContainer').addClass('d-none');
-      if (ADMPTK_DASH_IS_ADMIN) {
-        $('#admptk_dash_filterJenjangUnitContainer, #admptk_dash_filterUnitSekolahContainer').removeClass('d-none');
-      } else {
-        $('#admptk_dash_filterJenjangUnitContainer, #admptk_dash_filterUnitSekolahContainer').addClass('d-none');
-      }
+    $('#admptk_dash_filterBar').removeClass('d-none');
+    $('#admptk_dash_filterKategoriContainer').removeClass('d-none');
+
+    var isPermanen = (ADMPTK_DASH_JENIS_PERIODE === "PERMANEN" || ADMPTK_DASH_JENIS_PERIODE === "TMT");
+    if (isPermanen) {
+      $('#admptk_dash_filterTahunContainer').addClass('d-none');
+      $('#admptk_dash_filterPeriodeContainer').addClass('d-none');
     } else {
-      $('#admptk_dash_filterBar').removeClass('d-none');
-      $('#admptk_dash_filterKategoriContainer, #admptk_dash_filterTahunContainer').removeClass('d-none');
-      var isPermanen = (ADMPTK_DASH_JENIS_PERIODE === "PERMANEN" || ADMPTK_DASH_JENIS_PERIODE === "TMT");
-      if (isPermanen) {
-        $('#admptk_dash_filterTahunContainer').addClass('d-none');
+      $('#admptk_dash_filterTahunContainer').removeClass('d-none');
+      if (ADMPTK_DASH_JENIS_PERIODE === "TAHUNAN_TAPEL" || ADMPTK_DASH_JENIS_PERIODE === "TAHUNAN_KALENDER" || ADMPTK_DASH_JENIS_PERIODE === "TAHUNAN") {
         $('#admptk_dash_filterPeriodeContainer').addClass('d-none');
       } else {
-        $('#admptk_dash_filterTahunContainer').removeClass('d-none');
-        if (ADMPTK_DASH_JENIS_PERIODE === "TAHUNAN_TAPEL" || ADMPTK_DASH_JENIS_PERIODE === "TAHUNAN_KALENDER" || ADMPTK_DASH_JENIS_PERIODE === "TAHUNAN") {
-          $('#admptk_dash_filterPeriodeContainer').addClass('d-none');
-        } else {
-          $('#admptk_dash_filterPeriodeContainer').removeClass('d-none');
-        }
+        $('#admptk_dash_filterPeriodeContainer').removeClass('d-none');
       }
+    }
+
+    if (isUnit && ADMPTK_DASH_IS_ADMIN) {
+      $('#admptk_dash_filterJenjangUnitContainer, #admptk_dash_filterUnitSekolahContainer').removeClass('d-none');
+    } else {
       $('#admptk_dash_filterJenjangUnitContainer, #admptk_dash_filterUnitSekolahContainer').addClass('d-none');
     }
   }
@@ -336,7 +331,13 @@
       }
     });
 
-    $('#admptk_dash_filterTahun, #admptk_dash_filterPeriode').change(admptk_dash_terapkanFilterLokal);
+    $('#admptk_dash_filterTahun, #admptk_dash_filterPeriode').change(function() {
+      if (ADMPTK_DASH_MODE === 'rekap') {
+        admptk_dash_terapkanFilterLokal();
+      } else if (window.ADMPTK_DASH_CACHE_REKAP_UNIT_RAW) {
+        admptk_dash_renderUnitView(window.ADMPTK_DASH_CACHE_REKAP_UNIT_RAW);
+      }
+    });
 
     // Live search listener 4 Card List Status Rekap
     $(document).off('keyup', '#admptk_dash_inputCariDiproses').on('keyup', '#admptk_dash_inputCariDiproses', function() {
@@ -943,7 +944,18 @@
     if (typeof SultanUI !== 'undefined') {
       SultanUI.stopLottery('#admptk_dash_unitCardTotal, #admptk_dash_unitCardDisetujui, #admptk_dash_unitCardDiproses, #admptk_dash_unitCardRevisi, #admptk_dash_unitCardDitolak, #admptk_dash_unitCardProgress');
     }
-    var rekap = data.rekap || [];
+    if (data) window.ADMPTK_DASH_CACHE_REKAP_UNIT_RAW = data;
+    var rawRekap = data ? (data.rekap || []) : (window.ADMPTK_DASH_CACHE_REKAP_UNIT_RAW ? window.ADMPTK_DASH_CACHE_REKAP_UNIT_RAW.rekap : []);
+
+    var fTahun = String($('#admptk_dash_filterTahun').val() || "").trim().toUpperCase();
+    var fPeriode = String($('#admptk_dash_filterPeriode').val() || "").trim().toUpperCase();
+
+    var rekap = (rawRekap || []).filter(function(r) {
+      if (fTahun !== "SEMUA" && fTahun !== "" && String(r.tahun || "").trim().toUpperCase() !== fTahun) return false;
+      if (fPeriode !== "SEMUA" && fPeriode !== "" && String(r.periode || "").trim().toUpperCase() !== fPeriode) return false;
+      return true;
+    });
+
     var totalPtk = 0, disetujui = 0, diproses = 0, revisi = 0, ditolak = 0;
     var listDisetujui = [], listDiproses = [], listRevisi = [], listDitolak = [];
 
