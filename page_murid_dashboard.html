@@ -20,11 +20,21 @@
 <section class="content sultan-page-transition">
   <div class="container-fluid">
 
-    <!-- FILTER BAR TERPUSAT SULTAN UI -->
-    <div class="sultan-filter-bar-balanced mb-3 sultan-page-transition" id="muriddash_filterBar">
+    <!-- FILTER BAR TERPUSAT SULTAN UI DUAL MODE -->
+    <div class="sultan-filter-bar-balanced mb-3 sultan-page-transition d-none" id="muriddash_filterBar">
       <div class="filter-controls-group">
 
-        <!-- 1. Filter Jenjang (Khusus Admin / Semua User) -->
+        <!-- Segmented Switcher Mode (Unit vs Rekap) -->
+        <div class="sultan-segmented-switch">
+          <button type="button" class="sultan-segmented-btn" data-mode="unit" id="muriddash_btnModeUnit">
+            <i class="fas fa-school"></i> Unit
+          </button>
+          <button type="button" class="sultan-segmented-btn active" data-mode="rekap" id="muriddash_btnModeRekap">
+            <i class="fas fa-chart-pie"></i> Rekap
+          </button>
+        </div>
+
+        <!-- 1. Filter Jenjang -->
         <div class="sultan-filter-item" id="muriddash_filterJenjangContainer">
           <select id="muriddash_filterJenjang" class="form-control" aria-label="Pilih Jenjang">
             <option value="SD" selected>SD</option>
@@ -33,13 +43,21 @@
           <i class="fas fa-chevron-down"></i>
         </div>
 
-        <!-- 2. Filter Tahun -->
+        <!-- 2. Filter Nama Sekolah Unit (Admin di Mode Unit) -->
+        <div class="sultan-filter-item d-none" id="muriddash_filterUnitSekolahContainer" style="min-width: 200px; width: auto;">
+          <select id="muriddash_filterUnitSekolah" class="form-control" aria-label="Pilih Sekolah">
+            <option value="">Pilih Sekolah...</option>
+          </select>
+          <i class="fas fa-chevron-down"></i>
+        </div>
+
+        <!-- 3. Filter Tahun -->
         <div class="sultan-filter-item" id="muriddash_filterTahunContainer">
           <select id="muriddash_filterTahun" class="form-control" aria-label="Pilih Tahun"></select>
           <i class="fas fa-chevron-down"></i>
         </div>
 
-        <!-- 3. Filter Bulan -->
+        <!-- 4. Filter Bulan -->
         <div class="sultan-filter-item" id="muriddash_filterBulanContainer">
           <select id="muriddash_filterBulan" class="form-control" aria-label="Pilih Bulan">
             <option value="1">Januari</option>
@@ -343,11 +361,8 @@
 
 <script>
   var MURIDDASH_CHART = null;
-  var MURIDDASH_IS_ADMIN = false;
-  var MURIDDASH_USER_JENJANG = "SD";
-  var MURIDDASH_USER_NPSN = "";
-  var MURIDDASH_USER_UNIT = "";
-  var MURIDDASH_CACHE_CHART = null;
+  var MURIDDASH_CURRENT_MODE = "rekap";
+  var MURIDDASH_SELECTED_NPSN = "";
 
   $(document).ready(function () {
     try {
@@ -373,6 +388,52 @@
       MURIDDASH_USER_JENJANG = "SD";
     }
 
+    // Inisialisasi Dual Mode Terpusat
+    SultanDashboard.initDualMode({
+      pageKey: 'muridDash',
+      tabType: 'single_tab',
+      unitViewId: '#muriddash_dashboardState',
+      rekapViewId: '#muriddash_dashboardState',
+      switchSelector: '.sultan-segmented-btn',
+      onInit: function(state) {
+        MURIDDASH_IS_ADMIN = state.isAdmin;
+        MURIDDASH_USER_NPSN = state.userNpsn;
+        MURIDDASH_CURRENT_MODE = state.currentMode;
+
+        if (MURIDDASH_CURRENT_MODE === 'unit') {
+          MURIDDASH_SELECTED_NPSN = MURIDDASH_IS_ADMIN ? ($('#muriddash_filterUnitSekolah').val() || '') : MURIDDASH_USER_NPSN;
+        } else {
+          MURIDDASH_SELECTED_NPSN = '';
+        }
+
+        SultanDashboard.setupUnitSchoolPicker({
+          pageKey: 'muridDash',
+          wrapperJenjangId: '#muriddash_filterJenjangContainer',
+          selectJenjangId: '#muriddash_filterJenjang',
+          wrapperSekolahId: '#muriddash_filterUnitSekolahContainer',
+          selectSekolahId: '#muriddash_filterUnitSekolah',
+          btnActionId: '#muriddash_btnRefresh',
+          masterSekolah: window.DASHSK_MASTER_SEKOLAH || [],
+          onSelectSchool: function(npsn, nama) {
+            MURIDDASH_SELECTED_NPSN = npsn || '';
+            muriddash_loadDashboard();
+          }
+        });
+
+        muriddash_updateFilterBarControls();
+      },
+      onSwitchMode: function(mode, state, isFirstLoad) {
+        MURIDDASH_CURRENT_MODE = mode;
+        muriddash_updateFilterBarControls();
+        if (mode === 'unit') {
+          MURIDDASH_SELECTED_NPSN = MURIDDASH_IS_ADMIN ? ($('#muriddash_filterUnitSekolah').val() || '') : MURIDDASH_USER_NPSN;
+        } else {
+          MURIDDASH_SELECTED_NPSN = '';
+        }
+        muriddash_loadDashboard();
+      }
+    });
+
     // Penentuan Tahun & Bulan Default (Bulan Lalu)
     var d = new Date();
     d.setDate(1);
@@ -391,19 +452,6 @@
 
     $('#muriddash_filterBulan').val(blnDefault);
 
-    // Atur Opsi Filter Jenjang (Admin vs User Sekolah)
-    var $selJenjang = $('#muriddash_filterJenjang');
-    if (MURIDDASH_IS_ADMIN) {
-      $selJenjang.prop('disabled', false).val("SD");
-      $('#muriddash_filterJenjangContainer').show();
-    } else {
-      // User non-admin terkunci pada jenjang sekolahnya
-      $selJenjang.val(MURIDDASH_USER_JENJANG).prop('disabled', true);
-      $('#muriddash_filterJenjangContainer').hide();
-    }
-
-    muriddash_updateViewTab();
-
     // Event listener refresh
     $(document).off('click', '#muriddash_btnRefresh').on('click', '#muriddash_btnRefresh', muriddash_loadDashboard);
     $('#muriddash_filterJenjang, #muriddash_filterTahun, #muriddash_filterBulan').change(function() {
@@ -418,6 +466,20 @@
       muriddash_loadDashboard();
     }
   });
+
+  function muriddash_updateFilterBarControls() {
+    $('#muriddash_filterBar').removeClass('d-none');
+    if (MURIDDASH_CURRENT_MODE === 'unit') {
+      if (MURIDDASH_IS_ADMIN) {
+        $('#muriddash_filterUnitSekolahContainer').removeClass('d-none');
+      } else {
+        $('#muriddash_filterUnitSekolahContainer').addClass('d-none');
+      }
+    } else {
+      // Mode Rekap: Sembunyikan filter nama sekolah
+      $('#muriddash_filterUnitSekolahContainer').addClass('d-none');
+    }
+  }
 
   function muriddash_updateViewTab() {
     var jenjangSelected = $('#muriddash_filterJenjang').val() || "SD";
@@ -450,8 +512,8 @@
     $('#muriddash_labelBulanSd, #muriddash_labelBulanPaud').text(namaBulan.toUpperCase());
     $('#muriddash_labelTahunGrafik').text(th);
 
-    var filterNpsn = MURIDDASH_IS_ADMIN ? "" : MURIDDASH_USER_NPSN;
-    var filterUnit = MURIDDASH_IS_ADMIN ? "" : MURIDDASH_USER_UNIT;
+    var filterNpsn = (MURIDDASH_CURRENT_MODE === 'unit') ? (MURIDDASH_IS_ADMIN ? MURIDDASH_SELECTED_NPSN : MURIDDASH_USER_NPSN) : "";
+    var filterUnit = (MURIDDASH_CURRENT_MODE === 'unit') ? (MURIDDASH_IS_ADMIN ? "" : MURIDDASH_USER_UNIT) : "";
 
     google.script.run
       .withSuccessHandler(function(jsonString) {
