@@ -567,7 +567,7 @@ function pppkpw_getDashboardData(unitFilter, tahun, forceRefresh) {
   try {
     var cacheKey = "PPPKPW_DASH_" + (tahun || "ALL") + "_" + (unitFilter || "ALL");
     if (!forceRefresh) {
-      var cached = CacheService.getScriptCache().get(cacheKey);
+      var cached = getLargeCache(cacheKey);
       if (cached) return cached;
     }
 
@@ -655,7 +655,7 @@ function pppkpw_getDashboardData(unitFilter, tahun, forceRefresh) {
       totalDiverifikasi: totDiverifikasi, totalDiproses: totDiproses, totalDitolak: totDitolak,
       detailUnit: detailUnit
     });
-    try { CacheService.getScriptCache().put(cacheKey, result, 900); } catch(ce) {}
+    try { putLargeCache(cacheKey, result, 900); } catch(ce) {}
     return result;
   } catch(e) {
     return JSON.stringify({ success: false, message: e.message });
@@ -664,10 +664,9 @@ function pppkpw_getDashboardData(unitFilter, tahun, forceRefresh) {
 
 function pppkpw_invalidateCache(tahun, unit) {
   try {
-    var cache = CacheService.getScriptCache();
     ["ALL", "SEMUA"].forEach(function(u) {
-      cache.remove("PPPKPW_DASH_" + (tahun || "ALL") + "_" + u);
-      cache.remove("PPPKPW_DASH_ALL_" + u);
+      removeLargeCache("PPPKPW_DASH_" + (tahun || "ALL") + "_" + u);
+      removeLargeCache("PPPKPW_DASH_ALL_" + u);
     });
     if (typeof invalidateNotifCacheForModule === 'function') {
       invalidateNotifCacheForModule("pppkpw", "admin", unit || "");

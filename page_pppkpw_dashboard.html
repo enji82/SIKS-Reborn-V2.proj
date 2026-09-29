@@ -1,21 +1,6 @@
 <style>
-  #pppkpwdash_tabelRekap_wrapper,
-  #pppkpwdash_tabelRekap_wrapper table,
-  #pppkpwdash_tabelRekap_wrapper table th,
-  #pppkpwdash_tabelRekap_wrapper table td {
-    font-size: 13px !important;
-  }
-  .dark-mode #pppkpwdash_tabelRekap .sultan-table-primary {
-    color: #e4e6eb !important;
-  }
-  .dark-mode #pppkpwdash_tabelRekap span.font-weight-bold {
-    color: #e4e6eb !important;
-  }
-  .dark-mode #pppkpwdash_tabelRekap .text-success {
-    color: #48c78e !important;
-  }
-  .dark-mode #pppkpwdash_tabelRekap .text-danger {
-    color: #e57373 !important;
+  #pppkpwdash_viewRekap, #pppkpwdash_viewUnit {
+    transition: all 0.3s ease;
   }
 </style>
 
@@ -23,11 +8,21 @@
   <div class="container-fluid">
 
     <!-- FILTER BAR TERPUSAT SULTAN UI -->
-    <div class="sultan-filter-bar-balanced mb-4 sultan-page-transition" id="pppkpwdash_filterBar">
+    <div class="sultan-filter-bar-balanced mb-4 sultan-page-transition d-none" id="pppkpwdash_filterBar">
       <div class="filter-controls-group">
 
-        <!-- Filter Dokumen / Kategori -->
-        <div class="sultan-filter-item" id="pppkpwdash_filterDokumenContainer">
+        <!-- Segmented Switcher Mode (Unit vs Rekap) -->
+        <div class="sultan-segmented-switch">
+          <button type="button" class="sultan-segmented-btn" data-mode="unit" id="pppkpwdash_btnModeUnit">
+            <i class="fas fa-school"></i> Unit
+          </button>
+          <button type="button" class="sultan-segmented-btn active" data-mode="rekap" id="pppkpwdash_btnModeRekap">
+            <i class="fas fa-chart-pie"></i> Rekap
+          </button>
+        </div>
+
+        <!-- 1. Filter Kategori Dokumen -->
+        <div class="sultan-filter-item" id="pppkpwdash_filterDokumenContainer" style="min-width: 180px;">
           <select id="pppkpwdash_filterDokumen" class="form-control" aria-label="Kategori Dokumen">
             <option value="Draft PK" selected>Draft PK</option>
             <option value="SPMT">SPMT</option>
@@ -35,7 +30,7 @@
           <i class="fas fa-chevron-down"></i>
         </div>
 
-        <!-- Filter Tahun Kontrak -->
+        <!-- 2. Filter Tahun Kontrak -->
         <div class="sultan-filter-item" id="pppkpwdash_filterTahunContainer">
           <select id="pppkpwdash_filterTahun" class="form-control" aria-label="Pilih Tahun Kontrak">
             <!-- Populated via JS -->
@@ -43,10 +38,18 @@
           <i class="fas fa-chevron-down"></i>
         </div>
 
-        <!-- Filter Nama Sekolah (Admin) -->
-        <div class="sultan-filter-item" id="pppkpwdash_filterSekolahContainer" style="max-width: 400px;">
-          <select id="pppkpwdash_filterUnit" class="form-control" aria-label="Pilih Nama Sekolah">
-            <option value="SEMUA">Semua Sekolah</option>
+        <!-- 3. Filter Jenjang Unit (Admin) -->
+        <div class="sultan-filter-item d-none" id="pppkpwdash_filterJenjangUnitContainer" style="min-width: 140px;">
+          <select id="pppkpwdash_filterJenjangUnit" class="form-control" aria-label="Pilih Jenjang">
+            <option value="">Pilih Jenjang...</option>
+          </select>
+          <i class="fas fa-chevron-down"></i>
+        </div>
+
+        <!-- 4. Filter Nama Sekolah Unit (Admin) -->
+        <div class="sultan-filter-item d-none" id="pppkpwdash_filterUnitSekolahContainer" style="min-width: 220px; max-width: 340px;">
+          <select id="pppkpwdash_filterUnitSekolah" class="form-control" aria-label="Pilih Sekolah">
+            <option value="">Pilih Sekolah...</option>
           </select>
           <i class="fas fa-chevron-down"></i>
         </div>
@@ -60,50 +63,100 @@
       </div>
     </div>
 
-    <!-- Loading State Terpusat -->
-    <div id="pppkpwdash_loadingState" class="sultan-loading-box sultan-page-transition">
-      <div class="sultan-spinner-icon">
-        <i class="fas fa-circle-notch fa-spin"></i>
+    <!-- VIEW REKAP -->
+    <div id="pppkpwdash_viewRekap" class="py-1">
+
+      <!-- Loading State Terpusat -->
+      <div id="pppkpwdash_loadingState" class="sultan-loading-box sultan-page-transition">
+        <div class="sultan-spinner-icon">
+          <i class="fas fa-circle-notch fa-spin"></i>
+        </div>
+        <h6 class="text-muted font-weight-bold sultan-loading-text mb-0" style="letter-spacing: 0.5px; text-transform: uppercase; font-size: 11px;">Memuat Data Dasbor PPPK PW...</h6>
       </div>
-      <h6 class="text-muted font-weight-bold sultan-loading-text mb-0" style="letter-spacing: 0.5px; text-transform: uppercase; font-size: 11px;">Memuat Data Dasbor PPPK PW...</h6>
+
+      <div id="pppkpwdash_dashboardState" style="display: none;">
+        <!-- Row 1: Card Progress (4 Metric Cards Minimal) -->
+        <div id="pppkpwdash_metricRow1"></div>
+
+        <!-- Row 2: Card Status Breakdown (5 Status Cards) -->
+        <div id="pppkpwdash_metricRow2"></div>
+
+        <!-- Row 3: Card DAFTAR PPPK PW SUDAH UNGGAH (4 Cards List Terpusat) -->
+        <div id="pppkpwdash_statusCardsContainer" class="mb-4"></div>
+      </div>
+
     </div>
 
-    <div id="pppkpwdash_dashboardState" style="display: none;">
-      <!-- Row 1: Card Progress (4 Metric Cards Minimal) -->
-      <div id="pppkpwdash_metricRow1"></div>
-
-      <!-- Row 2: Card Status Breakdown (5 Status Cards) -->
-      <div id="pppkpwdash_metricRow2"></div>
-
-      <!-- Row 3: Card DAFTAR PPPK PW SUDAH UNGGAH (4 Cards List Terpusat) -->
-      <div id="pppkpwdash_statusCardsContainer" class="mb-4"></div>
-
-      <!-- Row 4: Card Tabel Rekapitulasi Per Unit Kerja -->
-      <div class="row mb-4">
-        <div class="col-12">
-          <div class="card card-sultan-terpusat shadow-xs border-0">
-            <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center pt-3 pb-2 px-3">
-              <h6 class="font-weight-bold text-sultan-utama m-0 text-uppercase" style="letter-spacing: 0.5px;">
-                <i class="fas fa-table mr-2"></i>Rekapitulasi Per Unit Kerja
-              </h6>
-            </div>
-            <div class="card-body p-0">
-              <div class="table-responsive sultan-scroll">
-                <table id="pppkpwdash_tabelRekap" class="table table-hover sultan-table-datatable text-center mb-0 w-100">
-                  <thead>
-                    <tr>
-                      <th class="align-middle text-left font-weight-bold col-sticky-left" style="min-width: 220px;">NAMA SEKOLAH</th>
-                      <th class="align-middle font-weight-bold" style="width: 120px;">JUMLAH PPPK PW</th>
-                      <th class="align-middle font-weight-bold" style="width: 110px;">SUDAH UNGGAH</th>
-                      <th class="align-middle font-weight-bold" style="width: 110px;">BELUM UNGGAH</th>
-                      <th class="align-middle font-weight-bold" style="width: 120px;">PROGRESS</th>
-                    </tr>
-                  </thead>
-                  <tbody id="pppkpwdash_tbodyRekap"></tbody>
-                </table>
+    <!-- VIEW UNIT -->
+    <div id="pppkpwdash_viewUnit" class="d-none py-1">
+      <div id="pppkpwdash_unitContent">
+        <!-- Modern Sultan Minimal Metric Cards (6 Cards Row Unit) -->
+        <div class="row mb-4" id="pppkpwdash_unitMetricRow">
+          <!-- KARTU 1: KELENGKAPAN -->
+          <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 col-6 mb-3">
+            <div class="sultan-metric-card-minimal minimal-primary shadow-xs" style="border-radius:18px!important;padding:1.1rem 0.9rem!important;">
+              <div class="minimal-label text-truncate"><i class="fas fa-chart-pie mr-1"></i>Kelengkapan</div>
+              <div class="minimal-value" id="pppkpwdash_unitCardProgress">0%</div>
+              <div class="minimal-sub text-truncate" id="pppkpwdash_unitProgressSub">0 dari 0 Selesai</div>
+              <div class="progress mt-2" style="height:4px;border-radius:4px;background:rgba(79,70,229,0.15);width:100%;">
+                <div id="pppkpwdash_unitProgressBar" class="progress-bar" role="progressbar" style="width:0%;border-radius:4px;background-color:#4f46e5;transition:width 0.6s ease;"></div>
               </div>
             </div>
           </div>
+          <!-- KARTU 2: JML DOKUMEN -->
+          <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 col-6 mb-3">
+            <div class="sultan-metric-card-minimal minimal-slate shadow-xs" style="border-radius:18px!important;padding:1.1rem 0.9rem!important;">
+              <div class="minimal-label text-truncate"><i class="fas fa-folder mr-1"></i>Jml Dokumen</div>
+              <div class="minimal-value" id="pppkpwdash_unitCardTotal">0</div>
+              <div class="minimal-sub text-truncate" id="pppkpwdash_unitTotalSub">Sudah Diunggah</div>
+            </div>
+          </div>
+          <!-- KARTU 3: DIPROSES -->
+          <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 col-6 mb-3">
+            <div class="sultan-metric-card-minimal minimal-info shadow-xs" style="border-radius:18px!important;padding:1.1rem 0.9rem!important;">
+              <div class="minimal-label text-truncate"><i class="fas fa-hourglass-half mr-1"></i>Diproses</div>
+              <div class="minimal-value" id="pppkpwdash_unitCardDiproses">0</div>
+              <div class="minimal-sub text-truncate">Verifikasi</div>
+            </div>
+          </div>
+          <!-- KARTU 4: DISETUJUI -->
+          <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 col-6 mb-3">
+            <div class="sultan-metric-card-minimal minimal-success shadow-xs" style="border-radius:18px!important;padding:1.1rem 0.9rem!important;">
+              <div class="minimal-label text-truncate"><i class="fas fa-check-circle mr-1"></i>Disetujui</div>
+              <div class="minimal-value" id="pppkpwdash_unitCardDisetujui">0</div>
+              <div class="minimal-sub text-truncate">Dokumen Valid</div>
+            </div>
+          </div>
+          <!-- KARTU 5: REVISI -->
+          <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 col-6 mb-3">
+            <div class="sultan-metric-card-minimal minimal-warning shadow-xs" style="border-radius:18px!important;padding:1.1rem 0.9rem!important;">
+              <div class="minimal-label text-truncate"><i class="fas fa-edit mr-1"></i>Revisi</div>
+              <div class="minimal-value" id="pppkpwdash_unitCardRevisi">0</div>
+              <div class="minimal-sub text-truncate">Perlu Perbaikan</div>
+            </div>
+          </div>
+          <!-- KARTU 6: DITOLAK -->
+          <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 col-6 mb-3">
+            <div class="sultan-metric-card-minimal minimal-maroon shadow-xs" style="border-radius:18px!important;padding:1.1rem 0.9rem!important;">
+              <div class="minimal-label text-truncate"><i class="fas fa-times-circle mr-1"></i>Ditolak</div>
+              <div class="minimal-value" id="pppkpwdash_unitCardDitolak">0</div>
+              <div class="minimal-sub text-truncate">Tidak Valid</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section Daftar Dokumen Terunggah Unit -->
+        <div class="col-12 mt-2 px-0 mb-4">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+              <h6 class="font-weight-bold text-sultan-utama m-0 text-uppercase" style="letter-spacing:0.5px;">
+                <i class="fas fa-folder-open mr-2"></i>Daftar Dokumen PPPK PW Terunggah
+              </h6>
+              <small class="text-muted" id="pppkpwdash_unitHeaderStatusText">Distribusi status dokumen PPPK PW</small>
+            </div>
+          </div>
+
+          <div id="pppkpwdash_unitStatusCardsContainer"></div>
         </div>
       </div>
     </div>
@@ -113,25 +166,23 @@
 
 <script>
 var PPPKPWDASH_CACHE = null;
-var PPPKPWDASH_TABEL = null;
 var PPPKPWDASH_IS_ADMIN = false;
+var PPPKPWDASH_USER_NPSN = "";
+var PPPKPWDASH_MODE = "rekap";
 
 $(document).ready(function () {
-  var userLogin = typeof getSesiUser === 'function' ? getSesiUser() : {};
-  var rStr = String(userLogin.role || "").toLowerCase();
-  PPPKPWDASH_IS_ADMIN = (typeof checkUserRoleIsAdmin === 'function' && checkUserRoleIsAdmin()) || rStr.includes("admin") || rStr.includes("verifikator");
+  try {
+    var userLogin = typeof getSesiUser === 'function' ? getSesiUser() : {};
+    var rStr = String(userLogin.role || "").toLowerCase();
+    PPPKPWDASH_IS_ADMIN = (typeof checkUserRoleIsAdmin === 'function' && checkUserRoleIsAdmin()) || rStr.includes("admin") || rStr.includes("verifikator");
+    PPPKPWDASH_USER_NPSN = String(userLogin.npsn || userLogin.unit || userLogin.username || "").trim();
+  } catch(e) { PPPKPWDASH_USER_NPSN = ""; PPPKPWDASH_IS_ADMIN = false; }
 
   // Render komponen UI Terpusat Sultan UI
   if (typeof SultanUI !== 'undefined') {
     $('#pppkpwdash_metricRow1').html(SultanUI.renderDashboardRow1Minimal('pppkpwdash', {
-      total: 'JML PPPK PW',
-      sudah: 'SUDAH UNGGAH',
-      belum: 'BELUM UNGGAH',
-      progress: 'PROGRESS',
-      subTotal: 'Total Pegawai PPPK PW',
-      subSudah: 'Pegawai Sudah Unggah',
-      subBelum: 'Pegawai Belum Unggah',
-      subProgress: 'Progres Capaian'
+      totalLabel: 'TARGET SASARAN', sudahLabel: 'SUDAH UNGGAH', belumLabel: 'BELUM UNGGAH', progressLabel: 'CAPAIAN PROGRES',
+      subTotal: 'Total Pegawai PPPK PW', subSudah: 'Pegawai Telah Mengunggah', subBelum: 'Pegawai Belum Mengunggah', subProgress: 'Tingkat Kepatuhan'
     }));
 
     $('#pppkpwdash_metricRow2').html(SultanUI.renderDashboardRow2Minimal('pppkpwdash'));
@@ -140,12 +191,16 @@ $(document).ready(function () {
       title: 'DAFTAR PPPK PW SUDAH UNGGAH',
       hasWaButton: true
     }));
+
+    $('#pppkpwdash_unitStatusCardsContainer').html(SultanUI.renderDashboardStatusCards4('pppkpwdash_unit', {
+      placeholderCari: 'Cari dokumen...', emptyText: 'PILIH SEKOLAH'
+    }));
   }
 
   // Event listener tombol WA salin rekap
   $(document).off('click', '#pppkpwdash_btnSalinWa').on('click', '#pppkpwdash_btnSalinWa', pppkpwdash_salinWaRekap);
 
-  // Inisialisasi filter tahun dinamis tanpa tanda "-"
+  // Inisialisasi filter tahun dinamis
   var now = new Date(); var yr = now.getFullYear(); var mo = now.getMonth();
   var currentTA = (mo >= 6) ? yr + "/" + (yr + 1) : (yr - 1) + "/" + yr;
   var htmlTahun = '';
@@ -155,21 +210,81 @@ $(document).ready(function () {
   }
   $('#pppkpwdash_filterTahun').html(htmlTahun);
 
-  // Filter unit berdasarkan role
-  if (!PPPKPWDASH_IS_ADMIN) {
-    var unitUser = userLogin.unit || userLogin.nama_lengkap || userLogin.fullname || '';
-    $('#pppkpwdash_filterUnit').html('<option value="' + unitUser + '">' + (unitUser || 'Unit Saya') + '</option>');
-    $('#pppkpwdash_filterSekolahContainer').addClass('d-none');
+  SultanDashboard.initDualMode({
+    pageKey: 'pppkpwDash',
+    tabType: 'single_tab',
+    unitViewId: '#pppkpwdash_viewUnit',
+    rekapViewId: '#pppkpwdash_viewRekap',
+    switchSelector: '.sultan-segmented-btn',
+    onInit: function(state) {
+      PPPKPWDASH_IS_ADMIN   = state.isAdmin;
+      PPPKPWDASH_USER_NPSN  = state.userNpsn;
+      PPPKPWDASH_MODE       = state.currentMode;
+
+      var masterSekolah = (PPPKPWDASH_CACHE && PPPKPWDASH_CACHE.detailUnit) ? PPPKPWDASH_CACHE.detailUnit : [];
+      SultanDashboard.setupUnitSchoolPicker({
+        pageKey: 'pppkpwDash',
+        wrapperJenjangId: '#pppkpwdash_filterJenjangUnitContainer',
+        selectJenjangId: '#pppkpwdash_filterJenjangUnit',
+        wrapperSekolahId: '#pppkpwdash_filterUnitSekolahContainer',
+        selectSekolahId: '#pppkpwdash_filterUnitSekolah',
+        btnActionId: '#pppkpwdash_btnRefresh',
+        masterSekolah: masterSekolah,
+        onSelectSchool: function(npsn, nama) {
+          if (npsn || nama) pppkpwdash_renderUnitView(npsn || nama);
+          else pppkpwdash_resetUnitView();
+        }
+      });
+      pppkpwdash_updateFilterBarControls();
+    },
+    onSwitchMode: function(mode, state, isFirstLoad) {
+      PPPKPWDASH_MODE = mode;
+      pppkpwdash_updateFilterBarControls();
+      if (mode === 'unit') {
+        if (!PPPKPWDASH_IS_ADMIN && PPPKPWDASH_USER_NPSN) {
+          pppkpwdash_renderUnitView(PPPKPWDASH_USER_NPSN);
+        } else if (PPPKPWDASH_IS_ADMIN) {
+          var curSel = $('#pppkpwdash_filterUnitSekolah').val();
+          if (curSel) pppkpwdash_renderUnitView(curSel);
+          else pppkpwdash_resetUnitView();
+        }
+      } else {
+        if (!isFirstLoad) pppkpwdash_terapkanFilterLokal();
+      }
+    }
+  });
+
+  pppkpwdash_setupEventListeners();
+  loadDashboard();
+});
+
+function pppkpwdash_updateFilterBarControls() {
+  var isUnit = (PPPKPWDASH_MODE === 'unit');
+  $('#pppkpwdash_filterBar').removeClass('d-none');
+  $('#pppkpwdash_filterDokumenContainer, #pppkpwdash_filterTahunContainer').removeClass('d-none');
+  if (isUnit && PPPKPWDASH_IS_ADMIN) {
+    $('#pppkpwdash_filterJenjangUnitContainer, #pppkpwdash_filterUnitSekolahContainer').removeClass('d-none');
   } else {
-    $('#pppkpwdash_filterSekolahContainer').removeClass('d-none');
-    $('#pppkpwdash_filterUnit').prop('disabled', false);
+    $('#pppkpwdash_filterJenjangUnitContainer, #pppkpwdash_filterUnitSekolahContainer').addClass('d-none');
   }
+}
 
-  // Events
-  $('#pppkpwdash_btnRefresh').click(function () { loadDashboard(true); });
-  $('#pppkpwdash_filterUnit, #pppkpwdash_filterTahun, #pppkpwdash_filterDokumen').change(function () { loadDashboard(); });
+function pppkpwdash_setupEventListeners() {
+  $(document).off('click', '#pppkpwdash_btnRefresh').on('click', '#pppkpwdash_btnRefresh', function(e) {
+    e.preventDefault();
+    loadDashboard(true);
+  });
 
-  // Live Search untuk 4 Card List Status
+  $('#pppkpwdash_filterTahun, #pppkpwdash_filterDokumen').change(function() {
+    if (PPPKPWDASH_MODE === 'rekap') {
+      pppkpwdash_terapkanFilterLokal();
+    } else {
+      var target = PPPKPWDASH_IS_ADMIN ? $('#pppkpwdash_filterUnitSekolah').val() : PPPKPWDASH_USER_NPSN;
+      if (target) pppkpwdash_renderUnitView(target);
+    }
+  });
+
+  // Live Search Rekap
   $(document).off('keyup', '#pppkpwdash_inputCariDiproses').on('keyup', '#pppkpwdash_inputCariDiproses', function() {
     var val = $(this).val().toLowerCase().trim();
     $('#pppkpwdash_listDiproses li.pppkpwdash-item').filter(function() {
@@ -195,62 +310,266 @@ $(document).ready(function () {
     });
   });
 
-  loadDashboard();
+  // Live Search Unit
+  $(document).off('keyup', '#pppkpwdash_unit_inputCariDiproses').on('keyup', '#pppkpwdash_unit_inputCariDiproses', function() {
+    var val = $(this).val().toLowerCase().trim();
+    $('#pppkpwdash_unit_listDiproses li.pppkpwdash-item').filter(function() {
+      $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
+    });
+  });
+  $(document).off('keyup', '#pppkpwdash_unit_inputCariDisetujui').on('keyup', '#pppkpwdash_unit_inputCariDisetujui', function() {
+    var val = $(this).val().toLowerCase().trim();
+    $('#pppkpwdash_unit_listDisetujui li.pppkpwdash-item').filter(function() {
+      $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
+    });
+  });
+  $(document).off('keyup', '#pppkpwdash_unit_inputCariRevisi').on('keyup', '#pppkpwdash_unit_inputCariRevisi', function() {
+    var val = $(this).val().toLowerCase().trim();
+    $('#pppkpwdash_unit_listRevisi li.pppkpwdash-item').filter(function() {
+      $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
+    });
+  });
+}
 
-  function loadDashboard(forceRefresh) {
-    if (typeof SultanUI !== 'undefined') {
-      SultanUI.showLoading('#pppkpwdash_loadingState', 'Memuat Data Dasbor PPPK PW...');
-    } else {
-      $('#pppkpwdash_loadingState').show();
-    }
-    $('#pppkpwdash_dashboardState').hide();
-
-    var unitFilter = !PPPKPWDASH_IS_ADMIN ? (userLogin.unit || '') : ($('#pppkpwdash_filterUnit').val() || 'SEMUA');
-    var tahun = $('#pppkpwdash_filterTahun').val();
-    var katDok = $('#pppkpwdash_filterDokumen').val();
-    var fnBackend = (katDok === 'SPMT') ? 'pppkpw_spmt_getDashboardData' : 'pppkpw_getDashboardData';
-
-    google.script.run
-      .withSuccessHandler(function (resRaw) {
-        if (typeof SultanUI !== 'undefined') {
-          SultanUI.hideLoading('#pppkpwdash_loadingState');
-        } else {
-          $('#pppkpwdash_loadingState').hide();
-        }
-
-        var res = typeof resRaw === 'string' ? JSON.parse(resRaw) : resRaw;
-        if (!res.success && res.status !== 'success') {
-          if (typeof SultanUI !== 'undefined') {
-            SultanUI.showLoadingError('#pppkpwdash_loadingState', 'Gagal memuat data: ' + (res.message || 'Unknown error'));
-          }
-          return;
-        }
-        PPPKPWDASH_CACHE = res;
-
-        // Isi dropdown unit jika admin (tanpa tambahan "-")
-        if (PPPKPWDASH_IS_ADMIN && res.detailUnit) {
-          var sel = $('#pppkpwdash_filterUnit');
-          var curVal = sel.val() || 'SEMUA';
-          sel.empty().append('<option value="SEMUA">Semua Sekolah</option>');
-          res.detailUnit.forEach(function (u) {
-            if (u.unit && u.unit !== '-') {
-              sel.append($('<option>', { value: u.unit, text: u.unit }));
-            }
-          });
-          sel.val(curVal);
-        }
-
-        $('#pppkpwdash_dashboardState').fadeIn();
-        renderDashboard(res);
-      })
-      .withFailureHandler(function (err) {
-        if (typeof SultanUI !== 'undefined') {
-          SultanUI.showLoadingError('#pppkpwdash_loadingState', 'Terjadi kesalahan: ' + (err.message || err));
-        }
-      })
-      [fnBackend](unitFilter, tahun, !!forceRefresh);
+function loadDashboard(forceRefresh) {
+  if (typeof SultanUI !== 'undefined') {
+    SultanUI.showLoading('#pppkpwdash_loadingState', 'Memuat Data Dasbor PPPK PW...');
+  } else {
+    $('#pppkpwdash_loadingState').show();
   }
-});
+  $('#pppkpwdash_dashboardState').hide();
+
+  var tahun = $('#pppkpwdash_filterTahun').val();
+  var katDok = $('#pppkpwdash_filterDokumen').val();
+  var fnBackend = (katDok === 'SPMT') ? 'pppkpw_spmt_getDashboardData' : 'pppkpw_getDashboardData';
+
+  google.script.run
+    .withSuccessHandler(function (resRaw) {
+      if (typeof SultanUI !== 'undefined') {
+        SultanUI.hideLoading('#pppkpwdash_loadingState');
+      } else {
+        $('#pppkpwdash_loadingState').hide();
+      }
+
+      var res = typeof resRaw === 'string' ? JSON.parse(resRaw) : resRaw;
+      if (!res.success && res.status !== 'success') {
+        if (typeof SultanUI !== 'undefined') {
+          SultanUI.showLoadingError('#pppkpwdash_loadingState', 'Gagal memuat data: ' + (res.message || 'Unknown error'));
+        }
+        return;
+      }
+      PPPKPWDASH_CACHE = res;
+      var masterSekolah = res.detailUnit || [];
+
+      SultanDashboard.setupUnitSchoolPicker({
+        pageKey: 'pppkpwDash',
+        wrapperJenjangId: '#pppkpwdash_filterJenjangUnitContainer',
+        selectJenjangId: '#pppkpwdash_filterJenjangUnit',
+        wrapperSekolahId: '#pppkpwdash_filterUnitSekolahContainer',
+        selectSekolahId: '#pppkpwdash_filterUnitSekolah',
+        btnActionId: '#pppkpwdash_btnRefresh',
+        masterSekolah: masterSekolah,
+        onSelectSchool: function(npsn, nama) {
+          if (npsn || nama) pppkpwdash_renderUnitView(npsn || nama);
+          else pppkpwdash_resetUnitView();
+        }
+      });
+
+      $('#pppkpwdash_dashboardState').fadeIn();
+      if (PPPKPWDASH_MODE === 'rekap') {
+        pppkpwdash_terapkanFilterLokal();
+      } else {
+        var targetUnit = PPPKPWDASH_IS_ADMIN ? $('#pppkpwdash_filterUnitSekolah').val() : PPPKPWDASH_USER_NPSN;
+        if (targetUnit) pppkpwdash_renderUnitView(targetUnit);
+        else pppkpwdash_resetUnitView();
+      }
+    })
+    .withFailureHandler(function (err) {
+      if (typeof SultanUI !== 'undefined') {
+        SultanUI.showLoadingError('#pppkpwdash_loadingState', 'Terjadi kesalahan: ' + (err.message || err));
+      }
+    })
+    [fnBackend]('SEMUA', tahun, !!forceRefresh);
+}
+
+function pppkpwdash_terapkanFilterLokal() {
+  if (!PPPKPWDASH_CACHE || !PPPKPWDASH_CACHE.detailUnit) return;
+  var res = PPPKPWDASH_CACHE;
+
+  var totPeg   = res.totalPegawai || 0;
+  var totSudah = res.totalSudah   || 0;
+  var totBelum = res.totalBelum   || 0;
+  var totVerif = res.totalDiverifikasi || res.totalDisetujui || 0;
+  var totProses= res.totalDiproses     || 0;
+  var totRevisi= res.totalRevisi       || 0;
+  var totTolak = res.totalDitolak      || 0;
+  var pct = totPeg > 0 ? Math.round((totSudah / totPeg) * 100) : 0;
+
+  $('#pppkpwdash_cardTotalSekolah').text(totPeg.toLocaleString('id-ID'));
+  $('#pppkpwdash_cardSudah').text(totSudah.toLocaleString('id-ID'));
+  $('#pppkpwdash_cardBelum').text(totBelum.toLocaleString('id-ID'));
+  $('#pppkpwdash_cardProgress').text(pct + '%');
+
+  $('#pppkpwdash_cardTotalDokumen').text(totSudah.toLocaleString('id-ID'));
+  $('#pppkpwdash_cardDiproses').text(totProses.toLocaleString('id-ID'));
+  $('#pppkpwdash_cardDisetujui').text(totVerif.toLocaleString('id-ID'));
+  $('#pppkpwdash_cardRevisi').text(totRevisi.toLocaleString('id-ID'));
+  $('#pppkpwdash_cardDitolak').text(totTolak.toLocaleString('id-ID'));
+
+  var categories = {
+    'Diproses':  { list: [], countId: '#pppkpwdash_countDiproses',  listId: '#pppkpwdash_listDiproses',  emptyMsg: 'Tidak ada PPPK PW diproses' },
+    'Disetujui': { list: [], countId: '#pppkpwdash_countDisetujui', listId: '#pppkpwdash_listDisetujui', emptyMsg: 'Tidak ada PPPK PW disetujui' },
+    'Revisi':    { list: [], countId: '#pppkpwdash_countRevisi',    listId: '#pppkpwdash_listRevisi',    emptyMsg: 'Tidak ada PPPK PW revisi' },
+    'Ditolak':   { list: [], countId: '#pppkpwdash_countDitolak',   listId: '#pppkpwdash_listDitolak',   emptyMsg: 'Tidak ada PPPK PW ditolak' }
+  };
+
+  var units = res.detailUnit || [];
+  units.forEach(function (u) {
+    (u.listSudah || []).forEach(function (p) {
+      var st = String(p.status || 'Diproses').trim().toLowerCase();
+      if (st.includes('setuju') || st.includes('verifikasi') || st.includes('valid') || st.includes('ok')) {
+        categories['Disetujui'].list.push(p);
+      } else if (st.includes('revisi')) {
+        categories['Revisi'].list.push(p);
+      } else if (st.includes('tolak') || st.includes('ditolak')) {
+        categories['Ditolak'].list.push(p);
+      } else {
+        categories['Diproses'].list.push(p);
+      }
+    });
+  });
+
+  $('#pppkpwdash_countDiproses').text(categories['Diproses'].list.length);
+  $('#pppkpwdash_countDisetujui').text(categories['Disetujui'].list.length);
+  $('#pppkpwdash_countRevisi').text(categories['Revisi'].list.length);
+  $('#pppkpwdash_countDitolak').text(categories['Ditolak'].list.length);
+
+  window.PPPKPWDASH_LIST_BELUM_CACHE = [];
+  units.forEach(function (u) {
+    (u.listBelum || []).forEach(function (p) {
+      window.PPPKPWDASH_LIST_BELUM_CACHE.push(p);
+    });
+  });
+  window.PPPKPWDASH_LIST_REVISI_CACHE = categories['Revisi'].list;
+  window.PPPKPWDASH_LIST_DITOLAK_CACHE = categories['Ditolak'].list;
+
+  Object.keys(categories).forEach(function(catKey) {
+    var cat = categories[catKey];
+    var $list = $(cat.listId);
+    $list.empty();
+
+    if (cat.list.length === 0) {
+      $list.html(SultanUI && SultanUI.renderListEmptyInfo ? SultanUI.renderListEmptyInfo(cat.emptyMsg) : '<li class="list-group-item bg-transparent text-center text-muted py-4 border-0">' + cat.emptyMsg + '</li>');
+    } else {
+      cat.list.sort(function(a, b) {
+        return String(a.nama || "").localeCompare(String(b.nama || ""));
+      });
+
+      cat.list.forEach(function(r, index) {
+        var idxNum = index + 1;
+        var nama = String(r.nama || "-").toUpperCase();
+        var delay = Math.min(index * 25, 300);
+
+        var itemHtml = 
+          '<li class="list-group-item bg-transparent py-2 px-3 font-weight-bold dashlapbul-list-item d-flex align-items-center animate__animated animate__fadeIn pppkpwdash-item" style="font-size:12px;line-height:1.4;animation-delay:' + delay + 'ms;">' +
+            '<span class="badge dashlapbul-badge-idx mr-2" style="width:25px;min-width:25px;flex-shrink:0;">' + idxNum + '</span>' +
+            '<span class="school-name flex-grow-1 text-truncate" style="word-break:break-word;">' + nama + '</span>' +
+          '</li>';
+
+        $list.append(itemHtml);
+      });
+    }
+  });
+}
+
+function pppkpwdash_resetUnitView() {
+  if (typeof SultanUI !== 'undefined') {
+    SultanUI.stopLottery('#pppkpwdash_unitCardTotal, #pppkpwdash_unitCardDisetujui, #pppkpwdash_unitCardDiproses, #pppkpwdash_unitCardRevisi, #pppkpwdash_unitCardDitolak, #pppkpwdash_unitCardProgress');
+  }
+  $('#pppkpwdash_unitCardTotal, #pppkpwdash_unitCardDisetujui, #pppkpwdash_unitCardDiproses, #pppkpwdash_unitCardRevisi, #pppkpwdash_unitCardDitolak').text('0');
+  $('#pppkpwdash_unitCardProgress').text('0%');
+  $('#pppkpwdash_unitProgressBar').css('width', '0%');
+  $('#pppkpwdash_unitProgressSub').text('0 dari 0 Selesai');
+
+  var emptyHtml = SultanUI && SultanUI.renderListEmptyInfo ? SultanUI.renderListEmptyInfo('PILIH SEKOLAH') :
+    '<li class="list-group-item bg-transparent text-center text-muted py-4 border-0" style="font-size:11px;">PILIH SEKOLAH</li>';
+  $('#pppkpwdash_unit_listDisetujui, #pppkpwdash_unit_listDiproses, #pppkpwdash_unit_listRevisi, #pppkpwdash_unit_listDitolak').html(emptyHtml);
+}
+
+function pppkpwdash_renderUnitView(unitTarget) {
+  if (typeof SultanUI !== 'undefined') {
+    SultanUI.stopLottery('#pppkpwdash_unitCardTotal, #pppkpwdash_unitCardDisetujui, #pppkpwdash_unitCardDiproses, #pppkpwdash_unitCardRevisi, #pppkpwdash_unitCardDitolak, #pppkpwdash_unitCardProgress');
+  }
+  if (!PPPKPWDASH_CACHE || !PPPKPWDASH_CACHE.detailUnit) {
+    pppkpwdash_resetUnitView();
+    return;
+  }
+
+  var targetNorm = String(unitTarget || "").trim().toLowerCase();
+  var uObj = PPPKPWDASH_CACHE.detailUnit.find(function(u) {
+    return String(u.unit || u.npsn || "").trim().toLowerCase() === targetNorm;
+  });
+
+  if (!uObj) {
+    pppkpwdash_resetUnitView();
+    return;
+  }
+
+  var totalPeg = uObj.total || 0;
+  var sudah = uObj.sudah || 0;
+  var diproses = uObj.diproses || 0;
+  var disetujui = uObj.diverifikasi || 0;
+  var revisi = uObj.revisi || 0;
+  var ditolak = uObj.ditolak || 0;
+  var pct = totalPeg > 0 ? Math.round((sudah / totalPeg) * 100) : 0;
+
+  $('#pppkpwdash_unitCardProgress').text(pct + '%');
+  $('#pppkpwdash_unitProgressBar').css('width', pct + '%');
+  $('#pppkpwdash_unitProgressSub').text(sudah + ' dari ' + totalPeg + ' Selesai');
+  $('#pppkpwdash_unitCardTotal').text(sudah);
+  $('#pppkpwdash_unitCardDiproses').text(diproses);
+  $('#pppkpwdash_unitCardDisetujui').text(disetujui);
+  $('#pppkpwdash_unitCardRevisi').text(revisi);
+  $('#pppkpwdash_unitCardDitolak').text(ditolak);
+
+  var listDisetujui = [], listDiproses = [], listRevisi = [], listDitolak = [];
+  (uObj.listSudah || []).forEach(function(p) {
+    var st = String(p.status || 'Diproses').trim().toLowerCase();
+    var docItem = { nama: p.nama };
+    if (st.includes('setuju') || st.includes('verifikasi') || st.includes('valid') || st.includes('ok')) {
+      listDisetujui.push(docItem);
+    } else if (st.includes('revisi')) {
+      listRevisi.push(docItem);
+    } else if (st.includes('tolak') || st.includes('ditolak')) {
+      listDitolak.push(docItem);
+    } else {
+      listDiproses.push(docItem);
+    }
+  });
+
+  var cats = [
+    { id: '#pppkpwdash_unit_listDiproses', list: listDiproses, emptyText: 'TIDAK ADA DATA DIPROSES' },
+    { id: '#pppkpwdash_unit_listDisetujui', list: listDisetujui, emptyText: 'TIDAK ADA DATA DISETUJUI' },
+    { id: '#pppkpwdash_unit_listRevisi', list: listRevisi, emptyText: 'TIDAK ADA DATA REVISI' },
+    { id: '#pppkpwdash_unit_listDitolak', list: listDitolak, emptyText: 'TIDAK ADA DATA DITOLAK' }
+  ];
+
+  cats.forEach(function(cat) {
+    var $l = $(cat.id); $l.empty();
+    if (cat.list.length === 0) {
+      $l.html(SultanUI && SultanUI.renderListEmptyInfo ? SultanUI.renderListEmptyInfo(cat.emptyText) : '<li class="list-group-item bg-transparent text-center text-muted py-4 border-0">' + cat.emptyText + '</li>');
+    } else {
+      cat.list.forEach(function(item, idx) {
+        $l.append(
+          '<li class="list-group-item bg-transparent py-2 px-3 font-weight-bold dashlapbul-list-item d-flex align-items-center animate__animated animate__fadeIn pppkpwdash-item" style="font-size:12px;line-height:1.4;">' +
+          '<span class="badge dashlapbul-badge-idx mr-2" style="width:25px;min-width:25px;flex-shrink:0;">' + (idx + 1) + '</span>' +
+          '<span class="school-name flex-grow-1 text-truncate">' + String(item.nama || "-").toUpperCase() + '</span>' +
+          '</li>'
+        );
+      });
+    }
+  });
+}
 
 function pppkpwdash_animateValue(id, end, pct) {
   if (typeof SultanUI !== 'undefined') SultanUI.stopLottery('#' + id);
