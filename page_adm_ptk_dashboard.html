@@ -435,11 +435,18 @@
     });
   }
 
-  function admptk_dash_initMasterAccess() {
-    var htmlSpinner = '<div class="sultan-spinner-icon"><i class="fas fa-circle-notch fa-spin"></i></div>' +
-      '<h6 class="text-muted font-weight-bold sultan-loading-text mb-0" style="letter-spacing: 0.5px; text-transform: uppercase; font-size: 11px;">Memuat Data Dasbor Administrasi PTK...</h6>';
-    $('#admptk_dash_loadingState').html(htmlSpinner).show();
+  function admptk_dash_showSkeleton() {
+    $('#admptk_dash_viewUnit').addClass('d-none').css({"opacity": "1", "pointer-events": "auto"});
+    $('#admptk_dash_viewRekap').addClass('d-none');
     $('#admptk_dash_dashboardState').hide();
+    $('#admptk_dash_loadingState').show();
+    if (typeof SultanUI !== "undefined" && SultanUI.setRefreshLoading) {
+      SultanUI.setRefreshLoading("#admptk_dash_btnRefresh", true);
+    }
+  }
+
+  function admptk_dash_initMasterAccess() {
+    admptk_dash_showSkeleton();
 
     google.script.run
       .withSuccessHandler(function (json) {
@@ -465,8 +472,9 @@
           selectKat.append($('<option>', { value: k.idKat, text: k.namaKategori }));
         });
 
-        // Default mode Rekap untuk User & Admin
-        SultanDashboard.switchMode('admPtkDash', 'rekap');
+        // Tentukan mode awal berdasarkan role: Admin => rekap, User => unit
+        var targetMode = ADMPTK_DASH_IS_ADMIN ? 'rekap' : 'unit';
+        SultanDashboard.switchMode('admPtkDash', targetMode);
         admptk_dash_loadDataKategori($('#admptk_dash_filterKategori').val());
       })
       .withFailureHandler(function (err) {
@@ -487,10 +495,7 @@
     var mapData = ADMPTK_DASH_KATEGORI_MAP.find(k => k.idKat === idKategori);
     if (!mapData) { ADMPTK_DASH_PENDING_REQ = 0; return; }
 
-    var htmlSpinner = '<div class="sultan-spinner-icon"><i class="fas fa-circle-notch fa-spin"></i></div>' +
-      '<h6 class="text-muted font-weight-bold sultan-loading-text mb-0" style="letter-spacing: 0.5px; text-transform: uppercase; font-size: 11px;">Memuat Data Dasbor Administrasi PTK...</h6>';
-    $('#admptk_dash_loadingState').html(htmlSpinner).show();
-    $('#admptk_dash_dashboardState').hide();
+    admptk_dash_showSkeleton();
 
     var jenjang = $('#admptk_dash_filterJenjang').val() || "SD";
     var npsnFilter = ""; // Mode Rekap selalu memuat seluruh data wilayah untuk transparansi (User & Admin sama)
@@ -513,8 +518,17 @@
         admptk_dash_initDropdownSekolah();
         admptk_dash_initDropdownTahun();
 
-        $('#admptk_dash_dashboardState').fadeIn();
-        admptk_dash_terapkanFilterLokal();
+        if (ADMPTK_DASH_MODE === 'unit') {
+          $('#admptk_dash_viewUnit').removeClass('d-none').css({"opacity": "1", "pointer-events": "auto"}).show();
+          $('#admptk_dash_viewRekap').addClass('d-none');
+          if (!ADMPTK_DASH_IS_ADMIN && ADMPTK_DASH_USER_NPSN) {
+            admptk_dash_loadUnitData(ADMPTK_DASH_USER_NPSN);
+          }
+        } else {
+          $('#admptk_dash_viewRekap').removeClass('d-none');
+          $('#admptk_dash_dashboardState').fadeIn();
+          admptk_dash_terapkanFilterLokal();
+        }
       })
       .withFailureHandler(function(err) {
         ADMPTK_DASH_PENDING_REQ = 0;
