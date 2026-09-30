@@ -133,11 +133,11 @@
       </div>
     </div>
     <div class="modal-footer modal-footer-tambah-edit justify-content-between">
-      <button type="button" class="modal-btn-batal" data-dismiss="modal">
-        <i class="fas fa-times mr-2"></i>BATAL
+      <button type="button" class="sultan-btn sultan-btn-secondary" data-dismiss="modal">
+        <i class="fas fa-times"></i> BATAL
       </button>
-      <button type="button" id="kombelkelola_btnSimpan" class="modal-btn-simpan" disabled>
-        <i class="fas fa-cloud-upload-alt mr-2"></i>UNGGAH
+      <button type="button" id="kombelkelola_btnSimpan" class="modal-btn-simpan sultan-btn sultan-btn-primary" disabled>
+        <i class="fas fa-cloud-upload-alt"></i> UNGGAH
       </button>
     </div>
   </form>
@@ -220,12 +220,12 @@
         </div>
       </div>
     </div>
-    <div class="modal-footer modal-footer-sultan">
-      <button type="button" class="modal-btn-batal" data-dismiss="modal">
-        <i class="fas fa-times mr-2"></i>BATAL
+    <div class="modal-footer modal-footer-sultan justify-content-between">
+      <button type="button" class="sultan-btn sultan-btn-secondary" data-dismiss="modal">
+        <i class="fas fa-times"></i> BATAL
       </button>
-      <button type="button" id="kombelkelola_btnSimpanPerbaiki" class="modal-btn-perbarui">
-        <i class="fas fa-edit mr-2"></i>PERBARUI
+      <button type="button" id="kombelkelola_btnSimpanPerbaiki" class="modal-btn-perbarui sultan-btn sultan-btn-primary">
+        <i class="fas fa-edit"></i> PERBARUI
       </button>
     </div>
   </form>
@@ -296,12 +296,12 @@
       </div>
 
       <div class="modal-verifikasi-footer" id="kombelkelola_verifFooter">
-        <button type="button" class="modal-btn-batal" data-dismiss="modal">
-          <i class="fas fa-times mr-2"></i>BATAL
+        <button type="button" class="sultan-btn sultan-btn-secondary" data-dismiss="modal">
+          <i class="fas fa-times"></i> BATAL
         </button>
-        <button type="submit" id="kombelkelola_btnVerifikasi" class="modal-verifikasi-btn-verifikasi"
+        <button type="submit" id="kombelkelola_btnVerifikasi" class="sultan-btn sultan-btn-primary"
                 form="kombelkelola_formVerif">
-          <i class="fas fa-check-circle mr-2"></i>VERIFIKASI
+          <i class="fas fa-check"></i> VERIFIKASI
         </button>
       </div>
     </div>
@@ -897,9 +897,11 @@ function kombelkelola_renderTabel(data) {
     `;
 
     // 8. Kolom AKSI (Tombol Bulat Berwarna Presisi SultanUI)
+    var btnVIcon = isDisetujui ? 'fa-eye' : 'fa-clipboard-check';
+    var btnVTitle = isDisetujui ? 'Lihat Detail Verifikasi' : (st.includes('proses') ? 'Verifikasi Dokumen' : 'Edit Verifikasi');
     var btnV = "";
     if (KOMBELKELOLA_IS_ADMIN) {
-      btnV = `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-primary kombelkelola-btn-verif" data-id="${id}" data-toggle="tooltip" title="${st.includes('proses') ? 'Verifikasi Dokumen' : 'Edit Verifikasi'}"><i class="fas fa-clipboard-check"></i></button>`;
+      btnV = `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-primary kombelkelola-btn-verif" data-id="${id}" data-toggle="tooltip" title="${btnVTitle}"><i class="fas ${btnVIcon}"></i></button>`;
     }
     var btnP = `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning kombelkelola-btn-perbaiki" data-id="${id}" ${isDisetujui ? 'disabled style="opacity:0.4; cursor:not-allowed;" title="Terkunci (Sudah Disetujui)"' : 'data-toggle="tooltip" title="Edit Dokumen"'}><i class="fas fa-pencil-alt"></i></button>`;
     var btnH = `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon kombelkelola-btn-hapus" data-id="${id}" ${isDisetujui ? 'disabled style="opacity:0.4; cursor:not-allowed;" title="Terkunci (Sudah Disetujui)"' : 'data-toggle="tooltip" title="Hapus Dokumen"'}><i class="fas fa-trash-alt"></i></button>`;
@@ -1262,12 +1264,21 @@ function kombelkelola_bukaModalVerif(rowId) {
   $('#kombelkelola_v_catatan').val("");
   $('#kombelkelola_reqCatatan').hide();
 
+  var isVerifLocked = st.includes('setuju') || st.includes('ok') || st.includes('valid') || st.includes('locked');
   if (st.includes('setuju') || st.includes('ok') || st.includes('valid')) {
     $('#kombelkelola_v_status').val('Disetujui');
   } else if (st.includes('revisi')) {
     $('#kombelkelola_v_status').val('Revisi');
   } else if (st.includes('tolak')) {
     $('#kombelkelola_v_status').val('Ditolak');
+  }
+
+  if (isVerifLocked) {
+    $('#kombelkelola_v_status, #kombelkelola_v_catatan').prop('disabled', true);
+    $('#kombelkelola_btnVerifikasi').hide();
+  } else {
+    $('#kombelkelola_v_status, #kombelkelola_v_catatan').prop('disabled', false);
+    $('#kombelkelola_btnVerifikasi').show();
   }
 
   if ($('#kombelkelola_v_status').val() === 'Revisi' || $('#kombelkelola_v_status').val() === 'Ditolak') {
@@ -1278,7 +1289,7 @@ function kombelkelola_bukaModalVerif(rowId) {
   var url = d.url || "";
 
   Sultan.modal.verifikasi({
-    title: 'VERIFIKASI DOKUMEN KKG',
+    title: isVerifLocked ? 'LIHAT DETAIL VERIFIKASI DOKUMEN KKG' : 'VERIFIKASI DOKUMEN KKG',
     url: url,
     isImage: url.toLowerCase().endsWith('.jpg') || url.toLowerCase().endsWith('.png') || url.toLowerCase().endsWith('.jpeg')
   });
@@ -1288,6 +1299,8 @@ function kombelkelola_bukaModalVerif(rowId) {
   $('#global_verifikasiFooterArea').show();
 
   $('#global_modalVerifikasi').off('hidden.bs.modal.kombelverif').on('hidden.bs.modal.kombelverif', function() {
+    $('#kombelkelola_v_status, #kombelkelola_v_catatan').prop('disabled', false);
+    $('#kombelkelola_btnVerifikasi').show();
     $('#kombelkelola_verifFooter').appendTo('#kombelkelola_formVerif');
     $('#kombelkelola_formVerif').appendTo('#kombelkelola_templates');
     $('#global_verifikasiFooterArea').hide();
