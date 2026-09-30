@@ -564,25 +564,39 @@ body.dark-mode #muriddash_loadingState .sultan-skeleton {
   // ─── Populate Dropdown Sekolah ────────────────────────────────────────────
   function muriddash_populateSekolahDropdown() {
     if (!MURIDDASH_IS_ADMIN) return;
-    var master = window.DASHSK_MASTER_SEKOLAH || [];
-    var jenjangSet = {};
-    master.forEach(function(s) {
-      var j = String(s.jenjang || "").trim().toUpperCase();
-      if (j) jenjangSet[j] = true;
-    });
-    var $selJenjangUnit = $("#muriddash_filterJenjangUnit");
-    if (Object.keys(jenjangSet).length > 0) {
+
+    var applyMaster = function(master) {
+      window.DASHSK_MASTER_SEKOLAH = master || [];
+      var jenjangSet = {};
+      (window.DASHSK_MASTER_SEKOLAH).forEach(function(s) {
+        var j = String(s.jenjang || "").trim().toUpperCase();
+        if (j) jenjangSet[j] = true;
+      });
+      var $selJenjangUnit = $("#muriddash_filterJenjangUnit");
+      var currentJjgVal = $selJenjangUnit.val() || "";
+
       $selJenjangUnit.empty().append("<option value=\"\">Pilih Jenjang...</option>");
       ["SD", "TK", "KB", "SPS"].forEach(function(j) {
-        if (jenjangSet[j]) $selJenjangUnit.append("<option value=\"" + j + "\">" + j + "</option>");
+        var isSel = (j === currentJjgVal) ? " selected" : "";
+        $selJenjangUnit.append("<option value=\"" + j + "\" " + isSel + ">" + j + "</option>");
       });
+
+      muriddash_populateSekolahByJenjang($selJenjangUnit.val() || "");
+    };
+
+    if (window.DASHSK_MASTER_SEKOLAH && window.DASHSK_MASTER_SEKOLAH.length > 0) {
+      applyMaster(window.DASHSK_MASTER_SEKOLAH);
+    } else if (typeof Lapbul_GetMasterSekolah === "function") {
+      Lapbul_GetMasterSekolah(applyMaster);
+    } else {
+      google.script.run.withSuccessHandler(applyMaster).getAllSchoolsList();
     }
-    muriddash_populateSekolahByJenjang($selJenjangUnit.val() || "");
   }
 
   function muriddash_populateSekolahByJenjang(jenjangFilter) {
     var master = window.DASHSK_MASTER_SEKOLAH || [];
     var $sel = $("#muriddash_filterUnitSekolah");
+    var currentVal = $sel.val() || "";
     $sel.empty().append("<option value=\"\">Pilih Sekolah...</option>");
     var list = jenjangFilter
       ? master.filter(function(s) { return String(s.jenjang || "").toUpperCase() === jenjangFilter.toUpperCase(); })
@@ -591,9 +605,9 @@ body.dark-mode #muriddash_loadingState .sultan-skeleton {
     list.forEach(function(s) {
       var npsn = s.npsn || s.id || "";
       var nama = s.namaSekolah || s.nama || s.unit || npsn;
-      $sel.append("<option value=\"" + npsn + "\">" + nama + "</option>");
+      var isSel = (npsn && String(npsn).trim() === String(currentVal).trim()) ? " selected" : "";
+      $sel.append("<option value=\"" + npsn + "\" " + isSel + ">" + nama + "</option>");
     });
-    $sel.val("");
   }
 
   // ─── Load Data Dashboard ──────────────────────────────────────────────────

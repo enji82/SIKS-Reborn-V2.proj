@@ -68,12 +68,40 @@
     <!-- VIEW REKAP -->
     <div id="admmuriddash_viewRekap" class="py-1">
 
-      <!-- Loading State Terpusat -->
-      <div id="admmuriddash_loadingState" class="sultan-loading-box sultan-page-transition">
-        <div class="sultan-spinner-icon">
-          <i class="fas fa-circle-notch fa-spin"></i>
+      <!-- Loading State: Modern International Skeleton Screen (Shimmer) -->
+      <div id="admmuriddash_loadingState" class="sultan-page-transition py-1">
+        <div class="d-flex align-items-center justify-content-between mb-3 px-1">
+          <div class="d-flex align-items-center" style="gap: 10px;">
+            <div class="sultan-skeleton sultan-skeleton-avatar" style="width: 24px; height: 24px; border-radius: 50%;"></div>
+            <div class="sultan-skeleton sultan-skeleton-text mb-0" style="width: 240px; height: 16px;"></div>
+          </div>
         </div>
-        <h6 class="text-muted font-weight-bold sultan-loading-text mb-0" style="letter-spacing: 0.5px; text-transform: uppercase; font-size: 11px;">Memuat Data Dasbor Administrasi Murid...</h6>
+        <div class="row mb-3">
+          <div class="col-lg-3 col-6 mb-3">
+            <div class="sultan-skeleton-wrapper" style="border-radius: 18px; padding: 1.1rem 0.9rem; height: 100px;">
+              <div class="sultan-skeleton sultan-skeleton-text mb-2" style="width: 60%; height: 12px;"></div>
+              <div class="sultan-skeleton sultan-skeleton-title mb-1" style="width: 50%; height: 24px;"></div>
+            </div>
+          </div>
+          <div class="col-lg-3 col-6 mb-3">
+            <div class="sultan-skeleton-wrapper" style="border-radius: 18px; padding: 1.1rem 0.9rem; height: 100px;">
+              <div class="sultan-skeleton sultan-skeleton-text mb-2" style="width: 60%; height: 12px;"></div>
+              <div class="sultan-skeleton sultan-skeleton-title mb-1" style="width: 50%; height: 24px;"></div>
+            </div>
+          </div>
+          <div class="col-lg-3 col-6 mb-3">
+            <div class="sultan-skeleton-wrapper" style="border-radius: 18px; padding: 1.1rem 0.9rem; height: 100px;">
+              <div class="sultan-skeleton sultan-skeleton-text mb-2" style="width: 60%; height: 12px;"></div>
+              <div class="sultan-skeleton sultan-skeleton-title mb-1" style="width: 50%; height: 24px;"></div>
+            </div>
+          </div>
+          <div class="col-lg-3 col-6 mb-3">
+            <div class="sultan-skeleton-wrapper" style="border-radius: 18px; padding: 1.1rem 0.9rem; height: 100px;">
+              <div class="sultan-skeleton sultan-skeleton-text mb-2" style="width: 60%; height: 12px;"></div>
+              <div class="sultan-skeleton sultan-skeleton-title mb-1" style="width: 50%; height: 24px;"></div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div id="admmuriddash_dashboardState" style="display: none;">
@@ -368,35 +396,52 @@
     });
   }
 
+  function admmuriddash_showSkeleton() {
+    if ($("#admmuriddash_dashboardState").is(":visible") || ADMMURIDDASH_CACHE_DATA) {
+      $("#admmuriddash_dashboardState").css({"opacity": "0.45", "pointer-events": "none", "transition": "opacity 0.2s ease"});
+      if (typeof SultanUI !== "undefined" && SultanUI.setRefreshLoading) {
+        SultanUI.setRefreshLoading("#admmuriddash_btnRefresh", true);
+      }
+    } else {
+      $("#admmuriddash_dashboardState").hide();
+      $("#admmuriddash_loadingState").show();
+    }
+  }
+
   function admmuriddash_loadDashboardData(forceRefresh) {
     if (ADMMURIDDASH_PENDING_REQ > 0) return;
     ADMMURIDDASH_PENDING_REQ = 1;
 
-    var htmlSpinner = '<div class="sultan-spinner-icon"><i class="fas fa-circle-notch fa-spin"></i></div>' +
-      '<h6 class="text-muted font-weight-bold sultan-loading-text mb-0" style="letter-spacing: 0.5px; text-transform: uppercase; font-size: 11px;">Memuat Data Dasbor Administrasi Murid...</h6>';
-    $('#admmuriddash_loadingState').html(htmlSpinner).show();
-    $('#admmuriddash_dashboardState').hide();
+    admmuriddash_showSkeleton();
 
-    var activeNpsn = ""; // Mode Rekap memuat seluruh data wilayah untuk transparansi (User & Admin sama)
+    var activeNpsn = "";
     var tahun = "SEMUA";
 
     google.script.run
       .withSuccessHandler(function (resRaw) {
         ADMMURIDDASH_PENDING_REQ = 0;
-        $('#admmuriddash_loadingState').hide();
+        if (typeof SultanUI !== "undefined" && SultanUI.setRefreshLoading) {
+          SultanUI.setRefreshLoading("#admmuriddash_btnRefresh", false);
+        }
+        $("#admmuriddash_loadingState").hide();
+        $("#admmuriddash_dashboardState").css({"opacity": "1", "pointer-events": "auto"}).show();
         
-        var res = typeof resRaw === 'string' ? JSON.parse(resRaw) : resRaw;
+        var res = typeof resRaw === "string" ? JSON.parse(resRaw) : resRaw;
         if (res.success) {
           ADMMURIDDASH_CACHE_DATA = res;
           var masterSekolah = res.detailSekolah || [];
 
+          if (window.DASHSK_MASTER_SEKOLAH && window.DASHSK_MASTER_SEKOLAH.length > 0) {
+            masterSekolah = window.DASHSK_MASTER_SEKOLAH;
+          }
+
           SultanDashboard.setupUnitSchoolPicker({
-            pageKey: 'admMuridDash',
-            wrapperJenjangId: '#admmuriddash_filterJenjangUnitContainer',
-            selectJenjangId: '#admmuriddash_filterJenjangUnit',
-            wrapperSekolahId: '#admmuriddash_filterUnitSekolahContainer',
-            selectSekolahId: '#admmuriddash_filterUnitSekolah',
-            btnActionId: '#admmuriddash_btnRefresh',
+            pageKey: "admMuridDash",
+            wrapperJenjangId: "#admmuriddash_filterJenjangUnitContainer",
+            selectJenjangId: "#admmuriddash_filterJenjangUnit",
+            wrapperSekolahId: "#admmuriddash_filterUnitSekolahContainer",
+            selectSekolahId: "#admmuriddash_filterUnitSekolah",
+            btnActionId: "#admmuriddash_btnRefresh",
             masterSekolah: masterSekolah,
             onSelectSchool: function(npsn, nama) {
               if (npsn) admmuriddash_renderUnitView(npsn);
@@ -404,24 +449,29 @@
             }
           });
 
-          $('#admmuriddash_dashboardState').fadeIn();
-          if (ADMMURIDDASH_MODE === 'rekap') {
+          if (ADMMURIDDASH_MODE === "rekap") {
             admmuriddash_terapkanFilterLokal();
           } else {
-            var targetNpsn = ADMMURIDDASH_IS_ADMIN ? $('#admmuriddash_filterUnitSekolah').val() : ADMMURIDDASH_USER_NPSN;
+            var targetNpsn = ADMMURIDDASH_IS_ADMIN ? $("#admmuriddash_filterUnitSekolah").val() : ADMMURIDDASH_USER_NPSN;
             if (targetNpsn) admmuriddash_renderUnitView(targetNpsn);
             else admmuriddash_resetUnitView();
           }
         } else {
-          if (typeof SultanUI !== 'undefined') {
-            SultanUI.showLoadingError('#admmuriddash_loadingState', 'Gagal memuat data: ' + (res.message || 'Unknown error'));
+          if (typeof SultanUI !== "undefined" && SultanUI.showToast) {
+            SultanUI.showToast("Gagal memuat data: " + (res.message || "Unknown error"), "error");
           }
         }
       })
       .withFailureHandler(function (err) {
         ADMMURIDDASH_PENDING_REQ = 0;
-        if (typeof SultanUI !== 'undefined') {
-          SultanUI.showLoadingError('#admmuriddash_loadingState', 'Terjadi kesalahan: ' + (err.message || err));
+        if (typeof SultanUI !== "undefined" && SultanUI.setRefreshLoading) {
+          SultanUI.setRefreshLoading("#admmuriddash_btnRefresh", false);
+        }
+        $("#admmuriddash_dashboardState").css({"opacity": "1", "pointer-events": "auto"}).show();
+        if (typeof SultanUI !== "undefined" && SultanUI.showToast) {
+          SultanUI.showToast("Terjadi kesalahan: " + (err.message || err), "error");
+        } else {
+          alert("Terjadi kesalahan: " + (err.message || err));
         }
       })
       .admMurid_getDashboardData(activeNpsn, tahun, forceRefresh);
@@ -490,6 +540,9 @@
     window.ADMMURIDDASH_LIST_DITOLAK_CACHE = listDitolak;
 
     var percentage = totSekolah > 0 ? Math.round((sudah / totSekolah) * 100) : 0;
+    if (typeof SultanUI !== 'undefined' && SultanUI.stopLottery) {
+      SultanUI.stopLottery('#admmuriddash_cardTotalSekolah, #admmuriddash_cardSudah, #admmuriddash_cardBelum, #admmuriddash_cardTotalDokumen, #admmuriddash_cardDiproses, #admmuriddash_cardDisetujui, #admmuriddash_cardRevisi, #admmuriddash_cardDitolak, #admmuriddash_cardProgress');
+    }
     $('#admmuriddash_cardTotalSekolah').text(totSekolah.toLocaleString('id-ID'));
     $('#admmuriddash_cardSudah').text(sudah.toLocaleString('id-ID'));
     $('#admmuriddash_cardBelum').text(belum.toLocaleString('id-ID'));
