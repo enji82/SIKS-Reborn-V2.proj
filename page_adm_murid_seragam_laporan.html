@@ -471,11 +471,11 @@
     </div>
     
     <div class="modal-footer modal-footer-tambah-edit justify-content-between">
-      <button type="button" class="modal-btn-batal" data-dismiss="modal">
-        <i class="fas fa-times mr-2"></i>BATAL
+      <button type="button" class="sultan-btn sultan-btn-secondary" data-dismiss="modal">
+        <i class="fas fa-times"></i> BATAL
       </button>
-      <button type="submit" class="modal-btn-simpan">
-        <i class="fas fa-cloud-upload-alt mr-2"></i>SIMPAN & UNGGAH
+      <button type="submit" class="modal-btn-simpan sultan-btn sultan-btn-primary">
+        <i class="fas fa-cloud-upload-alt"></i> SIMPAN & UNGGAH
       </button>
     </div>
   </form>
@@ -546,11 +546,11 @@
 
     </div>
     <div class="modal-verifikasi-footer" id="seragamlapor_verifFooter">
-      <button type="button" class="modal-btn-batal" data-dismiss="modal">
-        <i class="fas fa-times mr-2"></i>BATAL
+      <button type="button" class="sultan-btn sultan-btn-secondary" data-dismiss="modal">
+        <i class="fas fa-times"></i> BATAL
       </button>
-      <button type="submit" id="seragamlapor_btnSimpanVerif" class="modal-verifikasi-btn-verifikasi" form="seragamlapor_formVerif">
-        <i class="fas fa-check mr-2"></i>VERIFIKASI
+      <button type="submit" id="seragamlapor_btnSimpanVerif" class="sultan-btn sultan-btn-primary" form="seragamlapor_formVerif">
+        <i class="fas fa-check"></i> VERIFIKASI
       </button>
     </div>
   </form>
@@ -1216,8 +1216,10 @@
         `;
 
         // 9. Kolom AKSI
+        var btnVIcon = isLocked ? 'fa-eye' : 'fa-clipboard-check';
+        var btnVTitle = isLocked ? 'Lihat Detail Verifikasi' : 'Verifikasi Data';
         var btnV = IS_ADMIN
-          ? `<button class="sultan-btn-aksi sultan-btn-aksi-primary btn-verif" data-payload='${JSON.stringify(row)}' data-toggle="tooltip" title="Verifikasi Data"><i class="fas fa-clipboard-check"></i></button>`
+          ? `<button class="sultan-btn-aksi sultan-btn-aksi-primary btn-verif" data-payload='${JSON.stringify(row)}' data-toggle="tooltip" title="${btnVTitle}"><i class="fas ${btnVIcon}"></i></button>`
           : '';
         var btnP = (!isLocked && isOwner)
           ? `<button class="sultan-btn-aksi sultan-btn-aksi-warning btn-edit" data-payload='${JSON.stringify(row)}' data-toggle="tooltip" title="Unggah Ulang"><i class="fas fa-edit"></i></button>`
@@ -1859,10 +1861,20 @@
           $('#seragamlapor_prevCatatan').text('');
           $('#seragamlapor_prevCatatanWrap').hide();
       }
-      $('#seragamlapor_verif_status').val('');
-      $('#seragamlapor_verif_catatan').val('');
-      
-      $('#seragamlapor_btnSimpanVerif').prop('disabled', false).html('<i class="fas fa-check mr-2"></i>VERIFIKASI');
+      var statusNormalized = (row.status_verifikasi || row.status || '').toString().trim().toUpperCase();
+      var isVerifLocked = (statusNormalized === 'DISETUJUI' || statusNormalized === 'ACC' || statusNormalized === 'VALID' || statusNormalized === 'LOCKED');
+
+      $('#seragamlapor_verif_status').val(row.status_verifikasi || '');
+      $('#seragamlapor_verif_catatan').val(row.catatan || '');
+
+      if (isVerifLocked) {
+        $('#seragamlapor_verif_status, #seragamlapor_verif_catatan').prop('disabled', true);
+        $('#seragamlapor_btnSimpanVerif').hide();
+      } else {
+        $('#seragamlapor_verif_status, #seragamlapor_verif_catatan').prop('disabled', false);
+        $('#seragamlapor_btnSimpanVerif').show().prop('disabled', false).html('<i class="fas fa-check"></i> VERIFIKASI');
+      }
+
       checkWajibCatatan($('#seragamlapor_verif_status').val());
 
       var docsArr = [];
@@ -1881,7 +1893,7 @@
 
       // Open global verification modal
       Sultan.modal.verifikasi({
-        title: 'VERIFIKASI DATA LAPORAN PENERIMAAN',
+        title: isVerifLocked ? 'LIHAT DETAIL VERIFIKASI LAPORAN' : 'VERIFIKASI DATA LAPORAN PENERIMAAN',
         docs: docsArr,
         formHtml: $('#seragamlapor_formVerif').show()
       });
@@ -1892,6 +1904,8 @@
 
       // Return form on modal close
       $('#global_modalVerifikasi').off('hidden.bs.modal.seragamlaporverif').on('hidden.bs.modal.seragamlaporverif', function() {
+        $('#seragamlapor_verif_status, #seragamlapor_verif_catatan').prop('disabled', false);
+        $('#seragamlapor_btnSimpanVerif').show();
         $('#seragamlapor_verifFooter').appendTo('#seragamlapor_formVerif');
         $('#seragamlapor_formVerif').appendTo('#seragamlapor_templates');
         $('#global_verifikasiFooterArea').hide();
