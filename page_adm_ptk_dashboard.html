@@ -87,17 +87,44 @@
       </div>
     </div>
 
-    <!-- VIEW REKAP -->
-    <div id="admptk_dash_viewRekap" class="py-1">
-
-      <!-- Loading State Terpusat -->
-      <div id="admptk_dash_loadingState" class="sultan-loading-box sultan-page-transition">
-        <div class="sultan-spinner-icon">
-          <i class="fas fa-circle-notch fa-spin"></i>
+    <!-- Loading State: Modern International Skeleton Screen (Shimmer) -->
+    <div id="admptk_dash_loadingState" class="sultan-page-transition py-1">
+      <div class="d-flex align-items-center justify-content-between mb-3 px-1">
+        <div class="d-flex align-items-center" style="gap: 10px;">
+          <div class="sultan-skeleton sultan-skeleton-avatar" style="width: 24px; height: 24px; border-radius: 50%;"></div>
+          <div class="sultan-skeleton sultan-skeleton-text mb-0" style="width: 240px; height: 16px;"></div>
         </div>
-        <h6 class="text-muted font-weight-bold sultan-loading-text mb-0" style="letter-spacing: 0.5px; text-transform: uppercase; font-size: 11px;">Memuat Data Dasbor Administrasi PTK...</h6>
       </div>
+      <div class="row mb-3">
+        <div class="col-lg-3 col-6 mb-3">
+          <div class="sultan-skeleton-wrapper" style="border-radius: 18px; padding: 1.1rem 0.9rem; height: 100px;">
+            <div class="sultan-skeleton sultan-skeleton-text mb-2" style="width: 60%; height: 12px;"></div>
+            <div class="sultan-skeleton sultan-skeleton-title mb-1" style="width: 50%; height: 24px;"></div>
+          </div>
+        </div>
+        <div class="col-lg-3 col-6 mb-3">
+          <div class="sultan-skeleton-wrapper" style="border-radius: 18px; padding: 1.1rem 0.9rem; height: 100px;">
+            <div class="sultan-skeleton sultan-skeleton-text mb-2" style="width: 60%; height: 12px;"></div>
+            <div class="sultan-skeleton sultan-skeleton-title mb-1" style="width: 50%; height: 24px;"></div>
+          </div>
+        </div>
+        <div class="col-lg-3 col-6 mb-3">
+          <div class="sultan-skeleton-wrapper" style="border-radius: 18px; padding: 1.1rem 0.9rem; height: 100px;">
+            <div class="sultan-skeleton sultan-skeleton-text mb-2" style="width: 60%; height: 12px;"></div>
+            <div class="sultan-skeleton sultan-skeleton-title mb-1" style="width: 50%; height: 24px;"></div>
+          </div>
+        </div>
+        <div class="col-lg-3 col-6 mb-3">
+          <div class="sultan-skeleton-wrapper" style="border-radius: 18px; padding: 1.1rem 0.9rem; height: 100px;">
+            <div class="sultan-skeleton sultan-skeleton-text mb-2" style="width: 60%; height: 12px;"></div>
+            <div class="sultan-skeleton sultan-skeleton-title mb-1" style="width: 50%; height: 24px;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
 
+    <!-- VIEW REKAP -->
+    <div id="admptk_dash_viewRekap" class="d-none py-1">
       <div id="admptk_dash_dashboardState" style="display: none;">
 
         <!-- Row 1: Card Progress (4 Metric Cards Minimal) -->
@@ -245,19 +272,27 @@
         ADMPTK_DASH_USER_NPSN  = state.userNpsn;
         ADMPTK_DASH_MODE       = state.currentMode;
 
-        SultanDashboard.setupUnitSchoolPicker({
-          pageKey: 'admPtkDash',
-          wrapperJenjangId: '#admptk_dash_filterJenjangUnitContainer',
-          selectJenjangId: '#admptk_dash_filterJenjangUnit',
-          wrapperSekolahId: '#admptk_dash_filterUnitSekolahContainer',
-          selectSekolahId: '#admptk_dash_filterUnitSekolah',
-          btnActionId: '#admptk_dash_btnRefresh',
-          masterSekolah: ADMPTK_DASH_MASTER_SEKOLAH,
-          onSelectSchool: function(npsn, nama) {
-            if (npsn) admptk_dash_loadUnitData(npsn);
-            else admptk_dash_resetUnitView();
-          }
-        });
+        var populatePicker = function(masterList) {
+          SultanDashboard.setupUnitSchoolPicker({
+            pageKey: 'admPtkDash',
+            wrapperJenjangId: '#admptk_dash_filterJenjangUnitContainer',
+            selectJenjangId: '#admptk_dash_filterJenjangUnit',
+            wrapperSekolahId: '#admptk_dash_filterUnitSekolahContainer',
+            selectSekolahId: '#admptk_dash_filterUnitSekolah',
+            btnActionId: '#admptk_dash_btnRefresh',
+            masterSekolah: masterList || ADMPTK_DASH_MASTER_SEKOLAH || [],
+            onSelectSchool: function(npsn, nama) {
+              if (npsn) admptk_dash_loadUnitData(npsn);
+              else admptk_dash_resetUnitView();
+            }
+          });
+        };
+
+        if (typeof Lapbul_GetMasterSekolah === 'function') {
+          Lapbul_GetMasterSekolah(function(master) { populatePicker(master); });
+        } else {
+          populatePicker([]);
+        }
         admptk_dash_updateFilterBarControls();
       },
       onSwitchMode: function(mode, state, isFirstLoad) {
@@ -265,11 +300,19 @@
         admptk_dash_updateFilterBarControls();
         if (mode === 'unit') {
           if (!ADMPTK_DASH_IS_ADMIN && ADMPTK_DASH_USER_NPSN) {
-            admptk_dash_loadUnitData(ADMPTK_DASH_USER_NPSN);
+            if (window.ADMPTK_DASH_CACHE_REKAP_UNIT_RAW) {
+              admptk_dash_renderUnitView(window.ADMPTK_DASH_CACHE_REKAP_UNIT_RAW);
+            } else {
+              admptk_dash_loadUnitData(ADMPTK_DASH_USER_NPSN);
+            }
           } else if (ADMPTK_DASH_IS_ADMIN) {
             var curSel = $('#admptk_dash_filterUnitSekolah').val();
-            if (curSel) admptk_dash_loadUnitData(curSel);
-            else admptk_dash_resetUnitView();
+            if (curSel) {
+              if (window.ADMPTK_DASH_CACHE_REKAP_UNIT_RAW) admptk_dash_renderUnitView(window.ADMPTK_DASH_CACHE_REKAP_UNIT_RAW);
+              else admptk_dash_loadUnitData(curSel);
+            } else {
+              admptk_dash_resetUnitView();
+            }
           }
         } else {
           var k = $('#admptk_dash_filterKategori').val();
@@ -735,68 +778,6 @@
         });
       }
     });
-
-    // 4. Render Tabel Rekapitulasi Per Unit Kerja (Default 10 Entri)
-    var dtArray = [];
-    var listSekolahKeys = Object.keys(mapTabelSekolah).sort();
-
-    listSekolahKeys.forEach(function(sek) {
-      var ptkCount = mapTabelSekolah[sek].ptkSet.size;
-      var sudahCount = mapTabelSekolah[sek].sudahSet.size;
-      var belumCount = ptkCount - sudahCount;
-      var pctSek = ptkCount > 0 ? Math.round((sudahCount / ptkCount) * 100) : 0;
-
-      var bgClass = pctSek >= 80 ? 'bg-success' : (pctSek >= 50 ? 'bg-warning' : 'bg-danger');
-      var progressHtml = '<div class="d-flex align-items-center justify-content-center" style="font-size:13px;">' +
-                           '<span class="mr-2 font-weight-bold" style="min-width:38px;text-align:right;">' + pctSek + '%</span>' +
-                           '<div class="progress shadow-xs" style="width:60px;height:7px;border-radius:4px;background-color:rgba(0,0,0,0.06);">' +
-                             '<div class="progress-bar ' + bgClass + '" role="progressbar" style="width:' + pctSek + '%;border-radius:4px;"></div>' +
-                           '</div>' +
-                         '</div>';
-
-      dtArray.push([
-        '<span class="font-weight-bold sultan-table-primary">' + sek + '</span>',
-        ptkCount > 0 ? '<span class="font-weight-bold">' + ptkCount.toLocaleString('id-ID') + '</span>' : '<span class="text-muted opacity-50 font-weight-normal">-</span>',
-        sudahCount > 0 ? '<span class="font-weight-bold text-success">' + sudahCount.toLocaleString('id-ID') + '</span>' : '<span class="text-muted opacity-50 font-weight-normal">-</span>',
-        belumCount > 0 ? '<span class="font-weight-bold text-danger">' + belumCount.toLocaleString('id-ID') + '</span>' : '<span class="text-muted opacity-50 font-weight-normal">-</span>',
-        progressHtml
-      ]);
-    });
-
-    if ($.fn.DataTable.isDataTable('#admptk_dash_tabelRekap')) {
-      $('#admptk_dash_tabelRekap').DataTable().destroy();
-    }
-    ADMPTK_DASH_TABEL_REKAP = $('#admptk_dash_tabelRekap').DataTable({
-      destroy: true,
-      data: dtArray,
-      ordering: true,
-      pageLength: 10,
-      autoWidth: false,
-      order: [[0, 'asc']],
-      columnDefs: [
-        { targets: 0, className: 'text-left align-middle' },
-        { targets: [1, 2, 3, 4], className: 'text-center align-middle' }
-      ],
-      language: {
-        search: "Cari:",
-        lengthMenu: "Tampilkan _MENU_ data",
-        info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
-        emptyTable: "Tidak ada data yang tersedia pada tabel ini",
-        paginate: { previous: "Sebelumnya", next: "Berikutnya" }
-      },
-      dom: "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
-           "<'row'<'col-sm-12'tr>>" +
-           "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>"
-    });
-
-    // Update Footer Totals
-    var formatTotal = function(val) {
-      return val === 0 ? "-" : val.toLocaleString('id-ID');
-    };
-    $('#admptk_dash_totalPtk').text(formatTotal(totPtk));
-    $('#admptk_dash_totalSudah').text(formatTotal(totSudah));
-    $('#admptk_dash_totalBelum').text(formatTotal(totBelum));
-    $('#admptk_dash_totalProgress').text(percentage + '%');
   }
 
   function admptk_dash_salinWaRekap() {
