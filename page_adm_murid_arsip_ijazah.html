@@ -181,10 +181,10 @@
       </div>
     </div>
     <div class="modal-footer modal-footer-tambah-edit justify-content-between">
-      <button type="button" class="modal-btn-batal" data-dismiss="modal">
+      <button type="button" class="sultan-btn sultan-btn-secondary" data-dismiss="modal">
         <i class="fas fa-times mr-2"></i>BATAL
       </button>
-      <button type="submit" id="arsipijazah_btnSimpanForm" class="modal-btn-simpan" style="display: none;">
+      <button type="submit" id="arsipijazah_btnSimpanForm" class="sultan-btn sultan-btn-primary" style="display: none;">
         <i class="fas fa-cloud-upload-alt mr-2"></i>SIMPAN &amp; UNGGAH
       </button>
     </div>
@@ -247,9 +247,9 @@
 
     </div>
     <div class="modal-verifikasi-footer" id="arsipijazah_verifFooter">
-      <button type="button" class="modal-btn-batal" data-dismiss="modal">
+      <button type="button" class="sultan-btn sultan-btn-secondary" data-dismiss="modal">
         <i class="fas fa-times mr-2"></i>BATAL</button>
-      <button type="submit" id="arsipijazah_btnSimpanVerif" class="modal-verifikasi-btn-verifikasi"
+      <button type="submit" id="arsipijazah_btnSimpanVerif" class="sultan-btn sultan-btn-primary"
         form="arsipijazah_formVerif">
         <i class="fas fa-check mr-2"></i>VERIFIKASI</button>
     </div>
@@ -574,8 +574,10 @@
         `;
 
         // 7. Kolom AKSI
+        var verifIcon = isLocked ? "fa-eye" : "fa-clipboard-check";
+        var verifTitle = isLocked ? "Lihat Detail Verifikasi" : "Verifikasi Data";
         var btnV = ARSIPIJAZAH_IS_ADMIN
-          ? '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-primary btn-arsip-verif" data-id="' + row.rowId + '" data-toggle="tooltip" title="Verifikasi Data"><i class="fas fa-clipboard-check"></i></button>'
+          ? '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-primary btn-arsip-verif" data-id="' + row.rowId + '" data-toggle="tooltip" title="' + verifTitle + '"><i class="fas ' + verifIcon + '"></i></button>'
           : '';
         var btnP = !isLocked
           ? '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning btn-arsip-edit" data-id="' + row.rowId + '" data-toggle="tooltip" title="Edit Berkas"><i class="fas fa-pencil-alt"></i></button>'
@@ -1026,6 +1028,20 @@
      $('#arsipijazah_verif_catatan').val('');
 
 
+      // Mode Read-Only jika status Disetujui / Locked / Dicetak
+      var statusLower = String(row.status || "").toLowerCase();
+      var isLocked = (statusLower.includes('setuju') || statusLower.includes('acc') || statusLower.includes('ok') || statusLower.includes('valid') || statusLower.includes('cetak'));
+
+      if (isLocked) {
+        $('#arsipijazah_verif_status').val(row.status).prop('disabled', true);
+        $('#arsipijazah_verif_catatan').val(row.catatan || '').prop('disabled', true);
+        $('#arsipijazah_btnSimpanVerif').hide();
+      } else {
+        $('#arsipijazah_verif_status').prop('disabled', false);
+        $('#arsipijazah_verif_catatan').prop('disabled', false);
+        $('#arsipijazah_btnSimpanVerif').show();
+      }
+
       $('#arsipijazah_btnSimpanVerif').prop('disabled', false).html('<i class="fas fa-check mr-2"></i>VERIFIKASI');
       arsipijazah_cekStatusVerif(row.status);
 
@@ -1036,7 +1052,7 @@
       var defaultUrl = row.url_file_ijazah || row.url_file_transkrip || '';
 
       Sultan.modal.verifikasi({
-        title: 'VERIFIKASI ARSIP IJAZAH & TRANSKRIP',
+        title: isLocked ? 'DETAIL VERIFIKASI ARSIP IJAZAH & TRANSKRIP' : 'VERIFIKASI ARSIP IJAZAH & TRANSKRIP',
         url: defaultUrl,
         docs: docsArr.length > 1 ? docsArr : undefined,
         isImage: false,
@@ -1047,6 +1063,8 @@
       $('#global_verifikasiFooterArea').show();
 
       $('#global_modalVerifikasi').off('hidden.bs.modal.arsipijazahverif').on('hidden.bs.modal.arsipijazahverif', function () {
+        $('#arsipijazah_verif_status, #arsipijazah_verif_catatan').prop('disabled', false);
+        $('#arsipijazah_btnSimpanVerif').show();
         $('#arsipijazah_verifFooter').appendTo('#arsipijazah_formVerif');
         $('#arsipijazah_formVerif').appendTo('#arsipijazah_templates');
         $('#global_verifikasiFooterArea').hide();
