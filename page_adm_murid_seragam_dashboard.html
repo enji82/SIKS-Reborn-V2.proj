@@ -474,13 +474,18 @@
   }
 
   function seragamdash_showSkeleton() {
-    if ($("#seragamdash_dashboardState").is(":visible") || SERAGAM_DASH_CACHE_REKAP.length > 0) {
-      $("#seragamdash_dashboardState").css({"opacity": "0.45", "pointer-events": "none", "transition": "opacity 0.2s ease"});
+    var isUnitActive = (SERAGAM_DASH_MODE === 'unit');
+    var $activeView = isUnitActive ? $('#seragamdash_viewUnit') : $('#seragamdash_dashboardState');
+
+    if ($activeView.is(':visible') && SERAGAM_DASH_CACHE_REKAP.length > 0) {
+      $activeView.css({"opacity": "0.45", "pointer-events": "none", "transition": "opacity 0.2s ease"});
       if (typeof SultanUI !== "undefined" && SultanUI.setRefreshLoading) {
         SultanUI.setRefreshLoading("#seragamdash_btnRefresh", true);
       }
     } else {
-      $("#seragamdash_dashboardState").hide();
+      $('#seragamdash_viewUnit').addClass('d-none');
+      $('#seragamdash_viewRekap').addClass('d-none');
+      $('#seragamdash_dashboardState').hide();
       $("#seragamdash_loadingState").show();
     }
   }
@@ -494,7 +499,13 @@
           SultanUI.setRefreshLoading("#seragamdash_btnRefresh", false);
         }
         $("#seragamdash_loadingState").hide();
-        $("#seragamdash_dashboardState").css({"opacity": "1", "pointer-events": "auto"}).show();
+        if (SERAGAM_DASH_MODE === 'unit') {
+          $('#seragamdash_viewUnit').removeClass('d-none').css({"opacity": "1", "pointer-events": "auto"}).show();
+          $('#seragamdash_viewRekap').addClass('d-none');
+        } else {
+          $('#seragamdash_viewRekap').removeClass('d-none');
+          $("#seragamdash_dashboardState").css({"opacity": "1", "pointer-events": "auto"}).show();
+        }
 
         var res = typeof jsonStr === "string" ? JSON.parse(jsonStr) : jsonStr;
         if (!res.success) {
@@ -756,7 +767,7 @@
         if (matchJenis) {
           totalDok++;
           var st = String(l.status || "DIPROSES").toUpperCase().trim();
-          var docItem = { nama: (l.jenis || "Dokumen Seragam") + " - " + schoolNama };
+          var docItem = { nama: schoolNama };
 
           if (st === "DISETUJUI") { disetujui++; listDisetujui.push(docItem); }
           else if (st === "REVISI") { revisi++; listRevisi.push(docItem); }
@@ -821,52 +832,37 @@
     var timeNow = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) + ' ' +
                   new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 
-    var txt = "*📢 REKAP DOKUMEN SERAGAM GRATIS*
-";
-    txt += "📁 *Kategori:* " + fKategori.toUpperCase() + " (" + fJenis + ")
-";
-    txt += "📅 *Tahun:* " + fTahun + "
-";
-    txt += "⏱️ *Data per:* " + timeNow + " WIB
-";
-    txt += "=========================================
-
-";
+    var txt = "*📢 REKAP DOKUMEN SERAGAM GRATIS*\n";
+    txt += "📁 *Kategori:* " + fKategori.toUpperCase() + " (" + fJenis + ")\n";
+    txt += "📅 *Tahun:* " + fTahun + "\n";
+    txt += "⏱️ *Data per:* " + timeNow + " WIB\n";
+    txt += "=========================================\n\n";
 
     if (belumList.length > 0) {
-      txt += "🔴 *BELUM UNGGAH (" + belumList.length + " Sekolah):*
-";
+      txt += "🔴 *BELUM UNGGAH (" + belumList.length + " Sekolah):*\n";
       belumList.forEach(function (item, i) {
         var nama = (typeof item === 'string') ? item : (item.nama || "-");
-        txt += (i + 1) + ". " + nama + "
-";
+        txt += (i + 1) + ". " + nama + "\n";
       });
-      txt += "
-";
+      txt += "\n";
     }
 
     if (revisiList.length > 0) {
-      txt += "🟡 *PERLU REVISI (" + revisiList.length + " Sekolah):*
-";
+      txt += "🟡 *PERLU REVISI (" + revisiList.length + " Sekolah):*\n";
       revisiList.forEach(function (item, i) {
         var nama = (typeof item === 'string') ? item : (item.nama || "-");
-        txt += (i + 1) + ". " + nama + "
-";
+        txt += (i + 1) + ". " + nama + "\n";
       });
-      txt += "
-";
+      txt += "\n";
     }
 
     if (ditolakList.length > 0) {
-      txt += "🔴 *DITOLAK (" + ditolakList.length + " Sekolah):*
-";
+      txt += "🔴 *DITOLAK (" + ditolakList.length + " Sekolah):*\n";
       ditolakList.forEach(function (item, i) {
         var nama = (typeof item === 'string') ? item : (item.nama || "-");
-        txt += (i + 1) + ". " + nama + "
-";
+        txt += (i + 1) + ". " + nama + "\n";
       });
-      txt += "
-";
+      txt += "\n";
     }
 
     txt += "_Mohon sekolah terkait dapat menindaklanjuti pada aplikasi SIKS-Reborn._";
