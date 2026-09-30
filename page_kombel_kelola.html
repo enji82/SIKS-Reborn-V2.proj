@@ -673,7 +673,7 @@ function kombelkelola_setupKkgDropdowns() {
   sortedKkg.forEach(function(kkg) {
     hModalKkg += '<option value="' + kombelkelola_esc(kkg) + '">' + kombelkelola_esc(kkg) + '</option>';
   });
-  $('#kombelkelola_in_kkg').html(hModalKkg);
+  $('#kombelkelola_in_kkg, #kombelkelola_in_kkg_user').html(hModalKkg);
 }
 
 function kombelkelola_updateFilterKategoriOptions() {
@@ -942,21 +942,22 @@ function kombelkelola_bukaModalTambah() {
     var lockVal = String(KOMBELKELOLA_NPSN_TERKUNCI).trim();
     var sek = KOMBELKELOLA_MASTER_SEKOLAH.find(function(s){ return String(s.npsn).trim() === lockVal || String(s.nama || "").trim().toUpperCase() === lockVal.toUpperCase(); });
     if (sek) {
-      var jjgRaw = String(sek.jenjang || "").toUpperCase();
-      var jjgVal = "SD";
-      if (jjgRaw === "TK" || jjgRaw === "KB" || jjgRaw === "SPS" || jjgRaw === "TPA" || jjgRaw.includes("PAUD")) {
-        jjgVal = "PAUD";
-      }
       $('#kombelkelola_user_banner_nama').text(sek.nama || lockVal);
       $('#kombelkelola_user_banner_npsn').text(sek.npsn || lockVal);
-      $('#kombelkelola_in_jenjang').val(jjgVal).trigger('change');
-      $('#kombelkelola_in_sekolah').val(sek.npsn).trigger('change');
+      $('#kombelkelola_in_npsn').val(sek.npsn || lockVal);
+      $('#kombelkelola_in_sekolah').empty().append($('<option>', {value: sek.npsn || lockVal, text: sek.nama || lockVal})).val(sek.npsn || lockVal);
     } else {
-      $('#kombelkelola_user_banner_nama').text(KOMBELKELOLA_NPSN_TERKUNCI);
-      $('#kombelkelola_user_banner_npsn').text(KOMBELKELOLA_NPSN_TERKUNCI);
-      $('#kombelkelola_in_sekolah').empty().append($('<option>', {value: KOMBELKELOLA_NPSN_TERKUNCI, text: KOMBELKELOLA_NPSN_TERKUNCI}));
-      $('#kombelkelola_in_sekolah').val(KOMBELKELOLA_NPSN_TERKUNCI).trigger('change');
+      $('#kombelkelola_user_banner_nama').text(lockVal);
+      $('#kombelkelola_user_banner_npsn').text(lockVal);
+      $('#kombelkelola_in_npsn').val(lockVal);
+      $('#kombelkelola_in_sekolah').empty().append($('<option>', {value: lockVal, text: lockVal})).val(lockVal);
     }
+
+    KOMBELKELOLA_SELECTED_SEKOLAH_FILES = KOMBELKELOLA_CACHE_DATA.filter(function(r){ return String(r.npsn).trim() === lockVal; });
+    $('#kombelkelola_uploadContainer').empty();
+    $('#kombelkelola_btnAddRow, #kombelkelola_btnSimpan').prop('disabled', false);
+    KOMBELKELOLA_ROW_COUNT = 0;
+    kombelkelola_createUploadRow();
   } else {
     $('#kombelkelola_pilih_sekolah_container').show();
     $('#kombelkelola_user_sekolah_banner').hide();
@@ -969,7 +970,7 @@ function kombelkelola_createUploadRowContext($c) {
   if ($c.find('.kombelkelola-upload-row').length >= 10) { Sultan.notif.info('Maksimal 10 dokumen.'); return; }
   KOMBELKELOLA_ROW_COUNT++; 
   var rId = "uprow_kombel_" + KOMBELKELOLA_ROW_COUNT;
-  var selectedKkg = $('#kombelkelola_in_kkg').val() || "Semua KKG";
+  var selectedKkg = $('#kombelkelola_in_kkg').val() || $('#kombelkelola_in_kkg_user').val() || "Semua KKG";
   var katOpts = '<option value="">- Pilih Kategori -</option>';
 
   KOMBELKELOLA_MASTER_KAT.forEach(function(k){
@@ -1028,7 +1029,7 @@ function kombelkelola_submitBatchUpload(e) {
   var npsn = KOMBELKELOLA_IS_ADMIN ? $('#kombelkelola_in_sekolah').val() : KOMBELKELOLA_NPSN_TERKUNCI;
   if (!npsn) { Sultan.alert('warning','Perhatian','Pilih sekolah terlebih dahulu.'); return; }
 
-  var selectedKkg = $('#kombelkelola_in_kkg').val();
+  var selectedKkg = $('#kombelkelola_in_kkg').val() || $('#kombelkelola_in_kkg_user').val();
   if (!selectedKkg) { Sultan.alert('warning','Perhatian','Pilih Kelas / Mapel terlebih dahulu.'); return; }
 
   var rows = $('.kombelkelola-upload-row');
