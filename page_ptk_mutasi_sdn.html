@@ -548,45 +548,33 @@ function ptksdn_populatePtkDropdown(unit) {
 
 function ptksdn_toggleMutasiFields(jenis) {
     var idUsulan = $('#ptksdn_mutasiIdData').val();
+    var isWajibFile = !PTKSDN_IS_ADMIN && !idUsulan;
+
     $('#ptksdn_grpMutasiTujuanDropdown, #ptksdn_grpMutasiTujuanText, #ptksdn_grpMutasiTMT, #ptksdn_grpMutasiTglMeninggal, #ptksdn_grpMutasiTglTidakAktif, #ptksdn_grpMutasiFile').hide();
     $('#ptksdn_mutasiTujuanDropdown, #ptksdn_mutasiTujuanText, #ptksdn_mutasiTMT, #ptksdn_mutasiTglMeninggal, #ptksdn_mutasiTglTidakAktif, #ptksdn_mutasiFile').prop('required', false);
     
+    var labelFileOpt = isWajibFile ? '<span class="text-danger">*</span>' : '<span class="text-muted">(Opsional)</span>';
+
     if (jenis === 'Dalam Kecamatan') {
         $('#ptksdn_grpMutasiTujuanDropdown, #ptksdn_grpMutasiTMT, #ptksdn_grpMutasiFile').show();
         $('#ptksdn_mutasiTujuanDropdown, #ptksdn_mutasiTMT').prop('required', true);
-        if (!idUsulan) {
-            $('#ptksdn_mutasiFile').prop('required', true);
-            $('#ptksdn_lblMutasiFile').html('Unggah SK Mutasi (PDF, Max 500KB) <span class="text-danger">*</span>');
-        } else {
-            $('#ptksdn_lblMutasiFile').html('Unggah SK Mutasi (PDF, Max 500KB) <span class="text-muted">(Opsional)</span>');
-        }
+        $('#ptksdn_mutasiFile').prop('required', isWajibFile);
+        $('#ptksdn_lblMutasiFile').html('Unggah SK Mutasi (PDF, Max 500KB) ' + labelFileOpt);
     } else if (jenis === 'Luar Kecamatan') {
         $('#ptksdn_grpMutasiTujuanText, #ptksdn_grpMutasiTMT, #ptksdn_grpMutasiFile').show();
         $('#ptksdn_mutasiTujuanText, #ptksdn_mutasiTMT').prop('required', true);
-        if (!idUsulan) {
-            $('#ptksdn_mutasiFile').prop('required', true);
-            $('#ptksdn_lblMutasiFile').html('Unggah SK Mutasi (PDF, Max 500KB) <span class="text-danger">*</span>');
-        } else {
-            $('#ptksdn_lblMutasiFile').html('Unggah SK Mutasi (PDF, Max 500KB) <span class="text-muted">(Opsional)</span>');
-        }
+        $('#ptksdn_mutasiFile').prop('required', isWajibFile);
+        $('#ptksdn_lblMutasiFile').html('Unggah SK Mutasi (PDF, Max 500KB) ' + labelFileOpt);
     } else if (jenis === 'Pensiun') {
         $('#ptksdn_grpMutasiTMT, #ptksdn_grpMutasiFile').show();
         $('#ptksdn_mutasiTMT').prop('required', true);
-        if (!idUsulan) {
-            $('#ptksdn_mutasiFile').prop('required', true);
-            $('#ptksdn_lblMutasiFile').html('Unggah SK Pensiun (PDF, Max 500KB) <span class="text-danger">*</span>');
-        } else {
-            $('#ptksdn_lblMutasiFile').html('Unggah SK Pensiun (PDF, Max 500KB) <span class="text-muted">(Opsional)</span>');
-        }
+        $('#ptksdn_mutasiFile').prop('required', isWajibFile);
+        $('#ptksdn_lblMutasiFile').html('Unggah SK Pensiun (PDF, Max 500KB) ' + labelFileOpt);
     } else if (jenis === 'Resign') {
         $('#ptksdn_grpMutasiTMT, #ptksdn_grpMutasiFile').show();
         $('#ptksdn_mutasiTMT').prop('required', true);
-        if (!idUsulan) {
-            $('#ptksdn_mutasiFile').prop('required', true);
-            $('#ptksdn_lblMutasiFile').html('Unggah SK Pemberhentian (PDF, Max 500KB) <span class="text-danger">*</span>');
-        } else {
-            $('#ptksdn_lblMutasiFile').html('Unggah SK Pemberhentian (PDF, Max 500KB) <span class="text-muted">(Opsional)</span>');
-        }
+        $('#ptksdn_mutasiFile').prop('required', isWajibFile);
+        $('#ptksdn_lblMutasiFile').html('Unggah SK Pemberhentian (PDF, Max 500KB) ' + labelFileOpt);
     } else if (jenis === 'Meninggal') {
         $('#ptksdn_grpMutasiTglMeninggal').show();
         $('#ptksdn_mutasiTglMeninggal').prop('required', true);
@@ -610,15 +598,14 @@ function ptksdn_submitFormMutasi() {
     var file = fileInput ? fileInput.files[0] : null;
 
     if (['Dalam Kecamatan', 'Luar Kecamatan', 'Pensiun', 'Resign'].includes(jenis)) {
-        if (!idUsulan) {
-            if (!file) { Sultan.notif.gagal('Harap unggah file dokumen!'); return; }
+        var isWajibFile = !PTKSDN_IS_ADMIN && !idUsulan;
+        if (isWajibFile && !file) {
+            Sultan.notif.gagal('Harap unggah file dokumen!');
+            return;
+        }
+        if (file) {
             if (file.type !== 'application/pdf') { Sultan.notif.gagal('File harus berformat PDF!'); return; }
             if (file.size > 500 * 1024) { Sultan.notif.gagal('Ukuran file tidak boleh melebihi 500KB!'); return; }
-        } else {
-            if (file) {
-                if (file.type !== 'application/pdf') { Sultan.notif.gagal('File harus berformat PDF!'); return; }
-                if (file.size > 500 * 1024) { Sultan.notif.gagal('Ukuran file tidak boleh melebihi 500KB!'); return; }
-            }
         }
     }
 
