@@ -135,8 +135,8 @@
       <div id="admptk_kelola_uploadContainer" class="mt-3"><div class="text-center text-muted p-3" id="admptk_kelola_msgPilihPtk"><i class="fas fa-info-circle mr-1"></i> Pilih PTK terlebih dahulu.</div></div>
     </div>
     <div class="modal-footer modal-footer-tambah-edit justify-content-between">
-      <button type="button" class="modal-btn-batal" data-dismiss="modal"><i class="fas fa-times mr-2"></i>BATAL</button>
-      <button type="button" id="admptk_kelola_btnSimpan" class="modal-btn-simpan" disabled><i class="fas fa-cloud-upload-alt mr-2"></i>UNGGAH</button>
+      <button type="button" class="sultan-btn sultan-btn-secondary" data-dismiss="modal"><i class="fas fa-times"></i> BATAL</button>
+      <button type="button" id="admptk_kelola_btnSimpan" class="modal-btn-simpan sultan-btn sultan-btn-primary" disabled><i class="fas fa-cloud-upload-alt"></i> UNGGAH</button>
     </div>
   </form>
 
@@ -201,9 +201,9 @@
         </div>
       </div>
     </div>
-    <div class="modal-footer modal-footer-sultan">
-      <button type="button" class="modal-btn-batal" data-dismiss="modal"><i class="fas fa-times mr-2"></i>BATAL</button>
-      <button type="button" id="admptk_kelola_btnSimpanPerbaiki" class="modal-btn-perbarui"><i class="fas fa-edit mr-2"></i>PERBARUI</button>
+    <div class="modal-footer modal-footer-sultan justify-content-between">
+      <button type="button" class="sultan-btn sultan-btn-secondary" data-dismiss="modal"><i class="fas fa-times"></i> BATAL</button>
+      <button type="button" id="admptk_kelola_btnSimpanPerbaiki" class="modal-btn-perbarui sultan-btn sultan-btn-primary"><i class="fas fa-edit"></i> PERBARUI</button>
     </div>
   </form>
 
@@ -240,9 +240,9 @@
     </div>
 
     <div class="modal-verifikasi-footer" id="admptk_kelola_verifFooter">
-      <button type="button" class="modal-btn-batal" data-dismiss="modal"><i class="fas fa-times mr-2"></i>BATAL</button>
-      <button type="submit" id="admptk_kelola_btnVerifikasi" class="modal-verifikasi-btn-verifikasi" form="admptk_kelola_formVerif">
-        <i class="fas fa-check-circle mr-2"></i>VERIFIKASI
+      <button type="button" class="sultan-btn sultan-btn-secondary" data-dismiss="modal"><i class="fas fa-times"></i> BATAL</button>
+      <button type="submit" id="admptk_kelola_btnVerifikasi" class="sultan-btn sultan-btn-primary" form="admptk_kelola_formVerif">
+        <i class="fas fa-check"></i> VERIFIKASI
       </button>
     </div>
   </form>
@@ -562,9 +562,11 @@ function admptk_kelola_renderTabel(dataRows) {
         `;
 
         // 6. Kolom AKSI (Sticky Right)
+        var btnVIcon = isDisetujui ? 'fa-eye' : 'fa-clipboard-check';
+        var btnVTitle = isDisetujui ? 'Lihat Detail Verifikasi' : 'Verifikasi Dokumen';
         var btnV = "";
         if (ADMPTK_KELOLA_IS_ADMIN) {
-            btnV = `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-primary admptk_kelola-btn-verif" data-id="${id}" data-toggle="tooltip" title="Verifikasi Dokumen"><i class="fas fa-clipboard-check"></i></button>`;
+            btnV = `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-primary admptk_kelola-btn-verif" data-id="${id}" data-toggle="tooltip" title="${btnVTitle}"><i class="fas ${btnVIcon}"></i></button>`;
         }
         var btnP = `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning admptk_kelola-btn-perbaiki" data-id="${id}" ${isDisetujui ? 'disabled style="opacity:0.4; cursor:not-allowed;" title="Terkunci (Sudah Disetujui)"' : 'data-toggle="tooltip" title="Edit Dokumen"'}><i class="fas fa-pencil-alt"></i></button>`;
         var btnH = `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon admptk_kelola-btn-hapus" data-id="${id}" ${isDisetujui ? 'disabled style="opacity:0.4; cursor:not-allowed;" title="Terkunci (Sudah Disetujui)"' : 'data-toggle="tooltip" title="Hapus Dokumen"'}><i class="fas fa-trash-alt"></i></button>`;
@@ -995,13 +997,29 @@ function admptk_kelola_bukaModalVerif(rowId) {
     var st = String(data.status || "").toLowerCase(); var catatanLama = data.catatan || '';
     if (catatanLama) { $('#admptk_kelola_prevCatatan').text(catatanLama); $('#admptk_kelola_prevCatatanWrap').show(); } else { $('#admptk_kelola_prevCatatan').text(''); $('#admptk_kelola_prevCatatanWrap').hide(); }
     $('#admptk_kelola_v_status').val(''); $('#admptk_kelola_v_catatan').val(''); $('#admptk_kelola_reqCatatan').hide();
+    
+    var isVerifLocked = st.includes('setuju') || st.includes('ok') || st.includes('valid') || st.includes('locked');
     if (st.includes('setuju') || st.includes('ok') || st.includes('valid')) { $('#admptk_kelola_v_status').val('Disetujui'); }
     else if (st.includes('revisi')) { $('#admptk_kelola_v_status').val('Revisi'); }
     else if (st.includes('tolak')) { $('#admptk_kelola_v_status').val('Ditolak'); }
+    
+    if (isVerifLocked) {
+        $('#admptk_kelola_v_status, #admptk_kelola_v_catatan').prop('disabled', true);
+        $('#admptk_kelola_btnVerifikasi').hide();
+    } else {
+        $('#admptk_kelola_v_status, #admptk_kelola_v_catatan').prop('disabled', false);
+        $('#admptk_kelola_btnVerifikasi').show();
+    }
+
     if ($('#admptk_kelola_v_status').val() === 'Revisi' || $('#admptk_kelola_v_status').val() === 'Ditolak') { $('#admptk_kelola_reqCatatan').show(); $('#admptk_kelola_v_catatan').prop('required', true); }
-    Sultan.modal.verifikasi({ title: 'VERIFIKASI BERKAS ADMINISTRASI PTK', url: data.url || "", isImage: (data.url || "").toLowerCase().endsWith('.jpg') || (data.url || "").toLowerCase().endsWith('.png') || (data.url || "").toLowerCase().endsWith('.jpeg') });
+    
+    Sultan.modal.verifikasi({ title: isVerifLocked ? 'LIHAT DETAIL VERIFIKASI BERKAS PTK' : 'VERIFIKASI BERKAS ADMINISTRASI PTK', url: data.url || "", isImage: (data.url || "").toLowerCase().endsWith('.jpg') || (data.url || "").toLowerCase().endsWith('.png') || (data.url || "").toLowerCase().endsWith('.jpeg') });
     $('#admptk_kelola_formVerif').appendTo('#global_verifikasiFormArea'); $('#admptk_kelola_verifFooter').appendTo('#global_verifikasiFooterArea'); $('#global_verifikasiFooterArea').show();
-    $('#global_modalVerifikasi').off('hidden.bs.modal.admptkverif').on('hidden.bs.modal.admptkverif', function() { $('#admptk_kelola_verifFooter').appendTo('#admptk_kelola_formVerif'); $('#admptk_kelola_formVerif').appendTo('#admptk_kelola_templates'); $('#global_verifikasiFooterArea').hide(); });
+    $('#global_modalVerifikasi').off('hidden.bs.modal.admptkverif').on('hidden.bs.modal.admptkverif', function() {
+        $('#admptk_kelola_v_status, #admptk_kelola_v_catatan').prop('disabled', false);
+        $('#admptk_kelola_btnVerifikasi').show();
+        $('#admptk_kelola_verifFooter').appendTo('#admptk_kelola_formVerif'); $('#admptk_kelola_formVerif').appendTo('#admptk_kelola_templates'); $('#global_verifikasiFooterArea').hide();
+    });
 }
 
 function admptk_kelola_submitVerif(e) {
