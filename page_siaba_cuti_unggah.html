@@ -192,10 +192,10 @@
         </div>
 
         <div class="modal-footer modal-footer-tambah-edit justify-content-between">
-            <button type="button" class="modal-btn-batal" data-dismiss="modal">
+            <button type="button" class="sultan-btn sultan-btn-secondary" data-dismiss="modal">
                 <i class="fas fa-times mr-2"></i>BATAL
             </button>
-            <button type="submit" class="modal-btn-simpan" id="unggahcuti_btnSimpanUpload">
+            <button type="submit" class="sultan-btn sultan-btn-primary" id="unggahcuti_btnSimpanUpload">
                 <i class="fas fa-cloud-upload-alt mr-2"></i>UNGGAH
             </button>
         </div>
@@ -274,9 +274,9 @@
         </div>
 
         <div class="modal-verifikasi-footer" id="unggahcuti_verifFooter">
-            <button type="button" class="modal-btn-batal" data-dismiss="modal">
+            <button type="button" class="sultan-btn sultan-btn-secondary" data-dismiss="modal">
                 <i class="fas fa-times mr-2"></i>BATAL</button>
-            <button type="submit" id="unggahcuti_btnSimpanVerif" class="modal-verifikasi-btn-verifikasi"
+            <button type="submit" id="unggahcuti_btnSimpanVerif" class="sultan-btn sultan-btn-primary"
                 form="unggahcuti_formVerif">
                 <i class="fas fa-check mr-2"></i>VERIFIKASI
             </button>
@@ -656,13 +656,15 @@
             var btnVer = "";
 
             if (!isLocked) {
-                btnUpload = `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon unggahcuti-btn-upload" data-id="${id}" title="Unggah PDF"><i class="fas fa-file-upload"></i></button>`;
+                btnUpload = `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning unggahcuti-btn-upload" data-id="${id}" data-toggle="tooltip" title="Unggah / Ubah PDF"><i class="fas fa-file-upload"></i></button>`;
             } else {
-                btnUpload = `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-success disabled" disabled style="cursor:not-allowed; opacity:0.6; filter: grayscale(100%);" title="Terkunci (Sudah Disetujui)"><i class="fas fa-check-circle"></i></button>`;
+                btnUpload = `<button type="button" class="sultan-btn-aksi" disabled style="opacity:0.4; cursor:not-allowed;" data-toggle="tooltip" title="Terkunci (Sudah Disetujui)"><i class="fas fa-file-upload"></i></button>`;
             }
 
             if (UNGGAHCUTI_IS_ADMIN && row.fileUrl && row.fileUrl.length > 5) {
-                btnVer = `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-verif unggahcuti-btn-verif" data-id="${id}" title="Verifikasi Dokumen"><i class="fas fa-clipboard-check"></i></button>`;
+                var iconV = isLocked ? 'fa-eye' : 'fa-clipboard-check';
+                var titleV = isLocked ? 'Lihat Detail Verifikasi' : 'Verifikasi Dokumen';
+                btnVer = `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-primary unggahcuti-btn-verif" data-id="${id}" data-toggle="tooltip" title="${titleV}"><i class="fas ${iconV}"></i></button>`;
             }
             var aksiHTML = `<div class="d-flex flex-nowrap justify-content-center" style="gap:4px;">${btnVer}${btnUpload}</div>`;
 
@@ -842,11 +844,28 @@
         $('#unggahcuti_vTglSelesai').text(d.tglSelesai || '-');
         $('#unggahcuti_vLama').text((d.jumlah || '0') + ' Hari');
 
-        $('#unggahcuti_verStatus').val('');
-        $('#unggahcuti_reqCatatanVerif').hide();
-        if (d.statusUnggah === "Disetujui" || d.statusUnggah === "Ditolak" || d.statusUnggah === "Revisi") {
-            $('#unggahcuti_verStatus').val(d.statusUnggah);
-            if (d.statusUnggah === "Ditolak" || d.statusUnggah === "Revisi") $('#unggahcuti_reqCatatanVerif').show();
+        var stLower = String(d.statusUnggah || '').toLowerCase().trim();
+        var isAlreadyApproved = (stLower.includes('setuju') || stLower.includes('acc') || stLower.includes('ok'));
+
+        var selStatus = $('#unggahcuti_verStatus');
+        if (isAlreadyApproved) {
+            selStatus.empty().append('<option value="' + d.statusUnggah + '">' + d.statusUnggah + '</option>');
+            selStatus.val(d.statusUnggah).prop('disabled', true);
+            $('#unggahcuti_verKet').val(d.ket || '').prop('disabled', true);
+            $('#unggahcuti_btnSimpanVerif').hide();
+        } else {
+            selStatus.prop('disabled', false);
+            $('#unggahcuti_verKet').prop('disabled', false);
+            $('#unggahcuti_btnSimpanVerif').show();
+            selStatus.empty();
+            selStatus.append('<option value="">Pilih Keputusan</option>');
+            selStatus.append('<option value="Disetujui">Disetujui</option>');
+            selStatus.append('<option value="Revisi">Revisi</option>');
+            selStatus.append('<option value="Ditolak">Ditolak</option>');
+            if (d.statusUnggah === "Disetujui" || d.statusUnggah === "Ditolak" || d.statusUnggah === "Revisi") {
+                selStatus.val(d.statusUnggah);
+                if (d.statusUnggah === "Ditolak" || d.statusUnggah === "Revisi") $('#unggahcuti_reqCatatanVerif').show();
+            }
         }
         var ketLama = d.ket || '';
         if (ketLama) { $('#unggahcuti_prevCatatan').text(ketLama); $('#unggahcuti_prevCatatanWrap').show(); }
