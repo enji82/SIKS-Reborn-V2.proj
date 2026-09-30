@@ -226,11 +226,11 @@
             </fieldset>
         </div>
         <div class="modal-footer modal-footer-tambah-edit justify-content-between">
-            <button type="button" class="modal-btn-batal" data-dismiss="modal">
+            <button type="button" class="sultan-btn sultan-btn-secondary" data-dismiss="modal">
                 <i class="fas fa-times mr-2"></i>BATAL
             </button>
-            <button type="submit" id="admmuridspmb_btnSimpanForm" class="modal-btn-simpan" style="display: none;">
-                <i class="fas fa-cloud-upload-alt mr-2"></i>SIMPAN & UNGGAH
+            <button type="submit" id="admmuridspmb_btnSimpanForm" class="sultan-btn sultan-btn-primary" style="display: none;">
+                <i class="fas fa-cloud-upload-alt mr-2"></i>SIMPAN &amp; UNGGAH
             </button>
         </div>
     </form>
@@ -293,9 +293,9 @@
 
         </div>
         <div class="modal-verifikasi-footer" id="admmuridspmb_verifFooter">
-            <button type="button" class="modal-btn-batal" data-dismiss="modal">
+            <button type="button" class="sultan-btn sultan-btn-secondary" data-dismiss="modal">
                 <i class="fas fa-times mr-2"></i>BATAL</button>
-            <button type="submit" id="admmuridspmb_btnSimpanVerif" class="modal-verifikasi-btn-verifikasi" form="admmuridspmb_formVerif">
+            <button type="submit" id="admmuridspmb_btnSimpanVerif" class="sultan-btn sultan-btn-primary" form="admmuridspmb_formVerif">
                 <i class="fas fa-check mr-2"></i>VERIFIKASI</button>
         </div>
     </form>
@@ -663,8 +663,10 @@
         `;
 
         // 7. Kolom AKSI (Sticky Right)
+        var iconV = isLocked ? 'fa-eye' : 'fa-clipboard-check';
+        var titleV = isLocked ? 'Lihat Detail Verifikasi' : 'Verifikasi Data';
         var btnV = ADMMURIDSPMB_IS_ADMIN 
-          ? `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-primary btn-verif" data-id="${row.rowId}" data-toggle="tooltip" title="Verifikasi Data"><i class="fas fa-clipboard-check"></i></button>` 
+          ? `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-primary btn-verif" data-id="${row.rowId}" data-toggle="tooltip" title="${titleV}"><i class="fas ${iconV}"></i></button>` 
           : '';
         var btnP = !isLocked
           ? `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning btn-edit" data-id="${row.rowId}" data-toggle="tooltip" title="Edit Berkas"><i class="fas fa-pencil-alt"></i></button>`
@@ -1054,9 +1056,28 @@
           $('#admmuridspmb_prevCatatan').text('');
           $('#admmuridspmb_prevCatatanWrap').hide();
       }
-      $('#admmuridspmb_verif_status').val('');
-      $('#admmuridspmb_verif_catatan').val('');
-      
+      var statusLower = String(row.status || '').toLowerCase().trim();
+      var isAlreadyApproved = (statusLower.includes('setuju') || statusLower.includes('acc') || statusLower.includes('ok') || statusLower.includes('valid'));
+
+      var selStatus = $('#admmuridspmb_verif_status');
+      if (isAlreadyApproved) {
+        selStatus.empty().append('<option value="' + (row.status || 'Disetujui') + '">' + (row.status || 'Disetujui') + '</option>');
+        selStatus.val(row.status || 'Disetujui').prop('disabled', true);
+        $('#admmuridspmb_verif_catatan').val(row.catatan || '').prop('disabled', true);
+        $('#admmuridspmb_btnSimpanVerif').hide();
+      } else {
+        selStatus.prop('disabled', false);
+        $('#admmuridspmb_verif_catatan').prop('disabled', false);
+        $('#admmuridspmb_btnSimpanVerif').show();
+        selStatus.empty()
+          .append('<option value="">Pilih Keputusan</option>')
+          .append('<option value="Diproses">Diproses</option>')
+          .append('<option value="Disetujui">Disetujui</option>')
+          .append('<option value="Revisi">Revisi</option>')
+          .append('<option value="Ditolak">Ditolak</option>');
+        selStatus.val(row.status || '');
+      }
+
       // Reset status tombol verifikasi ke default
       $('#admmuridspmb_btnSimpanVerif').prop('disabled', false).html('<i class="fas fa-check mr-2"></i>VERIFIKASI');
 
