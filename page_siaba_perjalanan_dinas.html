@@ -453,10 +453,10 @@
 
         </div>
 
-        <div class="modal-verifikasi-footer" id="perdin_verifFooter">
-            <button type="button" class="modal-btn-batal" data-dismiss="modal"><i
+        <div class="modal-verifikasi-footer d-flex justify-content-between align-items-center" id="perdin_verifFooter">
+            <button type="button" class="sultan-btn sultan-btn-secondary font-weight-bold" data-dismiss="modal"><i
                     class="fas fa-times mr-2"></i>BATAL</button>
-            <button type="submit" id="perdin_btnVerifEksekusi" class="modal-verifikasi-btn-verifikasi"
+            <button type="submit" id="perdin_btnVerifEksekusi" class="sultan-btn sultan-btn-primary font-weight-bold"
                 form="perdin_formVerif">
                 <i class="fas fa-check mr-2"></i>VERIFIKASI
             </button>
@@ -760,7 +760,9 @@
 
             // 7. Kolom AKSI (Di kanan - Kunci saat Disetujui)
             var isLocked = (stButton.includes('setuju') || stButton.includes('acc') || stButton.includes('ok') || stButton.includes('valid'));
-            var btnAdmin = PERDIN_IS_ADMIN ? `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-primary perdin-btn-verif" data-id="${id}" data-toggle="tooltip" title="Verifikasi Pengajuan"><i class="fas fa-clipboard-check"></i></button>` : '';
+            var iconV = isLocked ? 'fa-eye' : 'fa-clipboard-check';
+            var titleV = isLocked ? 'Lihat Detail Verifikasi' : 'Verifikasi Pengajuan';
+            var btnAdmin = PERDIN_IS_ADMIN ? `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-primary perdin-btn-verif" data-id="${id}" data-toggle="tooltip" title="${titleV}"><i class="fas ${iconV}"></i></button>` : '';
             var btnDetail = `<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning perdin-btn-edit" data-id="${id}" data-toggle="tooltip" title="Detail / Edit SPT"><i class="fas fa-pencil-alt"></i></button>`;
             var btnHapus = isLocked
                 ? `<button type="button" class="sultan-btn-aksi" disabled style="opacity:0.4; cursor:not-allowed;" data-toggle="tooltip" title="Terkunci (Sudah Disetujui)"><i class="fas fa-trash-alt"></i></button>`
@@ -1144,9 +1146,18 @@
         var ketLama = (data.keterangan && data.keterangan !== "-") ? data.keterangan : "";
         if (ketLama) { $('#perdin_prevCatatan').text(ketLama); $('#perdin_prevCatatanWrap').show(); }
         else { $('#perdin_prevCatatan').text(''); $('#perdin_prevCatatanWrap').hide(); }
-        $('#perdin_verifStatus').val('');
-        $('#perdin_verifCatatan').val('');
-        $('#perdin_reqCatatanVerif').hide();
+        var stButton = String(data.status || "").toLowerCase();
+        var isLocked = (stButton.includes('setuju') || stButton.includes('acc') || stButton.includes('ok') || stButton.includes('valid'));
+
+        if (isLocked) {
+            $('#perdin_verifStatus').prop('disabled', true).val(data.status || 'Disetujui');
+            $('#perdin_verifCatatan').prop('disabled', true).val('').attr('placeholder', 'Pengajuan sudah diverifikasi & disetujui (Read-Only)');
+            $('#perdin_btnVerifEksekusi').hide();
+        } else {
+            $('#perdin_verifStatus').prop('disabled', false).val('');
+            $('#perdin_verifCatatan').prop('disabled', false).val('');
+            $('#perdin_btnVerifEksekusi').show().prop('disabled', false).html('<i class="fas fa-check mr-2"></i>VERIFIKASI');
+        }
 
         $('#perdin_vListPeserta').html('<li class="text-muted"><i class="fas fa-spinner fa-spin mr-1"></i> Mencari daftar peserta...</li>');
         google.script.run.withSuccessHandler(function (json) {
