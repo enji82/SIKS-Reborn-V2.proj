@@ -333,6 +333,57 @@ function kemitraandash_updateFilterBarControls() {
   }
 }
 
+function kemitraandash_setupEventListeners() {
+  $(document).off('click','#kemitraanDash_btnRefresh').on('click','#kemitraanDash_btnRefresh', function(e) {
+    e.preventDefault();
+    if (KEMITRAANDASH_MODE === 'rekap') {
+      var k = $('#kemitraanDash_filterKategori').val();
+      if (k) kemitraandash_loadDataKategori(k, true);
+    } else {
+      var tN = KEMITRAANDASH_IS_ADMIN ? $('#kemitraanDash_filterUnitSekolah').val() : KEMITRAANDASH_USER_NPSN;
+      if (!tN) { if (typeof Sultan !== 'undefined') Sultan.notif.info('Silakan pilih sekolah terlebih dahulu.'); return; }
+      kemitraandash_loadUnitData(tN, true);
+    }
+  });
+
+  $(document).off('click','#kemitraanDash_btnSalinWa').on('click','#kemitraanDash_btnSalinWa', function(e) {
+    e.preventDefault(); kemitraandash_salinKeWA();
+  });
+
+  $(document).off('change','#kemitraanDash_filterKategori').on('change','#kemitraanDash_filterKategori', function() {
+    var k = $(this).val(); if (k) kemitraandash_loadDataKategori(k);
+  });
+
+  $(document).off('change','#kemitraanDash_filterTahun, #kemitraanDash_filterPeriode').on('change','#kemitraanDash_filterTahun, #kemitraanDash_filterPeriode', function() {
+    kemitraandash_terapkanFilterLokal();
+  });
+
+  $(document).off('change','#kemitraanDash_filterJenjangUnit').on('change','#kemitraanDash_filterJenjangUnit', function() {
+    kemitraandash_updateSekolahDropdown('unit');
+    var n = $('#kemitraanDash_filterUnitSekolah').val();
+    if (n) kemitraandash_loadUnitData(n); else kemitraandash_resetUnitView();
+  });
+
+  $(document).off('change','#kemitraanDash_filterUnitSekolah').on('change','#kemitraanDash_filterUnitSekolah', function() {
+    var n = $(this).val(); if (n) kemitraandash_loadUnitData(n); else kemitraandash_resetUnitView();
+  });
+
+  // Search filter 4 kolom Rekap & Unit
+  var statusListRekap = ['Disetujui','Diproses','Revisi','Ditolak'];
+  statusListRekap.forEach(function(s) {
+    $(document).off('input','#kemitraanDash_inputCari'+s).on('input','#kemitraanDash_inputCari'+s, function() {
+      kemitraandash_filterStatusList(s, $(this).val());
+    });
+    $(document).off('input','#kemitraanDash_unit_inputCari'+s).on('input','#kemitraanDash_unit_inputCari'+s, function() {
+      kemitraandash_filterUnitStatusList(s, $(this).val());
+    });
+  });
+}
+
+function kemitraandash_switchMode(mode) {
+  SultanDashboard.switchMode('kemitraanDash', mode);
+}
+
 function kemitraandash_showSkeleton() {
   $('#kemitraanDash_viewUnit').addClass('d-none').css({"opacity": "1", "pointer-events": "auto"});
   $('#kemitraanDash_viewRekap').addClass('d-none');
