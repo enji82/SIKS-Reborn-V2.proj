@@ -91,18 +91,46 @@
           </div>
         </div>
 
+        <!-- Loading State: Modern International Skeleton Screen (Shimmer) -->
+        <div id="komBelDash_loadingState" class="sultan-page-transition py-1">
+          <div class="d-flex align-items-center justify-content-between mb-3 px-1">
+            <div class="d-flex align-items-center" style="gap: 10px;">
+              <div class="sultan-skeleton sultan-skeleton-avatar" style="width: 24px; height: 24px; border-radius: 50%;"></div>
+              <div class="sultan-skeleton sultan-skeleton-text mb-0" style="width: 240px; height: 16px;"></div>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-lg-3 col-6 mb-3">
+              <div class="sultan-skeleton-wrapper" style="border-radius: 18px; padding: 1.1rem 0.9rem; height: 100px;">
+                <div class="sultan-skeleton sultan-skeleton-text mb-2" style="width: 60%; height: 12px;"></div>
+                <div class="sultan-skeleton sultan-skeleton-title mb-1" style="width: 50%; height: 24px;"></div>
+              </div>
+            </div>
+            <div class="col-lg-3 col-6 mb-3">
+              <div class="sultan-skeleton-wrapper" style="border-radius: 18px; padding: 1.1rem 0.9rem; height: 100px;">
+                <div class="sultan-skeleton sultan-skeleton-text mb-2" style="width: 60%; height: 12px;"></div>
+                <div class="sultan-skeleton sultan-skeleton-title mb-1" style="width: 50%; height: 24px;"></div>
+              </div>
+            </div>
+            <div class="col-lg-3 col-6 mb-3">
+              <div class="sultan-skeleton-wrapper" style="border-radius: 18px; padding: 1.1rem 0.9rem; height: 100px;">
+                <div class="sultan-skeleton sultan-skeleton-text mb-2" style="width: 60%; height: 12px;"></div>
+                <div class="sultan-skeleton sultan-skeleton-title mb-1" style="width: 50%; height: 24px;"></div>
+              </div>
+            </div>
+            <div class="col-lg-3 col-6 mb-3">
+              <div class="sultan-skeleton-wrapper" style="border-radius: 18px; padding: 1.1rem 0.9rem; height: 100px;">
+                <div class="sultan-skeleton sultan-skeleton-text mb-2" style="width: 60%; height: 12px;"></div>
+                <div class="sultan-skeleton sultan-skeleton-title mb-1" style="width: 50%; height: 24px;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- ================================================================
              VIEW REKAP
              ================================================================ -->
-        <div id="komBelDash_viewRekap" class="py-1">
-
-          <div id="komBelDash_loadingState" class="sultan-loading-box sultan-page-transition">
-            <div class="sultan-spinner-icon"><i class="fas fa-circle-notch fa-spin"></i></div>
-            <h6 class="text-muted font-weight-bold sultan-loading-text mb-0"
-                style="letter-spacing:0.5px;text-transform:uppercase;font-size:11px;">
-              Memuat Data Dasbor KKG...
-            </h6>
-          </div>
+        <div id="komBelDash_viewRekap" class="d-none py-1">
 
           <div id="komBelDash_dashboardState" style="display:none;">
             <!-- 1. KARTU HIGHLIGHT UTAMA -->
@@ -376,87 +404,116 @@ function kombeldash_switchMode(mode) {
   SultanDashboard.switchMode('komBelDash', mode);
 }
 
-function kombeldash_initMasterAccess() {
-  if (!KOMBELDASH_IS_ADMIN && !KOMBELDASH_USER_NPSN) {
-    $('#komBelDash_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-ban mb-2"></i><br>Akses ditolak: Sesi login tidak valid.</span>');
-    return;
+  function kombeldash_showSkeleton() {
+    $('#komBelDash_viewUnit').addClass('d-none').css({"opacity": "1", "pointer-events": "auto"});
+    $('#komBelDash_viewRekap').addClass('d-none');
+    $('#komBelDash_dashboardState').hide();
+    $('#komBelDash_loadingState').show();
+    if (typeof SultanUI !== "undefined" && SultanUI.setRefreshLoading) {
+      SultanUI.setRefreshLoading("#komBelDash_btnRefresh", true);
+    }
   }
 
-  google.script.run.withSuccessHandler(function(json) {
-    var res = JSON.parse(json);
-    if (!res.success) {
-      $('#komBelDash_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>' + kombeldash_escapeHtml(res.message) + '</span>');
-      return;
-    }
-
-    KOMBELDASH_MASTER_SEKOLAH = res.sekolah || [];
-    KOMBELDASH_KATEGORI_MAP = (res.kategori || [])
-      .filter(function(k) { return k.idKat && (String(k.integrasiDashboard || "TRUE").toUpperCase() !== "FALSE"); })
-      .map(function(k) { return { idKat: k.idKat, namaKategori: k.namaKat, jenisPeriode: k.jenisPeriode, jenjang: k.jenjang || "SD", kelas: k.kelas || k.kkg || "Semua KKG" }; });
-
-    kombeldash_setupJenjangDropdowns();
-    kombeldash_setupUnitSekolahDropdown();
-    kombeldash_setupKelasDropdown();
-
-    if (KOMBELDASH_KATEGORI_MAP.length === 0) {
-      $('#komBelDash_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>Belum ada Kategori yang berintegrasi ke Dashboard.</span>');
-      return;
-    }
-
-    kombeldash_updateFilterKategoriOptions();
-
-    SultanDashboard.initDualMode({
-      pageKey: 'komBelDash',
-      tabType: 'single_tab',
-      unitViewId: '#komBelDash_viewUnit',
-      rekapViewId: '#komBelDash_viewRekap',
-      switchSelector: '.sultan-segmented-btn',
-      onInit: function(state) {
-        KOMBELDASH_IS_ADMIN   = state.isAdmin;
-        KOMBELDASH_USER_NPSN  = state.userNpsn;
-        KOMBELDASH_MODE       = state.currentMode;
-
-        SultanDashboard.setupUnitSchoolPicker({
-          pageKey: 'komBelDash',
-          wrapperJenjangId: '#komBelDash_filterJenjangUnitContainer',
-          selectJenjangId: '#komBelDash_filterJenjangUnit',
-          wrapperSekolahId: '#komBelDash_filterUnitSekolahContainer',
-          selectSekolahId: '#komBelDash_filterUnitSekolah',
-          btnActionId: '#komBelDash_btnRefresh',
-          masterSekolah: KOMBELDASH_MASTER_SEKOLAH,
-          onSelectSchool: function(npsn, nama) {
-            if (npsn) kombeldash_loadUnitData(npsn);
-            else kombeldash_resetUnitView();
-          }
-        });
-        kombeldash_updateFilterBarControls();
-      },
-      onSwitchMode: function(mode, state, isFirstLoad) {
-        KOMBELDASH_MODE = mode;
-        kombeldash_updateFilterBarControls();
-        if (mode === 'unit') {
-          if (!KOMBELDASH_IS_ADMIN && KOMBELDASH_USER_NPSN) {
-            kombeldash_loadUnitData(KOMBELDASH_USER_NPSN);
-          } else if (KOMBELDASH_IS_ADMIN) {
-            var curSel = $('#komBelDash_filterUnitSekolah').val();
-            if (curSel) kombeldash_loadUnitData(curSel);
-            else kombeldash_resetUnitView();
-          }
-        } else {
-          var k = $('#komBelDash_filterKategori').val();
-          if (k && !isFirstLoad) kombeldash_loadDataKategori(k);
-        }
+  function kombeldash_initMasterAccess() {
+    if (!KOMBELDASH_IS_ADMIN && !KOMBELDASH_USER_NPSN) {
+      if (typeof SultanUI !== 'undefined') {
+        SultanUI.showLoadingError('#komBelDash_loadingState', 'Akses ditolak: Sesi login tidak valid.');
       }
-    });
+      return;
+    }
 
-    // User biasa dan Admin disamakan untuk membuka mode Rekap (transparansi data)
-    kombeldash_switchMode('rekap');
-    kombeldash_loadDataKategori($('#komBelDash_filterKategori').val());
+    kombeldash_showSkeleton();
 
-  }).withFailureHandler(function(err) {
-    $('#komBelDash_loadingState').find('.sultan-loading-text').html('<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Terputus: ' + kombeldash_escapeHtml(err.message) + '</span>');
-  }).getKombelMasterData("");
-}
+    google.script.run.withSuccessHandler(function(json) {
+      var res = JSON.parse(json);
+      if (!res.success) {
+        if (typeof SultanUI !== 'undefined') {
+          SultanUI.showLoadingError('#komBelDash_loadingState', res.message || 'Gagal memuat master');
+        }
+        return;
+      }
+
+      KOMBELDASH_MASTER_SEKOLAH = res.sekolah || [];
+      KOMBELDASH_KATEGORI_MAP = (res.kategori || [])
+        .filter(function(k) { return k.idKat && (String(k.integrasiDashboard || "TRUE").toUpperCase() !== "FALSE"); })
+        .map(function(k) { return { idKat: k.idKat, namaKategori: k.namaKat, jenisPeriode: k.jenisPeriode, jenjang: k.jenjang || "SD", kelas: k.kelas || k.kkg || "Semua KKG" }; });
+
+      kombeldash_setupJenjangDropdowns();
+      kombeldash_setupUnitSekolahDropdown();
+      kombeldash_setupKelasDropdown();
+
+      if (KOMBELDASH_KATEGORI_MAP.length === 0) {
+        if (typeof SultanUI !== 'undefined') {
+          SultanUI.showLoadingError('#komBelDash_loadingState', 'Belum ada Kategori yang berintegrasi ke Dashboard.');
+        }
+        return;
+      }
+
+      kombeldash_updateFilterKategoriOptions();
+
+      SultanDashboard.initDualMode({
+        pageKey: 'komBelDash',
+        tabType: 'single_tab',
+        unitViewId: '#komBelDash_viewUnit',
+        rekapViewId: '#komBelDash_viewRekap',
+        switchSelector: '.sultan-segmented-btn',
+        onInit: function(state) {
+          KOMBELDASH_IS_ADMIN   = state.isAdmin;
+          KOMBELDASH_USER_NPSN  = state.userNpsn;
+          KOMBELDASH_MODE       = state.currentMode;
+
+          var populatePicker = function(masterList) {
+            SultanDashboard.setupUnitSchoolPicker({
+              pageKey: 'komBelDash',
+              wrapperJenjangId: '#komBelDash_filterJenjangUnitContainer',
+              selectJenjangId: '#komBelDash_filterJenjangUnit',
+              wrapperSekolahId: '#komBelDash_filterUnitSekolahContainer',
+              selectSekolahId: '#komBelDash_filterUnitSekolah',
+              btnActionId: '#komBelDash_btnRefresh',
+              masterSekolah: masterList || KOMBELDASH_MASTER_SEKOLAH || [],
+              onSelectSchool: function(npsn, nama) {
+                if (npsn) kombeldash_loadUnitData(npsn);
+                else kombeldash_resetUnitView();
+              }
+            });
+          };
+
+          if (typeof Lapbul_GetMasterSekolah === 'function') {
+            Lapbul_GetMasterSekolah(function(master) { populatePicker(master); });
+          } else {
+            populatePicker(KOMBELDASH_MASTER_SEKOLAH);
+          }
+          kombeldash_updateFilterBarControls();
+        },
+        onSwitchMode: function(mode, state, isFirstLoad) {
+          KOMBELDASH_MODE = mode;
+          kombeldash_updateFilterBarControls();
+          if (mode === 'unit') {
+            if (!KOMBELDASH_IS_ADMIN && KOMBELDASH_USER_NPSN) {
+              kombeldash_loadUnitData(KOMBELDASH_USER_NPSN);
+            } else if (KOMBELDASH_IS_ADMIN) {
+              var curSel = $('#komBelDash_filterUnitSekolah').val();
+              if (curSel) kombeldash_loadUnitData(curSel);
+              else kombeldash_resetUnitView();
+            }
+          } else {
+            var k = $('#komBelDash_filterKategori').val();
+            if (k && !isFirstLoad) kombeldash_loadDataKategori(k);
+          }
+        }
+      });
+
+      // Tentukan mode awal berdasarkan role: Admin => rekap, User => unit
+      var targetMode = KOMBELDASH_IS_ADMIN ? 'rekap' : 'unit';
+      kombeldash_switchMode(targetMode);
+      kombeldash_loadDataKategori($('#komBelDash_filterKategori').val());
+
+    }).withFailureHandler(function(err) {
+      if (typeof SultanUI !== 'undefined') {
+        SultanUI.showLoadingError('#komBelDash_loadingState', 'Koneksi Terputus: ' + kombeldash_escapeHtml(err.message));
+      }
+    }).getKombelMasterData("");
+  }
 
 function kombeldash_setupKelasDropdown() {
   var kelasSet = new Set();
