@@ -3731,8 +3731,26 @@
             $('#lapbulkelola_prevCatatanWrap').hide();
         }
 
-        $('#lapbulkelola_selStatusVerif, #lapbulkelola_txtKetVerif').val("");
+        // Reset & pasang listener dinamis status verifikasi
+        var currentStatus = (r && r.statusData) ? r.statusData : '';
+        if (currentStatus && (currentStatus === 'Disetujui' || currentStatus === 'Revisi' || currentStatus === 'Ditolak')) {
+            $('#lapbulkelola_selStatusVerif').val(currentStatus);
+        } else {
+            $('#lapbulkelola_selStatusVerif').val("");
+        }
+        $('#lapbulkelola_txtKetVerif').val("");
 
+        $(document).off('change.lapbulverif', '#lapbulkelola_selStatusVerif').on('change.lapbulverif', '#lapbulkelola_selStatusVerif', function() {
+            var st = $(this).val();
+            if (st === 'Revisi' || st === 'Ditolak') {
+                $('#lapbulkelola_reqCatatan').show();
+                $('#lapbulkelola_txtKetVerif').prop('required', true).attr('placeholder', 'Wajib diisi alasan/catatan verifikasi (min 5 karakter)...');
+            } else {
+                $('#lapbulkelola_reqCatatan').hide();
+                $('#lapbulkelola_txtKetVerif').prop('required', false).attr('placeholder', 'Catatan admin (opsional)...');
+            }
+        });
+        $('#lapbulkelola_selStatusVerif').trigger('change.lapbulverif');
 
         var previewLink = "";
         if (fileUrl && fileUrl.length > 5 && fileUrl.includes('http')) {
@@ -3784,6 +3802,7 @@
                         c.tglVerif = res.newData.tgl; 
                         c.verifikator = res.newData.user; 
                     }
+                    // Optimalisasi: re-render tabel dari cache lokal tanpa fetch ulang ke database
                     lapbulkelola_terapkanFilterLokal();
                 } else { 
                     var thnAktif = $('#lapbulkelola_filterTahun').val();
