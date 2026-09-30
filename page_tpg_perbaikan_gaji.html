@@ -400,8 +400,8 @@
             </div>
         </div>
         <div class="modal-footer modal-footer-tambah-edit justify-content-between">
-            <button type="button" class="modal-btn-batal" data-dismiss="modal"><i class="fas fa-times mr-2"></i>BATAL</button>
-            <button type="submit" class="modal-btn-simpan" id="tpg_pg_btnSimpan">
+            <button type="button" class="sultan-btn sultan-btn-secondary" data-dismiss="modal"><i class="fas fa-times mr-2"></i>BATAL</button>
+            <button type="submit" class="sultan-btn sultan-btn-primary" id="tpg_pg_btnSimpan">
                 <i class="fas fa-cloud-upload-alt mr-2"></i><span id="tpg_pg_btnSimpanLabel">SIMPAN</span>
             </button>
         </div>
@@ -485,9 +485,9 @@
 
         </div>
         <div class="modal-verifikasi-footer" id="tpg_pg_verifFooter">
-            <button type="button" class="modal-btn-batal" data-dismiss="modal"><i
+            <button type="button" class="sultan-btn sultan-btn-secondary" data-dismiss="modal"><i
                     class="fas fa-times mr-2"></i>BATAL</button>
-            <button type="submit" id="tpg_pg_btnVerifEksekusi" class="modal-verifikasi-btn-verifikasi"
+            <button type="submit" id="tpg_pg_btnVerifEksekusi" class="sultan-btn sultan-btn-primary"
                 form="tpg_pg_formVerif">
                 <i class="fas fa-check mr-2"></i>VERIFIKASI</button>
         </div>
@@ -855,20 +855,20 @@
         globalTpgPgData.forEach(function (row) {
             let actionHtml = '';
             let isApproved = row.status === 'Disetujui';
-            let disAttrEdit = (isApproved || (!globalTpgPgIsEditOpen && !isAdmin)) ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : '';
-            let disAttrDelete = isApproved ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : '';
-            let btnEdit = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning tpg_pg_btnEdit" data-id="' + row.id + '" title="Edit" ' + disAttrEdit + '><i class="fas fa-pencil-alt"></i></button>';
-            let btnDelete = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon tpg_pg_btnHapus" data-id="' + row.id + '" title="Hapus" ' + disAttrDelete + '><i class="fas fa-trash-alt"></i></button>';
+            
+            let btnEdit = isApproved
+                ? '<button type="button" class="sultan-btn-aksi" disabled style="opacity:0.4; cursor:not-allowed;" data-toggle="tooltip" title="Terkunci (Sudah Disetujui)"><i class="fas fa-pencil-alt"></i></button>'
+                : '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning tpg_pg_btnEdit" data-id="' + row.id + '" data-toggle="tooltip" title="Edit Data"><i class="fas fa-pencil-alt"></i></button>';
+
+            let btnDelete = isApproved
+                ? '<button type="button" class="sultan-btn-aksi" disabled style="opacity:0.4; cursor:not-allowed;" data-toggle="tooltip" title="Terkunci (Sudah Disetujui)"><i class="fas fa-trash-alt"></i></button>'
+                : '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon tpg_pg_btnHapus" data-id="' + row.id + '" data-toggle="tooltip" title="Hapus Data"><i class="fas fa-trash-alt"></i></button>';
 
             let btnVerifikasiIcon = '';
             if (isAdmin) {
-                if (row.status === 'Disetujui') {
-                    btnVerifikasiIcon = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-verif tpg_pg_btnVerifikasi" data-id="' + row.id + '" title="Lihat"><i class="fas fa-check-circle"></i></button>';
-                } else if (row.status === 'Revisi' || row.status === 'Ditolak') {
-                    btnVerifikasiIcon = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning tpg_pg_btnVerifikasi" data-id="' + row.id + '" title="Lihat"><i class="fas fa-exclamation-triangle"></i></button>';
-                } else {
-                    btnVerifikasiIcon = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-verif tpg_pg_btnVerifikasi" data-id="' + row.id + '" title="Verifikasi"><i class="fas fa-clipboard-check"></i></button>';
-                }
+                let iconV = isApproved ? 'fa-eye' : 'fa-clipboard-check';
+                let titleV = isApproved ? 'Lihat Detail Verifikasi' : 'Verifikasi Data';
+                btnVerifikasiIcon = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-primary tpg_pg_btnVerifikasi" data-id="' + row.id + '" data-toggle="tooltip" title="' + titleV + '"><i class="fas ' + iconV + '"></i></button>';
             }
 
             actionHtml = '<div class="d-flex flex-nowrap justify-content-center" style="gap:4px;">' + btnVerifikasiIcon + btnEdit + btnDelete + '</div>';
@@ -1525,11 +1525,30 @@
         if (!rowData) return;
 
         $('#tpg_pg_verifIdData').val(id);
-        $('#tpg_pg_verifStatus').val('');
+        
+        var isAlreadyApproved = (rowData.status === 'Disetujui');
+        var selStatus = $('#tpg_pg_verifStatus');
+
+        if (isAlreadyApproved) {
+            selStatus.empty().append('<option value="Disetujui">Disetujui</option>');
+            selStatus.val('Disetujui').prop('disabled', true);
+            $('#tpg_pg_verifCatatan').val(rowData.keterangan || '').prop('disabled', true);
+            $('#tpg_pg_btnVerifEksekusi').hide();
+        } else {
+            selStatus.prop('disabled', false);
+            $('#tpg_pg_verifCatatan').prop('disabled', false);
+            $('#tpg_pg_btnVerifEksekusi').show();
+            selStatus.empty()
+                .append('<option value="">Pilih Status</option>')
+                .append('<option value="Disetujui">Disetujui</option>')
+                .append('<option value="Revisi">Revisi</option>')
+                .append('<option value="Ditolak">Ditolak</option>');
+            selStatus.val(rowData.status || '');
+        }
+
         var ketLama = rowData.keterangan || '';
         if (ketLama) { $('#tpg_pg_prevCatatan').text(ketLama); $('#tpg_pg_prevCatatanWrap').show(); }
         else { $('#tpg_pg_prevCatatan').text(''); $('#tpg_pg_prevCatatanWrap').hide(); }
-        $('#tpg_pg_verifCatatan').val('');
 
         $('#tpg_pg_vNama').text(rowData.namaAsn || '-');
         $('#tpg_pg_vNip').text(rowData.nip || '-');
@@ -1645,20 +1664,19 @@
 
         // Update seluruh action buttons (column index 8)
         var isApproved = row.status === 'Disetujui';
-        var disAttrEdit = (isApproved || (!globalTpgPgIsEditOpen && !isAdmin)) ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : '';
-        var disAttrDelete = isApproved ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : '';
-        var btnEdit = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning tpg_pg_btnEdit" data-id="' + row.id + '" title="Edit" ' + disAttrEdit + '><i class="fas fa-pencil-alt"></i></button>';
-        var btnDelete = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon tpg_pg_btnHapus" data-id="' + row.id + '" title="Hapus" ' + disAttrDelete + '><i class="fas fa-trash-alt"></i></button>';
+        var btnEdit = isApproved
+            ? '<button type="button" class="sultan-btn-aksi" disabled style="opacity:0.4; cursor:not-allowed;" data-toggle="tooltip" title="Terkunci (Sudah Disetujui)"><i class="fas fa-pencil-alt"></i></button>'
+            : '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning tpg_pg_btnEdit" data-id="' + row.id + '" data-toggle="tooltip" title="Edit Data"><i class="fas fa-pencil-alt"></i></button>';
+
+        var btnDelete = isApproved
+            ? '<button type="button" class="sultan-btn-aksi" disabled style="opacity:0.4; cursor:not-allowed;" data-toggle="tooltip" title="Terkunci (Sudah Disetujui)"><i class="fas fa-trash-alt"></i></button>'
+            : '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon tpg_pg_btnHapus" data-id="' + row.id + '" data-toggle="tooltip" title="Hapus Data"><i class="fas fa-trash-alt"></i></button>';
 
         var btnVerifikasiIcon = '';
         if (isAdmin) {
-            if (row.status === 'Disetujui') {
-                btnVerifikasiIcon = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-verif tpg_pg_btnVerifikasi" data-id="' + row.id + '" title="Lihat"><i class="fas fa-check-circle"></i></button>';
-            } else if (row.status === 'Revisi' || row.status === 'Ditolak') {
-                btnVerifikasiIcon = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning tpg_pg_btnVerifikasi" data-id="' + row.id + '" title="Lihat"><i class="fas fa-exclamation-triangle"></i></button>';
-            } else {
-                btnVerifikasiIcon = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-verif tpg_pg_btnVerifikasi" data-id="' + row.id + '" title="Verifikasi"><i class="fas fa-clipboard-check"></i></button>';
-            }
+            var iconV = isApproved ? 'fa-eye' : 'fa-clipboard-check';
+            var titleV = isApproved ? 'Lihat Detail Verifikasi' : 'Verifikasi Data';
+            btnVerifikasiIcon = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-primary tpg_pg_btnVerifikasi" data-id="' + row.id + '" data-toggle="tooltip" title="' + titleV + '"><i class="fas ' + iconV + '"></i></button>';
         }
 
         var newActionHtml = '<div class="d-flex flex-nowrap justify-content-center" style="gap:4px;">' + btnVerifikasiIcon + btnEdit + btnDelete + '</div>';
