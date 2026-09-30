@@ -2828,7 +2828,6 @@ function eksekusiMutasiPTKSDN(idUsulan, keputusan, userEksekutor) {
     }
     
     if (usulanRowIdx === -1) return "Error: Data usulan tidak ditemukan.";
-    if (usulanRow[8] !== "Pending") return "Error: Usulan sudah diproses.";
     
     var idPtk = usulanRow[1];
     var jenis = usulanRow[3];
