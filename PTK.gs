@@ -2840,7 +2840,7 @@ function eksekusiMutasiPTKSDN(idUsulan, keputusan, userEksekutor) {
     var mainStatus = statusParts[0];
     var catatan = statusParts[1] || "";
     
-    if (mainStatus === "Setuju") {
+    if (mainStatus === "Setuju" || mainStatus === "Disetujui") {
       // Cari data PTK
       var dataPTK = sheetSource.getDataRange().getValues();
       var ptkRowIdx = -1;
@@ -2872,6 +2872,8 @@ function eksekusiMutasiPTKSDN(idUsulan, keputusan, userEksekutor) {
         sheetTarget.appendRow(rowToMove);
         sheetSource.deleteRow(ptkRowIdx);
       }
+
+      invalidatePtkSdnDataCache_();
     }
     
     // Update status usulan
