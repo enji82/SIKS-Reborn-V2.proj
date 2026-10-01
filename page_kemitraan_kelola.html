@@ -238,25 +238,25 @@
 
       <h6 class="modal-verifikasi-section-title"><i class="fas fa-check-circle mr-2"></i>Verifikasi</h6>
       <div class="form-group mb-3">
-        <label class="modal-verifikasi-form-label">Keputusan Verifikasi <span class="text-danger">*</span></label>
-        <select class="modal-verifikasi-select font-weight-bold" id="kemitraankelola_v_status" required>
-          <option value="">-- Pilih Keputusan --</option>
+        <label class="modal-verifikasi-form-label">Hasil Verifikasi <span class="text-danger">*</span></label>
+        <select class="modal-verifikasi-select font-weight-bold w-100" id="kemitraankelola_v_status" required>
+          <option value="Diproses">Diproses</option>
           <option value="Disetujui">Disetujui</option>
           <option value="Revisi">Revisi</option>
           <option value="Ditolak">Ditolak</option>
         </select>
       </div>
       <div class="form-group mb-3" id="kemitraankelola_prevCatatanWrap" style="display:none;">
-        <label class="modal-verifikasi-form-label text-muted"><i class="fas fa-history mr-1"></i>Catatan Sebelumnya</label>
+        <label class="modal-verifikasi-form-label text-muted"><i class="fas fa-history mr-1"></i>Verifikasi Sebelumnya</label>
         <div class="modal-verifikasi-prev-catatan" id="kemitraankelola_prevCatatan"></div>
       </div>
       <div class="form-group mb-0">
         <label class="modal-verifikasi-form-label">Catatan Admin <span id="kemitraankelola_reqCatatan" class="text-danger" style="display:none;">*</span></label>
-        <textarea class="modal-verifikasi-textarea" id="kemitraankelola_v_catatan" rows="3" placeholder="Wajib diisi jika ditolak / direvisi..."></textarea>
+        <textarea class="modal-verifikasi-textarea w-100" id="kemitraankelola_v_catatan" rows="3" placeholder="Wajib diisi jika ditolak / direvisi..."></textarea>
       </div>
-      <div class="modal-verifikasi-footer" id="kemitraankelola_verifFooter">
-        <button type="button" class="sultan-btn sultan-btn-secondary" data-dismiss="modal"><i class="fas fa-times"></i> BATAL</button>
-        <button type="button" id="kemitraankelola_btnVerifikasi" class="sultan-btn sultan-btn-primary"><i class="fas fa-check"></i> VERIFIKASI</button>
+      <div class="modal-verifikasi-footer d-flex justify-content-between align-items-center" id="kemitraankelola_verifFooter">
+        <button type="button" class="sultan-btn sultan-btn-secondary font-weight-bold" data-dismiss="modal"><i class="fas fa-times mr-2"></i>BATAL</button>
+        <button type="submit" id="kemitraankelola_btnVerifikasi" class="sultan-btn sultan-btn-primary modal-verifikasi-btn-verifikasi font-weight-bold" form="kemitraankelola_formVerif"><i class="fas fa-check mr-2"></i>VERIFIKASI</button>
       </div>
     </div>
   </form>
@@ -322,6 +322,15 @@ function kemitraankelola_initFilterBar() {
 
   $(document).off('click', '#kemitraankelola_btnRefresh').on('click', '#kemitraankelola_btnRefresh', kemitraankelola_muatData);
   $(document).off('click', '#kemitraankelola_btnTambah').on('click', '#kemitraankelola_btnTambah', kemitraankelola_bukaModalTambah);
+
+  $(document).off('submit', '#kemitraankelola_formVerif').on('submit', '#kemitraankelola_formVerif', kemitraankelola_submitVerif);
+  $(document).off('click', '#kemitraankelola_btnVerifikasi').on('click', '#kemitraankelola_btnVerifikasi', function() { $('#kemitraankelola_formVerif').submit(); });
+
+  $(document).off('change', '#kemitraankelola_v_status').on('change', '#kemitraankelola_v_status', function() {
+    var v = $(this).val();
+    if (v === 'Revisi' || v === 'Ditolak') { $('#kemitraankelola_reqCatatan').show(); $('#kemitraankelola_v_catatan').prop('required', true); }
+    else { $('#kemitraankelola_reqCatatan').hide(); $('#kemitraankelola_v_catatan').prop('required', false); }
+  });
 
   $(document).off('change', '#kemitraankelola_filterKategori, #kemitraankelola_filterTahun, #kemitraankelola_filterStatus').on('change', '#kemitraankelola_filterKategori, #kemitraankelola_filterTahun, #kemitraankelola_filterStatus', kemitraankelola_terapkanFilter);
 
@@ -1104,7 +1113,6 @@ function kemitraankelola_bukaModalVerif(rowId) {
   $('#kemitraankelola_v_tahun').text(item.tahun || "-");
 
   var st = String(item.status || "").toLowerCase();
-  $('#kemitraankelola_v_status').val('');
   var catatanLama = item.catatan || "";
   if (catatanLama) {
     $('#kemitraankelola_prevCatatan').text(catatanLama);
@@ -1113,29 +1121,26 @@ function kemitraankelola_bukaModalVerif(rowId) {
     $('#kemitraankelola_prevCatatan').text('');
     $('#kemitraankelola_prevCatatanWrap').hide();
   }
-  $('#kemitraankelola_v_catatan').val("");
-  $('#kemitraankelola_reqCatatan').hide();
 
-  var isVerifLocked = st.includes('setuju') || st.includes('ok') || st.includes('valid') || st.includes('locked');
-  if (st.includes('setuju') || st.includes('ok') || st.includes('valid')) {
-    $('#kemitraankelola_v_status').val('Disetujui');
-  } else if (st.includes('revisi')) {
-    $('#kemitraankelola_v_status').val('Revisi');
-  } else if (st.includes('tolak')) {
-    $('#kemitraankelola_v_status').val('Ditolak');
-  }
+  var selStatus = $('#kemitraankelola_v_status');
+  selStatus.prop('disabled', false);
+  $('#kemitraankelola_v_catatan').prop('disabled', false).val(item.catatan || "");
+  $('#kemitraankelola_btnVerifikasi').show().prop('disabled', false).html('<i class="fas fa-check mr-2"></i>VERIFIKASI');
 
-  if (isVerifLocked) {
-    $('#kemitraankelola_v_status, #kemitraankelola_v_catatan').prop('disabled', true);
-    $('#kemitraankelola_btnVerifikasi').hide();
-  } else {
-    $('#kemitraankelola_v_status, #kemitraankelola_v_catatan').prop('disabled', false);
-    $('#kemitraankelola_btnVerifikasi').show();
-  }
+  var currentStatus = 'Diproses';
+  if (st.includes('setuju') || st.includes('ok') || st.includes('valid')) currentStatus = 'Disetujui';
+  else if (st.includes('revisi')) currentStatus = 'Revisi';
+  else if (st.includes('tolak')) currentStatus = 'Ditolak';
 
-  if ($('#kemitraankelola_v_status').val() === 'Revisi' || $('#kemitraankelola_v_status').val() === 'Ditolak') {
+  selStatus.val(currentStatus);
+  if (!selStatus.val()) selStatus.val('Diproses');
+
+  if (currentStatus === 'Revisi' || currentStatus === 'Ditolak') {
     $('#kemitraankelola_reqCatatan').show();
     $('#kemitraankelola_v_catatan').prop('required', true);
+  } else {
+    $('#kemitraankelola_reqCatatan').hide();
+    $('#kemitraankelola_v_catatan').prop('required', false);
   }
 
   var url = item.url || "";
@@ -1143,7 +1148,7 @@ function kemitraankelola_bukaModalVerif(rowId) {
   var isImg = fn.endsWith('.jpg') || fn.endsWith('.png') || fn.endsWith('.jpeg');
 
   Sultan.modal.verifikasi({
-    title: isVerifLocked ? 'LIHAT DETAIL VERIFIKASI DOKUMEN KEMITRAAN' : 'VERIFIKASI DOKUMEN KEMITRAAN & KERJA SAMA',
+    title: 'VERIFIKASI DOKUMEN KEMITRAAN & KERJA SAMA',
     url: url,
     isImage: isImg
   });
@@ -1169,9 +1174,17 @@ function kemitraankelola_submitVerif(e) {
     return;
   }
 
-  var rowId = $('#kemitraankelola_v_rowid').val();
-  var status = $('#kemitraankelola_v_status').val();
-  var catatan = $('#kemitraankelola_v_catatan').val();
+  var payload = {
+    rowId: $('#kemitraankelola_v_rowid').val(),
+    status: $('#kemitraankelola_v_status').val(),
+    catatan: $('#kemitraankelola_v_catatan').val(),
+    verifikator: KEMITRAANKELOLA_USER_AKTIF
+  };
+
+  if ((payload.status === 'Revisi' || payload.status === 'Ditolak') && !payload.catatan.trim()) {
+    if (typeof Sultan !== 'undefined' && Sultan.alert) Sultan.alert('warning','Perhatian','Catatan wajib diisi untuk keputusan Revisi/Ditolak.');
+    return;
+  }
 
   var btn = $('#kemitraankelola_btnVerifikasi');
   var txt = btn.html();
@@ -1185,7 +1198,17 @@ function kemitraankelola_submitVerif(e) {
         if (res.success) {
           $('#global_modalVerifikasi').modal('hide');
           if (typeof Sultan !== 'undefined' && Sultan.notif) Sultan.notif.crud.simpan(true);
-          kemitraankelola_muatData();
+          if (typeof sultan_fetchNotifikasi === 'function') sultan_fetchNotifikasi();
+
+          var idRow = payload.rowId;
+          var idx = KEMITRAANKELOLA_CACHE_DATA.findIndex(function(r) { return String(r.rowId) === String(idRow); });
+          if (idx !== -1) {
+            KEMITRAANKELOLA_CACHE_DATA[idx].status = payload.status;
+            KEMITRAANKELOLA_CACHE_DATA[idx].catatan = payload.catatan;
+            KEMITRAANKELOLA_CACHE_DATA[idx].verifikator = payload.verifikator;
+            KEMITRAANKELOLA_CACHE_DATA[idx].tgl_verif = Sultan.format ? Sultan.format.tanggalJam(new Date()) : new Date().toISOString();
+          }
+          kemitraankelola_terapkanFilter();
         } else {
           if (typeof Sultan !== 'undefined' && Sultan.notif) Sultan.notif.crud.gagal(res.message);
         }
@@ -1195,7 +1218,7 @@ function kemitraankelola_submitVerif(e) {
       btn.prop('disabled', false).html(txt);
       if (typeof Sultan !== 'undefined' && Sultan.notif) Sultan.notif.crud.gagal(err.message);
     })
-    .verifikasiKemitraanDokumen(rowId, status, catatan);
+    .verifikasiKemitraanDokumen(payload.rowId, payload.status, payload.catatan);
 }
 
 function kemitraankelola_bukaPreview(url) {
