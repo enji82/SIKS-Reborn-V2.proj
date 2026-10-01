@@ -837,3 +837,59 @@ function admPtk_debugSdsCheck() {
   }
   return JSON.stringify({ sheets: results, sdsSamples: sdsSamples, kategori: katInfo });
 }
+
+/* ----------------------------------------------------------------------
+   NOTIFIKASI ADMINISTRASI PTK
+   ---------------------------------------------------------------------- */
+function getNotifikasiAdmPtk(role, unit) {
+  try {
+    var sheet = getOrCreateSheetAdmPtk("Database_Dokumen");
+    if (!sheet) return { count: 0, recent: [] };
+    var data = sheet.getDataRange().getDisplayValues();
+    var rLower = String(role || "").toLowerCase();
+    var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
+    var uName = String(unit || "").trim().toUpperCase();
+    var notifList = []; var unreadCount = 0;
+
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      var ptkNpsn = String(row[3] || "").trim().toUpperCase();
+      var ptkNama = String(row[1] || "").trim().toUpperCase();
+      var uploader = String(row[12] || "").trim().toUpperCase();
+      var status = String(row[9] || "Diproses").trim();
+      var isDiproses = (status === "Diproses" || status === "Pending" || status === "");
+
+      var isTarget = false;
+      if (isAdmin) {
+        isTarget = isDiproses;
+      } else {
+        isTarget = (ptkNpsn === uName || uploader === uName || ptkNama === uName) && !isDiproses;
+      }
+
+      if (isTarget) {
+        var isRead = false;
+        var stLower = status.toLowerCase();
+        var isDisetujui = stLower.includes("ok") || stLower.includes("setuju") || stLower.includes("valid") || stLower.includes("selesai");
+
+        if (!isAdmin && isDisetujui) {
+          // Skip counter untuk user jika sudah disetujui
+        } else {
+          unreadCount++;
+        }
+
+        notifList.push({
+          rowId: i + 1,
+          source: "AdmPTK",
+          nama: row[1] ? row[1] + " (" + (row[5] || "Dokumen") + ")" : (row[7] || "Dokumen PTK"),
+          berkas: row[5] || "Administrasi PTK",
+          status: status,
+          waktu: row[11] || "",
+          isRead: isRead
+        });
+      }
+    }
+
+    return { count: unreadCount, recent: notifList.slice(0, 5) };
+  } catch (e) { return { count: 0, recent: [] }; }
+}
+

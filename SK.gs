@@ -789,6 +789,10 @@ function getNotifikasiGlobal(role, unit) {
     callSafe('koreksi_ktp', getNotifikasiKoreksiKtp, role, unit);
     callSafe('pppkpw', getNotifikasiPPPKPW, role, unit);
     callSafe('pppkpw_spmt', getNotifikasiPPPKPWSPMT, role, unit);
+    if (typeof getNotifikasiAdmSekolah === 'function') callSafe('adm_sekolah', getNotifikasiAdmSekolah, role, unit);
+    if (typeof getNotifikasiAdmPtk === 'function') callSafe('adm_ptk', getNotifikasiAdmPtk, role, unit);
+    if (typeof getNotifikasiKombel === 'function') callSafe('kombel', getNotifikasiKombel, role, unit);
+    if (typeof getNotifikasiKemitraan === 'function') callSafe('kemitraan', getNotifikasiKemitraan, role, unit);
   } catch (err) {
     Logger.log("SULTAN Critical Error: " + err.message);
   }
