@@ -138,9 +138,24 @@ function getLapbulKelolaData(filterJenjang, filterBulan, filterTahun, filterStat
               file: headers.findIndex(function(h) { return h.includes("file") || h.includes("dokumen"); })
           };
 
-          var col = (sourceLabel === 'PAUD') ? 
-                    { tglKirim:0, userKirim:43, tglEdit:44, userEdit:45, tglVerif:46, userVerif:47, statusData:48, ket:49 } : 
-                    { tglKirim:0, userKirim:219, tglEdit:220, userEdit:221, tglVerif:222, userVerif:223, statusData:218, ket:224 };
+          var findHeaderIdx = function(strList, defaultIdx) {
+              for (var k = 0; k < strList.length; k++) {
+                  var found = headers.indexOf(strList[k]);
+                  if (found > -1) return found;
+              }
+              return defaultIdx;
+          };
+
+          var col = {
+              tglKirim: findHeaderIdx(["tanggal kirim", "tgl kirim", "timestamp"], 0),
+              userKirim: findHeaderIdx(["pengirim", "user kirim"], (sourceLabel === 'PAUD' ? 43 : 219)),
+              tglEdit: findHeaderIdx(["tanggal edit", "tgl edit"], (sourceLabel === 'PAUD' ? 44 : 220)),
+              userEdit: findHeaderIdx(["pengedit", "user edit"], (sourceLabel === 'PAUD' ? 45 : 221)),
+              tglVerif: findHeaderIdx(["tanggal verifikasi", "tgl verif"], (sourceLabel === 'PAUD' ? 46 : 222)),
+              userVerif: findHeaderIdx(["verifikator", "user verif"], (sourceLabel === 'PAUD' ? 47 : 223)),
+              statusData: findHeaderIdx(["status data", "status laporan", "status"], (sourceLabel === 'PAUD' ? 48 : 218)),
+              ket: findHeaderIdx(["keterangan", "ket"], (sourceLabel === 'PAUD' ? 49 : 224))
+          };
 
           var startRow = Math.max(2, lastRow - LIMIT_PER_SHEET + 1); 
           var numRows = (lastRow - startRow + 1);
@@ -283,7 +298,9 @@ function getLapbulKelolaData(filterJenjang, filterBulan, filterTahun, filterStat
                   rowDataObj: rowDataObj
               });
           }
-      } catch (e) {}
+      } catch (e) {
+          Logger.log("Error pada fetchDataSmart (" + sourceLabel + "): " + e.toString() + "\n" + (e.stack || ""));
+      }
       return sourceResult;
   };
 
