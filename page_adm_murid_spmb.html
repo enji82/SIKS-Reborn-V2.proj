@@ -271,9 +271,8 @@
             <h6 class="modal-verifikasi-section-title"><i class="fas fa-check-circle mr-2"></i> VERIFIKASI</h6>
 
             <div class="form-group mb-3">
-                <label class="modal-verifikasi-form-label">Keputusan Verifikasi <span class="text-danger">*</span></label>
+                <label class="modal-verifikasi-form-label">Hasil Verifikasi <span class="text-danger">*</span></label>
                 <select class="modal-verifikasi-select font-weight-bold w-100" id="admmuridspmb_verif_status" required>
-                    <option value="">Pilih Keputusan</option>
                     <option value="Diproses">Diproses</option>
                     <option value="Disetujui">Disetujui</option>
                     <option value="Revisi">Revisi</option>
@@ -282,7 +281,7 @@
             </div>
 
             <div class="form-group mb-3" id="admmuridspmb_prevCatatanWrap" style="display:none;">
-                <label class="modal-verifikasi-form-label text-muted"><i class="fas fa-history mr-1"></i>Keterangan Verifikasi Sebelumnya</label>
+                <label class="modal-verifikasi-form-label text-muted"><i class="fas fa-history mr-1"></i>Verifikasi Sebelumnya</label>
                 <div class="modal-verifikasi-prev-catatan" id="admmuridspmb_prevCatatan"></div>
             </div>
 
@@ -293,9 +292,9 @@
 
         </div>
         <div class="modal-verifikasi-footer" id="admmuridspmb_verifFooter">
-            <button type="button" class="sultan-btn sultan-btn-secondary" data-dismiss="modal">
+            <button type="button" class="sultan-btn sultan-btn-secondary font-weight-bold" data-dismiss="modal">
                 <i class="fas fa-times mr-2"></i>BATAL</button>
-            <button type="submit" id="admmuridspmb_btnSimpanVerif" class="sultan-btn sultan-btn-primary" form="admmuridspmb_formVerif">
+            <button type="submit" id="admmuridspmb_btnSimpanVerif" class="sultan-btn sultan-btn-primary font-weight-bold" form="admmuridspmb_formVerif">
                 <i class="fas fa-check mr-2"></i>VERIFIKASI</button>
         </div>
     </form>
@@ -1058,32 +1057,23 @@
           $('#admmuridspmb_prevCatatan').text('');
           $('#admmuridspmb_prevCatatanWrap').hide();
       }
-      var statusLower = String(row.status || '').toLowerCase().trim();
-      var isAlreadyApproved = (statusLower.includes('setuju') || statusLower.includes('acc') || statusLower.includes('ok') || statusLower.includes('valid'));
 
       var selStatus = $('#admmuridspmb_verif_status');
-      if (isAlreadyApproved) {
-        selStatus.empty().append('<option value="' + (row.status || 'Disetujui') + '">' + (row.status || 'Disetujui') + '</option>');
-        selStatus.val(row.status || 'Disetujui').prop('disabled', true);
-        $('#admmuridspmb_verif_catatan').val(row.catatan || '').prop('disabled', true);
-        $('#admmuridspmb_btnSimpanVerif').hide();
-      } else {
-        selStatus.prop('disabled', false);
-        $('#admmuridspmb_verif_catatan').prop('disabled', false);
-        $('#admmuridspmb_btnSimpanVerif').show();
-        selStatus.empty()
-          .append('<option value="">Pilih Keputusan</option>')
-          .append('<option value="Diproses">Diproses</option>')
-          .append('<option value="Disetujui">Disetujui</option>')
-          .append('<option value="Revisi">Revisi</option>')
-          .append('<option value="Ditolak">Ditolak</option>');
-        selStatus.val(row.status || '');
+      selStatus.prop('disabled', false);
+      $('#admmuridspmb_verif_catatan').prop('disabled', false);
+      $('#admmuridspmb_btnSimpanVerif').show();
+
+      var currentStatus = row.status || 'Diproses';
+      if (['Diproses', 'Disetujui', 'Revisi', 'Ditolak'].indexOf(currentStatus) === -1) {
+        currentStatus = 'Diproses';
       }
+      selStatus.val(currentStatus);
+      $('#admmuridspmb_verif_catatan').val(row.catatan || '');
 
       // Reset status tombol verifikasi ke default
       $('#admmuridspmb_btnSimpanVerif').prop('disabled', false).html('<i class="fas fa-check mr-2"></i>VERIFIKASI');
 
-      admmuridspmb_cekStatusVerif(row.status);
+      admmuridspmb_cekStatusVerif(currentStatus);
 
       // Panggil Global Verifikasi
       Sultan.modal.verifikasi({
@@ -1153,6 +1143,9 @@
             item.tgl_verif = tglStr;
           }
           terapkanFilterLokalSpmb();
+          if (typeof sultan_fetchNotifikasi === 'function') {
+            sultan_fetchNotifikasi();
+          }
         } else {
           Sultan.notif.crud.gagal(res.message);
         }
