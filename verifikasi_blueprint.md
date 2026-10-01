@@ -97,4 +97,29 @@ Ketiga kontrol di panel kanan wajib memiliki gaya visual & ukuran yang identik (
   - Tombol **Edit Data** dan **Hapus Data** pada tabel utama memang dikunci (`disabled`) ketika data berstatus `Disetujui` / `OK` untuk mencegah pengubahan data fisik secara tidak sengaja.
   - Namun **Modal Verifikasi** adalah hak akses penuh bagi Admin/Verifikator. Oleh karena itu, dropdown `Hasil Verifikasi`, textarea `Catatan Admin`, dan tombol **VERIFIKASI** (`#btnSimpanVerif`) **TIDAK BOLEH di-disable atau disembunyikan** meskipun status data sudah `Disetujui`. Admin senantiasa dapat mengoreksi atau mengubah kembali keputusan verifikasi sewaktu-waktu (misal mengubah dari `Disetujui` menjadi `Revisi` / `Ditolak`).
 
+---
+
+## 👤 9. Standar Detail Data Informasi PTK / ASN (3 Baris Tanpa Copy Button)
+
+Untuk bagian ringkasan informasi PTK/ASN pada panel detail data (`.sultan-detail-container`), format penyajian dibuat ringkas, rapi, dan cepat dibaca dalam 1 blok item (3 baris) tanpa fungsi/tombol copy:
+
+- **Label Detail**: `NAMA PTK / NIP / NIY` atau `PEGAWAI`
+- **Ukuran Font**: Seluruh baris menggunakan ukuran font yang seragam (`0.85rem` / `small` / `13px`).
+- **Struktur Baris**:
+  - **Baris 1 (Nama PTK)**: Teks Nama PTK/ASN lengkap dengan gelar (*Bold / Font Weight 700*, misal: `SEPTI RAHMAWATI, S.Pd.`).
+  - **Baris 2 (NIP / NIY)**: Nomor NIP/NIY (*Normal Font Weight*, warna abu-abu gelap `#495057` / `.text-secondary`, misal: `198609262022212014`).
+  - **Baris 3 (Unit Kerja / Sekolah)**: Nama Unit Kerja / Sekolah (*Font Weight 600*, warna maroon `#800000` / `.text-maroon`, misal: `SDN PAYAMAN 1`).
+
+**Contoh Snippet HTML**:
+```html
+<div class="sultan-detail-item">
+    <label class="sultan-detail-label">NAMA PTK / NIP / NIY</label>
+    <div class="sultan-detail-value">
+        <div class="font-weight-bold text-dark text-uppercase" id="[page]_vNama">SEPTI RAHMAWATI, S.Pd.</div>
+        <div class="text-secondary small mt-1" id="[page]_vNip">198609262022212014</div>
+        <div class="small mt-1 text-uppercase font-weight-semibold" style="color: #800000;" id="[page]_vUnit">SDN PAYAMAN 1</div>
+    </div>
+</div>
+```
+
 
