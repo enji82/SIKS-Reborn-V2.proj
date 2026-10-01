@@ -222,19 +222,17 @@
       <h6 class="modal-verifikasi-section-title"><i class="fas fa-check-circle mr-2"></i> VERIFIKASI</h6>
 
       <div class="form-group mb-3">
-        <label class="modal-verifikasi-form-label">Keputusan Verifikasi <span class="text-danger">*</span></label>
+        <label class="modal-verifikasi-form-label">Hasil Verifikasi <span class="text-danger">*</span></label>
         <select class="modal-verifikasi-select font-weight-bold w-100" id="arsipijazah_verif_status" required>
-          <option value="">Pilih Keputusan</option>
           <option value="Diproses">Diproses</option>
           <option value="Disetujui">Disetujui</option>
-          <option value="Dicetak">Dicetak</option>
           <option value="Revisi">Revisi</option>
           <option value="Ditolak">Ditolak</option>
         </select>
       </div>
 
       <div class="form-group mb-3" id="arsipijazah_prevCatatanWrap" style="display:none;">
-        <label class="modal-verifikasi-form-label text-muted"><i class="fas fa-history mr-1"></i>Keterangan Verifikasi Sebelumnya</label>
+        <label class="modal-verifikasi-form-label text-muted"><i class="fas fa-history mr-1"></i>Verifikasi Sebelumnya</label>
         <div class="modal-verifikasi-prev-catatan" id="arsipijazah_prevCatatan"></div>
       </div>
 
@@ -247,9 +245,9 @@
 
     </div>
     <div class="modal-verifikasi-footer" id="arsipijazah_verifFooter">
-      <button type="button" class="sultan-btn sultan-btn-secondary" data-dismiss="modal">
+      <button type="button" class="sultan-btn sultan-btn-secondary font-weight-bold" data-dismiss="modal">
         <i class="fas fa-times mr-2"></i>BATAL</button>
-      <button type="submit" id="arsipijazah_btnSimpanVerif" class="sultan-btn sultan-btn-primary"
+      <button type="submit" id="arsipijazah_btnSimpanVerif" class="sultan-btn sultan-btn-primary font-weight-bold"
         form="arsipijazah_formVerif">
         <i class="fas fa-check mr-2"></i>VERIFIKASI</button>
     </div>
@@ -293,7 +291,6 @@
       <option value="SEMUA">Semua Status</option>
       <option value="DIPROSES">Diproses</option>
       <option value="DISETUJUI">Disetujui</option>
-      <option value="DICETAK">Dicetak</option>
       <option value="REVISI">Revisi</option>
       <option value="DITOLAK">Ditolak</option>
     `;
@@ -1018,34 +1015,29 @@
       $('#arsipijazah_vMuridP').text(row.jumlah_murid_p || '0');
       $('#arsipijazah_vTotalMurid').text(row.jumlah_total || '0');
 
-      $('#arsipijazah_verif_status').val(row.status || '');
       var ketLama = (row.catatan && row.catatan !== "-") ? row.catatan : "";
-     if (ketLama) {
-         $('#arsipijazah_prevCatatan').text(ketLama);
-         $('#arsipijazah_prevCatatanWrap').show();
-     } else {
-         $('#arsipijazah_prevCatatan').text('');
-         $('#arsipijazah_prevCatatanWrap').hide();
-     }
-     $('#arsipijazah_verif_catatan').val('');
-
-
-      // Mode Read-Only jika status Disetujui / Locked / Dicetak
-      var statusLower = String(row.status || "").toLowerCase();
-      var isLocked = (statusLower.includes('setuju') || statusLower.includes('acc') || statusLower.includes('ok') || statusLower.includes('valid') || statusLower.includes('cetak'));
-
-      if (isLocked) {
-        $('#arsipijazah_verif_status').val(row.status).prop('disabled', true);
-        $('#arsipijazah_verif_catatan').val(row.catatan || '').prop('disabled', true);
-        $('#arsipijazah_btnSimpanVerif').hide();
+      if (ketLama) {
+          $('#arsipijazah_prevCatatan').text(ketLama);
+          $('#arsipijazah_prevCatatanWrap').show();
       } else {
-        $('#arsipijazah_verif_status').prop('disabled', false);
-        $('#arsipijazah_verif_catatan').prop('disabled', false);
-        $('#arsipijazah_btnSimpanVerif').show();
+          $('#arsipijazah_prevCatatan').text('');
+          $('#arsipijazah_prevCatatanWrap').hide();
       }
 
+      var selStatus = $('#arsipijazah_verif_status');
+      selStatus.prop('disabled', false);
+      $('#arsipijazah_verif_catatan').prop('disabled', false);
+      $('#arsipijazah_btnSimpanVerif').show();
+
+      var currentStatus = row.status || 'Diproses';
+      if (['Diproses', 'Disetujui', 'Revisi', 'Ditolak'].indexOf(currentStatus) === -1) {
+        currentStatus = 'Diproses';
+      }
+      selStatus.val(currentStatus);
+      $('#arsipijazah_verif_catatan').val(row.catatan || '');
+
       $('#arsipijazah_btnSimpanVerif').prop('disabled', false).html('<i class="fas fa-check mr-2"></i>VERIFIKASI');
-      arsipijazah_cekStatusVerif(row.status);
+      arsipijazah_cekStatusVerif(currentStatus);
 
       var docsArr = [];
       if (row.url_file_ijazah) docsArr.push({ label: 'Ijazah', url: row.url_file_ijazah, icon: 'fa-graduation-cap' });
@@ -1054,7 +1046,7 @@
       var defaultUrl = row.url_file_ijazah || row.url_file_transkrip || '';
 
       Sultan.modal.verifikasi({
-        title: isLocked ? 'DETAIL VERIFIKASI ARSIP IJAZAH & TRANSKRIP' : 'VERIFIKASI ARSIP IJAZAH & TRANSKRIP',
+        title: 'VERIFIKASI ARSIP IJAZAH & TRANSKRIP',
         url: defaultUrl,
         docs: docsArr.length > 1 ? docsArr : undefined,
         isImage: false,
@@ -1134,6 +1126,9 @@
             terapkanFilterLokalArsip();
           } else {
             loadArsipData();
+          }
+          if (typeof sultan_fetchNotifikasi === 'function') {
+            sultan_fetchNotifikasi();
           }
         } else {
           Sultan.notif.crud.gagal(res.message);
