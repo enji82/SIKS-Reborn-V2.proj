@@ -195,11 +195,13 @@
             </fieldset>
         </div>
 
-        <div class="modal-footer modal-footer-tambah-edit">
-            <button type="button" class="sultan-btn sultan-btn-secondary sultan-btn-sm" data-dismiss="modal">
-                <i class="fas fa-times mr-2"></i>BATAL</button>
-            <button type="submit" id="tugas_btnSimpanForm" class="sultan-btn sultan-btn-primary sultan-btn-sm">
-                <i class="fas fa-save mr-2"></i>SIMPAN</button>
+        <div class="modal-footer modal-footer-tambah-edit justify-content-between">
+            <button type="button" class="sultan-btn sultan-btn-secondary" data-dismiss="modal">
+                <i class="fas fa-times"></i> BATAL
+            </button>
+            <button type="submit" id="tugas_btnSimpanForm" class="sultan-btn sultan-btn-primary">
+                <i class="fas fa-save"></i> SIMPAN
+            </button>
         </div>
     </form>
 
@@ -256,10 +258,12 @@
 
         </div>
         <div class="modal-verifikasi-footer" id="tugas_verifFooter">
-            <button type="button" class="sultan-btn sultan-btn-secondary sultan-btn-sm" data-dismiss="modal">
-                <i class="fas fa-times mr-2"></i>BATAL</button>
-            <button type="submit" id="tugas_btnSimpanVerif" class="sultan-btn sultan-btn-primary sultan-btn-sm" form="tugas_formVerif">
-                <i class="fas fa-check mr-2"></i>VERIFIKASI</button>
+            <button type="button" class="sultan-btn sultan-btn-secondary" data-dismiss="modal">
+                <i class="fas fa-times"></i> BATAL
+            </button>
+            <button type="submit" id="tugas_btnSimpanVerif" class="sultan-btn sultan-btn-primary" form="tugas_formVerif">
+                <i class="fas fa-check"></i> VERIFIKASI
+            </button>
         </div>
     </form>
 
@@ -1143,16 +1147,27 @@
         } else {
             $('#tugas_prevCatatan').text('');
             $('#tugas_prevCatatanWrap').hide();
-        }
-        $('#tugas_verifStatus').val(''); $('#tugas_verifKeterangan').val('');
-        $('#tugas_verifWajibCatatan').addClass('d-none');
+             var stNorm = String(d.status || "").toUpperCase();
+        var isVerifLocked = (stNorm.includes('SETUJU') || stNorm.includes('ACC') || stNorm.includes('VALID') || stNorm.includes('LOCKED'));
 
+        $('#tugas_verifStatus').val(d.status || '');
+        $('#tugas_verifKeterangan').val(d.keterangan || '');
+
+        if (isVerifLocked) {
+            $('#tugas_verifStatus, #tugas_verifKeterangan').prop('disabled', true);
+            $('#tugas_btnSimpanVerif').hide();
+        } else {
+            $('#tugas_verifStatus, #tugas_verifKeterangan').prop('disabled', false);
+            $('#tugas_btnSimpanVerif').show();
+        }
+
+        tugas_cekStatusVerif($('#tugas_verifStatus').val());
 
         var url = d.fileUrl || "";
 
         // Panggil Global Verifikasi
         Sultan.modal.verifikasi({
-            title: 'VERIFIKASI DATA SK PEMBAGIAN TUGAS',
+            title: isVerifLocked ? 'LIHAT DETAIL VERIFIKASI SK PEMBAGIAN TUGAS' : 'VERIFIKASI DATA SK PEMBAGIAN TUGAS',
             url: url,
             isImage: false
         });
@@ -1163,8 +1178,9 @@
         $('#tugas_verifFooter').appendTo('#global_verifikasiFooterArea');
         $('#global_verifikasiFooterArea').show();
 
-        // Pastikan form dikembalikan saat modal ditutup
         $('#global_modalVerifikasi').off('hidden.bs.modal.tugasverif').on('hidden.bs.modal.tugasverif', function() {
+            $('#tugas_verifStatus, #tugas_verifKeterangan').prop('disabled', false);
+            $('#tugas_btnSimpanVerif').show();
             $('#tugas_verifFooter').appendTo('#tugas_formVerif');
             $('#tugas_formVerif').appendTo('#tugas_templates');
             $('#global_verifikasiFooterArea').hide();
