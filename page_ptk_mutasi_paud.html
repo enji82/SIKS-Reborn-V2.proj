@@ -178,9 +178,10 @@
             <h6 class="modal-verifikasi-section-title"><i class="fas fa-check-circle mr-2"></i> Verifikasi</h6>
 
             <div class="form-group mb-3">
-                <label class="modal-verifikasi-form-label font-weight-bold">Keputusan Verifikasi <span class="text-danger">*</span></label>
+                <label class="modal-verifikasi-form-label font-weight-bold">Hasil Verifikasi <span class="text-danger">*</span></label>
                 <select class="modal-verifikasi-select font-weight-bold w-100" id="ptkpaud_verifStatus" required>
-                    <option value="">-- Pilih Keputusan --</option>
+                    <option value="">-- Pilih Hasil Verifikasi --</option>
+                    <option value="Diproses">Diproses</option>
                     <option value="Disetujui">Disetujui</option>
                     <option value="Revisi">Revisi</option>
                     <option value="Ditolak">Ditolak</option>
@@ -188,7 +189,7 @@
             </div>
 
             <div class="form-group mb-3" id="ptkpaud_prevCatatanWrap" style="display:none;">
-                <label class="modal-verifikasi-form-label text-muted"><i class="fas fa-history mr-1"></i>Keterangan Verifikasi Sebelumnya</label>
+                <label class="modal-verifikasi-form-label text-muted"><i class="fas fa-history mr-1"></i>Verifikasi Sebelumnya</label>
                 <div class="modal-verifikasi-prev-catatan" id="ptkpaud_prevCatatan"></div>
             </div>
 
@@ -201,7 +202,7 @@
 
         <div class="modal-verifikasi-footer" id="ptkpaud_verifFooter">
             <button type="button" class="sultan-btn sultan-btn-secondary sultan-btn-sm" data-dismiss="modal"><i class="fas fa-times mr-2"></i>BATAL</button>
-            <button type="submit" id="ptkpaud_btnVerifEksekusi" class="sultan-btn sultan-btn-primary sultan-btn-sm" form="ptkpaud_formVerif">
+            <button type="submit" id="ptkpaud_btnVerifEksekusi" class="sultan-btn sultan-btn-primary sultan-btn-sm modal-verifikasi-btn-verifikasi" form="ptkpaud_formVerif">
                 <i class="fas fa-check mr-2"></i>VERIFIKASI
             </button>
         </div>
@@ -321,14 +322,14 @@ $(document).ready(function() {
     });
 
     // Toggle catatan box based on status
-    $(document).on('change', '#ptkpaud_verifStatus', function() {
+    $(document).off('change.ptkpaudverif', '#ptkpaud_verifStatus').on('change.ptkpaudverif', '#ptkpaud_verifStatus', function() {
         var s = $(this).val();
         if (s === "Ditolak" || s === "Revisi") {
             $('#ptkpaud_reqCatatanVerif').show();
-            $('#ptkpaud_verifCatatan').prop('required', true);
+            $('#ptkpaud_verifCatatan').prop('required', true).attr('placeholder', 'Wajib diisi alasan/catatan verifikasi (min 5 karakter)...');
         } else {
             $('#ptkpaud_reqCatatanVerif').hide();
-            $('#ptkpaud_verifCatatan').prop('required', false).val('');
+            $('#ptkpaud_verifCatatan').prop('required', false).attr('placeholder', 'Catatan admin (opsional)...');
         }
     });
 
@@ -361,29 +362,37 @@ $(document).ready(function() {
         var mainStatus = statusParts[0];
         var catatanTampil = row.catatan || statusParts[1] || '';
 
-        if (mainStatus === 'Tolak') {
-            $('#ptkpaud_verifStatus').val('Tolak');
-            $('#ptkpaud_reqCatatanVerif').show();
-            $('#ptkpaud_verifCatatan').val(catatanTampil).prop('required', true);
-        } else if (mainStatus === 'Setuju') {
-            $('#ptkpaud_verifStatus').val('Setuju');
-            $('#ptkpaud_reqCatatanVerif').hide();
-            $('#ptkpaud_verifCatatan').val('').prop('required', false);
+        var currentStatus = mainStatus ? String(mainStatus).trim() : '';
+        if (currentStatus) {
+            if (currentStatus.toLowerCase().includes('setuju') || currentStatus.toLowerCase().includes('acc')) currentStatus = 'Disetujui';
+            else if (currentStatus.toLowerCase().includes('tolak')) currentStatus = 'Ditolak';
+            else if (currentStatus.toLowerCase().includes('revisi')) currentStatus = 'Revisi';
+            
+            var matchOpt = $('#ptkpaud_verifStatus option').filter(function() {
+                return String($(this).val()).toLowerCase() === currentStatus.toLowerCase();
+            }).val();
+            $('#ptkpaud_verifStatus').val(matchOpt || currentStatus);
         } else {
-            $('#ptkpaud_verifStatus').val('');
-            $('#ptkpaud_reqCatatanVerif').hide();
-            $('#ptkpaud_verifCatatan').val('').prop('required', false);
+            $('#ptkpaud_verifStatus').val("Diproses");
         }
+
+        if (catatanTampil) {
+            $('#ptkpaud_prevCatatan').text(catatanTampil);
+            $('#ptkpaud_prevCatatanWrap').show();
+        } else {
+            $('#ptkpaud_prevCatatan').text('');
+            $('#ptkpaud_prevCatatanWrap').hide();
+        }
+        $('#ptkpaud_verifCatatan').val('');
+        $('#ptkpaud_verifStatus').trigger('change');
 
         $('#ptkpaud_verifIframe').addClass('d-none').attr('src', ''); 
         $('#ptkpaud_verifNoFile').addClass('d-none').removeClass('d-flex');
         $('#ptkpaud_loaderVerif').removeClass('d-flex').addClass('d-none');
 
-        if (row.status !== 'Pending') {
-            $('#ptkpaud_btnVerifEksekusi').hide();
-        } else {
-            $('#ptkpaud_btnVerifEksekusi').show();
-        }
+        // Patuh Section 8 verifikasi_blueprint.md: Form verifikasi & tombol simpan selalu aktif untuk admin
+        $('#ptkpaud_verifStatus, #ptkpaud_verifCatatan').prop('disabled', false);
+        $('#ptkpaud_btnVerifEksekusi').show();
 
         var fileUrl = row.file_sk || '';
         if (fileUrl && fileUrl.length > 5) {
@@ -1217,16 +1226,25 @@ function ptkpaud_eksekusiMutasi(idUsulan, keputusan) {
         google.script.run
             .withSuccessHandler(function(res){
                 if (res === 'Sukses') {
-                        var $modal = $('#global_modalVerifikasi');
-                        $modal.one('hidden.bs.modal', function () {
-                            Sultan.notif.crud.sukses('Usulan berhasil diproses!');
-                            ptkpaud_tarikDataUsulan();
-                        });
-                        $modal.modal('hide');
-                    } else { Sultan.notif.gagal(res || 'Terjadi kesalahan'); }
-                })
-                .withFailureHandler(function(err){ Sultan.notif.crud.gagal(err.message || err || 'Terjadi kesalahan server'); })
-                .eksekusiMutasiPTKPAUD(idUsulan, keputusan, PTKPAUD_USER_AKTIF);
+                    Sultan.modal.tutupVerifikasi();
+                    Sultan.notif.crud.sukses('Usulan berhasil diproses!');
+                    
+                    var row = PTKPAUD_DATA_USULAN.find(r => String(r.id_usulan) === String(idUsulan));
+                    if (row) {
+                        var parts = keputusan.split('|');
+                        row.status = parts[0];
+                        row.catatan = parts[1] || '';
+                        row.user_eksekutor = PTKPAUD_USER_AKTIF;
+                    }
+                    SultanCRUD.updateRowPreserved(
+                        PTKPAUD_TABEL_USULAN_INSTANCE,
+                        function() { ptkpaud_terapkanFilterLokal(); }
+                    );
+                    if (typeof sultan_fetchNotifikasi === 'function') sultan_fetchNotifikasi();
+                } else { Sultan.notif.gagal(res || 'Terjadi kesalahan'); }
+            })
+            .withFailureHandler(function(err){ Sultan.notif.crud.gagal(err.message || err || 'Terjadi kesalahan server'); })
+            .eksekusiMutasiPTKPAUD(idUsulan, keputusan, PTKPAUD_USER_AKTIF);
     });
 }
 
