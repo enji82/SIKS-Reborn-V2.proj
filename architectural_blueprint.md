@@ -98,6 +98,29 @@ Dokumen ini berisi cetak biru (blueprint) taktis untuk mengoptimalkan performa, 
         *   **Kolom Status:** Menggunakan `SultanUI.renderBadgeStatus()` yang menyatu dengan tombol baca catatan revisi/penolakan.
         *   **Kolom Paling Kanan:** Tombol Aksi terstandarisasi (`SultanUI.renderTombolAksi()` atau grup aksi Sultan: Verifikasi, Edit, Hapus).
 
+### G. Standarisasi Terpusat Modal Verifikasi ([verifikasi_blueprint.md](file:///Users/macbookpro/Documents/GitHub/SIKS-Reborn-V2.proj/verifikasi_blueprint.md))
+* **File Rujukan Resmi:** [verifikasi_blueprint.md](file:///Users/macbookpro/Documents/GitHub/SIKS-Reborn-V2.proj/verifikasi_blueprint.md)
+* **File Target:** [css_sultan.html](file:///Users/macbookpro/Documents/GitHub/SIKS-Reborn-V2.proj/css_sultan.html), [javascript.html](file:///Users/macbookpro/Documents/GitHub/SIKS-Reborn-V2.proj/javascript.html), [index.html](file:///Users/macbookpro/Documents/GitHub/SIKS-Reborn-V2.proj/index.html) & `page_*_kelola.html` / `page_*.html`
+* **Standar Baku Modal Verifikasi:**
+    1. **Layout 2 Panel Split Ratio (70% : 30%):**
+        * **Panel Kiri (Preview Dokumen - 70%):** `.modal-verifikasi-preview` (`flex: 1 1 70% !important; width: 70% !important;`) memberikan tampilan PDF/Gambar yang luas dan nyaman dengan fallback loading spinner.
+        * **Panel Kanan (Detail Data & Form Verifikasi - 30%):** `.modal-verifikasi-data` (`flex: 0 0 30% !important; width: 30% !important; min-width: 280px !important;`) memuat ringkasan detail data dan form verifikasi admin.
+    2. **Standar Penamaan Label Form Verifikasi:**
+        * Label Keputusan dinamai **"Hasil Verifikasi"** (sebelumnya *Keputusan Verifikasi*).
+        * Label Catatan Riwayat dinamai **"Verifikasi Sebelumnya"** (sebelumnya *Keterangan Verifikasi Sebelumnya*).
+    3. **Pilihan Opsi Dropdown Status:**
+        * Opsi default wajib memuat: `-- Pilih Hasil Verifikasi --`, `Diproses`, `Disetujui`, `Revisi`, `Ditolak`.
+        * Halaman khusus yang memiliki alur kerja tambahan dapat menambahkan opsi sesuai kebutuhan (misal: `Diajukan`, `Dicetak`, dsb.).
+    4. **Auto Pre-Select & Validasi Dinamis:**
+        * Dropdown status otomatis terisi (*pre-selected*) sesuai `statusData` saat ini dari objek data yang diperiksa (misal langsung terpilih `Disetujui` / `Revisi` / `Diproses`).
+        * Jika status `Revisi` atau `Ditolak`, indikator bintang merah (`*`) pada Catatan Admin wajib tampil, textarea menjadi `required`, dan placeholder memberi instruksi wajib.
+    5. **Dimensi Kontrol Seragam (Adaptif 30%):**
+        * Dropdown select, kotak Verifikasi Sebelumnya, dan textarea Catatan Admin wajib memiliki `width: 100% !important; box-sizing: border-box !important; padding: 0.75rem 1rem !important; border-radius: 10px !important;` agar berukuran presisi dan adaptif terhadap lebar 30%.
+    6. **Pewarnaan Tombol Aksi VERIFIKASI:**
+        * Tombol **VERIFIKASI** (`.modal-verifikasi-btn-verifikasi` / `button.sultan-btn-primary`) wajib sewarna dengan header modal (`linear-gradient(135deg, #007bff 0%, #0056b3 100%)`).
+    7. **Optimasi In-Place Cache Update (Zero-DB Reload):**
+        * Setelah verifikasi sukses, update cache objek lokal di memori klien dan re-render DataTables dengan mempertahankan pagination & scroll position (`draw(false)`), tanpa perlu me-reload database Apps Script yang lambat.
+
 ---
 
 ## 🔍 3. Panduan Verifikasi (Uji Kelayakan)
@@ -108,3 +131,4 @@ Dokumen ini berisi cetak biru (blueprint) taktis untuk mengoptimalkan performa, 
 5.  **Tampilan Mobile:** Halaman kelola data dan dashboard tidak boleh menampilkan scrollbar horizontal saat dibuka di resolusi layar 375px (iPhone SE) hingga 414px.
 6.  **Konsistensi Dashboard Multi Tab:** Pada halaman dashboard berjenis Multi Tab (seperti Laporan Bulanan), User biasa tidak melihat switcher tab Rekap dan langsung mengunci di Tab Unit, sedangkan Admin mendarat di Tab Rekap secara default dan dapat berpindah ke Tab Unit secara fleksibel.
 7.  **Integritas CRUD & Pagination:** Pada halaman CRUD (seperti Kelola Laporan Bulan), tombol Edit dan Hapus wajib terkunci jika data Disetujui, dan verifikasi admin tidak boleh menggeser admin dari halaman tabel yang sedang diperiksa.
+8.  **Standar Modal Verifikasi:** Modal verifikasi di semua halaman wajib menerapkan pembagian 70:30, warna tombol verifikasi biru senada dengan header modal, label Hasil Verifikasi & Verifikasi Sebelumnya, dropdown terisi otomatis sesuai status data, dan dimensi kontrol terstandar 100% adaptif.

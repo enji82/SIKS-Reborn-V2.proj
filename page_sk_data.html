@@ -237,9 +237,10 @@
             <h6 class="modal-verifikasi-section-title"><i class="fas fa-check-circle mr-2"></i> VERIFIKASI</h6>
 
             <div class="form-group mb-3">
-                <label class="modal-verifikasi-form-label">Keputusan Verifikasi <span class="text-danger">*</span></label>
-                <select class="modal-verifikasi-select font-weight-bold" id="tugas_verifStatus" required>
-                    <option value="">-- Pilih Keputusan --</option>
+                <label class="modal-verifikasi-form-label font-weight-bold">Hasil Verifikasi <span class="text-danger">*</span></label>
+                <select class="modal-verifikasi-select font-weight-bold w-100" id="tugas_verifStatus" required>
+                    <option value="">-- Pilih Hasil Verifikasi --</option>
+                    <option value="Diproses">Diproses</option>
                     <option value="Disetujui">Disetujui</option>
                     <option value="Revisi">Revisi</option>
                     <option value="Ditolak">Ditolak</option>
@@ -247,22 +248,22 @@
             </div>
 
             <div class="form-group mb-3" id="tugas_prevCatatanWrap" style="display:none;">
-                <label class="modal-verifikasi-form-label text-muted"><i class="fas fa-history mr-1"></i>Keterangan Verifikasi Sebelumnya</label>
+                <label class="modal-verifikasi-form-label text-muted"><i class="fas fa-history mr-1"></i>Verifikasi Sebelumnya</label>
                 <div class="modal-verifikasi-prev-catatan" id="tugas_prevCatatan"></div>
             </div>
 
             <div class="form-group mb-0">
-                <label class="modal-verifikasi-form-label">Catatan Admin <span id="tugas_verifWajibCatatan" class="text-danger d-none">*</span></label>
-                <textarea class="modal-verifikasi-textarea" id="tugas_verifKeterangan" rows="3" placeholder="Wajib diisi jika ditolak / direvisi..."></textarea>
+                <label class="modal-verifikasi-form-label font-weight-bold">Catatan Admin <span id="tugas_verifWajibCatatan" class="text-danger d-none">*</span></label>
+                <textarea class="modal-verifikasi-textarea w-100" id="tugas_verifKeterangan" rows="3" placeholder="Wajib diisi jika ditolak / direvisi..."></textarea>
             </div>
 
         </div>
         <div class="modal-verifikasi-footer" id="tugas_verifFooter">
-            <button type="button" class="sultan-btn sultan-btn-secondary" data-dismiss="modal">
-                <i class="fas fa-times"></i> BATAL
+            <button type="button" class="sultan-btn sultan-btn-secondary sultan-btn-sm" data-dismiss="modal">
+                <i class="fas fa-times mr-2"></i>BATAL
             </button>
-            <button type="submit" id="tugas_btnSimpanVerif" class="sultan-btn sultan-btn-primary" form="tugas_formVerif">
-                <i class="fas fa-check"></i> VERIFIKASI
+            <button type="submit" id="tugas_btnSimpanVerif" class="sultan-btn sultan-btn-primary sultan-btn-sm modal-verifikasi-btn-verifikasi" form="tugas_formVerif">
+                <i class="fas fa-check mr-2"></i>VERIFIKASI
             </button>
         </div>
     </form>
@@ -1152,7 +1153,15 @@
         var stNorm = String(d.status || "").toUpperCase();
         var isVerifLocked = (stNorm.includes('SETUJU') || stNorm.includes('ACC') || stNorm.includes('VALID') || stNorm.includes('LOCKED'));
 
-        $('#tugas_verifStatus').val(d.status || '');
+        var currentStatus = (d && d.status) ? String(d.status).trim() : '';
+        if (currentStatus) {
+            var matchOpt = $('#tugas_verifStatus option').filter(function() {
+                return String($(this).val()).toLowerCase() === currentStatus.toLowerCase();
+            }).val();
+            $('#tugas_verifStatus').val(matchOpt || currentStatus);
+        } else {
+            $('#tugas_verifStatus').val("Diproses");
+        }
         $('#tugas_verifKeterangan').val(d.keterangan || '');
 
         if (isVerifLocked) {
@@ -1191,10 +1200,10 @@
 
     function tugas_cekStatusVerif(val) {
         if (val === 'Revisi' || val === 'Ditolak') {
-            $('#tugas_verifKeterangan').attr('placeholder', 'Jelaskan alasan revisi/penolakan kepada user...').focus();
+            $('#tugas_verifKeterangan').prop('required', true).attr('placeholder', 'Wajib diisi alasan/catatan verifikasi (min 5 karakter)...');
             $('#tugas_verifWajibCatatan').removeClass('d-none');
         } else {
-            $('#tugas_verifKeterangan').attr('placeholder', 'Catatan opsional (misal: Data sudah sesuai).');
+            $('#tugas_verifKeterangan').prop('required', false).attr('placeholder', 'Catatan admin (opsional)...');
             $('#tugas_verifWajibCatatan').addClass('d-none');
         }
     }
