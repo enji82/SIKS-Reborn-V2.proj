@@ -1483,7 +1483,11 @@ function getNotifikasiLapbul(role, unit) {
                   namaSd: rNama,
                   kriteria: "Laporan Bulan " + row[idx.bulan] + " " + row[idx.tahun],
                   status: status,
-                  waktu: (idx.tglVerif > -1 && row[idx.tglVerif] && !isDiproses) ? row[idx.tglVerif] : row[idx.tglKirim],
+                  waktu: (idx.tglVerif > -1 && row[idx.tglVerif] && !isDiproses) 
+                          ? row[idx.tglVerif] 
+                          : ((idx.tglKirim > -1 && row[idx.tglKirim]) 
+                              ? row[idx.tglKirim] 
+                              : (row[idx.bulan] && row[idx.tahun] ? "01 " + row[idx.bulan] + " " + row[idx.tahun] : "-")),
                   isRead: isRead
                 });
             }
