@@ -108,7 +108,7 @@ Untuk bagian ringkasan informasi PTK/ASN pada panel detail data (`.sultan-detail
 - **Struktur Baris**:
   - **Baris 1 (Nama PTK)**: Teks Nama PTK/ASN lengkap dengan gelar (*Bold / Font Weight 700*, misal: `SEPTI RAHMAWATI, S.Pd.`).
   - **Baris 2 (NIP / NIY)**: Nomor NIP/NIY (*Normal Font Weight*, warna abu-abu gelap `#495057` / `.text-secondary`, misal: `198609262022212014`).
-  - **Baris 3 (Unit Kerja / Sekolah)**: Nama Unit Kerja / Sekolah (*Font Weight 600*, warna maroon `#800000` / `.text-maroon`, misal: `SDN PAYAMAN 1`).
+  - **Baris 3 (Unit Kerja / Sekolah)**: Nama Unit Kerja / Sekolah (*Font Weight 600*, warna maroon adaptif `.text-maroon` — otomatis menyesuaikan `#800000` di Light Mode dan `#ff9f9f` di Dark Mode agar kontras & jelas dibaca, misal: `SDN PAYAMAN 1`).
 
 **Contoh Snippet HTML**:
 ```html
@@ -117,7 +117,7 @@ Untuk bagian ringkasan informasi PTK/ASN pada panel detail data (`.sultan-detail
     <div class="sultan-detail-value">
         <div class="font-weight-bold text-dark text-uppercase" id="[page]_vNama">SEPTI RAHMAWATI, S.Pd.</div>
         <div class="text-secondary mt-1" id="[page]_vNip">198609262022212014</div>
-        <div class="mt-1 text-uppercase font-weight-semibold" style="color: #800000;" id="[page]_vUnit">SDN PAYAMAN 1</div>
+        <div class="mt-1 text-uppercase font-weight-semibold text-maroon" id="[page]_vUnit">SDN PAYAMAN 1</div>
     </div>
 </div>
 ```
