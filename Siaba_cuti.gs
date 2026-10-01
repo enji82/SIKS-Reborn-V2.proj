@@ -870,9 +870,7 @@ function getNotifikasiSuratCuti(role, unit) {
             }
 
             // Penentuan Waktu Notifikasi
-            var waktuNotif = row[47]; // Tgl Verif
-            if (isDiproses) waktuNotif = row[45]; // Tgl Unggah
-            if (labelStatus === "Belum Unggah") waktuNotif = row[13] || row[15]; // Tgl Pengajuan Cuti
+            var waktuNotif = (isDiproses ? (row[45] || row[15] || row[13]) : (row[47] || row[45] || row[15] || row[13])) || row[11] || "-";
 
             if (!isAdmin && isDisetujui && isRead) {
                 // Jangan dimasukkan ke daftar untuk user jika sudah disetujui dan dibaca
@@ -883,7 +881,7 @@ function getNotifikasiSuratCuti(role, unit) {
                     nama: row[1], 
                     jenis: row[3], 
                     status: labelStatus, 
-                    waktu: waktuNotif || "-", 
+                    waktu: waktuNotif, 
                     isRead: isRead 
                 });
             }

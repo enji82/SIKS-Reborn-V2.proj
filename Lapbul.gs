@@ -1417,13 +1417,21 @@ function getNotifikasiLapbul(role, unit) {
           lastCol = newCol;
         }
 
+        var findHeaderIdx = function(keys) {
+          for (var k = 0; k < keys.length; k++) {
+            var pos = headers.indexOf(keys[k]);
+            if (pos > -1) return pos;
+          }
+          return -1;
+        };
+
         var idx = {
-          nama: headers.indexOf("nama sekolah") > -1 ? headers.indexOf("nama sekolah") : headers.indexOf("nama"),
+          nama: findHeaderIdx(["nama sekolah", "nama"]),
           bulan: headers.indexOf("bulan"),
           tahun: headers.indexOf("tahun"),
-          status: headers.indexOf("status data") > -1 ? headers.indexOf("status data") : headers.indexOf("status"),
-          tglKirim: headers.indexOf("tgl kirim") > -1 ? headers.indexOf("tgl kirim") : headers.indexOf("waktu kirim"),
-          tglVerif: headers.indexOf("tgl verif") > -1 ? headers.indexOf("tgl verif") : headers.indexOf("waktu verif"),
+          status: findHeaderIdx(["status data", "status"]),
+          tglKirim: findHeaderIdx(["tgl kirim", "waktu kirim", "tgl upload", "waktu upload", "timestamp", "tanggal"]),
+          tglVerif: findHeaderIdx(["tgl verif", "waktu verif", "tgl approval", "waktu approval"]),
           readBy: idxRead
         };
 
