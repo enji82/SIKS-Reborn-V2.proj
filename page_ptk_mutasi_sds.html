@@ -190,9 +190,9 @@
             <h6 class="modal-verifikasi-section-title"><i class="fas fa-check-circle mr-2"></i> Verifikasi</h6>
 
             <div class="form-group mb-3">
-                <label class="modal-verifikasi-form-label font-weight-bold">Keputusan Verifikasi <span class="text-danger">*</span></label>
+                <label class="modal-verifikasi-form-label font-weight-bold">Hasil Verifikasi <span class="text-danger">*</span></label>
                 <select class="modal-verifikasi-select font-weight-bold w-100" id="ptksds_verifStatus" required>
-                    <option value="">-- Pilih Keputusan --</option>
+                    <option value="Diproses">Diproses</option>
                     <option value="Disetujui">Disetujui</option>
                     <option value="Revisi">Revisi</option>
                     <option value="Ditolak">Ditolak</option>
@@ -200,13 +200,13 @@
             </div>
 
             <div class="form-group mb-3" id="ptksds_prevCatatanWrap" style="display:none;">
-                <label class="modal-verifikasi-form-label text-muted"><i class="fas fa-history mr-1"></i>Keterangan Verifikasi Sebelumnya</label>
-                <div class="modal-verifikasi-prev-catatan" id="ptksds_prevCatatan"></div>
+                <label class="modal-verifikasi-form-label text-muted"><i class="fas fa-history mr-1"></i>Verifikasi Sebelumnya</label>
+                <div class="modal-verifikasi-prev-catatan w-100" id="ptksds_prevCatatan"></div>
             </div>
 
             <div class="form-group mb-0">
                 <label class="modal-verifikasi-form-label font-weight-bold">Catatan Admin <span id="ptksds_reqCatatanVerif" class="text-danger" style="display:none;">*</span></label>
-                <textarea class="modal-verifikasi-textarea w-100" id="ptksds_verifCatatan" rows="3" placeholder="Wajib diisi jika ditolak / direvisi..."></textarea>
+                <textarea class="modal-verifikasi-textarea w-100" id="ptksds_verifCatatan" rows="3" placeholder="Tuliskan catatan verifikasi..."></textarea>
             </div>
 
         </div>
@@ -214,7 +214,7 @@
         <div class="modal-verifikasi-footer" id="ptksds_verifFooter">
             <button type="button" class="sultan-btn sultan-btn-secondary sultan-btn-sm" data-dismiss="modal"><i
                     class="fas fa-times mr-2"></i>BATAL</button>
-            <button type="submit" id="ptksds_btnVerifEksekusi" class="sultan-btn sultan-btn-primary sultan-btn-sm"
+            <button type="submit" id="ptksds_btnVerifEksekusi" class="sultan-btn sultan-btn-primary sultan-btn-sm modal-verifikasi-btn-verifikasi"
                 form="ptksds_formVerif">
                 <i class="fas fa-check mr-2"></i>VERIFIKASI
             </button>
@@ -1083,7 +1083,7 @@ function ptksds_bukaModalVerifikasi(row) {
             $('#ptksds_prevCatatanWrap').hide();
         }
 
-        // Standardized mapping: Tolak -> Ditolak, Setuju -> Disetujui
+        // Standardized mapping: Tolak -> Ditolak, Setuju -> Disetujui, Pending -> Diproses
         if (mainStatus === 'Tolak' || mainStatus === 'Ditolak') {
             $('#ptksds_verifStatus').val('Ditolak');
             $('#ptksds_reqCatatanVerif').show();
@@ -1097,17 +1097,18 @@ function ptksds_bukaModalVerifikasi(row) {
             $('#ptksds_reqCatatanVerif').show();
             $('#ptksds_verifCatatan').val('').prop('required', true);
         } else {
-            $('#ptksds_verifStatus').val('');
+            $('#ptksds_verifStatus').val('Diproses');
             $('#ptksds_reqCatatanVerif').hide();
             $('#ptksds_verifCatatan').val('').prop('required', false);
         }
 
-
-
-        if (row.status !== 'Pending') {
-            $('#ptksds_btnVerifEksekusi').hide();
-        } else {
+        // Tombol eksekusi verifikasi selalu aktif untuk Admin agar keputusan dapat diperbarui
+        if (PTKSDS_IS_ADMIN) {
             $('#ptksds_btnVerifEksekusi').show();
+            $('#ptksds_verifStatus, #ptksds_verifCatatan').prop('disabled', false);
+        } else {
+            $('#ptksds_btnVerifEksekusi').hide();
+            $('#ptksds_verifStatus, #ptksds_verifCatatan').prop('disabled', true);
         }
 
         var fileUrl = row.file_sk || '';
@@ -1163,7 +1164,30 @@ function ptksds_eksekusiMutasi(idUsulan, keputusan) {
                         var $modal = $('#global_modalVerifikasi');
                         $modal.one('hidden.bs.modal', function () {
                             Sultan.notif.crud.sukses('Usulan berhasil diproses!');
-                            ptksds_tarikDataUsulan();
+
+                            // In-place update cache tanpa reload server (Zero DB Reload)
+                            var targetRow = PTKSDS_CACHE_USULAN.find(function(item) {
+                                return String(item.id_usulan) === String(idUsulan);
+                            });
+                            if (targetRow) {
+                                targetRow.status = keputusan;
+                                targetRow.catatan = keputusan.includes('|') ? keputusan.split('|')[1] : '';
+                                targetRow.user_eksekutor = PTKSDS_USER_AKTIF;
+                                targetRow.tanggal_eksekusi = new Date().toLocaleString('id-ID');
+                            }
+
+                            // Preserved DataTables redraw & notifikasi update
+                            if (typeof SultanCRUD !== 'undefined' && typeof SultanCRUD.updateRowPreserved === 'function') {
+                                SultanCRUD.updateRowPreserved(PTKSDS_TABEL_USULAN_INSTANCE, function() {
+                                    ptksds_terapkanFilterLokal();
+                                });
+                            } else {
+                                ptksds_terapkanFilterLokal();
+                            }
+
+                            if (typeof sultan_fetchNotifikasi === 'function') {
+                                sultan_fetchNotifikasi();
+                            }
                         });
                         $modal.modal('hide');
                     } else { Sultan.notif.gagal(res || 'Terjadi kesalahan'); }
