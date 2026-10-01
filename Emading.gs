@@ -380,7 +380,7 @@ function simpanArtikelEmading(payload) {
       var data = sheet.getDataRange().getDisplayValues();
       var rowIndex = -1;
       for (var i = 1; i < data.length; i++) {
-        if (String(data[i][0]).trim() === idArtikel) {
+        if (String(data[i][0]).trim().toLowerCase() === idArtikel.toLowerCase()) {
           rowIndex = i + 1;
           // Validasi Hak Akses: Hanya pembuat atau role admin yang berhak
           var pembuat = String(data[i][5] || "").trim().toLowerCase();
@@ -388,7 +388,7 @@ function simpanArtikelEmading(payload) {
           var roleReq = String(payload.userRole || "").trim().toLowerCase();
           var isAdminRole = roleReq.indexOf("admin") !== -1 || roleReq.indexOf("verifikator") !== -1 || roleReq.indexOf("korwil") !== -1;
 
-          if (!isAdminRole && pembuat !== userReq) {
+          if (!isAdminRole && pembuat && userReq && pembuat !== userReq) {
             return JSON.stringify({ error: "Anda tidak memiliki hak akses untuk mengedit artikel ini." });
           }
           break;
@@ -396,7 +396,7 @@ function simpanArtikelEmading(payload) {
       }
 
       if (rowIndex === -1) {
-        return JSON.stringify({ error: "Artikel tidak ditemukan untuk diupdate." });
+        return JSON.stringify({ error: "Artikel (" + idArtikel + ") tidak ditemukan untuk diupdate." });
       }
 
       // Update kolom: Judul, Isi, Kategori, Pengunggah, UnitKerja, FotoUrl, VideoUrl, LampiranUrl, LampiranNama, Tags, PosisiFoto
