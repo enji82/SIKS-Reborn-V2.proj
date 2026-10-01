@@ -1963,22 +1963,38 @@
 
       // Helper pemformat tanggal yang bersih & manusiawi
       function formatNotifTime(raw) {
-        if (!raw) return "-";
+        if (!raw || raw === "-" || raw === "undefined" || raw === "null") return "-";
         try {
           var str = String(raw).trim().replace(/'/g, "");
+          if (!str || str === "-") return "-";
+
+          // Format DD-MM-YYYY atau YYYY-MM-DD
+          if (/^\d{1,2}[-\/]\d{1,2}[-\/]\d{4}/.test(str) || /^\d{4}[-\/]\d{1,2}[-\/]\d{1,2}/.test(str)) {
+            var p = str.split(/[-\/]/);
+            if (p[0].length === 4) {
+              // YYYY-MM-DD
+              str = p[1] + '/' + p[2] + '/' + p[0];
+            } else {
+              // DD-MM-YYYY
+              str = p[1] + '/' + p[0] + '/' + p[2];
+            }
+          }
+
           var d = new Date(str);
           if (!isNaN(d.getTime())) {
             var dateStr = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
-            var timeStr = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+            var timeStr = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace(':', '.');
+            if (timeStr === "00.00" || timeStr === "0.00") return dateStr;
             return dateStr + ' ' + timeStr;
           }
+
           if (str.indexOf('T') > -1) {
             var parts = str.split('T');
             return parts[0];
           }
-          return str.split(' ')[0];
+          return str.split(' ')[0] || "-";
         } catch (e) {
-          return String(raw).split(' ')[0];
+          return String(raw).split(' ')[0] || "-";
         }
       }
 
@@ -2003,13 +2019,14 @@
 
           if (mData.recent && Array.isArray(mData.recent)) {
             mData.recent.forEach(function (notif) {
-              var content = notif.nama || notif.namaSd || notif.nomor || 'Pemberitahuan';
-              var sub = notif.kriteria || notif.tujuan || notif.berkas || notif.jenis || '';
-              var tglDisplay = formatNotifTime(notif.waktu || notif.tglVerif || notif.tglInput || notif.tglUnggah || "");
+              var content = notif.nama || notif.namaSd || notif.sekolah || notif.pemohon || notif.nomor || 'Pemberitahuan';
+              var sub = notif.kriteria || notif.jenis || notif.berkas || notif.tujuan || notif.kategori || '';
+              var rawWaktu = notif.waktu || notif.tglVerif || notif.tglInput || notif.tglUnggah || notif.tglKirim || "";
+              var tglDisplay = formatNotifTime(rawWaktu);
 
               var statusTxt = String(notif.status || "PENDING").toUpperCase();
               var chipClass = 'chip-warning';
-              if (statusTxt.includes('SETUJU') || statusTxt.includes('OK') || statusTxt.includes('VALID')) chipClass = 'chip-success';
+              if (statusTxt.includes('SETUJU') || statusTxt.includes('OK') || statusTxt.includes('VALID') || statusTxt.includes('SELESAI')) chipClass = 'chip-success';
               else if (statusTxt.includes('TOLAK') || statusTxt.includes('REVISI')) chipClass = 'chip-danger';
 
               html += `
