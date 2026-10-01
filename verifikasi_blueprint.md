@@ -82,3 +82,14 @@ Ketiga kontrol di panel kanan wajib memiliki gaya visual & ukuran yang identik (
   2. Panggil fungsi filter lokal (`terapkanFilterLokal()`) untuk memicu redraw DataTables dengan mengunci halaman pagination & scroll (`draw(false)`).
   3. **TIDAK PERLU** melakukan fetch/query ulang seluruh database Apps Script.
   4. Jalankan `sultan_fetchNotifikasi()` untuk memperbarui badge notifikasi secara real-time.
+
+---
+
+## 🔓 8. Aksesibilitas Perubahan Status (Always Editable for Admin)
+
+- **Aturan Baku**: Dalam status data apapun (termasuk status `Disetujui`, `OK`, `Valid`, `Revisi`, `Ditolak`, atau `Diproses`), admin **SELALU dapat mengubah status** dan menyimpan catatan baru di dalam Modal Verifikasi.
+- **Pembedaan Kunci Akses**:
+  - Tombol **Edit Data** dan **Hapus Data** pada tabel utama memang dikunci (`disabled`) ketika data berstatus `Disetujui` / `OK` untuk mencegah pengubahan data fisik secara tidak sengaja.
+  - Namun **Modal Verifikasi** adalah hak akses penuh bagi Admin/Verifikator. Oleh karena itu, dropdown `Hasil Verifikasi`, textarea `Catatan Admin`, dan tombol **VERIFIKASI** (`#btnSimpanVerif`) **TIDAK BOLEH di-disable atau disembunyikan** meskipun status data sudah `Disetujui`. Admin senantiasa dapat mengoreksi atau mengubah kembali keputusan verifikasi sewaktu-waktu (misal mengubah dari `Disetujui` menjadi `Revisi` / `Ditolak`).
+
+
