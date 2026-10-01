@@ -296,9 +296,9 @@
             <h6 class="modal-verifikasi-section-title"><i class="fas fa-check-circle mr-2"></i> Verifikasi</h6>
 
             <div class="form-group mb-3">
-                <label class="modal-verifikasi-form-label">Keputusan Verifikasi <span class="text-danger">*</span></label>
-                <select class="modal-verifikasi-select font-weight-bold" id="efilekelola_v_status" required>
-                    <option value="">-- Pilih Keputusan --</option>
+                <label class="modal-verifikasi-form-label font-weight-bold">Hasil Verifikasi <span class="text-danger">*</span></label>
+                <select class="modal-verifikasi-select font-weight-bold w-100" id="efilekelola_v_status" required>
+                    <option value="Diproses">Diproses</option>
                     <option value="Disetujui">Disetujui</option>
                     <option value="Revisi">Revisi</option>
                     <option value="Ditolak">Ditolak</option>
@@ -306,19 +306,19 @@
             </div>
 
             <div class="form-group mb-3" id="efilekelola_prevCatatanWrap" style="display:none;">
-                <label class="modal-verifikasi-form-label text-muted"><i class="fas fa-history mr-1"></i>Keterangan Verifikasi Sebelumnya</label>
-                <div class="modal-verifikasi-prev-catatan" id="efilekelola_prevCatatan"></div>
+                <label class="modal-verifikasi-form-label text-muted"><i class="fas fa-history mr-1"></i>Verifikasi Sebelumnya</label>
+                <div class="modal-verifikasi-prev-catatan w-100" id="efilekelola_prevCatatan"></div>
             </div>
 
             <div class="form-group mb-0">
-                <label class="modal-verifikasi-form-label">Catatan Admin <span id="efilekelola_reqCatatan" class="text-danger" style="display:none;">*</span></label>
-                <textarea class="modal-verifikasi-textarea" id="efilekelola_v_catatan" rows="3" placeholder="Wajib diisi jika ditolak / direvisi..."></textarea>
+                <label class="modal-verifikasi-form-label font-weight-bold">Catatan Admin <span id="efilekelola_reqCatatan" class="text-danger" style="display:none;">*</span></label>
+                <textarea class="modal-verifikasi-textarea w-100" id="efilekelola_v_catatan" rows="3" placeholder="Tuliskan catatan verifikasi..."></textarea>
             </div>
 
         <div class="modal-verifikasi-footer d-flex justify-content-between align-items-center" id="efilekelola_verifFooter">
             <button type="button" class="sultan-btn sultan-btn-secondary font-weight-bold" data-dismiss="modal"><i class="fas fa-times mr-2"></i>BATAL</button>
-            <button type="submit" id="efilekelola_btnVerifikasi" class="sultan-btn sultan-btn-primary font-weight-bold" form="efilekelola_formVerif">
-                <i class="fas fa-check-circle mr-2"></i>VERIFIKASI
+            <button type="submit" id="efilekelola_btnVerifikasi" class="sultan-btn sultan-btn-primary font-weight-bold modal-verifikasi-btn-verifikasi" form="efilekelola_formVerif">
+                <i class="fas fa-check mr-2"></i>VERIFIKASI
             </button>
         </div>
     </form>
@@ -1671,19 +1671,31 @@ function efilekelola_bukaModalVerif(rowId) {
         }
     }
 
-    var isProses = st.includes('proses') || st.includes('pending') || st.includes('menunggu');
-    if (isProses) {
-        $('#efilekelola_v_status').prop('disabled', false).val('');
-        $('#efilekelola_v_catatan').prop('disabled', false).val('').attr('placeholder', 'Wajib diisi jika ditolak / direvisi...');
-        $('#efilekelola_btnVerifikasi').show();
+    var stRaw = String(data.status || '').trim();
+    var stLower = stRaw.toLowerCase();
+    
+    // Auto pre-selection & dynamic requirement
+    if (stRaw === 'Disetujui' || stRaw === 'Revisi' || stRaw === 'Ditolak' || stRaw === 'Diproses') {
+        $('#efilekelola_v_status').val(stRaw);
     } else {
-        $('#efilekelola_v_status').prop('disabled', true).val(data.status);
-        $('#efilekelola_v_catatan').prop('disabled', true).val('').attr('placeholder', 'Berkas sudah diverifikasi (Read-Only)');
-        $('#efilekelola_btnVerifikasi').hide();
+        $('#efilekelola_v_status').val('Diproses');
     }
-    $('#efilekelola_reqCatatan').hide();
+
     if ($('#efilekelola_v_status').val() === 'Revisi' || $('#efilekelola_v_status').val() === 'Ditolak') {
         $('#efilekelola_reqCatatan').show();
+        $('#efilekelola_v_catatan').val('').prop('required', true).attr('placeholder', 'Wajib diisi alasan/catatan verifikasi (min 5 karakter)...');
+    } else {
+        $('#efilekelola_reqCatatan').hide();
+        $('#efilekelola_v_catatan').val('').prop('required', false).attr('placeholder', 'Catatan admin (opsional)...');
+    }
+
+    // Modal Verifikasi selalu aktif untuk Admin (Bagian 8 Blueprint)
+    if (EFILEKELOLA_IS_ADMIN) {
+        $('#efilekelola_btnVerifikasi').show();
+        $('#efilekelola_v_status, #efilekelola_v_catatan').prop('disabled', false);
+    } else {
+        $('#efilekelola_btnVerifikasi').hide();
+        $('#efilekelola_v_status, #efilekelola_v_catatan').prop('disabled', true);
     }
 
     var url = data.url || "";
@@ -1842,7 +1854,16 @@ function efilekelola_submitVerif(e) {
             }
             setTimeout(function() { 
                 Sultan.notif.crud.sukses(res.message); 
-                efilekelola_terapkanFilterLokal();
+                if (typeof SultanCRUD !== 'undefined' && typeof SultanCRUD.updateRowPreserved === 'function') {
+                    SultanCRUD.updateRowPreserved(EFILEKELOLA_TABEL_INSTANCE, function() {
+                        efilekelola_terapkanFilterLokal();
+                    });
+                } else {
+                    efilekelola_terapkanFilterLokal();
+                }
+                if (typeof sultan_fetchNotifikasi === 'function') {
+                    sultan_fetchNotifikasi();
+                }
             }, 400); 
             // ---------------------------------------
         } else {
