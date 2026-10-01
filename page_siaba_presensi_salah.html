@@ -956,23 +956,36 @@
         var btn = formAktif.find('button[type="submit"]'); var txt = btn.html();
         btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Menyimpan...');
 
+        var valNama = formAktif.find('#salah_inputNama').val();
+        var valNip = formAktif.find('#salah_inputNip').val() || formAktif.find('#salah_inputNipDisplay').val();
+        
+        var pgwMatched = SALAH_DB_PEGAWAI.find(p => String(p.nama).trim() === String(valNama).trim());
+        if ((!valNip || valNip === '-' || valNip === 'Otomatis') && pgwMatched) {
+            valNip = pgwMatched.nip;
+        }
+
         var finalNpsn = SALAH_USER_NPSN;
-        if (SALAH_IS_ADMIN) {
-            var inputNama = formAktif.find('#salah_inputNama').val();
-            var inputNip = formAktif.find('#salah_inputNip').val();
-            var pgw = SALAH_DB_PEGAWAI.find(p => String(p.nama).trim() === String(inputNama).trim() && String(p.nip).trim() === String(inputNip).trim());
-            if (pgw) finalNpsn = pgw.npsn;
+        if (pgwMatched && pgwMatched.npsn) {
+            finalNpsn = pgwMatched.npsn;
         }
 
         var dataForm = {
-            recId: recId, unit_kerja: formAktif.find('#salah_inputUnit').val(), nama_asn: formAktif.find('#salah_inputNama').val(), nip_asn: formAktif.find('#salah_inputNip').val(),
-            tanggal: formAktif.find('#salah_inputTanggal').val(), waktu: formAktif.find('#salah_inputWaktu').val(), jenis: formAktif.find('#salah_inputJenis').val(),
-            user_login: SALAH_USER_AKTIF, nip_lama: formAktif.find('#salah_inputNipLama').val(), tgl_lama: formAktif.find('#salah_inputTglLama').val(), jam_lama: formAktif.find('#salah_inputJamLama').val(),
+            recId: recId,
+            unit_kerja: formAktif.find('#salah_inputUnit').val() || (pgwMatched ? pgwMatched.unit : ''),
+            nama_asn: valNama,
+            nip_asn: valNip,
+            tanggal: formAktif.find('#salah_inputTanggal').val(),
+            waktu: formAktif.find('#salah_inputWaktu').val(),
+            jenis: formAktif.find('#salah_inputJenis').val(),
+            user_login: SALAH_USER_AKTIF,
+            nip_lama: formAktif.find('#salah_inputNipLama').val(),
+            tgl_lama: formAktif.find('#salah_inputTglLama').val(),
+            jam_lama: formAktif.find('#salah_inputJamLama').val(),
             npsn: finalNpsn,
             isAdmin: SALAH_IS_ADMIN
         };
 
-        if (!dataForm.nama_asn || !dataForm.nip_asn || !dataForm.tanggal || !dataForm.waktu || !dataForm.jenis) {
+        if (!dataForm.nama_asn || !dataForm.nip_asn || dataForm.nip_asn === '-' || !dataForm.tanggal || !dataForm.waktu || !dataForm.jenis) {
             btn.prop('disabled', false).html(txt);
             Sultan.alert('warning', 'Data Belum Lengkap', 'Mohon pilih Nama Pegawai dan lengkapi seluruh isian form!');
             return;
