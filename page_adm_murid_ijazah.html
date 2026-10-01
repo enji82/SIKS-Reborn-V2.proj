@@ -318,9 +318,8 @@
       <h6 class="modal-verifikasi-section-title"><i class="fas fa-check-circle mr-2"></i> VERIFIKASI</h6>
 
       <div class="form-group mb-3">
-        <label class="modal-verifikasi-form-label">Keputusan Verifikasi <span class="text-danger">*</span></label>
+        <label class="modal-verifikasi-form-label">Hasil Verifikasi <span class="text-danger">*</span></label>
         <select class="modal-verifikasi-select font-weight-bold w-100" id="admmuridijazah_verif_status" required>
-          <option value="">Pilih Keputusan</option>
           <option value="Diproses">Diproses</option>
           <option value="Disetujui">Disetujui</option>
           <option value="Dicetak">Dicetak</option>
@@ -379,7 +378,7 @@
       </div>
 
       <div class="form-group mb-3" id="admmuridijazah_prevCatatanWrap" style="display:none;">
-        <label class="modal-verifikasi-form-label text-muted"><i class="fas fa-history mr-1"></i>Keterangan Verifikasi Sebelumnya</label>
+        <label class="modal-verifikasi-form-label text-muted"><i class="fas fa-history mr-1"></i>Verifikasi Sebelumnya</label>
         <div class="modal-verifikasi-prev-catatan" id="admmuridijazah_prevCatatan"></div>
       </div>
 
@@ -392,9 +391,9 @@
 
     </div>
     <div class="modal-verifikasi-footer" id="admmuridijazah_verifFooter">
-      <button type="button" class="sultan-btn sultan-btn-secondary" data-dismiss="modal">
+      <button type="button" class="sultan-btn sultan-btn-secondary font-weight-bold" data-dismiss="modal">
         <i class="fas fa-times mr-2"></i>BATAL</button>
-      <button type="submit" id="admmuridijazah_btnSimpanVerif" class="sultan-btn sultan-btn-primary"
+      <button type="submit" id="admmuridijazah_btnSimpanVerif" class="sultan-btn sultan-btn-primary font-weight-bold"
         form="admmuridijazah_formVerif">
         <i class="fas fa-check mr-2"></i>VERIFIKASI</button>
     </div>
@@ -1827,28 +1826,23 @@
         $('#admmuridijazah_verif_lembar_transkrip').val(totalMurid);
       }
 
-      $('#admmuridijazah_konfirmasiCetakWrap').hide();
+      var selStatus = $('#admmuridijazah_verif_status');
+      selStatus.prop('disabled', false);
+      $('#admmuridijazah_verif_catatan').prop('disabled', false);
+      $('#chk_verif_cetak_ijazah, #chk_verif_cetak_transkrip, #admmuridijazah_verif_lembar_ijazah, #admmuridijazah_verif_lembar_transkrip').prop('disabled', false);
+      $('#admmuridijazah_btnSimpanVerif').show();
 
-      // Mode Read-Only jika status Disetujui / Locked / Dicetak
-      var statusLower = String(row.status || "").toLowerCase();
-      var isLocked = (statusLower.includes('setuju') || statusLower.includes('acc') || statusLower.includes('ok') || statusLower.includes('valid') || statusLower.includes('cetak')) && !statusLower.includes('koreksi');
-
-      if (isLocked) {
-        $('#admmuridijazah_verif_status').val(row.status).prop('disabled', true);
-        $('#admmuridijazah_verif_catatan').val(row.catatan || '').prop('disabled', true);
-        $('#chk_verif_cetak_ijazah, #chk_verif_cetak_transkrip, #admmuridijazah_verif_lembar_ijazah, #admmuridijazah_verif_lembar_transkrip').prop('disabled', true);
-        $('#admmuridijazah_btnSimpanVerif').hide();
-      } else {
-        $('#admmuridijazah_verif_status').prop('disabled', false);
-        $('#admmuridijazah_verif_catatan').prop('disabled', false);
-        $('#chk_verif_cetak_ijazah, #chk_verif_cetak_transkrip, #admmuridijazah_verif_lembar_ijazah, #admmuridijazah_verif_lembar_transkrip').prop('disabled', false);
-        $('#admmuridijazah_btnSimpanVerif').show();
+      var currentStatus = row.status || 'Diproses';
+      if (['Diproses', 'Disetujui', 'Dicetak', 'Revisi', 'Ditolak'].indexOf(currentStatus) === -1) {
+        currentStatus = 'Diproses';
       }
+      selStatus.val(currentStatus);
+      $('#admmuridijazah_verif_catatan').val(row.catatan || '');
 
       // Reset status tombol verifikasi ke default
       $('#admmuridijazah_btnSimpanVerif').prop('disabled', false).html('<i class="fas fa-check mr-2"></i>VERIFIKASI');
 
-      admmuridijazah_cekStatusVerif(row.status);
+      admmuridijazah_cekStatusVerif(currentStatus);
 
       // Siapkan daftar dokumen untuk switcher
       var docsArr = [];
@@ -1865,7 +1859,7 @@
 
       // Panggil Global Verifikasi
       Sultan.modal.verifikasi({
-        title: isLocked ? 'DETAIL VERIFIKASI PERMOHONAN IJAZAH & TRANSKRIP' : 'VERIFIKASI PERMOHONAN IJAZAH & TRANSKRIP',
+        title: 'VERIFIKASI PERMOHONAN IJAZAH & TRANSKRIP',
         url: defaultUrl,
         docs: docsArr.length > 1 ? docsArr : undefined,
         isImage: false,
