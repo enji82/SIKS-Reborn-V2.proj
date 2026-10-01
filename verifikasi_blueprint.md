@@ -32,17 +32,16 @@ Modal Verifikasi menggunakan [index.html](file:///Users/macbookpro/Documents/Git
 
 ## 🔘 3. Pilihan Opsi Dropdown Status
 
-Dropdown `Hasil Verifikasi` secara default berisi opsi:
+Dropdown `Hasil Verifikasi` secara langsung berisi opsi jenis Status tanpa opsi netral/header (tidak perlu ada `-- Pilih Hasil Verifikasi --`):
 ```html
 <select class="modal-verifikasi-select font-weight-bold w-100" id="[page]_selStatusVerif" required>
-    <option value="">-- Pilih Hasil Verifikasi --</option>
     <option value="Diproses">Diproses</option>
     <option value="Disetujui">Disetujui</option>
     <option value="Revisi">Revisi</option>
     <option value="Ditolak">Ditolak</option>
 </select>
 ```
-*Catatan:* Halaman khusus dengan alur kerja tambahan (misalnya status `Diajukan`, `Dicetak`, dsb.) dapat menambahkan `<option>` sesuai kebutuhan bisnis halaman tersebut.
+*Catatan:* Halaman khusus dengan alur kerja tambahan (misalnya status `Diajukan`, `Dicetak`, dsb.) dapat menambahkan `<option>` sesuai kebutuhan bisnis halaman tersebut. Dropdown secara default langsung terisi (pre-selected) sesuai status data saat modal dibuka.
 
 ---
 
