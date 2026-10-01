@@ -953,10 +953,10 @@ function getNotifikasiAdmSekolah(role, unit) {
         notifList.push({
           rowId: i + 1,
           source: "AdmSekolah",
-          nama: row[6] || "Dokumen Sekolah",
-          berkas: row[4] || "Administrasi Sekolah",
+          nama: row[0] || row[9] || "Dokumen Sekolah",
+          berkas: row[4] || row[2] || "Administrasi Sekolah",
           status: status,
-          waktu: row[1] || "",
+          waktu: row[8] || row[10] || "",
           isRead: isRead
         });
       }
