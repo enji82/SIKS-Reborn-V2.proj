@@ -524,9 +524,8 @@
       <h6 class="modal-verifikasi-section-title"><i class="fas fa-check-circle mr-2"></i> VERIFIKASI</h6>
 
       <div class="form-group mb-3">
-        <label class="modal-verifikasi-form-label">Keputusan Verifikasi <span class="text-danger">*</span></label>
+        <label class="modal-verifikasi-form-label">Hasil Verifikasi <span class="text-danger">*</span></label>
         <select class="modal-verifikasi-select font-weight-bold w-100" id="seragamlapor_verif_status" required>
-          <option value="">-- Pilih Keputusan --</option>
           <option value="Diproses">Diproses</option>
           <option value="Disetujui">Disetujui</option>
           <option value="Revisi">Revisi</option>
@@ -535,7 +534,7 @@
       </div>
 
       <div class="form-group mb-3" id="seragamlapor_prevCatatanWrap" style="display:none;">
-        <label class="modal-verifikasi-form-label text-muted"><i class="fas fa-history mr-1"></i>Keterangan Verifikasi Sebelumnya</label>
+        <label class="modal-verifikasi-form-label text-muted"><i class="fas fa-history mr-1"></i>Verifikasi Sebelumnya</label>
         <div class="modal-verifikasi-prev-catatan" id="seragamlapor_prevCatatan"></div>
       </div>
 
@@ -546,11 +545,11 @@
 
     </div>
     <div class="modal-verifikasi-footer" id="seragamlapor_verifFooter">
-      <button type="button" class="sultan-btn sultan-btn-secondary" data-dismiss="modal">
-        <i class="fas fa-times"></i> BATAL
+      <button type="button" class="sultan-btn sultan-btn-secondary font-weight-bold" data-dismiss="modal">
+        <i class="fas fa-times mr-2"></i>BATAL
       </button>
-      <button type="submit" id="seragamlapor_btnSimpanVerif" class="sultan-btn sultan-btn-primary" form="seragamlapor_formVerif">
-        <i class="fas fa-check"></i> VERIFIKASI
+      <button type="submit" id="seragamlapor_btnSimpanVerif" class="sultan-btn sultan-btn-primary font-weight-bold" form="seragamlapor_formVerif">
+        <i class="fas fa-check mr-2"></i>VERIFIKASI
       </button>
     </div>
   </form>
@@ -1861,21 +1860,19 @@
           $('#seragamlapor_prevCatatan').text('');
           $('#seragamlapor_prevCatatanWrap').hide();
       }
-      var statusNormalized = (row.status_verifikasi || row.status || '').toString().trim().toUpperCase();
-      var isVerifLocked = (statusNormalized === 'DISETUJUI' || statusNormalized === 'ACC' || statusNormalized === 'VALID' || statusNormalized === 'LOCKED');
+      var selStatus = $('#seragamlapor_verif_status');
+      selStatus.prop('disabled', false);
+      $('#seragamlapor_verif_catatan').prop('disabled', false);
+      $('#seragamlapor_btnSimpanVerif').show().prop('disabled', false).html('<i class="fas fa-check mr-2"></i>VERIFIKASI');
 
-      $('#seragamlapor_verif_status').val(row.status_verifikasi || '');
+      var currentStatus = row.status_verifikasi || row.status || 'Diproses';
+      if (['Diproses', 'Disetujui', 'Revisi', 'Ditolak'].indexOf(currentStatus) === -1) {
+        currentStatus = 'Diproses';
+      }
+      selStatus.val(currentStatus);
       $('#seragamlapor_verif_catatan').val(row.catatan || '');
 
-      if (isVerifLocked) {
-        $('#seragamlapor_verif_status, #seragamlapor_verif_catatan').prop('disabled', true);
-        $('#seragamlapor_btnSimpanVerif').hide();
-      } else {
-        $('#seragamlapor_verif_status, #seragamlapor_verif_catatan').prop('disabled', false);
-        $('#seragamlapor_btnSimpanVerif').show().prop('disabled', false).html('<i class="fas fa-check"></i> VERIFIKASI');
-      }
-
-      checkWajibCatatan($('#seragamlapor_verif_status').val());
+      checkWajibCatatan(currentStatus);
 
       var docsArr = [];
       if (row.url_file_sp) {
@@ -1893,7 +1890,7 @@
 
       // Open global verification modal
       Sultan.modal.verifikasi({
-        title: isVerifLocked ? 'LIHAT DETAIL VERIFIKASI LAPORAN' : 'VERIFIKASI DATA LAPORAN PENERIMAAN',
+        title: 'VERIFIKASI DATA LAPORAN PENERIMAAN',
         docs: docsArr,
         formHtml: $('#seragamlapor_formVerif').show()
       });
@@ -1967,6 +1964,9 @@
               item.tgl_verif = nowStr;
             }
             applyLocalFilter();
+            if (typeof sultan_fetchNotifikasi === 'function') {
+              sultan_fetchNotifikasi();
+            }
           } else {
             Sultan.notif.gagal('Gagal memproses verifikasi: ' + res.message);
           }
