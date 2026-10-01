@@ -783,8 +783,16 @@ $(document).ready(function() {
     $(document).off('click', '.efilekelola-btn-perbaiki').on('click', '.efilekelola-btn-perbaiki', function(){ efilekelola_bukaModalPerbaiki($(this).attr('data-id')); });
     
     // Handler untuk tombol submit di modal-footer global
-    $(document).off('click', '#efilekelola_btnSimpan').on('click', '#efilekelola_btnSimpan', function() {
-        $('#efilekelola_formUpload').submit();
+    $(document).off('click', '#efilekelola_btnSimpan').on('click', '#efilekelola_btnSimpan', function(e) {
+        var $form = $('#efilekelola_formUpload');
+        if ($form.length > 0) {
+            if ($form[0].checkValidity && !$form[0].checkValidity()) {
+                $form[0].reportValidity();
+                return;
+            }
+            e.preventDefault();
+            $form.trigger('submit');
+        }
     });
     $(document).off('click', '#efilekelola_btnSimpanPerbaiki').on('click', '#efilekelola_btnSimpanPerbaiki', function() {
         $('#efilekelola_formPerbaiki').submit();
@@ -1114,12 +1122,14 @@ function efilekelola_bukaModalTambah() {
     if (EFILEKELOLA_IS_ADMIN) {
         $('#efilekelola_pilih_sekolah_container').show();
         $('#efilekelola_user_sekolah_banner').hide();
+        $jenjangSelect.prop('required', true).prop('disabled', false).val('');
+        $unitSelect.prop('required', true).empty().append('<option value="">- Pilih Sekolah -</option>').prop('disabled', true);
         efilekelola_populateJenjang();
-        $jenjangSelect.val('').prop('disabled', false);
-        $unitSelect.empty().append('<option value="">- Pilih Sekolah -</option>').prop('disabled', true);
     } else {
         $('#efilekelola_pilih_sekolah_container').hide();
         $('#efilekelola_user_sekolah_banner').show();
+        $jenjangSelect.prop('required', false).prop('disabled', true);
+        $unitSelect.prop('required', false);
         
         var defaultNpsn = EFILEKELOLA_NPSN_TERKUNCI;
         var defaultUnitName = EFILEKELOLA_UNIT_TERKUNCI || "Sekolah Anda";
