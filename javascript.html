@@ -1961,23 +1961,14 @@
         });
       }
 
-      // Helper pemformat tanggal yang bersih & manusiawi
+      // Helper pemformat tanggal yang bersih & manusiawi (tanpa tertukar Tanggal & Bulan)
       function formatNotifTime(raw) {
         if (!raw || raw === "-" || raw === "undefined" || raw === "null") return "-";
         try {
           var str = String(raw).trim().replace(/'/g, "");
           if (!str || str === "-") return "-";
 
-          // Format MM/DD atau DD/MM ringkas (contoh: 09/05 -> 09/05/2025)
-          if (/^\d{1,2}[\/-]\d{1,2}$/.test(str)) {
-            var partsShort = str.split(/[\/-]/);
-            var dShort = partsShort[0].padStart(2, '0');
-            var mShort = partsShort[1].padStart(2, '0');
-            var currYear = new Date().getFullYear();
-            return dShort + '/' + mShort + '/' + currYear;
-          }
-
-          // Format dengan nama bulan Indonesia (contoh: "01 September 2025" atau "September 2025")
+          // 1. Cek nama bulan Indonesia (contoh: "05 September 2025" atau "September 2025")
           var bulanIndoMap = {
             'januari': '01', 'februari': '02', 'maret': '03', 'april': '04',
             'mei': '05', 'juni': '06', 'juli': '07', 'agustus': '08',
@@ -1989,38 +1980,62 @@
               var mAngka = bulanIndoMap[bNama];
               var angkaList = str.match(/\d+/g) || [];
               if (angkaList.length >= 2) {
-                // misal ["01", "2025"]
                 return angkaList[0].padStart(2, '0') + '/' + mAngka + '/' + angkaList[1];
               } else if (angkaList.length === 1) {
-                // misal ["2025"]
                 return '01/' + mAngka + '/' + angkaList[0];
               }
             }
           }
 
-          // Format DD-MM-YYYY atau YYYY-MM-DD
-          if (/^\d{1,2}[-\/]\d{1,2}[-\/]\d{4}/.test(str) || /^\d{4}[-\/]\d{1,2}[-\/]\d{1,2}/.test(str)) {
-            var p = str.split(/[-\/]/);
-            if (p[0].length === 4) {
-              // YYYY-MM-DD
-              str = p[1] + '/' + p[2] + '/' + p[0];
-            } else {
-              // DD-MM-YYYY
-              str = p[1] + '/' + p[0] + '/' + p[2];
+          // 2. Parser tanggal numerik eksplisit (DD/MM/YYYY atau YYYY-MM-DD atau DD/MM)
+          var parts = str.split(' ');
+          var datePart = parts[0];
+          var timePart = parts[1] || '';
+
+          var d = null, m = null, y = null;
+
+          if (/^\d{1,2}[-\/]\d{1,2}[-\/]\d{4}$/.test(datePart)) {
+            var p = datePart.split(/[-\/]/);
+            d = parseInt(p[0], 10);
+            m = parseInt(p[1], 10) - 1;
+            y = parseInt(p[2], 10);
+          } else if (/^\d{4}[-\/]\d{1,2}[-\/]\d{1,2}$/.test(datePart)) {
+            var p = datePart.split(/[-\/]/);
+            y = parseInt(p[0], 10);
+            m = parseInt(p[1], 10) - 1;
+            d = parseInt(p[2], 10);
+          } else if (/^\d{1,2}[-\/]\d{1,2}$/.test(datePart)) {
+            var p = datePart.split(/[-\/]/);
+            d = parseInt(p[0], 10);
+            m = parseInt(p[1], 10) - 1;
+            y = new Date().getFullYear();
+          }
+
+          if (d !== null && m !== null && y !== null && !isNaN(d) && !isNaN(m) && !isNaN(y)) {
+            var dateObj = new Date(y, m, d);
+            var dStr = String(dateObj.getDate()).padStart(2, '0');
+            var mStr = String(dateObj.getMonth() + 1).padStart(2, '0');
+            var yStr = dateObj.getFullYear();
+            var dateFormatted = dStr + '/' + mStr + '/' + yStr;
+
+            if (timePart && timePart.indexOf(':') > -1) {
+              var tp = timePart.split(':');
+              var hh = (tp[0] || '00').padStart(2, '0');
+              var mm = (tp[1] || '00').padStart(2, '0');
+              if (hh !== '00' || mm !== '00') {
+                return dateFormatted + ' ' + hh + '.' + mm;
+              }
             }
+            return dateFormatted;
           }
 
-          var d = new Date(str);
-          if (!isNaN(d.getTime())) {
-            var dateStr = d.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
-            var timeStr = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace(':', '.');
-            if (timeStr === "00.00" || timeStr === "0.00") return dateStr;
-            return dateStr + ' ' + timeStr;
+          var fallbackDate = new Date(str);
+          if (!isNaN(fallbackDate.getTime())) {
+            var fdStr = String(fallbackDate.getDate()).padStart(2, '0');
+            var fmStr = String(fallbackDate.getMonth() + 1).padStart(2, '0');
+            return fdStr + '/' + fmStr + '/' + fallbackDate.getFullYear();
           }
 
-          if (str.indexOf('T') > -1) {
-            return str.split('T')[0];
-          }
           return str.split(' ')[0] || "-";
         } catch (e) {
           return String(raw).split(' ')[0] || "-";
