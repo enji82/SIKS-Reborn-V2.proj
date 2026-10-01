@@ -64,14 +64,20 @@ Ketiga kontrol di panel kanan wajib memiliki gaya visual & ukuran yang identik (
 
 ---
 
-## 🎨 6. Pewarnaan Tombol VERIFIKASI
+## 🎨 6. Bentuk, Ikon & Pewarnaan Tombol Modal Verifikasi
 
-- Tombol **VERIFIKASI** (`.modal-verifikasi-btn-verifikasi` / `button.sultan-btn-primary`) menggunakan gradasi warna biru senada dengan **Header Modal** (`.modal-header-verifikasi`):
-  ```css
-  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
-  color: white !important;
-  border-radius: 50px !important;
-  ```
+1. **Bentuk Tombol (Pill Shape)**:
+   - Seluruh tombol di footer modal verifikasi menggunakan sudut membulat oval penuh (`border-radius: 50px !important; font-weight: 700 !important; text-transform: uppercase !important;`).
+2. **Pewarnaan Tombol VERIFIKASI**:
+   - Tombol **VERIFIKASI** (`.modal-verifikasi-btn-verifikasi` / `button.sultan-btn-primary`) menggunakan gradasi warna biru senada dengan **Header Modal** (`.modal-header-verifikasi`):
+     ```css
+     background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
+     color: white !important;
+     border-radius: 50px !important;
+     ```
+3. **Standar Ikon Tombol**:
+   - **Tombol BATAL**: `<i class="fas fa-times mr-2"></i>BATAL`
+   - **Tombol VERIFIKASI**: `<i class="fas fa-check mr-2"></i>VERIFIKASI` (menggunakan ikon checklist sederhana `fa-check` dengan spasi `mr-2`, **bukan** `fa-check-circle`).
 
 ---
 
