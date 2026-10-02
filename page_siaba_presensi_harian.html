@@ -591,24 +591,31 @@ function harian_terapkanFilterLokal() {
 }
 
 function harian_formatComboCell(dVal, pVal, dayNum) {
-    if ((!dVal || dVal === "-" || dVal === "0") && (!pVal || pVal === "-" || pVal === "0")) {
+    var strD = String(dVal || "").trim().toUpperCase();
+    var strP = String(pVal || "").trim().toUpperCase();
+    
+    if ((!strD || strD === "-" || strD === "0") && (!strP || strP === "-" || strP === "0")) {
         return `<div class="harian-cell-combo"><span class="text-muted opacity-50">-</span></div>`;
     }
     
-    var codes = ['CT','CS','CAP','CM','CB','CLTN','DD','DL','TA','PLA','LA','TP'];
+    var nonTimeCodes = ['CT','CS','CAP','CM','CB','CLTN','DD','DL','TA','PLA','LA','TP'];
+    var isDCode = nonTimeCodes.includes(strD);
+    var isPCode = nonTimeCodes.includes(strP);
     
-    if (dVal === pVal && codes.includes(dVal)) {
+    // Jika dVal atau pVal adalah kode status (misal DD, DL, CS, CT), tampilkan 1 badge saja
+    if (isDCode || isPCode) {
+        var codeVal = isDCode ? strD : strP;
         var badgeClass = 'badge-soft-info';
-        if (['CT','CS','CAP','CM','CB','CLTN'].includes(dVal)) badgeClass = 'badge-soft-info';
-        else if (['DD','DL'].includes(dVal)) badgeClass = 'badge-soft-purple';
-        else if (['TA','PLA','LA','TP'].includes(dVal)) badgeClass = 'badge-soft-danger';
+        if (['CT','CS','CAP','CM','CB','CLTN'].includes(codeVal)) badgeClass = 'badge-soft-info';
+        else if (['DD','DL'].includes(codeVal)) badgeClass = 'badge-soft-purple';
+        else if (['TA','PLA','LA','TP'].includes(codeVal)) badgeClass = 'badge-soft-danger';
         
-        return `<div class="harian-cell-combo" title="Tgl ${dayNum}: ${dVal}"><span class="badge ${badgeClass} harian-badge-status">${dVal}</span></div>`;
+        return `<div class="harian-cell-combo" title="Tgl ${dayNum}: ${codeVal}"><span class="badge ${badgeClass} harian-badge-status">${codeVal}</span></div>`;
     }
     
     // POSISI BENAR: Jam Datang (dVal) di ATAS, Jam Pulang (pVal) di BAWAH
-    var inHtml = dVal ? `<span class="harian-time-in" title="Datang: ${dVal}">${harian_escapeHtml(dVal)}</span>` : `<span class="text-muted opacity-50">-</span>`;
-    var outHtml = pVal ? `<span class="harian-time-out" title="Pulang: ${pVal}">${harian_escapeHtml(pVal)}</span>` : `<span class="text-muted opacity-50">-</span>`;
+    var inHtml = (strD && strD !== "-" && strD !== "0") ? `<span class="harian-time-in" title="Datang: ${strD}">${harian_escapeHtml(strD)}</span>` : `<span class="text-muted opacity-50">-</span>`;
+    var outHtml = (strP && strP !== "-" && strP !== "0") ? `<span class="harian-time-out" title="Pulang: ${strP}">${harian_escapeHtml(strP)}</span>` : `<span class="text-muted opacity-50">-</span>`;
     
     return `<div class="harian-cell-combo" title="Tgl ${dayNum}">${inHtml}${outHtml}</div>`;
 }
@@ -715,12 +722,13 @@ function harian_renderTabel(dataRows) {
                 arrRow.push(valCutiDinas > 0 ? `<span class="badge badge-soft-info font-weight-bold">${valCutiDinas}</span>` : `<span class="text-muted opacity-50">-</span>`);
 
                 // Dynamic Day Columns (Tgl 1 s.d. numDays)
+                // SPREADSHEET STRUCT: Index 22 adalah 1D (Datang), Index 23 adalah 1P (Pulang)
                 for (var d = 1; d <= numDays; d++) {
-                    var pIdx = 21 + (d - 1) * 2;
-                    var dIdx = pIdx + 1;
+                    var dIdx = 22 + (d - 1) * 2;
+                    var pIdx = 23 + (d - 1) * 2;
                     
-                    var pVal = String(row[pIdx] || "").trim().toUpperCase();
                     var dVal = String(row[dIdx] || "").trim().toUpperCase();
+                    var pVal = String(row[pIdx] || "").trim().toUpperCase();
                     
                     arrRow.push(harian_formatComboCell(dVal, pVal, d));
                 }
@@ -825,11 +833,11 @@ function harian_bukaModalDetailPegawai(row) {
 
     var tbodyHtml = '';
     for (var d = 1; d <= numDays; d++) {
-        var pIdx = 21 + (d - 1) * 2;
-        var dIdx = pIdx + 1;
+        var dIdx = 22 + (d - 1) * 2;
+        var pIdx = 23 + (d - 1) * 2;
         
-        var pVal = String(row[pIdx] || "").trim().toUpperCase();
         var dVal = String(row[dIdx] || "").trim().toUpperCase();
+        var pVal = String(row[pIdx] || "").trim().toUpperCase();
         var infoHari = harian_getNamaHari(th, bl, d);
 
         var stBadge = '<span class="badge badge-soft-success px-2 py-1">Hadir Tepat Waktu</span>';
