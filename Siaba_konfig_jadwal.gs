@@ -3,6 +3,17 @@
    (Master Configuration Sheet: USER_DB / SPREADSHEET_IDS.USER_DB)
    ====================================================================== */
 
+function getOrCreateKonfigSheet(ss, sheetName, headers) {
+  let sheet = ss.getSheetByName(sheetName);
+  if (!sheet) {
+    sheet = ss.insertSheet(sheetName);
+    if (headers && headers.length > 0) {
+      sheet.appendRow(headers);
+    }
+  }
+  return sheet;
+}
+
 /**
  * Memastikan sheet SIABA_KONFIG_JAM_KERJA & SIABA_KALENDER_LIBUR tersedia dengan kolom fleksibel.
  */
@@ -11,16 +22,15 @@ function initSiabaKonfigSheets() {
     const ss = getDB("USER_DB");
     
     // 1. Sheet Master Jam Kerja
-    let sheetJadwal = ss.getSheetByName("SIABA_KONFIG_JAM_KERJA");
-    if (!sheetJadwal) {
-      sheetJadwal = ss.insertSheet("SIABA_KONFIG_JAM_KERJA");
-      sheetJadwal.appendRow([
-        "Tahun", "Bulan", 
-        "Jam_Datang_Senin_Kamis", "Toleransi_Terlambat_Senin_Kamis", "Jam_Pulang_Senin_Kamis",
-        "Jam_Datang_Jumat", "Toleransi_Terlambat_Jumat", "Jam_Pulang_Jumat",
-        "Hari_Libur_Rutin", "Status", "Updated_At", "Updated_By"
-      ]);
-      // Baseline Default Tahun 2026
+    const headersJadwal = [
+      "Tahun", "Bulan", 
+      "Jam_Datang_Senin_Kamis", "Toleransi_Terlambat_Senin_Kamis", "Jam_Pulang_Senin_Kamis",
+      "Jam_Datang_Jumat", "Toleransi_Terlambat_Jumat", "Jam_Pulang_Jumat",
+      "Hari_Libur_Rutin", "Status", "Updated_At", "Updated_By"
+    ];
+    let sheetJadwal = getOrCreateKonfigSheet(ss, "SIABA_KONFIG_JAM_KERJA", headersJadwal);
+    
+    if (sheetJadwal.getLastRow() < 2) {
       const bulanArr = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
       bulanArr.forEach(function(b) {
         sheetJadwal.appendRow([
@@ -30,29 +40,15 @@ function initSiabaKonfigSheets() {
           "Sabtu, Minggu", "Aktif", "01-01-2026 00:00", "System"
         ]);
       });
-    } else {
-      // Pengecekan jumlah kolom jika perlu upgrade dari versi lama
-      let header = sheetJadwal.getRange(1, 1, 1, sheetJadwal.getLastColumn()).getValues()[0];
-      if (header.length < 12) {
-        sheetJadwal.clear();
-        sheetJadwal.appendRow([
-          "Tahun", "Bulan", 
-          "Jam_Datang_Senin_Kamis", "Toleransi_Terlambat_Senin_Kamis", "Jam_Pulang_Senin_Kamis",
-          "Jam_Datang_Jumat", "Toleransi_Terlambat_Jumat", "Jam_Pulang_Jumat",
-          "Hari_Libur_Rutin", "Status", "Updated_At", "Updated_By"
-        ]);
-      }
     }
 
     // 2. Sheet Kalender Hari Libur
-    let sheetLibur = ss.getSheetByName("SIABA_KALENDER_LIBUR");
-    if (!sheetLibur) {
-      sheetLibur = ss.insertSheet("SIABA_KALENDER_LIBUR");
-      sheetLibur.appendRow([
-        "Tanggal", "Tahun", "Bulan", "Keterangan_Libur", 
-        "Jenis_Libur", "Warna_Badge", "Updated_At", "Updated_By"
-      ]);
-      // Sampel Hari Libur Tahun 2026
+    const headersLibur = [
+      "Tanggal", "Tahun", "Bulan", "Keterangan_Libur", 
+      "Jenis_Libur", "Warna_Badge", "Updated_At", "Updated_By"
+    ];
+    let sheetLibur = getOrCreateKonfigSheet(ss, "SIABA_KALENDER_LIBUR", headersLibur);
+    if (sheetLibur.getLastRow() < 2) {
       sheetLibur.appendRow(["2026-01-01", "2026", "Januari", "Tahun Baru 2026 Masehi", "Nasional", "#dc3545", "01-01-2026 00:00", "System"]);
       sheetLibur.appendRow(["2026-08-17", "2026", "Agustus", "Hari Kemerdekaan RI", "Nasional", "#dc3545", "01-01-2026 00:00", "System"]);
     }
@@ -157,8 +153,13 @@ function simpanSiabaKonfigJadwal(payload) {
     if (!tahun || !bulan) return JSON.stringify({ status: "error", message: "Tahun dan Bulan wajib diisi." });
 
     const ss = getDB("USER_DB");
-    const sheet = ss.getSheetByName("SIABA_KONFIG_JAM_KERJA");
-    if (!sheet) return JSON.stringify({ status: "error", message: "Sheet SIABA_KONFIG_JAM_KERJA tidak ditemukan di database." });
+    const headersJadwal = [
+      "Tahun", "Bulan", 
+      "Jam_Datang_Senin_Kamis", "Toleransi_Terlambat_Senin_Kamis", "Jam_Pulang_Senin_Kamis",
+      "Jam_Datang_Jumat", "Toleransi_Terlambat_Jumat", "Jam_Pulang_Jumat",
+      "Hari_Libur_Rutin", "Status", "Updated_At", "Updated_By"
+    ];
+    const sheet = getOrCreateKonfigSheet(ss, "SIABA_KONFIG_JAM_KERJA", headersJadwal);
     
     const data = (sheet.getLastRow() > 0) ? sheet.getDataRange().getValues() : [];
     const nowStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MM-yyyy HH:mm");
@@ -229,8 +230,11 @@ function simpanSiabaHariLibur(payload) {
     const blnStr = URUTAN_BULAN[blnNum - 1] || "";
 
     const ss = getDB("USER_DB");
-    const sheet = ss.getSheetByName("SIABA_KALENDER_LIBUR");
-    if (!sheet) return JSON.stringify({ status: "error", message: "Sheet SIABA_KALENDER_LIBUR tidak ditemukan di database." });
+    const headersLibur = [
+      "Tanggal", "Tahun", "Bulan", "Keterangan_Libur", 
+      "Jenis_Libur", "Warna_Badge", "Updated_At", "Updated_By"
+    ];
+    const sheet = getOrCreateKonfigSheet(ss, "SIABA_KALENDER_LIBUR", headersLibur);
 
     const data = (sheet.getLastRow() > 0) ? sheet.getDataRange().getValues() : [];
     const nowStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MM-yyyy HH:mm");
