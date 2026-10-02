@@ -250,19 +250,51 @@ function getEfileData(npsnFilter) {
     if(!sheet) return JSON.stringify({ success: false, message: "Sheet Database_Efile tidak ditemukan." });
     
     var data = sheet.getDataRange().getDisplayValues();
+    if (data.length < 2) return JSON.stringify({ success: true, data: [] });
+
+    var headers = data[0].map(function(h) { return String(h).toLowerCase().trim(); });
+    var findCol = function(nameList, defaultIdx) {
+      for (var k = 0; k < nameList.length; k++) {
+        var idx = headers.indexOf(nameList[k]);
+        if (idx > -1) return idx;
+      }
+      return defaultIdx;
+    };
+
+    var colMap = {
+      id_ptk: findCol(["id_ptk", "id ptk", "id_pegawai"], 0),
+      nama: findCol(["nama_pegawai", "nama ptk", "nama"], 1),
+      id_kategori: findCol(["id_kategori", "id kategori", "kategori_id"], 2),
+      nama_kategori: findCol(["nama_kategori", "nama kategori", "kategori"], 3),
+      tahun: findCol(["tahun", "tahun ajaran"], 4),
+      file_name: findCol(["file_name", "nama file", "file"], 5),
+      url: findCol(["url", "file_url", "link"], 6),
+      status: findCol(["status", "status_verifikasi"], 7),
+      catatan: findCol(["catatan", "keterangan"], 8),
+      tgl_upload: findCol(["tgl_upload", "tanggal upload", "tgl_kirim"], 9),
+      uploader: findCol(["uploader", "pengunggah"], 10),
+      npsn: findCol(["npsn", "unit_npsn"], 11),
+      tgl_verif: findCol(["tgl_verif", "tanggal verifikasi"], 12),
+      verifikator: findCol(["verifikator", "user_verif"], 13),
+      periode: findCol(["periode", "semester"], 14),
+      tgl_edit: findCol(["tgl_edit", "tanggal edit"], 15),
+      user_edit: findCol(["user_edit", "pengedit"], 16),
+      survey_scanner: findCol(["survey_scanner", "survey"], 17)
+    };
+
     var result = [];
     var targetNpsn = String(npsnFilter || "").trim().toUpperCase();
     
     for(var i=1; i<data.length; i++) {
-        var idPtkEfile = String(data[i][0]).trim();
+        var idPtkEfile = String(data[i][colMap.id_ptk] || "").trim();
         var ptkInfo = ptkMap[idPtkEfile];
         
         // Filter NPSN dengan fallback komprehensif
         var rNpsn = ptkInfo ? String(ptkInfo.npsn || "").trim().toUpperCase() : "";
         var rUnit = ptkInfo ? String(ptkInfo.unit || "").trim().toUpperCase() : "";
         
-        // Ambil data NPSN langsung dari Database_Efile kolom L (index 11) sebagai fallback
-        var dbNpsn = String(data[i][11] || "").trim().toUpperCase();
+        // Ambil data NPSN langsung dari Database_Efile sebagai fallback
+        var dbNpsn = String(data[i][colMap.npsn] || "").trim().toUpperCase();
         
         // Pencocokan:
         var matchesFilter = false;
@@ -279,26 +311,26 @@ function getEfileData(npsnFilter) {
             result.push({
                 rowId: i + 1, 
                 id_ptk: idPtkEfile, 
-                nama: ptkInfo ? ptkInfo.nama : String(data[i][1] || "Pegawai Non-GTK").trim(), 
-                id_kategori: data[i][2], 
-                nama_kategori: data[i][3],
-                tahun: data[i][4], 
-                file_name: data[i][5], 
-                url: data[i][6], 
-                status: data[i][7], 
-                catatan: data[i][8],
-                tgl_upload: data[i][9], 
-                uploader: data[i][10], 
+                nama: ptkInfo ? ptkInfo.nama : String(data[i][colMap.nama] || "Pegawai Non-GTK").trim(), 
+                id_kategori: data[i][colMap.id_kategori] || "", 
+                nama_kategori: data[i][colMap.nama_kategori] || "",
+                tahun: data[i][colMap.tahun] || "", 
+                file_name: data[i][colMap.file_name] || "", 
+                url: data[i][colMap.url] || "", 
+                status: data[i][colMap.status] || "", 
+                catatan: data[i][colMap.catatan] || "",
+                tgl_upload: data[i][colMap.tgl_upload] || "", 
+                uploader: data[i][colMap.uploader] || "", 
                 nip: ptkInfo ? ptkInfo.nip : "",
                 npsn: ptkInfo ? ptkInfo.npsn : "", 
                 unit: ptkInfo ? ptkInfo.unit : "", 
                 statusPegawai: ptkInfo ? ptkInfo.status : "", 
-                tgl_verif: data[i][12] || "-", 
-                verifikator: data[i][13] || "-",
-                periode: data[i][14] || "-",
-                tgl_edit: data[i][15] || "-",
-                user_edit: data[i][16] || "-",
-                survey_scanner: data[i][17] || "",
+                tgl_verif: data[i][colMap.tgl_verif] || "-", 
+                verifikator: data[i][colMap.verifikator] || "-",
+                periode: data[i][colMap.periode] || "-",
+                tgl_edit: data[i][colMap.tgl_edit] || "-",
+                user_edit: data[i][colMap.user_edit] || "-",
+                survey_scanner: data[i][colMap.survey_scanner] || ""
             });
         }
     }
@@ -349,7 +381,10 @@ function getEfileData(npsnFilter) {
     });
 
     return JSON.stringify({ success: true, data: result });
-  } catch(e) { return JSON.stringify({ success: false, message: e.message }); }
+  } catch(e) { 
+    Logger.log("Error pada getEfileData: " + e.toString() + "\n" + (e.stack || ""));
+    return JSON.stringify({ success: false, message: e.message }); 
+  }
 }
 
 function simpanEfileBatch(batchData) {
