@@ -71,7 +71,7 @@ function getSiabaKonfigJadwal(tahun, bulan) {
     
     // A. Ambil Jam Kerja
     const sheetJadwal = ss.getSheetByName("SIABA_KONFIG_JAM_KERJA");
-    const dataJadwal = sheetJadwal.getDataRange().getDisplayValues();
+    const dataJadwal = (sheetJadwal && sheetJadwal.getLastRow() > 0) ? sheetJadwal.getDataRange().getDisplayValues() : [];
     
     let configJadwal = {
       tahun: tahun,
@@ -86,46 +86,50 @@ function getSiabaKonfigJadwal(tahun, bulan) {
       isDefault: true
     };
 
-    for (let i = 1; i < dataJadwal.length; i++) {
-      let r = dataJadwal[i];
-      if (String(r[0]).trim() === String(tahun).trim() && String(r[1]).trim().toLowerCase() === String(bulan).trim().toLowerCase()) {
-        let liburStr = String(r[8] || r[5] || "").trim();
-        let liburArr = liburStr ? liburStr.split(",").map(function(s){ return s.trim(); }) : ["Sabtu", "Minggu"];
-        
-        configJadwal = {
-          tahun: r[0],
-          bulan: r[1],
-          jamDatangSeninKamis: r[2] || "07:30",
-          toleransiTerlambatSeninKamis: r[3] || r[2] || "07:45",
-          jamPulangSeninKamis: r[4] || "16:00",
-          jamDatangJumat: r[5] || "07:30",
-          toleransiTerlambatJumat: r[6] || r[5] || "07:45",
-          jamPulangJumat: r[7] || "16:30",
-          hariLiburRutin: liburArr,
-          isDefault: false
-        };
-        break;
+    if (dataJadwal.length > 1) {
+      for (let i = 1; i < dataJadwal.length; i++) {
+        let r = dataJadwal[i];
+        if (String(r[0]).trim() === String(tahun).trim() && String(r[1]).trim().toLowerCase() === String(bulan).trim().toLowerCase()) {
+          let liburStr = String(r[8] || r[5] || "").trim();
+          let liburArr = liburStr ? liburStr.split(",").map(function(s){ return s.trim(); }) : ["Sabtu", "Minggu"];
+          
+          configJadwal = {
+            tahun: r[0],
+            bulan: r[1],
+            jamDatangSeninKamis: r[2] || "07:30",
+            toleransiTerlambatSeninKamis: r[3] || r[2] || "07:45",
+            jamPulangSeninKamis: r[4] || "16:00",
+            jamDatangJumat: r[5] || "07:30",
+            toleransiTerlambatJumat: r[6] || r[5] || "07:45",
+            jamPulangJumat: r[7] || "16:30",
+            hariLiburRutin: liburArr,
+            isDefault: false
+          };
+          break;
+        }
       }
     }
 
     // B. Ambil Kalender Hari Libur (Tanggal Merah / Cuti Bersama)
     const sheetLibur = ss.getSheetByName("SIABA_KALENDER_LIBUR");
-    const dataLibur = sheetLibur.getDataRange().getDisplayValues();
+    const dataLibur = (sheetLibur && sheetLibur.getLastRow() > 0) ? sheetLibur.getDataRange().getDisplayValues() : [];
     let daftarLibur = [];
 
-    for (let j = 1; j < dataLibur.length; j++) {
-      let r = dataLibur[j];
-      let tgl = String(r[0] || "").trim();
-      let thn = String(r[1] || "").trim();
-      let bln = String(r[2] || "").trim();
+    if (dataLibur.length > 1) {
+      for (let j = 1; j < dataLibur.length; j++) {
+        let r = dataLibur[j];
+        let tgl = String(r[0] || "").trim();
+        let thn = String(r[1] || "").trim();
+        let bln = String(r[2] || "").trim();
 
-      if ((thn === String(tahun).trim() && bln.toLowerCase() === String(bulan).trim().toLowerCase()) || tgl.indexOf(tahun + "-") === 0) {
-        daftarLibur.push({
-          tanggal: tgl, // Format YYYY-MM-DD
-          keterangan: r[3] || "Hari Libur",
-          jenis: r[4] || "Nasional",
-          warna: r[5] || "#dc3545"
-        });
+        if ((thn === String(tahun).trim() && bln.toLowerCase() === String(bulan).trim().toLowerCase()) || tgl.indexOf(tahun + "-") === 0) {
+          daftarLibur.push({
+            tanggal: tgl, // Format YYYY-MM-DD
+            keterangan: r[3] || "Hari Libur",
+            jenis: r[4] || "Nasional",
+            warna: r[5] || "#dc3545"
+          });
+        }
       }
     }
 
@@ -154,15 +158,19 @@ function simpanSiabaKonfigJadwal(payload) {
 
     const ss = getDB("USER_DB");
     const sheet = ss.getSheetByName("SIABA_KONFIG_JAM_KERJA");
-    const data = sheet.getDataRange().getValues();
+    if (!sheet) return JSON.stringify({ status: "error", message: "Sheet SIABA_KONFIG_JAM_KERJA tidak ditemukan di database." });
+    
+    const data = (sheet.getLastRow() > 0) ? sheet.getDataRange().getValues() : [];
     const nowStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MM-yyyy HH:mm");
     const userStr = String(payload.updatedBy || "Admin").trim();
 
     let existingRow = -1;
-    for (let i = 1; i < data.length; i++) {
-      if (String(data[i][0]).trim() === tahun && String(data[i][1]).trim().toLowerCase() === bulan.toLowerCase()) {
-        existingRow = i + 1;
-        break;
+    if (data.length > 1) {
+      for (let i = 1; i < data.length; i++) {
+        if (String(data[i][0]).trim() === tahun && String(data[i][1]).trim().toLowerCase() === bulan.toLowerCase()) {
+          existingRow = i + 1;
+          break;
+        }
       }
     }
 
@@ -222,16 +230,20 @@ function simpanSiabaHariLibur(payload) {
 
     const ss = getDB("USER_DB");
     const sheet = ss.getSheetByName("SIABA_KALENDER_LIBUR");
-    const data = sheet.getDataRange().getValues();
+    if (!sheet) return JSON.stringify({ status: "error", message: "Sheet SIABA_KALENDER_LIBUR tidak ditemukan di database." });
+
+    const data = (sheet.getLastRow() > 0) ? sheet.getDataRange().getValues() : [];
     const nowStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MM-yyyy HH:mm");
     const userStr = String(payload.updatedBy || "Admin").trim();
 
     let existingRow = -1;
-    for (let i = 1; i < data.length; i++) {
-      let rTgl = String(data[i][0] || "").trim();
-      if (rTgl === tgl || rTgl.indexOf(tgl) === 0) {
-        existingRow = i + 1;
-        break;
+    if (data.length > 1) {
+      for (let i = 1; i < data.length; i++) {
+        let rTgl = String(data[i][0] || "").trim();
+        if (rTgl === tgl || rTgl.indexOf(tgl) === 0) {
+          existingRow = i + 1;
+          break;
+        }
       }
     }
 
