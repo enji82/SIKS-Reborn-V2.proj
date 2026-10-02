@@ -32,18 +32,13 @@
                 </div>
 
                 <div class="sultan-filter-pill-container shadow-sm mb-4">
-                    <div class="sultan-filter-item" style="min-width: 220px; max-width: 360px;">
-                        <select id="cuti_filterUnit" class="form-control" disabled>
-                            <option value="">Memvalidasi Akses...</option>
-                        </select>
-                        <i class="fas fa-chevron-down"></i>
-                    </div>
-
+                    <!-- 1. TAHUN -->
                     <div class="sultan-filter-item sultan-filter-auto">
                         <select id="cuti_filterTahun" class="form-control" style="min-width: 65px !important; max-width: 95px !important;"></select>
                         <i class="fas fa-chevron-down"></i>
                     </div>
 
+                    <!-- 2. BULAN -->
                     <div class="sultan-filter-item">
                         <select id="cuti_filterBulan" class="form-control">
                             <option value="">Semua Bulan</option>
@@ -63,6 +58,23 @@
                         <i class="fas fa-chevron-down"></i>
                     </div>
 
+                    <!-- 3. JENJANG -->
+                    <div class="sultan-filter-item" id="cuti_filterJenjangContainer" style="min-width: 130px; max-width: 180px;">
+                        <select id="cuti_filterJenjang" class="form-control">
+                            <option value="">Semua Jenjang</option>
+                        </select>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+
+                    <!-- 4. UNIT KERJA -->
+                    <div class="sultan-filter-item" style="min-width: 200px; max-width: 320px;">
+                        <select id="cuti_filterUnit" class="form-control" disabled>
+                            <option value="">Memvalidasi Akses...</option>
+                        </select>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+
+                    <!-- 5. STATUS -->
                     <div class="sultan-filter-item">
                         <select id="cuti_filterStatus" class="form-control">
                             <option value="">Semua Status</option>
@@ -434,7 +446,12 @@
         $(document).off('click', '#cuti_btnRefresh').on('click', '#cuti_btnRefresh', cuti_loadDataServer);
         $(document).off('click', '#cuti_btnTambahModal').on('click', '#cuti_btnTambahModal', cuti_bukaModalTambah);
 
-        $(document).off('change', '#cuti_filterStatus, #cuti_filterBulan, #cuti_filterTahun, #cuti_filterUnit').on('change', '#cuti_filterStatus, #cuti_filterBulan, #cuti_filterTahun, #cuti_filterUnit', cuti_applyFilter);
+        $(document).off('change', '#cuti_filterStatus, #cuti_filterBulan, #cuti_filterTahun, #cuti_filterUnit, #cuti_filterJenjang').on('change', '#cuti_filterStatus, #cuti_filterBulan, #cuti_filterTahun, #cuti_filterUnit, #cuti_filterJenjang', cuti_applyFilter);
+
+        $(document).off('change', '#cuti_filterJenjang').on('change', '#cuti_filterJenjang', function () {
+            cuti_updateDropdownSekolahCascading();
+            cuti_applyFilter();
+        });
 
         $(document).off('change', '#cuti_in_jenjang').on('change', '#cuti_in_jenjang', cuti_filterUnitByJenjang);
         $(document).off('change', '#cuti_inputUnit').on('change', '#cuti_inputUnit', cuti_handleUnitChange);
@@ -478,17 +495,11 @@
         if (CUTI_IS_ADMIN) {
             $('#cuti_loadingText').html('Mempersiapkan Database Admin...');
 
-            var unikUnit = [...new Set(CUTI_DB_PEGAWAI_CUTI.map(function (item) { return String(item.unit).trim(); }))].filter(Boolean).sort();
-            var $inUnit = $('#cuti_inputUnit').empty().append('<option value="">Pilih Unit Kerja</option>');
-            var $filUnit = $('#cuti_filterUnit').empty().append('<option value="SEMUA">Semua Unit Kerja</option>');
+            cuti_populateJenjang();
+            cuti_updateDropdownSekolahCascading();
 
-            unikUnit.forEach(function (u) {
-                $inUnit.append($('<option>', { value: u, text: u }));
-                $filUnit.append($('<option>', { value: u, text: u }));
-            });
-
-            $filUnit.prop('disabled', false).removeClass('bg-light text-maroon font-weight-bold');
-            $inUnit.prop('disabled', false).removeClass('bg-light text-maroon font-weight-bold');
+            $('#cuti_filterUnit').prop('disabled', false).removeClass('bg-light text-maroon font-weight-bold');
+            $('#cuti_inputUnit').prop('disabled', false).removeClass('bg-light text-maroon font-weight-bold');
             $('#cuti_btnRefresh, #cuti_btnTambahModal').prop('disabled', false);
 
             cuti_loadDataServer();
@@ -616,10 +627,23 @@
         var tNpsnUser = String(CUTI_USER_NPSN).trim().toUpperCase();
         var tUnitUser = String(CUTI_UNIT_TERKUNCI).trim().toUpperCase();
 
+        var fJenjang = $('#cuti_filterJenjang').val();
+        var tJenjang = (fJenjang && fJenjang !== "") ? String(fJenjang).trim().toUpperCase() : "";
+
         var filteredData = CUTI_DATA_MASTER.filter(function (row) {
             var rNpsn = String(row.npsn || "").trim().toUpperCase();
             var rUnit = String(row.unit || "").trim().toUpperCase();
             var rStat = String(row.status || "").trim().toUpperCase();
+            var rJenjang = row.jenjang ? String(row.jenjang).trim().toUpperCase() : "";
+
+            if (!rJenjang && rUnit) {
+                if (rUnit.includes("TK") || rUnit.includes("PAUD") || rUnit.includes("KOBER") || rUnit.includes("TKN") || rUnit.includes("TUNAS MUDA")) rJenjang = "PAUD / TK";
+                else if (rUnit.includes("SD") || rUnit.includes("SDN")) rJenjang = "SD";
+                else if (rUnit.includes("SMP") || rUnit.includes("SMPN")) rJenjang = "SMP";
+                else if (rUnit.includes("SMA") || rUnit.includes("SMAN")) rJenjang = "SMA";
+                else if (rUnit.includes("SMK") || rUnit.includes("SMKN")) rJenjang = "SMK";
+                else if (rUnit.includes("SKB") || rUnit.includes("PKBM")) rJenjang = "NON-FORMAL / SKB";
+            }
 
             var rBulanRaw = "";
             var rawTgl = String(row.tglMulai || "").replace(/'/g, "").trim().toLowerCase();
@@ -644,6 +668,12 @@
                 else if (tUnitUser !== "" && rUnit === tUnitUser) passSekolah = true;
             }
 
+            var passJenjang = true;
+            if (tJenjang !== "") {
+                if (tAdminUnit !== "SEMUA") passJenjang = true;
+                else passJenjang = (rJenjang === tJenjang);
+            }
+
             var passStatus = true;
             if (tStat !== "") {
                 if (tStat === "DIPROSES") passStatus = (rStat === "" || rStat === "DIPROSES");
@@ -656,7 +686,7 @@
                 passBulan = (rBulanRaw === tBulan);
             }
 
-            return passSekolah && passStatus && passBulan;
+            return passSekolah && passJenjang && passStatus && passBulan;
         });
 
         cuti_renderTabel(filteredData);
@@ -1248,25 +1278,82 @@
     // 6. LOGIKA DROPDOWN CASCADING (MENGGUNAKAN DB CUTI)
     // =================================================================
     function cuti_populateJenjang() {
-        var $selJenjang = $('#cuti_in_jenjang').empty().append('<option value="">- Pilih Jenjang -</option>');
+        var $selJenjangModal = $('#cuti_in_jenjang').empty().append('<option value="">- Pilih Jenjang -</option>');
+        var $selJenjangFilter = $('#cuti_filterJenjang').empty().append('<option value="">Semua Jenjang</option>');
         var setJenjang = new Set();
 
-        CUTI_DB_PEGAWAI_CUTI.forEach(function(x) {
-            var unit = String(x.unit || "").trim().toUpperCase();
-            if (!unit) return;
-            if (unit.includes("TK") || unit.includes("PAUD") || unit.includes("KOBER") || unit.includes("TKN")) setJenjang.add("PAUD / TK");
-            else if (unit.includes("SD") || unit.includes("SDN")) setJenjang.add("SD");
-            else if (unit.includes("SMP") || unit.includes("SMPN")) setJenjang.add("SMP");
-            else if (unit.includes("SMA") || unit.includes("SMAN")) setJenjang.add("SMA");
-            else if (unit.includes("SMK") || unit.includes("SMKN")) setJenjang.add("SMK");
-            else if (unit.includes("SKB") || unit.includes("PKBM")) setJenjang.add("NON-FORMAL / SKB");
-            else setJenjang.add("LAINNYA");
-        });
+        var sumberData = (Array.isArray(CUTI_DB_PEGAWAI) && CUTI_DB_PEGAWAI.length > 0) ? CUTI_DB_PEGAWAI : CUTI_DATA_MASTER;
+
+        if (Array.isArray(sumberData) && sumberData.length > 0) {
+            sumberData.forEach(function(x) {
+                if (x.jenjang && String(x.jenjang).trim()) {
+                    setJenjang.add(String(x.jenjang).trim().toUpperCase());
+                } else {
+                    var unit = String(x.unit || "").trim().toUpperCase();
+                    if (!unit) return;
+                    if (unit.includes("TK") || unit.includes("PAUD") || unit.includes("KOBER") || unit.includes("TKN") || unit.includes("TUNAS MUDA")) setJenjang.add("PAUD / TK");
+                    else if (unit.includes("SD") || unit.includes("SDN")) setJenjang.add("SD");
+                    else if (unit.includes("SMP") || unit.includes("SMPN")) setJenjang.add("SMP");
+                    else if (unit.includes("SMA") || unit.includes("SMAN")) setJenjang.add("SMA");
+                    else if (unit.includes("SMK") || unit.includes("SMKN")) setJenjang.add("SMK");
+                    else if (unit.includes("SKB") || unit.includes("PKBM")) setJenjang.add("NON-FORMAL / SKB");
+                }
+            });
+        }
 
         var arrJenjang = Array.from(setJenjang).sort();
         arrJenjang.forEach(function(j) {
-            $selJenjang.append($('<option>', { value: j, text: j }));
+            $selJenjangModal.append('<option value="' + cuti_escapeHtml(j) + '">' + cuti_escapeHtml(j) + '</option>');
+            $selJenjangFilter.append('<option value="' + cuti_escapeHtml(j) + '">' + cuti_escapeHtml(j) + '</option>');
         });
+    }
+
+    function cuti_updateDropdownSekolahCascading() {
+        if (!CUTI_IS_ADMIN) return;
+
+        var selectedJenjang = String($('#cuti_filterJenjang').val() || "").trim().toUpperCase();
+        var $selectUnit = $('#cuti_filterUnit');
+        var currentSelectedUnit = $selectUnit.val() ? String($selectUnit.val()).trim().toUpperCase() : "SEMUA";
+
+        var uniqueUnits = new Set();
+        var sumberData = (Array.isArray(CUTI_DB_PEGAWAI) && CUTI_DB_PEGAWAI.length > 0) ? CUTI_DB_PEGAWAI : CUTI_DATA_MASTER;
+
+        if (Array.isArray(sumberData) && sumberData.length > 0) {
+            sumberData.forEach(function (x) {
+                var unitNama = String(x.unit || "").trim();
+                if (!unitNama) return;
+
+                var unitJenjang = "";
+                if (x.jenjang && String(x.jenjang).trim()) {
+                    unitJenjang = String(x.jenjang).trim().toUpperCase();
+                } else {
+                    var uUp = unitNama.toUpperCase();
+                    if (uUp.includes("TK") || uUp.includes("PAUD") || uUp.includes("KOBER") || uUp.includes("TKN") || uUp.includes("TUNAS MUDA")) unitJenjang = "PAUD / TK";
+                    else if (uUp.includes("SD") || uUp.includes("SDN")) unitJenjang = "SD";
+                    else if (uUp.includes("SMP") || uUp.includes("SMPN")) unitJenjang = "SMP";
+                    else if (uUp.includes("SMA") || uUp.includes("SMAN")) unitJenjang = "SMA";
+                    else if (uUp.includes("SMK") || uUp.includes("SMKN")) unitJenjang = "SMK";
+                    else if (uUp.includes("SKB") || uUp.includes("PKBM")) unitJenjang = "NON-FORMAL / SKB";
+                }
+
+                if (!selectedJenjang || unitJenjang === selectedJenjang) {
+                    uniqueUnits.add(unitNama);
+                }
+            });
+        }
+
+        var sortedUnits = Array.from(uniqueUnits).sort(function(a, b) { return a.localeCompare(b); });
+
+        $selectUnit.empty().append('<option value="SEMUA">Semua Unit Kerja</option>');
+        sortedUnits.forEach(function (u) {
+            $selectUnit.append($('<option>', { value: u, text: u }));
+        });
+
+        if (currentSelectedUnit && uniqueUnits.has(currentSelectedUnit)) {
+            $selectUnit.val(currentSelectedUnit);
+        } else {
+            $selectUnit.val("SEMUA");
+        }
     }
 
     function cuti_filterUnitByJenjang() {

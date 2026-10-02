@@ -37,18 +37,13 @@
 
                 <!-- FILTER BAR (STANDAR GLOBAL SULTAN) -->
                 <div class="sultan-filter-pill-container shadow-sm mb-4">
-                    <div class="sultan-filter-item" style="min-width: 220px; max-width: 360px;">
-                        <select id="unggahcuti_filterUnit" class="form-control" disabled>
-                            <option value="">Memvalidasi Akses...</option>
-                        </select>
-                        <i class="fas fa-chevron-down"></i>
-                    </div>
-
+                    <!-- 1. TAHUN -->
                     <div class="sultan-filter-item sultan-filter-auto">
                         <select id="unggahcuti_filterTahun" class="form-control" style="min-width: 65px !important; max-width: 95px !important;"></select>
                         <i class="fas fa-chevron-down"></i>
                     </div>
 
+                    <!-- 2. BULAN -->
                     <div class="sultan-filter-item">
                         <select id="unggahcuti_filterBulan" class="form-control">
                             <option value="">Semua Bulan</option>
@@ -68,6 +63,23 @@
                         <i class="fas fa-chevron-down"></i>
                     </div>
 
+                    <!-- 3. JENJANG -->
+                    <div class="sultan-filter-item" id="unggahcuti_filterJenjangContainer" style="min-width: 130px; max-width: 180px;">
+                        <select id="unggahcuti_filterJenjang" class="form-control">
+                            <option value="">Semua Jenjang</option>
+                        </select>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+
+                    <!-- 4. UNIT KERJA -->
+                    <div class="sultan-filter-item" style="min-width: 200px; max-width: 320px;">
+                        <select id="unggahcuti_filterUnit" class="form-control" disabled>
+                            <option value="">Memvalidasi Akses...</option>
+                        </select>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+
+                    <!-- 5. STATUS -->
                     <div class="sultan-filter-item">
                         <select id="unggahcuti_filterStatus" class="form-control">
                             <option value="">Status Unggah</option>
@@ -319,7 +331,12 @@
 
         // VAKSINASI EVENT DELEGATION
         $(document).off('click', '#unggahcuti_btnRefresh').on('click', '#unggahcuti_btnRefresh', unggahcuti_tarikDataServer);
-        $(document).off('change', '#unggahcuti_filterTahun, #unggahcuti_filterBulan, #unggahcuti_filterStatus, #unggahcuti_filterUnit').on('change', '#unggahcuti_filterTahun, #unggahcuti_filterBulan, #unggahcuti_filterStatus, #unggahcuti_filterUnit', unggahcuti_applyFilter);
+        $(document).off('change', '#unggahcuti_filterTahun, #unggahcuti_filterBulan, #unggahcuti_filterStatus, #unggahcuti_filterUnit, #unggahcuti_filterJenjang').on('change', '#unggahcuti_filterTahun, #unggahcuti_filterBulan, #unggahcuti_filterStatus, #unggahcuti_filterUnit, #unggahcuti_filterJenjang', unggahcuti_applyFilter);
+
+        $(document).off('change', '#unggahcuti_filterJenjang').on('change', '#unggahcuti_filterJenjang', function () {
+            unggahcuti_updateDropdownSekolahCascading();
+            unggahcuti_applyFilter();
+        });
 
         $(document).off('submit', '#unggahcuti_formUpload').on('submit', '#unggahcuti_formUpload', unggahcuti_submitUpload);
         $(document).off('submit', '#unggahcuti_formVerif').on('submit', '#unggahcuti_formVerif', unggahcuti_submitVerif);
@@ -466,21 +483,84 @@
         }).getDaftarUnggahCuti(th, "", "", "");
     }
 
-    function unggahcuti_initDropdownUnitList() {
-        var unique = new Set();
-        UNGGAHCUTI_CACHE_DATA.forEach(function (row) {
-            var unit = String(row.unit || "").trim();
-            if (unit) unique.add(unit);
+    function unggahcuti_populateJenjang() {
+        var $selJenjangFilter = $('#unggahcuti_filterJenjang').empty().append('<option value="">Semua Jenjang</option>');
+        var setJenjang = new Set();
+
+        if (Array.isArray(UNGGAHCUTI_CACHE_DATA) && UNGGAHCUTI_CACHE_DATA.length > 0) {
+            UNGGAHCUTI_CACHE_DATA.forEach(function(x) {
+                if (x.jenjang && String(x.jenjang).trim()) {
+                    setJenjang.add(String(x.jenjang).trim().toUpperCase());
+                } else {
+                    var unit = String(x.unit || "").trim().toUpperCase();
+                    if (!unit) return;
+                    if (unit.includes("TK") || unit.includes("PAUD") || unit.includes("KOBER") || unit.includes("TKN") || unit.includes("TUNAS MUDA")) setJenjang.add("PAUD / TK");
+                    else if (unit.includes("SD") || unit.includes("SDN")) setJenjang.add("SD");
+                    else if (unit.includes("SMP") || unit.includes("SMPN")) setJenjang.add("SMP");
+                    else if (unit.includes("SMA") || unit.includes("SMAN")) setJenjang.add("SMA");
+                    else if (unit.includes("SMK") || unit.includes("SMKN")) setJenjang.add("SMK");
+                    else if (unit.includes("SKB") || unit.includes("PKBM")) setJenjang.add("NON-FORMAL / SKB");
+                }
+            });
+        }
+
+        var arrJenjang = Array.from(setJenjang).sort();
+        arrJenjang.forEach(function(j) {
+            $selJenjangFilter.append('<option value="' + unggahcuti_escapeHtml(j) + '">' + unggahcuti_escapeHtml(j) + '</option>');
         });
-        var sortedUnits = Array.from(unique).sort();
-        var select = $('#unggahcuti_filterUnit');
-        var currentVal = select.val();
+    }
 
-        select.empty().append('<option value="SEMUA">Semua Unit Kerja</option>');
-        sortedUnits.forEach(function (u) { select.append(`<option value="${unggahcuti_escapeHtml(u)}">${unggahcuti_escapeHtml(u)}</option>`); });
+    function unggahcuti_updateDropdownSekolahCascading() {
+        if (!UNGGAHCUTI_IS_ADMIN) return;
 
-        select.prop('disabled', false).removeClass('bg-light text-maroon font-weight-bold');
-        if (currentVal && unique.has(currentVal)) { select.val(currentVal); }
+        var selectedJenjang = String($('#unggahcuti_filterJenjang').val() || "").trim().toUpperCase();
+        var $selectUnit = $('#unggahcuti_filterUnit');
+        var currentSelectedUnit = $selectUnit.val() ? String($selectUnit.val()).trim().toUpperCase() : "SEMUA";
+
+        var uniqueUnits = new Set();
+        if (Array.isArray(UNGGAHCUTI_CACHE_DATA) && UNGGAHCUTI_CACHE_DATA.length > 0) {
+            UNGGAHCUTI_CACHE_DATA.forEach(function (x) {
+                var unitNama = String(x.unit || "").trim();
+                if (!unitNama) return;
+
+                var unitJenjang = "";
+                if (x.jenjang && String(x.jenjang).trim()) {
+                    unitJenjang = String(x.jenjang).trim().toUpperCase();
+                } else {
+                    var uUp = unitNama.toUpperCase();
+                    if (uUp.includes("TK") || uUp.includes("PAUD") || uUp.includes("KOBER") || uUp.includes("TKN") || uUp.includes("TUNAS MUDA")) unitJenjang = "PAUD / TK";
+                    else if (uUp.includes("SD") || uUp.includes("SDN")) unitJenjang = "SD";
+                    else if (uUp.includes("SMP") || uUp.includes("SMPN")) unitJenjang = "SMP";
+                    else if (uUp.includes("SMA") || uUp.includes("SMAN")) unitJenjang = "SMA";
+                    else if (uUp.includes("SMK") || uUp.includes("SMKN")) unitJenjang = "SMK";
+                    else if (uUp.includes("SKB") || uUp.includes("PKBM")) unitJenjang = "NON-FORMAL / SKB";
+                }
+
+                if (!selectedJenjang || unitJenjang === selectedJenjang) {
+                    uniqueUnits.add(unitNama);
+                }
+            });
+        }
+
+        var sortedUnits = Array.from(uniqueUnits).sort(function(a, b) { return a.localeCompare(b); });
+
+        $selectUnit.empty().append('<option value="SEMUA">Semua Unit Kerja</option>');
+        sortedUnits.forEach(function (u) {
+            $selectUnit.append($('<option>', { value: u, text: u }));
+        });
+
+        $selectUnit.prop('disabled', false).removeClass('bg-light text-maroon font-weight-bold');
+
+        if (currentSelectedUnit && uniqueUnits.has(currentSelectedUnit)) {
+            $selectUnit.val(currentSelectedUnit);
+        } else {
+            $selectUnit.val("SEMUA");
+        }
+    }
+
+    function unggahcuti_initDropdownUnitList() {
+        unggahcuti_populateJenjang();
+        unggahcuti_updateDropdownSekolahCascading();
     }
 
     // =================================================================
@@ -495,8 +575,21 @@
         var fBulan = $('#unggahcuti_filterBulan').val();
         var tBulan = (fBulan && fBulan !== "") ? String(fBulan).trim().toLowerCase() : "";
 
+        var fJenjang = $('#unggahcuti_filterJenjang').val();
+        var tJenjang = (fJenjang && fJenjang !== "") ? String(fJenjang).trim().toUpperCase() : "";
+
         var hasil = UNGGAHCUTI_CACHE_DATA.filter(function (row) {
             var rUnit = String(row.unit || "").trim().toUpperCase();
+            var rJenjang = row.jenjang ? String(row.jenjang).trim().toUpperCase() : "";
+
+            if (!rJenjang && rUnit) {
+                if (rUnit.includes("TK") || rUnit.includes("PAUD") || rUnit.includes("KOBER") || rUnit.includes("TKN") || rUnit.includes("TUNAS MUDA")) rJenjang = "PAUD / TK";
+                else if (rUnit.includes("SD") || rUnit.includes("SDN")) rJenjang = "SD";
+                else if (rUnit.includes("SMP") || rUnit.includes("SMPN")) rJenjang = "SMP";
+                else if (rUnit.includes("SMA") || rUnit.includes("SMAN")) rJenjang = "SMA";
+                else if (rUnit.includes("SMK") || rUnit.includes("SMKN")) rJenjang = "SMK";
+                else if (rUnit.includes("SKB") || rUnit.includes("PKBM")) rJenjang = "NON-FORMAL / SKB";
+            }
 
             var rBulanRaw = "";
             var rawTgl = String(row.tglMulai || "").replace(/'/g, "").trim().toLowerCase();
@@ -520,6 +613,14 @@
                 if (rUnit === tUnitUser) passSekolah = true;
             }
             if (!passSekolah) return false;
+
+            if (tJenjang !== "") {
+                if (tAdminUnit !== "SEMUA") {
+                    // Jika sekolah spesifik sudah dipilih, loloskan jenjang
+                } else if (rJenjang !== tJenjang) {
+                    return false;
+                }
+            }
 
             var st = String(row.statusUnggah || "");
             if (fStatus === "Belum") {
