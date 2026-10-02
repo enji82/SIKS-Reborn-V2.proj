@@ -405,386 +405,199 @@ function harian_getNamaHari(thn, blnNama, tgl) {
     var mIdx = mNames.indexOf(blnNama);
     if (mIdx === -1) return { short: "", isWeekend: false };
     var y = parseInt(thn) || new Date().getFullYear();
-    var d = new Date(y, mIdx, parseInt(tgl));
+    var dObj = new Date(y, mIdx, parseInt(tgl));
     var dayNames = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
-    var dayIdx = d.getDay();
+    var dayIdx = dObj.getDay();
     return {
-        short: dayNames[dayIdx],
+        short: dayNames[dayIdx] || "",
         isWeekend: (dayIdx === 0 || dayIdx === 6)
     };
 }
 
-function harian_initFilters() {
-    $('#harian_loadingText').html('Memuat Konfigurasi Waktu...');
-    
-    google.script.run.withSuccessHandler(function(res) {
-        var data = JSON.parse(res);
-        
-        var elThn = $('#harian_filterTahun').empty().append('<option value="">- Tahun -</option>');
-        data.years.forEach(y => elThn.append(`<option value="${harian_escapeHtml(y)}">${harian_escapeHtml(y)}</option>`));
-        
-        var elBln = $('#harian_filterBulan').empty().append('<option value="">- Bulan -</option>');
-        data.months.forEach(m => elBln.append(`<option value="${harian_escapeHtml(m)}">${harian_escapeHtml(m)}</option>`));
-
-        var now = new Date();
-        var curYear = now.getFullYear().toString();
-        var mNames = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
-        var curMonth = mNames[now.getMonth()];
-
-        if ($("#harian_filterTahun option[value='"+curYear+"']").length > 0) $('#harian_filterTahun').val(curYear);
-        if ($("#harian_filterBulan option[value='"+curMonth+"']").length > 0) $('#harian_filterBulan').val(curMonth);
-
-        $('#harian_filterTahun, #harian_filterBulan, #harian_btnRefresh').prop('disabled', false);
-
-        harian_validasiAksesUser(); 
-
-    }).getSiabaFilters();
-}
-
-function harian_validasiAksesUser() {
-    $('#harian_loadingText').html('Mempersiapkan Akses...');
-
-    if (HARIAN_IS_ADMIN) {
-        $('#harian_filterUnit').empty().append('<option value="SEMUA">- Semua Unit Kerja -</option>').prop('disabled', false).removeClass('bg-light text-maroon font-weight-bold');
-        harian_tarikDataServer(); 
-    } else {
-        if (!HARIAN_USER_NPSN) {
-            $('#harian_filterUnit').empty().append('<option value="">AKSES DITOLAK (NPSN KOSONG)</option>');
-            $('#harian_loadingText').html('<span class="text-danger"><i class="fas fa-ban mb-2"></i><br>Akses ditolak: Sesi login tidak valid.</span>');
-            return;
-        }
-
-        google.script.run
-            .withSuccessHandler(function(resUnit) {
-                var dataUnit = JSON.parse(resUnit);
-                if (dataUnit.error) {
-                    $('#harian_filterUnit').empty().append('<option value="">AKSES DITOLAK</option>');
-                    $('#harian_loadingText').html(`<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>${harian_escapeHtml(dataUnit.error)}</span>`);
-                    return;
-                }
-
-                HARIAN_UNIT_TERKUNCI = dataUnit.unitKerja;
-                $('#harian_filterUnit').empty().append($('<option>', {value: HARIAN_UNIT_TERKUNCI, text: HARIAN_UNIT_TERKUNCI})).prop('disabled', true);
-                
-                harian_tarikDataServer();
-            })
-            .withFailureHandler(function(err) {
-                $('#harian_filterUnit').empty().append('<option value="">ERROR SERVER</option>');
-                $('#harian_loadingText').html(`<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Database Induk Terputus: ${harian_escapeHtml(err.message)}</span>`);
-            })
-            .getUnitKerjaByNPSN(HARIAN_USER_NPSN); 
-    }
-}
-
-// =================================================================
-// 3. FETCH DATA DARI SERVER
-// =================================================================
-function harian_prosesCariData() {
-    var th = $('#harian_filterTahun').val(); 
-    var bl = $('#harian_filterBulan').val();
-    if (!th || !bl) { Sultan.notif.info('Pilih Tahun dan Bulan.'); return; }
-    
-    if (th === HARIAN_CACHE_THN && bl === HARIAN_CACHE_BLN && HARIAN_CACHE_DATA.length > 0) { 
-        harian_terapkanFilterLokal(); 
-    } else { 
-        harian_tarikDataServer(); 
-    }
-}
-
-function harian_tarikDataServer() {
-    var th = $('#harian_filterTahun').val(); 
-    var bl = $('#harian_filterBulan').val();
-    if(!th || !bl) return;
-
-    var btn = $('#harian_btnRefresh');
-    btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin text-maroon"></i>');
-    
-    if (!HARIAN_TABEL_INSTANCE) {
-        $('#harian_tableState').hide();
-        $('#harian_loadingText').html('Mengambil data presensi...');
-        SultanUI.showLoading('#harian_loadingState');
-    }
-
-    google.script.run
-        .withSuccessHandler(function(res) {
-            btn.prop('disabled', false).html('<i class="fas fa-sync-alt"></i>');
-            
-            var data;
-            try {
-                data = typeof res === 'string' ? JSON.parse(res) : res;
-            } catch(e) {
-                $('#harian_tableState').hide();
-                SultanUI.showLoading('#harian_loadingState');
-                $('#harian_loadingText').html('<span class="text-danger"><i class="fas fa-times-circle mb-2"></i><br>Gagal memproses struktur JSON Server.</span>');
-                return;
-            }
-            
-            if (data && data.error) {
-                $('#harian_tableState').hide();
-                SultanUI.showLoading('#harian_loadingState');
-                $('#harian_loadingText').html(`<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>${harian_escapeHtml(data.error)}</span>`);
-                return;
-            } 
-            
-            try {
-                HARIAN_CACHE_DATA = data.rows || []; 
-                HARIAN_CACHE_THN = th;
-                HARIAN_CACHE_BLN = bl;
-
-                if(HARIAN_IS_ADMIN) harian_populateDropdownUnit();
-
-                harian_terapkanFilterLokal();
-                
-            } catch(e) { 
-                $('#harian_tableState').hide();
-                SultanUI.showLoading('#harian_loadingState');
-                $('#harian_loadingText').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>Gagal merakit tabel: ' + harian_escapeHtml(e.message) + '</span>'); 
-            }
-        })
-        .withFailureHandler(function(err) {
-            btn.prop('disabled', false).html('<i class="fas fa-sync-alt"></i>');
-            $('#harian_tableState').hide();
-            SultanUI.showLoading('#harian_loadingState');
-            $('#harian_loadingText').html(`<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Terputus: ${harian_escapeHtml(err.message)}</span>`);
-        })
-        .getSiabaPresensiHarian(th, bl, "SEMUA");
-}
-
-function harian_populateDropdownUnit() {
-    var unique = new Set();
-    HARIAN_CACHE_DATA.forEach(function(row) {
-        var lastIdx = row.length - 1;
-        var unit = String(row[lastIdx]).trim();
-        if (unit) unique.add(unit);
-    });
-    
-    var sortedUnits = Array.from(unique).sort();
-    var select = $('#harian_filterUnit');
-    var currentVal = select.val();
-    
-    select.empty().append('<option value="SEMUA">- Semua Unit Kerja -</option>');
-    sortedUnits.forEach(function(u) { select.append(`<option value="${harian_escapeHtml(u)}">${harian_escapeHtml(u)}</option>`); });
-    
-    select.prop('disabled', false).removeClass('bg-light text-maroon font-weight-bold');
-    if(currentVal && unique.has(currentVal)) { select.val(currentVal); }
-}
-
-// =================================================================
-// 4. RENDERING TABEL & DINAMISASI KOLOM
-// =================================================================
-function harian_terapkanFilterLokal() {
-    var tAdminUnit = HARIAN_IS_ADMIN ? $('#harian_filterUnit').val().toUpperCase() : "";
-    var tUnitUser  = String(HARIAN_UNIT_TERKUNCI).trim().toUpperCase();
-    
-    var hasil = HARIAN_CACHE_DATA.filter(function(row) {
-        var lastIdx = row.length - 1;
-        var rUnit = String(row[lastIdx]).trim().toUpperCase(); 
-        
-        if (HARIAN_IS_ADMIN) {
-            return (tAdminUnit === "SEMUA" || tAdminUnit === "" || rUnit === tAdminUnit);
-        } else {
-            return (rUnit === tUnitUser);
-        }
-    });
-
-    harian_renderTabel(hasil);
-}
-
-function harian_formatComboCell(dVal, pVal, dayNum) {
-    if ((!dVal || dVal === "-" || dVal === "0") && (!pVal || pVal === "-" || pVal === "0")) {
-        return `<div class="harian-cell-combo"><span class="text-muted opacity-50">-</span></div>`;
-    }
-    
-    var codes = ['CT','CS','CAP','CM','CB','CLTN','DD','DL','TA','PLA','LA','TP'];
-    
-    if (dVal === pVal && codes.includes(dVal)) {
-        var badgeClass = 'badge-soft-info';
-        if (['CT','CS','CAP','CM','CB','CLTN'].includes(dVal)) badgeClass = 'badge-soft-info';
-        else if (['DD','DL'].includes(dVal)) badgeClass = 'badge-soft-purple';
-        else if (['TA','PLA','LA','TP'].includes(dVal)) badgeClass = 'badge-soft-danger';
-        
-        return `<div class="harian-cell-combo" title="Tgl ${dayNum}: ${dVal}"><span class="badge ${badgeClass} harian-badge-status">${dVal}</span></div>`;
-    }
-    
-    // POSISI BENAR: Jam Datang (dVal) di ATAS, Jam Pulang (pVal) di BAWAH
-    var inHtml = dVal ? `<span class="harian-time-in" title="Datang: ${dVal}">${harian_escapeHtml(dVal)}</span>` : `<span class="text-muted opacity-50">-</span>`;
-    var outHtml = pVal ? `<span class="harian-time-out" title="Pulang: ${pVal}">${harian_escapeHtml(pVal)}</span>` : `<span class="text-muted opacity-50">-</span>`;
-    
-    return `<div class="harian-cell-combo" title="Tgl ${dayNum}">${inHtml}${outHtml}</div>`;
-}
-
 function harian_renderTabel(dataRows) {
-    var th = $('#harian_filterTahun').val();
-    var bl = $('#harian_filterBulan').val();
-    var numDays = harian_getJumlahHari(th, bl); // 28, 29, 30, atau 31
+    try {
+        var th = $('#harian_filterTahun').val();
+        var bl = $('#harian_filterBulan').val();
+        var numDays = harian_getJumlahHari(th, bl); // 28, 29, 30, atau 31
 
-    // 1. Destroy DataTable jika sudah pernah ada
-    if ($.fn.DataTable.isDataTable('#harian_tabelUtama')) {
-        $('#harian_tabelUtama').DataTable().clear().destroy();
-    }
+        // 1. Destroy DataTable & bersihkan DOM tabel secara menyeluruh (Cegah Mismatch Kolom)
+        var $tabel = $('#harian_tabelUtama');
+        if ($.fn.DataTable.isDataTable('#harian_tabelUtama')) {
+            $tabel.DataTable().clear().destroy();
+        }
+        $tabel.empty();
 
-    // 2. Rakit Header HTML Sesuai View Mode & Jumlah Hari Dinamis (Termasuk Nama Hari)
-    var theadHtml = '';
-    if (HARIAN_VIEW_MODE === 'matriks') {
-        var dayHeadersHtml = '';
-        for (var d = 1; d <= numDays; d++) {
-            var infoHari = harian_getNamaHari(th, bl, d);
-            var weekendClass = infoHari.isWeekend ? 'is-weekend' : 'bg-soft-abu';
-            dayHeadersHtml += `
-                <th class="text-center align-middle px-1 harian-col-header-tgl ${weekendClass}">
-                    <div style="font-size:0.75rem; font-weight:bold;">${d}</div>
-                    <div style="font-size:0.62rem; line-height:1; opacity:0.85;">${infoHari.short}</div>
-                </th>
+        // 2. Rakit Header HTML Sesuai View Mode & Jumlah Hari Dinamis (Termasuk Nama Hari)
+        var theadHtml = '';
+        if (HARIAN_VIEW_MODE === 'matriks') {
+            var dayHeadersHtml = '';
+            for (var d = 1; d <= numDays; d++) {
+                var infoHari = harian_getNamaHari(th, bl, d);
+                var weekendClass = infoHari.isWeekend ? 'is-weekend' : 'bg-soft-abu';
+                dayHeadersHtml += `
+                    <th class="text-center align-middle px-1 harian-col-header-tgl ${weekendClass}">
+                        <div style="font-size:0.75rem; font-weight:bold;">${d}</div>
+                        <div style="font-size:0.62rem; line-height:1; opacity:0.85;">${infoHari.short}</div>
+                    </th>
+                `;
+            }
+            theadHtml = `
+                <thead class="thead-sultan-premium text-maroon text-uppercase">
+                    <tr>
+                        <th class="sultan-sticky-col text-left px-3 align-middle" style="min-width: 220px;">NAMA ASN / NIP</th>
+                        <th class="text-center align-middle px-2 bg-soft-danger" title="Tidak Presensi">TP</th>
+                        <th class="text-center align-middle px-2 bg-soft-primary" title="Hadir">H</th>
+                        <th class="text-center align-middle px-2 bg-soft-warning" title="Terlambat">TA</th>
+                        <th class="text-center align-middle px-2 bg-soft-info" title="Total Cuti & Dinas">CT/DL</th>
+                        ${dayHeadersHtml}
+                    </tr>
+                </thead>
+                <tbody id="harian_tbodyUtama"></tbody>
+            `;
+        } else {
+            // Mode Rekapitulasi
+            theadHtml = `
+                <thead class="thead-sultan-premium text-maroon text-uppercase">
+                    <tr>
+                       <th class="sultan-sticky-col text-left px-3 align-middle" style="min-width: 220px;">NAMA ASN / NIP</th>
+                       <th class="text-center align-middle px-2 bg-soft-danger" title="Tidak Presensi">TP</th>
+                       <th class="text-center align-middle px-2 bg-soft-primary">HK</th>
+                       <th class="text-center align-middle px-2 bg-soft-primary">H</th>
+                       <th class="text-center align-middle px-2 bg-soft-success">HA</th>
+                       <th class="text-center align-middle px-2 bg-soft-success">APL</th>
+                       <th class="text-center align-middle px-2 bg-soft-success">TAp</th>
+                       <th class="text-center align-middle px-2 bg-soft-warning">HU</th>
+                       <th class="text-center align-middle px-2 bg-soft-warning">U</th>
+                       <th class="text-center align-middle px-2 bg-soft-warning">TU</th>
+                       <th class="text-center align-middle px-2 bg-soft-info">CT</th>
+                       <th class="text-center align-middle px-2 bg-soft-info">CAP</th>
+                       <th class="text-center align-middle px-2 bg-soft-info">CS</th>
+                       <th class="text-center align-middle px-2 bg-soft-info">CM</th>
+                       <th class="text-center align-middle px-2 bg-soft-purple">DD</th>
+                       <th class="text-center align-middle px-2 bg-soft-purple">DL</th>
+                       <th class="text-center align-middle px-2 bg-soft-orange">TA</th>
+                       <th class="text-center align-middle px-2 bg-soft-orange">WAKTU TA</th>
+                       <th class="text-center align-middle px-2 bg-soft-orange">PLA</th>
+                       <th class="text-center align-middle px-2 bg-soft-orange">WAKTU PLA</th>
+                       <th class="text-center align-middle px-2 bg-soft-danger">LA</th>
+                    </tr>
+                </thead>
+                <tbody id="harian_tbodyUtama"></tbody>
             `;
         }
-        theadHtml = `
-            <tr>
-                <th class="sultan-sticky-col text-left px-3 align-middle" style="min-width: 220px;">NAMA ASN / NIP</th>
-                <th class="text-center align-middle px-2 bg-soft-danger" title="Tidak Presensi">TP</th>
-                <th class="text-center align-middle px-2 bg-soft-primary" title="Hadir">H</th>
-                <th class="text-center align-middle px-2 bg-soft-warning" title="Terlambat">TA</th>
-                <th class="text-center align-middle px-2 bg-soft-info" title="Total Cuti & Dinas">CT/DL</th>
-                ${dayHeadersHtml}
-            </tr>
-        `;
-    } else {
-        // Mode Rekapitulasi
-        theadHtml = `
-            <tr>
-               <th class="sultan-sticky-col text-left px-3 align-middle" style="min-width: 220px;">NAMA ASN / NIP</th>
-               <th class="text-center align-middle px-2 bg-soft-danger" title="Tidak Presensi">TP</th>
-               <th class="text-center align-middle px-2 bg-soft-primary">HK</th>
-               <th class="text-center align-middle px-2 bg-soft-primary">H</th>
-               <th class="text-center align-middle px-2 bg-soft-success">HA</th>
-               <th class="text-center align-middle px-2 bg-soft-success">APL</th>
-               <th class="text-center align-middle px-2 bg-soft-success">TAp</th>
-               <th class="text-center align-middle px-2 bg-soft-warning">HU</th>
-               <th class="text-center align-middle px-2 bg-soft-warning">U</th>
-               <th class="text-center align-middle px-2 bg-soft-warning">TU</th>
-               <th class="text-center align-middle px-2 bg-soft-info">CT</th>
-               <th class="text-center align-middle px-2 bg-soft-info">CAP</th>
-               <th class="text-center align-middle px-2 bg-soft-info">CS</th>
-               <th class="text-center align-middle px-2 bg-soft-info">CM</th>
-               <th class="text-center align-middle px-2 bg-soft-purple">DD</th>
-               <th class="text-center align-middle px-2 bg-soft-purple">DL</th>
-               <th class="text-center align-middle px-2 bg-soft-orange">TA</th>
-               <th class="text-center align-middle px-2 bg-soft-orange">WAKTU TA</th>
-               <th class="text-center align-middle px-2 bg-soft-orange">PLA</th>
-               <th class="text-center align-middle px-2 bg-soft-orange">WAKTU PLA</th>
-               <th class="text-center align-middle px-2 bg-soft-danger">LA</th>
-            </tr>
-        `;
-    }
-    $('#harian_theadUtama').html(theadHtml);
+        $tabel.html(theadHtml);
 
-    // 3. Rakit Data Array (dtArray)
-    var dtArray = [];
-    var rowDataMapping = [];
+        // 3. Rakit Data Array (dtArray)
+        var dtArray = [];
+        var rowDataMapping = [];
 
-    dataRows.forEach(function(row) {
-        var arrRow = [];
-        
-        // Identitas ASN
-        var safeNama = harian_escapeHtml(row[0]);
-        var safeNip = harian_escapeHtml(row[1]);
-        var safeUnit = harian_escapeHtml(row[row.length - 1] || '-');
-        var txtUnitHtml = HARIAN_IS_ADMIN ? `<div class="data-tersier text-left mt-1">${safeUnit}</div>` : '';
-        var displayNama = `<div class="sultan-table-primary text-left font-weight-bold">${safeNama}</div><div class="sultan-table-secondary text-left small text-muted">${safeNip}</div>${txtUnitHtml}`;
-        
-        arrRow.push(displayNama);
+        dataRows.forEach(function(row) {
+            var arrRow = [];
+            
+            // Identitas ASN
+            var safeNama = harian_escapeHtml(row[0]);
+            var safeNip = harian_escapeHtml(row[1]);
+            var safeUnit = harian_escapeHtml(row[row.length - 1] || '-');
+            var txtUnitHtml = HARIAN_IS_ADMIN ? `<div class="data-tersier text-left mt-1">${safeUnit}</div>` : '';
+            var displayNama = `<div class="sultan-table-primary text-left font-weight-bold">${safeNama}</div><div class="sultan-table-secondary text-left small text-muted">${safeNip}</div>${txtUnitHtml}`;
+            
+            arrRow.push(displayNama);
 
-        if (HARIAN_VIEW_MODE === 'matriks') {
-            // Stats Ringkas
-            var valTP = row[2] || 0;
-            var valH  = row[4] || 0;
-            var valTA = row[17] || 0;
-            var valCutiDinas = (parseInt(row[11])||0) + (parseInt(row[12])||0) + (parseInt(row[13])||0) + (parseInt(row[14])||0) + (parseInt(row[15])||0) + (parseInt(row[16])||0);
+            if (HARIAN_VIEW_MODE === 'matriks') {
+                // Stats Ringkas
+                var valTP = row[2] || 0;
+                var valH  = row[4] || 0;
+                var valTA = row[17] || 0;
+                var valCutiDinas = (parseInt(row[11])||0) + (parseInt(row[12])||0) + (parseInt(row[13])||0) + (parseInt(row[14])||0) + (parseInt(row[15])||0) + (parseInt(row[16])||0);
 
-            arrRow.push(valTP > 0 ? `<span class="badge badge-soft-danger font-weight-bold">${valTP}</span>` : `<span class="text-muted opacity-50">-</span>`);
-            arrRow.push(valH > 0 ? `<span class="badge badge-soft-primary font-weight-bold">${valH}</span>` : `<span class="text-muted opacity-50">-</span>`);
-            arrRow.push(valTA > 0 ? `<span class="badge badge-soft-warning font-weight-bold">${valTA}</span>` : `<span class="text-muted opacity-50">-</span>`);
-            arrRow.push(valCutiDinas > 0 ? `<span class="badge badge-soft-info font-weight-bold">${valCutiDinas}</span>` : `<span class="text-muted opacity-50">-</span>`);
+                arrRow.push(valTP > 0 ? `<span class="badge badge-soft-danger font-weight-bold">${valTP}</span>` : `<span class="text-muted opacity-50">-</span>`);
+                arrRow.push(valH > 0 ? `<span class="badge badge-soft-primary font-weight-bold">${valH}</span>` : `<span class="text-muted opacity-50">-</span>`);
+                arrRow.push(valTA > 0 ? `<span class="badge badge-soft-warning font-weight-bold">${valTA}</span>` : `<span class="text-muted opacity-50">-</span>`);
+                arrRow.push(valCutiDinas > 0 ? `<span class="badge badge-soft-info font-weight-bold">${valCutiDinas}</span>` : `<span class="text-muted opacity-50">-</span>`);
 
-            // Dynamic Day Columns (Tgl 1 s.d. numDays)
-            for (var d = 1; d <= numDays; d++) {
-                // DI DATABASE: Index 21 + (d-1)*2 adalah Pulang (1P), Index + 1 adalah Datang (1D)
-                var pIdx = 21 + (d - 1) * 2;
-                var dIdx = pIdx + 1;
-                
-                var pVal = String(row[pIdx] || "").trim().toUpperCase();
-                var dVal = String(row[dIdx] || "").trim().toUpperCase();
-                
-                arrRow.push(harian_formatComboCell(dVal, pVal, d));
-            }
-        } 
-        else {
-            // Mode Rekapitulasi (20 Kolom Rekap)
-            for (var visIdx = 1; visIdx <= 20; visIdx++) {
-                var val = row[visIdx + 1]; 
-                var strVal = String(val).toUpperCase().trim();
-                var display = val;
-
-                if (val == 0 || val == "0" || strVal === "") {
-                    display = `<span class="text-muted opacity-50">-</span>`;
-                } else {
-                    var safeVal = harian_escapeHtml(val);
-                    if (visIdx === 1) display = `<span class="text-danger font-weight-bold">${safeVal}</span>`;
-                    else if (visIdx >= 2 && visIdx <= 3) display = `<span class="text-primary font-weight-bold">${safeVal}</span>`;
-                    else if (visIdx >= 4 && visIdx <= 6) display = `<span class="text-success font-weight-bold">${safeVal}</span>`;
-                    else if (visIdx >= 7 && visIdx <= 9) display = `<span class="text-dark font-weight-bold">${safeVal}</span>`;
-                    else if (visIdx >= 10 && visIdx <= 13) display = `<span class="text-info font-weight-bold">${safeVal}</span>`;
-                    else if (visIdx >= 14 && visIdx <= 15) display = `<span class="text-purple-sultan font-weight-bold">${safeVal}</span>`;
-                    else if (visIdx >= 16 && visIdx <= 19) display = `<span class="text-orange font-weight-bold">${safeVal}</span>`;
-                    else if (visIdx === 20) display = `<span class="text-danger font-weight-bold">${safeVal}</span>`;
+                // Dynamic Day Columns (Tgl 1 s.d. numDays)
+                for (var d = 1; d <= numDays; d++) {
+                    var pIdx = 21 + (d - 1) * 2;
+                    var dIdx = pIdx + 1;
+                    
+                    var pVal = String(row[pIdx] || "").trim().toUpperCase();
+                    var dVal = String(row[dIdx] || "").trim().toUpperCase();
+                    
+                    arrRow.push(harian_formatComboCell(dVal, pVal, d));
                 }
-                arrRow.push(display);
+            } 
+            else {
+                // Mode Rekapitulasi (20 Kolom Rekap)
+                for (var visIdx = 1; visIdx <= 20; visIdx++) {
+                    var val = row[visIdx + 1]; 
+                    var strVal = String(val).toUpperCase().trim();
+                    var display = val;
+
+                    if (val == 0 || val == "0" || strVal === "") {
+                        display = `<span class="text-muted opacity-50">-</span>`;
+                    } else {
+                        var safeVal = harian_escapeHtml(val);
+                        if (visIdx === 1) display = `<span class="text-danger font-weight-bold">${safeVal}</span>`;
+                        else if (visIdx >= 2 && visIdx <= 3) display = `<span class="text-primary font-weight-bold">${safeVal}</span>`;
+                        else if (visIdx >= 4 && visIdx <= 6) display = `<span class="text-success font-weight-bold">${safeVal}</span>`;
+                        else if (visIdx >= 7 && visIdx <= 9) display = `<span class="text-dark font-weight-bold">${safeVal}</span>`;
+                        else if (visIdx >= 10 && visIdx <= 13) display = `<span class="text-info font-weight-bold">${safeVal}</span>`;
+                        else if (visIdx >= 14 && visIdx <= 15) display = `<span class="text-purple-sultan font-weight-bold">${safeVal}</span>`;
+                        else if (visIdx >= 16 && visIdx <= 19) display = `<span class="text-orange font-weight-bold">${safeVal}</span>`;
+                        else if (visIdx === 20) display = `<span class="text-danger font-weight-bold">${safeVal}</span>`;
+                    }
+                    arrRow.push(display);
+                }
             }
-        }
 
-        dtArray.push(arrRow);
-        rowDataMapping.push(row);
-    });
+            dtArray.push(arrRow);
+            rowDataMapping.push(row);
+        });
 
-    // 4. Inisialisasi DataTable Sultan System
-    var totalColsCount = HARIAN_VIEW_MODE === 'matriks' ? (5 + numDays) : 21;
-    var targetColsArray = Array.from({length: totalColsCount - 1}, function(_, i) { return i + 1; });
+        // 4. Inisialisasi DataTable Sultan System
+        var totalColsCount = HARIAN_VIEW_MODE === 'matriks' ? (5 + numDays) : 21;
+        var targetColsArray = Array.from({length: totalColsCount - 1}, function(_, i) { return i + 1; });
 
-    HARIAN_TABEL_INSTANCE = SultanTable.init('#harian_tabelUtama', {
-        "data": dtArray, 
-        "destroy": true, "ordering": false, "pageLength": 10, "autoWidth": false,
-        "deferRender": true,
-        "dom": "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
-               "<'row'<'col-sm-12'<'sultan-scroll-container sultan-scroll'tr>>>" +
-               "<'row mt-3'<'col-sm-12 col-md-5 small text-muted'i><'col-sm-12 col-md-7'p>>",
-        "columnDefs": [
-            { "targets": 0, "width": "220px", "className": "sultan-sticky-col align-middle font-weight-bold text-dark text-left" },
-            { "targets": targetColsArray, "className": "text-center align-middle" }
-        ],
-        "language": { 
-            "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json", 
-            "search": "", "searchPlaceholder": "Cari Nama ASN / NIP...",
-            "emptyTable": '<div class="py-4 text-center text-muted"><i class="fas fa-clipboard-list fa-3x text-gray-300 mb-3" style="opacity: 0.6;"></i><br><h6 class="font-weight-bold text-dark mb-1">Belum Ada Presensi</h6><p class="small mb-0">Tidak ada data presensi harian untuk filter terpilih.</p></div>' 
-        },
-        "createdRow": function(row, data, dataIndex) {
-             $(row).addClass('clickable-row').data('rawRow', rowDataMapping[dataIndex]);
-             
-             var tds = row.childNodes;
-             for (var visIdx = 0; visIdx < tds.length; visIdx++) {
-                 var cell = tds[visIdx];
-                 if (visIdx === 0) {
-                     cell.className = 'sultan-sticky-col text-left px-3 py-1 align-middle font-weight-bold';
-                     cell.style.setProperty('padding', '4px 10px', 'important');
-                 } else {
-                     cell.className = 'align-middle text-center px-1 py-1';
-                     cell.style.setProperty('padding', '2px 2px', 'important');
+        HARIAN_TABEL_INSTANCE = SultanTable.init('#harian_tabelUtama', {
+            "data": dtArray, 
+            "destroy": true, "ordering": false, "pageLength": 10, "autoWidth": false,
+            "deferRender": true,
+            "dom": "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
+                   "<'row'<'col-sm-12'<'sultan-scroll-container sultan-scroll'tr>>>" +
+                   "<'row mt-3'<'col-sm-12 col-md-5 small text-muted'i><'col-sm-12 col-md-7'p>>",
+            "columnDefs": [
+                { "targets": 0, "width": "220px", "className": "sultan-sticky-col align-middle font-weight-bold text-dark text-left" },
+                { "targets": targetColsArray, "className": "text-center align-middle" }
+            ],
+            "language": { 
+                "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Indonesian.json", 
+                "search": "", "searchPlaceholder": "Cari Nama ASN / NIP...",
+                "emptyTable": '<div class="py-4 text-center text-muted"><i class="fas fa-clipboard-list fa-3x text-gray-300 mb-3" style="opacity: 0.6;"></i><br><h6 class="font-weight-bold text-dark mb-1">Belum Ada Presensi</h6><p class="small mb-0">Tidak ada data presensi harian untuk filter terpilih.</p></div>' 
+            },
+            "createdRow": function(row, data, dataIndex) {
+                 $(row).addClass('clickable-row').data('rawRow', rowDataMapping[dataIndex]);
+                 
+                 var tds = row.childNodes;
+                 for (var visIdx = 0; visIdx < tds.length; visIdx++) {
+                     var cell = tds[visIdx];
+                     if (visIdx === 0) {
+                         cell.className = 'sultan-sticky-col text-left px-3 py-1 align-middle font-weight-bold';
+                         cell.style.setProperty('padding', '4px 10px', 'important');
+                     } else {
+                         cell.className = 'align-middle text-center px-1 py-1';
+                         cell.style.setProperty('padding', '2px 2px', 'important');
+                     }
                  }
-             }
-        }
-    });
+            }
+        });
 
-    SultanUI.hideLoading('#harian_loadingState');
-    $('#harian_tableState').show();
-    setTimeout(function(){ if(HARIAN_TABEL_INSTANCE) HARIAN_TABEL_INSTANCE.columns.adjust(); }, 100);
+    } catch(err) {
+        console.error("Error rendering table: ", err);
+    } finally {
+        SultanUI.hideLoading('#harian_loadingState');
+        $('#harian_tableState').show();
+        setTimeout(function(){ if(HARIAN_TABEL_INSTANCE) HARIAN_TABEL_INSTANCE.columns.adjust(); }, 100);
+    }
 }
 
 // =================================================================
