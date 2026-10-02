@@ -67,9 +67,20 @@ function getSiabaPresensiHarian(filterTahun, filterBulan, filterUnit) {
         return dataD_CI.concat([unitMeta]); 
     });
 
+    // Integrasi Konfigurasi Jadwal Bulanan & Kalender Libur (Opsi A)
+    let konfigJadwalRaw = {};
+    try {
+      if (typeof getSiabaKonfigJadwal === "function") {
+        konfigJadwalRaw = JSON.parse(getSiabaKonfigJadwal(filterTahun, filterBulan));
+      }
+    } catch(errConfig) {
+      konfigJadwalRaw = {};
+    }
+
     return JSON.stringify({
       headers: headerRow,
-      rows: finalData
+      rows: finalData,
+      konfig: konfigJadwalRaw
     });
 
   } catch (e) {

@@ -362,6 +362,8 @@ var HARIAN_CACHE_THN = "";
 var HARIAN_CACHE_BLN = "";
 var HARIAN_TABEL_INSTANCE = null;
 var HARIAN_VIEW_MODE = "matriks"; // 'matriks' atau 'rekap'
+var HARIAN_KONFIG_JADWAL = null;
+var HARIAN_KALENDER_LIBUR = [];
 
 var HARIAN_USER_AKTIF = "";
 var HARIAN_IS_ADMIN = false;
@@ -561,6 +563,14 @@ function harian_tarikDataServer() {
                 HARIAN_CACHE_THN = th;
                 HARIAN_CACHE_BLN = bl;
 
+                if (data.konfig && data.konfig.jadwal) {
+                    HARIAN_KONFIG_JADWAL = data.konfig.jadwal;
+                    HARIAN_KALENDER_LIBUR = data.konfig.kalenderLibur || [];
+                } else {
+                    HARIAN_KONFIG_JADWAL = null;
+                    HARIAN_KALENDER_LIBUR = [];
+                }
+
                 if(HARIAN_IS_ADMIN) harian_populateDropdownUnit();
 
                 harian_terapkanFilterLokal();
@@ -620,6 +630,24 @@ function harian_terapkanFilterLokal() {
     harian_renderTabel(hasil);
 }
 
+function harian_isTanggalMerah(thn, blnNama, dayNum) {
+    var mNames = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+    var mIdx = mNames.indexOf(blnNama);
+    var padBln = (mIdx + 1) < 10 ? '0' + (mIdx + 1) : '' + (mIdx + 1);
+    var padDay = dayNum < 10 ? '0' + dayNum : '' + dayNum;
+    var isoTgl = thn + '-' + padBln + '-' + padDay;
+
+    if (HARIAN_KALENDER_LIBUR && HARIAN_KALENDER_LIBUR.length > 0) {
+        for (var i = 0; i < HARIAN_KALENDER_LIBUR.length; i++) {
+            var item = HARIAN_KALENDER_LIBUR[i];
+            if (item.tanggal === isoTgl || item.tanggal.indexOf(isoTgl) === 0) {
+                return item;
+            }
+        }
+    }
+    return null;
+}
+
 function harian_formatComboCell(dVal, pVal, dayNum) {
     var strD = String(dVal || "").trim().toUpperCase();
     var strP = String(pVal || "").trim().toUpperCase();
@@ -643,9 +671,30 @@ function harian_formatComboCell(dVal, pVal, dayNum) {
         return `<div class="harian-cell-combo" title="Tgl ${dayNum}: ${codeVal}"><span class="badge ${badgeClass} harian-badge-status">${codeVal}</span></div>`;
     }
     
-    // POSISI BENAR: Jam Datang (dVal) di ATAS, Jam Pulang (pVal) di BAWAH
-    var inHtml = (strD && strD !== "-" && strD !== "0") ? `<span class="harian-time-in" title="Datang: ${strD}">${harian_escapeHtml(strD)}</span>` : `<span class="text-muted opacity-50">-</span>`;
-    var outHtml = (strP && strP !== "-" && strP !== "0") ? `<span class="harian-time-out" title="Pulang: ${strP}">${harian_escapeHtml(strP)}</span>` : `<span class="text-muted opacity-50">-</span>`;
+    // Deteksi Terlambat & Pulang Awal Berdasarkan Konfigurasi Master Jam Kerja
+    var isTerlambat = false;
+    var isPulangAwal = false;
+
+    if (HARIAN_KONFIG_JADWAL) {
+        var jamDatangStd = HARIAN_KONFIG_JADWAL.toleransiTerlambat || HARIAN_KONFIG_JADWAL.jamDatang || "07:30";
+        var jamPulangStd = HARIAN_KONFIG_JADWAL.jamPulang || "16:00";
+
+        if (strD && strD.indexOf(":") > -1) {
+            if (strD > jamDatangStd) isTerlambat = true;
+        }
+        if (strP && strP.indexOf(":") > -1) {
+            if (strP < jamPulangStd) isPulangAwal = true;
+        }
+    }
+
+    var inClass = isTerlambat ? "harian-time-in is-terlambat" : "harian-time-in";
+    var outClass = isPulangAwal ? "harian-time-out is-pulang-awal" : "harian-time-out";
+
+    var titleIn = isTerlambat ? `Datang: ${strD} (Terlambat > ${HARIAN_KONFIG_JADWAL ? HARIAN_KONFIG_JADWAL.toleransiTerlambat : '07:45'})` : `Datang: ${strD}`;
+    var titleOut = isPulangAwal ? `Pulang: ${strP} (Pulang Awal < ${HARIAN_KONFIG_JADWAL ? HARIAN_KONFIG_JADWAL.jamPulang : '16:00'})` : `Pulang: ${strP}`;
+
+    var inHtml = (strD && strD !== "-" && strD !== "0") ? `<span class="${inClass}" title="${titleIn}">${harian_escapeHtml(strD)}</span>` : `<span class="text-muted opacity-50">-</span>`;
+    var outHtml = (strP && strP !== "-" && strP !== "0") ? `<span class="${outClass}" title="${titleOut}">${harian_escapeHtml(strP)}</span>` : `<span class="text-muted opacity-50">-</span>`;
     
     return `<div class="harian-cell-combo" title="Tgl ${dayNum}">${inHtml}${outHtml}</div>`;
 }
@@ -663,15 +712,18 @@ function harian_renderTabel(dataRows) {
         }
         $tabel.empty();
 
-        // 2. Rakit Header HTML Sesuai View Mode & Jumlah Hari Dinamis (Termasuk Nama Hari)
+        // 2. Rakit Header HTML Sesuai View Mode & Jumlah Hari Dinamis (Termasuk Nama Hari & Tanggal Merah)
         var theadHtml = '';
         if (HARIAN_VIEW_MODE === 'matriks') {
             var dayHeadersHtml = '';
             for (var d = 1; d <= numDays; d++) {
                 var infoHari = harian_getNamaHari(th, bl, d);
-                var weekendClass = infoHari.isWeekend ? 'is-weekend' : 'bg-soft-abu';
+                var liburObj = harian_isTanggalMerah(th, bl, d);
+                var weekendClass = (infoHari.isWeekend || liburObj) ? 'is-weekend' : 'bg-soft-abu';
+                var headerTitle = liburObj ? `Hari Libur: ${liburObj.keterangan}` : (infoHari.isWeekend ? 'Hari Libur Rutin' : `Tanggal ${d}`);
+
                 dayHeadersHtml += `
-                    <th class="text-center align-middle px-1 harian-col-header-tgl ${weekendClass}">
+                    <th class="text-center align-middle px-1 harian-col-header-tgl ${weekendClass}" title="${harian_escapeHtml(headerTitle)}">
                         <div class="harian-hdr-tgl-num">${d}</div>
                         <div class="harian-hdr-tgl-day">${infoHari.short}</div>
                     </th>
