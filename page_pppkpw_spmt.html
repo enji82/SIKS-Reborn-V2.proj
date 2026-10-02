@@ -29,18 +29,31 @@
 
         <!-- FILTER BAR -->
         <div class="sultan-filter-pill-container shadow-sm mb-4">
-          <div class="sultan-filter-item">
-            <select id="pppkpwspmt_filterUnit" class="form-control" disabled>
-              <option value="">Memvalidasi Akses...</option>
-            </select>
-            <i class="fas fa-chevron-down"></i>
-          </div>
+          <!-- 1. TAHUN -->
           <div class="sultan-filter-item">
             <select id="pppkpwspmt_filterTahun" class="form-control">
               <option value="">Semua Tahun</option>
             </select>
             <i class="fas fa-chevron-down"></i>
           </div>
+
+          <!-- 2. JENJANG -->
+          <div class="sultan-filter-item" id="pppkpwspmt_filterJenjangWrap" style="min-width: 130px; max-width: 180px;">
+            <select id="pppkpwspmt_filterJenjang" class="form-control">
+              <option value="">Semua Jenjang</option>
+            </select>
+            <i class="fas fa-chevron-down"></i>
+          </div>
+
+          <!-- 3. NAMA SEKOLAH / UNIT KERJA -->
+          <div class="sultan-filter-item" style="min-width: 200px; max-width: 320px;">
+            <select id="pppkpwspmt_filterUnit" class="form-control" disabled>
+              <option value="">Memvalidasi Akses...</option>
+            </select>
+            <i class="fas fa-chevron-down"></i>
+          </div>
+
+          <!-- 4. STATUS -->
           <div class="sultan-filter-item">
             <select id="pppkpwspmt_filterStatus" class="form-control">
               <option value="">Semua Status</option>
@@ -299,7 +312,28 @@ $(document).ready(function () {
   // Event bindings
   $(document).off('click', '#pppkpwspmt_btnRefresh').on('click', '#pppkpwspmt_btnRefresh', function () { pppkpwspmt_loadData(true); });
   $(document).off('change', '#pppkpwspmt_filterTahun').on('change', '#pppkpwspmt_filterTahun', function () { pppkpwspmt_loadData(); });
-  $(document).off('change', '#pppkpwspmt_filterUnit, #pppkpwspmt_filterStatus').on('change', '#pppkpwspmt_filterUnit, #pppkpwspmt_filterStatus', function () { pppkpwspmt_applyFilterLocal(false); });
+  $(document).off('change', '#pppkpwspmt_filterUnit, #pppkpwspmt_filterStatus, #pppkpwspmt_filterJenjang').on('change', '#pppkpwspmt_filterUnit, #pppkpwspmt_filterStatus, #pppkpwspmt_filterJenjang', function () { pppkpwspmt_applyFilterLocal(false); });
+  $(document).off('change', '#pppkpwspmt_filterJenjang').on('change', '#pppkpwspmt_filterJenjang', function () {
+    var selectedJenjang = String($(this).val() || "").trim().toUpperCase();
+    if (PPPKPWSPMT_IS_ADMIN && PPPKPWSPMT_INIT_DATA && PPPKPWSPMT_INIT_DATA.unitList) {
+      var $selUnit = $('#pppkpwspmt_filterUnit').empty().append('<option value="">Semua Unit Kerja</option>');
+      PPPKPWSPMT_INIT_DATA.unitList.forEach(function (u) {
+        if (!selectedJenjang) {
+          $selUnit.append($('<option>', { value: u, text: u }));
+        } else {
+          var uUpper = String(u).toUpperCase();
+          var isMatch = false;
+          if (selectedJenjang === "PAUD / TK" && (uUpper.includes("TK") || uUpper.includes("PAUD") || uUpper.includes("KOBER") || uUpper.includes("TKN") || uUpper.includes("TUNAS MUDA"))) isMatch = true;
+          else if (selectedJenjang === "SD" && (uUpper.includes("SD") || uUpper.includes("SDN"))) isMatch = true;
+          else if (selectedJenjang === "SMP" && (uUpper.includes("SMP") || uUpper.includes("SMPN"))) isMatch = true;
+          else if (selectedJenjang === "SMA" && (uUpper.includes("SMA") || uUpper.includes("SMAN"))) isMatch = true;
+          else if (selectedJenjang === "SMK" && (uUpper.includes("SMK") || uUpper.includes("SMKN"))) isMatch = true;
+          else if (selectedJenjang === "NON-FORMAL / SKB" && (uUpper.includes("SKB") || uUpper.includes("PKBM"))) isMatch = true;
+          if (isMatch) $selUnit.append($('<option>', { value: u, text: u }));
+        }
+      });
+    }
+  });
   $(document).off('click', '#pppkpwspmt_btnTambah').on('click', '#pppkpwspmt_btnTambah', function () { pppkpwspmt_bukaModalTambah(); });
 
   // Event input file change
@@ -384,6 +418,12 @@ function pppkpwspmt_initPage() {
       PPPKPWSPMT_INITED = true;
 
       if (PPPKPWSPMT_IS_ADMIN && res.unitList) {
+        var $selJenjangFilter = $('#pppkpwspmt_filterJenjang').empty().append('<option value="">Semua Jenjang</option>');
+        var listJenjangOpt = ["PAUD / TK", "SD", "SMP", "SMA", "SMK", "NON-FORMAL / SKB"];
+        listJenjangOpt.forEach(function (j) {
+          $selJenjangFilter.append($('<option>', { value: j, text: j }));
+        });
+
         var sel = $('#pppkpwspmt_filterUnit');
         sel.empty().append('<option value="">Semua Unit Kerja</option>');
         res.unitList.forEach(function (u) {
@@ -471,11 +511,25 @@ function pppkpwspmt_loadData(force) {
 function pppkpwspmt_applyFilterLocal(keepPage) {
   var unitFilter = PPPKPWSPMT_IS_ADMIN ? ($('#pppkpwspmt_filterUnit').val() || '') : PPPKPWSPMT_USER_UNIT;
   var statusFilter = $('#pppkpwspmt_filterStatus').val() || '';
+  var jenjangFilter = String($('#pppkpwspmt_filterJenjang').val() || '').trim().toUpperCase();
 
   var filtered = PPPKPWSPMT_DATA;
   if (unitFilter && unitFilter !== 'SEMUA') {
     filtered = filtered.filter(function (d) {
       return String(d.unit_kerja || '').trim().toLowerCase() === unitFilter.trim().toLowerCase();
+    });
+  }
+  if (jenjangFilter) {
+    filtered = filtered.filter(function (d) {
+      var u = String(d.unit_kerja || '').trim().toUpperCase();
+      var j = "";
+      if (u.includes("TK") || u.includes("PAUD") || u.includes("KOBER") || u.includes("TKN") || u.includes("TUNAS MUDA")) j = "PAUD / TK";
+      else if (u.includes("SD") || u.includes("SDN")) j = "SD";
+      else if (u.includes("SMP") || u.includes("SMPN")) j = "SMP";
+      else if (u.includes("SMA") || u.includes("SMAN")) j = "SMA";
+      else if (u.includes("SMK") || u.includes("SMKN")) j = "SMK";
+      else if (u.includes("SKB") || u.includes("PKBM")) j = "NON-FORMAL / SKB";
+      return j === jenjangFilter;
     });
   }
   if (statusFilter) {
