@@ -207,21 +207,21 @@ thead th.sultan-sticky-col {
 
         <!-- FILTER BAR & VIEW SWITCHER (STANDAR GLOBAL SULTAN) -->
         <div id="harian_wadahFilter" class="sultan-filter-pill-container shadow-sm mb-4">
-            <div class="sultan-filter-item mr-2">
+            <div class="sultan-filter-item">
                 <select id="harian_filterTahun" class="form-control" disabled>
                     <option value="">- Tahun -</option>
                 </select>
                 <i class="fas fa-chevron-down"></i>
             </div>
             
-            <div class="sultan-filter-item mr-2">
+            <div class="sultan-filter-item">
                 <select id="harian_filterBulan" class="form-control" disabled>
                     <option value="">- Bulan -</option>
                 </select>
                 <i class="fas fa-chevron-down"></i>
             </div>
             
-            <div class="sultan-filter-item mr-2">
+            <div class="sultan-filter-item">
                 <select id="harian_filterUnit" class="form-control font-weight-bold text-maroon" disabled>
                     <option value="">- Memvalidasi Akses... -</option>
                 </select>
@@ -230,11 +230,11 @@ thead th.sultan-sticky-col {
 
             <div class="divider-vertical d-none d-md-block mx-2"></div>
 
-            <button type="button" id="harian_btnRefresh" class="sultan-btn-refresh mr-3" title="Tarik Data dari Server" disabled>
+            <button type="button" id="harian_btnRefresh" class="sultan-btn-refresh mr-2" title="Tarik Data dari Server" disabled>
                 <i class="fas fa-sync-alt"></i>
             </button>
 
-            <!-- DUAL-VIEW SWITCHER TOGGLE & SHORTCUT KONFIG (ADMIN) -->
+            <!-- DUAL-VIEW SWITCHER TOGGLE -->
             <div class="sultan-view-switcher ml-auto">
                 <button type="button" class="btn-view-toggle active" id="harian_btnViewMatriks" data-mode="matriks" title="Mode Matriks Tanggal Harian">
                     <i class="fas fa-calendar-alt mr-1"></i> Mode Matriks Harian
@@ -387,8 +387,14 @@ $(document).ready(function() {
     } catch(e) { HARIAN_USER_NPSN = ""; HARIAN_IS_ADMIN = false; }
     
     // VAKSINASI EVENT SPA DELEGATION
-    $(document).off('change', '#harian_filterTahun, #harian_filterBulan').on('change', '#harian_filterTahun, #harian_filterBulan', harian_prosesCariData);
-    $(document).off('change', '#harian_filterUnit').on('change', '#harian_filterUnit', harian_terapkanFilterLokal);
+    $(document).off('change', '#harian_filterTahun, #harian_filterBulan').on('change', '#harian_filterTahun, #harian_filterBulan', function() {
+        harian_adjustFilterWidths();
+        harian_prosesCariData();
+    });
+    $(document).off('change', '#harian_filterUnit').on('change', '#harian_filterUnit', function() {
+        harian_adjustFilterWidths();
+        harian_terapkanFilterLokal();
+    });
     $(document).off('click', '#harian_btnRefresh').on('click', '#harian_btnRefresh', harian_tarikDataServer);
     
     // EVENT TOGGLE DUAL-VIEW SWITCHER
@@ -468,9 +474,16 @@ function harian_initFilters() {
 
         $('#harian_filterTahun, #harian_filterBulan, #harian_btnRefresh').prop('disabled', false);
 
+        harian_adjustFilterWidths();
         harian_validasiAksesUser(); 
 
     }).getSiabaFilters();
+}
+
+function harian_adjustFilterWidths() {
+    if (typeof SultanUI !== 'undefined' && typeof SultanUI.adjustFilterBarWidths === 'function') {
+        SultanUI.adjustFilterBarWidths('#harian_wadahFilter');
+    }
 }
 
 function harian_validasiAksesUser() {
@@ -498,6 +511,7 @@ function harian_validasiAksesUser() {
                 HARIAN_UNIT_TERKUNCI = dataUnit.unitKerja;
                 $('#harian_filterUnit').empty().append($('<option>', {value: HARIAN_UNIT_TERKUNCI, text: HARIAN_UNIT_TERKUNCI})).prop('disabled', true);
                 
+                harian_adjustFilterWidths();
                 harian_tarikDataServer();
             })
             .withFailureHandler(function(err) {
@@ -529,7 +543,7 @@ function harian_tarikDataServer() {
     if(!th || !bl) return;
 
     var btn = $('#harian_btnRefresh');
-    btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin text-maroon"></i>');
+    btn.prop('disabled', true).html('<i class="fas fa-sync-alt fa-spin text-maroon"></i>');
     
     if (!HARIAN_TABEL_INSTANCE) {
         $('#harian_tableState').hide();
@@ -607,6 +621,7 @@ function harian_populateDropdownUnit() {
     
     select.prop('disabled', false).removeClass('bg-light text-maroon font-weight-bold');
     if(currentVal && unique.has(currentVal)) { select.val(currentVal); }
+    harian_adjustFilterWidths();
 }
 
 // =================================================================
