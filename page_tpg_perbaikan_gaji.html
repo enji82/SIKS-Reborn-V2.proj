@@ -115,21 +115,7 @@
 
                 <!-- FILTER BAR (STANDAR GLOBAL SULTAN) -->
                 <div class="sultan-filter-pill-container shadow-sm mb-4">
-                    <div class="sultan-filter-item d-none" id="tpg_pg_filterJenjangWrap">
-                        <select id="tpg_pg_filterJenjang" class="form-control">
-                            <option value="SD" selected>SD</option>
-                            <option value="PAUD">PAUD</option>
-                        </select>
-                        <i class="fas fa-chevron-down"></i>
-                    </div>
-
-                    <div class="sultan-filter-item" style="min-width: 220px; max-width: 360px;">
-                        <select id="tpg_pg_filterUnit" class="form-control" disabled>
-                            <option value="">Memvalidasi Akses...</option>
-                        </select>
-                        <i class="fas fa-chevron-down"></i>
-                    </div>
-
+                    <!-- 1. KEPEGAWAIAN -->
                     <div class="sultan-filter-item">
                         <select id="tpg_pg_filterPegawai" class="form-control">
                             <option value="">Semua Kepegawaian</option>
@@ -141,19 +127,40 @@
                         <i class="fas fa-chevron-down"></i>
                     </div>
 
+                    <!-- 2. JENIS SK -->
                     <div class="sultan-filter-item">
                         <select id="tpg_pg_filterJenisSK" class="form-control">
                             <option value="">Semua Jenis SK</option>
                             <option value="KP">KP</option>
                             <option value="KGB">KGB</option>
-
                         </select>
                         <i class="fas fa-chevron-down"></i>
                     </div>
 
+                    <!-- 3. JENJANG -->
+                    <div class="sultan-filter-item" id="tpg_pg_filterJenjangWrap" style="min-width: 130px; max-width: 180px;">
+                        <select id="tpg_pg_filterJenjang" class="form-control">
+                            <option value="">Semua Jenjang</option>
+                            <option value="SD">SD</option>
+                            <option value="PAUD / TK">PAUD / TK</option>
+                            <option value="SMP">SMP</option>
+                        </select>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+
+                    <!-- 4. NAMA SEKOLAH / UNIT KERJA -->
+                    <div class="sultan-filter-item" style="min-width: 200px; max-width: 320px;">
+                        <select id="tpg_pg_filterUnit" class="form-control" disabled>
+                            <option value="">Memvalidasi Akses...</option>
+                        </select>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+
+                    <!-- 5. STATUS -->
                     <div class="sultan-filter-item">
                         <select id="tpg_pg_filterStatus" class="form-control">
                             <option value="">Semua Status</option>
+                            <option value="Diusulkan">Diusulkan</option>
                             <option value="Diproses">Diproses</option>
                             <option value="Disetujui">Disetujui</option>
                             <option value="Revisi">Revisi</option>
@@ -778,15 +785,36 @@
                 const filterJenjang = $('#tpg_pg_filterJenjang').val() || '';
                 const filterUnit = $('#tpg_pg_filterUnit').val() ? String($('#tpg_pg_filterUnit').val()).trim().toLowerCase() : '';
                 const filterJenisSK = $('#tpg_pg_filterJenisSK').val() ? $('#tpg_pg_filterJenisSK').val().toLowerCase() : '';
+                const filterPegawai = $('#tpg_pg_filterPegawai').val() ? $('#tpg_pg_filterPegawai').val().toLowerCase() : '';
                 const filterStatus = $('#tpg_pg_filterStatus').val() ? $('#tpg_pg_filterStatus').val().toLowerCase() : '';
 
-                const rowJenjang = String(rowData.jenjang || '').trim();
-                const fJenjang = (filterJenjang && rowJenjang) ? rowJenjang.toLowerCase() === filterJenjang.toLowerCase() : true;
-                const fUnit = filterUnit ? String(rowData.unitKerja).trim().toLowerCase() === filterUnit : true;
-                const fJenis = filterJenisSK ? rowData.jenisSK.toLowerCase() === filterJenisSK : true;
-                const fStatus = filterStatus ? rowData.status.toLowerCase() === filterStatus : true;
+                var rowUnit = String(rowData.unitKerja || rowData.unit || '').trim();
+                var rowJenjang = String(rowData.jenjang || '').trim();
+                if (!rowJenjang && rowUnit) {
+                    var uUp = rowUnit.toUpperCase();
+                    if (uUp.includes("TK") || uUp.includes("PAUD") || uUp.includes("KOBER") || uUp.includes("TKN")) rowJenjang = "PAUD / TK";
+                    else if (uUp.includes("SD") || uUp.includes("SDN")) rowJenjang = "SD";
+                    else if (uUp.includes("SMP") || uUp.includes("SMPN")) rowJenjang = "SMP";
+                    else if (uUp.includes("SMA") || uUp.includes("SMAN")) rowJenjang = "SMA";
+                    else if (uUp.includes("SMK") || uUp.includes("SMKN")) rowJenjang = "SMK";
+                }
 
-                return fJenjang && fUnit && fJenis && fStatus;
+                const fJenjang = filterJenjang ? (rowJenjang.toLowerCase().includes(filterJenjang.toLowerCase()) || filterJenjang.toLowerCase().includes(rowJenjang.toLowerCase())) : true;
+                const fUnit = filterUnit ? rowUnit.toLowerCase() === filterUnit : true;
+                const fJenis = filterJenisSK ? String(rowData.jenisSK || '').toLowerCase() === filterJenisSK : true;
+                const fPegawai = filterPegawai ? String(rowData.statusPegawai || rowData.kepegawaian || '').toLowerCase().includes(filterPegawai) : true;
+                
+                var rStatus = String(rowData.status || '').toLowerCase();
+                var fStatus = true;
+                if (filterStatus !== '') {
+                    if (filterStatus === 'diusulkan' || filterStatus === 'diproses') {
+                        fStatus = (rStatus === '' || rStatus === 'diusulkan' || rStatus === 'diproses');
+                    } else {
+                        fStatus = rStatus.includes(filterStatus);
+                    }
+                }
+
+                return fJenjang && fUnit && fJenis && fPegawai && fStatus;
             }
         );
     }
