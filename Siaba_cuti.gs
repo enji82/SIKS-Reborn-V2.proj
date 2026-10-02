@@ -75,6 +75,16 @@ function getDatabaseCutiOptions() {
   } catch (e) { return JSON.stringify([]); }
 }
 
+function cuti_findCol(headers, target) {
+  if (!headers || !Array.isArray(headers)) return -1;
+  var tgt = String(target).toLowerCase().trim();
+  for (var i = 0; i < headers.length; i++) {
+    var h = String(headers[i]).toLowerCase().trim();
+    if (h === tgt || h.indexOf(tgt) !== -1) return i;
+  }
+  return -1;
+}
+
 /* ======================================================================
    1. GET DATA CUTI
    ====================================================================== */
@@ -87,14 +97,38 @@ function getDataCuti(tahun, bulan, unitFilter) {
     var dataDisplay = sheet.getRange(1, 1, lastRow, 52).getDisplayValues(); 
     var result = [];
     
+    var headers = dataDisplay[0];
+    var cUnit = cuti_findCol(headers, "unit") !== -1 ? cuti_findCol(headers, "unit") : 0;
+    var cNama = cuti_findCol(headers, "nama") !== -1 ? cuti_findCol(headers, "nama") : 1;
+    var cNip = cuti_findCol(headers, "nip") !== -1 ? cuti_findCol(headers, "nip") : 2;
+    var cJenis = cuti_findCol(headers, "jenis") !== -1 ? cuti_findCol(headers, "jenis") : 3;
+    var cMulai = cuti_findCol(headers, "mulai") !== -1 ? cuti_findCol(headers, "mulai") : 4;
+    var cSelesai = cuti_findCol(headers, "selesai") !== -1 ? cuti_findCol(headers, "selesai") : 5;
+    var cJumlah = cuti_findCol(headers, "jumlah") !== -1 ? cuti_findCol(headers, "jumlah") : 6;
+    var cAlasan = cuti_findCol(headers, "alasan") !== -1 ? cuti_findCol(headers, "alasan") : 7;
+    var cAlamat = cuti_findCol(headers, "alamat") !== -1 ? cuti_findCol(headers, "alamat") : 8;
+    var cTelepon = cuti_findCol(headers, "telepon") !== -1 ? cuti_findCol(headers, "telepon") : 9;
+    var cStatus = cuti_findCol(headers, "status") !== -1 ? cuti_findCol(headers, "status") : 10;
+    var cKet = cuti_findCol(headers, "ket") !== -1 ? cuti_findCol(headers, "ket") : 11;
+    var cFileUrl = cuti_findCol(headers, "file") !== -1 ? cuti_findCol(headers, "file") : 12;
+    var cTglInput = cuti_findCol(headers, "tgl input") !== -1 ? cuti_findCol(headers, "tgl input") : 13;
+    var cUserInput = cuti_findCol(headers, "user input") !== -1 ? cuti_findCol(headers, "user input") : 14;
+    var cTglEdit = cuti_findCol(headers, "tgl edit") !== -1 ? cuti_findCol(headers, "tgl edit") : 15;
+    var cUserEdit = cuti_findCol(headers, "user edit") !== -1 ? cuti_findCol(headers, "user edit") : 16;
+    var cTglVerif = cuti_findCol(headers, "tgl verif") !== -1 ? cuti_findCol(headers, "tgl verif") : 17;
+    var cVerifikator = cuti_findCol(headers, "verifikator") !== -1 ? cuti_findCol(headers, "verifikator") : 18;
+    var cSisaCT = cuti_findCol(headers, "sisa") !== -1 ? cuti_findCol(headers, "sisa") : 19;
+    var cTanggal = cuti_findCol(headers, "tanggal") !== -1 ? cuti_findCol(headers, "tanggal") : 21;
+    var cNpsn = cuti_findCol(headers, "npsn") !== -1 ? cuti_findCol(headers, "npsn") : 50;
+
     var fTahun = tahun ? String(tahun).trim() : "";
     var fBulan = bulan ? String(bulan).toLowerCase().trim() : "";
 
     for (var i = 1; i < dataDisplay.length; i++) {
       var rowTxt = dataDisplay[i];
-      if (!rowTxt[1] && !rowTxt[2]) continue;
+      if (!rowTxt[cNama] && !rowTxt[cNip]) continue;
       
-      var rawTglMulai = String(rowTxt[4]).replace(/'/g, "").trim().toLowerCase(); 
+      var rawTglMulai = String(rowTxt[cMulai]).replace(/'/g, "").trim().toLowerCase(); 
       var rTahun = "";
       var parts = rawTglMulai.split(/[-/\s]/); 
       
@@ -108,30 +142,33 @@ function getDataCuti(tahun, bulan, unitFilter) {
       
       if (fTahun !== "" && rTahun !== fTahun) continue; 
 
-      var tInput = parseSiabaDateTime(rowTxt[13]); 
-      var tEdit  = parseSiabaDateTime(rowTxt[15]); 
-      var tVerif = parseSiabaDateTime(rowTxt[17]); 
+      var tInput = parseSiabaDateTime(rowTxt[cTglInput]); 
+      var tEdit  = parseSiabaDateTime(rowTxt[cTglEdit]); 
+      var tVerif = parseSiabaDateTime(rowTxt[cTglVerif]); 
       var lastActivity = Math.max(tInput, tEdit, tVerif);
 
       result.push({
         rowBaris: i + 1,
-        unit: rowTxt[0], nama: rowTxt[1], nip: rowTxt[2], jenis: rowTxt[3],
-        tglMulai: rowTxt[4], tglSelesai: rowTxt[5], jumlah: rowTxt[6],
-        alasan: rowTxt[7], alamat: rowTxt[8], telepon: rowTxt[9],
-        status: rowTxt[10], ket: rowTxt[11], fileUrl: rowTxt[12],
-        tglInput: rowTxt[13], userInput: rowTxt[14],
-        tglEdit: rowTxt[15], userEdit: rowTxt[16],
-        tglVerif: rowTxt[17], verifikator: rowTxt[18],
-        sisaCT: rowTxt[19] || "0",
-        tanggal: rowTxt[21] || "", 
-        npsn: rowTxt[50] || "", 
+        unit: rowTxt[cUnit], nama: rowTxt[cNama], nip: rowTxt[cNip], jenis: rowTxt[cJenis],
+        tglMulai: rowTxt[cMulai], tglSelesai: rowTxt[cSelesai], jumlah: rowTxt[cJumlah],
+        alasan: rowTxt[cAlasan], alamat: rowTxt[cAlamat], telepon: rowTxt[cTelepon],
+        status: rowTxt[cStatus], ket: rowTxt[cKet], fileUrl: rowTxt[cFileUrl],
+        tglInput: rowTxt[cTglInput], userInput: rowTxt[cUserInput],
+        tglEdit: rowTxt[cTglEdit], userEdit: rowTxt[cUserEdit],
+        tglVerif: rowTxt[cTglVerif], verifikator: rowTxt[cVerifikator],
+        sisaCT: rowTxt[cSisaCT] || "0",
+        tanggal: rowTxt[cTanggal] || "", 
+        npsn: rowTxt[cNpsn] || "", 
         timestamp: lastActivity
       });
     }
     
     result.sort(function(a, b) { return b.timestamp - a.timestamp; });
     return JSON.stringify(result);
-  } catch(e) { return JSON.stringify({ error: "Gagal Server: " + e.message }); }
+  } catch(e) { 
+    Logger.log("Error getDataCuti: " + e.message);
+    return JSON.stringify({ error: "Gagal Server: " + e.message }); 
+  }
 }
 
 /* ======================================================================
