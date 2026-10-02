@@ -667,8 +667,20 @@ function harian_formatComboCell(dVal, pVal, dayNum, thn, blnNama) {
     var strD = String(dVal || "").trim().toUpperCase();
     var strP = String(pVal || "").trim().toUpperCase();
     
+    var infoHari = harian_getNamaHari(thn, blnNama, dayNum);
+    var liburObj = harian_isTanggalMerah(thn, blnNama, dayNum);
+
+    // Cek apakah tanggal ini hari libur (Sabtu/Minggu atau Tanggal Merah)
+    var isHariLibur = infoHari.isWeekend || (liburObj !== null);
+
+    // Jika datang dan pulang kosong:
     if ((!strD || strD === "-" || strD === "0") && (!strP || strP === "-" || strP === "0")) {
-        return `<div class="harian-cell-combo"><span class="text-muted opacity-50">-</span></div>`;
+        if (isHariLibur) {
+            return `<div class="harian-cell-combo"><span class="text-muted opacity-50">-</span></div>`;
+        } else {
+            // Pada hari kerja aktif, jika tidak ada absen datang & pulang -> Tampilkan Badge TP (Tidak Presensi)
+            return `<div class="harian-cell-combo" title="Tgl ${dayNum} (${infoHari.short}): TP (Tidak Presensi)"><span class="badge badge-soft-danger harian-badge-status">TP</span></div>`;
+        }
     }
     
     var nonTimeCodes = ['CT','CS','CAP','CM','CB','CLTN','DD','DL','TA','PLA','LA','TP'];
@@ -687,7 +699,6 @@ function harian_formatComboCell(dVal, pVal, dayNum, thn, blnNama) {
     }
     
     // Deteksi Hari (Jumat vs Senin-Kamis)
-    var infoHari = harian_getNamaHari(thn, blnNama, dayNum);
     var isJumat = (infoHari.short === "Jum");
 
     var isTerlambat = false;
