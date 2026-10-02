@@ -2033,20 +2033,108 @@ const KONFIG_PTK_PAUD = {
 
 function getDataPTKPAUD() {
   try {
-    var sheet = getSheet(KONFIG_PTK_PAUD.DB_KEY, KONFIG_PTK_PAUD.SHEET_PTK); if (!sheet) return JSON.stringify([]);
-    var lastRow = sheet.getLastRow(); if (lastRow < 2) return JSON.stringify([]); 
-    var data = sheet.getRange(2, 1, lastRow - 1, 34).getDisplayValues(); 
+    var sheet = getSheet(KONFIG_PTK_PAUD.DB_KEY, KONFIG_PTK_PAUD.SHEET_PTK); 
+    if (!sheet) return JSON.stringify([]);
+    var lastRow = sheet.getLastRow(); 
+    if (lastRow < 2) return JSON.stringify([]); 
+    
+    var data = sheet.getDataRange().getDisplayValues(); 
+    if (data.length < 2) return JSON.stringify([]);
+
+    var headers = data[0].map(function(h) { return String(h).toLowerCase().trim(); });
+    var findCol = function(nameList, defaultIdx) {
+      for (var k = 0; k < nameList.length; k++) {
+        var idx = headers.indexOf(nameList[k]);
+        if (idx > -1) return idx;
+      }
+      return defaultIdx;
+    };
+
+    var colMap = {
+      id: findCol(["id", "id_ptk", "id ptk"], 0),
+      npsn: findCol(["npsn"], 1),
+      unit: findCol(["unit", "nama_sekolah", "sekolah", "lembaga"], 2),
+      jenjang: findCol(["jenjang"], 3),
+      gelar_depan: findCol(["gelar_depan", "gelar depan"], 4),
+      nama_no_gelar: findCol(["nama_no_gelar", "nama tanpa gelar"], 5),
+      gelar_belakang: findCol(["gelar_belakang", "gelar belakang"], 6),
+      nama_lengkap: findCol(["nama_lengkap", "nama lengkap", "nama"], 7),
+      niy: findCol(["niy", "nig"], 8),
+      tmp_lahir: findCol(["tmp_lahir", "tempat lahir"], 9),
+      tgl_lahir: findCol(["tgl_lahir", "tanggal lahir"], 10),
+      nik: findCol(["nik"], 11),
+      lp: findCol(["lp", "jenis kelamin", "jk"], 12),
+      agama: findCol(["agama"], 13),
+      pendidikan: findCol(["pendidikan"], 14),
+      jurusan: findCol(["jurusan"], 15),
+      thn_lulus: findCol(["thn_lulus", "tahun lulus"], 16),
+      alamat_ktp: findCol(["alamat_ktp", "alamat ktp"], 17),
+      alamat_domisili: findCol(["alamat_domisili", "alamat domisili"], 18),
+      hp: findCol(["hp", "no hp", "telepon"], 19),
+      status_peg: findCol(["status_peg", "status pegawai", "status"], 20),
+      jabatan: findCol(["jabatan"], 21),
+      tmt_jabatan: findCol(["tmt_jabatan", "tmt jabatan"], 22),
+      inpassing: findCol(["inpassing"], 23),
+      tmt_inpassing: findCol(["tmt_inpassing", "tmt inpassing"], 24),
+      nuptk: findCol(["nuptk"], 25),
+      serdik: findCol(["serdik"], 26),
+      dapodik: findCol(["dapodik"], 27),
+      tugtam: findCol(["tugtam", "tugas tambahan"], 28),
+      diinput: findCol(["diinput", "tgl input"], 29),
+      user_input: findCol(["user_input", "penginput"], 30),
+      diedit: findCol(["diedit", "tgl edit"], 31),
+      user_edit: findCol(["user_edit", "pengedit"], 32),
+      email: findCol(["email"], 33)
+    };
+
     var result = [];
-    for (var i = 0; i < data.length; i++) {
-      var row = data[i]; if(row[0] === "") continue; 
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i]; 
+      var rowId = row[colMap.id];
+      if (!rowId || rowId === "") continue; 
+      
       result.push({
-        id: row[0], npsn: row[1], unit: row[2], jenjang: row[3], gelar_depan: row[4], nama_no_gelar: row[5], gelar_belakang: row[6], nama_lengkap: row[7], niy: row[8], tmp_lahir: row[9], tgl_lahir: row[10], nik: row[11], lp: row[12], agama: row[13], pendidikan: row[14], jurusan: row[15], thn_lulus: row[16], 
-        alamat_ktp: row[17], alamat_domisili: row[18], hp: row[19], status_peg: row[20], jabatan: row[21], tmt_jabatan: row[22], inpassing: row[23], tmt_inpassing: row[24], nuptk: row[25], serdik: row[26], dapodik: row[27], tugtam: row[28], 
-        diinput: row[29], user_input: row[30], diedit: row[31], user_edit: row[32], email: row[33] || "" 
+        id: rowId, 
+        npsn: row[colMap.npsn] || "", 
+        unit: row[colMap.unit] || "", 
+        jenjang: row[colMap.jenjang] || "", 
+        gelar_depan: row[colMap.gelar_depan] || "", 
+        nama_no_gelar: row[colMap.nama_no_gelar] || "", 
+        gelar_belakang: row[colMap.gelar_belakang] || "", 
+        nama_lengkap: row[colMap.nama_lengkap] || "", 
+        niy: row[colMap.niy] || "", 
+        tmp_lahir: row[colMap.tmp_lahir] || "", 
+        tgl_lahir: row[colMap.tgl_lahir] || "", 
+        nik: row[colMap.nik] || "", 
+        lp: row[colMap.lp] || "", 
+        agama: row[colMap.agama] || "", 
+        pendidikan: row[colMap.pendidikan] || "", 
+        jurusan: row[colMap.jurusan] || "", 
+        thn_lulus: row[colMap.thn_lulus] || "", 
+        alamat_ktp: row[colMap.alamat_ktp] || "", 
+        alamat_domisili: row[colMap.alamat_domisili] || "", 
+        hp: row[colMap.hp] || "", 
+        status_peg: row[colMap.status_peg] || "", 
+        jabatan: row[colMap.jabatan] || "", 
+        tmt_jabatan: row[colMap.tmt_jabatan] || "", 
+        inpassing: row[colMap.inpassing] || "", 
+        tmt_inpassing: row[colMap.tmt_inpassing] || "", 
+        nuptk: row[colMap.nuptk] || "", 
+        serdik: row[colMap.serdik] || "", 
+        dapodik: row[colMap.dapodik] || "", 
+        tugtam: row[colMap.tugtam] || "", 
+        diinput: row[colMap.diinput] || "", 
+        user_input: row[colMap.user_input] || "", 
+        diedit: row[colMap.diedit] || "", 
+        user_edit: row[colMap.user_edit] || "", 
+        email: row[colMap.email] || "" 
       });
     }
     return JSON.stringify(result);
-  } catch(e) { return JSON.stringify([]); }
+  } catch(e) { 
+    Logger.log("Error pada getDataPTKPAUD: " + e.toString() + "\n" + (e.stack || ""));
+    return JSON.stringify([]); 
+  }
 }
 
 function checkAndGetPtkNonAktifPAUDByNIK(nik) {
