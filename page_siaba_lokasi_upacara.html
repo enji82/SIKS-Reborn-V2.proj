@@ -29,13 +29,7 @@
 
                 <!-- FILTER BAR -->
                 <div class="sultan-filter-pill-container shadow-sm mb-4">
-                    <div class="sultan-filter-item" style="min-width: 220px; max-width: 360px;">
-                        <select id="lokUpa_filterUnit" class="form-control" disabled>
-                            <option value="">Memvalidasi Akses...</option>
-                        </select>
-                        <i class="fas fa-chevron-down"></i>
-                    </div>
-
+                    <!-- 1. TAHUN -->
                     <div class="sultan-filter-item sultan-filter-auto" style="min-width: 65px; max-width: 95px;">
                         <select id="lokUpa_filterTahun" class="form-control">
                             <option value="">Semua Tahun</option>
@@ -43,6 +37,7 @@
                         <i class="fas fa-chevron-down"></i>
                     </div>
 
+                    <!-- 2. BULAN -->
                     <div class="sultan-filter-item">
                         <select id="lokUpa_filterBulan" class="form-control">
                             <option value="">Semua Bulan</option>
@@ -62,6 +57,23 @@
                         <i class="fas fa-chevron-down"></i>
                     </div>
 
+                    <!-- 3. JENJANG -->
+                    <div class="sultan-filter-item" id="lokUpa_filterJenjangContainer" style="min-width: 130px; max-width: 180px;">
+                        <select id="lokUpa_filterJenjang" class="form-control">
+                            <option value="">Semua Jenjang</option>
+                        </select>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+
+                    <!-- 4. UNIT KERJA -->
+                    <div class="sultan-filter-item" style="min-width: 200px; max-width: 320px;">
+                        <select id="lokUpa_filterUnit" class="form-control" disabled>
+                            <option value="">Memvalidasi Akses...</option>
+                        </select>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+
+                    <!-- 5. STATUS -->
                     <div class="sultan-filter-item">
                         <select id="lokUpa_filterStatus" class="form-control">
                             <option value="">Semua Status</option>
@@ -325,7 +337,12 @@
         } catch (e) { LOKUPA_USER_NPSN = ""; LOKUPA_IS_ADMIN = false; }
 
         // Event Listeners (SPA Delegation pattern)
-        $(document).off('change', '#lokUpa_filterTahun, #lokUpa_filterBulan, #lokUpa_filterStatus').on('change', '#lokUpa_filterTahun, #lokUpa_filterBulan, #lokUpa_filterStatus', lokUpa_prosesCariData);
+        // Event Listeners (SPA Delegation pattern)
+        $(document).off('change', '#lokUpa_filterTahun, #lokUpa_filterBulan, #lokUpa_filterStatus, #lokUpa_filterUnit, #lokUpa_filterJenjang').on('change', '#lokUpa_filterTahun, #lokUpa_filterBulan, #lokUpa_filterStatus, #lokUpa_filterUnit, #lokUpa_filterJenjang', lokUpa_prosesCariData);
+        $(document).off('change', '#lokUpa_filterJenjang').on('change', '#lokUpa_filterJenjang', function () {
+            lokUpa_updateDropdownSekolahCascading();
+            lokUpa_terapkanFilterLokal();
+        });
         $(document).off('change', '#lokUpa_filterUnit').on('change', '#lokUpa_filterUnit', lokUpa_terapkanFilterLokal);
         $(document).off('change', '#lokUpa_in_jenjang').on('change', '#lokUpa_in_jenjang', lokUpa_filterUnitByJenjang);
         $(document).off('change', '#lokUpa_unitKerja').on('change', '#lokUpa_unitKerja', lokUpa_handleUnitChange);
@@ -385,34 +402,11 @@
         if (LOKUPA_IS_ADMIN) {
             SultanUI.showLoading('#lokUpa_loadingState', 'Mempersiapkan Database Admin...');
 
-            if (typeof DROPDOWN_STATIS !== 'undefined' && DROPDOWN_STATIS.UnitKerjaSiaba) {
-                var optS = '<option value="SEMUA">Semua Unit Kerja</option>';
-                var optI = '<option value="">Pilih Unit Kerja</option>';
-                DROPDOWN_STATIS.UnitKerjaSiaba.forEach(u => {
-                    optS += '<option value="' + _esc(u) + '">' + _esc(u) + '</option>';
-                    optI += '<option value="' + _esc(u) + '">' + _esc(u) + '</option>';
-                });
-                $('#lokUpa_filterUnit').html(optS).prop('disabled', false);
-                $('#lokUpa_unitKerja').html(optI).prop('disabled', false);
-            }
-
             google.script.run.withSuccessHandler(function (data) {
                 if (Array.isArray(data)) {
                     LOKUPA_DB_PEGAWAI = data;
-                    var unikUnit = [...new Set(LOKUPA_DB_PEGAWAI.map(item => String(item.unit).trim()))].sort();
-                    
-                    if (unikUnit.length > 0) {
-                        var optFilter = '<option value="SEMUA">Semua Unit Kerja</option>';
-                        var optInput = '<option value="">Pilih Unit Kerja</option>';
-                        unikUnit.forEach(function (u) {
-                            if (u) {
-                                optFilter += '<option value="' + _esc(u) + '">' + _esc(u) + '</option>';
-                                optInput += '<option value="' + _esc(u) + '">' + _esc(u) + '</option>';
-                            }
-                        });
-                        $('#lokUpa_filterUnit').html(optFilter);
-                        $('#lokUpa_unitKerja').html(optInput);
-                    }
+                    lokUpa_populateJenjang();
+                    lokUpa_updateDropdownSekolahCascading();
                 }
 
                 $('#lokUpa_btnRefresh, #lokUpa_btnTambah').prop('disabled', false);
@@ -456,25 +450,84 @@
     }
 
     function lokUpa_populateJenjang() {
-        var $selJenjang = $('#lokUpa_in_jenjang').empty().append('<option value="">- Pilih Jenjang -</option>');
+        var $selJenjangModal = $('#lokUpa_in_jenjang').empty().append('<option value="">- Pilih Jenjang -</option>');
+        var $selJenjangFilter = $('#lokUpa_filterJenjang').empty().append('<option value="">Semua Jenjang</option>');
         var setJenjang = new Set();
 
-        LOKUPA_DB_PEGAWAI.forEach(function(x) {
-            var unit = String(x.unit || "").trim().toUpperCase();
-            if (!unit) return;
-            if (unit.includes("TK") || unit.includes("PAUD") || unit.includes("KOBER") || unit.includes("TKN")) setJenjang.add("PAUD / TK");
-            else if (unit.includes("SD") || unit.includes("SDN")) setJenjang.add("SD");
-            else if (unit.includes("SMP") || unit.includes("SMPN")) setJenjang.add("SMP");
-            else if (unit.includes("SMA") || unit.includes("SMAN")) setJenjang.add("SMA");
-            else if (unit.includes("SMK") || unit.includes("SMKN")) setJenjang.add("SMK");
-            else if (unit.includes("SKB") || unit.includes("PKBM")) setJenjang.add("NON-FORMAL / SKB");
-            else setJenjang.add("LAINNYA");
-        });
+        var sumberData = (Array.isArray(LOKUPA_DB_PEGAWAI) && LOKUPA_DB_PEGAWAI.length > 0) ? LOKUPA_DB_PEGAWAI : LOKUPA_CACHE_DATA;
+
+        if (Array.isArray(sumberData) && sumberData.length > 0) {
+            sumberData.forEach(function(x) {
+                if (x.jenjang && String(x.jenjang).trim()) {
+                    setJenjang.add(String(x.jenjang).trim().toUpperCase());
+                } else {
+                    var unit = String(x.unit || "").trim().toUpperCase();
+                    if (!unit) return;
+                    if (unit.includes("TK") || unit.includes("PAUD") || unit.includes("KOBER") || unit.includes("TKN") || unit.includes("TUNAS MUDA")) setJenjang.add("PAUD / TK");
+                    else if (unit.includes("SD") || unit.includes("SDN")) setJenjang.add("SD");
+                    else if (unit.includes("SMP") || unit.includes("SMPN")) setJenjang.add("SMP");
+                    else if (unit.includes("SMA") || unit.includes("SMAN")) setJenjang.add("SMA");
+                    else if (unit.includes("SMK") || unit.includes("SMKN")) setJenjang.add("SMK");
+                    else if (unit.includes("SKB") || unit.includes("PKBM")) setJenjang.add("NON-FORMAL / SKB");
+                }
+            });
+        }
 
         var arrJenjang = Array.from(setJenjang).sort();
         arrJenjang.forEach(function(j) {
-            $selJenjang.append($('<option>', { value: j, text: j }));
+            $selJenjangModal.append('<option value="' + _esc(j) + '">' + _esc(j) + '</option>');
+            $selJenjangFilter.append('<option value="' + _esc(j) + '">' + _esc(j) + '</option>');
         });
+    }
+
+    function lokUpa_updateDropdownSekolahCascading() {
+        if (!LOKUPA_IS_ADMIN) return;
+
+        var selectedJenjang = String($('#lokUpa_filterJenjang').val() || "").trim().toUpperCase();
+        var $selectUnit = $('#lokUpa_filterUnit');
+        var currentSelectedUnit = $selectUnit.val() ? String($selectUnit.val()).trim().toUpperCase() : "SEMUA";
+
+        var uniqueUnits = new Set();
+        var sumberData = (Array.isArray(LOKUPA_DB_PEGAWAI) && LOKUPA_DB_PEGAWAI.length > 0) ? LOKUPA_DB_PEGAWAI : LOKUPA_CACHE_DATA;
+
+        if (Array.isArray(sumberData) && sumberData.length > 0) {
+            sumberData.forEach(function (x) {
+                var unitNama = String(x.unit || "").trim();
+                if (!unitNama) return;
+
+                var unitJenjang = "";
+                if (x.jenjang && String(x.jenjang).trim()) {
+                    unitJenjang = String(x.jenjang).trim().toUpperCase();
+                } else {
+                    var uUp = unitNama.toUpperCase();
+                    if (uUp.includes("TK") || uUp.includes("PAUD") || uUp.includes("KOBER") || uUp.includes("TKN") || uUp.includes("TUNAS MUDA")) unitJenjang = "PAUD / TK";
+                    else if (uUp.includes("SD") || uUp.includes("SDN")) unitJenjang = "SD";
+                    else if (uUp.includes("SMP") || uUp.includes("SMPN")) unitJenjang = "SMP";
+                    else if (uUp.includes("SMA") || uUp.includes("SMAN")) unitJenjang = "SMA";
+                    else if (uUp.includes("SMK") || uUp.includes("SMKN")) unitJenjang = "SMK";
+                    else if (uUp.includes("SKB") || uUp.includes("PKBM")) unitJenjang = "NON-FORMAL / SKB";
+                }
+
+                if (!selectedJenjang || unitJenjang === selectedJenjang) {
+                    uniqueUnits.add(unitNama);
+                }
+            });
+        }
+
+        var sortedUnits = Array.from(uniqueUnits).sort(function(a, b) { return a.localeCompare(b); });
+
+        $selectUnit.empty().append('<option value="SEMUA">Semua Unit Kerja</option>');
+        sortedUnits.forEach(function (u) {
+            $selectUnit.append($('<option>', { value: u, text: u }));
+        });
+
+        $selectUnit.prop('disabled', false);
+
+        if (currentSelectedUnit && uniqueUnits.has(currentSelectedUnit)) {
+            $selectUnit.val(currentSelectedUnit);
+        } else {
+            $selectUnit.val("SEMUA");
+        }
     }
 
     function lokUpa_filterUnitByJenjang() {
@@ -666,10 +719,23 @@
         var tNpsnUser = String(LOKUPA_USER_NPSN).trim().toUpperCase();
         var tUnitUser = String(LOKUPA_UNIT_TERKUNCI).trim().toUpperCase();
 
+        var fJenjang = $('#lokUpa_filterJenjang').val();
+        var tJenjang = (fJenjang && fJenjang !== "") ? String(fJenjang).trim().toUpperCase() : "";
+
         var hasil = LOKUPA_CACHE_DATA.filter(function (row) {
             var rNpsn = String(row.npsn || "").trim().toUpperCase();
             var rUnit = String(row.unit || "").trim().toUpperCase();
             var rStat = String(row.status || "").trim().toUpperCase();
+            var rJenjang = row.jenjang ? String(row.jenjang).trim().toUpperCase() : "";
+
+            if (!rJenjang && rUnit) {
+                if (rUnit.includes("TK") || rUnit.includes("PAUD") || rUnit.includes("KOBER") || rUnit.includes("TKN") || rUnit.includes("TUNAS MUDA")) rJenjang = "PAUD / TK";
+                else if (rUnit.includes("SD") || rUnit.includes("SDN")) rJenjang = "SD";
+                else if (rUnit.includes("SMP") || rUnit.includes("SMPN")) rJenjang = "SMP";
+                else if (rUnit.includes("SMA") || rUnit.includes("SMAN")) rJenjang = "SMA";
+                else if (rUnit.includes("SMK") || rUnit.includes("SMKN")) rJenjang = "SMK";
+                else if (rUnit.includes("SKB") || rUnit.includes("PKBM")) rJenjang = "NON-FORMAL / SKB";
+            }
 
             var rBulanRaw = "";
             var rawTgl = String(row.tanggal || "").replace(/'/g, "").trim();
@@ -690,6 +756,12 @@
                 else if (tUnitUser !== "" && rUnit === tUnitUser) pSekolah = true;
             }
 
+            var pJenjang = true;
+            if (tJenjang !== "") {
+                if (tAdminUnit !== "SEMUA") pJenjang = true;
+                else pJenjang = (rJenjang === tJenjang);
+            }
+
             var pStat = true;
             if (tStat !== "") {
                 if (tStat === "DIPROSES") pStat = (rStat === "" || rStat === "DIPROSES");
@@ -701,7 +773,7 @@
                 pBulan = (rBulanRaw === tBulan);
             }
 
-            return pSekolah && pStat && pBulan;
+            return pSekolah && pJenjang && pStat && pBulan;
         });
 
         // Sorting descenting berdasarkan datetime Kirim/Edit/Verif
