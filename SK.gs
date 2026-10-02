@@ -174,33 +174,82 @@ function getDaftarSK() {
   try {
     var cached = cache.get(cacheKey);
     if (cached) return JSON.parse(cached);
-  } catch (e) {}
+  } catch (e) {
+    Logger.log("Warn on Cache getDaftarSK: " + e.toString());
+  }
   
   try {
     var sheet = getSheet("SK_DATA_DB", "Unggah_SK");
     var data = sheet.getDataRange().getDisplayValues();
+    if (data.length < 2) return [];
+
+    var headers = data[0].map(function(h) { return String(h).toLowerCase().trim(); });
+
+    var findCol = function(nameList, defaultIdx) {
+      for (var k = 0; k < nameList.length; k++) {
+        var idx = headers.indexOf(nameList[k]);
+        if (idx > -1) return idx;
+      }
+      return defaultIdx;
+    };
+
+    var colMap = {
+      tglUnggah: findCol(["tanggal unggah", "tgl unggah", "timestamp"], 0),
+      namaSd: findCol(["nama sekolah", "nama sd", "sekolah", "unit"], 1),
+      tahun: findCol(["tahun ajaran", "tahun"], 2),
+      semester: findCol(["semester"], 3),
+      noSk: findCol(["no sk", "nomor sk"], 4),
+      tglSk: findCol(["tanggal sk", "tgl sk"], 5),
+      kriteria: findCol(["kriteria"], 6),
+      fileUrl: findCol(["file url", "file", "dokumen", "link"], 7),
+      userInput: findCol(["user input", "pengunggah", "user"], 8),
+      status: findCol(["status", "status verval"], 9),
+      tglUpdate: findCol(["tanggal update", "tgl update"], 10),
+      userUpdate: findCol(["user update", "pengedit"], 11),
+      tglVerval: findCol(["tanggal verval", "tgl verval", "tgl verif"], 12),
+      verifikator: findCol(["verifikator", "user verif"], 13),
+      keterangan: findCol(["keterangan", "catatan"], 14),
+      readBy: findCol(["read by", "dibaca"], 15),
+      npsn: findCol(["npsn"], 17)
+    };
+
     var result = [];
 
     for (var i = 1; i < data.length; i++) {
       var row = data[i];
-      if (!row[1]) continue; 
+      var namaSekolah = row[colMap.namaSd];
+      if (!namaSekolah) continue; 
 
-      var tUnggah = parseSiabaDateTime(row[0]);
-      var tUpdate = parseSiabaDateTime(row[10]);
-      var tVerval = parseSiabaDateTime(row[12]);
+      var strTglUnggah = row[colMap.tglUnggah] || "";
+      var strTglUpdate = row[colMap.tglUpdate] || "";
+      var strTglVerval = row[colMap.tglVerval] || "";
+
+      var tUnggah = parseSiabaDateTime(strTglUnggah);
+      var tUpdate = parseSiabaDateTime(strTglUpdate);
+      var tVerval = parseSiabaDateTime(strTglVerval);
       
       var lastActivity = Math.max(tUnggah, tUpdate, tVerval);
 
       result.push({
         rowBaris: i + 1,
-        tglUnggah: row[0],
-        namaSd: row[1], tahun: row[2], semester: row[3], noSk: row[4],
-        tglSk: row[5], tglSkDisplay: row[5], 
-        kriteria: row[6], fileUrl: row[7], userInput: row[8], status: row[9],
-        tglUpdate: row[10], userUpdate: row[11],
-        tglVerval: row[12], verifikator: row[13], keterangan: row[14],
-        npsn: row[17] || "",
-        readBy: row[15] || "",
+        tglUnggah: strTglUnggah,
+        namaSd: namaSekolah, 
+        tahun: row[colMap.tahun] || "", 
+        semester: row[colMap.semester] || "", 
+        noSk: row[colMap.noSk] || "",
+        tglSk: row[colMap.tglSk] || "", 
+        tglSkDisplay: row[colMap.tglSk] || "", 
+        kriteria: row[colMap.kriteria] || "", 
+        fileUrl: row[colMap.fileUrl] || "", 
+        userInput: row[colMap.userInput] || "", 
+        status: row[colMap.status] || "",
+        tglUpdate: strTglUpdate, 
+        userUpdate: row[colMap.userUpdate] || "",
+        tglVerval: strTglVerval, 
+        verifikator: row[colMap.verifikator] || "", 
+        keterangan: row[colMap.keterangan] || "",
+        npsn: row[colMap.npsn] || "",
+        readBy: row[colMap.readBy] || "",
         timestamp: lastActivity
       });
     }
@@ -209,10 +258,15 @@ function getDaftarSK() {
     
     try {
       cache.put(cacheKey, JSON.stringify(result), 300);
-    } catch (e) {}
+    } catch (eCachePut) {
+      Logger.log("Warn on Cache put getDaftarSK: " + eCachePut.toString());
+    }
     
     return result;
-  } catch (e) { return []; }
+  } catch (e) { 
+    Logger.log("Error pada getDaftarSK: " + e.toString() + "\n" + (e.stack || ""));
+    return []; 
+  }
 }
 
 /* ======================================================================
