@@ -79,12 +79,12 @@ function getSiabaKonfigJadwal(tahun, bulan) {
     let configJadwal = {
       tahun: tahun,
       bulan: bulan,
-      jamDatangSeninKamis: "07:30",
-      toleransiTerlambatSeninKamis: "07:45",
-      jamPulangSeninKamis: "16:00",
-      jamDatangJumat: "07:30",
-      toleransiTerlambatJumat: "07:45",
-      jamPulangJumat: "16:30",
+      jamDatangSeninKamis: "07:00",
+      toleransiTerlambatSeninKamis: "07:00",
+      jamPulangSeninKamis: "15:30",
+      jamDatangJumat: "07:00",
+      toleransiTerlambatJumat: "07:00",
+      jamPulangJumat: "16:00",
       hariLiburRutin: ["Sabtu", "Minggu"],
       isDefault: true
     };
@@ -99,12 +99,12 @@ function getSiabaKonfigJadwal(tahun, bulan) {
           configJadwal = {
             tahun: r[0],
             bulan: r[1],
-            jamDatangSeninKamis: r[2] || "07:30",
-            toleransiTerlambatSeninKamis: r[3] || r[2] || "07:45",
-            jamPulangSeninKamis: r[4] || "16:00",
-            jamDatangJumat: r[5] || "07:30",
-            toleransiTerlambatJumat: r[6] || r[5] || "07:45",
-            jamPulangJumat: r[7] || "16:30",
+            jamDatangSeninKamis: r[2] || "07:00",
+            toleransiTerlambatSeninKamis: r[3] || r[2] || "07:00",
+            jamPulangSeninKamis: r[4] || "15:30",
+            jamDatangJumat: r[5] || "07:00",
+            toleransiTerlambatJumat: r[6] || r[5] || "07:00",
+            jamPulangJumat: r[7] || "16:00",
             hariLiburRutin: liburArr,
             isDefault: false
           };
