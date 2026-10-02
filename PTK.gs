@@ -155,7 +155,59 @@ function buildPtkListSdn_() {
   var lastRow = sheet.getLastRow();
   if (lastRow < 2) return [];
 
-  var data = sheet.getRange(2, 1, lastRow - 1, 37).getValues();
+  var allData = sheet.getDataRange().getValues();
+  if (allData.length < 2) return [];
+
+  var headers = allData[0].map(function(h) { return String(h).toLowerCase().trim(); });
+  var findCol = function(nameList, defaultIdx) {
+    for (var k = 0; k < nameList.length; k++) {
+      var idx = headers.indexOf(nameList[k]);
+      if (idx > -1) return idx;
+    }
+    return defaultIdx;
+  };
+
+  var colMap = {
+    id: findCol(["id", "id_ptk", "id ptk"], 0),
+    npsn: findCol(["npsn"], 1),
+    unit: findCol(["unit", "nama_sekolah", "sekolah"], 2),
+    gelar_depan: findCol(["gelar_depan", "gelar depan"], 3),
+    nama_no_gelar: findCol(["nama_no_gelar", "nama tanpa gelar"], 4),
+    gelar_belakang: findCol(["gelar_belakang", "gelar belakang"], 5),
+    nama_lengkap: findCol(["nama_lengkap", "nama lengkap", "nama"], 6),
+    nip: findCol(["nip"], 7),
+    tmp_lahir: findCol(["tmp_lahir", "tempat lahir"], 8),
+    tgl_lahir: findCol(["tgl_lahir", "tanggal lahir"], 9),
+    nik: findCol(["nik"], 10),
+    lp: findCol(["lp", "jenis kelamin", "jk"], 11),
+    agama: findCol(["agama"], 12),
+    pendidikan: findCol(["pendidikan"], 13),
+    jurusan: findCol(["jurusan"], 14),
+    thn_lulus: findCol(["thn_lulus", "tahun lulus"], 15),
+    alamat_ktp: findCol(["alamat_ktp", "alamat ktp"], 16),
+    alamat_domisili: findCol(["alamat_domisili", "alamat domisili"], 17),
+    hp: findCol(["hp", "no hp", "telepon"], 18),
+    status_peg: findCol(["status_peg", "status pegawai", "status"], 19),
+    jabatan: findCol(["jabatan"], 20),
+    tmt_jabatan: findCol(["tmt_jabatan", "tmt jabatan"], 21),
+    pangkat: findCol(["pangkat", "pangkat_gol", "pangkat/gol"], 22),
+    tmt_gol: findCol(["tmt_gol", "tmt gol", "tmt golongan"], 23),
+    mkg: findCol(["mkg", "misa kerja"], 24),
+    tugas: findCol(["tugas", "tugas utama"], 25),
+    nuptk: findCol(["nuptk"], 26),
+    serdik: findCol(["serdik"], 27),
+    dapodik: findCol(["dapodik"], 28),
+    tugtam: findCol(["tugtam", "tugas tambahan"], 29),
+    email: findCol(["email"], 30),
+    diinput: findCol(["diinput", "tgl input"], 31),
+    user_input: findCol(["user_input", "penginput"], 32),
+    diedit: findCol(["diedit", "tgl edit"], 33),
+    user_edit: findCol(["user_edit", "pengedit"], 34),
+    jenis_dok: findCol(["jenis_dok", "jenis dokumen"], 35),
+    file_url: findCol(["file_url", "url", "file"], 36)
+  };
+
+  var data = allData.slice(1);
   var sheetUsulan = getSheet(KONFIG_PTK.DB_KEY, "usulan_mutasi_sdn");
   var usulanData = sheetUsulan ? sheetUsulan.getDataRange().getValues() : [];
   var pendingPtkIds = {};
@@ -169,46 +221,51 @@ function buildPtkListSdn_() {
   var tz = Session.getScriptTimeZone();
   for (var i = 0; i < data.length; i++) {
     var row = data[i];
-    if (!row[0]) continue;
+    var rowId = row[colMap.id];
+    if (!rowId) continue;
+
+    var valDiinput = row[colMap.diinput];
+    var valDiedit = row[colMap.diedit];
+
     result.push({
-      id: row[0],
-      npsn: row[1],
-      unit: row[2],
-      gelar_depan: row[3],
-      nama_no_gelar: row[4],
-      gelar_belakang: row[5],
-      nama_lengkap: row[6],
-      nip: row[7],
-      tmp_lahir: row[8],
-      tgl_lahir: parseIndoDate(row[9]),
-      nik: row[10],
-      lp: row[11],
-      agama: row[12],
-      pendidikan: row[13],
-      jurusan: row[14],
-      thn_lulus: row[15],
-      alamat_ktp: row[16],
-      alamat_domisili: row[17],
-      hp: row[18],
-      status_peg: row[19],
-      jabatan: row[20],
-      tmt_jabatan: parseIndoDate(row[21]),
-      pangkat: row[22],
-      tmt_gol: parseIndoDate(row[23]),
-      mkg: row[24],
-      tugas: row[25],
-      nuptk: row[26],
-      serdik: row[27],
-      dapodik: row[28],
-      tugtam: row[29],
-      email: row[30],
-      diinput: row[31] ? Utilities.formatDate(new Date(row[31]), tz, "dd/MM/yy HH:mm") : "",
-      user_input: row[32],
-      diedit: row[33] ? Utilities.formatDate(new Date(row[33]), tz, "dd/MM/yy HH:mm") : "",
-      user_edit: row[34],
-      jenis_dok: row[35] || "",
-      file_url: row[36] || "",
-      is_pending_baru: !!pendingPtkIds[String(row[0])]
+      id: rowId,
+      npsn: row[colMap.npsn],
+      unit: row[colMap.unit],
+      gelar_depan: row[colMap.gelar_depan],
+      nama_no_gelar: row[colMap.nama_no_gelar],
+      gelar_belakang: row[colMap.gelar_belakang],
+      nama_lengkap: row[colMap.nama_lengkap],
+      nip: row[colMap.nip],
+      tmp_lahir: row[colMap.tmp_lahir],
+      tgl_lahir: parseIndoDate(row[colMap.tgl_lahir]),
+      nik: row[colMap.nik],
+      lp: row[colMap.lp],
+      agama: row[colMap.agama],
+      pendidikan: row[colMap.pendidikan],
+      jurusan: row[colMap.jurusan],
+      thn_lulus: row[colMap.thn_lulus],
+      alamat_ktp: row[colMap.alamat_ktp],
+      alamat_domisili: row[colMap.alamat_domisili],
+      hp: row[colMap.hp],
+      status_peg: row[colMap.status_peg],
+      jabatan: row[colMap.jabatan],
+      tmt_jabatan: parseIndoDate(row[colMap.tmt_jabatan]),
+      pangkat: row[colMap.pangkat],
+      tmt_gol: parseIndoDate(row[colMap.tmt_gol]),
+      mkg: row[colMap.mkg],
+      tugas: row[colMap.tugas],
+      nuptk: row[colMap.nuptk],
+      serdik: row[colMap.serdik],
+      dapodik: row[colMap.dapodik],
+      tugtam: row[colMap.tugtam],
+      email: row[colMap.email],
+      diinput: valDiinput ? Utilities.formatDate(new Date(valDiinput), tz, "dd/MM/yy HH:mm") : "",
+      user_input: row[colMap.user_input],
+      diedit: valDiedit ? Utilities.formatDate(new Date(valDiedit), tz, "dd/MM/yy HH:mm") : "",
+      user_edit: row[colMap.user_edit],
+      jenis_dok: row[colMap.jenis_dok] || "",
+      file_url: row[colMap.file_url] || "",
+      is_pending_baru: !!pendingPtkIds[String(rowId)]
     });
   }
   return result;
