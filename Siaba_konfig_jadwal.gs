@@ -1,10 +1,10 @@
 /* ======================================================================
-   SIABA_KONFIG_JADWAL.GS - MANAJEMEN JADWAL KERJA & KALENDER HARI LIBUR
+   SIABA_KONFIG_JADWAL.GS - MANAJEMEN JADWAL KERJA PEKANAN & KALENDER HARI LIBUR
    (Master Configuration Sheet: USER_DB / SPREADSHEET_IDS.USER_DB)
    ====================================================================== */
 
 /**
- * Memastikan sheet SIABA_KONFIG_JAM_KERJA & SIABA_KALENDER_LIBUR tersedia.
+ * Memastikan sheet SIABA_KONFIG_JAM_KERJA & SIABA_KALENDER_LIBUR tersedia dengan kolom fleksibel.
  */
 function initSiabaKonfigSheets() {
   try {
@@ -15,14 +15,33 @@ function initSiabaKonfigSheets() {
     if (!sheetJadwal) {
       sheetJadwal = ss.insertSheet("SIABA_KONFIG_JAM_KERJA");
       sheetJadwal.appendRow([
-        "Tahun", "Bulan", "Jam_Datang", "Toleransi_Terlambat", 
-        "Jam_Pulang", "Hari_Libur_Rutin", "Status", "Updated_At", "Updated_By"
+        "Tahun", "Bulan", 
+        "Jam_Datang_Senin_Kamis", "Toleransi_Terlambat_Senin_Kamis", "Jam_Pulang_Senin_Kamis",
+        "Jam_Datang_Jumat", "Toleransi_Terlambat_Jumat", "Jam_Pulang_Jumat",
+        "Hari_Libur_Rutin", "Status", "Updated_At", "Updated_By"
       ]);
       // Baseline Default Tahun 2026
       const bulanArr = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
       bulanArr.forEach(function(b) {
-        sheetJadwal.appendRow(["2026", b, "07:30", "07:45", "16:00", "Sabtu, Minggu", "Aktif", "01-01-2026 00:00", "System"]);
+        sheetJadwal.appendRow([
+          "2026", b, 
+          "07:30", "07:45", "16:00", // Senin - Kamis
+          "07:30", "07:45", "16:30", // Jumat
+          "Sabtu, Minggu", "Aktif", "01-01-2026 00:00", "System"
+        ]);
       });
+    } else {
+      // Pengecekan jumlah kolom jika perlu upgrade dari versi lama
+      let header = sheetJadwal.getRange(1, 1, 1, sheetJadwal.getLastColumn()).getValues()[0];
+      if (header.length < 12) {
+        sheetJadwal.clear();
+        sheetJadwal.appendRow([
+          "Tahun", "Bulan", 
+          "Jam_Datang_Senin_Kamis", "Toleransi_Terlambat_Senin_Kamis", "Jam_Pulang_Senin_Kamis",
+          "Jam_Datang_Jumat", "Toleransi_Terlambat_Jumat", "Jam_Pulang_Jumat",
+          "Hari_Libur_Rutin", "Status", "Updated_At", "Updated_By"
+        ]);
+      }
     }
 
     // 2. Sheet Kalender Hari Libur
@@ -43,8 +62,7 @@ function initSiabaKonfigSheets() {
 }
 
 /**
- * Mengambil Konfigurasi Jam Kerja & Kalender Libur untuk Bulan & Tahun tertentu.
- * Dipanggil oleh Frontend Presensi Harian / API backend.
+ * Mengambil Konfigurasi Jam Kerja Pekanan & Kalender Libur untuk Bulan & Tahun tertentu.
  */
 function getSiabaKonfigJadwal(tahun, bulan) {
   try {
@@ -58,9 +76,12 @@ function getSiabaKonfigJadwal(tahun, bulan) {
     let configJadwal = {
       tahun: tahun,
       bulan: bulan,
-      jamDatang: "07:30",
-      toleransiTerlambat: "07:45",
-      jamPulang: "16:00",
+      jamDatangSeninKamis: "07:30",
+      toleransiTerlambatSeninKamis: "07:45",
+      jamPulangSeninKamis: "16:00",
+      jamDatangJumat: "07:30",
+      toleransiTerlambatJumat: "07:45",
+      jamPulangJumat: "16:30",
       hariLiburRutin: ["Sabtu", "Minggu"],
       isDefault: true
     };
@@ -68,14 +89,18 @@ function getSiabaKonfigJadwal(tahun, bulan) {
     for (let i = 1; i < dataJadwal.length; i++) {
       let r = dataJadwal[i];
       if (String(r[0]).trim() === String(tahun).trim() && String(r[1]).trim().toLowerCase() === String(bulan).trim().toLowerCase()) {
-        let liburStr = String(r[5] || "").trim();
+        let liburStr = String(r[8] || r[5] || "").trim();
         let liburArr = liburStr ? liburStr.split(",").map(function(s){ return s.trim(); }) : ["Sabtu", "Minggu"];
+        
         configJadwal = {
           tahun: r[0],
           bulan: r[1],
-          jamDatang: r[2] || "07:30",
-          toleransiTerlambat: r[3] || r[2] || "07:45",
-          jamPulang: r[4] || "16:00",
+          jamDatangSeninKamis: r[2] || "07:30",
+          toleransiTerlambatSeninKamis: r[3] || r[2] || "07:45",
+          jamPulangSeninKamis: r[4] || "16:00",
+          jamDatangJumat: r[5] || "07:30",
+          toleransiTerlambatJumat: r[6] || r[5] || "07:45",
+          jamPulangJumat: r[7] || "16:30",
           hariLiburRutin: liburArr,
           isDefault: false
         };
@@ -94,7 +119,6 @@ function getSiabaKonfigJadwal(tahun, bulan) {
       let thn = String(r[1] || "").trim();
       let bln = String(r[2] || "").trim();
 
-      // Cocokkan berdasarkan Tahun & Bulan atau Tanggal
       if ((thn === String(tahun).trim() && bln.toLowerCase() === String(bulan).trim().toLowerCase()) || tgl.indexOf(tahun + "-") === 0) {
         daftarLibur.push({
           tanggal: tgl, // Format YYYY-MM-DD
@@ -116,7 +140,7 @@ function getSiabaKonfigJadwal(tahun, bulan) {
 }
 
 /**
- * Menyimpan / Perbarui Konfigurasi Jam Kerja Bulanan
+ * Menyimpan / Perbarui Konfigurasi Jam Kerja Pekanan Bulanan
  */
 function simpanSiabaKonfigJadwal(payload) {
   const lock = LockService.getScriptLock();
@@ -147,9 +171,12 @@ function simpanSiabaKonfigJadwal(payload) {
     let rowData = [
       tahun,
       bulan,
-      String(payload.jamDatang || "07:30").trim(),
-      String(payload.toleransiTerlambat || payload.jamDatang || "07:45").trim(),
-      String(payload.jamPulang || "16:00").trim(),
+      String(payload.jamDatangSeninKamis || "07:30").trim(),
+      String(payload.toleransiTerlambatSeninKamis || payload.jamDatangSeninKamis || "07:45").trim(),
+      String(payload.jamPulangSeninKamis || "16:00").trim(),
+      String(payload.jamDatangJumat || "07:30").trim(),
+      String(payload.toleransiTerlambatJumat || payload.jamDatangJumat || "07:45").trim(),
+      String(payload.jamPulangJumat || "16:30").trim(),
       hariLiburStr,
       String(payload.status || "Aktif").trim(),
       nowStr,
@@ -163,10 +190,9 @@ function simpanSiabaKonfigJadwal(payload) {
     }
 
     SpreadsheetApp.flush();
-    // Invalidate cache jika ada
     invalidateCacheKeys(["SIABA_KONFIG_JADWAL_" + tahun + "_" + bulan]);
 
-    return JSON.stringify({ status: "success", message: "Konfigurasi jam kerja berhasil disimpan." });
+    return JSON.stringify({ status: "success", message: "Konfigurasi jam kerja pekanan berhasil disimpan." });
   } catch (e) {
     return JSON.stringify({ status: "error", message: e.message });
   } finally {

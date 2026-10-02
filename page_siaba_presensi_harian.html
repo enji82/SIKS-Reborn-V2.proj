@@ -651,7 +651,7 @@ function harian_isTanggalMerah(thn, blnNama, dayNum) {
     return null;
 }
 
-function harian_formatComboCell(dVal, pVal, dayNum) {
+function harian_formatComboCell(dVal, pVal, dayNum, thn, blnNama) {
     var strD = String(dVal || "").trim().toUpperCase();
     var strP = String(pVal || "").trim().toUpperCase();
     
@@ -674,16 +674,30 @@ function harian_formatComboCell(dVal, pVal, dayNum) {
         return `<div class="harian-cell-combo" title="Tgl ${dayNum}: ${codeVal}"><span class="badge ${badgeClass} harian-badge-status">${codeVal}</span></div>`;
     }
     
-    // Deteksi Terlambat & Pulang Awal Berdasarkan Konfigurasi Master Jam Kerja
+    // Deteksi Hari (Jumat vs Senin-Kamis)
+    var infoHari = harian_getNamaHari(thn, blnNama, dayNum);
+    var isJumat = (infoHari.short === "Jum");
+
     var isTerlambat = false;
     var isPulangAwal = false;
 
+    var jamDatangStd = "07:30";
+    var toleransiStd = "07:45";
+    var jamPulangStd = isJumat ? "16:30" : "16:00";
+
     if (HARIAN_KONFIG_JADWAL) {
-        var jamDatangStd = HARIAN_KONFIG_JADWAL.toleransiTerlambat || HARIAN_KONFIG_JADWAL.jamDatang || "07:30";
-        var jamPulangStd = HARIAN_KONFIG_JADWAL.jamPulang || "16:00";
+        if (isJumat) {
+            jamDatangStd = HARIAN_KONFIG_JADWAL.jamDatangJumat || HARIAN_KONFIG_JADWAL.jamDatang || "07:30";
+            toleransiStd = HARIAN_KONFIG_JADWAL.toleransiTerlambatJumat || HARIAN_KONFIG_JADWAL.toleransiTerlambat || "07:45";
+            jamPulangStd = HARIAN_KONFIG_JADWAL.jamPulangJumat || "16:30";
+        } else {
+            jamDatangStd = HARIAN_KONFIG_JADWAL.jamDatangSeninKamis || HARIAN_KONFIG_JADWAL.jamDatang || "07:30";
+            toleransiStd = HARIAN_KONFIG_JADWAL.toleransiTerlambatSeninKamis || HARIAN_KONFIG_JADWAL.toleransiTerlambat || "07:45";
+            jamPulangStd = HARIAN_KONFIG_JADWAL.jamPulangSeninKamis || HARIAN_KONFIG_JADWAL.jamPulang || "16:00";
+        }
 
         if (strD && strD.indexOf(":") > -1) {
-            if (strD > jamDatangStd) isTerlambat = true;
+            if (strD > toleransiStd) isTerlambat = true;
         }
         if (strP && strP.indexOf(":") > -1) {
             if (strP < jamPulangStd) isPulangAwal = true;
@@ -693,13 +707,13 @@ function harian_formatComboCell(dVal, pVal, dayNum) {
     var inClass = isTerlambat ? "harian-time-in is-terlambat" : "harian-time-in";
     var outClass = isPulangAwal ? "harian-time-out is-pulang-awal" : "harian-time-out";
 
-    var titleIn = isTerlambat ? `Datang: ${strD} (Terlambat > ${HARIAN_KONFIG_JADWAL ? HARIAN_KONFIG_JADWAL.toleransiTerlambat : '07:45'})` : `Datang: ${strD}`;
-    var titleOut = isPulangAwal ? `Pulang: ${strP} (Pulang Awal < ${HARIAN_KONFIG_JADWAL ? HARIAN_KONFIG_JADWAL.jamPulang : '16:00'})` : `Pulang: ${strP}`;
+    var titleIn = isTerlambat ? `Datang: ${strD} (Terlambat > ${toleransiStd})` : `Datang: ${strD}`;
+    var titleOut = isPulangAwal ? `Pulang: ${strP} (Pulang Awal < ${jamPulangStd})` : `Pulang: ${strP}`;
 
     var inHtml = (strD && strD !== "-" && strD !== "0") ? `<span class="${inClass}" title="${titleIn}">${harian_escapeHtml(strD)}</span>` : `<span class="text-muted opacity-50">-</span>`;
     var outHtml = (strP && strP !== "-" && strP !== "0") ? `<span class="${outClass}" title="${titleOut}">${harian_escapeHtml(strP)}</span>` : `<span class="text-muted opacity-50">-</span>`;
     
-    return `<div class="harian-cell-combo" title="Tgl ${dayNum}">${inHtml}${outHtml}</div>`;
+    return `<div class="harian-cell-combo" title="Tgl ${dayNum} (${infoHari.short})">${inHtml}${outHtml}</div>`;
 }
 
 function harian_renderTabel(dataRows) {
@@ -800,7 +814,7 @@ function harian_renderTabel(dataRows) {
                     var dVal = String(row[dIdx] || "").trim().toUpperCase();
                     var pVal = String(row[pIdx] || "").trim().toUpperCase();
                     
-                    arrRow.push(harian_formatComboCell(dVal, pVal, d));
+                    arrRow.push(harian_formatComboCell(dVal, pVal, d, th, bl));
                 }
             } 
             else {
