@@ -26,27 +26,35 @@ function getDaftarLupaPresensi(tahun, bulan) {
 
     var data = sheet.getDataRange().getDisplayValues(); 
     if (!data || data.length <= 1) return JSON.stringify([]);
-    var header = data[0];
     
-    // Pemetaan indeks kolom dinamis
-    var cUnit = findCol(header, ["unit", "unit kerja", "sekolah"]);
-    var cNama = findCol(header, ["nama", "nama ptk"]);
-    var cNip = findCol(header, ["nip"]);
-    var cTanggal = findCol(header, ["tanggal", "tgl"]);
-    var cJam = findCol(header, ["jam", "waktu"]);
-    var cJenis = findCol(header, ["jenis", "jenis presensi"]);
-    var cKomulatif = findCol(header, ["komulatif", "kumulatif"]);
-    var cTglKirim = findCol(header, ["tglkirim", "tanggal kirim", "tgl_kirim"]);
-    var cUserInput = findCol(header, ["userinput", "user_input"]);
-    var cFileUrl = findCol(header, ["fileurl", "file_url", "bukti"]);
-    var cStatus = findCol(header, ["status", "status verifikasi"]);
-    var cTglEdit = findCol(header, ["tgledit", "tgl_edit"]);
-    var cUserEdit = findCol(header, ["useredit", "user_edit"]);
-    var cTglVerif = findCol(header, ["tglverif", "tgl_verif"]);
-    var cAdminVerif = findCol(header, ["adminverif", "admin_verif"]);
-    var cKet = findCol(header, ["keterangan", "ket"]);
-    var cNpsn = findCol(header, ["npsn"]);
-    var cReadBy = findCol(header, ["readby", "read_by"]);
+    var headers = data[0].map(function(h) { return String(h).toLowerCase().trim(); });
+    var findCol = function(nameList, defaultIdx) {
+      for (var k = 0; k < nameList.length; k++) {
+        var idx = headers.indexOf(nameList[k]);
+        if (idx > -1) return idx;
+      }
+      return defaultIdx;
+    };
+    
+    // Pemetaan indeks kolom dinamis (dengan fallback index standar)
+    var cUnit = findCol(["unit", "unit kerja", "sekolah"], 0);
+    var cNama = findCol(["nama", "nama ptk"], 1);
+    var cNip = findCol(["nip"], 2);
+    var cTanggal = findCol(["tanggal", "tgl"], 3);
+    var cJam = findCol(["jam", "waktu"], 4);
+    var cJenis = findCol(["jenis", "jenis presensi"], 5);
+    var cKomulatif = findCol(["komulatif", "kumulatif"], 6);
+    var cTglKirim = findCol(["tglkirim", "tanggal kirim", "tgl_kirim"], 7);
+    var cUserInput = findCol(["userinput", "user_input"], 8);
+    var cFileUrl = findCol(["fileurl", "file_url", "bukti"], 9);
+    var cStatus = findCol(["status", "status verifikasi"], 10);
+    var cTglEdit = findCol(["tgledit", "tgl_edit"], 11);
+    var cUserEdit = findCol(["useredit", "user_edit"], 12);
+    var cTglVerif = findCol(["tglverif", "tgl_verif"], 13);
+    var cAdminVerif = findCol(["adminverif", "admin_verif"], 14);
+    var cKet = findCol(["keterangan", "ket"], 15);
+    var cNpsn = findCol(["npsn"], 16);
+    var cReadBy = findCol(["readby", "read_by"], 17);
 
     var result = [];
 
