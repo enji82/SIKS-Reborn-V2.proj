@@ -7,6 +7,13 @@ function getOrCreateKonfigSheet(ss, sheetName, headers) {
   let sheet = ss.getSheetByName(sheetName);
   if (!sheet) {
     sheet = ss.insertSheet(sheetName);
+    // Pangkas kolom gantung & baris berlebih agar tidak menyedot limit 10 juta sel Google Sheets
+    if (sheet.getMaxColumns() > 15) {
+      sheet.deleteColumns(16, sheet.getMaxColumns() - 15);
+    }
+    if (sheet.getMaxRows() > 100) {
+      sheet.deleteRows(101, sheet.getMaxRows() - 100);
+    }
     if (headers && headers.length > 0) {
       sheet.appendRow(headers);
     }
