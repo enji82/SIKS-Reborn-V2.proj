@@ -414,6 +414,205 @@ function harian_getNamaHari(thn, blnNama, tgl) {
     };
 }
 
+function harian_initFilters() {
+    $('#harian_loadingText').html('Memuat Konfigurasi Waktu...');
+    
+    google.script.run.withSuccessHandler(function(res) {
+        var data = JSON.parse(res);
+        
+        var elThn = $('#harian_filterTahun').empty().append('<option value="">- Tahun -</option>');
+        data.years.forEach(y => elThn.append(`<option value="${harian_escapeHtml(y)}">${harian_escapeHtml(y)}</option>`));
+        
+        var elBln = $('#harian_filterBulan').empty().append('<option value="">- Bulan -</option>');
+        data.months.forEach(m => elBln.append(`<option value="${harian_escapeHtml(m)}">${harian_escapeHtml(m)}</option>`));
+
+        var now = new Date();
+        var curYear = now.getFullYear().toString();
+        var mNames = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+        var curMonth = mNames[now.getMonth()];
+
+        if ($("#harian_filterTahun option[value='"+curYear+"']").length > 0) $('#harian_filterTahun').val(curYear);
+        if ($("#harian_filterBulan option[value='"+curMonth+"']").length > 0) $('#harian_filterBulan').val(curMonth);
+
+        $('#harian_filterTahun, #harian_filterBulan, #harian_btnRefresh').prop('disabled', false);
+
+        harian_validasiAksesUser(); 
+
+    }).getSiabaFilters();
+}
+
+function harian_validasiAksesUser() {
+    $('#harian_loadingText').html('Mempersiapkan Akses...');
+
+    if (HARIAN_IS_ADMIN) {
+        $('#harian_filterUnit').empty().append('<option value="SEMUA">- Semua Unit Kerja -</option>').prop('disabled', false).removeClass('bg-light text-maroon font-weight-bold');
+        harian_tarikDataServer(); 
+    } else {
+        if (!HARIAN_USER_NPSN) {
+            $('#harian_filterUnit').empty().append('<option value="">AKSES DITOLAK (NPSN KOSONG)</option>');
+            $('#harian_loadingText').html('<span class="text-danger"><i class="fas fa-ban mb-2"></i><br>Akses ditolak: Sesi login tidak valid.</span>');
+            return;
+        }
+
+        google.script.run
+            .withSuccessHandler(function(resUnit) {
+                var dataUnit = JSON.parse(resUnit);
+                if (dataUnit.error) {
+                    $('#harian_filterUnit').empty().append('<option value="">AKSES DITOLAK</option>');
+                    $('#harian_loadingText').html(`<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>${harian_escapeHtml(dataUnit.error)}</span>`);
+                    return;
+                }
+
+                HARIAN_UNIT_TERKUNCI = dataUnit.unitKerja;
+                $('#harian_filterUnit').empty().append($('<option>', {value: HARIAN_UNIT_TERKUNCI, text: HARIAN_UNIT_TERKUNCI})).prop('disabled', true);
+                
+                harian_tarikDataServer();
+            })
+            .withFailureHandler(function(err) {
+                $('#harian_filterUnit').empty().append('<option value="">ERROR SERVER</option>');
+                $('#harian_loadingText').html(`<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Database Induk Terputus: ${harian_escapeHtml(err.message)}</span>`);
+            })
+            .getUnitKerjaByNPSN(HARIAN_USER_NPSN); 
+    }
+}
+
+// =================================================================
+// 3. FETCH DATA DARI SERVER
+// =================================================================
+function harian_prosesCariData() {
+    var th = $('#harian_filterTahun').val(); 
+    var bl = $('#harian_filterBulan').val();
+    if (!th || !bl) { Sultan.notif.info('Pilih Tahun dan Bulan.'); return; }
+    
+    if (th === HARIAN_CACHE_THN && bl === HARIAN_CACHE_BLN && HARIAN_CACHE_DATA.length > 0) { 
+        harian_terapkanFilterLokal(); 
+    } else { 
+        harian_tarikDataServer(); 
+    }
+}
+
+function harian_tarikDataServer() {
+    var th = $('#harian_filterTahun').val(); 
+    var bl = $('#harian_filterBulan').val();
+    if(!th || !bl) return;
+
+    var btn = $('#harian_btnRefresh');
+    btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin text-maroon"></i>');
+    
+    if (!HARIAN_TABEL_INSTANCE) {
+        $('#harian_tableState').hide();
+        $('#harian_loadingText').html('Mengambil data presensi...');
+        SultanUI.showLoading('#harian_loadingState');
+    }
+
+    google.script.run
+        .withSuccessHandler(function(res) {
+            btn.prop('disabled', false).html('<i class="fas fa-sync-alt"></i>');
+            
+            var data;
+            try {
+                data = typeof res === 'string' ? JSON.parse(res) : res;
+            } catch(e) {
+                $('#harian_tableState').hide();
+                SultanUI.showLoading('#harian_loadingState');
+                $('#harian_loadingText').html('<span class="text-danger"><i class="fas fa-times-circle mb-2"></i><br>Gagal memproses struktur JSON Server.</span>');
+                return;
+            }
+            
+            if (data && data.error) {
+                $('#harian_tableState').hide();
+                SultanUI.showLoading('#harian_loadingState');
+                $('#harian_loadingText').html(`<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>${harian_escapeHtml(data.error)}</span>`);
+                return;
+            } 
+            
+            try {
+                HARIAN_CACHE_DATA = data.rows || []; 
+                HARIAN_CACHE_THN = th;
+                HARIAN_CACHE_BLN = bl;
+
+                if(HARIAN_IS_ADMIN) harian_populateDropdownUnit();
+
+                harian_terapkanFilterLokal();
+                
+            } catch(e) { 
+                $('#harian_tableState').hide();
+                SultanUI.showLoading('#harian_loadingState');
+                $('#harian_loadingText').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>Gagal merakit tabel: ' + harian_escapeHtml(e.message) + '</span>'); 
+            }
+        })
+        .withFailureHandler(function(err) {
+            btn.prop('disabled', false).html('<i class="fas fa-sync-alt"></i>');
+            $('#harian_tableState').hide();
+            SultanUI.showLoading('#harian_loadingState');
+            $('#harian_loadingText').html(`<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Terputus: ${harian_escapeHtml(err.message)}</span>`);
+        })
+        .getSiabaPresensiHarian(th, bl, "SEMUA");
+}
+
+function harian_populateDropdownUnit() {
+    var unique = new Set();
+    HARIAN_CACHE_DATA.forEach(function(row) {
+        var lastIdx = row.length - 1;
+        var unit = String(row[lastIdx]).trim();
+        if (unit) unique.add(unit);
+    });
+    
+    var sortedUnits = Array.from(unique).sort();
+    var select = $('#harian_filterUnit');
+    var currentVal = select.val();
+    
+    select.empty().append('<option value="SEMUA">- Semua Unit Kerja -</option>');
+    sortedUnits.forEach(function(u) { select.append(`<option value="${harian_escapeHtml(u)}">${harian_escapeHtml(u)}</option>`); });
+    
+    select.prop('disabled', false).removeClass('bg-light text-maroon font-weight-bold');
+    if(currentVal && unique.has(currentVal)) { select.val(currentVal); }
+}
+
+// =================================================================
+// 4. RENDERING TABEL & DINAMISASI KOLOM
+// =================================================================
+function harian_terapkanFilterLokal() {
+    var tAdminUnit = HARIAN_IS_ADMIN ? $('#harian_filterUnit').val().toUpperCase() : "";
+    var tUnitUser  = String(HARIAN_UNIT_TERKUNCI).trim().toUpperCase();
+    
+    var hasil = HARIAN_CACHE_DATA.filter(function(row) {
+        var lastIdx = row.length - 1;
+        var rUnit = String(row[lastIdx]).trim().toUpperCase(); 
+        
+        if (HARIAN_IS_ADMIN) {
+            return (tAdminUnit === "SEMUA" || tAdminUnit === "" || rUnit === tAdminUnit);
+        } else {
+            return (rUnit === tUnitUser);
+        }
+    });
+
+    harian_renderTabel(hasil);
+}
+
+function harian_formatComboCell(dVal, pVal, dayNum) {
+    if ((!dVal || dVal === "-" || dVal === "0") && (!pVal || pVal === "-" || pVal === "0")) {
+        return `<div class="harian-cell-combo"><span class="text-muted opacity-50">-</span></div>`;
+    }
+    
+    var codes = ['CT','CS','CAP','CM','CB','CLTN','DD','DL','TA','PLA','LA','TP'];
+    
+    if (dVal === pVal && codes.includes(dVal)) {
+        var badgeClass = 'badge-soft-info';
+        if (['CT','CS','CAP','CM','CB','CLTN'].includes(dVal)) badgeClass = 'badge-soft-info';
+        else if (['DD','DL'].includes(dVal)) badgeClass = 'badge-soft-purple';
+        else if (['TA','PLA','LA','TP'].includes(dVal)) badgeClass = 'badge-soft-danger';
+        
+        return `<div class="harian-cell-combo" title="Tgl ${dayNum}: ${dVal}"><span class="badge ${badgeClass} harian-badge-status">${dVal}</span></div>`;
+    }
+    
+    // POSISI BENAR: Jam Datang (dVal) di ATAS, Jam Pulang (pVal) di BAWAH
+    var inHtml = dVal ? `<span class="harian-time-in" title="Datang: ${dVal}">${harian_escapeHtml(dVal)}</span>` : `<span class="text-muted opacity-50">-</span>`;
+    var outHtml = pVal ? `<span class="harian-time-out" title="Pulang: ${pVal}">${harian_escapeHtml(pVal)}</span>` : `<span class="text-muted opacity-50">-</span>`;
+    
+    return `<div class="harian-cell-combo" title="Tgl ${dayNum}">${inHtml}${outHtml}</div>`;
+}
+
 function harian_renderTabel(dataRows) {
     try {
         var th = $('#harian_filterTahun').val();
