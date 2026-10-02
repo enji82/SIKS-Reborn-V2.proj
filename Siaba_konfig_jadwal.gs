@@ -149,26 +149,39 @@ function getSiabaKonfigJadwal(tahun, bulan) {
 /**
  * Menyimpan / Perbarui Konfigurasi Jam Kerja Pekanan Bulanan
  */
-function simpanSiabaKonfigJadwal(payload) {
+function simpanSiabaKonfigJadwal(payloadStr) {
+  // Terima JSON string dari frontend untuk menghindari masalah serialisasi object/array
+  let payload;
+  try {
+    payload = (typeof payloadStr === "string") ? JSON.parse(payloadStr) : payloadStr;
+  } catch (parseErr) {
+    return JSON.stringify({ status: "error", message: "Payload tidak valid (JSON parse error): " + parseErr.message });
+  }
+
+  // Inisialisasi sheet SEBELUM lock untuk hindari deadlock
+  try { initSiabaKonfigSheets(); } catch (initErr) {
+    Logger.log("initSiabaKonfigSheets error: " + initErr.message);
+  }
+
   const lock = LockService.getScriptLock();
   try {
-    lock.waitLock(10000);
-    initSiabaKonfigSheets();
-    
+    lock.waitLock(15000);
+
     const tahun = String(payload.tahun || "").trim();
     const bulan = String(payload.bulan || "").trim();
     if (!tahun || !bulan) return JSON.stringify({ status: "error", message: "Tahun dan Bulan wajib diisi." });
 
     const ss = getDB("USER_DB");
     const headersJadwal = [
-      "Tahun", "Bulan", 
+      "Tahun", "Bulan",
       "Jam_Datang_Senin_Kamis", "Toleransi_Terlambat_Senin_Kamis", "Jam_Pulang_Senin_Kamis",
       "Jam_Datang_Jumat", "Toleransi_Terlambat_Jumat", "Jam_Pulang_Jumat",
       "Hari_Libur_Rutin", "Status", "Updated_At", "Updated_By"
     ];
     const sheet = getOrCreateKonfigSheet(ss, "SIABA_KONFIG_JAM_KERJA", headersJadwal);
-    
-    const data = (sheet.getLastRow() > 0) ? sheet.getDataRange().getValues() : [];
+
+    const lastRow = sheet.getLastRow();
+    const data = (lastRow > 0) ? sheet.getDataRange().getValues() : [];
     const nowStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MM-yyyy HH:mm");
     const userStr = String(payload.updatedBy || "Admin").trim();
 
@@ -182,7 +195,11 @@ function simpanSiabaKonfigJadwal(payload) {
       }
     }
 
-    let hariLiburStr = Array.isArray(payload.hariLiburRutin) ? payload.hariLiburRutin.join(", ") : String(payload.hariLiburRutin || "Sabtu, Minggu");
+    let hariLiburArr = payload.hariLiburRutin;
+    if (!Array.isArray(hariLiburArr)) {
+      hariLiburArr = String(hariLiburArr || "Sabtu, Minggu").split(",").map(function(s){ return s.trim(); });
+    }
+    let hariLiburStr = hariLiburArr.join(", ");
 
     let rowData = [
       tahun,
@@ -206,24 +223,37 @@ function simpanSiabaKonfigJadwal(payload) {
     }
 
     SpreadsheetApp.flush();
-    invalidateCacheKeys(["SIABA_KONFIG_JADWAL_" + tahun + "_" + bulan]);
+    try { invalidateCacheKeys(["SIABA_KONFIG_JADWAL_" + tahun + "_" + bulan]); } catch(e2) {}
 
     return JSON.stringify({ status: "success", message: "Konfigurasi jam kerja pekanan berhasil disimpan." });
   } catch (e) {
+    Logger.log("simpanSiabaKonfigJadwal ERROR: " + e.message + " | stack: " + e.stack);
     return JSON.stringify({ status: "error", message: e.message });
   } finally {
-    lock.releaseLock();
+    try { lock.releaseLock(); } catch(le) {}
   }
 }
 
 /**
  * Menyimpan / Perbarui Hari Libur di Kalender
  */
-function simpanSiabaHariLibur(payload) {
+function simpanSiabaHariLibur(payloadStr) {
+  // Terima JSON string dari frontend untuk menghindari masalah serialisasi
+  let payload;
+  try {
+    payload = (typeof payloadStr === "string") ? JSON.parse(payloadStr) : payloadStr;
+  } catch (parseErr) {
+    return JSON.stringify({ status: "error", message: "Payload tidak valid: " + parseErr.message });
+  }
+
+  // Inisialisasi SEBELUM lock
+  try { initSiabaKonfigSheets(); } catch (initErr) {
+    Logger.log("initSiabaKonfigSheets error: " + initErr.message);
+  }
+
   const lock = LockService.getScriptLock();
   try {
-    lock.waitLock(10000);
-    initSiabaKonfigSheets();
+    lock.waitLock(15000);
 
     const tgl = String(payload.tanggal || "").trim(); // YYYY-MM-DD
     if (!tgl) return JSON.stringify({ status: "error", message: "Tanggal libur wajib diisi." });
@@ -238,7 +268,7 @@ function simpanSiabaHariLibur(payload) {
 
     const ss = getDB("USER_DB");
     const headersLibur = [
-      "Tanggal", "Tahun", "Bulan", "Keterangan_Libur", 
+      "Tanggal", "Tahun", "Bulan", "Keterangan_Libur",
       "Jenis_Libur", "Warna_Badge", "Updated_At", "Updated_By"
     ];
     const sheet = getOrCreateKonfigSheet(ss, "SIABA_KALENDER_LIBUR", headersLibur);
@@ -278,9 +308,10 @@ function simpanSiabaHariLibur(payload) {
     SpreadsheetApp.flush();
     return JSON.stringify({ status: "success", message: "Hari libur berhasil disimpan." });
   } catch (e) {
+    Logger.log("simpanSiabaHariLibur ERROR: " + e.message + " | stack: " + e.stack);
     return JSON.stringify({ status: "error", message: e.message });
   } finally {
-    lock.releaseLock();
+    try { lock.releaseLock(); } catch(le) {}
   }
 }
 
