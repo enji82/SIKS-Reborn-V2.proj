@@ -102,18 +102,13 @@
 
                 <!-- FILTER BAR (STANDAR GLOBAL SULTAN) -->
                 <div class="sultan-filter-pill-container shadow-sm mb-4">
-                    <div class="sultan-filter-item" style="min-width: 220px; max-width: 360px;">
-                        <select id="lupa_filterUnit" class="form-control" disabled>
-                            <option value="">Memvalidasi Akses...</option>
-                        </select>
-                        <i class="fas fa-chevron-down"></i>
-                    </div>
-
+                    <!-- 1. TAHUN -->
                     <div class="sultan-filter-item sultan-filter-auto">
                         <select id="lupa_filterTahun" class="form-control" style="min-width: 65px !important; max-width: 95px !important;"></select>
                         <i class="fas fa-chevron-down"></i>
                     </div>
 
+                    <!-- 2. BULAN -->
                     <div class="sultan-filter-item">
                         <select id="lupa_filterBulan" class="form-control">
                             <option value="">Semua Bulan</option>
@@ -133,6 +128,23 @@
                         <i class="fas fa-chevron-down"></i>
                     </div>
 
+                    <!-- 3. JENJANG -->
+                    <div class="sultan-filter-item" id="lupa_filterJenjangContainer" style="min-width: 130px; max-width: 180px;">
+                        <select id="lupa_filterJenjang" class="form-control">
+                            <option value="">Semua Jenjang</option>
+                        </select>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+
+                    <!-- 4. UNIT KERJA -->
+                    <div class="sultan-filter-item" style="min-width: 200px; max-width: 320px;">
+                        <select id="lupa_filterUnit" class="form-control" disabled>
+                            <option value="">Memvalidasi Akses...</option>
+                        </select>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+
+                    <!-- 5. STATUS -->
                     <div class="sultan-filter-item">
                         <select id="lupa_filterStatus" class="form-control">
                             <option value="">Semua Status</option>
@@ -431,7 +443,7 @@
 
         // VAKSINASI EVENT SPA DELEGATION
         $(document).off('change', '#lupa_filterTahun, #lupa_filterBulan, #lupa_filterStatus').on('change', '#lupa_filterTahun, #lupa_filterBulan, #lupa_filterStatus', lupa_prosesCariData);
-        $(document).off('change', '#lupa_filterUnit').on('change', '#lupa_filterUnit', lupa_terapkanFilterLokal);
+        $(document).off('change', '#lupa_filterUnit, #lupa_filterJenjang').on('change', '#lupa_filterUnit, #lupa_filterJenjang', lupa_terapkanFilterLokal);
 
         $(document).off('click', '#lupa_btnRefresh').on('click', '#lupa_btnRefresh', lupa_tarikDataServer);
         $(document).off('click', '#lupa_btnTambah').on('click', '#lupa_btnTambah', lupa_bukaModalTambah);
@@ -666,6 +678,7 @@
         var bl = $('#lupa_filterBulan').val();
         var tBulan = (bl && bl !== "") ? String(bl).trim().toLowerCase() : "";
 
+        var tJenjang = $('#lupa_filterJenjang').val() ? $('#lupa_filterJenjang').val().toUpperCase() : "";
         var tAdminUnit = LUPA_IS_ADMIN ? $('#lupa_filterUnit').val().toUpperCase() : "";
         var tNpsnUser = String(LUPA_USER_NPSN).trim().toUpperCase();
         var tUnitUser = String(LUPA_UNIT_TERKUNCI).trim().toUpperCase();
@@ -686,12 +699,28 @@
                 }
             }
 
+            // Deteksi Jenjang
+            var rJenjang = "";
+            if (rUnit) {
+                if (rUnit.includes("TK") || rUnit.includes("PAUD") || rUnit.includes("KOBER") || rUnit.includes("TKN")) rJenjang = "PAUD / TK";
+                else if (rUnit.includes("SD") || rUnit.includes("SDN")) rJenjang = "SD";
+                else if (rUnit.includes("SMP") || rUnit.includes("SMPN")) rJenjang = "SMP";
+                else if (rUnit.includes("SMA") || rUnit.includes("SMAN")) rJenjang = "SMA";
+                else if (rUnit.includes("SMK") || rUnit.includes("SMKN")) rJenjang = "SMK";
+                else if (rUnit.includes("SKB") || rUnit.includes("PKBM")) rJenjang = "NON-FORMAL / SKB";
+            }
+
             var pSekolah = false;
             if (LUPA_IS_ADMIN) {
                 if (tAdminUnit === "SEMUA" || rUnit === tAdminUnit) { pSekolah = true; }
             } else {
                 if (tNpsnUser !== "" && rNpsn === tNpsnUser) { pSekolah = true; }
                 else if (tUnitUser !== "" && rUnit === tUnitUser) { pSekolah = true; }
+            }
+
+            var pJenjang = true;
+            if (tJenjang !== "") {
+                pJenjang = (rJenjang === tJenjang);
             }
 
             var pStat = true;
@@ -705,7 +734,7 @@
                 pBulan = (rBulanRaw === tBulan);
             }
 
-            return pSekolah && pStat && pBulan;
+            return pSekolah && pJenjang && pStat && pBulan;
         });
 
         hasil.sort(function (a, b) { return Math.max(lupa_parseDateLogic(b.tglKirim), lupa_parseDateLogic(b.tglEdit), lupa_parseDateLogic(b.tglVerif)) - Math.max(lupa_parseDateLogic(a.tglKirim), lupa_parseDateLogic(a.tglEdit), lupa_parseDateLogic(a.tglVerif)); });
@@ -1333,7 +1362,8 @@
     // HELPER UTILITIES
     // =================================================================
     function lupa_populateJenjang() {
-        var $selJenjang = $('#lupa_in_jenjang').empty().append('<option value="">- Pilih Jenjang -</option>');
+        var $selJenjangModal = $('#lupa_in_jenjang').empty().append('<option value="">- Pilih Jenjang -</option>');
+        var $selJenjangFilter = $('#lupa_filterJenjang').empty().append('<option value="">Semua Jenjang</option>');
         var setJenjang = new Set();
 
         if (Array.isArray(LUPA_DB_PEGAWAI) && LUPA_DB_PEGAWAI.length > 0) {
@@ -1355,7 +1385,8 @@
 
         var arrJenjang = Array.from(setJenjang).sort();
         arrJenjang.forEach(function(j) {
-            $selJenjang.append('<option value="' + lupa_escapeHtml(j) + '">' + lupa_escapeHtml(j) + '</option>');
+            $selJenjangModal.append('<option value="' + lupa_escapeHtml(j) + '">' + lupa_escapeHtml(j) + '</option>');
+            $selJenjangFilter.append('<option value="' + lupa_escapeHtml(j) + '">' + lupa_escapeHtml(j) + '</option>');
         });
     }
 
