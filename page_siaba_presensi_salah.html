@@ -1243,7 +1243,8 @@
     // 5. HELPER UTILITIES & VAKSIN DROPDOWN
     // =================================================================
     function salah_populateJenjang() {
-        var $selJenjang = $('#salah_in_jenjang').empty().append('<option value="">- Pilih Jenjang -</option>');
+        var $selJenjangModal = $('#salah_in_jenjang').empty().append('<option value="">- Pilih Jenjang -</option>');
+        var $selJenjangFilter = $('#salah_filterJenjang').empty().append('<option value="">Semua Jenjang</option>');
         var setJenjang = new Set();
 
         if (Array.isArray(SALAH_DB_PEGAWAI) && SALAH_DB_PEGAWAI.length > 0) {
@@ -1265,8 +1266,55 @@
 
         var arrJenjang = Array.from(setJenjang).sort();
         arrJenjang.forEach(function(j) {
-            $selJenjang.append('<option value="' + salah_escapeHtml(j) + '">' + salah_escapeHtml(j) + '</option>');
+            $selJenjangModal.append('<option value="' + salah_escapeHtml(j) + '">' + salah_escapeHtml(j) + '</option>');
+            $selJenjangFilter.append('<option value="' + salah_escapeHtml(j) + '">' + salah_escapeHtml(j) + '</option>');
         });
+    }
+
+    function salah_updateDropdownSekolahCascading() {
+        if (!SALAH_IS_ADMIN) return;
+
+        var selectedJenjang = String($('#salah_filterJenjang').val() || "").trim().toUpperCase();
+        var $selectUnit = $('#salah_filterUnit');
+        var currentSelectedUnit = $selectUnit.val() ? String($selectUnit.val()).trim().toUpperCase() : "SEMUA";
+
+        var uniqueUnits = new Set();
+        if (Array.isArray(SALAH_DB_PEGAWAI) && SALAH_DB_PEGAWAI.length > 0) {
+            SALAH_DB_PEGAWAI.forEach(function (x) {
+                var unitNama = String(x.unit || "").trim();
+                if (!unitNama) return;
+
+                var unitJenjang = "";
+                if (x.jenjang && String(x.jenjang).trim()) {
+                    unitJenjang = String(x.jenjang).trim().toUpperCase();
+                } else {
+                    var uUp = unitNama.toUpperCase();
+                    if (uUp.includes("TK") || uUp.includes("PAUD") || uUp.includes("KOBER") || uUp.includes("TKN")) unitJenjang = "PAUD / TK";
+                    else if (uUp.includes("SD") || uUp.includes("SDN")) unitJenjang = "SD";
+                    else if (uUp.includes("SMP") || uUp.includes("SMPN")) unitJenjang = "SMP";
+                    else if (uUp.includes("SMA") || uUp.includes("SMAN")) unitJenjang = "SMA";
+                    else if (uUp.includes("SMK") || uUp.includes("SMKN")) unitJenjang = "SMK";
+                    else if (uUp.includes("SKB") || uUp.includes("PKBM")) unitJenjang = "NON-FORMAL / SKB";
+                }
+
+                if (!selectedJenjang || unitJenjang === selectedJenjang) {
+                    uniqueUnits.add(unitNama);
+                }
+            });
+        }
+
+        var sortedUnits = Array.from(uniqueUnits).sort(function(a, b) { return a.localeCompare(b); });
+
+        $selectUnit.empty().append('<option value="SEMUA">Semua Unit Kerja</option>');
+        sortedUnits.forEach(function (u) {
+            $selectUnit.append($('<option>', { value: u, text: u }));
+        });
+
+        if (currentSelectedUnit && uniqueUnits.has(currentSelectedUnit)) {
+            $selectUnit.val(currentSelectedUnit);
+        } else {
+            $selectUnit.val("SEMUA");
+        }
     }
 
     function salah_formatTanggalIndo(tglStr) { if (!tglStr) return '-'; var parts = tglStr.split('-'); if (parts.length !== 3) return tglStr; var thn = parts[0].length === 4 ? parts[0] : parts[2]; var bln = parts[0].length === 4 ? parts[1] : parts[1]; var tgl = parts[0].length === 4 ? parts[2] : parts[0]; var namaBulan = ["", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"]; return parseInt(tgl, 10) + " " + namaBulan[parseInt(bln, 10)] + " " + thn; }
