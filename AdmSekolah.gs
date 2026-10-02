@@ -178,6 +178,35 @@ function getAdmSekolahData(npsnFilter) {
     if(!sheet) return JSON.stringify({ success: false, message: "Sheet Database_Dokumen tidak ditemukan." });
     
     var data = sheet.getDataRange().getDisplayValues();
+    if (data.length < 2) return JSON.stringify({ success: true, data: [] });
+
+    var headers = data[0].map(function(h) { return String(h).toLowerCase().trim(); });
+    var findCol = function(nameList, defaultIdx) {
+      for (var k = 0; k < nameList.length; k++) {
+        var idx = headers.indexOf(nameList[k]);
+        if (idx > -1) return idx;
+      }
+      return defaultIdx;
+    };
+
+    var colMap = {
+      npsn: findCol(["npsn"], 0),
+      id_kategori: findCol(["id_kategori", "id kategori", "kategori_id"], 1),
+      nama_kategori: findCol(["nama_kategori", "nama kategori", "kategori"], 2),
+      tahun: findCol(["tahun", "tahun ajaran"], 3),
+      file_name: findCol(["file_name", "nama file", "file"], 4),
+      url: findCol(["url", "file_url", "link"], 5),
+      status: findCol(["status", "status_verifikasi"], 6),
+      catatan: findCol(["catatan", "keterangan"], 7),
+      tgl_upload: findCol(["tgl_upload", "tanggal upload", "tgl_kirim"], 8),
+      uploader: findCol(["uploader", "pengunggah", "user_upload"], 9),
+      tgl_verif: findCol(["tgl_verif", "tanggal verifikasi", "tgl_verifikasi"], 10),
+      verifikator: findCol(["verifikator", "user_verif"], 11),
+      periode: findCol(["periode", "semester"], 12),
+      tgl_edit: findCol(["tgl_edit", "tanggal edit"], 13),
+      user_edit: findCol(["user_edit", "pengedit"], 14)
+    };
+
     var result = [];
     var rawTarget = String(npsnFilter || "").trim().toUpperCase();
     var targetNpsn = "";
@@ -196,9 +225,8 @@ function getAdmSekolahData(npsnFilter) {
         }
     }
     
-    // Asumsi header: [0] NPSN, [1] ID_Kategori, [2] Nama_Kategori, [3] Tahun, [4] File_Name, [5] URL, [6] Status, [7] Catatan, [8] Tgl_Upload, [9] Uploader, [10] Tgl_Verif, [11] Verifikator, [12] Periode
     for(var i=1; i<data.length; i++) {
-        var rNpsn = String(data[i][0]).trim().toUpperCase();
+        var rNpsn = String(data[i][colMap.npsn] || "").trim().toUpperCase();
         var infoSekolah = sekolahMap[rNpsn] || { nama: (nameToNpsnMap[rNpsn] ? rNpsn : "Unknown"), jenjang: "-", status: "-" };
         var rSekolahNama = (infoSekolah.nama || "").toUpperCase();
         
@@ -214,26 +242,29 @@ function getAdmSekolahData(npsnFilter) {
                 rowId: i + 1, 
                 npsn: (infoSekolah.nama !== "Unknown" && sekolahMap[rNpsn]) ? rNpsn : (nameToNpsnMap[rNpsn] || rNpsn),
                 nama_sekolah: infoSekolah.nama !== "Unknown" ? infoSekolah.nama : rNpsn,
-                id_kategori: data[i][1], 
-                nama_kategori: data[i][2],
-                tahun: data[i][3], 
-                file_name: data[i][4], 
-                url: data[i][5], 
-                status: data[i][6], 
-                catatan: data[i][7],
-                tgl_upload: data[i][8], 
-                uploader: data[i][9], 
-                tgl_verif: data[i][10] || "-", 
-                verifikator: data[i][11] || "-",
-                periode: data[i][12] || "-",
-                tgl_edit: data[i][13] || "-",
-                user_edit: data[i][14] || "-"
+                id_kategori: data[i][colMap.id_kategori] || "", 
+                nama_kategori: data[i][colMap.nama_kategori] || "",
+                tahun: data[i][colMap.tahun] || "", 
+                file_name: data[i][colMap.file_name] || "", 
+                url: data[i][colMap.url] || "", 
+                status: data[i][colMap.status] || "", 
+                catatan: data[i][colMap.catatan] || "",
+                tgl_upload: data[i][colMap.tgl_upload] || "", 
+                uploader: data[i][colMap.uploader] || "", 
+                tgl_verif: data[i][colMap.tgl_verif] || "-", 
+                verifikator: data[i][colMap.verifikator] || "-",
+                periode: data[i][colMap.periode] || "-",
+                tgl_edit: data[i][colMap.tgl_edit] || "-",
+                user_edit: data[i][colMap.user_edit] || "-"
             });
         }
     }
     result.sort(function(a,b) { return b.rowId - a.rowId; });
     return JSON.stringify({ success: true, data: result });
-  } catch(e) { return JSON.stringify({ success: false, message: e.message }); }
+  } catch(e) {
+    Logger.log("Error pada getAdmSekolahData: " + e.toString() + "\n" + (e.stack || ""));
+    return JSON.stringify({ success: false, message: e.message }); 
+  }
 }
 
 function admSekolahCheckDuplikat(sheet, npsn, idKategori, tahun, periode) {
