@@ -85,11 +85,13 @@
                 </div>
 
                 <div class="sultan-filter-pill-container shadow-sm mb-4">
+                    <!-- 1. TAHUN -->
                     <div class="sultan-filter-item sultan-filter-auto">
                         <select id="perdin_filterTahun" class="form-control" style="min-width: 65px !important; max-width: 95px !important;"></select>
                         <i class="fas fa-chevron-down"></i>
                     </div>
 
+                    <!-- 2. BULAN -->
                     <div class="sultan-filter-item">
                         <select id="perdin_filterBulan" class="form-control">
                             <option value="">Semua Bulan</option>
@@ -109,6 +111,23 @@
                         <i class="fas fa-chevron-down"></i>
                     </div>
 
+                    <!-- 3. JENJANG -->
+                    <div class="sultan-filter-item" id="perdin_filterJenjangContainer" style="min-width: 130px; max-width: 180px;">
+                        <select id="perdin_filterJenjang" class="form-control">
+                            <option value="">Semua Jenjang</option>
+                        </select>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+
+                    <!-- 4. UNIT KERJA -->
+                    <div class="sultan-filter-item" style="min-width: 200px; max-width: 320px;">
+                        <select id="perdin_filterUnit" class="form-control" disabled>
+                            <option value="">Memvalidasi Akses...</option>
+                        </select>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+
+                    <!-- 5. STATUS -->
                     <div class="sultan-filter-item">
                         <select id="perdin_filterStatus" class="form-control">
                             <option value="">Semua Status</option>
@@ -497,6 +516,11 @@
 
         // VAKSIN EVENT DELEGATION MUTLAK
         $(document).off('change', '#perdin_filterTahun, #perdin_filterBulan, #perdin_filterStatus').on('change', '#perdin_filterTahun, #perdin_filterBulan, #perdin_filterStatus', perdin_prosesCariData);
+        $(document).off('change', '#perdin_filterJenjang').on('change', '#perdin_filterJenjang', function () {
+            perdin_updateDropdownSekolahCascading();
+            perdin_terapkanFilterLokal();
+        });
+        $(document).off('change', '#perdin_filterUnit').on('change', '#perdin_filterUnit', perdin_terapkanFilterLokal);
         $(document).off('click', '#perdin_btnRefresh').on('click', '#perdin_btnRefresh', perdin_tarikDataServer);
         $(document).off('click', '#perdin_btnTambah').on('click', '#perdin_btnTambah', perdin_bukaModalTambah);
 
@@ -593,6 +617,9 @@
                     PERDIN_CACHE_DATA = responseData || [];
                     PERDIN_CACHE_THN = th;
 
+                    perdin_populateJenjang();
+                    perdin_updateDropdownSekolahCascading();
+
                     if (!$.fn.DataTable.isDataTable('#perdin_tabelUtama')) {
                         PERDIN_TABEL_INSTANCE = SultanTable.init('#perdin_tabelUtama', {
                             "columnDefs": [
@@ -631,6 +658,8 @@
 
         var sTarget = ($('#perdin_filterStatus').val() || "").toLowerCase();
         var bTarget = String($('#perdin_filterBulan').val() || "").trim();
+        var jTarget = String($('#perdin_filterJenjang').val() || "").trim().toUpperCase();
+        var uTarget = String($('#perdin_filterUnit').val() || "").trim().toUpperCase();
 
         var hasilSaringan = PERDIN_CACHE_DATA.filter(function (row) {
             var pStat = true;
@@ -653,7 +682,28 @@
                 }
                 if (extMonth !== bTarget) { pBulan = false; }
             }
-            return pStat && pBulan;
+
+            var pUnit = true;
+            if (uTarget !== "" && uTarget !== "SEMUA") {
+                var rTujuan = String(row.tujuan || "").trim().toUpperCase();
+                pUnit = (rTujuan === uTarget || rTujuan.includes(uTarget));
+            }
+
+            var pJenjang = true;
+            if (jTarget !== "") {
+                var rTujuanJ = String(row.tujuan || "").trim().toUpperCase();
+                var rJenjang = "";
+                if (rTujuanJ.includes("TK") || rTujuanJ.includes("PAUD") || rTujuanJ.includes("KOBER") || rTujuanJ.includes("TKN")) rJenjang = "PAUD / TK";
+                else if (rTujuanJ.includes("SD") || rTujuanJ.includes("SDN")) rJenjang = "SD";
+                else if (rTujuanJ.includes("SMP") || rTujuanJ.includes("SMPN")) rJenjang = "SMP";
+                else if (rTujuanJ.includes("SMA") || rTujuanJ.includes("SMAN")) rJenjang = "SMA";
+                else if (rTujuanJ.includes("SMK") || rTujuanJ.includes("SMKN")) rJenjang = "SMK";
+                else if (rTujuanJ.includes("SKB") || rTujuanJ.includes("PKBM")) rJenjang = "NON-FORMAL / SKB";
+
+                pJenjang = (rJenjang === jTarget);
+            }
+
+            return pStat && pBulan && pUnit && pJenjang;
         });
 
         perdin_renderTabel(hasilSaringan);
@@ -781,12 +831,19 @@
             ]);
         });
 
+        var currentPage = PERDIN_TABEL_INSTANCE ? PERDIN_TABEL_INSTANCE.page() : 0;
         PERDIN_TABEL_INSTANCE.clear().rows.add(dtArray).draw(false);
+        if (currentPage && currentPage < PERDIN_TABEL_INSTANCE.page.info().pages) {
+            PERDIN_TABEL_INSTANCE.page(currentPage).draw('page');
+        }
         if ($('#perdin_tableState').is(':hidden')) {
             SultanUI.hideLoading('#perdin_loadingState');
             $('#perdin_tableState').show();
         }
         setTimeout(function () { PERDIN_TABEL_INSTANCE.columns.adjust(); }, 50);
+
+        // Re-initialize Tooltip Bootstrap pasca render
+        $('[data-bs-toggle="tooltip"], [data-toggle="tooltip"]').tooltip({ trigger: 'hover' });
     }
 
     // =================================================================
@@ -1296,6 +1353,70 @@
                 }).hapusDataDinas(payload);
             }
         });
+    }
+
+    function perdin_populateJenjang() {
+        var $selJenjangFilter = $('#perdin_filterJenjang').empty().append('<option value="">Semua Jenjang</option>');
+        var setJenjang = new Set(["PAUD / TK", "SD", "SMP", "SMA", "SMK", "NON-FORMAL / SKB"]);
+
+        if (Array.isArray(PERDIN_CACHE_DATA) && PERDIN_CACHE_DATA.length > 0) {
+            PERDIN_CACHE_DATA.forEach(function(x) {
+                var uUp = String(x.tujuan || "").trim().toUpperCase();
+                if (!uUp) return;
+                if (uUp.includes("TK") || uUp.includes("PAUD") || uUp.includes("KOBER") || uUp.includes("TKN")) setJenjang.add("PAUD / TK");
+                else if (uUp.includes("SD") || uUp.includes("SDN")) setJenjang.add("SD");
+                else if (uUp.includes("SMP") || uUp.includes("SMPN")) setJenjang.add("SMP");
+                else if (uUp.includes("SMA") || uUp.includes("SMAN")) setJenjang.add("SMA");
+                else if (uUp.includes("SMK") || uUp.includes("SMKN")) setJenjang.add("SMK");
+                else if (uUp.includes("SKB") || uUp.includes("PKBM")) setJenjang.add("NON-FORMAL / SKB");
+            });
+        }
+
+        var arrJenjang = Array.from(setJenjang).sort();
+        arrJenjang.forEach(function(j) {
+            $selJenjangFilter.append('<option value="' + perdin_escapeHtml(j) + '">' + perdin_escapeHtml(j) + '</option>');
+        });
+    }
+
+    function perdin_updateDropdownSekolahCascading() {
+        var selectedJenjang = String($('#perdin_filterJenjang').val() || "").trim().toUpperCase();
+        var $selectUnit = $('#perdin_filterUnit');
+        var currentSelectedUnit = $selectUnit.val() ? String($selectUnit.val()).trim().toUpperCase() : "SEMUA";
+
+        var uniqueUnits = new Set();
+        if (Array.isArray(PERDIN_CACHE_DATA) && PERDIN_CACHE_DATA.length > 0) {
+            PERDIN_CACHE_DATA.forEach(function (x) {
+                var unitNama = String(x.tujuan || "").trim();
+                if (!unitNama) return;
+
+                var unitJenjang = "";
+                var uUp = unitNama.toUpperCase();
+                if (uUp.includes("TK") || uUp.includes("PAUD") || uUp.includes("KOBER") || uUp.includes("TKN")) unitJenjang = "PAUD / TK";
+                else if (uUp.includes("SD") || uUp.includes("SDN")) unitJenjang = "SD";
+                else if (uUp.includes("SMP") || uUp.includes("SMPN")) unitJenjang = "SMP";
+                else if (uUp.includes("SMA") || uUp.includes("SMAN")) unitJenjang = "SMA";
+                else if (uUp.includes("SMK") || uUp.includes("SMKN")) unitJenjang = "SMK";
+                else if (uUp.includes("SKB") || uUp.includes("PKBM")) unitJenjang = "NON-FORMAL / SKB";
+
+                if (!selectedJenjang || unitJenjang === selectedJenjang) {
+                    uniqueUnits.add(unitNama);
+                }
+            });
+        }
+
+        var sortedUnits = Array.from(uniqueUnits).sort(function(a, b) { return a.localeCompare(b); });
+
+        $selectUnit.empty().append('<option value="SEMUA">Semua Unit Kerja</option>');
+        sortedUnits.forEach(function (u) {
+            $selectUnit.append($('<option>', { value: u, text: u }));
+        });
+
+        if (currentSelectedUnit && uniqueUnits.has(currentSelectedUnit)) {
+            $selectUnit.val(currentSelectedUnit);
+        } else {
+            $selectUnit.val("SEMUA");
+        }
+        $selectUnit.prop('disabled', false);
     }
 
     // =================================================================

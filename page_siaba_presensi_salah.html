@@ -78,18 +78,13 @@
                 </div>
 
                 <div class="sultan-filter-pill-container shadow-sm mb-4">
-                    <div class="sultan-filter-item" style="min-width: 220px; max-width: 360px;">
-                        <select id="salah_filterUnit" class="form-control" disabled>
-                            <option value="">Memvalidasi Akses...</option>
-                        </select>
-                        <i class="fas fa-chevron-down"></i>
-                    </div>
-
+                    <!-- 1. TAHUN -->
                     <div class="sultan-filter-item sultan-filter-auto">
                         <select id="salah_filterTahun" class="form-control" style="min-width: 65px !important; max-width: 95px !important;"></select>
                         <i class="fas fa-chevron-down"></i>
                     </div>
 
+                    <!-- 2. BULAN -->
                     <div class="sultan-filter-item">
                         <select id="salah_filterBulan" class="form-control">
                             <option value="">Semua Bulan</option>
@@ -109,6 +104,23 @@
                         <i class="fas fa-chevron-down"></i>
                     </div>
 
+                    <!-- 3. JENJANG -->
+                    <div class="sultan-filter-item" id="salah_filterJenjangContainer" style="min-width: 130px; max-width: 180px;">
+                        <select id="salah_filterJenjang" class="form-control">
+                            <option value="">Semua Jenjang</option>
+                        </select>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+
+                    <!-- 4. UNIT KERJA -->
+                    <div class="sultan-filter-item" style="min-width: 200px; max-width: 320px;">
+                        <select id="salah_filterUnit" class="form-control" disabled>
+                            <option value="">Memvalidasi Akses...</option>
+                        </select>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+
+                    <!-- 5. STATUS -->
                     <div class="sultan-filter-item">
                         <select id="salah_filterStatus" class="form-control">
                             <option value="">Semua Status</option>
@@ -361,6 +373,10 @@
 
         // VAKSINASI EVENT SPA DELEGATION
         $(document).off('change', '#salah_filterTahun, #salah_filterBulan, #salah_filterStatus').on('change', '#salah_filterTahun, #salah_filterBulan, #salah_filterStatus', salah_prosesCariData);
+        $(document).off('change', '#salah_filterJenjang').on('change', '#salah_filterJenjang', function () {
+            salah_updateDropdownSekolahCascading();
+            salah_terapkanFilterLokal();
+        });
         $(document).off('change', '#salah_filterUnit').on('change', '#salah_filterUnit', salah_terapkanFilterLokal);
 
         $(document).off('click', '#salah_btnRefresh').on('click', '#salah_btnRefresh', salah_tarikDataServer);
@@ -640,6 +656,7 @@
         var bl = $('#salah_filterBulan').val();
         var tBulan = (bl && bl !== "") ? String(bl).trim().toLowerCase() : "";
 
+        var tJenjang = $('#salah_filterJenjang').val() ? $('#salah_filterJenjang').val().toUpperCase() : "";
         var tAdminUnit = SALAH_IS_ADMIN ? $('#salah_filterUnit').val().toUpperCase() : "";
         var tNpsnUser = String(SALAH_USER_NPSN).trim().toUpperCase();
         var tUnitUser = String(SALAH_UNIT_TERKUNCI).trim().toUpperCase();
@@ -660,12 +677,28 @@
                 }
             }
 
+            // Deteksi Jenjang
+            var rJenjang = "";
+            if (rUnit) {
+                if (rUnit.includes("TK") || rUnit.includes("PAUD") || rUnit.includes("KOBER") || rUnit.includes("TKN")) rJenjang = "PAUD / TK";
+                else if (rUnit.includes("SD") || rUnit.includes("SDN")) rJenjang = "SD";
+                else if (rUnit.includes("SMP") || rUnit.includes("SMPN")) rJenjang = "SMP";
+                else if (rUnit.includes("SMA") || rUnit.includes("SMAN")) rJenjang = "SMA";
+                else if (rUnit.includes("SMK") || rUnit.includes("SMKN")) rJenjang = "SMK";
+                else if (rUnit.includes("SKB") || rUnit.includes("PKBM")) rJenjang = "NON-FORMAL / SKB";
+            }
+
             var pSekolah = false;
             if (SALAH_IS_ADMIN) {
                 if (tAdminUnit === "SEMUA" || rUnit === tAdminUnit) pSekolah = true;
             } else {
                 if (tNpsnUser !== "" && rNpsn === tNpsnUser) pSekolah = true;
                 else if (tUnitUser !== "" && rUnit === tUnitUser) pSekolah = true;
+            }
+
+            var pJenjang = true;
+            if (tJenjang !== "") {
+                pJenjang = (rJenjang === tJenjang);
             }
 
             var pStat = true;
@@ -679,7 +712,7 @@
                 pBulan = (rBulanRaw === tBulan);
             }
 
-            return pSekolah && pStat && pBulan;
+            return pSekolah && pJenjang && pStat && pBulan;
         });
 
         hasil.sort(function (a, b) { return Math.max(salah_parseDateLogic(b.tglKirim), salah_parseDateLogic(b.tglEdit), salah_parseDateLogic(b.tglVerif)) - Math.max(salah_parseDateLogic(a.tglKirim), salah_parseDateLogic(a.tglEdit), salah_parseDateLogic(a.tglVerif)); });
@@ -794,7 +827,11 @@
             ]);
         });
 
+        var currentPage = SALAH_TABEL_INSTANCE ? SALAH_TABEL_INSTANCE.page() : 0;
         SALAH_TABEL_INSTANCE.clear().rows.add(dtArray).draw(false);
+        if (currentPage && currentPage < SALAH_TABEL_INSTANCE.page.info().pages) {
+            SALAH_TABEL_INSTANCE.page(currentPage).draw('page');
+        }
 
         if ($('#salah_tableState').is(':hidden')) {
             SultanUI.hideLoading('#salah_loadingState');
@@ -802,6 +839,9 @@
         }
 
         setTimeout(function () { SALAH_TABEL_INSTANCE.columns.adjust(); }, 50);
+
+        // Re-initialize Tooltip Bootstrap pasca render
+        $('[data-bs-toggle="tooltip"], [data-toggle="tooltip"]').tooltip({ trigger: 'hover' });
     }
 
     // =================================================================

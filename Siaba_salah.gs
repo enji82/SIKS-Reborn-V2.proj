@@ -16,6 +16,34 @@ function getDaftarSalahPresensi(tahun, bulan) {
     var sheet = getSheet(KONFIG_SALAH.DB_KEY, KONFIG_SALAH.SHEET_NAMA);
 
     var data = sheet.getDataRange().getDisplayValues(); 
+    if (!data || data.length <= 1) return JSON.stringify([]);
+    
+    var headers = data[0].map(function(h) { return String(h).toLowerCase().trim(); });
+    var findCol = function(nameList, defaultIdx) {
+      for (var k = 0; k < nameList.length; k++) {
+        var idx = headers.indexOf(nameList[k]);
+        if (idx > -1) return idx;
+      }
+      return defaultIdx;
+    };
+
+    var cUnit = findCol(["unit", "unit kerja", "sekolah"], 0);
+    var cNama = findCol(["nama", "nama ptk"], 1);
+    var cNip = findCol(["nip"], 2);
+    var cTanggal = findCol(["tanggal", "tgl"], 3);
+    var cJam = findCol(["jam", "waktu"], 4);
+    var cJenis = findCol(["jenis", "jenis presensi"], 5);
+    var cTglKirim = findCol(["tglkirim", "tanggal kirim", "tgl_kirim"], 6);
+    var cUserInput = findCol(["userinput", "user_input"], 7);
+    var cStatus = findCol(["status", "status verifikasi"], 8);
+    var cKet = findCol(["keterangan", "ket"], 9);
+    var cTglEdit = findCol(["tgledit", "tgl_edit"], 10);
+    var cUserEdit = findCol(["useredit", "user_edit"], 11);
+    var cTglVerif = findCol(["tglverif", "tgl_verif"], 12);
+    var cAdminVerif = findCol(["adminverif", "admin_verif"], 13);
+    var cNpsn = findCol(["npsn"], 14);
+    var cReadBy = findCol(["readby", "read_by"], 15);
+
     var result = [];
 
     var fTahun  = (tahun) ? String(tahun).trim() : "";
@@ -26,9 +54,9 @@ function getDaftarSalahPresensi(tahun, bulan) {
 
     for (var i = data.length - 1; i >= 1; i--) {
       var row = data[i];
-      if (!row[1] && !row[2]) continue; 
+      if (!row[cNama] && !row[cNip]) continue; 
 
-      var txtTgl = String(row[3]).replace(/'/g, "").trim(); 
+      var txtTgl = String(row[cTanggal] || "").replace(/'/g, "").trim(); 
       
       if (fTahun !== "") {
           if (txtTgl.indexOf(fTahun) === -1 && txtTgl.indexOf("/" + fTahunPendek) === -1 && txtTgl.indexOf("-" + fTahunPendek) === -1) {
@@ -42,26 +70,27 @@ function getDaftarSalahPresensi(tahun, bulan) {
 
       result.push({
         rowBaris: i + 1,
-        unit:     row[0],  
-        nama:     row[1],  
-        nip:      row[2],  
-        tanggal:  row[3],  
-        jam:      row[4],  
-        jenis:    row[5],  
-        tglKirim: row[6],  
-        userInput:row[7],  
-        status:   row[8],  
-        ket:      row[9],  
-        tglEdit:  row[10], 
-        userEdit: row[11], 
-        tglVerif: row[12], 
-        adminVerif: row[13],
-        npsn:     row[14] || "",
-        readBy:   row[15] || "" 
+        unit:     row[cUnit] || "",  
+        nama:     row[cNama] || "",  
+        nip:      row[cNip] || "",  
+        tanggal:  row[cTanggal] || "",  
+        jam:      row[cJam] || "",  
+        jenis:    row[cJenis] || "",  
+        tglKirim: row[cTglKirim] || "",  
+        userInput:row[cUserInput] || "",  
+        status:   row[cStatus] || "",  
+        ket:      row[cKet] || "",  
+        tglEdit:  row[cTglEdit] || "", 
+        userEdit: row[cUserEdit] || "", 
+        tglVerif: row[cTglVerif] || "", 
+        adminVerif: row[cAdminVerif] || "",
+        npsn:     row[cNpsn] || "",
+        readBy:   row[cReadBy] || "" 
       });
     }
     return JSON.stringify(result);
   } catch (e) { 
+      Logger.log("Error pada getDaftarSalahPresensi: " + e.message + "\nStack: " + e.stack);
       return JSON.stringify({ error: "Error Server: " + e.message }); 
   }
 }

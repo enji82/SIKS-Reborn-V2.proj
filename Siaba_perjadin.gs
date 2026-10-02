@@ -12,11 +12,41 @@ const KONFIG_DINAS = {
 /* ----------------------------------------------------------------------
    1. GET DAFTAR DINAS (UNTUK DATATABLES)
    ---------------------------------------------------------------------- */
-function getDaftarDinas(tahun, bulan, status, _cb) {
+function getDaftarDinas(tahun, bulan, status) {
   try {
     var sheet = getSheet(KONFIG_DINAS.DB_KEY, KONFIG_DINAS.SHEET_MAIN);
 
     var data = sheet.getDataRange().getDisplayValues();
+    if (!data || data.length <= 1) return JSON.stringify([]);
+    
+    var headers = data[0].map(function(h) { return String(h).toLowerCase().trim(); });
+    var findCol = function(nameList, defaultIdx) {
+      for (var k = 0; k < nameList.length; k++) {
+        var idx = headers.indexOf(nameList[k]);
+        if (idx > -1) return idx;
+      }
+      return defaultIdx;
+    };
+
+    var cJenis = findCol(["jenis", "jenis dinas"], 0);
+    var cNoSpt = findCol(["nospt", "no spt", "no_spt"], 1);
+    var cTglSpt = findCol(["tglspt", "tgl spt", "tgl_spt"], 2);
+    var cTglMulai = findCol(["tglmulai", "tgl mulai", "tgl_mulai"], 3);
+    var cTglSelesai = findCol(["tglselesai", "tgl selesai", "tgl_selesai"], 4);
+    var cTujuan = findCol(["tujuan", "tujuan dinas"], 5);
+    var cKegiatan = findCol(["kegiatan", "nama kegiatan"], 6);
+    var cJmlAsn = findCol(["jmlasn", "jml_asn", "jumlah asn"], 7);
+    var cDokumen = findCol(["dokumen", "file_url", "bukti"], 8);
+    var cStatus = findCol(["status", "status verifikasi"], 9);
+    var cJenisDok = findCol(["jenisdok", "jenis_dok"], 10);
+    var cTglKirim = findCol(["tglkirim", "tgl_kirim"], 11);
+    var cUserKirim = findCol(["userkirim", "user_kirim"], 12);
+    var cLastUpdate = findCol(["lastupdate", "last_update"], 13);
+    var cLastUser = findCol(["lastuser", "last_user"], 14);
+    var cTglVerif = findCol(["tglverif", "tgl_verif"], 15);
+    var cVerifikator = findCol(["verifikator", "admin_verif"], 16);
+    var cKeterangan = findCol(["keterangan", "ket"], 17);
+
     var result = [];
     
     var fTahun = (tahun == null) ? "" : String(tahun).trim();
@@ -25,12 +55,12 @@ function getDaftarDinas(tahun, bulan, status, _cb) {
 
     for (var i = 1; i < data.length; i++) {
       var row = data[i];
-      if (String(row[1]).trim() === "") continue; 
+      if (String(row[cNoSpt] || "").trim() === "") continue; 
 
-      var valTgl = row[3];
+      var valTgl = row[cTglMulai];
       var rowTahun = "", rowBulan = "";
 
-      var s = String(valTgl).replace(/'/g, "").trim();
+      var s = String(valTgl || "").replace(/'/g, "").trim();
       var parts = s.split(/[-/]/); 
       if (parts.length === 3) {
          if(parts[2].length === 4) { rowTahun = String(parts[2]); rowBulan = String(parseInt(parts[1], 10)); }
@@ -39,21 +69,21 @@ function getDaftarDinas(tahun, bulan, status, _cb) {
 
       var matchTahun = (fTahun === "") || (rowTahun === fTahun);
       var matchBulan = (fBulan === "") || (rowBulan === fBulan);
-      var matchStatus = (fStatus === "") || (String(row[9]) == fStatus);
-      var isDiproses = (String(row[9]).trim() === "Diproses" || String(row[9]).trim() === "");
+      var matchStatus = (fStatus === "") || (String(row[cStatus] || "") == fStatus);
+      var isDiproses = (String(row[cStatus] || "").trim() === "Diproses" || String(row[cStatus] || "").trim() === "");
 
       if ((matchTahun && matchBulan && matchStatus) || isDiproses) {
-        var t1 = parseSiabaDateTime(row[11]); 
-        var t2 = parseSiabaDateTime(row[13]); 
-        var t3 = parseSiabaDateTime(row[15]); 
+        var t1 = parseSiabaDateTime(row[cTglKirim]); 
+        var t2 = parseSiabaDateTime(row[cLastUpdate]); 
+        var t3 = parseSiabaDateTime(row[cTglVerif]); 
         var lastActivity = Math.max(t1, t2, t3);
 
         result.push({
           rowBaris: i + 1,
-          jenis: row[0], noSpt: row[1], tglSpt: cleanDate(row[2]), tglMulai: cleanDate(row[3]), tglSelesai: cleanDate(row[4]),
-          tujuan: row[5], kegiatan: row[6], jmlAsn: row[7], dokumen: row[8], status: row[9], jenisDok: row[10],
-          tglKirim: cleanDate(row[11]), userKirim: row[12], lastUpdate: cleanDate(row[13]), lastUser: row[14],
-          tglVerif: cleanDate(row[15]), verifikator: row[16], keterangan: row[17],
+          jenis: row[cJenis] || "", noSpt: row[cNoSpt] || "", tglSpt: cleanDate(row[cTglSpt]), tglMulai: cleanDate(row[cTglMulai]), tglSelesai: cleanDate(row[cTglSelesai]),
+          tujuan: row[cTujuan] || "", kegiatan: row[cKegiatan] || "", jmlAsn: row[cJmlAsn] || "", dokumen: row[cDokumen] || "", status: row[cStatus] || "", jenisDok: row[cJenisDok] || "",
+          tglKirim: cleanDate(row[cTglKirim]), userKirim: row[cUserKirim] || "", lastUpdate: cleanDate(row[cLastUpdate]), lastUser: row[cLastUser] || "",
+          tglVerif: cleanDate(row[cTglVerif]), verifikator: row[cVerifikator] || "", keterangan: row[cKeterangan] || "",
           timestamp: lastActivity
         });
       }
@@ -61,7 +91,10 @@ function getDaftarDinas(tahun, bulan, status, _cb) {
     
     result.sort(function(a, b) { return b.timestamp - a.timestamp; });
     return JSON.stringify(result);
-  } catch (e) { return JSON.stringify({error: e.toString()}); } 
+  } catch (e) { 
+    Logger.log("Error pada getDaftarDinas: " + e.message + "\nStack: " + e.stack);
+    return JSON.stringify({error: e.toString()}); 
+  } 
 }
 
 /* ----------------------------------------------------------------------
