@@ -25,6 +25,29 @@ function getDaftarLupaPresensi(tahun, bulan) {
     var sheet = getSheet(KONFIG_LUPA.DB_KEY, KONFIG_LUPA.SHEET_NAMA);
 
     var data = sheet.getDataRange().getDisplayValues(); 
+    if (!data || data.length <= 1) return JSON.stringify([]);
+    var header = data[0];
+    
+    // Pemetaan indeks kolom dinamis
+    var cUnit = findCol(header, ["unit", "unit kerja", "sekolah"]);
+    var cNama = findCol(header, ["nama", "nama ptk"]);
+    var cNip = findCol(header, ["nip"]);
+    var cTanggal = findCol(header, ["tanggal", "tgl"]);
+    var cJam = findCol(header, ["jam", "waktu"]);
+    var cJenis = findCol(header, ["jenis", "jenis presensi"]);
+    var cKomulatif = findCol(header, ["komulatif", "kumulatif"]);
+    var cTglKirim = findCol(header, ["tglkirim", "tanggal kirim", "tgl_kirim"]);
+    var cUserInput = findCol(header, ["userinput", "user_input"]);
+    var cFileUrl = findCol(header, ["fileurl", "file_url", "bukti"]);
+    var cStatus = findCol(header, ["status", "status verifikasi"]);
+    var cTglEdit = findCol(header, ["tgledit", "tgl_edit"]);
+    var cUserEdit = findCol(header, ["useredit", "user_edit"]);
+    var cTglVerif = findCol(header, ["tglverif", "tgl_verif"]);
+    var cAdminVerif = findCol(header, ["adminverif", "admin_verif"]);
+    var cKet = findCol(header, ["keterangan", "ket"]);
+    var cNpsn = findCol(header, ["npsn"]);
+    var cReadBy = findCol(header, ["readby", "read_by"]);
+
     var result = [];
 
     var fTahun = (tahun) ? String(tahun).trim() : "";
@@ -33,24 +56,25 @@ function getDaftarLupaPresensi(tahun, bulan) {
 
     for (var i = data.length - 1; i >= 1; i--) {
       var row = data[i]; 
-      if (!row[1] && !row[2]) continue; 
+      if (!row[cNama] && !row[cNip]) continue; 
       
-      var txtTgl = String(row[3]).replace(/'/g, "").trim(); 
+      var txtTgl = String(row[cTanggal] || "").replace(/'/g, "").trim(); 
       if (fTahun !== "") { if (txtTgl.indexOf(fTahun) === -1) continue; }
       if (fBulanAngka !== "") { if (txtTgl.indexOf("-" + fBulanAngka + "-") === -1 && txtTgl.indexOf("/" + fBulanAngka + "/") === -1) continue; }
       
       result.push({
         rowBaris: i + 1,       
-        unit: row[0], nama: row[1], nip: row[2],           
-        tanggal: row[3], jam: row[4], jenis: row[5], komulatif: row[6],     
-        tglKirim: row[7], userInput: row[8], fileUrl: row[9], status: row[10],       
-        tglEdit: row[11], userEdit: row[12], tglVerif: row[13], adminVerif: row[14], ket: row[15],
-        npsn: row[16] || "",
-        readBy: row[17] || "" 
+        unit: row[cUnit] || "", nama: row[cNama] || "", nip: row[cNip] || "",           
+        tanggal: row[cTanggal] || "", jam: row[cJam] || "", jenis: row[cJenis] || "", komulatif: row[cKomulatif] || "",     
+        tglKirim: row[cTglKirim] || "", userInput: row[cUserInput] || "", fileUrl: row[cFileUrl] || "", status: row[cStatus] || "",       
+        tglEdit: row[cTglEdit] || "", userEdit: row[cUserEdit] || "", tglVerif: row[cTglVerif] || "", adminVerif: row[cAdminVerif] || "", ket: row[cKet] || "",
+        npsn: row[cNpsn] || "",
+        readBy: row[cReadBy] || "" 
       });
     }
     return JSON.stringify(result);
   } catch (e) { 
+    Logger.log("Error pada getDaftarLupaPresensi: " + e.message + "\nStack: " + e.stack);
     return JSON.stringify({ error: "Error Server GAS: " + e.message }); 
   }
 }
