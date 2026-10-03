@@ -26,7 +26,7 @@ function getOrCreateKonfigSheet(ss, sheetName, headers) {
  */
 function initSiabaKonfigSheets() {
   try {
-    const ss = getDB("USER_DB");
+    const ss = getDBById("177ZPhTuD5lXBDdAWWVpG6bfq6Lz0MDHNvvuwkQFKVYk");
     
     // 1. Sheet Master Jam Kerja
     const headersJadwal = [
@@ -42,8 +42,8 @@ function initSiabaKonfigSheets() {
       bulanArr.forEach(function(b) {
         sheetJadwal.appendRow([
           "2026", b, 
-          "07:30", "07:45", "16:00", // Senin - Kamis
-          "07:30", "07:45", "16:30", // Jumat
+          "07:00", "07:00", "15:30", // Senin - Kamis
+          "07:00", "07:00", "16:00", // Jumat
           "Sabtu, Minggu", "Aktif", "01-01-2026 00:00", "System"
         ]);
       });
@@ -70,7 +70,7 @@ function initSiabaKonfigSheets() {
 function getSiabaKonfigJadwal(tahun, bulan) {
   try {
     initSiabaKonfigSheets();
-    const ss = getDB("USER_DB");
+    const ss = getDBById("177ZPhTuD5lXBDdAWWVpG6bfq6Lz0MDHNvvuwkQFKVYk");
     
     // A. Ambil Jam Kerja
     const sheetJadwal = ss.getSheetByName("SIABA_KONFIG_JAM_KERJA");
@@ -171,7 +171,7 @@ function simpanSiabaKonfigJadwal(payloadStr) {
     const bulan = String(payload.bulan || "").trim();
     if (!tahun || !bulan) return JSON.stringify({ status: "error", message: "Tahun dan Bulan wajib diisi." });
 
-    const ss = getDB("USER_DB");
+    const ss = getDBById("177ZPhTuD5lXBDdAWWVpG6bfq6Lz0MDHNvvuwkQFKVYk");
     const headersJadwal = [
       "Tahun", "Bulan",
       "Jam_Datang_Senin_Kamis", "Toleransi_Terlambat_Senin_Kamis", "Jam_Pulang_Senin_Kamis",
@@ -266,7 +266,7 @@ function simpanSiabaHariLibur(payloadStr) {
     const URUTAN_BULAN = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
     const blnStr = URUTAN_BULAN[blnNum - 1] || "";
 
-    const ss = getDB("USER_DB");
+    const ss = getDBById("177ZPhTuD5lXBDdAWWVpG6bfq6Lz0MDHNvvuwkQFKVYk");
     const headersLibur = [
       "Tanggal", "Tahun", "Bulan", "Keterangan_Libur",
       "Jenis_Libur", "Warna_Badge", "Updated_At", "Updated_By"
@@ -325,7 +325,7 @@ function hapusSiabaHariLibur(tanggal) {
     const tgl = String(tanggal || "").trim();
     if (!tgl) return JSON.stringify({ status: "error", message: "Tanggal tidak valid." });
 
-    const ss = getDB("USER_DB");
+    const ss = getDBById("177ZPhTuD5lXBDdAWWVpG6bfq6Lz0MDHNvvuwkQFKVYk");
     const sheet = ss.getSheetByName("SIABA_KALENDER_LIBUR");
     const data = sheet.getDataRange().getValues();
 

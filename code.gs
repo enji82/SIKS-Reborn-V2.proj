@@ -6,6 +6,7 @@
 // 1. DATABASE CONFIG (Digunakan oleh semua file .gs lainnya)
 const SPREADSHEET_IDS = {
   USER_DB: "1wiDKez4rL5UYnpP2-OZjYowvmt1nRx-fIMy9trJlhBA",
+  SIABA_KONFIG_DB: "177ZPhTuD5lXBDdAWWVpG6bfq6Lz0MDHNvvuwkQFKVYk",
   SHEET_USER_NAME: "Data User",
   SK_DATA_DB: "1AmvOJAhOfdx09eT54x62flWzBZ1xNQ8Sy5lzvT9zJA4", // ID Database SK
   SK_DATA: "1AmvOJAhOfdx09eT54x62flWzBZ1xNQ8Sy5lzvT9zJA4", // Alias
