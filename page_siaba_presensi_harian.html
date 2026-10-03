@@ -673,12 +673,35 @@ function harian_formatComboCell(dVal, pVal, dayNum, thn, blnNama) {
     // Cek apakah tanggal ini hari libur (Sabtu/Minggu atau Tanggal Merah)
     var isHariLibur = infoHari.isWeekend || (liburObj !== null);
 
-    // Jika datang dan pulang kosong:
-    if ((!strD || strD === "-" || strD === "0") && (!strP || strP === "-" || strP === "0")) {
-        if (isHariLibur) {
+    // Deteksi tanggal MASA DEPAN (Belum Berjalan)
+    var now = new Date();
+    var curY = now.getFullYear();
+    var curMIdx = now.getMonth();
+    var curD = now.getDate();
+
+    var mNames = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+    var filterMIdx = mNames.indexOf(blnNama);
+    var filterY = parseInt(thn) || curY;
+
+    var isMasaDepan = false;
+    if (filterY > curY) {
+        isMasaDepan = true;
+    } else if (filterY === curY && filterMIdx > curMIdx) {
+        isMasaDepan = true;
+    } else if (filterY === curY && filterMIdx === curMIdx && dayNum > curD) {
+        isMasaDepan = true;
+    }
+
+    var isDValid = (strD && strD !== "-" && strD !== "0");
+    var isPValid = (strP && strP !== "-" && strP !== "0");
+
+    // 1. KEDUA-DUANYA KOSONG (Tidak Absen Datang & Pulang):
+    if (!isDValid && !isPValid) {
+        if (isHariLibur || isMasaDepan) {
+            // Hari Libur atau Tanggal Belum Berjalan -> Tanda - biasa
             return `<div class="harian-cell-combo"><span class="text-muted opacity-50">-</span></div>`;
         } else {
-            // Pada hari kerja aktif, jika tidak ada absen datang & pulang -> Tampilkan Badge TP (Tidak Presensi)
+            // Hari Kerja Aktif yang Sudah Berlalu -> Badge TP (Tidak Presensi)
             return `<div class="harian-cell-combo" title="Tgl ${dayNum} (${infoHari.short}): TP (Tidak Presensi)"><span class="badge badge-soft-danger harian-badge-status">TP</span></div>`;
         }
     }
@@ -687,7 +710,7 @@ function harian_formatComboCell(dVal, pVal, dayNum, thn, blnNama) {
     var isDCode = nonTimeCodes.includes(strD);
     var isPCode = nonTimeCodes.includes(strP);
     
-    // Jika dVal atau pVal adalah kode status (misal DD, DL, CS, CT), tampilkan 1 badge saja
+    // Jika dVal atau pVal adalah kode status resmi (misal DD, DL, CS, CT)
     if (isDCode || isPCode) {
         var codeVal = isDCode ? strD : strP;
         var badgeClass = 'badge-soft-info';
@@ -698,14 +721,14 @@ function harian_formatComboCell(dVal, pVal, dayNum, thn, blnNama) {
         return `<div class="harian-cell-combo" title="Tgl ${dayNum}: ${codeVal}"><span class="badge ${badgeClass} harian-badge-status">${codeVal}</span></div>`;
     }
     
-    // Deteksi Hari (Jumat vs Senin-Kamis)
+    // Deteksi Jam Kerja (Jumat vs Senin-Kamis)
     var isJumat = (infoHari.short === "Jum");
 
     var isTerlambat = false;
     var isPulangAwal = false;
 
     var jamDatangStd = "07:00";
-    var toleransiStd = "07:00"; // Tidak ada toleransi, > 07:00 terlambat
+    var toleransiStd = "07:00"; // > 07:00 Terlambat
     var jamPulangStd = isJumat ? "16:00" : "15:30";
 
     if (HARIAN_KONFIG_JADWAL && !HARIAN_KONFIG_JADWAL.isDefault) {
@@ -720,10 +743,10 @@ function harian_formatComboCell(dVal, pVal, dayNum, thn, blnNama) {
         }
     }
 
-    if (strD && strD.indexOf(":") > -1) {
+    if (isDValid && strD.indexOf(":") > -1) {
         if (strD > toleransiStd) isTerlambat = true;
     }
-    if (strP && strP.indexOf(":") > -1) {
+    if (isPValid && strP.indexOf(":") > -1) {
         if (strP >= "12:00" && strP < jamPulangStd) isPulangAwal = true;
     }
 
@@ -733,8 +756,30 @@ function harian_formatComboCell(dVal, pVal, dayNum, thn, blnNama) {
     var titleIn = isTerlambat ? `Datang: ${strD} (Terlambat > ${toleransiStd})` : `Datang: ${strD}`;
     var titleOut = isPulangAwal ? `Pulang: ${strP} (Pulang Awal < ${jamPulangStd})` : `Pulang: ${strP}`;
 
-    var inHtml = (strD && strD !== "-" && strD !== "0") ? `<span class="${inClass}" title="${titleIn}">${harian_escapeHtml(strD)}</span>` : `<span class="text-muted opacity-50">-</span>`;
-    var outHtml = (strP && strP !== "-" && strP !== "0") ? `<span class="${outClass}" title="${titleOut}">${harian_escapeHtml(strP)}</span>` : `<span class="text-muted opacity-50">-</span>`;
+    // 2. SALAH SATU KOSONG (Hanya Datang atau Hanya Pulang):
+    var inHtml = "";
+    if (isDValid) {
+        inHtml = `<span class="${inClass}" title="${titleIn}">${harian_escapeHtml(strD)}</span>`;
+    } else {
+        // Datang kosong pada Hari Kerja yang Sudah Berlalu -> TA (Tidak Absen Datang)
+        if (!isHariLibur && !isMasaDepan) {
+            inHtml = `<span class="text-danger font-weight-bold" title="Tidak Absen Datang (TA)" style="font-size: 0.65rem;">TA</span>`;
+        } else {
+            inHtml = `<span class="text-muted opacity-50">-</span>`;
+        }
+    }
+
+    var outHtml = "";
+    if (isPValid) {
+        outHtml = `<span class="${outClass}" title="${titleOut}">${harian_escapeHtml(strP)}</span>`;
+    } else {
+        // Pulang kosong pada Hari Kerja yang Sudah Berlalu -> PLA (Tidak Absen Pulang)
+        if (!isHariLibur && !isMasaDepan) {
+            outHtml = `<span class="text-warning font-weight-bold" title="Tidak Absen Pulang (PLA)" style="font-size: 0.65rem;">PLA</span>`;
+        } else {
+            outHtml = `<span class="text-muted opacity-50">-</span>`;
+        }
+    }
     
     return `<div class="harian-cell-combo" title="Tgl ${dayNum} (${infoHari.short})">${inHtml}${outHtml}</div>`;
 }
