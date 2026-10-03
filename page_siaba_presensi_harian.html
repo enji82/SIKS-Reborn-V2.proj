@@ -786,14 +786,16 @@ function harian_formatComboCell(dVal, pVal, dayNum, thn, blnNama) {
 
 function harian_renderTabel(dataRows) {
     try {
-        var th = $('#harian_filterTahun').val();
-        var bl = $('#harian_filterBulan').val();
-        var numDays = harian_getJumlahHari(th, bl); // 28, 29, 30, atau 31
-
-        // 1. Destroy DataTable & bersihkan DOM tabel secara menyeluruh (Cegah Mismatch Kolom)
+        // 1. Destroy DataTable & bersihkan DOM tabel secara aman (Cegah Mismatch Kolom & parentNode null error)
         var $tabel = $('#harian_tabelUtama');
         if ($.fn.DataTable.isDataTable('#harian_tabelUtama')) {
-            $tabel.DataTable().clear().destroy();
+            try {
+                var dtOld = $('#harian_tabelUtama').DataTable();
+                dtOld.clear();
+                dtOld.destroy();
+            } catch (errDt) {
+                console.warn("DataTable destroy warning:", errDt);
+            }
         }
         $tabel.empty();
 
@@ -860,7 +862,8 @@ function harian_renderTabel(dataRows) {
         var dtArray = [];
         var rowDataMapping = [];
 
-        dataRows.forEach(function(row) {
+        (dataRows || []).forEach(function(row) {
+            if (!row || !Array.isArray(row)) return;
             var arrRow = [];
             
             // Identitas ASN
