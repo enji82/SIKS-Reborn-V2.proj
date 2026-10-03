@@ -983,14 +983,21 @@ function harian_bukaModalDetailPegawai(row) {
     $('#harian_detailUnitASN').text(unit);
     $('#harian_detailPeriode').text(bl + " " + th);
 
-    $('#harian_statTP').text(row[2] || "0");
-    $('#harian_statHadir').text(row[4] || "0");
-    $('#harian_statTerlambat').text(row[17] || "0");
-    
-    var valCutiDinas = (parseInt(row[11])||0) + (parseInt(row[12])||0) + (parseInt(row[13])||0) + (parseInt(row[14])||0) + (parseInt(row[15])||0) + (parseInt(row[16])||0);
-    $('#harian_statCuti').text(valCutiDinas);
+    // Deteksi tanggal MASA DEPAN (Belum Berjalan)
+    var now = new Date();
+    var curY = now.getFullYear();
+    var curMIdx = now.getMonth();
+    var curD = now.getDate();
+
+    var mNames = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+    var filterMIdx = mNames.indexOf(bl);
+    var filterY = parseInt(th) || curY;
 
     var tbodyHtml = '';
+    var cntHadir = 0;
+    var cntTerlambat = 0;
+    var cntTidakPresensi = 0;
+
     for (var d = 1; d <= numDays; d++) {
         var dIdx = 22 + (d - 1) * 2;
         var pIdx = 23 + (d - 1) * 2;
@@ -998,27 +1005,121 @@ function harian_bukaModalDetailPegawai(row) {
         var dVal = String(row[dIdx] || "").trim().toUpperCase();
         var pVal = String(row[pIdx] || "").trim().toUpperCase();
         var infoHari = harian_getNamaHari(th, bl, d);
+        var liburObj = harian_isTanggalMerah(th, bl, d);
+        var isHariLibur = infoHari.isWeekend || (liburObj !== null);
 
-        var stBadge = '<span class="badge badge-soft-success px-2 py-1">Hadir Tepat Waktu</span>';
-        if ((!dVal || dVal === "-" || dVal === "0") && (!pVal || pVal === "-" || pVal === "0")) {
-            stBadge = '<span class="badge badge-secondary px-2 py-1 opacity-70">Tanpa Presensi / Libur</span>';
-        } else if (['CT','CS','CAP','CM','CB','CLTN'].includes(dVal) || ['CT','CS','CAP','CM','CB','CLTN'].includes(pVal)) {
-            stBadge = `<span class="badge badge-soft-info px-2 py-1">Cuti (${dVal || pVal})</span>`;
-        } else if (['DD','DL'].includes(dVal) || ['DD','DL'].includes(pVal)) {
-            stBadge = `<span class="badge badge-soft-purple px-2 py-1">Dinas (${dVal || pVal})</span>`;
-        } else if (['TA','PLA','LA','TP'].includes(dVal) || ['TA','PLA','LA','TP'].includes(pVal)) {
-            stBadge = `<span class="badge badge-soft-danger px-2 py-1">Terlambat / Pulang Awal</span>`;
+        var isMasaDepan = false;
+        if (filterY > curY) {
+            isMasaDepan = true;
+        } else if (filterY === curY && filterMIdx > curMIdx) {
+            isMasaDepan = true;
+        } else if (filterY === curY && filterMIdx === curMIdx && d > curD) {
+            isMasaDepan = true;
         }
 
+        var isDValid = (dVal && dVal !== "-" && dVal !== "0");
+        var isPValid = (pVal && pVal !== "-" && pVal !== "0");
+
+        var nonTimeCodes = ['CT','CS','CAP','CM','CB','CLTN','DD','DL','TA','PLA','LA','TP'];
+        var isDCode = nonTimeCodes.includes(dVal);
+        var isPCode = nonTimeCodes.includes(pVal);
+
+        var isJumat = (infoHari.short === "Jum");
+        var jamDatangStd = "07:00";
+        var toleransiStd = "07:00";
+        var jamPulangStd = isJumat ? "16:00" : "15:30";
+
+        if (HARIAN_KONFIG_JADWAL && !HARIAN_KONFIG_JADWAL.isDefault) {
+            if (isJumat) {
+                jamDatangStd = HARIAN_KONFIG_JADWAL.jamDatangJumat || "07:00";
+                toleransiStd = HARIAN_KONFIG_JADWAL.toleransiTerlambatJumat || jamDatangStd;
+                jamPulangStd = HARIAN_KONFIG_JADWAL.jamPulangJumat || "16:00";
+            } else {
+                jamDatangStd = HARIAN_KONFIG_JADWAL.jamDatangSeninKamis || "07:00";
+                toleransiStd = HARIAN_KONFIG_JADWAL.toleransiTerlambatSeninKamis || jamDatangStd;
+                jamPulangStd = HARIAN_KONFIG_JADWAL.jamPulangSeninKamis || "15:30";
+            }
+        }
+
+        var isTerlambat = false;
+        var isPulangAwal = false;
+
+        if (isDValid && dVal.indexOf(":") > -1 && dVal > toleransiStd) isTerlambat = true;
+        if (isPValid && pVal.indexOf(":") > -1 && pVal >= "12:00" && pVal < jamPulangStd) isPulangAwal = true;
+
+        if (isTerlambat) cntTerlambat++;
+        if (isDValid || isPValid) cntHadir++;
+
+        // Render Teks & Warna Jam Datang
+        var displayD = "-";
+        var classD = "text-muted opacity-50";
+        if (isDValid) {
+            displayD = harian_escapeHtml(dVal);
+            classD = isTerlambat ? "text-danger font-weight-bold" : "text-success font-weight-bold";
+        } else if (!isHariLibur && !isMasaDepan) {
+            displayD = "-";
+            classD = "text-danger font-weight-bold";
+        }
+
+        // Render Teks & Warna Jam Pulang
+        var displayP = "-";
+        var classP = "text-muted opacity-50";
+        if (isPValid) {
+            displayP = harian_escapeHtml(pVal);
+            classP = isPulangAwal ? "text-orange font-weight-bold" : "text-primary font-weight-bold";
+        } else if (!isHariLibur && !isMasaDepan) {
+            displayP = "-";
+            classP = "text-danger font-weight-bold";
+        }
+
+        // Render Badge Status
+        var stBadge = '';
+        if (isDCode || isPCode) {
+            var codeVal = isDCode ? dVal : pVal;
+            var bCls = 'badge-soft-info';
+            if (['CT','CS','CAP','CM','CB','CLTN'].includes(codeVal)) bCls = 'badge-soft-info';
+            else if (['DD','DL'].includes(codeVal)) bCls = 'badge-soft-purple';
+            else if (['TA','PLA','LA','TP'].includes(codeVal)) bCls = 'badge-soft-danger';
+            stBadge = `<span class="badge ${bCls} px-2 py-1">${codeVal}</span>`;
+        } else if (!isDValid && !isPValid) {
+            if (isHariLibur) {
+                var libTxt = liburObj ? liburObj.keterangan : "Libur Rutin";
+                stBadge = `<span class="badge badge-secondary px-2 py-1 opacity-70">${harian_escapeHtml(libTxt)}</span>`;
+            } else if (isMasaDepan) {
+                stBadge = `<span class="badge badge-secondary px-2 py-1 opacity-70">Belum Berjalan</span>`;
+            } else {
+                cntTidakPresensi++;
+                stBadge = `<span class="badge badge-soft-danger px-2 py-1 font-weight-bold">Tidak Presensi</span>`;
+            }
+        } else if (isTerlambat && isPulangAwal) {
+            stBadge = `<span class="badge badge-soft-danger px-2 py-1">Terlambat & Pulang Awal</span>`;
+        } else if (isTerlambat) {
+            stBadge = `<span class="badge badge-soft-danger px-2 py-1">Terlambat (> ${toleransiStd})</span>`;
+        } else if (isPulangAwal) {
+            stBadge = `<span class="badge badge-soft-warning px-2 py-1">Pulang Awal (< ${jamPulangStd})</span>`;
+        } else {
+            stBadge = `<span class="badge badge-soft-success px-2 py-1">Hadir Tepat Waktu</span>`;
+        }
+
+        var bgRowClass = isHariLibur ? 'table-danger opacity-80' : (isMasaDepan ? 'bg-light' : '');
+
         tbodyHtml += `
-            <tr class="${infoHari.isWeekend ? 'table-danger' : ''}">
-                <td class="text-center font-weight-bold py-2 px-3">Tgl ${d} (${infoHari.short})</td>
-                <td class="text-center py-2 px-3 text-success font-weight-bold">${dVal ? harian_escapeHtml(dVal) : '-'}</td>
-                <td class="text-center py-2 px-3 text-primary font-weight-bold">${pVal ? harian_escapeHtml(pVal) : '-'}</td>
-                <td class="text-center py-2 px-3">${stBadge}</td>
+            <tr class="${bgRowClass}">
+                <td class="text-center font-weight-bold py-2 px-3 align-middle">Tgl ${d} (${infoHari.short})</td>
+                <td class="text-center py-2 px-3 align-middle ${classD}">${displayD}</td>
+                <td class="text-center py-2 px-3 align-middle ${classP}">${displayP}</td>
+                <td class="text-center py-2 px-3 align-middle">${stBadge}</td>
             </tr>
         `;
     }
+
+    // Update Counter Stat
+    $('#harian_statTP').text(row[2] || cntTidakPresensi);
+    $('#harian_statHadir').text(row[4] || cntHadir);
+    $('#harian_statTerlambat').text(row[17] || cntTerlambat);
+    
+    var valCutiDinas = (parseInt(row[11])||0) + (parseInt(row[12])||0) + (parseInt(row[13])||0) + (parseInt(row[14])||0) + (parseInt(row[15])||0) + (parseInt(row[16])||0);
+    $('#harian_statCuti').text(valCutiDinas);
 
     $('#harian_detailTableBody').html(tbodyHtml);
     $('#harian_modalDetailPegawai').modal('show');
