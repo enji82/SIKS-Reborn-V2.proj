@@ -290,17 +290,17 @@
     <div class="modal-body modal-body-sultan p-4">
       <input type="hidden" id="konfigJadwal_liburRowId">
       
-      <div class="form-group form-group-sultan mb-3">
+      <div class="form-group form-group-sultan mb-4">
         <label class="form-label-sultan">TANGGAL LIBUR <span class="text-danger">*</span></label>
         <input type="date" id="konfigJadwal_inputTglLibur" class="form-control form-control-sultan font-weight-bold" required>
       </div>
 
-      <div class="form-group form-group-sultan mb-3">
+      <div class="form-group form-group-sultan mb-4">
         <label class="form-label-sultan">KETERANGAN LIBUR / TANGGAL MERAH <span class="text-danger">*</span></label>
         <input type="text" id="konfigJadwal_inputKetLibur" class="form-control form-control-sultan font-weight-bold" placeholder="Misal: Tahun Baru 2026 Masehi" required>
       </div>
 
-      <div class="form-group form-group-sultan mb-0">
+      <div class="form-group form-group-sultan mb-2">
         <label class="form-label-sultan">JENIS LIBUR <span class="text-danger">*</span></label>
         <select id="konfigJadwal_inputJenisLibur" class="form-control form-control-sultan font-weight-bold" required>
           <option value="Nasional">Hari Libur Nasional</option>
@@ -532,15 +532,28 @@ function konfigJadwal_loadDaftarLibur(cb) {
                   html = '<tr><td colspan="6" class="text-center text-muted p-4"><i class="fas fa-info-circle mr-2"></i>Belum ada data hari libur pada periode ini.</td></tr>';
                 } else {
                   rows.forEach(function(r, idx) {
-                    var jenisBadge = r.jenis === 'Cuti Bersama' ? 'badge-info' : 'badge-danger';
+                    var jenisBadge = r.jenis === 'Cuti Bersama' ? 'badge-info' : (r.jenis === 'Khusus' ? 'badge-warning text-dark' : 'badge-danger');
+                    
+                    // Format tampilan bulan & tahun dari tanggal jika kosong
+                    var tglStr = r.tanggal || '';
+                    var displayBulanTahun = '-';
+                    if (r.bulan && r.tahun) {
+                      displayBulanTahun = r.bulan + ' ' + r.tahun;
+                    } else if (tglStr.split('-').length === 3) {
+                      var p = tglStr.split('-');
+                      var bIdx = parseInt(p[1], 10) - 1;
+                      var bNames = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+                      displayBulanTahun = (bNames[bIdx] || '') + ' ' + p[0];
+                    }
+
                     html += `
                       <tr>
-                        <td class="text-center font-weight-bold">${idx + 1}</td>
-                        <td class="text-center font-weight-bold text-maroon">${r.tanggal}</td>
-                        <td class="text-center">${r.bulan || '-'} ${r.tahun || ''}</td>
-                        <td class="text-left font-weight-bold">${r.keterangan}</td>
-                        <td class="text-center"><span class="badge ${jenisBadge} px-3 py-1">${r.jenis}</span></td>
-                        <td class="text-center">
+                        <td class="text-center font-weight-bold align-middle">${idx + 1}</td>
+                        <td class="text-center font-weight-bold text-maroon align-middle">${r.tanggal}</td>
+                        <td class="text-center align-middle font-weight-bold text-secondary">${displayBulanTahun}</td>
+                        <td class="text-left font-weight-bold align-middle">${r.keterangan}</td>
+                        <td class="text-center align-middle"><span class="badge ${jenisBadge} px-3 py-1 font-weight-bold">${r.jenis || 'Nasional'}</span></td>
+                        <td class="text-center align-middle">
                           <button type="button" class="sultan-btn-aksi sultan-btn-aksi-hapus" onclick="konfigJadwal_hapusLibur('${r.tanggal}')" title="Hapus">
                             <i class="fas fa-trash-alt"></i>
                           </button>

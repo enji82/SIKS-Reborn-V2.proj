@@ -125,9 +125,15 @@ function getSiabaKonfigJadwal(tahun, bulan) {
         let thn = String(r[1] || "").trim();
         let bln = String(r[2] || "").trim();
 
-        if ((thn === String(tahun).trim() && bln.toLowerCase() === String(bulan).trim().toLowerCase()) || tgl.indexOf(tahun + "-") === 0) {
+        // Jika bulan tidak difilter (kosong/Semua Bulan) atau bulan cocok dengan filter
+        const matchesBulan = !bulan || bln.toLowerCase() === String(bulan).trim().toLowerCase();
+        const matchesTahun = !tahun || thn === String(tahun).trim() || tgl.indexOf(tahun + "-") === 0;
+
+        if (matchesTahun && matchesBulan) {
           daftarLibur.push({
             tanggal: tgl, // Format YYYY-MM-DD
+            tahun: thn,
+            bulan: bln,
             keterangan: r[3] || "Hari Libur",
             jenis: r[4] || "Nasional",
             warna: r[5] || "#dc3545"
