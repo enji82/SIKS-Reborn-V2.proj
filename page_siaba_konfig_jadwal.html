@@ -286,38 +286,41 @@
 <div id="konfigJadwal_templates" style="display:none;">
   
   <!-- FORM TAMBAH / EDIT HARI LIBUR -->
-  <form id="konfigJadwal_formLibur">
-    <div class="modal-body modal-body-sultan" style="padding-top: 15px !important;">
-      <input type="hidden" id="konfigJadwal_liburRowId">
-      
-      <div class="form-group form-group-sultan mb-3">
-        <label class="form-label-sultan">TANGGAL LIBUR <span class="text-danger">*</span></label>
-        <input type="date" id="konfigJadwal_inputTglLibur" class="form-control form-control-sultan font-weight-bold" required>
+  <div id="konfigJadwal_formLiburHolder">
+    <form id="konfigJadwal_formLibur">
+      <div id="konfigJadwal_formLiburFields">
+        <input type="hidden" id="konfigJadwal_liburRowId">
+        
+        <div class="form-group form-group-sultan mb-3">
+          <label class="form-label-sultan">TANGGAL LIBUR <span class="text-danger">*</span></label>
+          <input type="date" id="konfigJadwal_inputTglLibur" class="form-control form-control-sultan font-weight-bold" required>
+        </div>
+
+        <div class="form-group form-group-sultan mb-3">
+          <label class="form-label-sultan">KETERANGAN LIBUR / TANGGAL MERAH <span class="text-danger">*</span></label>
+          <input type="text" id="konfigJadwal_inputKetLibur" class="form-control form-control-sultan font-weight-bold" placeholder="Misal: Tahun Baru 2026 Masehi" required>
+        </div>
+
+        <div class="form-group form-group-sultan mb-0">
+          <label class="form-label-sultan">JENIS LIBUR <span class="text-danger">*</span></label>
+          <select id="konfigJadwal_inputJenisLibur" class="form-control form-control-sultan font-weight-bold" required>
+            <option value="Nasional">Hari Libur Nasional</option>
+            <option value="Cuti Bersama">Cuti Bersama</option>
+            <option value="Khusus">Libur Khusus Daerah / Sekolah</option>
+          </select>
+        </div>
       </div>
 
-      <div class="form-group form-group-sultan mb-3">
-        <label class="form-label-sultan">KETERANGAN LIBUR / TANGGAL MERAH <span class="text-danger">*</span></label>
-        <input type="text" id="konfigJadwal_inputKetLibur" class="form-control form-control-sultan font-weight-bold" placeholder="Misal: Tahun Baru 2026 Masehi" required>
+      <div id="konfigJadwal_formLiburFooter" class="w-100 d-flex justify-content-between align-items-center">
+        <button type="button" class="sultan-btn sultan-btn-secondary" data-dismiss="modal">
+          <i class="fas fa-times mr-2"></i>TUTUP
+        </button>
+        <button type="submit" id="konfigJadwal_btnSimpanLibur" class="sultan-btn sultan-btn-primary">
+          <i class="fas fa-save mr-2"></i>SIMPAN
+        </button>
       </div>
-
-      <div class="form-group form-group-sultan mb-0">
-        <label class="form-label-sultan">JENIS LIBUR <span class="text-danger">*</span></label>
-        <select id="konfigJadwal_inputJenisLibur" class="form-control form-control-sultan font-weight-bold" required>
-          <option value="Nasional">Hari Libur Nasional</option>
-          <option value="Cuti Bersama">Cuti Bersama</option>
-          <option value="Khusus">Libur Khusus Daerah / Sekolah</option>
-        </select>
-      </div>
-    </div>
-    <div class="modal-footer modal-footer-tambah-edit justify-content-between">
-      <button type="button" class="sultan-btn sultan-btn-secondary" data-dismiss="modal">
-        <i class="fas fa-times mr-2"></i>TUTUP
-      </button>
-      <button type="submit" id="konfigJadwal_btnSimpanLibur" class="sultan-btn sultan-btn-primary">
-        <i class="fas fa-save mr-2"></i>SIMPAN
-      </button>
-    </div>
-  </form>
+    </form>
+  </div>
 
 </div>
 
@@ -418,10 +421,24 @@ $(document).ready(function() {
     $('#konfigJadwal_btnTambahLibur').on('click', function() {
         $('#konfigJadwal_formLibur')[0].reset();
         $('#konfigJadwal_liburRowId').val('');
+        
+        $('#global_modalFormSize').removeClass('modal-xl modal-lg').addClass('modal-md');
         $('#global_modalFormHeader').removeClass().addClass('modal-header modal-header-tambah-edit');
         $('#global_modalFormTitle').html('<i class="fas fa-plus-circle mr-2"></i>TAMBAH HARI LIBUR');
-        $('#global_modalFormBody, #global_modalFormFooter').hide();
-        $('#konfigJadwal_formLibur').appendTo('#global_modalFormSize .modal-content');
+        
+        $('#global_modalFormBody').empty().show();
+        $('#global_modalFormFooter').empty().show();
+        
+        // Tempatkan elemen isi input di body & tombol di footer
+        $('#konfigJadwal_formLiburFields').appendTo('#global_modalFormBody');
+        $('#konfigJadwal_formLiburFooter').appendTo('#global_modalFormFooter');
+
+        $('#global_modalForm').off('hidden.bs.modal.konfigJadwal').on('hidden.bs.modal.konfigJadwal', function() {
+            $('#konfigJadwal_formLiburFields').appendTo('#konfigJadwal_formLibur');
+            $('#konfigJadwal_formLiburFooter').appendTo('#konfigJadwal_formLibur');
+            $('#global_modalFormBody, #global_modalFormFooter').show();
+        });
+
         $('#global_modalForm').modal('show');
     });
 
@@ -434,10 +451,12 @@ $(document).ready(function() {
             jenis: $('#konfigJadwal_inputJenisLibur').val()
         };
 
-        SultanUI.showLoading('#konfigJadwal_btnSimpanLibur', 'Menyimpan...');
+        var $btnSimpan = $('#konfigJadwal_btnSimpanLibur');
+        var oriHtml = $btnSimpan.html();
+        $btnSimpan.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i>MENYIMPAN...');
 
         google.script.run.withSuccessHandler(function(res) {
-            SultanUI.hideLoading('#konfigJadwal_btnSimpanLibur');
+            $btnSimpan.prop('disabled', false).html(oriHtml);
             try {
                 var json = JSON.parse(res);
                 if (json.status === 'success') {
@@ -451,7 +470,7 @@ $(document).ready(function() {
                 SultanUI.showAlert('error', 'Error', 'Gagal memproses respon server.');
             }
         }).withFailureHandler(function(err) {
-            SultanUI.hideLoading('#konfigJadwal_btnSimpanLibur');
+            $btnSimpan.prop('disabled', false).html(oriHtml);
             SultanUI.showAlert('error', 'Gagal Connection', err.message);
         }).simpanSiabaHariLibur(JSON.stringify(payload));
     });
