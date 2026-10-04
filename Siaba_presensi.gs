@@ -136,9 +136,19 @@ function getSiabaDataApel(filterTahun, filterBulan, filterUnit) {
         }
     }
     
+    let konfigJadwalRaw = {};
+    try {
+      if (typeof getSiabaKonfigJadwal === "function") {
+        konfigJadwalRaw = JSON.parse(getSiabaKonfigJadwal(filterTahun, filterBulan));
+      }
+    } catch(errConfig) {
+      konfigJadwalRaw = {};
+    }
+
     return JSON.stringify({
       headers: headerData,
-      rows: result
+      rows: result,
+      konfig: konfigJadwalRaw
     });
 
   } catch (e) {
