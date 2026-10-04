@@ -19,9 +19,13 @@
                         <div id="tp_infoCollapse" class="collapse">
                             <div class="info-body">
                                 <ul class="mb-0 pl-3">
-                                    <li>Halaman ini menampilkan rekaman ASN yang tidak melakukan presensi (Alpha/Lupa).
-                                    </li>
+                                    <li>Halaman ini menampilkan rekaman ASN yang tidak melakukan presensi (Alpha/Lupa).</li>
                                     <li>Data yang ditampilkan diperbarui secara berkala (tidak realtime).</li>
+                                    <li><strong>Keterangan Badge:</strong> 
+                                        <span class="badge badge-soft-warning text-dark font-weight-bold ml-1"><i class="fas fa-sign-in-alt mr-1"></i>[Tgl] Datang</span> (Tidak Absen Datang), 
+                                        <span class="badge badge-soft-info text-dark font-weight-bold ml-1"><i class="fas fa-sign-out-alt mr-1"></i>[Tgl] Pulang</span> (Tidak Absen Pulang), 
+                                        <span class="badge badge-soft-danger font-weight-bold ml-1"><i class="fas fa-times-circle mr-1"></i>[Tgl] Seharian</span> (Tidak Absen Datang & Pulang).
+                                    </li>
                                 </ul>
                             </div>
                         </div>
@@ -320,6 +324,38 @@
         tp_renderTabel(hasil);
     }
 
+    function tp_formatTanggalBadges(rawStr) {
+        if (!rawStr || rawStr === "" || rawStr === "-") return '<span class="text-muted opacity-50">-</span>';
+        
+        // Memisahkan string koma, misal: "1D, 2P, 6D, 8P, 10DP"
+        var items = String(rawStr).split(',');
+        var badgesHtml = items.map(function(item) {
+            var trimmed = item.trim();
+            if (!trimmed) return '';
+            
+            // Ekstrak angka dan kode (D, P, DP, A, etc.)
+            var match = trimmed.match(/^(\d+)([A-Za-z]+)?$/);
+            if (!match) {
+                return '<span class="badge badge-soft-secondary mr-1 mb-1 font-weight-bold" style="font-size: 0.78rem;">' + tp_escapeHtml(trimmed) + '</span>';
+            }
+            
+            var tglNum = match[1];
+            var code = (match[2] || "").toUpperCase();
+            
+            if (code === 'D') {
+                return '<span class="badge badge-soft-warning text-dark mr-1 mb-1 font-weight-bold" title="Tanggal ' + tglNum + ': Tidak Absen Datang" style="font-size: 0.78rem; padding: 4px 6px;"><i class="fas fa-sign-in-alt mr-1"></i>' + tglNum + ' Datang</span>';
+            } else if (code === 'P') {
+                return '<span class="badge badge-soft-info text-dark mr-1 mb-1 font-weight-bold" title="Tanggal ' + tglNum + ': Tidak Absen Pulang" style="font-size: 0.78rem; padding: 4px 6px;"><i class="fas fa-sign-out-alt mr-1"></i>' + tglNum + ' Pulang</span>';
+            } else if (code === 'DP' || code === 'A') {
+                return '<span class="badge badge-soft-danger mr-1 mb-1 font-weight-bold" title="Tanggal ' + tglNum + ': Tidak Absen Seharian" style="font-size: 0.78rem; padding: 4px 6px;"><i class="fas fa-times-circle mr-1"></i>' + tglNum + ' Seharian</span>';
+            } else {
+                return '<span class="badge badge-soft-secondary mr-1 mb-1 font-weight-bold" style="font-size: 0.78rem; padding: 4px 6px;">' + tp_escapeHtml(trimmed) + '</span>';
+            }
+        }).join('');
+        
+        return '<div class="d-flex flex-wrap justify-content-center align-items-center py-1">' + badgesHtml + '</div>';
+    }
+
     function tp_renderTabel(dataRows) {
         var dtArray = [];
 
@@ -333,10 +369,10 @@
             var txtUnitHtml = TP_IS_ADMIN ? '<div class="data-tersier text-left mt-1">' + safeUnit + '</div>' : '';
             arrRow.push('<div class="sultan-table-primary text-left">' + safeNama + '</div><div class="sultan-table-secondary text-left">' + safeNip + '</div>' + txtUnitHtml);
 
-            arrRow.push(row[2] == 0 || row[2] === "" ? "-" : '<span class="font-weight-bold">' + tp_escapeHtml(row[2]) + '</span>');
-            arrRow.push(row[3] == 0 || row[3] === "" ? "-" : '<span class="font-weight-bold">' + tp_escapeHtml(row[3]) + '</span>');
-            arrRow.push(row[4] == 0 || row[4] === "" ? "-" : '<span class="font-weight-bold">' + tp_escapeHtml(row[4]) + '</span>');
-            arrRow.push(row[5] === "" || row[5] === "-" ? "-" : '<span class="font-weight-bold" style="white-space:normal; line-height:1.4;">' + tp_escapeHtml(row[5]) + '</span>');
+            arrRow.push(row[2] == 0 || row[2] === "" ? "-" : '<span class="badge badge-soft-danger font-weight-bold px-2 py-1" style="font-size:0.85rem;">' + tp_escapeHtml(row[2]) + '</span>');
+            arrRow.push(row[3] == 0 || row[3] === "" ? "-" : '<span class="badge badge-soft-warning text-dark font-weight-bold px-2 py-1" style="font-size:0.85rem;">' + tp_escapeHtml(row[3]) + '</span>');
+            arrRow.push(row[4] == 0 || row[4] === "" ? "-" : '<span class="badge badge-soft-info text-dark font-weight-bold px-2 py-1" style="font-size:0.85rem;">' + tp_escapeHtml(row[4]) + '</span>');
+            arrRow.push(tp_formatTanggalBadges(row[5]));
 
             dtArray.push(arrRow);
         });
