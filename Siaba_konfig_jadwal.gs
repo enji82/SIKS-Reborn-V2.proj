@@ -328,15 +328,31 @@ function hapusSiabaHariLibur(tanggal) {
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
-    const tgl = String(tanggal || "").trim();
+    let tgl = String(tanggal || "").trim();
     if (!tgl) return JSON.stringify({ status: "error", message: "Tanggal tidak valid." });
+
+    // Normalisasi jika tanggal berupa objek Date atau string tanggal lokal
+    if (tgl.indexOf("T") !== -1) {
+      tgl = tgl.split("T")[0];
+    } else if (tgl.indexOf("/") !== -1) {
+      const p = tgl.split("/");
+      if (p.length === 3) tgl = p[2] + "-" + ("0" + p[1]).slice(-2) + "-" + ("0" + p[0]).slice(-2);
+    }
 
     const ss = getDBById("177ZPhTuD5lXBDdAWWVpG6bfq6Lz0MDHNvvuwkQFKVYk");
     const sheet = ss.getSheetByName("SIABA_KALENDER_LIBUR");
-    const data = sheet.getDataRange().getValues();
+    if (!sheet || sheet.getLastRow() < 2) {
+      return JSON.stringify({ status: "error", message: "Data hari libur tidak ditemukan." });
+    }
+
+    const data = sheet.getDataRange().getDisplayValues();
 
     for (let i = data.length - 1; i >= 1; i--) {
-      if (String(data[i][0] || "").trim() === tgl) {
+      let cellTgl = String(data[i][0] || "").trim();
+      if (cellTgl.indexOf("T") !== -1) cellTgl = cellTgl.split("T")[0];
+
+      // Pencocokan fleksibel YYYY-MM-DD
+      if (cellTgl === tgl || cellTgl.indexOf(tgl) === 0 || tgl.indexOf(cellTgl) === 0) {
         sheet.deleteRow(i + 1);
         SpreadsheetApp.flush();
         return JSON.stringify({ status: "success", message: "Hari libur berhasil dihapus." });
@@ -346,6 +362,6 @@ function hapusSiabaHariLibur(tanggal) {
   } catch (e) {
     return JSON.stringify({ status: "error", message: e.message });
   } finally {
-    lock.releaseLock();
+    try { lock.releaseLock(); } catch(le) {}
   }
 }
