@@ -804,11 +804,27 @@ function harian_formatComboCell(dVal, pVal, dayNum, thn, blnNama) {
         }
     }
 
-    if (isDValid && strD.indexOf(":") > -1) {
-        if (strD > toleransiStd) isTerlambat = true;
+    var harian_cleanTime = function(tStr) {
+        if (!tStr) return "";
+        var parts = tStr.trim().split(":");
+        if (parts.length >= 2) {
+            var hh = ("0" + parseInt(parts[0], 10)).slice(-2);
+            var mm = ("0" + parseInt(parts[1], 10)).slice(-2);
+            return hh + ":" + mm;
+        }
+        return tStr;
+    };
+
+    var normD = harian_cleanTime(strD);
+    var normP = harian_cleanTime(strP);
+    var normToleransi = harian_cleanTime(toleransiStd);
+    var normPulangStd = harian_cleanTime(jamPulangStd);
+
+    if (isDValid && normD.indexOf(":") > -1) {
+        if (normD > normToleransi) isTerlambat = true;
     }
-    if (isPValid && strP.indexOf(":") > -1) {
-        if (strP >= "12:00" && strP < jamPulangStd) isPulangAwal = true;
+    if (isPValid && normP.indexOf(":") > -1) {
+        if (normP >= "12:00" && normP < normPulangStd) isPulangAwal = true;
     }
 
     var inClass = isTerlambat ? "harian-time-in is-terlambat" : "harian-time-in";
@@ -1106,8 +1122,13 @@ function harian_bukaModalDetailPegawai(row) {
         var isTerlambat = false;
         var isPulangAwal = false;
 
-        if (isDValid && dVal.indexOf(":") > -1 && dVal > toleransiStd) isTerlambat = true;
-        if (isPValid && pVal.indexOf(":") > -1 && pVal >= "12:00" && pVal < jamPulangStd) isPulangAwal = true;
+        var normD_modal = harian_cleanTime(dVal);
+        var normP_modal = harian_cleanTime(pVal);
+        var normToleransi_modal = harian_cleanTime(toleransiStd);
+        var normPulang_modal = harian_cleanTime(jamPulangStd);
+
+        if (isDValid && normD_modal.indexOf(":") > -1 && normD_modal > normToleransi_modal) isTerlambat = true;
+        if (isPValid && normP_modal.indexOf(":") > -1 && normP_modal >= "12:00" && normP_modal < normPulang_modal) isPulangAwal = true;
 
         if (isTerlambat) cntTerlambat++;
         if (isDValid || isPValid) cntHadir++;
