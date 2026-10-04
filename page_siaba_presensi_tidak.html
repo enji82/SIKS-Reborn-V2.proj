@@ -6,47 +6,75 @@
   gap: 6px;
   justify-content: flex-start;
   align-items: center;
-  max-width: 480px;
+  max-width: 520px;
   white-space: normal !important;
 }
 .tp-tgl-chip {
   display: inline-flex;
   align-items: center;
-  padding: 3px 8px;
-  border-radius: 6px;
-  font-size: 0.78rem;
+  padding: 2px 8px 2px 6px;
+  border-radius: 8px;
+  font-size: 0.8rem;
   font-weight: 700;
   line-height: 1.2;
   border: 1px solid transparent;
   transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
 }
-.tp-tgl-chip small {
-  font-size: 0.72rem;
+.tp-tgl-num {
+  font-size: 0.85rem;
+  font-weight: 800;
+  margin-right: 6px;
+  padding-right: 6px;
+  border-right: 1px solid rgba(0,0,0,0.12);
+}
+.tp-tgl-sub-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.tp-sub-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.7rem;
   font-weight: 600;
-  margin-left: 2px;
-  opacity: 0.9;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+.tp-sub-d {
+  background: rgba(133, 100, 4, 0.12);
+  color: #725200;
+}
+.tp-sub-p {
+  background: rgba(12, 84, 96, 0.12);
+  color: #08434d;
 }
 
 /* Datang = Warning (Kuning/Orange khas Sultan) */
 .tp-tgl-d {
-  background-color: #fff3cd;
+  background-color: #fff8e1;
   color: #856404;
-  border-color: #ffeeba;
+  border-color: #ffe082;
 }
 
 /* Pulang = Cyan / Blue Info */
 .tp-tgl-p {
-  background-color: #d1ecf1;
+  background-color: #e0f7fa;
   color: #0c5460;
-  border-color: #bee5eb;
+  border-color: #80deea;
 }
 
 /* Seharian = Danger (Merah Soft) */
 .tp-tgl-dp {
-  background-color: #f8d7da;
-  color: #721c24;
-  border-color: #f5c6cb;
+  background-color: #ffebee;
+  color: #b71c1c;
+  border-color: #ffcdd2;
 }
+.tp-tgl-dp .tp-tgl-num {
+  border-right-color: rgba(183, 28, 28, 0.2);
+}
+.tp-tgl-dp .tp-sub-d { background: rgba(183, 28, 28, 0.1); color: #b71c1c; }
+.tp-tgl-dp .tp-sub-p { background: rgba(183, 28, 28, 0.1); color: #b71c1c; }
 
 .tp-tgl-other {
   background-color: #e2e3e5;
@@ -55,21 +83,31 @@
 }
 
 /* Dark Mode Support */
+.dark-mode .tp-tgl-num {
+  border-right-color: rgba(255,255,255,0.2);
+}
 .dark-mode .tp-tgl-d {
-  background-color: rgba(240, 173, 78, 0.25);
+  background-color: rgba(240, 173, 78, 0.2);
   color: #ffc107;
-  border-color: rgba(240, 173, 78, 0.4);
+  border-color: rgba(240, 173, 78, 0.35);
 }
+.dark-mode .tp-tgl-d .tp-sub-d { background: rgba(255, 193, 7, 0.2); color: #ffca28; }
+
 .dark-mode .tp-tgl-p {
-  background-color: rgba(23, 162, 184, 0.25);
-  color: #17a2b8;
-  border-color: rgba(23, 162, 184, 0.4);
+  background-color: rgba(23, 162, 184, 0.2);
+  color: #4dd0e1;
+  border-color: rgba(23, 162, 184, 0.35);
 }
+.dark-mode .tp-tgl-p .tp-sub-p { background: rgba(77, 208, 225, 0.2); color: #4dd0e1; }
+
 .dark-mode .tp-tgl-dp {
-  background-color: rgba(217, 83, 79, 0.25);
+  background-color: rgba(217, 83, 79, 0.2);
   color: #ff6b6b;
-  border-color: rgba(217, 83, 79, 0.4);
+  border-color: rgba(217, 83, 79, 0.35);
 }
+.dark-mode .tp-tgl-dp .tp-sub-d,
+.dark-mode .tp-tgl-dp .tp-sub-p { background: rgba(255, 107, 107, 0.2); color: #ff6b6b; }
+
 .dark-mode .tp-tgl-other {
   background-color: rgba(255, 255, 255, 0.1);
   color: #ced4da;
@@ -405,29 +443,74 @@
         if (!rawStr || rawStr === "" || rawStr === "-") return '<span class="text-muted opacity-50">-</span>';
         
         var items = String(rawStr).split(',');
-        var badgesHtml = items.map(function(item) {
+        var dateMap = {};
+        var dateOrder = [];
+
+        items.forEach(function(item) {
             var trimmed = item.trim();
-            if (!trimmed) return '';
-            
+            if (!trimmed) return;
+
             var match = trimmed.match(/^(\d+)([A-Za-z]+)?$/);
-            if (!match) {
-                return '<span class="tp-tgl-chip tp-tgl-other">' + tp_escapeHtml(trimmed) + '</span>';
-            }
-            
-            var tglNum = match[1];
-            var code = (match[2] || "").toUpperCase();
-            
-            if (code === 'D') {
-                return '<span class="tp-tgl-chip tp-tgl-d" title="Tgl ' + tglNum + ': Tidak Absen Datang"><i class="fas fa-sign-in-alt mr-1"></i>' + tglNum + ' <small>Datang</small></span>';
-            } else if (code === 'P') {
-                return '<span class="tp-tgl-chip tp-tgl-p" title="Tgl ' + tglNum + ': Tidak Absen Pulang"><i class="fas fa-sign-out-alt mr-1"></i>' + tglNum + ' <small>Pulang</small></span>';
-            } else if (code === 'DP' || code === 'A') {
-                return '<span class="tp-tgl-chip tp-tgl-dp" title="Tgl ' + tglNum + ': Tidak Absen Seharian"><i class="fas fa-times-circle mr-1"></i>' + tglNum + ' <small>Seharian</small></span>';
+            if (match) {
+                var tglNum = parseInt(match[1], 10);
+                var code = (match[2] || "").toUpperCase();
+
+                if (!dateMap[tglNum]) {
+                    dateMap[tglNum] = { d: false, p: false, other: [] };
+                    dateOrder.push(tglNum);
+                }
+
+                if (code === 'D') dateMap[tglNum].d = true;
+                else if (code === 'P') dateMap[tglNum].p = true;
+                else if (code === 'DP' || code === 'A') { dateMap[tglNum].d = true; dateMap[tglNum].p = true; }
+                else dateMap[tglNum].other.push(code);
             } else {
-                return '<span class="tp-tgl-chip tp-tgl-other">' + tp_escapeHtml(trimmed) + '</span>';
+                // Non-standard text
+                dateOrder.push(trimmed);
+                dateMap[trimmed] = { raw: trimmed };
+            }
+        });
+
+        var badgesHtml = dateOrder.map(function(key) {
+            var obj = dateMap[key];
+            if (obj.raw) {
+                return '<span class="tp-tgl-chip tp-tgl-other">' + tp_escapeHtml(obj.raw) + '</span>';
+            }
+
+            var tglNum = key;
+            var isD = obj.d;
+            var isP = obj.p;
+
+            if (isD && isP) {
+                // Keduanya (Datang & Pulang) -> Red Danger Chip
+                return '<span class="tp-tgl-chip tp-tgl-dp" title="Tanggal ' + tglNum + ': Tidak Absen Datang & Pulang">' +
+                           '<span class="tp-tgl-num">' + tglNum + '</span>' +
+                           '<span class="tp-tgl-sub-group">' +
+                               '<span class="tp-sub-badge tp-sub-d"><i class="fas fa-sign-in-alt"></i> Datang</span>' +
+                               '<span class="tp-sub-badge tp-sub-p"><i class="fas fa-sign-out-alt"></i> Pulang</span>' +
+                           '</span>' +
+                       '</span>';
+            } else if (isD) {
+                // Hanya Datang -> Kuning Warning Chip
+                return '<span class="tp-tgl-chip tp-tgl-d" title="Tanggal ' + tglNum + ': Tidak Absen Datang">' +
+                           '<span class="tp-tgl-num">' + tglNum + '</span>' +
+                           '<span class="tp-tgl-sub-group">' +
+                               '<span class="tp-sub-badge tp-sub-d"><i class="fas fa-sign-in-alt"></i> Datang</span>' +
+                           '</span>' +
+                       '</span>';
+            } else if (isP) {
+                // Hanya Pulang -> Cyan / Blue Info Chip
+                return '<span class="tp-tgl-chip tp-tgl-p" title="Tanggal ' + tglNum + ': Tidak Absen Pulang">' +
+                           '<span class="tp-tgl-num">' + tglNum + '</span>' +
+                           '<span class="tp-tgl-sub-group">' +
+                               '<span class="tp-sub-badge tp-sub-p"><i class="fas fa-sign-out-alt"></i> Pulang</span>' +
+                           '</span>' +
+                       '</span>';
+            } else {
+                return '<span class="tp-tgl-chip tp-tgl-other">' + tglNum + '</span>';
             }
         }).join('');
-        
+
         return '<div class="tp-tgl-wrapper">' + badgesHtml + '</div>';
     }
 
