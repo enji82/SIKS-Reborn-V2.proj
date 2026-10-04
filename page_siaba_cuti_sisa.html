@@ -322,7 +322,7 @@
         data.forEach(function (row) {
             var arrRow = [];
 
-            // Col 0: Combined NAMA ASN (Name, NIP, Unit Kerja)
+            // Col 0: Combined NAMA ASN (Name, NIP, Unit Kerja) - Sesuai Kode Pusat Global Sultan UI
             var safeNama = sisact_escapeHtml(row[1]);
             var safeNip = sisact_escapeHtml(row[2] || '-');
             var safeUnit = sisact_escapeHtml(row[0] || '-');
@@ -333,15 +333,40 @@
 
             // Kolom Status s/d Sisa CT (Index Array Data 3 s/d 12)
             for (var c = 3; c <= 12; c++) {
-                var val = row[c]; var disp = val;
-                if (val == 0 || val == "0" || val == "0.00" || val === "" || val == null || val == "-") {
-                    disp = `<span class="opacity-50">-</span>`;
-                } else {
-                    var num = parseFloat(String(val).replace(',', '.'));
-                    if (!isNaN(num) && num < 0) {
-                        disp = `<span class="sultan-badge sultan-badge-danger">${sisact_escapeHtml(val)}</span>`;
+                var val = row[c]; 
+                var disp = val;
+
+                if (c === 3) {
+                    // Status Pegawai (PNS / PPPK / dll)
+                    var stStr = String(val || '-').trim();
+                    if (stStr === '-' || !stStr) {
+                        disp = `<span class="opacity-50">-</span>`;
+                    } else if (stStr.toUpperCase() === 'PNS') {
+                        disp = `<span class="sultan-badge sultan-badge-info">${sisact_escapeHtml(stStr)}</span>`;
+                    } else if (stStr.toUpperCase().includes('PPPK')) {
+                        disp = `<span class="sultan-badge sultan-badge-warning">${sisact_escapeHtml(stStr)}</span>`;
                     } else {
-                        disp = sisact_escapeHtml(val);
+                        disp = `<span class="sultan-badge sultan-badge-secondary">${sisact_escapeHtml(stStr)}</span>`;
+                    }
+                } else {
+                    // Kolom Angka (Hak Cuti, Diambil, Sisa Cuti)
+                    if (val == 0 || val == "0" || val == "0.00" || val === "" || val == null || val == "-") {
+                        disp = `<span class="opacity-50">-</span>`;
+                    } else {
+                        var num = parseFloat(String(val).replace(',', '.'));
+                        if (!isNaN(num)) {
+                            if (num < 0) {
+                                // Nilai Minus (Utang Cuti) -> Merah sesuai panduan info card
+                                disp = `<span class="sultan-badge sultan-badge-danger">${sisact_escapeHtml(val)}</span>`;
+                            } else if (c === 10) {
+                                // Kolom Sisa CT (Jml Sisa CT Total) Positif -> Hijau sesuai panduan info card
+                                disp = `<span class="sultan-badge sultan-badge-success">${sisact_escapeHtml(val)}</span>`;
+                            } else {
+                                disp = sisact_escapeHtml(val);
+                            }
+                        } else {
+                            disp = sisact_escapeHtml(val);
+                        }
                     }
                 }
                 arrRow.push(disp);
