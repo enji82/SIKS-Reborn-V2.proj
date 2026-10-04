@@ -12,6 +12,35 @@
     word-break: break-word !important;
   }
 
+  .unduh-file-row {
+    cursor: pointer;
+    transition: background-color 0.15s ease-in-out;
+  }
+  .unduh-file-row:hover {
+    background-color: var(--sultan-table-hover, #ffe8e8) !important;
+  }
+  .dark-mode .unduh-file-row:hover {
+    background-color: var(--sultan-table-hover-dm, #2a2d32) !important;
+  }
+
+  .unduh-type-chip {
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    margin-left: 6px;
+  }
+  .chip-folder { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+  .chip-pdf { background: #ffe5e5; color: #d9534f; border: 1px solid #ffcdd2; }
+  .chip-excel { background: #e6fffa; color: #28a745; border: 1px solid #c3e6cb; }
+  .chip-word { background: #e6f0ff; color: #0275d8; border: 1px solid #b8daff; }
+  
+  .dark-mode .chip-folder { background: rgba(240, 173, 78, 0.2); color: #ffc107; border-color: rgba(240, 173, 78, 0.35); }
+  .dark-mode .chip-pdf { background: rgba(217, 83, 79, 0.2); color: #ff6b6b; border-color: rgba(217, 83, 79, 0.35); }
+  .dark-mode .chip-excel { background: rgba(40, 167, 69, 0.2); color: #81c784; border-color: rgba(40, 167, 69, 0.35); }
+  .dark-mode .chip-word { background: rgba(2, 117, 216, 0.2); color: #64b5f6; border-color: rgba(2, 117, 216, 0.35); }
+
   /* Optimal portrait document preview modal sizing */
   .unduh-modal-preview {
     max-width: 950px !important;
@@ -59,28 +88,28 @@
         <!-- FOLDER NAVIGATION BAR (SULTAN PILL STYLE) -->
         <div id="unduh_wadahFilter" class="sultan-filter-pill-container shadow-sm mb-4">
           <div class="d-flex align-items-center flex-wrap" style="gap: 10px;">
-            <button type="button" id="unduh_btnHome" class="sultan-btn-refresh" title="Folder Utama">
+            <button type="button" id="unduh_btnHome" class="sultan-btn-refresh" title="Folder Beranda (Root)">
               <i class="fas fa-home"></i>
             </button>
 
-            <button type="button" id="unduh_btnBack" class="sultan-btn-refresh" style="display:none;" title="Kembali">
+            <button type="button" id="unduh_btnBack" class="sultan-btn-refresh" style="display:none;" title="Naik Ke Folder Atas">
               <i class="fas fa-level-up-alt"></i>
             </button>
 
-            <button type="button" id="unduh_btnRefresh" class="sultan-btn-refresh" title="Refresh Folder Ini">
+            <button type="button" id="unduh_btnRefresh" class="sultan-btn-refresh" title="Refresh Isi Folder">
               <i class="fas fa-sync-alt"></i>
             </button>
 
             <div class="divider-vertical d-none d-md-block mx-1"></div>
 
             <div class="d-flex align-items-center px-2" style="min-width: 200px;">
-              <i class="fas fa-folder-open text-sultan-utama mr-2"></i>
-              <span id="unduh_folderNameLabel" class="font-weight-bold text-dark small text-uppercase">MEMUAT...</span>
+              <i class="fas fa-folder-open text-maroon mr-2"></i>
+              <span id="unduh_folderNameLabel" class="font-weight-bold text-dark small text-uppercase">BERANDA</span>
             </div>
           </div>
 
           <div class="ml-auto d-none d-md-block text-muted small font-weight-bold mr-2">
-            Total Item: <span id="unduh_totalItemCount" class="text-maroon">0</span>
+            Total Item: <span id="unduh_totalItemCount" class="badge badge-soft-primary px-2 py-1" style="font-size: 0.82rem;">0</span>
           </div>
         </div>
 
@@ -264,32 +293,48 @@
       var iconHtml = '';
       var btnAction = '';
       var nameHtml = '';
+      var sizeDisplay = '';
 
       var safeName = unduh_escapeHtml(item.name);
 
       // --- LOGIKA FOLDER ---
       if (item.type === 'folder') {
-        iconHtml = '<i class="fas fa-folder text-gold-sultan mr-2 fa-lg"></i>';
-        nameHtml = `<span class="font-weight-bold text-dark text-nowrap">${safeName}</span>`;
-        btnAction = `<button type="button" class="sultan-btn sultan-btn-compact sultan-btn-aksi-primary btn-aksi-sultan unduh-btn-folder" data-id="${item.id}">Buka Folder</button>`;
+        iconHtml = '<i class="fas fa-folder text-warning mr-2 fa-lg"></i>';
+        nameHtml = `<span class="font-weight-bold text-dark text-nowrap">${safeName}</span><span class="unduh-type-chip chip-folder">FOLDER</span>`;
+        btnAction = `<button type="button" class="sultan-btn sultan-btn-compact sultan-btn-aksi-primary btn-aksi-sultan unduh-btn-folder" data-id="${item.id}"><i class="fas fa-folder-open mr-1"></i> Buka Folder</button>`;
+        sizeDisplay = '<span class="text-muted opacity-50">-</span>';
       }
       // --- LOGIKA FILE ---
       else {
         var mime = item.mimeType;
-        if (mime.includes('pdf')) iconHtml = '<i class="fas fa-file-pdf text-danger mr-2 fa-lg"></i>';
-        else if (mime.includes('image')) iconHtml = '<i class="fas fa-file-image text-orange-sultan mr-2 fa-lg"></i>';
-        else if (mime.includes('spreadsheet') || mime.includes('excel')) iconHtml = '<i class="fas fa-file-excel text-green-sultan mr-2 fa-lg"></i>';
-        else if (mime.includes('document') || mime.includes('word')) iconHtml = '<i class="fas fa-file-word text-blue-sultan mr-2 fa-lg"></i>';
-        else iconHtml = '<i class="fas fa-file text-secondary mr-2 fa-lg"></i>';
+        var chipClass = 'chip-other';
+        var chipLabel = 'FILE';
 
-        nameHtml = `<span class="text-dark text-nowrap">${safeName}</span>`;
-        btnAction = `<div class="d-flex flex-nowrap justify-content-center"><button type="button" class="sultan-btn sultan-btn-compact sultan-btn-aksi-maroon btn-aksi-sultan unduh-btn-file" data-id="${item.id}" data-mime="${item.mimeType}"><i class="fas fa-eye mr-1"></i> Lihat & Unduh</button></div>`;
+        if (mime.includes('pdf')) { 
+          iconHtml = '<i class="fas fa-file-pdf text-danger mr-2 fa-lg"></i>';
+          chipClass = 'chip-pdf'; chipLabel = 'PDF';
+        } else if (mime.includes('image')) { 
+          iconHtml = '<i class="fas fa-file-image text-warning mr-2 fa-lg"></i>';
+          chipClass = 'chip-other'; chipLabel = 'GAMBAR';
+        } else if (mime.includes('spreadsheet') || mime.includes('excel')) { 
+          iconHtml = '<i class="fas fa-file-excel text-success mr-2 fa-lg"></i>';
+          chipClass = 'chip-excel'; chipLabel = 'EXCEL';
+        } else if (mime.includes('document') || mime.includes('word')) { 
+          iconHtml = '<i class="fas fa-file-word text-primary mr-2 fa-lg"></i>';
+          chipClass = 'chip-word'; chipLabel = 'WORD';
+        } else {
+          iconHtml = '<i class="fas fa-file text-secondary mr-2 fa-lg"></i>';
+        }
+
+        nameHtml = `<span class="text-dark text-nowrap font-weight-bold">${safeName}</span><span class="unduh-type-chip ${chipClass}">${chipLabel}</span>`;
+        btnAction = `<div class="d-flex flex-nowrap justify-content-center"><button type="button" class="sultan-btn sultan-btn-compact sultan-btn-aksi-maroon btn-aksi-sultan unduh-btn-file" data-id="${item.id}" data-mime="${item.mimeType}"><i class="fas fa-eye mr-1"></i> Pratinjau & Unduh</button></div>`;
+        sizeDisplay = `<span class="font-weight-bold text-dark">${item.size || '-'}</span>`;
       }
 
       arrRow.push(i + 1);
       arrRow.push(`<div class="d-flex align-items-center">${iconHtml} ${nameHtml}</div>`);
-      arrRow.push(`<span class="font-weight-bold text-muted">${item.size}</span>`);
-      arrRow.push(`<span class="font-weight-bold text-muted">${item.date}</span>`);
+      arrRow.push(sizeDisplay);
+      arrRow.push(`<span class="font-weight-bold text-muted small">${item.date || '-'}</span>`);
       arrRow.push(btnAction);
 
       dtArray.push(arrRow);
