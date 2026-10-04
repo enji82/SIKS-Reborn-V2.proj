@@ -536,16 +536,16 @@ function apel_renderTabel(dataRows) {
                 <tbody id="apel_tbodyUtama"></tbody>
             `;
         } else {
-            // Mode Rekapitulasi: Kolom 1 = Nama, Kolom 2..7 = HA, APL, TAp, HU, U, TU
+            // Mode Rekapitulasi: Kolom 1 = Nama, Kolom 2..7 = HA, APL, TAPL, HU, U, TU
             theadHtml = `
                 <thead class="thead-sultan-premium text-maroon text-uppercase">
                     <tr>
                         <th class="sultan-sticky-col text-left px-3 align-middle" style="min-width: 220px;">NAMA ASN / NIP</th>
                         <th class="text-center align-middle px-2 bg-soft-success" title="Hari Apel">HA</th>
-                        <th class="text-center align-middle px-2 bg-soft-success" title="Hadir Apel">APL</th>
-                        <th class="text-center align-middle px-2 bg-soft-danger" title="Tidak Apel">TAp</th>
+                        <th class="text-center align-middle px-2 bg-soft-success" title="Apel">APL</th>
+                        <th class="text-center align-middle px-2 bg-soft-danger" title="Tidak Apel">TAPL</th>
                         <th class="text-center align-middle px-2 bg-soft-warning" title="Hari Upacara">HU</th>
-                        <th class="text-center align-middle px-2 bg-soft-warning" title="Hadir Upacara">U</th>
+                        <th class="text-center align-middle px-2 bg-soft-warning" title="Upacara">U</th>
                         <th class="text-center align-middle px-2 bg-soft-danger" title="Tidak Upacara">TU</th>
                     </tr>
                 </thead>
@@ -561,7 +561,7 @@ function apel_renderTabel(dataRows) {
             if (!row || !Array.isArray(row)) return;
             var arrRow = [];
             
-            // Identitas ASN
+            // Identitas ASN (row[0] = Nama ASN [Kolom D], row[1] = NIP [Kolom E])
             var safeNama = apel_escapeHtml(row[0]);
             var safeNip = apel_escapeHtml(row[1]);
             var safeUnit = apel_escapeHtml(row[row.length - 1] || '-');
@@ -572,9 +572,12 @@ function apel_renderTabel(dataRows) {
 
             if (APEL_VIEW_MODE === 'matriks') {
                 // Mode Harian: Tanggal 1 s.d numDays
-                // Data spreadsheet: Index 7 adalah Tgl 1, Index 8 adalah Tgl 2, dst.
+                // Data spreadsheet (dataCells = row.slice(3,42)):
+                // Index 0: Nama ASN (D), Index 1: NIP (E)
+                // Index 2: HA (F), 3: APL (G), 4: TAPL (H), 5: HU (I), 6: U (J), 7: TU (K)
+                // Index 8: Tgl 1 (L), Index 9: Tgl 2 (M), ... Index 7 + d: Tgl d
                 for (var d = 1; d <= numDays; d++) {
-                    var valIdx = 6 + d; // Tgl 1 ada di row[7]
+                    var valIdx = 7 + d; // Tgl 1 ada di row[8]
                     var val = row[valIdx];
                     var strVal = String(val || "").toUpperCase().trim();
                     var display = val;
@@ -588,14 +591,14 @@ function apel_renderTabel(dataRows) {
                         else if (['DD', 'DL'].includes(safeStr)) display = `<span class="text-blue-sultan font-weight-bold">${safeStr}</span>`; 
                         else if (['CT', 'CS', 'CAP', 'CM', 'CB', 'CLTN'].includes(safeStr)) display = `<span class="text-green-sultan font-weight-bold">${safeStr}</span>`; 
                         else if (safeStr.indexOf('U') > -1) display = `<span class="text-purple-sultan font-weight-bold">${safeStr}</span>`; 
-                        else if (['TA', 'PLA', 'LA', 'TAP', 'TU'].includes(safeStr)) display = `<span class="text-danger font-weight-bold">${safeStr}</span>`; 
+                        else if (['TA', 'PLA', 'LA', 'TAP', 'TAPL', 'TU'].includes(safeStr)) display = `<span class="text-danger font-weight-bold">${safeStr}</span>`; 
                         else display = `<span class="text-dark font-weight-bold">${safeStr}</span>`;
                     }
                     arrRow.push(display);
                 }
             } else {
-                // Mode Rekapitulasi: 6 Kolom Rekap (HA, APL, TAp, HU, U, TU -> Index 1 s.d. 6)
-                for (var visIdx = 1; visIdx <= 6; visIdx++) {
+                // Mode Rekapitulasi: 6 Kolom Rekap (HA, APL, TAPL, HU, U, TU -> Index 2 s.d. 7)
+                for (var visIdx = 2; visIdx <= 7; visIdx++) {
                     var val = row[visIdx]; 
                     var strVal = String(val || "").toUpperCase().trim();
                     var display = val;
@@ -604,9 +607,9 @@ function apel_renderTabel(dataRows) {
                         display = `<span class="text-muted opacity-50">-</span>`;
                     } else {
                         var safeVal = apel_escapeHtml(val);
-                        if (visIdx === 1 || visIdx === 2) display = `<span class="text-success font-weight-bold">${safeVal}</span>`;
-                        else if (visIdx === 3 || visIdx === 6) display = `<span class="text-danger font-weight-bold">${safeVal}</span>`;
-                        else if (visIdx === 4 || visIdx === 5) display = `<span class="text-dark font-weight-bold">${safeVal}</span>`;
+                        if (visIdx === 2 || visIdx === 3) display = `<span class="text-success font-weight-bold">${safeVal}</span>`;
+                        else if (visIdx === 4 || visIdx === 7) display = `<span class="text-danger font-weight-bold">${safeVal}</span>`;
+                        else if (visIdx === 5 || visIdx === 6) display = `<span class="text-dark font-weight-bold">${safeVal}</span>`;
                     }
                     arrRow.push(display);
                 }

@@ -116,6 +116,7 @@ function getSiabaDataApel(filterTahun, filterBulan, filterUnit) {
 
     const allData = sheetTarget.getDataRange().getDisplayValues();
     
+    // Header D s.d AP (Index 3 s.d 41 => 39 kolom)
     const headerData = allData[0].slice(3, 42); 
     
     allData.shift(); 
@@ -128,10 +129,10 @@ function getSiabaDataApel(filterTahun, filterBulan, filterUnit) {
         let row = allData[i];
         if (row.length < 3) continue;
         
-        let rowUnit = row[2]; 
+        let rowUnit = row[2]; // Kolom C = Unit Kerja (index 2)
         
         if (effectiveUnit === "SEMUA" || effectiveUnit === "" || rowUnit == effectiveUnit) {
-             let dataCells = row.slice(3, 42); 
+             let dataCells = row.slice(3, 42); // D s.d AP (Nama, NIP, HA, APL, TAPL, HU, U, TU, 1..31)
              result.push(dataCells.concat([rowUnit]));
         }
     }
