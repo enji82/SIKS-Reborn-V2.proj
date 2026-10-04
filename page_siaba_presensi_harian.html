@@ -724,6 +724,17 @@ function harian_isTanggalMerah(thn, blnNama, dayNum) {
     return null;
 }
 
+function harian_cleanTime(tStr) {
+    if (!tStr) return "";
+    var parts = String(tStr).trim().split(":");
+    if (parts.length >= 2) {
+        var hh = ("0" + parseInt(parts[0], 10)).slice(-2);
+        var mm = ("0" + parseInt(parts[1], 10)).slice(-2);
+        return hh + ":" + mm;
+    }
+    return String(tStr).trim();
+}
+
 function harian_formatComboCell(dVal, pVal, dayNum, thn, blnNama) {
     var strD = String(dVal || "").trim().toUpperCase();
     var strP = String(pVal || "").trim().toUpperCase();
@@ -804,17 +815,6 @@ function harian_formatComboCell(dVal, pVal, dayNum, thn, blnNama) {
         }
     }
 
-    var harian_cleanTime = function(tStr) {
-        if (!tStr) return "";
-        var parts = tStr.trim().split(":");
-        if (parts.length >= 2) {
-            var hh = ("0" + parseInt(parts[0], 10)).slice(-2);
-            var mm = ("0" + parseInt(parts[1], 10)).slice(-2);
-            return hh + ":" + mm;
-        }
-        return tStr;
-    };
-
     var normD = harian_cleanTime(strD);
     var normP = harian_cleanTime(strP);
     var normToleransi = harian_cleanTime(toleransiStd);
@@ -867,13 +867,12 @@ function harian_renderTabel(dataRows) {
         var bl = $('#harian_filterBulan').val();
         var numDays = harian_getJumlahHari(th, bl); // 28, 29, 30, atau 31
 
-        // 1. Destroy DataTable & bersihkan DOM tabel secara aman
-        if ($.fn.DataTable.isDataTable('#harian_tabelUtama')) {
+        // 1. Destroy DataTable secara aman jika ada
+        if (HARIAN_TABEL_INSTANCE) {
             try {
-                $('#harian_tabelUtama').DataTable().destroy();
-            } catch (errDt) {
-                console.warn("DataTable destroy warning:", errDt);
-            }
+                HARIAN_TABEL_INSTANCE.destroy();
+                HARIAN_TABEL_INSTANCE = null;
+            } catch (errDt) {}
         }
         
         // Bersihkan isi container tabel dan pastikan elemen #harian_tabelUtama siap
