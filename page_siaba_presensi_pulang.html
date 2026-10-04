@@ -1,4 +1,38 @@
 <!-- CSS tersentralisasi di css_sultan.html Section 18.1 & 18.2 -->
+<style>
+.pla-freq-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 10px;
+  background-color: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeeba;
+}
+.dark-mode .pla-freq-badge {
+  background-color: rgba(240, 173, 78, 0.2);
+  color: #ffc107;
+  border-color: rgba(240, 173, 78, 0.35);
+}
+
+.pla-durasi-val {
+  font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #212529;
+}
+.dark-mode .pla-durasi-val {
+  color: #e9ecef;
+}
+
+.pla-kpi-col {
+  background-color: #fff9e6 !important;
+}
+.dark-mode .pla-kpi-col {
+  background-color: rgba(240, 173, 78, 0.15) !important;
+}
+</style>
 
 <section class="content">
   <div class="container-fluid">
@@ -18,8 +52,8 @@
             <div id="pla_infoCollapse" class="collapse">
               <div class="info-body">
                 <ul class="mb-0 pl-3">
-                    <li>Data diurutkan berdasarkan <b>Total Menit Pulang Awal</b> terbanyak.</li>
-                    <li>Angka yang ditampilkan adalah jumlah menit dan detik kekurangan jam kerja (pulang sebelum waktunya).</li>
+                    <li>Data diurutkan berdasarkan <b>Total Menit Pulang Awal (JUMLAH)</b> terbanyak.</li>
+                    <li>Sub-kolom <b>KALI</b> menunjukkan frekuensi pulang awal (berapa kali), sedangkan <b>DURASI</b> menunjukkan total kekurangan jam kerja (JAM:MENIT).</li>
                 </ul>
               </div>
             </div>
@@ -314,21 +348,24 @@ function pla_renderTabel(rows) {
         var headerTop = PLA_HEADER_TOP; 
         var headerSub = PLA_HEADER_SUB; 
         
-        // VAKSIN LEBAR: Tag <th> tanpa paksaan min-width (Identik dengan Status SK)
-        var htmlTop = `<th rowspan="2" class="sultan-sticky-col text-left px-3 align-middle">Nama ASN</th>`;
+        var htmlTop = `<th rowspan="2" class="sultan-sticky-col text-left px-3 align-middle">Nama ASN / NIP</th>`;
         var htmlSub = '';
 
         for (let i = 2; i < headerTop.length; i++) {
             let titleTop = pla_escapeHtml(headerTop[i]);
-            let titleSub = pla_escapeHtml(headerSub[i]);
+            let rawSub = String(headerSub[i] || "").trim();
+
+            let labelSub = rawSub.toUpperCase() === "X" ? "KALI" : (rawSub.toUpperCase() === "JAM:MNT" ? "DURASI" : pla_escapeHtml(rawSub));
+            let isKpiCol = (titleTop.toUpperCase() === "JUMLAH" || i >= headerTop.length - 2);
+            let kpiClass = isKpiCol ? 'pla-kpi-col font-weight-bold' : '';
 
             if (titleTop !== "" && i < headerTop.length - 1) {
-                htmlTop += `<th colspan="2" class="text-center align-middle">${titleTop}</th>`;
-                htmlSub += `<th class="text-center align-middle py-2">${titleSub}</th>`;
+                htmlTop += `<th colspan="2" class="text-center align-middle ${kpiClass}">${titleTop}</th>`;
+                htmlSub += `<th class="text-center align-middle py-2 ${kpiClass}">${labelSub}</th>`;
             } else if (titleTop === "" && i > 0) {
-                htmlSub += `<th class="text-center align-middle py-2">${titleSub}</th>`;
+                htmlSub += `<th class="text-center align-middle py-2 ${kpiClass}">${labelSub}</th>`;
             } else {
-                htmlTop += `<th rowspan="2" class="text-center align-middle">${titleTop}</th>`;
+                htmlTop += `<th rowspan="2" class="text-center align-middle ${kpiClass}">${titleTop}</th>`;
             }
         }
         $('#pla_rowHeaderTop').html(htmlTop);
@@ -341,7 +378,6 @@ function pla_renderTabel(rows) {
         rows.forEach(function(row) {
             var arrRow = [];
             
-            // Kolom 1 (Index 0): Gabungan Nama & NIP (Vaksin text-nowrap mutlak)
             var safeNama = pla_escapeHtml(row[0]);
             var safeNip  = pla_escapeHtml(row[1]);
             var safeUnit = pla_escapeHtml(row[row.length - 1] || '-');
@@ -349,10 +385,22 @@ function pla_renderTabel(rows) {
             var txtUnitHtml = PLA_IS_ADMIN ? `<div class="data-tersier text-left mt-1">${safeUnit}</div>` : '';
             arrRow.push(`<div class="sultan-table-primary text-left">${safeNama}</div><div class="sultan-table-secondary text-left">${safeNip}</div>${txtUnitHtml}`);
             
-            // Kolom Angka (Index 2 sampai batas sebelum kolom unit)
             for (var colIdx = 2; colIdx < row.length - 1; colIdx++) {
                 var val = row[colIdx];
-                arrRow.push(val == 0 || val == "0" || val === "" ? "-" : pla_escapeHtml(val));
+                var strVal = String(val || "").trim();
+
+                if (strVal === "" || strVal === "-" || strVal === "0") {
+                    arrRow.push('<span class="text-muted opacity-50">-</span>');
+                } else {
+                    var isFrekuensiCol = (colIdx % 2 === 0);
+                    var safeText = pla_escapeHtml(strVal);
+
+                    if (isFrekuensiCol) {
+                        arrRow.push(`<span class="pla-freq-badge">${safeText}x</span>`);
+                    } else {
+                        arrRow.push(`<span class="pla-durasi-val">${safeText}</span>`);
+                    }
+                }
             }
             dtArray.push(arrRow);
         });
@@ -360,7 +408,6 @@ function pla_renderTabel(rows) {
 
     // --- C. INISIALISASI & INJEKSI DATA (BAB VII) ---
     if (isFirstLoad) {
-        // Kalkulasi matematis jumlah kolom aktif untuk columnDefs (Anti _all)
         var totalCols = (dtArray.length > 0) ? dtArray[0].length : (PLA_HEADER_TOP.length - 1);
         var targetDynamicArray = Array.from({length: Math.max(0, totalCols - 1)}, function(_, i) { return i + 1; });
 
@@ -371,7 +418,7 @@ function pla_renderTabel(rows) {
             "ordering": false,
             "pageLength": 10,
             "autoWidth": false,
-            "deferRender": true, // Performa Turbo
+            "deferRender": true,
             "dom": "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
                    "<'row'<'col-sm-12'<'sultan-scroll-container sultan-scroll'tr>>>" +
                    "<'row mt-3'<'col-sm-12 col-md-5 small text-muted'i><'col-sm-12 col-md-7'p>>",
@@ -396,14 +443,8 @@ function pla_renderTabel(rows) {
                          cell.style.setProperty('padding', '4px 10px', 'important');
                      } else {
                          cell.style.setProperty('padding', '4px 6px', 'important');
-                         var rawVal = cell.textContent.trim();
-
-                         if (rawVal === "-") {
-                             cell.classList.add('text-muted', 'opacity-50');
-                         } else {
-                             if (visIdx === lastIdx || visIdx === secondLastIdx) {
-                                 cell.classList.add('text-danger', 'font-weight-bold');
-                             }
+                         if (visIdx === lastIdx || visIdx === secondLastIdx) {
+                             cell.classList.add('pla-kpi-col', 'text-warning', 'font-weight-bold');
                          }
                      }
                  }

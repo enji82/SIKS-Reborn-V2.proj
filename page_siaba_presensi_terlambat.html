@@ -1,4 +1,38 @@
 <!-- CSS tersentralisasi di css_sultan.html Section 18.1 & 18.2 -->
+<style>
+.ta-freq-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 10px;
+  background-color: #f0f2f5;
+  color: #495057;
+  border: 1px solid #e9ecef;
+}
+.dark-mode .ta-freq-badge {
+  background-color: rgba(255, 255, 255, 0.08);
+  color: #adb5bd;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.ta-durasi-val {
+  font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #212529;
+}
+.dark-mode .ta-durasi-val {
+  color: #e9ecef;
+}
+
+.ta-kpi-col {
+  background-color: #fff5f5 !important;
+}
+.dark-mode .ta-kpi-col {
+  background-color: rgba(217, 83, 79, 0.15) !important;
+}
+</style>
 
 <section class="content">
   <div class="container-fluid">
@@ -18,8 +52,8 @@
             <div id="ta_infoCollapse" class="collapse">
               <div class="info-body">
                 <ul class="mb-0 pl-3">
-                    <li>Data diurutkan berdasarkan <b>Total Menit Terlambat</b> terbanyak.</li>
-                    <li>Angka yang ditampilkan adalah jumlah menit dan detik keterlambatan setiap bulan.</li>
+                    <li>Data diurutkan berdasarkan <b>Total Menit Terlambat (JUMLAH)</b> terbanyak.</li>
+                    <li>Sub-kolom <b>KALI</b> menunjukkan frekuensi keterlambatan (berapa kali), sedangkan <b>DURASI</b> menunjukkan total waktu keterlambatan.</li>
                 </ul>
               </div>
             </div>
@@ -314,21 +348,24 @@ function ta_renderTabel(rows) {
         var headerTop = TA_HEADER_TOP; 
         var headerSub = TA_HEADER_SUB; 
         
-        // VAKSIN LEBAR: Tag <th> tanpa paksaan min-width (Identik dengan Status SK)
-        var htmlTop = `<th rowspan="2" class="sultan-sticky-col text-left px-3 align-middle">Nama ASN</th>`;
+        var htmlTop = `<th rowspan="2" class="sultan-sticky-col text-left px-3 align-middle">Nama ASN / NIP</th>`;
         var htmlSub = '';
 
         for (let i = 2; i < headerTop.length; i++) {
             let titleTop = ta_escapeHtml(headerTop[i]);
-            let titleSub = ta_escapeHtml(headerSub[i]);
+            let rawSub = String(headerSub[i] || "").trim();
+
+            let labelSub = rawSub.toUpperCase() === "X" ? "KALI" : (rawSub.toUpperCase() === "JAM:MNT" ? "DURASI" : ta_escapeHtml(rawSub));
+            let isKpiCol = (titleTop.toUpperCase() === "JUMLAH" || i >= headerTop.length - 2);
+            let kpiClass = isKpiCol ? 'ta-kpi-col font-weight-bold' : '';
 
             if (titleTop !== "" && i < headerTop.length - 1) {
-                htmlTop += `<th colspan="2" class="text-center align-middle">${titleTop}</th>`;
-                htmlSub += `<th class="text-center align-middle py-2">${titleSub}</th>`;
+                htmlTop += `<th colspan="2" class="text-center align-middle ${kpiClass}">${titleTop}</th>`;
+                htmlSub += `<th class="text-center align-middle py-2 ${kpiClass}">${labelSub}</th>`;
             } else if (titleTop === "" && i > 0) {
-                htmlSub += `<th class="text-center align-middle py-2">${titleSub}</th>`;
+                htmlSub += `<th class="text-center align-middle py-2 ${kpiClass}">${labelSub}</th>`;
             } else {
-                htmlTop += `<th rowspan="2" class="text-center align-middle">${titleTop}</th>`;
+                htmlTop += `<th rowspan="2" class="text-center align-middle ${kpiClass}">${titleTop}</th>`;
             }
         }
         $('#ta_rowHeaderTop').html(htmlTop);
@@ -341,7 +378,6 @@ function ta_renderTabel(rows) {
         rows.forEach(function(row) {
             var arrRow = [];
             
-            // Kolom 1 (Index 0): Gabungan Nama & NIP (Vaksin text-nowrap mutlak)
             var safeNama = ta_escapeHtml(row[0]);
             var safeNip  = ta_escapeHtml(row[1]);
             var safeUnit = ta_escapeHtml(row[row.length - 1] || '-');
@@ -349,10 +385,22 @@ function ta_renderTabel(rows) {
             var txtUnitHtml = TA_IS_ADMIN ? `<div class="data-tersier text-left mt-1">${safeUnit}</div>` : '';
             arrRow.push(`<div class="sultan-table-primary text-left">${safeNama}</div><div class="sultan-table-secondary text-left">${safeNip}</div>${txtUnitHtml}`);
             
-            // Kolom Angka (Index 2 sampai batas sebelum kolom unit)
             for (var colIdx = 2; colIdx < row.length - 1; colIdx++) {
                 var val = row[colIdx];
-                arrRow.push(val == 0 || val == "0" || val === "" ? "-" : ta_escapeHtml(val));
+                var strVal = String(val || "").trim();
+
+                if (strVal === "" || strVal === "-" || strVal === "0") {
+                    arrRow.push('<span class="text-muted opacity-50">-</span>');
+                } else {
+                    var isFrekuensiCol = (colIdx % 2 === 0);
+                    var safeText = ta_escapeHtml(strVal);
+
+                    if (isFrekuensiCol) {
+                        arrRow.push(`<span class="ta-freq-badge">${safeText}x</span>`);
+                    } else {
+                        arrRow.push(`<span class="ta-durasi-val">${safeText}</span>`);
+                    }
+                }
             }
             dtArray.push(arrRow);
         });
@@ -360,7 +408,6 @@ function ta_renderTabel(rows) {
 
     // --- C. INISIALISASI & INJEKSI DATA (BAB VII) ---
     if (isFirstLoad) {
-        // Kalkulasi matematis jumlah kolom aktif untuk columnDefs (Anti _all)
         var totalCols = (dtArray.length > 0) ? dtArray[0].length : (TA_HEADER_TOP.length - 1);
         var targetDynamicArray = Array.from({length: Math.max(0, totalCols - 1)}, function(_, i) { return i + 1; });
 
@@ -371,7 +418,7 @@ function ta_renderTabel(rows) {
             "ordering": false,
             "pageLength": 10,
             "autoWidth": false,
-            "deferRender": true, // Performa Turbo
+            "deferRender": true,
             "dom": "<'row mb-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
                    "<'row'<'col-sm-12'<'sultan-scroll-container sultan-scroll'tr>>>" +
                    "<'row mt-3'<'col-sm-12 col-md-5 small text-muted'i><'col-sm-12 col-md-7'p>>",
@@ -396,14 +443,8 @@ function ta_renderTabel(rows) {
                          cell.style.setProperty('padding', '4px 10px', 'important');
                      } else {
                          cell.style.setProperty('padding', '4px 6px', 'important');
-                         var rawVal = cell.textContent.trim();
-
-                         if (rawVal === "-") {
-                             cell.classList.add('text-muted', 'opacity-50');
-                         } else {
-                             if (visIdx === lastIdx || visIdx === secondLastIdx) {
-                                 cell.classList.add('text-danger', 'font-weight-bold');
-                             }
+                         if (visIdx === lastIdx || visIdx === secondLastIdx) {
+                             cell.classList.add('ta-kpi-col', 'text-danger', 'font-weight-bold');
                          }
                      }
                  }
