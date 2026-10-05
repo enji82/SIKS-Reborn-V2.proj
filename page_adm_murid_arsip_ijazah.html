@@ -39,15 +39,25 @@
               <div class="table-responsive sultan-scroll">
                 <table id="arsipijazah_tabelUtama"
                   class="table table-hover table-premium table-sultan-compact text-nowrap mb-0 w-100">
-                  <thead class="thead-sultan-premium">
+                  <thead class="thead-sultan-premium thead-tiered">
                     <tr>
-                      <th class="text-left text-maroon col-sticky-left" style="z-index: 5;">NAMA SEKOLAH</th>
-                      <th class="text-center">TAHUN AJARAN</th>
-                      <th class="text-left">JUMLAH MURID</th>
-                      <th class="text-center">DOKUMEN</th>
-                      <th class="text-left text-nowrap">STATUS</th>
-                      <th class="text-left text-nowrap">AKTIVITAS</th>
-                      <th class="text-center text-nowrap">AKSI</th>
+                      <th rowspan="2" class="th-main align-middle text-maroon text-left px-3 py-1 col-sticky-left" style="z-index: 5;">NAMA SEKOLAH</th>
+                      <th rowspan="2" class="th-main align-middle text-center px-2 py-1">TAHUN AJARAN</th>
+
+                      <th colspan="3" class="th-main align-middle text-center sultan-cell-success px-2 py-1">JUMLAH MURID</th>
+                      <th colspan="2" class="th-main align-middle text-center sultan-cell-info px-2 py-1">DOKUMEN</th>
+
+                      <th rowspan="2" class="th-main align-middle text-left text-nowrap px-2 py-1">STATUS</th>
+                      <th rowspan="2" class="th-main align-middle text-left text-nowrap px-2 py-1">AKTIVITAS</th>
+                      <th rowspan="2" class="th-main align-middle text-center text-nowrap px-2 py-1">AKSI</th>
+                    </tr>
+                    <tr>
+                      <th class="th-sub text-center px-2 py-1">L</th>
+                      <th class="th-sub text-center px-2 py-1">P</th>
+                      <th class="th-sub text-center font-weight-bold px-2 py-1">JML</th>
+
+                      <th class="th-sub text-center px-2 py-1">IJAZAH</th>
+                      <th class="th-sub text-center px-2 py-1">TRANSKRIP</th>
                     </tr>
                   </thead>
                   <tbody></tbody>
@@ -296,9 +306,14 @@
     `;
     $('#arsipijazah_filterStatus').html(htmlStatus).val('SEMUA');
 
-    // Inisialisasi Filter Tahun Ajaran (Default: Tahun Berjalan Saat Ini)
+    // Inisialisasi Filter Tahun Ajaran (Default: Tahun Lalu untuk Arsip)
     var now = new Date(); var curYear = now.getFullYear(); var curMonth = now.getMonth();
     var curTahunAjaran = (curMonth >= 6) ? curYear + "/" + (curYear + 1) : (curYear - 1) + "/" + curYear;
+
+    var parts = curTahunAjaran.split("/");
+    var prevStart = parseInt(parts[0], 10) - 1;
+    var prevEnd = parseInt(parts[1], 10) - 1;
+    var defaultTahunAjaran = prevStart + "/" + prevEnd;
 
     var htmlTahun = '<option value="SEMUA">Semua Tahun</option>';
     var formTahun = '<option value="">Pilih Tahun Ajaran</option>';
@@ -307,7 +322,7 @@
       htmlTahun += '<option value="' + ta + '">' + ta + '</option>';
       formTahun += '<option value="' + ta + '">' + ta + '</option>';
     }
-    $('#arsipijazah_filterTahun').html(htmlTahun).val(curTahunAjaran).prop('disabled', false);
+    $('#arsipijazah_filterTahun').html(htmlTahun).val(defaultTahunAjaran).prop('disabled', false);
     $('#arsipijazah_in_tahun').html(formTahun);
 
     // Ambil daftar sekolah & inisialisasi filter sekolah
@@ -393,7 +408,7 @@
       if (!$.fn.DataTable.isDataTable('#arsipijazah_tabelUtama')) {
         $('#arsipijazah_tableState').hide();
         if (typeof SultanUI !== 'undefined' && typeof SultanUI.renderSkeletonTable === 'function') {
-          SultanUI.renderSkeletonTable('#arsipijazah_loadingState', 7);
+          SultanUI.renderSkeletonTable('#arsipijazah_loadingState', 10);
         }
         $('#arsipijazah_loadingState').show();
       }
@@ -409,13 +424,16 @@
           if (!$.fn.DataTable.isDataTable('#arsipijazah_tabelUtama')) {
             ARSIPIJAZAH_TABEL_INSTANCE = SultanTable.init('#arsipijazah_tabelUtama', {
               columnDefs: [
-                { targets: 0, width: "25%", className: "text-left align-middle col-sticky-left" },
-                { targets: 1, width: "12%", className: "text-center align-middle" },
-                { targets: 2, width: "17%", className: "text-left align-middle" },
-                { targets: 3, width: "12%", className: "text-center align-middle text-nowrap" },
-                { targets: 4, width: "11%", className: "text-left align-middle text-nowrap" },
-                { targets: 5, width: "12%", className: "text-left align-middle text-nowrap" },
-                { targets: 6, width: "11%", className: "text-center align-middle text-nowrap" }
+                { targets: 0, width: "22%", className: "text-left align-middle col-sticky-left" },
+                { targets: 1, width: "9%", className: "text-center align-middle text-nowrap" },
+                { targets: 2, width: "5%", className: "text-center align-middle" },
+                { targets: 3, width: "5%", className: "text-center align-middle" },
+                { targets: 4, width: "6%", className: "text-center align-middle font-weight-bold text-success sultan-cell-highlight" },
+                { targets: 5, width: "8%", className: "text-center align-middle text-nowrap" },
+                { targets: 6, width: "8%", className: "text-center align-middle text-nowrap" },
+                { targets: 7, width: "11%", className: "text-left align-middle text-nowrap" },
+                { targets: 8, width: "11%", className: "text-left align-middle text-nowrap" },
+                { targets: 9, width: "8%", className: "text-center align-middle text-nowrap" }
               ],
               language: { emptyTable: "Belum ada arsip ijazah yang diunggah." }
             });
@@ -446,18 +464,30 @@
       var targetStatus = $('#arsipijazah_filterStatus').val();
 
       var filtered = ARSIPIJAZAH_CACHE_DATA.filter(function (d) {
-        var matchTahun = (targetTahun === "SEMUA" || d.tahun_ajaran === targetTahun);
-        var matchSekolah = (!targetSekolah || targetSekolah === "SEMUA" || String(d.npsn).trim() === String(targetSekolah).trim());
+        var matchTahun = (targetTahun === "SEMUA" || String(d.tahun_ajaran || "").trim() === String(targetTahun).trim());
+        var matchSekolah = (!targetSekolah || targetSekolah === "SEMUA" || String(d.npsn || "").trim() === String(targetSekolah).trim());
 
         var dStatus = String(d.status || "DIPROSES").toUpperCase();
-        var matchStatus = (targetStatus === "SEMUA" || dStatus.includes(targetStatus) || (targetStatus === "DIPROSES" && dStatus === ""));
+        var matchStatus = (targetStatus === "SEMUA");
+        if (!matchStatus) {
+          if (targetStatus === "DIPROSES") {
+            matchStatus = (dStatus === "" || dStatus.includes("PROSES") || dStatus.includes("PENDING"));
+          } else if (targetStatus === "DISETUJUI") {
+            matchStatus = (dStatus.includes("SETUJU") || dStatus.includes("OK") || dStatus.includes("ACC") || dStatus.includes("VALID"));
+          } else if (targetStatus === "REVISI") {
+            matchStatus = dStatus.includes("REVISI");
+          } else if (targetStatus === "DITOLAK") {
+            matchStatus = (dStatus.includes("TOLAK") || dStatus.includes("REJECT"));
+          } else {
+            matchStatus = dStatus.includes(targetStatus);
+          }
+        }
 
         return matchTahun && matchSekolah && matchStatus;
       });
 
       // Urutkan berdasarkan Last Activity secara dinamis (Terbaru di atas)
       filtered.sort(function (a, b) {
-        // Ambil waktu dari tgl_edit atau tgl_upload
         var parseDateTime = function (val) {
           if (!val) return 0;
           var s = String(val).replace(/'/g, "").trim();
@@ -473,55 +503,50 @@
           ).getTime();
         };
 
-        var timeA = Math.max(parseDateTime(a.tgl_edit), parseDateTime(a.tgl_upload));
-        var timeB = Math.max(parseDateTime(b.tgl_edit), parseDateTime(b.tgl_upload));
+        var timeA = Math.max(parseDateTime(a.tgl_verif), parseDateTime(a.tgl_edit), parseDateTime(a.tgl_upload));
+        var timeB = Math.max(parseDateTime(b.tgl_verif), parseDateTime(b.tgl_edit), parseDateTime(b.tgl_upload));
         return timeB - timeA;
       });
 
       renderTableArsip(filtered);
-      if (typeof SultanUI !== 'undefined' && typeof SultanUI.adjustFilterBarWidths === 'function') {
-        SultanUI.adjustFilterBarWidths('#arsipijazah_filterBarArea');
-      }
     }
 
     function renderTableArsip(data) {
+      if (!ARSIPIJAZAH_TABEL_INSTANCE) return;
       var dtArray = [];
+      var fmtVal = function (n) {
+        var num = parseInt(n) || 0;
+        return num > 0 ? num : '-';
+      };
+
       data.forEach(function (row) {
         var statusLower = String(row.status || "").toLowerCase();
         var isLocked = (statusLower.includes('setuju') || statusLower.includes('acc') || statusLower.includes('ok') || statusLower.includes('valid'));
 
-        // 1. Kolom SEKOLAH / NPSN (Sticky Left)
+        // 0. Kolom SEKOLAH / NPSN (Sticky Left)
         var sekolahCell = SultanUI.renderUnitSekolah(row.nama_sekolah, row.npsn);
 
-        // 2. Kolom TAHUN AJARAN (Tanpa Badge)
+        // 1. Kolom TAHUN AJARAN (Tanpa Badge)
         var tahunCell = `<span class="font-weight-bold" style="font-size: 12px;">${SultanUI.escapeHtml(row.tahun_ajaran || '-')}</span>`;
 
-        // 3. Kolom JUMLAH MURID (Total Murid + Badge L/P)
+        // 2, 3, 4. Kolom JUMLAH MURID (L, P, JML)
         var muridL = parseInt(row.jumlah_murid_l) || 0;
         var muridP = parseInt(row.jumlah_murid_p) || 0;
         var totalMurid = parseInt(row.jumlah_total) || (muridL + muridP);
 
-        var muridCell = `
-          <div class="text-left" data-toggle="tooltip" data-placement="top" title="Total Murid: ${totalMurid} (L: ${muridL}, P: ${muridP})">
-            <div class="d-flex align-items-center" style="gap: 8px;">
-              <span class="font-weight-bold" style="display: inline-flex !important; align-items: baseline; gap: 4px; font-size: 13.5px;">${totalMurid} <small class="font-weight-normal text-muted" style="display: inline !important; font-size: 11px;">Murid</small></span>
-              <span class="sultan-badge sultan-badge-pulang px-2 py-0" style="font-size: 10px;">L: ${muridL} | P: ${muridP}</span>
-            </div>
-          </div>
-        `;
+        var cellL = `<span class="font-weight-semibold">${fmtVal(muridL)}</span>`;
+        var cellP = `<span class="font-weight-semibold">${fmtVal(muridP)}</span>`;
+        var cellJml = `<span class="font-weight-bold text-success">${fmtVal(totalMurid)}</span>`;
 
-        // 4. Kolom DOKUMEN (Tombol LIHAT)
-        var docIjazahLink = row.url_file_ijazah
-          ? '<button type="button" class="sultan-btn-pdf btn-arsip-preview mr-1 mb-1 d-inline-block" data-url="' + row.url_file_ijazah + '" data-title="Pratinjau Scan Ijazah" data-toggle="tooltip" title="Lihat Scan Ijazah" style="font-size:10.5px; padding: 3px 7px;"><i class="fas fa-file-pdf mr-1 text-danger"></i> LIHAT</button>'
-          : '';
-        var docTranskripLink = row.url_file_transkrip
-          ? '<button type="button" class="sultan-btn-pdf btn-arsip-preview mb-1 d-inline-block" data-url="' + row.url_file_transkrip + '" data-title="Pratinjau Scan Transkrip" data-toggle="tooltip" title="Lihat Scan Transkrip" style="font-size:10.5px; padding: 3px 7px;"><i class="fas fa-file-pdf mr-1 text-info"></i> LIHAT</button>'
-          : '';
-        var docLinks = (docIjazahLink || docTranskripLink)
-          ? '<div class="d-flex flex-wrap justify-content-center align-items-center" style="gap: 2px;">' + docIjazahLink + docTranskripLink + '</div>'
+        // 5 & 6. Kolom DOKUMEN (IJAZAH, TRANSKRIP)
+        var docIjazahCell = row.url_file_ijazah
+          ? '<button type="button" class="sultan-btn-pdf btn-arsip-preview" data-url="' + row.url_file_ijazah + '" data-title="Pratinjau Scan Ijazah" data-toggle="tooltip" title="Lihat Scan Ijazah" style="font-size:10.5px; padding: 3px 7px;"><i class="fas fa-file-pdf mr-1 text-danger"></i> LIHAT</button>'
+          : '<span class="text-muted small">-</span>';
+        var docTranskripCell = row.url_file_transkrip
+          ? '<button type="button" class="sultan-btn-pdf btn-arsip-preview" data-url="' + row.url_file_transkrip + '" data-title="Pratinjau Scan Transkrip" data-toggle="tooltip" title="Lihat Scan Transkrip" style="font-size:10.5px; padding: 3px 7px;"><i class="fas fa-file-pdf mr-1 text-info"></i> LIHAT</button>'
           : '<span class="text-muted small">-</span>';
 
-        // 5. Kolom STATUS (SultanUI Standar)
+        // 7. Kolom STATUS (SultanUI Standar)
         var badgeStatus = SultanUI.renderBadgeStatus(row.status, row.catatan, {
           unit: row.nama_sekolah,
           dokumen: 'Arsip Ijazah - ' + (row.nama_sekolah || ''),
@@ -529,7 +554,7 @@
           waktu: row.tgl_verif
         });
 
-        // 6. Kolom AKTIVITAS (Audit Trail Cerdas)
+        // 8. Kolom AKTIVITAS (Audit Trail Cerdas)
         var auditWaktu = "-";
         var auditUser = "-";
         var auditLabel = "Diunggah";
@@ -563,7 +588,7 @@
           </div>
         `;
 
-        // 7. Kolom AKSI
+        // 9. Kolom AKSI
         var verifIcon = isLocked ? "fa-eye" : "fa-clipboard-check";
         var verifTitle = isLocked ? "Lihat Detail Verifikasi" : "Verifikasi Data";
         var btnV = ARSIPIJAZAH_IS_ADMIN
@@ -581,14 +606,19 @@
         dtArray.push([
           sekolahCell,
           tahunCell,
-          muridCell,
-          docLinks,
+          cellL,
+          cellP,
+          cellJml,
+          docIjazahCell,
+          docTranskripCell,
           badgeStatus,
           aktivitasCell,
           btnAksi
         ]);
       });
+
       ARSIPIJAZAH_TABEL_INSTANCE.clear().rows.add(dtArray).draw(false);
+      $('[data-toggle="tooltip"]').tooltip();
     }
 
     function getArsipBadge(status, catatan) {
