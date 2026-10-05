@@ -31,7 +31,7 @@
         <!-- FILTER BAR SULTAN -->
         <div id="arsipijazah_filterBarArea"></div>
 
-        <div class="card-sultan">
+        <div class="card card-sultan">
           <div class="card-body p-3">
             <div id="arsipijazah_loadingState"></div>
 
@@ -39,15 +39,15 @@
               <div class="table-responsive sultan-scroll">
                 <table id="arsipijazah_tabelUtama"
                   class="table table-hover table-premium table-sultan-compact text-nowrap mb-0 w-100">
-                  <thead class="thead-sultan-premium text-uppercase font-weight-bold">
+                  <thead class="thead-sultan-premium">
                     <tr>
-                      <th class="text-left align-middle col-sticky-left" style="width: 25%;"><span class="sultan-th-title">NAMA SEKOLAH</span></th>
-                      <th class="text-center align-middle" style="width: 12%;"><span class="sultan-th-title">TAHUN AJARAN</span></th>
-                      <th class="text-left align-middle" style="width: 17%;"><span class="sultan-th-title">JUMLAH MURID</span></th>
-                      <th class="text-center align-middle text-nowrap" style="width: 12%;"><span class="sultan-th-title">DOKUMEN</span></th>
-                      <th class="text-left align-middle text-nowrap" style="width: 11%;"><span class="sultan-th-title">STATUS</span></th>
-                      <th class="text-left align-middle text-nowrap" style="width: 12%;"><span class="sultan-th-title">AKTIVITAS</span></th>
-                      <th class="text-center align-middle text-nowrap" style="width: 11%;"><span class="sultan-th-title">AKSI</span></th>
+                      <th class="text-left text-maroon col-sticky-left" style="z-index: 5;">NAMA SEKOLAH</th>
+                      <th class="text-center">TAHUN AJARAN</th>
+                      <th class="text-left">JUMLAH MURID</th>
+                      <th class="text-center">DOKUMEN</th>
+                      <th class="text-left text-nowrap">STATUS</th>
+                      <th class="text-left text-nowrap">AKTIVITAS</th>
+                      <th class="text-center text-nowrap">AKSI</th>
                     </tr>
                   </thead>
                   <tbody></tbody>
@@ -264,10 +264,10 @@
     var ARSIPIJAZAH_CACHE_DATA = [];
     var ARSIPIJAZAH_IS_ADMIN = (userLogin.role || "").toLowerCase().includes("admin");
 
-    // Inisialisasi Filter Bar
+    // Inisialisasi Filter Bar (Urutan: Tahun | Sekolah | Status)
     var filtersConfig = [
-      { id: 'arsipijazah_filterSekolah', placeholder: 'Memvalidasi Akses...', disabled: true },
       { id: 'arsipijazah_filterTahun', placeholder: 'Memuat TA...', disabled: true },
+      { id: 'arsipijazah_filterSekolah', placeholder: 'Memvalidasi Akses...', disabled: true },
       { id: 'arsipijazah_filterStatus', placeholder: 'Pilih Status...', disabled: false }
     ];
     var extraButtons = `
@@ -296,16 +296,9 @@
     `;
     $('#arsipijazah_filterStatus').html(htmlStatus).val('SEMUA');
 
-    // Inisialisasi Filter Tahun Ajaran
+    // Inisialisasi Filter Tahun Ajaran (Default: Tahun Berjalan Saat Ini)
     var now = new Date(); var curYear = now.getFullYear(); var curMonth = now.getMonth();
-    // Tahun ajaran berjalan saat ini
     var curTahunAjaran = (curMonth >= 6) ? curYear + "/" + (curYear + 1) : (curYear - 1) + "/" + curYear;
-    
-    // Default filter adalah tahun ajaran tahun lalu
-    var parts = curTahunAjaran.split("/");
-    var prevStart = parseInt(parts[0], 10) - 1;
-    var prevEnd = parseInt(parts[1], 10) - 1;
-    var currentTahunAjaran = prevStart + "/" + prevEnd;
 
     var htmlTahun = '<option value="SEMUA">Semua Tahun</option>';
     var formTahun = '<option value="">Pilih Tahun Ajaran</option>';
@@ -314,7 +307,7 @@
       htmlTahun += '<option value="' + ta + '">' + ta + '</option>';
       formTahun += '<option value="' + ta + '">' + ta + '</option>';
     }
-    $('#arsipijazah_filterTahun').html(htmlTahun).val(currentTahunAjaran).prop('disabled', false);
+    $('#arsipijazah_filterTahun').html(htmlTahun).val(curTahunAjaran).prop('disabled', false);
     $('#arsipijazah_in_tahun').html(formTahun);
 
     // Ambil daftar sekolah & inisialisasi filter sekolah
@@ -398,8 +391,11 @@
       btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin" style="color: var(--sultan-aksi-utama);"></i>');
 
       if (!$.fn.DataTable.isDataTable('#arsipijazah_tabelUtama')) {
-        SultanUI.showLoading('#arsipijazah_loadingState', 'Memuat Data Arsip Ijazah...');
         $('#arsipijazah_tableState').hide();
+        if (typeof SultanUI !== 'undefined' && typeof SultanUI.renderSkeletonTable === 'function') {
+          SultanUI.renderSkeletonTable('#arsipijazah_loadingState', 7);
+        }
+        $('#arsipijazah_loadingState').show();
       }
 
       var filter = ARSIPIJAZAH_IS_ADMIN ? "SEMUA" : (userLogin.npsn || userLogin.username || "");
@@ -426,8 +422,11 @@
           }
 
           terapkanFilterLokalArsip();
-          SultanUI.hideLoading('#arsipijazah_loadingState');
+          $('#arsipijazah_loadingState').hide();
           $('#arsipijazah_tableState').show();
+          if (typeof SultanUI !== 'undefined' && typeof SultanUI.adjustFilterBarWidths === 'function') {
+            SultanUI.adjustFilterBarWidths('#arsipijazah_filterBarArea');
+          }
           if (ARSIPIJAZAH_TABEL_INSTANCE) {
             setTimeout(function () { ARSIPIJAZAH_TABEL_INSTANCE.columns.adjust(); }, 50);
           }
@@ -494,14 +493,8 @@
         // 1. Kolom SEKOLAH / NPSN (Sticky Left)
         var sekolahCell = SultanUI.renderUnitSekolah(row.nama_sekolah, row.npsn);
 
-        // 2. Kolom TAHUN AJARAN
-        var tahunCell = `
-          <div class="text-center">
-            <span class="sultan-badge sultan-badge-info font-weight-bold px-2 py-0" style="font-size: 10.5px;">
-              ${SultanUI.escapeHtml(row.tahun_ajaran || '-')}
-            </span>
-          </div>
-        `;
+        // 2. Kolom TAHUN AJARAN (Tanpa Badge)
+        var tahunCell = `<span class="font-weight-bold" style="font-size: 12px;">${SultanUI.escapeHtml(row.tahun_ajaran || '-')}</span>`;
 
         // 3. Kolom JUMLAH MURID (Total Murid + Badge L/P)
         var muridL = parseInt(row.jumlah_murid_l) || 0;
@@ -511,18 +504,18 @@
         var muridCell = `
           <div class="text-left" data-toggle="tooltip" data-placement="top" title="Total Murid: ${totalMurid} (L: ${muridL}, P: ${muridP})">
             <div class="d-flex align-items-center" style="gap: 8px;">
-              <span class="sultan-table-primary font-weight-bold" style="display: inline-flex !important; align-items: baseline; gap: 4px; font-size: 13.5px;">${totalMurid} <small class="font-weight-normal text-muted" style="display: inline !important; font-size: 11px;">Murid</small></span>
+              <span class="font-weight-bold" style="display: inline-flex !important; align-items: baseline; gap: 4px; font-size: 13.5px;">${totalMurid} <small class="font-weight-normal text-muted" style="display: inline !important; font-size: 11px;">Murid</small></span>
               <span class="sultan-badge sultan-badge-pulang px-2 py-0" style="font-size: 10px;">L: ${muridL} | P: ${muridP}</span>
             </div>
           </div>
         `;
 
-        // 4. Kolom DOKUMEN (Tombol preview berkas yang ringkas & teratur)
+        // 4. Kolom DOKUMEN (Tombol LIHAT)
         var docIjazahLink = row.url_file_ijazah
-          ? '<button type="button" class="sultan-btn-pdf btn-arsip-preview mr-1 mb-1 d-inline-block" data-url="' + row.url_file_ijazah + '" data-title="Pratinjau Scan Ijazah" data-toggle="tooltip" title="Lihat Ijazah" style="font-size:10.5px; padding: 3px 7px;"><i class="fas fa-file-pdf mr-1 text-danger"></i> IJAZAH</button>'
+          ? '<button type="button" class="sultan-btn-pdf btn-arsip-preview mr-1 mb-1 d-inline-block" data-url="' + row.url_file_ijazah + '" data-title="Pratinjau Scan Ijazah" data-toggle="tooltip" title="Lihat Scan Ijazah" style="font-size:10.5px; padding: 3px 7px;"><i class="fas fa-file-pdf mr-1 text-danger"></i> LIHAT</button>'
           : '';
         var docTranskripLink = row.url_file_transkrip
-          ? '<button type="button" class="sultan-btn-pdf btn-arsip-preview mb-1 d-inline-block" data-url="' + row.url_file_transkrip + '" data-title="Pratinjau Scan Transkrip" data-toggle="tooltip" title="Lihat Transkrip" style="font-size:10.5px; padding: 3px 7px;"><i class="fas fa-file-pdf mr-1 text-info"></i> TRANSKRIP</button>'
+          ? '<button type="button" class="sultan-btn-pdf btn-arsip-preview mb-1 d-inline-block" data-url="' + row.url_file_transkrip + '" data-title="Pratinjau Scan Transkrip" data-toggle="tooltip" title="Lihat Scan Transkrip" style="font-size:10.5px; padding: 3px 7px;"><i class="fas fa-file-pdf mr-1 text-info"></i> LIHAT</button>'
           : '';
         var docLinks = (docIjazahLink || docTranskripLink)
           ? '<div class="d-flex flex-wrap justify-content-center align-items-center" style="gap: 2px;">' + docIjazahLink + docTranskripLink + '</div>'
@@ -536,7 +529,7 @@
           waktu: row.tgl_verif
         });
 
-        // 6. Kolom AKTIVITAS (Audit Trail Cerdas Satu Kolom)
+        // 6. Kolom AKTIVITAS (Audit Trail Cerdas)
         var auditWaktu = "-";
         var auditUser = "-";
         var auditLabel = "Diunggah";
@@ -563,9 +556,9 @@
 
         var aktivitasCell = `
           <div class="text-left" data-toggle="tooltip" data-placement="top" title="${tooltipAudit}">
-            <div class="font-weight-bold text-dark" style="font-size: 11.5px; line-height: 1.2;">${SultanUI.escapeHtml(auditWaktu)}</div>
+            <div class="font-weight-bold" style="font-size: 11.5px; line-height: 1.2;">${SultanUI.escapeHtml(auditWaktu)}</div>
             <div class="text-muted text-lowercase" style="font-size: 11px; line-height: 1.2;">
-              <span class="font-weight-semibold text-secondary">${auditLabel}:</span> ${SultanUI.escapeHtml(auditUser).toLowerCase()}
+              <span class="font-weight-semibold">${auditLabel}:</span> ${SultanUI.escapeHtml(auditUser).toLowerCase()}
             </div>
           </div>
         `;
