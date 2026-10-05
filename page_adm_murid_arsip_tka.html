@@ -31,7 +31,7 @@
         <!-- FILTER BAR SULTAN -->
         <div id="arsiptka_filterBarArea"></div>
 
-        <div class="card-sultan">
+        <div class="card card-sultan">
           <div class="card-body p-3">
             <div id="arsiptka_loadingState"></div>
 
@@ -39,15 +39,25 @@
               <div class="table-responsive sultan-scroll">
                 <table id="arsiptka_tabelUtama"
                   class="table table-hover table-premium table-sultan-compact text-nowrap mb-0 w-100">
-                  <thead class="thead-sultan-premium text-uppercase font-weight-bold">
+                  <thead class="thead-sultan-premium thead-tiered">
                     <tr>
-                      <th class="text-left align-middle col-sticky-left" style="width: 25%;"><span class="sultan-th-title">NAMA SEKOLAH</span></th>
-                      <th class="text-center align-middle" style="width: 12%;"><span class="sultan-th-title">TAHUN AJARAN</span></th>
-                      <th class="text-left align-middle" style="width: 17%;"><span class="sultan-th-title">JUMLAH MURID</span></th>
-                      <th class="text-center align-middle text-nowrap" style="width: 12%;"><span class="sultan-th-title">DOKUMEN</span></th>
-                      <th class="text-left align-middle text-nowrap" style="width: 11%;"><span class="sultan-th-title">STATUS</span></th>
-                      <th class="text-left align-middle text-nowrap" style="width: 12%;"><span class="sultan-th-title">AKTIVITAS</span></th>
-                      <th class="text-center align-middle text-nowrap" style="width: 11%;"><span class="sultan-th-title">AKSI</span></th>
+                      <th rowspan="2" class="th-main align-middle text-maroon text-left px-3 py-1 col-sticky-left" style="z-index: 5;">NAMA SEKOLAH</th>
+                      <th rowspan="2" class="th-main align-middle text-center px-2 py-1">TAHUN AJARAN</th>
+
+                      <th colspan="3" class="th-main align-middle text-center sultan-cell-success px-2 py-1">JUMLAH MURID</th>
+                      <th colspan="2" class="th-main align-middle text-center sultan-cell-info px-2 py-1">DOKUMEN TKA</th>
+
+                      <th rowspan="2" class="th-main align-middle text-left text-nowrap px-2 py-1">STATUS</th>
+                      <th rowspan="2" class="th-main align-middle text-left text-nowrap px-2 py-1">AKTIVITAS</th>
+                      <th rowspan="2" class="th-main align-middle text-center text-nowrap px-2 py-1">AKSI</th>
+                    </tr>
+                    <tr>
+                      <th class="th-sub text-center px-2 py-1">L</th>
+                      <th class="th-sub text-center px-2 py-1">P</th>
+                      <th class="th-sub text-center font-weight-bold px-2 py-1">JML</th>
+
+                      <th class="th-sub text-center px-2 py-1">SERTIFIKAT</th>
+                      <th class="th-sub text-center px-2 py-1">DAKOL</th>
                     </tr>
                   </thead>
                   <tbody></tbody>
@@ -255,7 +265,7 @@
 
 <script>
   $(function () {
-    SultanUI.renderSkeletonTable('#arsiptka_loadingState', 7);
+    SultanUI.renderSkeletonTable('#arsiptka_loadingState', 10);
 
     var userLogin = getSesiUser();
     if (!userLogin) {
@@ -268,10 +278,10 @@
     var ARSIPTKA_CACHE_DATA = [];
     var ARSIPTKA_TABEL_INSTANCE = null;
 
-    // Inisialisasi Filter Bar
+    // Inisialisasi Filter Bar (Urutan: Tahun | Sekolah | Status)
     var filtersConfig = [
-      { id: 'arsiptka_filterSekolah', placeholder: 'Memvalidasi Akses...', disabled: true },
       { id: 'arsiptka_filterTahun', placeholder: 'Memuat TA...', disabled: true },
+      { id: 'arsiptka_filterSekolah', placeholder: 'Memvalidasi Akses...', disabled: true },
       { id: 'arsiptka_filterStatus', placeholder: 'Pilih Status...', disabled: false }
     ];
     var extraButtons = `
@@ -305,11 +315,11 @@
     // Tahun ajaran berjalan saat ini
     var curTahunAjaran = (curMonth >= 6) ? curYear + "/" + (curYear + 1) : (curYear - 1) + "/" + curYear;
     
-    // Default filter adalah tahun ajaran tahun lalu
+    // Default filter adalah tahun ajaran tahun lalu (karena ini arsip)
     var parts = curTahunAjaran.split("/");
     var prevStart = parseInt(parts[0], 10) - 1;
     var prevEnd = parseInt(parts[1], 10) - 1;
-    var currentTahunAjaran = prevStart + "/" + prevEnd;
+    var defaultTahunAjaran = prevStart + "/" + prevEnd;
 
     var htmlTahun = '<option value="SEMUA">Semua Tahun</option>';
     var formTahun = '<option value="">Pilih Tahun Ajaran</option>';
@@ -318,7 +328,7 @@
       htmlTahun += '<option value="' + ta + '">' + ta + '</option>';
       formTahun += '<option value="' + ta + '">' + ta + '</option>';
     }
-    $('#arsiptka_filterTahun').html(htmlTahun).val(currentTahunAjaran).prop('disabled', false);
+    $('#arsiptka_filterTahun').html(htmlTahun).val(defaultTahunAjaran).prop('disabled', false);
     $('#arsiptka_in_tahun').html(formTahun);
 
     var listMasterSekolah = [];
@@ -419,17 +429,20 @@
         if (res.success) {
           ARSIPTKA_CACHE_DATA = res.data || [];
 
-          // Initialize Table
+          // Initialize Table dengan 10 Kolom
           if (!$.fn.DataTable.isDataTable('#arsiptka_tabelUtama')) {
             ARSIPTKA_TABEL_INSTANCE = SultanTable.init('#arsiptka_tabelUtama', {
               columnDefs: [
-                { targets: 0, width: "25%", className: "text-left align-middle col-sticky-left" },
-                { targets: 1, width: "12%", className: "text-center align-middle" },
-                { targets: 2, width: "17%", className: "text-left align-middle" },
-                { targets: 3, width: "12%", className: "text-center align-middle text-nowrap" },
-                { targets: 4, width: "11%", className: "text-left align-middle text-nowrap" },
-                { targets: 5, width: "12%", className: "text-left align-middle text-nowrap" },
-                { targets: 6, width: "11%", className: "text-center align-middle text-nowrap" }
+                { targets: 0, width: "22%", className: "text-left align-middle col-sticky-left" },
+                { targets: 1, width: "10%", className: "text-center align-middle" },
+                { targets: 2, width: "6%", className: "text-center align-middle" },
+                { targets: 3, width: "6%", className: "text-center align-middle" },
+                { targets: 4, width: "7%", className: "text-center align-middle font-weight-bold" },
+                { targets: 5, width: "11%", className: "text-center align-middle text-nowrap" },
+                { targets: 6, width: "11%", className: "text-center align-middle text-nowrap" },
+                { targets: 7, width: "10%", className: "text-left align-middle text-nowrap" },
+                { targets: 8, width: "9%", className: "text-left align-middle text-nowrap" },
+                { targets: 9, width: "8%", className: "text-center align-middle text-nowrap" }
               ],
               language: { emptyTable: "Belum ada arsip sertifikat & dakol TKA yang diunggah." }
             });
@@ -460,7 +473,21 @@
         var matchSekolah = (!targetSekolah || targetSekolah === "SEMUA" || String(d.npsn).trim() === String(targetSekolah).trim());
 
         var dStatus = String(d.status || "DIPROSES").toUpperCase();
-        var matchStatus = (targetStatus === "SEMUA" || dStatus.includes(targetStatus) || (targetStatus === "DIPROSES" && dStatus === ""));
+        var matchStatus = false;
+
+        if (targetStatus === "SEMUA") {
+          matchStatus = true;
+        } else if (targetStatus === "DISETUJUI") {
+          matchStatus = dStatus.includes("SETUJU") || dStatus.includes("OK") || dStatus.includes("ACC") || dStatus.includes("VALID");
+        } else if (targetStatus === "DIPROSES") {
+          matchStatus = dStatus.includes("PROSES") || dStatus === "" || dStatus === "DIPROSES";
+        } else if (targetStatus === "REVISI") {
+          matchStatus = dStatus.includes("REVISI");
+        } else if (targetStatus === "DITOLAK") {
+          matchStatus = dStatus.includes("TOLAK");
+        } else {
+          matchStatus = dStatus.includes(targetStatus);
+        }
 
         return matchTahun && matchSekolah && matchStatus;
       });
@@ -498,10 +525,10 @@
         var statusLower = String(row.status || "").toLowerCase();
         var isLocked = (statusLower.includes('setuju') || statusLower.includes('acc') || statusLower.includes('ok') || statusLower.includes('valid'));
 
-        // 1. Kolom SEKOLAH / NPSN (Sticky Left)
+        // 1. NAMA SEKOLAH
         var sekolahCell = SultanUI.renderUnitSekolah(row.nama_sekolah, row.npsn);
 
-        // 2. Kolom TAHUN AJARAN
+        // 2. TAHUN AJARAN
         var tahunCell = `
           <div class="text-center">
             <span class="sultan-badge sultan-badge-info font-weight-bold px-2 py-0" style="font-size: 10.5px;">
@@ -510,33 +537,25 @@
           </div>
         `;
 
-        // 3. Kolom JUMLAH MURID (Total Murid + Badge L/P)
+        // 3-5. JUMLAH MURID (L, P, JML)
         var muridL = parseInt(row.jumlah_murid_l) || 0;
         var muridP = parseInt(row.jumlah_murid_p) || 0;
         var totalMurid = parseInt(row.jumlah_total) || (muridL + muridP);
 
-        var muridCell = `
-          <div class="text-left" data-toggle="tooltip" data-placement="top" title="Total Murid: ${totalMurid} (L: ${muridL}, P: ${muridP})">
-            <div class="d-flex align-items-center" style="gap: 8px;">
-              <span class="sultan-table-primary font-weight-bold" style="display: inline-flex !important; align-items: baseline; gap: 4px; font-size: 13.5px;">${totalMurid} <small class="font-weight-normal text-muted" style="display: inline !important; font-size: 11px;">Murid</small></span>
-              <span class="sultan-badge sultan-badge-pulang px-2 py-0" style="font-size: 10px;">L: ${muridL} | P: ${muridP}</span>
-            </div>
-          </div>
-        `;
+        var cellL = `<span class="font-weight-semibold text-dark">${muridL}</span>`;
+        var cellP = `<span class="font-weight-semibold text-dark">${muridP}</span>`;
+        var cellJml = `<span class="font-weight-bold text-maroon">${totalMurid}</span>`;
 
-        // 4. Kolom DOKUMEN (Tombol preview berkas yang ringkas & teratur)
-        var docSertifikat = row.url_file_sertifikat
-          ? '<button type="button" class="sultan-btn-pdf btn-arsip-preview mr-1 mb-1 d-inline-block" data-url="' + row.url_file_sertifikat + '" data-title="Pratinjau Sertifikat Hasil TKA" data-toggle="tooltip" title="Lihat Sertifikat TKA" style="font-size:10.5px; padding: 3px 7px;"><i class="fas fa-file-pdf mr-1 text-danger"></i> SERTIFIKAT TKA</button>'
-          : '';
-        var docDaftar = row.url_file_daftar
-          ? '<button type="button" class="sultan-btn-pdf btn-arsip-preview mb-1 d-inline-block" data-url="' + row.url_file_daftar + '" data-title="Pratinjau Daftar Kolektif Hasil TKA" data-toggle="tooltip" title="Lihat DAKOL TKA" style="font-size:10.5px; padding: 3px 7px;"><i class="fas fa-file-pdf mr-1 text-info"></i> DAKOL TKA</button>'
-          : '';
-
-        var docLinks = (docSertifikat || docDaftar)
-          ? '<div class="d-flex flex-wrap justify-content-center align-items-center" style="gap: 2px;">' + docSertifikat + docDaftar + '</div>'
+        // 6-7. DOKUMEN TKA (SERTIFIKAT & DAKOL)
+        var docSertifikatCell = row.url_file_sertifikat
+          ? '<button type="button" class="sultan-btn-pdf btn-arsip-preview d-inline-block" data-url="' + row.url_file_sertifikat + '" data-title="Pratinjau Sertifikat Hasil TKA" data-toggle="tooltip" title="Lihat Sertifikat TKA" style="font-size:10.5px; padding: 3px 8px;"><i class="fas fa-file-pdf mr-1 text-danger"></i> SERTIFIKAT</button>'
           : '<span class="text-muted small">-</span>';
 
-        // 5. Kolom STATUS (SultanUI Standar)
+        var docDakolCell = row.url_file_daftar
+          ? '<button type="button" class="sultan-btn-pdf btn-arsip-preview d-inline-block" data-url="' + row.url_file_daftar + '" data-title="Pratinjau Daftar Kolektif Hasil TKA" data-toggle="tooltip" title="Lihat DAKOL TKA" style="font-size:10.5px; padding: 3px 8px;"><i class="fas fa-file-pdf mr-1 text-info"></i> DAKOL</button>'
+          : '<span class="text-muted small">-</span>';
+
+        // 8. STATUS
         var badgeStatus = SultanUI.renderBadgeStatus(row.status, row.catatan, {
           unit: row.nama_sekolah,
           dokumen: 'Arsip TKA - ' + (row.nama_sekolah || ''),
@@ -544,7 +563,7 @@
           waktu: row.tgl_verif
         });
 
-        // 6. Kolom AKTIVITAS (Audit Trail Cerdas Satu Kolom)
+        // 9. AKTIVITAS
         var auditWaktu = "-";
         var auditUser = "-";
         var auditLabel = "Diunggah";
@@ -578,7 +597,7 @@
           </div>
         `;
 
-        // 7. Kolom AKSI
+        // 10. AKSI
         var verifIcon = isLocked ? "fa-eye" : "fa-clipboard-check";
         var verifTitle = isLocked ? "Lihat Detail Verifikasi" : "Verifikasi Data";
         var btnV = ARSIPTKA_IS_ADMIN
@@ -596,8 +615,11 @@
         dtArray.push([
           sekolahCell,
           tahunCell,
-          muridCell,
-          docLinks,
+          cellL,
+          cellP,
+          cellJml,
+          docSertifikatCell,
+          docDakolCell,
           badgeStatus,
           aktivitasCell,
           btnAksi
