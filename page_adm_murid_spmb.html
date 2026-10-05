@@ -345,10 +345,10 @@
     $('#admmuridspmb_loadingState').show();
     $('#admmuridspmb_tableState').hide();
 
-    // Inisialisasi Filter Bar
+    // Inisialisasi Filter Bar (Urutan: Tahun | Sekolah | Status)
     var filtersConfig = [
-        { id: 'admmuridspmb_filterSekolah', placeholder: 'Memvalidasi Akses...', disabled: true },
         { id: 'admmuridspmb_filterTahun', placeholder: 'Memuat TA...', disabled: true },
+        { id: 'admmuridspmb_filterSekolah', placeholder: 'Memvalidasi Akses...', disabled: true },
         { id: 'admmuridspmb_filterStatus', placeholder: 'Pilih Status...', disabled: false }
     ];
     var extraButtons = `
@@ -374,7 +374,7 @@
     `;
     $('#admmuridspmb_filterStatus').html(htmlStatus).val('SEMUA');
 
-    // Inisialisasi Filter Tahun Ajaran
+    // Inisialisasi Filter Tahun Ajaran (Default Tahun Ini)
     var now = new Date(); var curYear = now.getFullYear(); var curMonth = now.getMonth();
     var currentTahunAjaran = (curMonth >= 6) ? curYear + "/" + (curYear + 1) : (curYear - 1) + "/" + curYear;
 
@@ -385,7 +385,7 @@
         htmlTahun += '<option value="' + ta + '">' + ta + '</option>';
         formTahun += '<option value="' + ta + '">' + ta + '</option>';
     }
-    $('#admmuridspmb_filterTahun').html(htmlTahun).val('SEMUA').prop('disabled', false);
+    $('#admmuridspmb_filterTahun').html(htmlTahun).val(currentTahunAjaran).prop('disabled', false);
     $('#admmuridspmb_in_tahun').html(formTahun);
 
     // Ambil daftar sekolah & inisialisasi filter sekolah
@@ -484,8 +484,6 @@
       admmuridspmb_bukaModalTambah();
     });
 
-
-
     function loadSpmbData() {
       var btn = $('#admmuridspmb_btnRefresh');
       btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin" style="color: var(--sultan-aksi-utama);"></i>');
@@ -554,9 +552,10 @@
                 });
 
                 var formatNum = function (n) {
+                  if (!n || n === 0) return '-';
                   return typeof SultanUI !== 'undefined' && typeof SultanUI.formatNumber === 'function' 
                     ? SultanUI.formatNumber(n) 
-                    : (n || 0).toLocaleString('id-ID');
+                    : n.toLocaleString('id-ID');
                 };
 
                 $('#admmuridspmb_foot_rombel').text(formatNum(totalRombel));
@@ -635,6 +634,11 @@
         var statusLower = String(row.status || "").toLowerCase();
         var isLocked = (statusLower.includes('setuju') || statusLower.includes('acc') || statusLower.includes('ok') || statusLower.includes('valid'));
 
+        var fmtVal = function (n) {
+          var num = parseInt(n) || 0;
+          return num > 0 ? num : '-';
+        };
+
         // 0. Kolom SEKOLAH / NPSN (Sticky Left)
         var sekolahCell = `
           <div class="text-left">
@@ -643,23 +647,23 @@
           </div>
         `;
 
-        // 1. Kolom TAHUN
-        var badgeTahun = (row.tahun_ajaran && String(row.tahun_ajaran).trim() !== "")
-          ? `<span class="sultan-badge sultan-badge-info font-weight-bold px-2 py-0" style="font-size: 10.5px;">${SultanUI.escapeHtml(row.tahun_ajaran)}</span>`
+        // 1. Kolom TAHUN (Tanpa Badge)
+        var textTahun = (row.tahun_ajaran && String(row.tahun_ajaran).trim() !== "")
+          ? `<span class="font-weight-bold text-dark" style="font-size: 12px;">${SultanUI.escapeHtml(row.tahun_ajaran)}</span>`
           : '-';
 
         // 2. Kolom ROMBEL
         var valRombel = parseInt(row.jumlah_rombel) || 0;
-        var rombelCell = `<span class="font-weight-semibold text-secondary">${valRombel}</span>`;
+        var rombelCell = `<span class="font-weight-semibold text-secondary">${fmtVal(valRombel)}</span>`;
 
         // 3 & 4 & 5. Kolom JUMLAH MURID (L, P, JML)
         var tL = parseInt(row.jumlah_murid_l) || 0;
         var tP = parseInt(row.jumlah_murid_p) || 0;
         var tTotal = parseInt(row.jumlah_total) || (tL + tP);
 
-        var cellL = `<span class="text-dark font-weight-semibold">${tL}</span>`;
-        var cellP = `<span class="text-dark font-weight-semibold">${tP}</span>`;
-        var cellJml = `<span class="font-weight-bold text-success">${tTotal}</span>`;
+        var cellL = `<span class="text-dark font-weight-semibold">${fmtVal(tL)}</span>`;
+        var cellP = `<span class="text-dark font-weight-semibold">${fmtVal(tP)}</span>`;
+        var cellJml = `<span class="font-weight-bold text-success">${fmtVal(tTotal)}</span>`;
 
         // 6 & 7 & 8. Kolom RINCIAN JALUR (ONLINE, OFFLINE, TINGGAL KLS)
         var t1l = parseInt(row.spmb_t1_online_l) || 0;
@@ -675,9 +679,9 @@
         var valOffline = offl + offp;
         var valTglKls = tkl + tkp;
 
-        var cellOnline = `<span class="text-secondary" data-toggle="tooltip" title="Tahap 1: ${t1l + t1p} (L:${t1l}, P:${t1p}) | Tahap 2: ${t2l + t2p} (L:${t2l}, P:${t2p})">${valOnline}</span>`;
-        var cellOffline = `<span class="text-secondary" data-toggle="tooltip" title="Offline L:${offl}, P:${offp}">${valOffline}</span>`;
-        var cellTglKls = `<span class="text-secondary" data-toggle="tooltip" title="Tinggal Kelas L:${tkl}, P:${tkp}">${valTglKls}</span>`;
+        var cellOnline = `<span class="text-secondary" data-toggle="tooltip" title="Tahap 1: ${t1l + t1p} (L:${t1l}, P:${t1p}) | Tahap 2: ${t2l + t2p} (L:${t2l}, P:${t2p})">${fmtVal(valOnline)}</span>`;
+        var cellOffline = `<span class="text-secondary" data-toggle="tooltip" title="Offline L:${offl}, P:${offp}">${fmtVal(valOffline)}</span>`;
+        var cellTglKls = `<span class="text-secondary" data-toggle="tooltip" title="Tinggal Kelas L:${tkl}, P:${tkp}">${fmtVal(valTglKls)}</span>`;
 
         // 9. Kolom DOKUMEN (Rata Tengah)
         var docLink = row.url_file 
@@ -743,7 +747,7 @@
 
         dtArray.push([
           sekolahCell,
-          badgeTahun,
+          textTahun,
           rombelCell,
           cellL,
           cellP,
