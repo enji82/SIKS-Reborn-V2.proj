@@ -593,12 +593,13 @@ function kemitraankelola_terapkanFilter() {
   var selTahun = $('#kemitraankelola_filterTahun').val();
   var selJenjang = $('#kemitraankelola_filterJenjang').val();
   var selSekolah = $('#kemitraankelola_filterSekolah').val();
-  var selStatus = $('#kemitraankelola_filterStatus').val();
+  var selStatus = String($('#kemitraankelola_filterStatus').val() || '').trim().toLowerCase();
 
   var filtered = KEMITRAANKELOLA_CACHE_DATA.filter(function(item) {
+    var itemStatus = String(item.status || '').trim().toLowerCase();
     var matchKat = !selKat || (item.id_kategori === selKat);
     var matchTahun = !selTahun || (String(item.tahun) === String(selTahun));
-    var matchStatus = !selStatus || (item.status === selStatus);
+    var matchStatus = !selStatus || (itemStatus === selStatus);
     var matchSekolah = !selSekolah || (item.npsn === selSekolah);
 
     var matchJenjang = true;
@@ -1196,9 +1197,11 @@ function kemitraankelola_submitVerif(e) {
       try {
         var res = typeof resRaw === 'string' ? JSON.parse(resRaw) : resRaw;
         if (res.success) {
-          $('#global_modalVerifikasi').modal('hide');
-          if (typeof Sultan !== 'undefined' && Sultan.notif) Sultan.notif.crud.simpan(true);
-          if (typeof sultan_fetchNotifikasi === 'function') sultan_fetchNotifikasi();
+          if (typeof Sultan !== 'undefined' && Sultan.modal && Sultan.modal.tutupVerifikasi) {
+            Sultan.modal.tutupVerifikasi();
+          } else {
+            $('#global_modalVerifikasi').modal('hide');
+          }
 
           var idRow = payload.rowId;
           var idx = KEMITRAANKELOLA_CACHE_DATA.findIndex(function(r) { return String(r.rowId) === String(idRow); });
@@ -1206,9 +1209,20 @@ function kemitraankelola_submitVerif(e) {
             KEMITRAANKELOLA_CACHE_DATA[idx].status = payload.status;
             KEMITRAANKELOLA_CACHE_DATA[idx].catatan = payload.catatan;
             KEMITRAANKELOLA_CACHE_DATA[idx].verifikator = payload.verifikator;
-            KEMITRAANKELOLA_CACHE_DATA[idx].tgl_verif = Sultan.format ? Sultan.format.tanggalJam(new Date()) : new Date().toISOString();
+            KEMITRAANKELOLA_CACHE_DATA[idx].tgl_verif = typeof Sultan !== 'undefined' && Sultan.format && Sultan.format.tanggalSekarang ? Sultan.format.tanggalSekarang() : new Date().toISOString();
           }
-          kemitraankelola_terapkanFilter();
+
+          setTimeout(function() {
+            if (typeof Sultan !== 'undefined' && Sultan.notif) Sultan.notif.crud.sukses(res.message || "Verifikasi berhasil.");
+            if (typeof SultanCRUD !== 'undefined' && typeof SultanCRUD.updateRowPreserved === 'function') {
+              SultanCRUD.updateRowPreserved(KEMITRAANKELOLA_TABEL_INSTANCE, function() {
+                kemitraankelola_terapkanFilter();
+              });
+            } else {
+              kemitraankelola_terapkanFilter();
+            }
+            if (typeof sultan_fetchNotifikasi === 'function') sultan_fetchNotifikasi();
+          }, 300);
         } else {
           if (typeof Sultan !== 'undefined' && Sultan.notif) Sultan.notif.crud.gagal(res.message);
         }
