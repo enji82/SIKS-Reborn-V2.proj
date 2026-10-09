@@ -332,7 +332,9 @@ $(document).ready(function () {
   }
   $('#pppkpwunggah_in_tahun').html(htmlTAForm);
 
-  // Filter Unit setup
+  // Filter Unit & Jenjang setup awal
+  pppkpwunggah_populateJenjang();
+
   if (!PPPKPWUNGGAH_IS_ADMIN) {
     $('#pppkpwunggah_filterUnit').html('<option value="' + PPPKPWUNGGAH_USER_UNIT + '">' + (PPPKPWUNGGAH_USER_UNIT || 'Unit Saya') + '</option>').prop('disabled', true);
   } else {
@@ -512,16 +514,33 @@ function pppkpwunggah_loadData(force) {
 }
 
 function pppkpwunggah_populateJenjang(backendJenjangList) {
-  var $selJenjangFilter = $('#pppkpwunggah_filterJenjang').empty().append('<option value="">Semua Jenjang</option>');
-  var listJenjang = (Array.isArray(backendJenjangList) && backendJenjangList.length > 0)
-    ? backendJenjangList
-    : ((PPPKPWUNGGAH_INIT_DATA && PPPKPWUNGGAH_INIT_DATA.jenjangList) ? PPPKPWUNGGAH_INIT_DATA.jenjangList : ["PAUD / TK", "SD", "SMP", "SMA", "SMK", "NON-FORMAL / SKB"]);
+  var $selJenjangFilter = $('#pppkpwunggah_filterJenjang');
+  var valSebelumnya = $selJenjangFilter.val() || "";
+  $selJenjangFilter.empty().append('<option value="">Semua Jenjang</option>');
 
-  listJenjang.forEach(function (j) {
-    if (j && String(j).trim() !== "") {
-      $selJenjangFilter.append($('<option>', { value: String(j).trim(), text: String(j).trim() }));
-    }
+  var setJenjang = new Set();
+  
+  // 1. Ambil dari master jenjangList backend Data_Sekolah (jika ada)
+  var listMaster = (Array.isArray(backendJenjangList) && backendJenjangList.length > 0)
+    ? backendJenjangList
+    : (PPPKPWUNGGAH_INIT_DATA && PPPKPWUNGGAH_INIT_DATA.jenjangList ? PPPKPWUNGGAH_INIT_DATA.jenjangList : []);
+
+  if (listMaster.length > 0) {
+    listMaster.forEach(function (j) { if (j) setJenjang.add(String(j).trim().toUpperCase()); });
+  }
+
+  // 2. Fallback daftar standar jika jenjangList belum terisi
+  if (setJenjang.size === 0) {
+    ["PAUD / TK", "SD", "SMP", "SMA", "SMK", "NON-FORMAL / SKB"].forEach(function(j) { setJenjang.add(j); });
+  }
+
+  Array.from(setJenjang).sort().forEach(function (j) {
+    $selJenjangFilter.append($('<option>', { value: j, text: j }));
   });
+
+  if (valSebelumnya && setJenjang.has(valSebelumnya)) {
+    $selJenjangFilter.val(valSebelumnya);
+  }
 }
 
 function pppkpwunggah_updateDropdownSekolahCascading() {
