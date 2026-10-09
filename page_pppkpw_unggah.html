@@ -485,7 +485,11 @@ function pppkpwunggah_loadData(force) {
         SultanUI.hideLoading('#pppkpwunggah_loadingState');
         return;
       }
-      PPPKPWUNGGAH_DATA = res.data || [];
+      // Populate filter jenjang & cascading unit
+      if (PPPKPWUNGGAH_IS_ADMIN) {
+        pppkpwunggah_populateJenjang();
+        pppkpwunggah_updateDropdownSekolahCascading();
+      }
 
       pppkpwunggah_applyFilterLocal(false);
       SultanUI.hideLoading('#pppkpwunggah_loadingState');
@@ -503,27 +507,9 @@ function pppkpwunggah_loadData(force) {
 
 function pppkpwunggah_populateJenjang() {
   var $selJenjangFilter = $('#pppkpwunggah_filterJenjang').empty().append('<option value="">Semua Jenjang</option>');
-  var setJenjang = new Set();
-
-  var sumberData = (Array.isArray(PPPKPWUNGGAH_DATA) && PPPKPWUNGGAH_DATA.length > 0) ? PPPKPWUNGGAH_DATA : (PPPKPWUNGGAH_INIT_DATA && PPPKPWUNGGAH_INIT_DATA.unitList ? PPPKPWUNGGAH_INIT_DATA.unitList : []);
-
-  if (Array.isArray(sumberData) && sumberData.length > 0) {
-    sumberData.forEach(function(x) {
-      var unit = typeof x === 'string' ? x : String(x.unit_kerja || x.unit || "").trim();
-      var uUp = unit.toUpperCase();
-      if (!uUp) return;
-      if (uUp.includes("TK") || uUp.includes("PAUD") || uUp.includes("KOBER") || uUp.includes("TKN") || uUp.includes("TUNAS MUDA")) setJenjang.add("PAUD / TK");
-      else if (uUp.includes("SD") || uUp.includes("SDN")) setJenjang.add("SD");
-      else if (uUp.includes("SMP") || uUp.includes("SMPN")) setJenjang.add("SMP");
-      else if (uUp.includes("SMA") || uUp.includes("SMAN")) setJenjang.add("SMA");
-      else if (uUp.includes("SMK") || uUp.includes("SMKN")) setJenjang.add("SMK");
-      else if (uUp.includes("SKB") || uUp.includes("PKBM")) setJenjang.add("NON-FORMAL / SKB");
-    });
-  }
-
-  var arrJenjang = Array.from(setJenjang).sort();
-  arrJenjang.forEach(function(j) {
-    $selJenjangFilter.append('<option value="' + SultanUI.escapeHtml(j) + '">' + SultanUI.escapeHtml(j) + '</option>');
+  var listJenjangOpt = ["PAUD / TK", "SD", "SMP", "SMA", "SMK", "NON-FORMAL / SKB"];
+  listJenjangOpt.forEach(function (j) {
+    $selJenjangFilter.append($('<option>', { value: j, text: j }));
   });
 }
 
