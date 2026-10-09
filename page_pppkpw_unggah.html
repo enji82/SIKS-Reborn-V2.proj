@@ -418,6 +418,9 @@ function pppkpwunggah_initPage() {
 
       // Isi dropdown unit filter & form jika admin
       if (PPPKPWUNGGAH_IS_ADMIN && res.unitList) {
+        // Populasikan Dropdown Jenjang dari backend res.jenjangList / sekolahMasterList
+        pppkpwunggah_populateJenjang(res.jenjangList);
+
         var sel = $('#pppkpwunggah_filterUnit');
         sel.empty().append('<option value="">Semua Unit Kerja</option>');
         res.unitList.forEach(function (u) {
@@ -505,11 +508,16 @@ function pppkpwunggah_loadData(force) {
     .pppkpw_getData(unitFilter, tahun);
 }
 
-function pppkpwunggah_populateJenjang() {
+function pppkpwunggah_populateJenjang(backendJenjangList) {
   var $selJenjangFilter = $('#pppkpwunggah_filterJenjang').empty().append('<option value="">Semua Jenjang</option>');
-  var listJenjangOpt = ["PAUD / TK", "SD", "SMP", "SMA", "SMK", "NON-FORMAL / SKB"];
-  listJenjangOpt.forEach(function (j) {
-    $selJenjangFilter.append($('<option>', { value: j, text: j }));
+  var listJenjang = (Array.isArray(backendJenjangList) && backendJenjangList.length > 0)
+    ? backendJenjangList
+    : ((PPPKPWUNGGAH_INIT_DATA && PPPKPWUNGGAH_INIT_DATA.jenjangList) ? PPPKPWUNGGAH_INIT_DATA.jenjangList : ["PAUD / TK", "SD", "SMP", "SMA", "SMK", "NON-FORMAL / SKB"]);
+
+  listJenjang.forEach(function (j) {
+    if (j && String(j).trim() !== "") {
+      $selJenjangFilter.append($('<option>', { value: String(j).trim(), text: String(j).trim() }));
+    }
   });
 }
 
@@ -521,13 +529,35 @@ function pppkpwunggah_updateDropdownSekolahCascading() {
   var currentSelectedUnit = $selectUnit.val() ? String($selectUnit.val()).trim().toUpperCase() : "SEMUA";
 
   var uniqueUnits = new Set();
-  var sumberData = (PPPKPWUNGGAH_INIT_DATA && PPPKPWUNGGAH_INIT_DATA.unitList) ? PPPKPWUNGGAH_INIT_DATA.unitList : [];
+  
+  // 1. Coba petakan berdasarkan data resmi sheet Data_Sekolah (sekolahMasterList / unitObjects)
+  var masterSekolah = (PPPKPWUNGGAH_INIT_DATA && PPPKPWUNGGAH_INIT_DATA.sekolahMasterList) ? PPPKPWUNGGAH_INIT_DATA.sekolahMasterList : [];
+  var unitObjects = (PPPKPWUNGGAH_INIT_DATA && PPPKPWUNGGAH_INIT_DATA.unitObjects) ? PPPKPWUNGGAH_INIT_DATA.unitObjects : [];
 
-  if (Array.isArray(sumberData) && sumberData.length > 0) {
+  if (masterSekolah.length > 0) {
+    masterSekolah.forEach(function(s) {
+      var uNama = String(s.nama || "").trim();
+      var uJenjang = String(s.jenjang || "").trim().toUpperCase();
+      if (!uNama) return;
+      if (!selectedJenjang || uJenjang === selectedJenjang) {
+        uniqueUnits.add(uNama);
+      }
+    });
+  } else if (unitObjects.length > 0) {
+    unitObjects.forEach(function(uObj) {
+      var uNama = String(uObj.nama || "").trim();
+      var uJenjang = String(uObj.jenjang || "").trim().toUpperCase();
+      if (!uNama) return;
+      if (!selectedJenjang || uJenjang === selectedJenjang) {
+        uniqueUnits.add(uNama);
+      }
+    });
+  } else {
+    // Fallback: Parsing dari unitList
+    var sumberData = (PPPKPWUNGGAH_INIT_DATA && PPPKPWUNGGAH_INIT_DATA.unitList) ? PPPKPWUNGGAH_INIT_DATA.unitList : [];
     sumberData.forEach(function (unitNama) {
       var unitStr = String(unitNama || "").trim();
       if (!unitStr) return;
-
       var uUp = unitStr.toUpperCase();
       var unitJenjang = "";
       if (uUp.includes("TK") || uUp.includes("PAUD") || uUp.includes("KOBER") || uUp.includes("TKN") || uUp.includes("TUNAS MUDA")) unitJenjang = "PAUD / TK";
