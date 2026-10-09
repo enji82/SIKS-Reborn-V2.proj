@@ -997,3 +997,26 @@ function getNotifikasiAdmSekolah(role, unit) {
   } catch (e) { return { count: 0, recent: [] }; }
 }
 
+function tandaiNotifAdmSekolahDibaca(rowId, role) {
+  try {
+    var sheet = getOrCreateSheetAdmSekolah("Database_Dokumen");
+    if (!sheet) return;
+    var lastCol = sheet.getLastColumn();
+    var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(function(h) { return String(h).toLowerCase().trim(); });
+    var idxRead = headers.indexOf("dibaca oleh") > -1 ? headers.indexOf("dibaca oleh") : headers.indexOf("read by");
+    if (idxRead === -1) {
+      sheet.getRange(1, lastCol + 1).setValue("dibaca oleh");
+      idxRead = lastCol;
+    }
+    var rLower = String(role || "").toLowerCase();
+    var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
+    var mark = isAdmin ? "Admin" : "User";
+    var cur = String(sheet.getRange(rowId, idxRead + 1).getValue() || "").trim();
+    var list = cur ? cur.split(",") : [];
+    if (list.indexOf(mark) === -1) {
+      list.push(mark);
+      sheet.getRange(rowId, idxRead + 1).setValue(list.join(","));
+    }
+  } catch(e) {}
+}
+
