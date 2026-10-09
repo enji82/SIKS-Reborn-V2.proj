@@ -40,7 +40,11 @@
           <!-- 2. JENJANG -->
           <div class="sultan-filter-item" id="pppkpwspmt_filterJenjangWrap" style="min-width: 130px; max-width: 180px;">
             <select id="pppkpwspmt_filterJenjang" class="form-control">
-              <option value="">Semua Jenjang</option>
+              <option value="" selected>Semua Jenjang</option>
+              <option value="TK">TK</option>
+              <option value="KB">KB</option>
+              <option value="SPS">SPS</option>
+              <option value="SD">SD</option>
             </select>
             <i class="fas fa-chevron-down"></i>
           </div>
@@ -315,23 +319,44 @@ $(document).ready(function () {
   $(document).off('change', '#pppkpwspmt_filterUnit, #pppkpwspmt_filterStatus, #pppkpwspmt_filterJenjang').on('change', '#pppkpwspmt_filterUnit, #pppkpwspmt_filterStatus, #pppkpwspmt_filterJenjang', function () { pppkpwspmt_applyFilterLocal(false); });
   $(document).off('change', '#pppkpwspmt_filterJenjang').on('change', '#pppkpwspmt_filterJenjang', function () {
     var selectedJenjang = String($(this).val() || "").trim().toUpperCase();
-    if (PPPKPWSPMT_IS_ADMIN && PPPKPWSPMT_INIT_DATA && PPPKPWSPMT_INIT_DATA.unitList) {
+    if (PPPKPWSPMT_IS_ADMIN && PPPKPWSPMT_INIT_DATA) {
       var $selUnit = $('#pppkpwspmt_filterUnit').empty().append('<option value="">Semua Unit Kerja</option>');
-      PPPKPWSPMT_INIT_DATA.unitList.forEach(function (u) {
-        if (!selectedJenjang) {
-          $selUnit.append($('<option>', { value: u, text: u }));
-        } else {
-          var uUpper = String(u).toUpperCase();
-          var isMatch = false;
-          if (selectedJenjang === "PAUD / TK" && (uUpper.includes("TK") || uUpper.includes("PAUD") || uUpper.includes("KOBER") || uUpper.includes("TKN") || uUpper.includes("TUNAS MUDA"))) isMatch = true;
-          else if (selectedJenjang === "SD" && (uUpper.includes("SD") || uUpper.includes("SDN"))) isMatch = true;
-          else if (selectedJenjang === "SMP" && (uUpper.includes("SMP") || uUpper.includes("SMPN"))) isMatch = true;
-          else if (selectedJenjang === "SMA" && (uUpper.includes("SMA") || uUpper.includes("SMAN"))) isMatch = true;
-          else if (selectedJenjang === "SMK" && (uUpper.includes("SMK") || uUpper.includes("SMKN"))) isMatch = true;
-          else if (selectedJenjang === "NON-FORMAL / SKB" && (uUpper.includes("SKB") || uUpper.includes("PKBM"))) isMatch = true;
-          if (isMatch) $selUnit.append($('<option>', { value: u, text: u }));
-        }
-      });
+      var masterSekolah = PPPKPWSPMT_INIT_DATA.sekolahMasterList || [];
+      var unitObjs = PPPKPWSPMT_INIT_DATA.unitObjects || [];
+
+      if (masterSekolah.length > 0) {
+        masterSekolah.forEach(function(s) {
+          var uNama = String(s.nama || "").trim();
+          var uJenjang = String(s.jenjang || "").trim().toUpperCase();
+          if (!uNama) return;
+          if (!selectedJenjang || uJenjang === selectedJenjang) {
+            $selUnit.append($('<option>', { value: uNama, text: uNama }));
+          }
+        });
+      } else if (unitObjs.length > 0) {
+        unitObjs.forEach(function(uObj) {
+          var uNama = String(uObj.nama || "").trim();
+          var uJenjang = String(uObj.jenjang || "").trim().toUpperCase();
+          if (!uNama) return;
+          if (!selectedJenjang || uJenjang === selectedJenjang) {
+            $selUnit.append($('<option>', { value: uNama, text: uNama }));
+          }
+        });
+      } else if (PPPKPWSPMT_INIT_DATA.unitList) {
+        PPPKPWSPMT_INIT_DATA.unitList.forEach(function (u) {
+          if (!selectedJenjang) {
+            $selUnit.append($('<option>', { value: u, text: u }));
+          } else {
+            var uUpper = String(u).toUpperCase();
+            var isMatch = false;
+            if (selectedJenjang === "TK" && (uUpper.includes("TK") || uUpper.includes("PAUD") || uUpper.includes("KOBER") || uUpper.includes("TKN"))) isMatch = true;
+            else if (selectedJenjang === "KB" && (uUpper.includes("KB") || uUpper.includes("KOBER"))) isMatch = true;
+            else if (selectedJenjang === "SPS" && (uUpper.includes("SPS") || uUpper.includes("POS PAUD"))) isMatch = true;
+            else if (selectedJenjang === "SD" && (uUpper.includes("SD") || uUpper.includes("SDN"))) isMatch = true;
+            if (isMatch) $selUnit.append($('<option>', { value: u, text: u }));
+          }
+        });
+      }
     }
   });
   $(document).off('click', '#pppkpwspmt_btnTambah').on('click', '#pppkpwspmt_btnTambah', function () { pppkpwspmt_bukaModalTambah(); });
@@ -417,13 +442,11 @@ function pppkpwspmt_initPage() {
       PPPKPWSPMT_INIT_DATA = res;
       PPPKPWSPMT_INITED = true;
 
-      if (PPPKPWSPMT_IS_ADMIN && res.unitList) {
-        var $selJenjangFilter = $('#pppkpwspmt_filterJenjang').empty().append('<option value="">Semua Jenjang</option>');
-        var listJenjangOpt = ["PAUD / TK", "SD", "SMP", "SMA", "SMK", "NON-FORMAL / SKB"];
-        listJenjangOpt.forEach(function (j) {
-          $selJenjangFilter.append($('<option>', { value: j, text: j }));
-        });
+      if (res.jenjangList) {
+        pppkpwspmt_populateFilterJenjang(res.jenjangList);
+      }
 
+      if (PPPKPWSPMT_IS_ADMIN && res.unitList) {
         var sel = $('#pppkpwspmt_filterUnit');
         sel.empty().append('<option value="">Semua Unit Kerja</option>');
         res.unitList.forEach(function (u) {
@@ -519,17 +542,22 @@ function pppkpwspmt_applyFilterLocal(keepPage) {
       return String(d.unit_kerja || '').trim().toLowerCase() === unitFilter.trim().toLowerCase();
     });
   }
-  if (jenjangFilter) {
+  if (jenjangFilter && unitFilter === 'SEMUA') {
+    var masterSekolah = (PPPKPWSPMT_INIT_DATA && PPPKPWSPMT_INIT_DATA.sekolahMasterList) ? PPPKPWSPMT_INIT_DATA.sekolahMasterList : [];
     filtered = filtered.filter(function (d) {
-      var u = String(d.unit_kerja || '').trim().toUpperCase();
-      var j = "";
-      if (u.includes("TK") || u.includes("PAUD") || u.includes("KOBER") || u.includes("TKN") || u.includes("TUNAS MUDA")) j = "PAUD / TK";
-      else if (u.includes("SD") || u.includes("SDN")) j = "SD";
-      else if (u.includes("SMP") || u.includes("SMPN")) j = "SMP";
-      else if (u.includes("SMA") || u.includes("SMAN")) j = "SMA";
-      else if (u.includes("SMK") || u.includes("SMKN")) j = "SMK";
-      else if (u.includes("SKB") || u.includes("PKBM")) j = "NON-FORMAL / SKB";
-      return j === jenjangFilter;
+      var u = String(d.unit_kerja || d.unit || '').trim();
+      var uUpper = u.toUpperCase();
+      var rJenjang = "";
+      var sekMatch = masterSekolah.find(function(s) { return String(s.nama || '').trim().toUpperCase() === uUpper; });
+      if (sekMatch && sekMatch.jenjang) {
+        rJenjang = String(sekMatch.jenjang).trim().toUpperCase();
+      } else {
+        if (uUpper.includes("TK") || uUpper.includes("PAUD") || uUpper.includes("KOBER") || uUpper.includes("TKN")) rJenjang = "TK";
+        else if (uUpper.includes("KB") || uUpper.includes("KOBER")) rJenjang = "KB";
+        else if (uUpper.includes("SPS") || uUpper.includes("POS PAUD")) rJenjang = "SPS";
+        else if (uUpper.includes("SD") || uUpper.includes("SDN")) rJenjang = "SD";
+      }
+      return rJenjang === jenjangFilter;
     });
   }
   if (statusFilter) {
@@ -666,6 +694,31 @@ function pppkpwspmt_renderTable(data, keepPage) {
   setTimeout(function () {
     if (PPPKPWSPMT_TABLE) PPPKPWSPMT_TABLE.columns.adjust();
   }, 100);
+}
+
+function pppkpwspmt_populateFilterJenjang(backendJenjangList) {
+  var $selJenjangFilter = $('#pppkpwspmt_filterJenjang');
+  var valSebelumnya = $selJenjangFilter.val() || "";
+  var setJenjang = new Set();
+  
+  var listMaster = (Array.isArray(backendJenjangList) && backendJenjangList.length > 0)
+    ? backendJenjangList
+    : (PPPKPWSPMT_INIT_DATA && PPPKPWSPMT_INIT_DATA.jenjangList ? PPPKPWSPMT_INIT_DATA.jenjangList : []);
+
+  if (listMaster.length > 0) {
+    listMaster.forEach(function (j) {
+      if (j && String(j).trim() !== "") setJenjang.add(String(j).trim().toUpperCase());
+    });
+    
+    $selJenjangFilter.empty().append('<option value="">Semua Jenjang</option>');
+    Array.from(setJenjang).sort().forEach(function (j) {
+      $selJenjangFilter.append($('<option>', { value: j, text: j }));
+    });
+
+    if (valSebelumnya && setJenjang.has(valSebelumnya)) {
+      $selJenjangFilter.val(valSebelumnya);
+    }
+  }
 }
 
 /* =======================================================================
