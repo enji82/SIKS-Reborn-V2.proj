@@ -1278,15 +1278,25 @@
      * Memeriksa dan mengatur tampilan mode Landing Page Publik vs Mode User Internal
      */
     function initLandingPublicMode() {
-      var user = typeof getSesiUser === 'function' ? getSesiUser() : null;
-      if (!user) {
-        // Mode Landing Page Publik: Tampilkan header landing & sembunyikan fitur tulis berita
+      var u = typeof getSesiUser === 'function' ? getSesiUser() : null;
+      if (!u) {
+        try {
+          var raw = localStorage.getItem("siksUser");
+          if (raw && raw !== "null" && raw !== "undefined") {
+            u = JSON.parse(raw);
+            if (typeof u === 'string') u = JSON.parse(u);
+          }
+        } catch(e) {}
+      }
+
+      if (!u || !u.username) {
+        // --- MODE LANDING PAGE PUBLIK (NON-USER / BELUM LOGIN) ---
         $('#landing_public_header').removeClass('d-none').show();
-        $('#emading_btnBukaModalTulis').addClass('d-none').hide();
+        $('#emading_btnBukaModalTulis').addClass('d-none').css('display', 'none !important').hide();
       } else {
-        // Mode User Internal Login: Sembunyikan header landing & aktifkan fitur tulis berita
+        // --- MODE USER TERDOKUMENTASI / SUDAH LOGIN ---
         $('#landing_public_header').addClass('d-none').hide();
-        $('#emading_btnBukaModalTulis').removeClass('d-none').show();
+        $('#emading_btnBukaModalTulis').removeClass('d-none').css('display', '').show();
       }
     }
 
@@ -1418,6 +1428,7 @@
       });
 
       renderFeedKoran(filtered);
+      initLandingPublicMode();
     }
 
     /**
