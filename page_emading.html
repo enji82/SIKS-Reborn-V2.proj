@@ -656,6 +656,14 @@
   .dark-mode .skel-block::after {
     background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%);
   }
+
+  /* PROTEKSI MUTLAK TOMBOL TULIS BERITA HANYA UNTUK USER LOGIN */
+  body.public-landing-mode #emading_btnBukaModalTulis,
+  .public-landing-mode #emading_btnBukaModalTulis {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
 </style>
 
 <section class="content sultan-page-transition">
@@ -1278,6 +1286,7 @@
      * Memeriksa dan mengatur tampilan mode Landing Page Publik vs Mode User Internal
      */
     function initLandingPublicMode() {
+      var isPublicMode = $('body').hasClass('public-landing-mode');
       var u = typeof getSesiUser === 'function' ? getSesiUser() : null;
       if (!u) {
         try {
@@ -1289,14 +1298,18 @@
         } catch(e) {}
       }
 
-      if (!u || !u.username) {
+      var isUserLoggedIn = (u && u.username && !isPublicMode);
+
+      if (!isUserLoggedIn) {
         // --- MODE LANDING PAGE PUBLIK (NON-USER / BELUM LOGIN) ---
+        $('body').addClass('public-landing-mode');
         $('#landing_public_header').removeClass('d-none').show();
-        $('#emading_btnBukaModalTulis').addClass('d-none').css('display', 'none !important').hide();
+        $('#emading_btnBukaModalTulis').attr('style', 'display: none !important;').hide();
       } else {
         // --- MODE USER TERDOKUMENTASI / SUDAH LOGIN ---
+        $('body').removeClass('public-landing-mode');
         $('#landing_public_header').addClass('d-none').hide();
-        $('#emading_btnBukaModalTulis').removeClass('d-none').css('display', '').show();
+        $('#emading_btnBukaModalTulis').attr('style', 'border-radius: 50px; font-size: 0.85rem; display: inline-flex !important;').show();
       }
     }
 
@@ -1435,14 +1448,15 @@
      * Helper terpadu membaca sesi user aktif dan status admin
      */
     function getAktifUserEmading() {
+      var isPublicMode = $('body').hasClass('public-landing-mode');
       var u = null;
-      if (typeof getSesiUser === 'function') {
+      if (!isPublicMode && typeof getSesiUser === 'function') {
         u = getSesiUser();
       }
-      if (!u && typeof userLogin !== 'undefined' && userLogin) {
+      if (!isPublicMode && !u && typeof userLogin !== 'undefined' && userLogin) {
         u = userLogin;
       }
-      if (!u) {
+      if (!isPublicMode && !u) {
         try {
           var stored = localStorage.getItem('siksUser');
           if (stored && stored !== 'null' && stored !== 'undefined') {
@@ -1450,6 +1464,22 @@
             if (typeof u === 'string') u = JSON.parse(u);
           }
         } catch (e) {}
+      }
+
+      if (isPublicMode || !u || !u.username) {
+        var publicAnonId = localStorage.getItem('siks_public_anon_id');
+        if (!publicAnonId) {
+          publicAnonId = 'publik_' + Math.random().toString(36).substring(2, 9);
+          localStorage.setItem('siks_public_anon_id', publicAnonId);
+        }
+        return {
+          user: null,
+          username: publicAnonId,
+          namaLengkap: 'Pembaca Tamu',
+          unitKerja: 'Masyarakat Umum',
+          role: 'public',
+          isAdmin: false
+        };
       }
 
       // Fallback cadangan membaca DOM jika user login sudah tertera di UI navbar
@@ -2586,35 +2616,6 @@
           Sultan.alert('error', 'Error Server', err.message || err);
         })
         .simpanArtikelEmading(payload);
-    }
-
-    /**
-     * Helper mendapatkan identitas user aktif (User SIKS Terdaftar atau Anonim Publik)
-     */
-    function getAktifUserEmading() {
-      var user = typeof getSesiUser === 'function' ? getSesiUser() : null;
-      if (user) {
-        return {
-          username: user.username || 'user',
-          namaLengkap: user.nama_lengkap || user.username || 'Pengguna SIKS',
-          unitKerja: user.unit || user.nama_lengkap || 'SIKS Reborn',
-          role: user.role || 'user',
-          isAdmin: (user.role || '').toLowerCase().includes('admin')
-        };
-      }
-      // Dapatkan atau buat Anonim Session ID di localStorage untuk pengunjung publik
-      var publicAnonId = localStorage.getItem('siks_public_anon_id');
-      if (!publicAnonId) {
-        publicAnonId = 'publik_' + Math.random().toString(36).substring(2, 9);
-        localStorage.setItem('siks_public_anon_id', publicAnonId);
-      }
-      return {
-        username: publicAnonId,
-        namaLengkap: 'Pengunjung Publik',
-        unitKerja: 'Masyarakat Umum',
-        role: 'public',
-        isAdmin: false
-      };
     }
 
   })();
