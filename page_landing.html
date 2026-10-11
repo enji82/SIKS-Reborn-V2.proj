@@ -278,6 +278,30 @@
     overflow: hidden;
   }
 
+  /* TOMBOL LOAD MORE BERITA SULTAN */
+  .portal-btn-loadmore {
+    background: #ffffff;
+    color: var(--lp-maroon);
+    border: 1.5px solid rgba(115, 0, 0, 0.2);
+    font-weight: 700;
+    font-size: 0.88rem;
+    padding: 10px 28px;
+    border-radius: 30px;
+    box-shadow: 0 3px 12px rgba(115, 0, 0, 0.05);
+    transition: all 0.25s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+  }
+  .portal-btn-loadmore:hover {
+    background: linear-gradient(135deg, #730000 0%, #4a0000 100%);
+    color: #ffffff;
+    border-color: #730000;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(115, 0, 0, 0.2);
+  }
+
   /* 5. STATS SUMMARY SECTION */
   .stats-hero-banner {
     background: linear-gradient(135deg, #faf7f5 0%, #ffffff 100%);
@@ -648,6 +672,8 @@
 <script>
   (function () {
     var LANDING_CACHE_BERITA = [];
+    var LANDING_CURRENT_BERITA_LIST = [];
+    var LANDING_NEWS_VISIBLE_COUNT = 9; // Awalnya 3 berita besar + 6 berita kecil (9 berita)
 
     $(document).ready(function () {
       initLandingEvents();
@@ -664,16 +690,24 @@
       // Filter Pencarian Berita di Landing Page
       $('#portal_search_berita').on('input', function () {
         var keyword = $(this).val().toLowerCase().trim();
+        LANDING_NEWS_VISIBLE_COUNT = 9; // Reset saat pencarian berubah
         if (!keyword) {
-          renderBeritaLanding(LANDING_CACHE_BERITA);
+          LANDING_CURRENT_BERITA_LIST = LANDING_CACHE_BERITA;
+          renderBeritaLanding(LANDING_CURRENT_BERITA_LIST);
           return;
         }
-        var filtered = LANDING_CACHE_BERITA.filter(function (b) {
+        LANDING_CURRENT_BERITA_LIST = LANDING_CACHE_BERITA.filter(function (b) {
           var judul = (b.judul || '').toLowerCase();
           var isi = (b.isi || '').toLowerCase();
           return judul.indexOf(keyword) !== -1 || isi.indexOf(keyword) !== -1;
         });
-        renderBeritaLanding(filtered);
+        renderBeritaLanding(LANDING_CURRENT_BERITA_LIST);
+      });
+
+      // Tombol Muat Lebih Banyak (Load More)
+      $(document).on('click', '#btn_portal_loadmore_berita', function () {
+        LANDING_NEWS_VISIBLE_COUNT += 6; // Muat 6 berita berikutnya (2 baris x 3 kolom)
+        renderBeritaLanding(LANDING_CURRENT_BERITA_LIST);
       });
     }
 
@@ -718,7 +752,9 @@
           try {
             var data = typeof resRaw === 'string' ? JSON.parse(resRaw) : resRaw;
             LANDING_CACHE_BERITA = Array.isArray(data) ? data : [];
-            renderBeritaLanding(LANDING_CACHE_BERITA);
+            LANDING_CURRENT_BERITA_LIST = LANDING_CACHE_BERITA;
+            LANDING_NEWS_VISIBLE_COUNT = 9;
+            renderBeritaLanding(LANDING_CURRENT_BERITA_LIST);
           } catch(e) {
             console.error("Gagal parse berita landing:", e);
             $('#landing_berita_empty').removeClass('d-none');
@@ -745,9 +781,10 @@
       $('#landing_berita_empty').addClass('d-none');
       $container.removeClass('d-none');
 
-      // Pisahkan 3 Berita Besar (item 0, 1, 2) dan Berita Lainnya di bawahnya
-      var headlines = list.slice(0, 3);
-      var lainnya = list.slice(3, 9); // Ambil hingga 6 berita kecil (2 baris x 3 kolom)
+      // Ambil berita sesuai batasan halaman aktif (LANDING_NEWS_VISIBLE_COUNT)
+      var displayList = list.slice(0, LANDING_NEWS_VISIBLE_COUNT);
+      var headlines = displayList.slice(0, 3);
+      var lainnya = displayList.slice(3); // Seluruh berita kecil berikutnya
 
       // FUNGSI BANTU GENERATE KARTU BERITA BESAR (3 KOLOM HORIZONTAL)
       function buatKartuBeritaBesar(item) {
@@ -827,7 +864,19 @@
           '</div>';
       }
 
-      $container.html(htmlHeadlines + htmlBawah);
+      // TOMBOL LOAD MORE (JIKA MASIH ADA BERITA TERSISA)
+      var htmlLoadMore = '';
+      if (list.length > LANDING_NEWS_VISIBLE_COUNT) {
+        var sisaBerita = list.length - LANDING_NEWS_VISIBLE_COUNT;
+        htmlLoadMore = '' +
+          '<div class="col-12 text-center my-4">' +
+            '<button type="button" class="portal-btn-loadmore" id="btn_portal_loadmore_berita">' +
+              '<i class="fas fa-layer-group text-warning"></i> Muat Berita Lainnya (' + sisaBerita + ' tersisa)' +
+            '</button>' +
+          '</div>';
+      }
+
+      $container.html(htmlHeadlines + htmlBawah + htmlLoadMore);
     }
 
     // Modal popup baca lengkap berita
