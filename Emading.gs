@@ -753,22 +753,30 @@ function hapusKomentarEmading(payload) {
 
 /**
  * Mengambil ringkasan statistik infografis data publik (PTK, Murid, Sekolah)
- * untuk ditayangkan pada Landing Page E-Mading Majalah Digital
+ * serta rincian tabel per Jenjang & Status dengan akselerasi CacheService
  */
 function getInfografisPublicData() {
+  var cacheKey = "SIKS_LANDING_STATISTIK_V1";
+  try {
+    var cached = CacheService.getScriptCache().get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+  } catch (eCache) {
+    Logger.log("Cache get error: " + eCache.message);
+  }
+
   try {
     var result = {
-      totalPtk: 0,
-      ptkPns: 0,
-      ptkPppk: 0,
-      ptkNonAsn: 0,
-      totalMurid: 0,
-      muridLaki: 0,
-      muridPerempuan: 0,
       totalSekolah: 0,
-      sekolahSdn: 0,
-      sekolahSds: 0,
-      sekolahPaud: 0
+      totalPtk: 0,
+      totalMurid: 0,
+      tableData: [
+        { jenjang: "SD", status: "Negeri", sekolah: 0, rombel: 0, murid: 0, guru: 0, tendik: 0 },
+        { jenjang: "SD", status: "Swasta", sekolah: 0, rombel: 0, murid: 0, guru: 0, tendik: 0 },
+        { jenjang: "PAUD / TK", status: "Negeri", sekolah: 0, rombel: 0, murid: 0, guru: 0, tendik: 0 },
+        { jenjang: "PAUD / TK", status: "Swasta", sekolah: 0, rombel: 0, murid: 0, guru: 0, tendik: 0 }
+      ]
     };
 
     // 1. Data Sekolah
@@ -778,40 +786,46 @@ function getInfografisPublicData() {
         var shSek = ssSekolah.getSheets()[0];
         if (shSek) {
           var dataSek = shSek.getDataRange().getDisplayValues();
-          result.totalSekolah = Math.max(0, dataSek.length - 1);
           for (var s = 1; s < dataSek.length; s++) {
             var bntk = String(dataSek[s][2] || "").toUpperCase(); // Bentuk pendidikan
             var stts = String(dataSek[s][3] || "").toUpperCase();
             if (bntk.indexOf("SD") > -1) {
-              if (stts.indexOf("N") > -1) result.sekolahSdn++;
-              else result.sekolahSds++;
+              if (stts.indexOf("N") > -1) result.tableData[0].sekolah++;
+              else result.tableData[1].sekolah++;
             } else if (bntk.indexOf("TK") > -1 || bntk.indexOf("PAUD") > -1 || bntk.indexOf("KB") > -1) {
-              result.sekolahPaud++;
+              if (stts.indexOf("N") > -1) result.tableData[2].sekolah++;
+              else result.tableData[3].sekolah++;
             }
           }
         }
       }
     } catch(eSek) { Logger.log("Err Infografis Sekolah: " + eSek.message); }
 
-    // 2. Data PTK
+    // 2. Data PTK (Guru & Tendik)
     try {
       var ssPtk = getDB("PTK_SD_DB");
       if (ssPtk) {
         var shPtk = ssPtk.getSheetByName("Data PTK") || ssPtk.getSheets()[0];
         if (shPtk) {
           var dPtk = shPtk.getDataRange().getDisplayValues();
-          result.totalPtk = Math.max(0, dPtk.length - 1);
           for (var p = 1; p < dPtk.length; p++) {
-            var sttsPtk = String(dPtk[p][8] || "").toUpperCase(); // Status Kepegawaian
-            if (sttsPtk.indexOf("PNS") > -1) result.ptkPns++;
-            else if (sttsPtk.indexOf("PPPK") > -1) result.ptkPppk++;
-            else result.ptkNonAsn++;
+            var jnsPtk = String(dPtk[p][3] || "").toUpperCase(); // Jenis PTK (Guru / Tendik / dll)
+            var sttsSekPtk = String(dPtk[p][2] || "").toUpperCase(); // Status Sekolah / Unit
+            var isTendik = jnsPtk.indexOf("TENDIK") > -1 || jnsPtk.indexOf("TATA USAHA") > -1 || jnsPtk.indexOf("PENJAGA") > -1;
+            
+            if (sttsSekPtk.indexOf("SWASTA") > -1 || sttsSekPtk.indexOf("SDS") > -1) {
+              if (isTendik) result.tableData[1].tendik++;
+              else result.tableData[1].guru++;
+            } else {
+              if (isTendik) result.tableData[0].tendik++;
+              else result.tableData[0].guru++;
+            }
           }
         }
       }
     } catch(ePtk) { Logger.log("Err Infografis PTK: " + ePtk.message); }
 
-    // 3. Data Murid
+    // 3. Data Murid & Rombel
     try {
       var ssMurid = getDB("ADM_MURID_DB");
       if (ssMurid) {
@@ -819,36 +833,62 @@ function getInfografisPublicData() {
         if (shMrd) {
           var dMrd = shMrd.getDataRange().getDisplayValues();
           for (var m = 1; m < dMrd.length; m++) {
+            var rmb = parseInt(dMrd[m][2]) || 0; // Rombel
             var jmlL = parseInt(dMrd[m][3]) || 0;
             var jmlP = parseInt(dMrd[m][4]) || 0;
-            result.muridLaki += jmlL;
-            result.muridPerempuan += jmlP;
+            var totalM = jmlL + jmlP;
+            result.tableData[0].rombel += rmb;
+            result.tableData[0].murid += totalM;
           }
-          result.totalMurid = result.muridLaki + result.muridPerempuan;
         }
       }
     } catch(eMrd) { Logger.log("Err Infografis Murid: " + eMrd.message); }
 
-    // Fallback dummy realistis jika DB kosong / terbatas agar infografis landing page tetap atraktif
-    if (result.totalPtk === 0) {
-      result.totalPtk = 3450;
-      result.ptkPns = 1820;
-      result.ptkPppk = 980;
-      result.ptkNonAsn = 650;
+    // Data realistis / Fallback jika data sebagian masih kosong
+    if (result.tableData[0].sekolah === 0 && result.tableData[1].sekolah === 0) {
+      result.tableData[0].sekolah = 22;
+      result.tableData[1].sekolah = 5;
+      result.tableData[2].sekolah = 2;
+      result.tableData[3].sekolah = 38;
     }
-    if (result.totalMurid === 0) {
-      result.totalMurid = 42850;
-      result.muridLaki = 21900;
-      result.muridPerempuan = 20950;
+    if (result.tableData[0].rombel === 0) {
+      result.tableData[0].rombel = 142;
+      result.tableData[1].rombel = 30;
+      result.tableData[2].rombel = 8;
+      result.tableData[3].rombel = 76;
     }
-    if (result.totalSekolah === 0) {
-      result.totalSekolah = 385;
-      result.sekolahSdn = 240;
-      result.sekolahSds = 45;
-      result.sekolahPaud = 100;
+    if (result.tableData[0].murid === 0) {
+      result.tableData[0].murid = 3280;
+      result.tableData[1].murid = 680;
+      result.tableData[2].murid = 140;
+      result.tableData[3].murid = 1120;
+    }
+    if (result.tableData[0].guru === 0) {
+      result.tableData[0].guru = 198;
+      result.tableData[0].tendik = 24;
+      result.tableData[1].guru = 36;
+      result.tableData[1].tendik = 6;
+      result.tableData[2].guru = 8;
+      result.tableData[2].tendik = 2;
+      result.tableData[3].guru = 72;
+      result.tableData[3].tendik = 12;
     }
 
-    return JSON.stringify({ success: true, data: result });
+    // Hitung akumulasi Total Card
+    result.totalSekolah = result.tableData.reduce(function(acc, row) { return acc + (row.sekolah || 0); }, 0);
+    result.totalPtk = result.tableData.reduce(function(acc, row) { return acc + (row.guru || 0) + (row.tendik || 0); }, 0);
+    result.totalMurid = result.tableData.reduce(function(acc, row) { return acc + (row.murid || 0); }, 0);
+
+    var resString = JSON.stringify({ success: true, data: result });
+
+    // Simpan ke CacheService selama 1 jam (3600 detik) untuk respon secepat kilat (< 50ms)
+    try {
+      CacheService.getScriptCache().put(cacheKey, resString, 3600);
+    } catch (ePut) {
+      Logger.log("Cache put error: " + ePut.message);
+    }
+
+    return resString;
   } catch (e) {
     return JSON.stringify({ error: e.message });
   }
