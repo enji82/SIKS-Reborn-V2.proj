@@ -760,7 +760,7 @@ function hapusKomentarEmading(payload) {
  * serta rincian tabel per Jenjang & Status dengan akselerasi CacheService
  */
 function getInfografisPublicData() {
-  var cacheKey = "SIKS_LANDING_STATISTIK_V3";
+  var cacheKey = "SIKS_LANDING_STATISTIK_V4";
   try {
     var cached = CacheService.getScriptCache().get(cacheKey);
     if (cached) {
@@ -1000,10 +1000,91 @@ function getInfografisPublicData() {
     result.tableData[4].rombel = 0;
     result.tableData[4].murid = 0;
 
+    // 4. HITUNG PERIODE LAPBUL BULAN LALU & PROGRES PENGIRIMAN
+    var listBulanIndo = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    var skrg = new Date();
+    // Bulan lalu:
+    var blnLaluIdx = skrg.getMonth() - 1; // 0-based
+    var thnLalu = skrg.getFullYear();
+    if (blnLaluIdx < 0) {
+      blnLaluIdx = 11;
+      thnLalu = thnLalu - 1;
+    }
+    var namaBulanLalu = listBulanIndo[blnLaluIdx];
+    result.periodeLaporan = namaBulanLalu + " " + thnLalu;
+
+    // Ambil data sekolah yang sudah lapor di Lapbul bulan lalu
+    var lapbulMap = {}; // key: NPSN atau namaSekolah uppercase
+    try {
+      if (typeof getLapbulKelolaData === "function") {
+        var rawLapbul = getLapbulKelolaData("", namaBulanLalu.toLowerCase(), String(thnLalu), "", "");
+        if (rawLapbul && Array.isArray(rawLapbul)) {
+          rawLapbul.forEach(function(item) {
+            var npsnKey = String(item.npsn || "").trim();
+            var namaKey = String(item.namaSekolah || "").trim().toUpperCase();
+            var stt = String(item.statusData || "").toLowerCase();
+            if (stt.indexOf("hapus") === -1 && stt !== "-" && stt !== "") {
+              if (npsnKey) lapbulMap[npsnKey] = true;
+              if (namaKey) lapbulMap[namaKey] = true;
+            }
+          });
+        }
+      }
+    } catch(eLapbul) {
+      Logger.log("Err Lapbul Progress: " + eLapbul.message);
+    }
+
+    // Cocokkan data sekolah dari Data_Sekolah untuk menghitung sekolah yang sudah lapor per baris
+    try {
+      var shSekolah = getSheet("USER_DB", "Data_Sekolah");
+      if (shSekolah) {
+        var dSek = shSekolah.getDataRange().getDisplayValues();
+        var laporCount = [0, 0, 0, 0, 0]; // sdn, sds, tk, kb, sps
+        for (var s = 1; s < dSek.length; s++) {
+          var npsnSek = String(dSek[s][0] || "").trim();
+          var jnjSek = String(dSek[s][1] || "").trim().toUpperCase();
+          var namaSek = String(dSek[s][2] || "").trim().toUpperCase();
+          var sttSek = String(dSek[s][3] || "").trim().toUpperCase();
+
+          var isLapor = lapbulMap[npsnSek] || lapbulMap[namaSek] || false;
+          if (isLapor) {
+            if (jnjSek === "SD") {
+              if (sttSek.indexOf("NEGERI") > -1) laporCount[0]++;
+              else laporCount[1]++;
+            } else if (jnjSek === "TK") {
+              laporCount[2]++;
+            } else if (jnjSek === "KB") {
+              laporCount[3]++;
+            } else if (jnjSek === "SPS") {
+              laporCount[4]++;
+            }
+          }
+        }
+
+        for (var idxRow = 0; idxRow < 5; idxRow++) {
+          var totSek = result.tableData[idxRow].sekolah || 0;
+          var sudLapor = laporCount[idxRow] || 0;
+          var prg = totSek > 0 ? Math.round((sudLapor / totSek) * 100) : 0;
+          result.tableData[idxRow].sudahLapor = sudLapor;
+          result.tableData[idxRow].progress = Math.min(100, prg);
+        }
+      }
+    } catch(eMatch) {
+      Logger.log("Err Matching Progress: " + eMatch.message);
+      for (var idxRow = 0; idxRow < 5; idxRow++) {
+        result.tableData[idxRow].sudahLapor = 0;
+        result.tableData[idxRow].progress = 0;
+      }
+    }
+
     // Hitung Akumulasi Total Card
     result.totalSekolah = result.tableData.reduce(function(acc, row) { return acc + (row.sekolah || 0); }, 0);
     result.totalPtk = result.tableData.reduce(function(acc, row) { return acc + (row.guru || 0) + (row.tendik || 0); }, 0);
     result.totalMurid = result.tableData.reduce(function(acc, row) { return acc + (row.murid || 0); }, 0);
+
+    var totalSudahLapor = result.tableData.reduce(function(acc, row) { return acc + (row.sudahLapor || 0); }, 0);
+    result.totalSudahLapor = totalSudahLapor;
+    result.totalProgress = result.totalSekolah > 0 ? Math.round((totalSudahLapor / result.totalSekolah) * 100) : 0;
 
     var resString = JSON.stringify({ success: true, data: result });
 

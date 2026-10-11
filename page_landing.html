@@ -511,7 +511,7 @@
       <!-- HEADER SEKSI STATISTIK -->
       <div class="mb-4">
         <h3 class="portal-section-title">Statistik Pendidikan Korwil Secang</h3>
-        <p class="portal-section-subtitle mb-0">Agregasi data riil satuan pendidikan, pendidik, dan peserta didik se-Kecamatan Secang.</p>
+        <p class="portal-section-subtitle mb-0" id="lp_stat_subtitle">Jumlah satuan pendidikan, pendidik, tenaga kependidikan, dan murid se-Kecamatan Secang berdasarkan laporan bulan...</p>
       </div>
 
       <div class="row">
@@ -549,18 +549,19 @@
           <table class="table table-hover sultan-table-matrix text-center mb-0" id="table_landing_statistik">
             <thead>
               <tr>
-                <th class="text-left" style="min-width: 140px; padding-left: 20px !important;">JENJANG</th>
-                <th class="text-left" style="min-width: 120px;">STATUS</th>
-                <th class="text-center" style="min-width: 130px;">JUMLAH SEKOLAH</th>
-                <th class="text-center" style="min-width: 100px;">ROMBEL</th>
-                <th class="text-center" style="min-width: 110px;">MURID</th>
-                <th class="text-center" style="min-width: 100px;">GURU</th>
-                <th class="text-center" style="min-width: 100px;">TENDIK</th>
+                <th class="text-left" style="min-width: 130px; padding-left: 20px !important;">JENJANG</th>
+                <th class="text-left" style="min-width: 110px;">STATUS</th>
+                <th class="text-center" style="min-width: 110px;">SATPEN</th>
+                <th class="text-center" style="min-width: 90px;">ROMBEL</th>
+                <th class="text-center" style="min-width: 100px;">MURID</th>
+                <th class="text-center" style="min-width: 90px;">GURU</th>
+                <th class="text-center" style="min-width: 90px;">TENDIK</th>
+                <th class="text-center" style="min-width: 170px; padding-right: 20px !important;">PROGRESS</th>
               </tr>
             </thead>
             <tbody id="lp_table_stat_body">
               <tr>
-                <td colspan="7" class="text-center py-4 text-muted">
+                <td colspan="8" class="text-center py-4 text-muted">
                   <i class="fas fa-circle-notch fa-spin mr-2"></i> Memuat agregasi data...
                 </td>
               </tr>
@@ -573,6 +574,7 @@
                 <td class="text-center font-weight-bold" id="lp_tot_murid">0</td>
                 <td class="text-center font-weight-bold" id="lp_tot_guru">0</td>
                 <td class="text-center font-weight-bold" id="lp_tot_tendik">0</td>
+                <td class="text-center font-weight-bold" style="padding-right: 20px !important;" id="lp_tot_progress">-</td>
               </tr>
             </tfoot>
           </table>
@@ -639,6 +641,11 @@
               var totalPtk = (d.totalPtk || 0).toLocaleString('id-ID');
               var totalMrd = (d.totalMurid || 0).toLocaleString('id-ID');
 
+              // 0. Update Subtitle Dinamis Sesuai Periode Laporan
+              if (d.periodeLaporan) {
+                $('#lp_stat_subtitle').text('Jumlah satuan pendidikan, pendidik, tenaga kependidikan, dan murid se-Kecamatan Secang berdasarkan laporan bulan ' + d.periodeLaporan + '.');
+              }
+
               // 1. Tampilkan Total pada 3 Card
               $('#lp_stat_total_sekolah').text(totalSek);
               $('#lp_stat_total_ptk').text(totalPtk);
@@ -648,6 +655,7 @@
               var rows = d.tableData || [];
               var tbodyHtml = '';
               var sumSekolah = 0, sumRombel = 0, sumMurid = 0, sumGuru = 0, sumTendik = 0;
+              var sumSudahLapor = 0;
 
               rows.forEach(function (r) {
                 var jnjUpper = (r.jenjang || '').toUpperCase().trim();
@@ -666,12 +674,40 @@
                 var mrd = r.murid || 0;
                 var gru = r.guru || 0;
                 var tdk = r.tendik || 0;
+                var sudLapor = r.sudahLapor || 0;
+                var prg = typeof r.progress === 'number' ? r.progress : (sek > 0 ? Math.round((sudLapor / sek) * 100) : 0);
 
                 sumSekolah += sek;
                 sumRombel += rmb;
                 sumMurid += mrd;
                 sumGuru += gru;
                 sumTendik += tdk;
+                sumSudahLapor += sudLapor;
+
+                // Warna progress bar dinamis
+                var barFillClass = 'sultan-progress-fill-red';
+                var textPrgColor = '#dc2626';
+                if (prg >= 80) {
+                  barFillClass = 'sultan-progress-fill-emerald';
+                  textPrgColor = '#059669';
+                } else if (prg >= 50) {
+                  barFillClass = 'sultan-progress-fill-blue';
+                  textPrgColor = '#2563eb';
+                } else if (prg > 0) {
+                  barFillClass = 'sultan-progress-fill-amber';
+                  textPrgColor = '#d97706';
+                }
+
+                var progressBarHtml = '' +
+                  '<div class="d-flex flex-column justify-content-center" style="min-width: 130px;">' +
+                    '<div class="d-flex justify-content-between align-items-center mb-1" style="font-size: 11px;">' +
+                      '<span class="text-muted">' + sudLapor + ' / ' + sek + ' Sek</span>' +
+                      '<span class="font-weight-bold" style="color: ' + textPrgColor + ';">' + prg + '%</span>' +
+                    '</div>' +
+                    '<div class="sultan-progress-track" style="height: 6px !important;">' +
+                      '<div class="' + barFillClass + '" style="width: ' + prg + '%; height: 100%; border-radius: 10px; transition: width 0.6s ease;"></div>' +
+                    '</div>' +
+                  '</div>';
 
                 tbodyHtml += '' +
                   '<tr>' +
@@ -682,6 +718,7 @@
                     '<td class="text-center font-weight-bold text-success">' + mrd.toLocaleString('id-ID') + '</td>' +
                     '<td class="text-center font-weight-bold">' + gru.toLocaleString('id-ID') + '</td>' +
                     '<td class="text-center font-weight-bold">' + tdk.toLocaleString('id-ID') + '</td>' +
+                    '<td class="text-center" style="padding-right: 20px !important;">' + progressBarHtml + '</td>' +
                   '</tr>';
               });
 
@@ -693,16 +730,32 @@
               $('#lp_tot_murid').text(sumMurid.toLocaleString('id-ID'));
               $('#lp_tot_guru').text(sumGuru.toLocaleString('id-ID'));
               $('#lp_tot_tendik').text(sumTendik.toLocaleString('id-ID'));
+
+              var totalPrg = sumSekolah > 0 ? Math.round((sumSudahLapor / sumSekolah) * 100) : 0;
+              var totalFillClass = totalPrg >= 80 ? 'sultan-progress-fill-emerald' : (totalPrg >= 50 ? 'sultan-progress-fill-blue' : 'sultan-progress-fill-amber');
+              var totalPrgColor = totalPrg >= 80 ? '#059669' : (totalPrg >= 50 ? '#2563eb' : '#d97706');
+              var totalBarHtml = '' +
+                '<div class="d-flex flex-column justify-content-center" style="min-width: 130px;">' +
+                  '<div class="d-flex justify-content-between align-items-center mb-1" style="font-size: 11.5px;">' +
+                    '<span class="text-muted font-weight-bold">' + sumSudahLapor + ' / ' + sumSekolah + ' Sek</span>' +
+                    '<span class="font-weight-bold" style="color: ' + totalPrgColor + ';">' + totalPrg + '%</span>' +
+                  '</div>' +
+                  '<div class="sultan-progress-track" style="height: 7px !important;">' +
+                    '<div class="' + totalFillClass + '" style="width: ' + totalPrg + '%; height: 100%; border-radius: 10px;"></div>' +
+                  '</div>' +
+                '</div>';
+              $('#lp_tot_progress').html(totalBarHtml);
+
               $('#lp_table_stat_foot').removeClass('d-none');
             }
           } catch(e) {
             console.error("Gagal parse statistik landing:", e);
-            $('#lp_table_stat_body').html('<tr><td colspan="7" class="text-center text-muted py-3">Gagal memuat rincian statistik.</td></tr>');
+            $('#lp_table_stat_body').html('<tr><td colspan="8" class="text-center text-muted py-3">Gagal memuat rincian statistik.</td></tr>');
           }
         })
         .withFailureHandler(function(err) {
           console.error("Gagal request statistik:", err);
-          $('#lp_table_stat_body').html('<tr><td colspan="7" class="text-center text-muted py-3">Gagal menghubungi server database.</td></tr>');
+          $('#lp_table_stat_body').html('<tr><td colspan="8" class="text-center text-muted py-3">Gagal menghubungi server database.</td></tr>');
         })
         .getInfografisPublicData();
     }
