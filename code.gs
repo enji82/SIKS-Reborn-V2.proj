@@ -745,22 +745,30 @@ function getVisitorStats() {
   return stats;
 }
 
-function saveRunningText(textBaru) {
+function saveRunningText(textBaru, statusAktif) {
   try {
     var ss = getDB("USER_DB");
     var sheet = ss.getSheetByName("SETTING");
     if (!sheet) {
       sheet = ss.insertSheet("SETTING");
-      sheet.getRange("A1").setValue("RUNNING_TEXT");
+      sheet.getRange("A1").setValue("PENGUMUMAN_TEXT");
+      sheet.getRange("A2").setValue("PENGUMUMAN_AKTIF");
     }
-    sheet.getRange("B1").setValue(textBaru);
+    sheet.getRange("A1").setValue("PENGUMUMAN_TEXT");
+    sheet.getRange("B1").setValue(textBaru || "");
     
-    // Hapus cache pengumuman agar langsung tampil baru
+    // Status aktif: '1' (aktif) atau '0' (tidak aktif)
+    var aktifVal = (statusAktif === true || statusAktif === '1' || statusAktif === 1 || statusAktif === 'true') ? '1' : '0';
+    sheet.getRange("A2").setValue("PENGUMUMAN_AKTIF");
+    sheet.getRange("B2").setValue(aktifVal);
+    
+    // Hapus cache pengumuman agar langsung ter-refresh
     var cache = CacheService.getScriptCache();
     cache.remove("visitor_stats_cache");
     cache.remove("pengumuman_text_cache");
+    cache.remove("pengumuman_setting_cache");
     
-    return { status: 'success', message: 'Berhasil disimpan!' };
+    return { status: 'success', message: 'Konfigurasi Informasi & Pengumuman berhasil disimpan!' };
   } catch (e) {
     return { status: 'error', message: 'Gagal: ' + e.message };
   }
@@ -771,25 +779,65 @@ function loadPageSetting() {
   return HtmlService.createTemplateFromFile('page_setting').evaluate().getContent();
 }
 
-// Fungsi ringan khusus untuk memuat Pengumuman secara instan
+// Fungsi ringan khusus untuk memuat data pengumuman beserta status aktifnya (Untuk halaman Pengaturan)
+function getPengumumanSetting() {
+  try {
+    var cache = CacheService.getScriptCache();
+    var cached = cache.get("pengumuman_setting_cache");
+    if (cached != null) return JSON.parse(cached);
+
+    var sheetSetting = getSheet("USER_DB", "SETTING");
+    var info = "";
+    var aktif = "1"; // Default aktif
+
+    if (sheetSetting) {
+      info = sheetSetting.getRange("B1").getValue() || "";
+      var valAktif = sheetSetting.getRange("B2").getValue();
+      if (valAktif !== "" && valAktif !== null && valAktif !== undefined) {
+        aktif = String(valAktif);
+      }
+    }
+
+    var result = {
+      info: info,
+      aktif: (aktif === "1" || aktif === "true" || aktif === true)
+    };
+
+    cache.put("pengumuman_setting_cache", JSON.stringify(result), 1800);
+    return result;
+  } catch (e) {
+    return { info: "", aktif: false, error: e.message };
+  }
+}
+
+// Fungsi ringan khusus untuk memuat Pengumuman secara instan ke Beranda (dengan cek status aktif)
 function getPengumumanInfo() {
   try {
     var cache = CacheService.getScriptCache();
     var cached = cache.get("pengumuman_text_cache");
-    if (cached != null) return cached;
+    if (cached != null) return JSON.parse(cached);
     
     var sheetSetting = getSheet("USER_DB", "SETTING");
     var info = "";
+    var aktif = "1";
     if (sheetSetting) {
-      info = sheetSetting.getRange("B1").getValue();
+      info = sheetSetting.getRange("B1").getValue() || "";
+      var valAktif = sheetSetting.getRange("B2").getValue();
+      if (valAktif !== "" && valAktif !== null && valAktif !== undefined) {
+        aktif = String(valAktif);
+      }
     }
     
-    if (!info) info = "Tidak ada pengumuman saat ini.";
+    var isAktif = (aktif === "1" || aktif === "true" || aktif === true);
+    var res = {
+      show: isAktif && (info.trim() !== ""),
+      info: info
+    };
     
-    cache.put("pengumuman_text_cache", info, 1800); // Cache 30 menit
-    return info;
+    cache.put("pengumuman_text_cache", JSON.stringify(res), 1800); // Cache 30 menit
+    return res;
   } catch(e) {
-    return "Gagal memuat pengumuman.";
+    return { show: false, info: "" };
   }
 }
 
