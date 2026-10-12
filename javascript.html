@@ -728,6 +728,17 @@
     window.addEventListener('focus', function () {
       sultan_fetchNotifikasi();
     });
+
+    // GLOBAL SAFETY: Mencegah Ghost / Stuck Tooltip di pojok layar
+    $(document).on('click', '[data-toggle="tooltip"]', function () {
+      try { $(this).tooltip('hide'); } catch (e) {}
+    });
+    $(document).on('mouseleave', '[data-toggle="tooltip"]', function () {
+      try { $(this).tooltip('hide'); } catch (e) {}
+    });
+    $(document).on('show.bs.modal hide.bs.modal', function () {
+      $('.tooltip').remove();
+    });
   });
 
   function inisialisasiAplikasi() {
@@ -830,6 +841,7 @@
     $content.removeClass('sultan-page-transition');
 
     $('body > .modal').remove(); $('.modal-backdrop').remove(); $('body').removeClass('modal-open').css('padding-right', '');
+    $('.tooltip').remove(); // Bersihkan zombie / ghost tooltip saat navigasi halaman
     $('#global_modalFormSize .modal-content > form').remove();
     $('#global_verifikasiFormArea').empty();
     $('#global_modalFormBody, #global_modalFormFooter').show();
@@ -1659,7 +1671,10 @@
           "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
         initComplete: function () {
           var api = this.api();
-          $('[data-toggle="tooltip"]').tooltip();
+          $('.tooltip').remove();
+          if ($.fn.tooltip) {
+            $('[data-toggle="tooltip"]').tooltip({ boundary: 'window', trigger: 'hover' });
+          }
 
           // Make scroll container focusable for keypad (arrow key) scrolling
           var $scroll = $(this).closest('.sultan-scroll-container, .table-responsive, .sultan-scroll');
@@ -1737,8 +1752,10 @@
           "<'row'<'col-sm-12'tr>>" +
           "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
         "drawCallback": function (settings) {
+          // Bersihkan tooltip sisa (ghost/zombie) di body setiap kali tabel digambar ulang
+          $('.tooltip').remove();
           if ($.fn.tooltip) {
-            $('[data-toggle="tooltip"]').tooltip({ boundary: 'window' });
+            $('[data-toggle="tooltip"]').tooltip({ boundary: 'window', trigger: 'hover' });
           }
           // Enforce warna header konsisten sesuai tema Sultan V2
           var isDark = $('body').hasClass('dark-mode');
