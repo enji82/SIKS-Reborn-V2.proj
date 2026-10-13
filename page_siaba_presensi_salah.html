@@ -1217,18 +1217,24 @@
             .withSuccessHandler(function (res) {
                 btn.prop('disabled', false).html(txt);
                 if (res === "Sukses" || String(res).includes("Sukses")) {
-                    var $modal = $('#global_modalForm');
-                    $modal.one('hidden.bs.modal', function () {
-                        // VAKSIN ZERO BLINK: Update Cache Lokal Langsung
-                        for (var i = 0; i < SALAH_CACHE_DATA.length; i++) {
-                            if (String(SALAH_CACHE_DATA[i].rowBaris) === String(rowId)) {
-                                SALAH_CACHE_DATA[i].status = st;
-                                SALAH_CACHE_DATA[i].tglVerif = "Baru saja";
-                                SALAH_CACHE_DATA[i].adminVerif = SALAH_USER_AKTIF;
-                                SALAH_CACHE_DATA[i].ket = ket;
-                                break;
-                            }
+                    if (typeof Sultan !== 'undefined' && Sultan.modal && Sultan.modal.tutupVerifikasi) {
+                        Sultan.modal.tutupVerifikasi();
+                    } else {
+                        $('#global_modalForm').modal('hide');
+                    }
+
+                    // VAKSIN ZERO BLINK: Update Cache Lokal Langsung
+                    for (var i = 0; i < SALAH_CACHE_DATA.length; i++) {
+                        if (String(SALAH_CACHE_DATA[i].rowBaris) === String(rowId)) {
+                            SALAH_CACHE_DATA[i].status = st;
+                            SALAH_CACHE_DATA[i].tglVerif = "Baru saja";
+                            SALAH_CACHE_DATA[i].adminVerif = SALAH_USER_AKTIF;
+                            SALAH_CACHE_DATA[i].ket = ket;
+                            break;
                         }
+                    }
+
+                    setTimeout(function() {
                         if (typeof SultanCRUD !== 'undefined' && typeof SultanCRUD.updateRowPreserved === 'function') {
                             SultanCRUD.updateRowPreserved(SALAH_TABEL_INSTANCE, function() {
                                 salah_terapkanFilterLokal();
@@ -1240,8 +1246,7 @@
                             sultan_fetchNotifikasi();
                         }
                         Sultan.notif.sukses('Status diperbarui!');
-                    });
-                    $modal.modal('hide');
+                    }, 300);
                 } else { Sultan.alert('error', 'Gagal Verifikasi', res); }
             })
             .withFailureHandler(function (err) { btn.prop('disabled', false).html(txt); Sultan.alert('error', 'Koneksi Terputus', err.message); })
