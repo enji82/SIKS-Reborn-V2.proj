@@ -709,6 +709,30 @@ function efiledash_loadDataKategori(idKategori, forceRefresh) {
       EFILEDASH_CURRENT_SUDAH = data.sudah || [];
       EFILEDASH_CURRENT_BELUM = data.belum || [];
 
+      // Update dropdown Tahun/Periode sesuai data backend
+      var selTahunEl = $('#efiledash_filterTahun');
+      var valTahunSebelumnya = selTahunEl.val();
+      selTahunEl.empty().append('<option value="SEMUA">Semua Tahun/Periode</option>');
+
+      var periodeSet = {};
+      (data.rekap || []).forEach(function(rk) {
+        if (rk.tahun && !periodeSet[rk.tahun]) {
+          periodeSet[rk.tahun] = true;
+          selTahunEl.append($('<option>', { value: rk.tahun, text: rk.tahun }));
+        }
+      });
+
+      if (valTahunSebelumnya && selTahunEl.find('option[value="' + valTahunSebelumnya + '"]').length > 0) {
+        selTahunEl.val(valTahunSebelumnya);
+      } else {
+        var firstValidPeriod = selTahunEl.find('option:not([value="SEMUA"]):first').val();
+        if (firstValidPeriod) {
+          selTahunEl.val(firstValidPeriod);
+        } else {
+          selTahunEl.val('SEMUA');
+        }
+      }
+
       if (isInitialLoad) {
         $('#efiledash_dashboardState').fadeIn(250);
       } else {
@@ -735,8 +759,42 @@ function efiledash_loadDataKategori(idKategori, forceRefresh) {
 }
 
 function efiledash_terapkanFilterLokal() {
-  var dataSudah = EFILEDASH_CURRENT_SUDAH || [];
-  var dataBelum = EFILEDASH_CURRENT_BELUM || [];
+  var rawSudah = EFILEDASH_CURRENT_SUDAH || [];
+  var rawBelum = EFILEDASH_CURRENT_BELUM || [];
+  var filterTahun = $('#efiledash_filterTahun').val();
+
+  // Saring berdasarkan Tahun/Periode yang dipilih
+  var dataSudah = [];
+  var dataBelum = [];
+
+  if (!filterTahun || filterTahun === 'SEMUA') {
+    // Jika semua tahun, deduplikasi per PTK (prioritaskan status unggah terakhir)
+    var seenSudahPtk = {};
+    rawSudah.forEach(function(s) {
+      var key = String(s.nip || s.nama || "").trim().toUpperCase();
+      if (!seenSudahPtk[key]) {
+        seenSudahPtk[key] = true;
+        dataSudah.push(s);
+      }
+    });
+
+    var seenBelumPtk = {};
+    rawBelum.forEach(function(b) {
+      var key = String(b.nip || b.nama || "").trim().toUpperCase();
+      // Jangan masukkan ke belum jika sudah ada di sudah
+      if (!seenSudahPtk[key] && !seenBelumPtk[key]) {
+        seenBelumPtk[key] = true;
+        dataBelum.push(b);
+      }
+    });
+  } else {
+    dataSudah = rawSudah.filter(function(s) {
+      return String(s.tahun || "").trim() === String(filterTahun).trim();
+    });
+    dataBelum = rawBelum.filter(function(b) {
+      return String(b.tahun || "").trim() === String(filterTahun).trim();
+    });
+  }
   var dataRekap = EFILEDASH_CURRENT_REKAP || [];
 
   var totSudah = dataSudah.length;
