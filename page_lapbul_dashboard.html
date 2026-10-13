@@ -1292,16 +1292,17 @@
   function dashlapbul_copyBelumSemua() {
     var th = $('#dashlapbul_dashTahun').val();
     var blnText = $('#dashlapbul_dashBulan option:selected').text();
-    var belumList = [];
-    ['sd', 'tk', 'kb', 'sps'].forEach(function (j) {
-      belumList = belumList.concat(DASHLAPBUL_GLOBAL_BELUM_LAPOR[j] || []);
-    });
+    var totalBelum = (DASHLAPBUL_GLOBAL_BELUM_LAPOR.sd.length || 0) +
+                     (DASHLAPBUL_GLOBAL_BELUM_LAPOR.tk.length || 0) +
+                     (DASHLAPBUL_GLOBAL_BELUM_LAPOR.kb.length || 0) +
+                     (DASHLAPBUL_GLOBAL_BELUM_LAPOR.sps.length || 0);
+
     var revisiList = [];
     ['sd', 'tk', 'kb', 'sps'].forEach(function (j) {
       revisiList = revisiList.concat(DASHLAPBUL_GLOBAL_REVISI[j] || []);
     });
 
-    if (belumList.length === 0 && revisiList.length === 0) {
+    if (totalBelum === 0 && revisiList.length === 0) {
       if (typeof Sultan !== 'undefined') Sultan.notif.info('Semua sekolah sudah unggah laporan bulanan pada periode ini.');
       return;
     }
@@ -1316,10 +1317,22 @@
     txt += '⏱️ *Data per:* ' + timeNow + ' WIB\n';
     txt += '=========================================\n\n';
 
-    if (belumList.length > 0) {
-      txt += '🔴 *BELUM UNGGAH (' + belumList.length + ' Sekolah):*\n';
-      belumList.forEach(function (n, i) {
-        txt += (i + 1) + '. ' + n + '\n';
+    if (totalBelum > 0) {
+      txt += '🔴 *BELUM UNGGAH (' + totalBelum + ' Sekolah):*\n';
+      var jenjangArr = [
+        { key: 'sd', label: 'SD' },
+        { key: 'tk', label: 'TK' },
+        { key: 'kb', label: 'KB' },
+        { key: 'sps', label: 'SPS' }
+      ];
+      jenjangArr.forEach(function (jg) {
+        var list = DASHLAPBUL_GLOBAL_BELUM_LAPOR[jg.key] || [];
+        if (list.length > 0) {
+          txt += '\n*' + jg.label + ' (' + list.length + ' Sekolah):*\n';
+          list.forEach(function (n, i) {
+            txt += (i + 1) + '. ' + n + '\n';
+          });
+        }
       });
       txt += '\n';
     }
@@ -1333,7 +1346,7 @@
     }
 
     txt += '=========================================\n';
-    txt += 'ℹ️ _Bagi sekolah yang terdaftar di atas, mohon segera menindaklanjuti dan mengunggah berkas SK melalui SIKS-Reborn._\n';
+    txt += 'ℹ️ _Bagi sekolah yang terdaftar di atas, mohon segera menindaklanjuti dan mengunggah berkas melalui SIKS-Reborn._\n';
     txt += '_Terima kasih._';
 
     navigator.clipboard.writeText(txt).then(function () {
@@ -1345,17 +1358,46 @@
 
   function dashlapbul_copyBelumJenjang(jenjang) {
     var th = $('#dashlapbul_dashTahun').val();
-    var blnText = $('#dashlapbul_dashBulan option:selected').text().toUpperCase();
+    var blnText = $('#dashlapbul_dashBulan option:selected').text();
     var list = DASHLAPBUL_GLOBAL_BELUM_LAPOR[jenjang] || [];
+    var revList = DASHLAPBUL_GLOBAL_REVISI[jenjang] || [];
     var label = jenjang.toUpperCase();
-    if (list.length === 0) { if (typeof Sultan !== 'undefined') Sultan.notif.info('Semua sekolah jenjang ' + label + ' sudah lapor!'); return; }
-    var txt = '*SEKOLAH BELUM LAPOR BULANAN JENJANG ' + label + '*\nBULAN: ' + blnText + ' ' + th + '\n=======================\n\n';
-    txt += '*BELUM LAPOR (' + list.length + '):*\n';
-    list.forEach(function (n, i) { txt += (i+1) + '. ' + n + '\n'; });
-    txt += '\n_Data dari sistem SIKS-Reborn._';
+    if (list.length === 0 && revList.length === 0) {
+      if (typeof Sultan !== 'undefined') Sultan.notif.info('Semua sekolah jenjang ' + label + ' sudah unggah!');
+      return;
+    }
+
+    var now = new Date();
+    var tglIndo = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    var jamMenit = ('0' + now.getHours()).slice(-2) + '.' + ('0' + now.getMinutes()).slice(-2);
+    var timeNow = tglIndo + ' ' + jamMenit;
+
+    var txt = '*📢 STATUS UNGGAH LAPORAN BULANAN ' + label + '*\n';
+    txt += '📅 *Bulan:* ' + blnText + ' ' + th + '\n';
+    txt += '⏱️ *Data per:* ' + timeNow + ' WIB\n';
+    txt += '=========================================\n\n';
+
+    if (list.length > 0) {
+      txt += '🔴 *BELUM UNGGAH (' + list.length + ' Sekolah):*\n';
+      list.forEach(function (n, i) { txt += (i + 1) + '. ' + n + '\n'; });
+      txt += '\n';
+    }
+
+    if (revList.length > 0) {
+      txt += '🟡 *PERLU REVISI (' + revList.length + ' Sekolah):*\n';
+      revList.forEach(function (n, i) { txt += (i + 1) + '. ' + n + '\n'; });
+      txt += '\n';
+    }
+
+    txt += '=========================================\n';
+    txt += 'ℹ️ _Bagi sekolah yang terdaftar di atas, mohon segera menindaklanjuti dan mengunggah berkas melalui SIKS-Reborn._\n';
+    txt += '_Terima kasih._';
+
     navigator.clipboard.writeText(txt).then(function () {
       if (typeof Sultan !== 'undefined') Sultan.notif.sukses('Informasi jenjang ' + label + ' tersalin!');
-    }).catch(function () { if (typeof Sultan !== 'undefined') Sultan.alert('error','Gagal','Browser memblokir fitur clipboard.'); });
+    }).catch(function () {
+      if (typeof Sultan !== 'undefined') Sultan.alert('error', 'Gagal', 'Browser memblokir fitur clipboard.');
+    });
   }
 
   function dashlapbul_animateValue(id, endValue, suffix) {
