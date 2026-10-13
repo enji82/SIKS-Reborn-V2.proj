@@ -651,25 +651,50 @@ function efiledash_initMasterAccess() {
 }
 
 function efiledash_loadDataKategori(idKategori, forceRefresh) {
+  var isInitialLoad = !$('#efiledash_dashboardState').is(':visible');
+
   if (typeof SultanUI !== 'undefined' && SultanUI.setRefreshLoading) {
     SultanUI.setRefreshLoading('#efiledash_btnRefresh', true);
+  } else {
+    $('#efiledash_btnRefresh').prop('disabled', true).find('i').addClass('fa-spin');
   }
-  $('#efiledash_loadingState').show();
-  $('#efiledash_dashboardState').hide();
+
+  // Jika load awal, tampilkan skeleton; jika sudah ada data, gunakan animasi rolling lottery & list loading
+  if (isInitialLoad) {
+    $('#efiledash_loadingState').show();
+    $('#efiledash_dashboardState').hide();
+  } else {
+    if (typeof SultanUI !== 'undefined') {
+      SultanUI.startLottery('#efiledash_cardTotalSekolah, #efiledash_cardSudah, #efiledash_cardBelum, #efiledash_cardTotalDokumen, #efiledash_cardDiproses, #efiledash_cardDisetujui, #efiledash_cardRevisi, #efiledash_cardDitolak', 3);
+      SultanUI.startLottery('#efiledash_cardProgress', 2, '%');
+    }
+    var listLoadingHtml = (typeof SultanUI !== 'undefined' && SultanUI.renderListLoading)
+      ? SultanUI.renderListLoading('MEMUAT...')
+      : '<li class="list-group-item border-0 px-3 py-4 bg-transparent text-center">' +
+        '<i class="fas fa-circle-notch fa-spin text-muted mb-2 opacity-50"></i><br>' +
+        '<span class="small text-muted font-weight-bold" style="letter-spacing:0.5px;text-transform:uppercase;font-size:11px;">MEMUAT...</span></li>';
+    $('#efiledash_listDiproses, #efiledash_listDisetujui, #efiledash_listRevisiTolak, #efiledash_listBelum').html(listLoadingHtml);
+    $('#efiledash_countDiproses, #efiledash_countDisetujui, #efiledash_countRevisiTolak, #efiledash_countBelum').text('0');
+  }
 
   var mapData = EFILEDASH_KATEGORI_MAP.find(function(k) { return k.sheetRekap === idKategori; });
-  if (!mapData) return;
+  if (!mapData) {
+    if (typeof SultanUI !== 'undefined' && SultanUI.setRefreshLoading) {
+      SultanUI.setRefreshLoading('#efiledash_btnRefresh', false);
+    }
+    return;
+  }
 
   google.script.run
     .withSuccessHandler(function(jsonStr) {
       if (typeof SultanUI !== 'undefined' && SultanUI.setRefreshLoading) {
         SultanUI.setRefreshLoading('#efiledash_btnRefresh', false);
-      }
-      if (typeof SultanUI !== 'undefined') {
-        SultanUI.hideLoading('#efiledash_loadingState');
       } else {
-        $('#efiledash_loadingState').hide();
+        $('#efiledash_btnRefresh').prop('disabled', false).find('i').removeClass('fa-spin');
       }
+
+      // Hentikan skeleton loading dengan aman tanpa mengosongkan elemennya
+      $('#efiledash_loadingState').hide();
 
       var data = typeof jsonStr === 'string' ? JSON.parse(jsonStr) : jsonStr;
       if (!data.success) {
@@ -684,7 +709,11 @@ function efiledash_loadDataKategori(idKategori, forceRefresh) {
       EFILEDASH_CURRENT_SUDAH = data.sudah || [];
       EFILEDASH_CURRENT_BELUM = data.belum || [];
 
-      $('#efiledash_dashboardState').fadeIn();
+      if (isInitialLoad) {
+        $('#efiledash_dashboardState').fadeIn(250);
+      } else {
+        $('#efiledash_dashboardState').show();
+      }
 
       if (EFILEDASH_MODE === 'rekap') {
         efiledash_terapkanFilterLokal();
