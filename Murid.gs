@@ -10,8 +10,8 @@ function getDataMuridPAUDRombel() {
   var lastRow = sheet.getLastRow();
   if (lastRow < 3) return []; // Header 2 baris
   
-  // Ambil Range A3:Q (A=1, Q=17)
-  var data = sheet.getRange(3, 1, lastRow - 2, 17).getDisplayValues();
+  // Ambil Range A3:R (A=1, R=18)
+  var data = sheet.getRange(3, 1, lastRow - 2, 18).getDisplayValues();
   return data;
 }
 
