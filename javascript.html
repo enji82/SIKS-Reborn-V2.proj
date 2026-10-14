@@ -748,7 +748,8 @@
       var user = getSesiUser();
       if (!user) {
         // --- PUBLIC LANDING PAGE MODE (NON-USER / BELUM LOGIN) ---
-        $('body').addClass('public-landing-mode').removeClass('sidebar-mini sidebar-mini-md');
+        // Landing page publik selalu berpenampilan terang bersih resmi
+        $('body').addClass('public-landing-mode').removeClass('sidebar-mini sidebar-mini-md dark-mode');
         $('#gerbang-login').hide();
         $('#konten-aplikasi').fadeIn('fast');
         
@@ -765,6 +766,7 @@
 
       // --- USER TERDOKUMENTASI / SUDAH LOGIN MODE ---
       $('body').removeClass('public-landing-mode').addClass('sidebar-mini');
+      sultan_initDarkMode(); // Pulihkan preferensi dark mode user jika tersimpan
       $('.main-header').removeClass('d-none');
       $('.main-sidebar').removeClass('d-none');
       $('.content-wrapper').css({ 'margin-left': '', 'margin-right': '', 'padding': '' });
@@ -970,6 +972,10 @@
         localStorage.removeItem("siksUser");
         sultan_stopNotifPolling();
         SPA_VIEW_CACHE = {};
+
+        // Bersihkan tema dark-mode dari body agar landing page publik selalu terang bersih
+        $('body').removeClass('dark-mode');
+        sultan_applyDarkModeUI(false);
 
         // 2. Reset form login jika ada di memori
         if ($('#formLogin').length > 0) {
@@ -2335,11 +2341,21 @@
      ============================================================= */
 
   function sultan_initDarkMode() {
+    // Landing page publik selalu berpenampilan terang
+    if ($('body').hasClass('public-landing-mode') || !getSesiUser()) {
+      $('body').removeClass('dark-mode');
+      sultan_applyDarkModeUI(false);
+      return;
+    }
     const isDark = localStorage.getItem('sultanDarkMode') === 'true';
     if (isDark) {
       $('body').addClass('dark-mode');
       $('#sultan_darkModeToggle').prop('checked', true);
       sultan_applyDarkModeUI(true);
+    } else {
+      $('body').removeClass('dark-mode');
+      $('#sultan_darkModeToggle').prop('checked', false);
+      sultan_applyDarkModeUI(false);
     }
   }
 
