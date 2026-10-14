@@ -757,10 +757,14 @@ function hapusKomentarEmading(payload) {
  */
 /**
  * Mengambil ringkasan statistik infografis data publik (PTK, Murid, Sekolah)
- * serta rincian tabel per Jenjang & Status dengan akselerasi CacheService
+/**
+ * STATISTIK PENDIDIKAN KORWIL SECANG (PUBLIC LANDING PORTAL)
+ * Menghitung Rombel, Murid, Guru, dan Tendik secara valid murni dari database
+ * hasil tambah data laporan bulan (Input SD & Input PAUD) pada periode bulan lalu.
+ * Apabila sekolah belum mengunggah laporan pada periode bulan lalu, datanya TIDAK dihitung (0).
  */
 function getInfografisPublicData() {
-  var cacheKey = "SIKS_LANDING_STATISTIK_V4";
+  var cacheKey = "SIKS_LANDING_STATISTIK_V5";
   try {
     var cached = CacheService.getScriptCache().get(cacheKey);
     if (cached) {
@@ -776,234 +780,17 @@ function getInfografisPublicData() {
       totalPtk: 0,
       totalMurid: 0,
       tableData: [
-        { jenjang: "SD", status: "Negeri", sekolah: 0, rombel: 0, murid: 0, guru: 0, tendik: 0 },
-        { jenjang: "SD", status: "Swasta", sekolah: 0, rombel: 0, murid: 0, guru: 0, tendik: 0 },
-        { jenjang: "TK", status: "Swasta", sekolah: 0, rombel: 0, murid: 0, guru: 0, tendik: 0 },
-        { jenjang: "KB", status: "Swasta", sekolah: 0, rombel: 0, murid: 0, guru: 0, tendik: 0 },
-        { jenjang: "SPS", status: "Swasta", sekolah: 0, rombel: 0, murid: 0, guru: 0, tendik: 0 }
+        { jenjang: "SD", status: "Negeri", sekolah: 0, rombel: 0, murid: 0, guru: 0, tendik: 0, sudahLapor: 0, progress: 0 },
+        { jenjang: "SD", status: "Swasta", sekolah: 0, rombel: 0, murid: 0, guru: 0, tendik: 0, sudahLapor: 0, progress: 0 },
+        { jenjang: "TK", status: "Swasta", sekolah: 0, rombel: 0, murid: 0, guru: 0, tendik: 0, sudahLapor: 0, progress: 0 },
+        { jenjang: "KB", status: "Swasta", sekolah: 0, rombel: 0, murid: 0, guru: 0, tendik: 0, sudahLapor: 0, progress: 0 },
+        { jenjang: "SPS", status: "Swasta", sekolah: 0, rombel: 0, murid: 0, guru: 0, tendik: 0, sudahLapor: 0, progress: 0 }
       ]
     };
 
-    // 1. DATA SEKOLAH (Dari Sheet "Data_Sekolah" di USER_DB)
-    // Kolom B (index 1) = Jenjang ("SD", "TK", "KB", "SPS")
-    // Kolom D (index 3) = Status ("Negeri", "Swasta")
-    try {
-      var shSekolah = getSheet("USER_DB", "Data_Sekolah");
-      if (shSekolah) {
-        var dSek = shSekolah.getDataRange().getDisplayValues();
-        var cntSDN = 0, cntSDS = 0, cntTK = 0, cntKB = 0, cntSPS = 0;
-        for (var s = 1; s < dSek.length; s++) {
-          var jnj = String(dSek[s][1] || "").trim().toUpperCase();
-          var stt = String(dSek[s][3] || "").trim().toUpperCase();
-          if (jnj === "SD") {
-            if (stt.indexOf("NEGERI") > -1) cntSDN++;
-            else cntSDS++;
-          } else if (jnj === "TK") {
-            cntTK++;
-          } else if (jnj === "KB") {
-            cntKB++;
-          } else if (jnj === "SPS") {
-            cntSPS++;
-          }
-        }
-        result.tableData[0].sekolah = cntSDN || 22;
-        result.tableData[1].sekolah = cntSDS || 5;
-        result.tableData[2].sekolah = cntTK || 20;
-        result.tableData[3].sekolah = cntKB || 13;
-        result.tableData[4].sekolah = cntSPS || 6;
-      }
-    } catch(eSek) { 
-      Logger.log("Err Infografis Sekolah: " + eSek.message);
-      result.tableData[0].sekolah = 22;
-      result.tableData[1].sekolah = 5;
-      result.tableData[2].sekolah = 20;
-      result.tableData[3].sekolah = 13;
-      result.tableData[4].sekolah = 6;
-    }
-
-    // 2. DATA PTK (GURU & TENDIK)
-    // SD Negeri: Keadaan GTK (Total = 258)
-    try {
-      if (typeof getDataKeadaanGTK === "function") {
-        var rawSDN = getDataKeadaanGTK();
-        if (rawSDN && rawSDN.length > 0) {
-          var sdnGuru = 0, sdnTendik = 0;
-          rawSDN.forEach(function(row) {
-            var ks_pns  = parseInt(row[49]) || 0;
-            var ks_pppk = parseInt(row[53]) || 0;
-            var g_pns   = parseInt(row[50]) || 0;
-            var g_pppk  = parseInt(row[54]) || 0;
-            var g_pw    = parseInt(row[57]) || 0;
-            var g_gtt   = parseInt(row[60]) || 0;
-
-            var t_pns   = parseInt(row[51]) || 0;
-            var t_pppk  = parseInt(row[55]) || 0;
-            var t_pw    = parseInt(row[58]) || 0;
-            var t_ptt   = parseInt(row[61]) || 0;
-
-            sdnGuru += (ks_pns + ks_pppk + g_pns + g_pppk + g_pw + g_gtt);
-            sdnTendik += (t_pns + t_pppk + t_pw + t_ptt);
-          });
-          result.tableData[0].guru = sdnGuru;
-          result.tableData[0].tendik = sdnTendik;
-        }
-      }
-    } catch(ePtkSDN) {
-      Logger.log("Err PTK SDN: " + ePtkSDN.message);
-    }
-    // Fallback jika database belum termuat
-    if ((result.tableData[0].guru + result.tableData[0].tendik) === 0) {
-      result.tableData[0].guru = 217;
-      result.tableData[0].tendik = 41; // Total = 258
-    }
-
-    // SD Swasta: Keadaan GTK SDS (Total = 73)
-    try {
-      if (typeof getDataKeadaanGTKSDS === "function") {
-        var rawSDS = getDataKeadaanGTKSDS();
-        if (rawSDS && rawSDS.length > 0) {
-          var sdsGuru = 0, sdsTendik = 0;
-          rawSDS.forEach(function(row) {
-            var ks_gty   = parseInt(row[21]) || 0;
-            var guru_gty = parseInt(row[22]) || 0;
-            var tendik_pty = parseInt(row[23]) || 0;
-            var guru_gtt = parseInt(row[24]) || 0;
-            var tendik_ptt = parseInt(row[25]) || 0;
-
-            sdsGuru += (ks_gty + guru_gty + guru_gtt);
-            sdsTendik += (tendik_pty + tendik_ptt);
-          });
-          result.tableData[1].guru = sdsGuru;
-          result.tableData[1].tendik = sdsTendik;
-        }
-      }
-    } catch(ePtkSDS) {
-      Logger.log("Err PTK SDS: " + ePtkSDS.message);
-    }
-    if ((result.tableData[1].guru + result.tableData[1].tendik) === 0) {
-      result.tableData[1].guru = 61;
-      result.tableData[1].tendik = 12; // Total = 73
-    }
-
-    // PAUD (TK, KB, SPS): Keadaan GTK PAUD (Total = 152)
-    try {
-      if (typeof getDataKeadaanGTKPAUD === "function") {
-        var rawPAUD = getDataKeadaanGTKPAUD();
-        if (rawPAUD && rawPAUD.length > 0) {
-          var paudStats = {
-            TK: { guru: 0, tendik: 0 },
-            KB: { guru: 0, tendik: 0 },
-            SPS: { guru: 0, tendik: 0 }
-          };
-          rawPAUD.forEach(function(row) {
-            var jenjang = String(row[2] || "").toUpperCase().trim();
-            var target = null;
-            if (jenjang.indexOf("TK") > -1) target = paudStats.TK;
-            else if (jenjang.indexOf("KB") > -1) target = paudStats.KB;
-            else if (jenjang.indexOf("SPS") > -1 || jenjang.indexOf("TPA") > -1) target = paudStats.SPS;
-
-            if (target) {
-              var gty = parseInt(row[22]) || 0;
-              var pns = parseInt(row[23]) || 0;
-              var gtt = parseInt(row[24]) || 0;
-              var pty = parseInt(row[25]) || 0;
-              var ptt = parseInt(row[26]) || 0;
-
-              target.guru += (gty + pns + gtt);
-              target.tendik += (pty + ptt);
-            }
-          });
-
-          result.tableData[2].guru = paudStats.TK.guru;
-          result.tableData[2].tendik = paudStats.TK.tendik;
-          result.tableData[3].guru = paudStats.KB.guru;
-          result.tableData[3].tendik = paudStats.KB.tendik;
-          result.tableData[4].guru = paudStats.SPS.guru;
-          result.tableData[4].tendik = paudStats.SPS.tendik;
-        }
-      }
-    } catch(ePtkPAUD) {
-      Logger.log("Err PTK PAUD: " + ePtkPAUD.message);
-    }
-    var sumPaudPTK = (result.tableData[2].guru + result.tableData[2].tendik) +
-                     (result.tableData[3].guru + result.tableData[3].tendik) +
-                     (result.tableData[4].guru + result.tableData[4].tendik);
-    if (sumPaudPTK === 0) {
-      // Proporsi baseline jika sheet PAUD tidak terakses (Total 152)
-      result.tableData[2].guru = 78;
-      result.tableData[2].tendik = 14; // TK = 92
-      result.tableData[3].guru = 36;
-      result.tableData[3].tendik = 6;  // KB = 42
-      result.tableData[4].guru = 16;
-      result.tableData[4].tendik = 2;  // SPS = 18
-    }
-
-    // 3. DATA MURID & ROMBEL
-    // SD (Total Murid SD = 932 murid, TK/KB/SPS = 0)
-    try {
-      if (typeof getDataMuridSDRombel === "function") {
-        var rawMrdRombel = getDataMuridSDRombel();
-        if (rawMrdRombel && rawMrdRombel.length > 0) {
-          var sdnRombel = 0, sdnMurid = 0;
-          var sdsRombel = 0, sdsMurid = 0;
-          rawMrdRombel.forEach(function(row) {
-            var namaSek = String(row[0] || "").trim().toUpperCase();
-            var stt = String(row[2] || "").trim().toUpperCase();
-            var isSds = stt.indexOf("SWASTA") > -1 || namaSek.indexOf("SDS") > -1 || namaSek.indexOf("MI") > -1;
-            
-            var jmlRombel = parseInt(row[3]) || 0;
-            // Total murid di baris Murid SD per Rombel (atau hitung dari kolom akhir)
-            var jmlMuridRow = 0;
-            // Kolom 64 / 65 / 66 berisi rekap total
-            for (var c = row.length - 1; c >= 3; c--) {
-              var val = parseInt(row[c]) || 0;
-              if (val > 0) {
-                jmlMuridRow = val;
-                break;
-              }
-            }
-
-            if (isSds) {
-              sdsRombel += jmlRombel;
-              sdsMurid += jmlMuridRow;
-            } else {
-              sdnRombel += jmlRombel;
-              sdnMurid += jmlMuridRow;
-            }
-          });
-
-          result.tableData[0].rombel = sdnRombel;
-          result.tableData[0].murid = sdnMurid;
-          result.tableData[1].rombel = sdsRombel;
-          result.tableData[1].murid = sdsMurid;
-        }
-      }
-    } catch(eMrd) {
-      Logger.log("Err Murid Rombel: " + eMrd.message);
-    }
-
-    // Pastikan total murid SD sesuai data dasbor terkonfirmasi (Total SD = 932)
-    var totalMuridSD = result.tableData[0].murid + result.tableData[1].murid;
-    if (totalMuridSD === 0 || totalMuridSD !== 932) {
-      // Pasangkan proporsional jika pembagian negeri dan swasta belum sempurna
-      result.tableData[0].murid = 812; // SD Negeri
-      result.tableData[1].murid = 120; // SD Swasta -> Total = 932
-      if (result.tableData[0].rombel === 0) result.tableData[0].rombel = 132;
-      if (result.tableData[1].rombel === 0) result.tableData[1].rombel = 30;
-    }
-
-    // PAUD (TK, KB, SPS) murid & rombel saat ini = 0 sesuai data user
-    result.tableData[2].rombel = 0;
-    result.tableData[2].murid = 0;
-    result.tableData[3].rombel = 0;
-    result.tableData[3].murid = 0;
-    result.tableData[4].rombel = 0;
-    result.tableData[4].murid = 0;
-
-    // 4. HITUNG PERIODE LAPBUL BULAN LALU & PROGRES PENGIRIMAN
+    // 1. TENTUKAN PERIODE LAPORAN BULAN LALU
     var listBulanIndo = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
     var skrg = new Date();
-    // Bulan lalu:
     var blnLaluIdx = skrg.getMonth() - 1; // 0-based
     var thnLalu = skrg.getFullYear();
     if (blnLaluIdx < 0) {
@@ -1013,84 +800,156 @@ function getInfografisPublicData() {
     var namaBulanLalu = listBulanIndo[blnLaluIdx];
     result.periodeLaporan = namaBulanLalu + " " + thnLalu;
 
-    // Ambil data sekolah yang sudah lapor di Lapbul bulan lalu
-    var lapbulMap = {}; // key: NPSN atau namaSekolah uppercase
-    try {
-      if (typeof getLapbulKelolaData === "function") {
-        var rawLapbul = getLapbulKelolaData("", namaBulanLalu.toLowerCase(), String(thnLalu), "", "");
-        if (rawLapbul && Array.isArray(rawLapbul)) {
-          rawLapbul.forEach(function(item) {
-            var npsnKey = String(item.npsn || "").trim();
-            var namaKey = String(item.namaSekolah || "").trim().toUpperCase();
-            var stt = String(item.statusData || "").toLowerCase();
-            if (stt.indexOf("hapus") === -1 && stt !== "-" && stt !== "") {
-              if (npsnKey) lapbulMap[npsnKey] = true;
-              if (namaKey) lapbulMap[namaKey] = true;
-            }
-          });
-        }
-      }
-    } catch(eLapbul) {
-      Logger.log("Err Lapbul Progress: " + eLapbul.message);
-    }
-
-    // Cocokkan data sekolah dari Data_Sekolah untuk menghitung sekolah yang sudah lapor per baris
+    // 2. AMBIL BASELINE JUMLAH LEMBAGA DARI Data_Sekolah (USER_DB)
+    var masterSekolahMap = {}; // key: NPSN atau nama sekolah -> { jenjang, status, indexTableData }
     try {
       var shSekolah = getSheet("USER_DB", "Data_Sekolah");
       if (shSekolah) {
         var dSek = shSekolah.getDataRange().getDisplayValues();
-        var laporCount = [0, 0, 0, 0, 0]; // sdn, sds, tk, kb, sps
+        var cntSDN = 0, cntSDS = 0, cntTK = 0, cntKB = 0, cntSPS = 0;
         for (var s = 1; s < dSek.length; s++) {
           var npsnSek = String(dSek[s][0] || "").trim();
-          var jnjSek = String(dSek[s][1] || "").trim().toUpperCase();
+          var jnj = String(dSek[s][1] || "").trim().toUpperCase();
           var namaSek = String(dSek[s][2] || "").trim().toUpperCase();
-          var sttSek = String(dSek[s][3] || "").trim().toUpperCase();
+          var stt = String(dSek[s][3] || "").trim().toUpperCase();
+          
+          if (stt.indexOf("TUTUP") > -1 || stt.indexOf("NON") > -1) continue;
 
-          var isLapor = lapbulMap[npsnSek] || lapbulMap[namaSek] || false;
-          if (isLapor) {
-            if (jnjSek === "SD") {
-              if (sttSek.indexOf("NEGERI") > -1) laporCount[0]++;
-              else laporCount[1]++;
-            } else if (jnjSek === "TK") {
-              laporCount[2]++;
-            } else if (jnjSek === "KB") {
-              laporCount[3]++;
-            } else if (jnjSek === "SPS") {
-              laporCount[4]++;
+          var targetIdx = -1;
+          if (jnj === "SD") {
+            if (stt.indexOf("NEGERI") > -1) {
+              cntSDN++;
+              targetIdx = 0;
+            } else {
+              cntSDS++;
+              targetIdx = 1;
             }
+          } else if (jnj === "TK") {
+            cntTK++;
+            targetIdx = 2;
+          } else if (jnj === "KB") {
+            cntKB++;
+            targetIdx = 3;
+          } else if (jnj === "SPS" || jnj === "TPA") {
+            cntSPS++;
+            targetIdx = 4;
           }
+
+          var schoolInfo = {
+            npsn: npsnSek,
+            nama: namaSek,
+            jenjang: jnj,
+            status: stt,
+            targetIdx: targetIdx
+          };
+
+          if (npsnSek) masterSekolahMap[npsnSek] = schoolInfo;
+          if (namaSek) masterSekolahMap[namaSek] = schoolInfo;
         }
 
-        for (var idxRow = 0; idxRow < 5; idxRow++) {
-          var totSek = result.tableData[idxRow].sekolah || 0;
-          var sudLapor = laporCount[idxRow] || 0;
-          var prg = totSek > 0 ? Math.round((sudLapor / totSek) * 100) : 0;
-          result.tableData[idxRow].sudahLapor = sudLapor;
-          result.tableData[idxRow].progress = Math.min(100, prg);
-        }
+        result.tableData[0].sekolah = cntSDN;
+        result.tableData[1].sekolah = cntSDS;
+        result.tableData[2].sekolah = cntTK;
+        result.tableData[3].sekolah = cntKB;
+        result.tableData[4].sekolah = cntSPS;
       }
-    } catch(eMatch) {
-      Logger.log("Err Matching Progress: " + eMatch.message);
-      for (var idxRow = 0; idxRow < 5; idxRow++) {
-        result.tableData[idxRow].sudahLapor = 0;
-        result.tableData[idxRow].progress = 0;
-      }
+    } catch (eSek) {
+      Logger.log("Err Baseline Sekolah: " + eSek.message);
+      result.tableData[0].sekolah = 22;
+      result.tableData[1].sekolah = 5;
+      result.tableData[2].sekolah = 20;
+      result.tableData[3].sekolah = 13;
+      result.tableData[4].sekolah = 6;
     }
 
-    // Hitung Akumulasi Total Card
-    result.totalSekolah = result.tableData.reduce(function(acc, row) { return acc + (row.sekolah || 0); }, 0);
-    result.totalPtk = result.tableData.reduce(function(acc, row) { return acc + (row.guru || 0) + (row.tendik || 0); }, 0);
-    result.totalMurid = result.tableData.reduce(function(acc, row) { return acc + (row.murid || 0); }, 0);
+    // 3. TARIK DAN AKUMULASIKAN DATA LAPORAN BULAN LALU DARI DATABASE
+    // Hanya sekolah yang sudah mengunggah laporan periode bulan lalu yang dihitung.
+    // Jika belum lapor, datanya otomatis 0.
+    var processedSchools = {}; // Mencegah duplikasi hitungan jika ada re-submit di bulan yang sama
 
-    var totalSudahLapor = result.tableData.reduce(function(acc, row) { return acc + (row.sudahLapor || 0); }, 0);
+    try {
+      if (typeof getLapbulKelolaData === "function") {
+        var rawLapbul = getLapbulKelolaData("", namaBulanLalu.toLowerCase(), String(thnLalu), "", "");
+        if (rawLapbul && Array.isArray(rawLapbul)) {
+          rawLapbul.forEach(function (item) {
+            var npsnKey = String(item.npsn || "").trim();
+            var namaKey = String(item.namaSekolah || "").trim().toUpperCase();
+            var sttData = String(item.statusData || "").toLowerCase();
+
+            // Abaikan jika statusnya Dihapus atau kosong
+            if (sttData.indexOf("hapus") > -1 || sttData === "-" || sttData === "") return;
+
+            var uniqueKey = (npsnKey || namaKey);
+            if (!uniqueKey || processedSchools[uniqueKey]) return;
+            processedSchools[uniqueKey] = true;
+
+            // Cari mapping jenjang dan status dari Master Sekolah
+            var info = masterSekolahMap[npsnKey] || masterSekolahMap[namaKey];
+            var targetIdx = -1;
+
+            if (info && info.targetIdx > -1) {
+              targetIdx = info.targetIdx;
+            } else {
+              // Fallback deteksi jika tidak ada di mapping master
+              var jnj = String(item.jenjang || "").toUpperCase().trim();
+              var sttSek = String(item.statusSekolah || "").toUpperCase().trim();
+              if (jnj === "SD") {
+                targetIdx = (sttSek.indexOf("NEGERI") > -1) ? 0 : 1;
+              } else if (jnj === "TK") {
+                targetIdx = 2;
+              } else if (jnj === "KB") {
+                targetIdx = 3;
+              } else if (jnj === "SPS" || jnj === "TPA") {
+                targetIdx = 4;
+              }
+            }
+
+            if (targetIdx >= 0 && targetIdx < 5) {
+              var targetRow = result.tableData[targetIdx];
+
+              var valRombel = parseInt(item.rombel) || 0;
+              var valMurid = parseInt(item.murid) || 0;
+              var valKS = parseInt(item.ks) || 0;
+              var valGuru = parseInt(item.guru) || 0;
+              var valTendik = parseInt(item.tendik) || 0;
+
+              // Tambahkan ke akumulasi
+              targetRow.rombel += valRombel;
+              targetRow.murid += valMurid;
+              targetRow.guru += (valKS + valGuru); // Kepala sekolah dihitung dalam jumlah guru
+              targetRow.tendik += valTendik;
+              targetRow.sudahLapor += 1;
+            }
+          });
+        }
+      }
+    } catch (eLapbul) {
+      Logger.log("Err Kalkulasi Lapbul Bulan Lalu: " + eLapbul.message);
+    }
+
+    // 4. HITUNG PERSENTASE PROGRESS PENGIRIMAN
+    for (var idxRow = 0; idxRow < 5; idxRow++) {
+      var row = result.tableData[idxRow];
+      var totSek = row.sekolah || 0;
+      var sudLapor = row.sudahLapor || 0;
+      row.progress = totSek > 0 ? Math.round((sudLapor / totSek) * 100) : 0;
+      row.progress = Math.min(100, row.progress);
+    }
+
+    // 5. HITUNG AKUMULASI TOTAL CARD METRIK ATAS
+    result.totalSekolah = result.tableData.reduce(function (acc, r) { return acc + (r.sekolah || 0); }, 0);
+    result.totalPtk = result.tableData.reduce(function (acc, r) { return acc + (r.guru || 0) + (r.tendik || 0); }, 0);
+    result.totalMurid = result.tableData.reduce(function (acc, r) { return acc + (r.murid || 0); }, 0);
+
+    var totalSudahLapor = result.tableData.reduce(function (acc, r) { return acc + (r.sudahLapor || 0); }, 0);
     result.totalSudahLapor = totalSudahLapor;
     result.totalProgress = result.totalSekolah > 0 ? Math.round((totalSudahLapor / result.totalSekolah) * 100) : 0;
 
     var resString = JSON.stringify({ success: true, data: result });
 
-    // Simpan ke CacheService selama 1 jam (3600 detik) untuk respon secepat kilat (< 50ms)
+    // Simpan ke CacheService selama 10 menit (600 detik) agar tetap responsif dan selalu sinkron saat ada data baru
     try {
-      CacheService.getScriptCache().put(cacheKey, resString, 3600);
+      CacheService.getScriptCache().put(cacheKey, resString, 600);
     } catch (ePut) {
       Logger.log("Cache put error: " + ePut.message);
     }
