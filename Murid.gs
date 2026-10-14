@@ -28,9 +28,9 @@ function getDataMuridPAUDJK() {
   var lastRow = sheet.getLastRow();
   if (lastRow < 3) return []; // Header 2 baris
   
-  // Ambil Range A3:AM (A=1, AM=39)
+  // Ambil Range A3:AP (A=1, AP=42)
   // Data dimulai dari baris 3
-  var data = sheet.getRange(3, 1, lastRow - 2, 39).getDisplayValues();
+  var data = sheet.getRange(3, 1, lastRow - 2, 42).getDisplayValues();
   return data;
 }
 
