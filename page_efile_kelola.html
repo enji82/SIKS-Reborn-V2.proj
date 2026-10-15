@@ -117,12 +117,25 @@
     <!-- Form Upload (Tambah) -->
     <form id="efilekelola_formUpload" novalidate>
         <div class="modal-body modal-body-sultan p-4">
+            <!-- BARIS 0: Pilihan Kategori Dokumen (Integrasi Master Kategori) -->
+            <div class="row align-items-end mb-3">
+                <div class="col-12">
+                    <div class="form-group form-group-sultan mb-0">
+                        <label class="form-label-sultan">KATEGORI DOKUMEN / BERKAS <span class="text-danger">*</span></label>
+                        <select id="efilekelola_in_kategori" class="form-control form-control-sultan font-weight-bold border-maroon" required>
+                            <option value="">- Pilih Kategori Dokumen Terlebih Dahulu -</option>
+                        </select>
+                        <small id="efilekelola_in_kategori_info" class="text-muted d-block mt-1" style="font-size:12px;"></small>
+                    </div>
+                </div>
+            </div>
+
             <!-- BARIS 1: Admin Mode (3 Kolom: Jenjang, Nama Sekolah, NPSN) -->
             <div class="row align-items-end mb-3" id="efilekelola_pilih_sekolah_container">
                 <div class="col-md-3">
                     <div class="form-group form-group-sultan mb-0">
                         <label class="form-label-sultan">JENJANG <span class="text-danger">*</span></label>
-                        <select id="efilekelola_in_jenjang" class="form-control form-control-sultan font-weight-bold" required>
+                        <select id="efilekelola_in_jenjang" class="form-control form-control-sultan font-weight-bold" required disabled>
                             <option value="">- Pilih Jenjang -</option>
                         </select>
                     </div>
@@ -569,9 +582,65 @@ $(document).ready(function() {
         }
     });
 
-    // Admin Mode: Change Jenjang -> Filter Dropdown Sekolah
+    // ================================================================
+    // INTEGRASI FILTER PENGATURAN MASTER KATEGORI DENGAN MODAL TAMBAH
+    // ================================================================
+
+    // 1. Pilih Kategori Dokumen di Awal
+    $(document).off('change', '#efilekelola_in_kategori').on('change', '#efilekelola_in_kategori', function() {
+        var idKat = $(this).val();
+        var $info = $('#efilekelola_in_kategori_info');
+        var $jenjangSelect = $('#efilekelola_in_jenjang');
+        var $unitSelect = $('#efilekelola_in_unit');
+        var $ptkSelect = $('#efilekelola_in_ptk');
+
+        // Reset bawahan
+        $('#efilekelola_in_npsn').val('');
+        $('#efilekelola_in_nip').val('');
+        $unitSelect.empty().append('<option value="">- Pilih Sekolah -</option>').prop('disabled', true);
+        $ptkSelect.empty().append('<option value="">- Pilih Pegawai -</option>').prop('disabled', true);
+        $('#efilekelola_uploadContainer').html('<div class="text-center text-muted p-3" id="efilekelola_msgPilihPtk"><i class="fas fa-info-circle mr-1"></i> Pilih pegawai terlebih dahulu.</div>');
+        $('#efilekelola_btnAddRow, #efilekelola_btnSimpan').prop('disabled', true);
+
+        if (!idKat) {
+            $info.html('');
+            if (EFILEKELOLA_IS_ADMIN) {
+                $jenjangSelect.empty().append('<option value="">- Pilih Jenjang -</option>').prop('disabled', true);
+            }
+            return;
+        }
+
+        var katData = EFILEKELOLA_MASTER_KAT.find(function(k) { return String(k.idKat).trim() === String(idKat).trim(); });
+        if (!katData) return;
+
+        // Tampilkan info ringkasan sasaran
+        var badges = [];
+        if (katData.klasifikasi_jenjang && katData.klasifikasi_jenjang !== 'ALL') {
+            badges.push('<span class="badge badge-primary mr-1"><i class="fas fa-school mr-1"></i>Jenjang: ' + katData.klasifikasi_jenjang + '</span>');
+        }
+        if (katData.klasifikasi_kepeg && katData.klasifikasi_kepeg !== 'ALL') {
+            badges.push('<span class="badge badge-success mr-1"><i class="fas fa-id-card mr-1"></i>Kepegawaian: ' + katData.klasifikasi_kepeg + '</span>');
+        }
+        if (katData.klasifikasi_tugas && katData.klasifikasi_tugas !== 'ALL') {
+            badges.push('<span class="badge badge-warning text-dark mr-1"><i class="fas fa-briefcase mr-1"></i>Tugas: ' + katData.klasifikasi_tugas + '</span>');
+        }
+        if (badges.length === 0) badges.push('<span class="badge badge-secondary mr-1"><i class="fas fa-users mr-1"></i>Target: Semua Pegawai</span>');
+        $info.html('<i class="fas fa-filter text-maroon mr-1"></i> Target Sasaran: ' + badges.join(' '));
+
+        if (EFILEKELOLA_IS_ADMIN) {
+            efilekelola_populateJenjangByKategori(katData);
+        } else {
+            // User Sekolah: Periksa apakah sekolah user masuk dalam jenjang kategori ini
+            var defaultNpsn = EFILEKELOLA_NPSN_TERKUNCI;
+            efilekelola_loadPtkByUnit(defaultNpsn);
+        }
+    });
+
+    // 2. Admin Mode: Change Jenjang -> Filter Dropdown Sekolah yang punya PTK sasaran
     $(document).off('change', '#efilekelola_in_jenjang').on('change', '#efilekelola_in_jenjang', function() {
         var jenjang = $(this).val();
+        var idKat = $('#efilekelola_in_kategori').val();
+        var katData = EFILEKELOLA_MASTER_KAT.find(function(k) { return String(k.idKat).trim() === String(idKat).trim(); });
         var $unitSelect = $('#efilekelola_in_unit');
         var $ptkSelect = $('#efilekelola_in_ptk');
         
@@ -586,29 +655,44 @@ $(document).ready(function() {
             var unitsMap = {};
             EFILEKELOLA_MASTER_PTK.forEach(function(p) {
                 if (!p.npsn || !p.unit) return;
-                var jg = String(p.jenjang || "").toUpperCase();
-                if (jg === String(jenjang).toUpperCase() || jg.includes(String(jenjang).toUpperCase())) {
-                    unitsMap[p.npsn] = p.unit;
-                }
+                // Cocokkan jenjang
+                var pJg = String(p.jenjang || "").toUpperCase();
+                var targetJg = String(jenjang).toUpperCase();
+                var matchJg = (pJg === targetJg || pJg.includes(targetJg));
+                if (!matchJg) return;
+
+                // Cocokkan juga dengan syarat klasifikasi kategori (kepegawaian & tugas)
+                if (katData && !efilekelola_isPtkMatchKategori(p, katData)) return;
+
+                unitsMap[p.npsn] = p.unit;
             });
 
-            Object.keys(unitsMap).sort().forEach(function(npsn) {
-                $unitSelect.append($('<option>', { value: npsn, text: unitsMap[npsn] }));
+            var npsnKeys = Object.keys(unitsMap).sort(function(a, b) {
+                return unitsMap[a].localeCompare(unitsMap[b]);
             });
-            $unitSelect.prop('disabled', false);
+
+            if (npsnKeys.length > 0) {
+                npsnKeys.forEach(function(npsn) {
+                    $unitSelect.append($('<option>', { value: npsn, text: unitsMap[npsn] }));
+                });
+                $unitSelect.prop('disabled', false);
+            } else {
+                $unitSelect.append('<option value="" disabled>Tidak ada sekolah dengan target pegawai ini</option>');
+                $unitSelect.prop('disabled', false);
+            }
         } else {
             $unitSelect.prop('disabled', true);
         }
     });
 
-    // Pilih Unit Kerja -> Auto-fill NPSN & Load Dropdown PTK/Pegawai
+    // 3. Pilih Unit Kerja -> Auto-fill NPSN & Load Dropdown PTK/Pegawai tersaring
     $(document).off('change', '#efilekelola_in_unit').on('change', '#efilekelola_in_unit', function() {
         var npsnVal = $(this).val();
         $('#efilekelola_in_npsn').val(npsnVal || '');
         efilekelola_loadPtkByUnit(npsnVal);
     });
 
-    // Pilih PTK -> Auto-fill NIP & Activate Row Container
+    // 4. Pilih PTK -> Auto-fill NIP & Activate Row Container
     $(document).off('change', '#efilekelola_in_ptk').on('change', '#efilekelola_in_ptk', function() {
         var idPtk = $(this).val();
         if (idPtk) {
@@ -1113,31 +1197,86 @@ function efilekelola_renderTabel(dataRows) {
     } catch (eTooltip) {}
 }
 
-function efilekelola_populateJenjang() {
+function efilekelola_isPtkMatchKategori(ptkObj, kat) {
+    if (!ptkObj || !kat) return true;
+    var pJenjang = String(ptkObj.jenjang || "").toUpperCase();
+    var pKepeg = String(ptkObj.status || "").toUpperCase();
+    var pTugas = String(ptkObj.tugas || "").toUpperCase();
+
+    // 1. Evaluasi Filter Klasifikasi Target Jenjang
+    if (kat.klasifikasi_jenjang && kat.klasifikasi_jenjang.trim() !== "" && kat.klasifikasi_jenjang.toUpperCase() !== "ALL") {
+        var jgList = kat.klasifikasi_jenjang.split(',').map(function(s) { return s.trim().toUpperCase(); });
+        var matchJg = jgList.some(function(j) { return pJenjang === j || pJenjang.includes(j); });
+        if (!matchJg) return false;
+    }
+
+    // 2. Evaluasi Filter Klasifikasi Kepegawaian
+    if (kat.klasifikasi_kepeg && kat.klasifikasi_kepeg.trim() !== "" && kat.klasifikasi_kepeg.toUpperCase() !== "ALL") {
+        var kpList = kat.klasifikasi_kepeg.split(',').map(function(s) { return s.trim().toUpperCase(); });
+        var matchKp = kpList.some(function(k) { return pKepeg === k || pKepeg.includes(k); });
+        if (!matchKp) return false;
+    }
+
+    // 3. Evaluasi Filter Klasifikasi Tugas / Jabatan
+    if (kat.klasifikasi_tugas && kat.klasifikasi_tugas.trim() !== "" && kat.klasifikasi_tugas.toUpperCase() !== "ALL") {
+        var tgList = kat.klasifikasi_tugas.split(',').map(function(s) { return s.trim().toUpperCase(); });
+        var matchTg = tgList.some(function(t) { return pTugas === t || pTugas.includes(t); });
+        if (!matchTg) return false;
+    }
+
+    // Evaluasi legacy statusPegawaiWajib
+    if (kat.statusPegawaiWajib && kat.statusPegawaiWajib.trim() !== "") {
+        var statusList = kat.statusPegawaiWajib.split(',').map(function(s) { return s.trim().toLowerCase(); });
+        if (statusList.indexOf(pKepeg.toLowerCase()) === -1) return false;
+    }
+
+    return true;
+}
+
+function efilekelola_populateJenjangByKategori(katData) {
     var selJenjang = $('#efilekelola_in_jenjang');
     selJenjang.empty().append('<option value="">- Pilih Jenjang -</option>');
-    var setJenjang = new Set(['SD', 'PAUD']);
     
-    // Coba dari EFILEKELOLA_MASTER_PTK
-    if (typeof EFILEKELOLA_MASTER_PTK !== 'undefined' && Array.isArray(EFILEKELOLA_MASTER_PTK)) {
-        EFILEKELOLA_MASTER_PTK.forEach(function (p) {
-            if (p.jenjang && String(p.jenjang).trim() !== '') {
-                setJenjang.add(String(p.jenjang).trim().toUpperCase());
-            }
-        });
-    }
-    // Coba juga dari listMasterSekolah / TUGAS_MASTER_SEKOLAH jika tersedia
-    if (typeof listMasterSekolah !== 'undefined' && Array.isArray(listMasterSekolah)) {
-        listMasterSekolah.forEach(function (s) {
-            if (s.jenjang && String(s.jenjang).trim() !== '') {
-                setJenjang.add(String(s.jenjang).trim().toUpperCase());
-            }
-        });
-    }
-    
-    Array.from(setJenjang).sort().forEach(function (j) {
-        selJenjang.append('<option value="' + j + '">' + j + '</option>');
+    var setJenjang = new Set();
+    var jgTarget = (katData && katData.klasifikasi_jenjang && katData.klasifikasi_jenjang.toUpperCase() !== 'ALL')
+        ? katData.klasifikasi_jenjang.split(',').map(function(s) { return s.trim().toUpperCase(); })
+        : [];
+
+    EFILEKELOLA_MASTER_PTK.forEach(function (p) {
+        if (!p.jenjang || String(p.jenjang).trim() === '') return;
+        var pJg = String(p.jenjang).trim().toUpperCase();
+        
+        // Saring jenjang yang diizinkan oleh kategori
+        if (jgTarget.length > 0) {
+            var match = jgTarget.some(function(t) { return pJg === t || pJg.includes(t); });
+            if (!match) return;
+        }
+
+        // Pastikan ada setidaknya 1 pegawai di jenjang ini yang memenuhi kriteria kategori
+        if (efilekelola_isPtkMatchKategori(p, katData)) {
+            setJenjang.add(pJg);
+        }
     });
+
+    var arrJ = Array.from(setJenjang).sort();
+    if (arrJ.length === 0) {
+        // Fallback jika belum terpetakan di ptk
+        if (jgTarget.length > 0) {
+            jgTarget.forEach(function(j) { selJenjang.append('<option value="' + j + '">' + j + '</option>'); });
+        } else {
+            selJenjang.append('<option value="SD">SD</option><option value="PAUD">PAUD</option>');
+        }
+    } else {
+        arrJ.forEach(function(j) {
+            selJenjang.append('<option value="' + j + '">' + j + '</option>');
+        });
+    }
+
+    selJenjang.prop('disabled', false);
+    // Jika hanya ada 1 jenjang yang valid, auto-select
+    if (arrJ.length === 1) {
+        selJenjang.val(arrJ[0]).trigger('change');
+    }
 }
 
 function efilekelola_bukaModalTambah() {
@@ -1149,20 +1288,37 @@ function efilekelola_bukaModalTambah() {
     $form[0].reset(); 
     $form.removeClass('was-validated');
     
+    var $katSelect = $('#efilekelola_in_kategori');
     var $jenjangSelect = $('#efilekelola_in_jenjang');
     var $unitSelect = $('#efilekelola_in_unit');
     var $ptkSelect = $('#efilekelola_in_ptk');
     
+    $('#efilekelola_in_kategori_info').html('');
     $('#efilekelola_in_npsn').val('');
     $('#efilekelola_in_nip').val('');
+    $unitSelect.empty().append('<option value="">- Pilih Sekolah -</option>').prop('disabled', true);
     $ptkSelect.empty().append('<option value="">- Pilih Pegawai -</option>').prop('disabled', true);
     
+    // Isi Dropdown Kategori di Modal
+    $katSelect.empty().append('<option value="">- Pilih Kategori Dokumen Terlebih Dahulu -</option>');
+    EFILEKELOLA_MASTER_KAT.forEach(function(k) {
+        $katSelect.append($('<option>', {
+            value: k.idKat,
+            text: k.namaKat + (k.parent ? ' (' + k.parent + ')' : '')
+        }));
+    });
+
+    // Defaultkan ke filter Kategori yang sedang aktif di tabel jika bukan SEMUA
+    var activeFilterKat = $('#efilekelola_filterKategori').val();
+    if (activeFilterKat && activeFilterKat !== 'SEMUA') {
+        $katSelect.val(activeFilterKat);
+    }
+
     if (EFILEKELOLA_IS_ADMIN) {
         $('#efilekelola_pilih_sekolah_container').show();
         $('#efilekelola_user_sekolah_banner').hide();
-        $jenjangSelect.prop('required', true).prop('disabled', false).val('');
-        $unitSelect.prop('required', true).empty().append('<option value="">- Pilih Sekolah -</option>').prop('disabled', true);
-        efilekelola_populateJenjang();
+        $jenjangSelect.prop('required', true).prop('disabled', true).empty().append('<option value="">- Pilih Jenjang -</option>');
+        $unitSelect.prop('required', true);
     } else {
         $('#efilekelola_pilih_sekolah_container').hide();
         $('#efilekelola_user_sekolah_banner').show();
@@ -1172,7 +1328,6 @@ function efilekelola_bukaModalTambah() {
         var defaultNpsn = EFILEKELOLA_NPSN_TERKUNCI;
         var defaultUnitName = EFILEKELOLA_UNIT_TERKUNCI || "Sekolah Anda";
         
-        // Cari nama sekolah resmi jika ada
         if (Array.isArray(EFILEKELOLA_MASTER_PTK)) {
             var foundPTK = EFILEKELOLA_MASTER_PTK.find(p => String(p.npsn).trim() === String(defaultNpsn).trim());
             if (foundPTK && foundPTK.unit) defaultUnitName = foundPTK.unit;
@@ -1182,9 +1337,6 @@ function efilekelola_bukaModalTambah() {
         $('#efilekelola_user_banner_npsn').text(defaultNpsn || "-");
 
         $unitSelect.empty().append($('<option>', { value: defaultNpsn, text: defaultUnitName })).val(defaultNpsn);
-        
-        // Auto-load daftar pegawai sekolah tersebut
-        efilekelola_loadPtkByUnit(defaultNpsn);
     }
     
     $('#global_modalFormSize .modal-content > form').not('#efilekelola_formUpload').remove();
@@ -1201,21 +1353,41 @@ function efilekelola_bukaModalTambah() {
     });
     
     $('#global_modalForm').modal('show');
+
+    // Trigger update jika ada kategori terpilih
+    if ($katSelect.val()) {
+        $katSelect.trigger('change');
+    }
 }
 
 function efilekelola_loadPtkByUnit(unitSel) {
     var $ptk = $('#efilekelola_in_ptk');
     $ptk.empty().append('<option value="">- Pilih Pegawai -</option>');
     $('#efilekelola_in_nip').val('');
+
+    var idKat = $('#efilekelola_in_kategori').val();
+    var katData = EFILEKELOLA_MASTER_KAT.find(function(k) { return String(k.idKat).trim() === String(idKat).trim(); });
+
     if (unitSel) {
         var targetUnit = String(unitSel).toUpperCase();
         var filtered = EFILEKELOLA_MASTER_PTK.filter(function(p) {
-            return String(p.npsn || "").toUpperCase() === targetUnit || String(p.unit || "").toUpperCase() === targetUnit;
+            var matchUnit = (String(p.npsn || "").toUpperCase() === targetUnit || String(p.unit || "").toUpperCase() === targetUnit);
+            if (!matchUnit) return false;
+            // Saring berdasarkan Klasifikasi Target Master Kategori (Kepegawaian & Tugas)
+            if (katData && !efilekelola_isPtkMatchKategori(p, katData)) return false;
+            return true;
         });
-        filtered.forEach(function(p) { 
-            $ptk.append($('<option>', { value: p.id_ptk, text: p.nama })); 
-        });
-        $ptk.prop('disabled', false);
+
+        if (filtered.length > 0) {
+            filtered.forEach(function(p) { 
+                var label = p.nama + ' (' + (p.status || '-') + (p.tugas ? ' - ' + p.tugas : '') + ')';
+                $ptk.append($('<option>', { value: p.id_ptk, text: label })); 
+            });
+            $ptk.prop('disabled', false);
+        } else {
+            $ptk.append('<option value="" disabled>Tidak ada pegawai yang memenuhi klasifikasi kategori ini</option>');
+            $ptk.prop('disabled', false);
+        }
     } else { 
         $ptk.prop('disabled', true); 
     }
@@ -1225,38 +1397,12 @@ function efilekelola_loadPtkByUnit(unitSel) {
 
 function efilekelola_getKategoriOptionsHTML(ptkObj) {
     var html = '<option value="">- Pilih Kategori -</option>';
-    if (!ptkObj) return html;
-    
-    var pJenjang = String(ptkObj.jenjang || "").toUpperCase();
-    var pKepeg = String(ptkObj.status || "").toUpperCase();
-    var pTugas = String(ptkObj.tugas || "").toUpperCase();
-    
+    var selectedKat = $('#efilekelola_in_kategori').val();
+
     EFILEKELOLA_MASTER_KAT.forEach(function(k) {
-        // 1. Evaluasi Filter Klasifikasi Target Jenjang
-        if (k.klasifikasi_jenjang && k.klasifikasi_jenjang.trim() !== "" && k.klasifikasi_jenjang.toUpperCase() !== "ALL") {
-            var jgList = k.klasifikasi_jenjang.split(',').map(function(s) { return s.trim().toUpperCase(); });
-            if (jgList.indexOf(pJenjang) === -1) return; // Skip jika tidak cocok
-        }
-        
-        // 2. Evaluasi Filter Klasifikasi Kepegawaian
-        if (k.klasifikasi_kepeg && k.klasifikasi_kepeg.trim() !== "" && k.klasifikasi_kepeg.toUpperCase() !== "ALL") {
-            var kpList = k.klasifikasi_kepeg.split(',').map(function(s) { return s.trim().toUpperCase(); });
-            if (kpList.indexOf(pKepeg) === -1) return; // Skip jika tidak cocok
-        }
-        
-        // 3. Evaluasi Filter Klasifikasi Tugas / Jabatan
-        if (k.klasifikasi_tugas && k.klasifikasi_tugas.trim() !== "" && k.klasifikasi_tugas.toUpperCase() !== "ALL") {
-            var tgList = k.klasifikasi_tugas.split(',').map(function(s) { return s.trim().toUpperCase(); });
-            if (tgList.indexOf(pTugas) === -1) return; // Skip jika tidak cocok
-        }
-        
-        // Evaluasi filter statusPegawaiWajib (legacy support)
-        if(k.statusPegawaiWajib && k.statusPegawaiWajib.trim() !== "") {
-            var statusList = k.statusPegawaiWajib.split(',').map(function(s) { return s.trim().toLowerCase(); });
-            if (statusList.indexOf(pKepeg.toLowerCase()) === -1) return;
-        }
-        
-        html += `<option value="${k.idKat}">${k.namaKat} (${k.parent})</option>`;
+        if (ptkObj && !efilekelola_isPtkMatchKategori(ptkObj, k)) return;
+        var isSel = (selectedKat && String(k.idKat).trim() === String(selectedKat).trim()) ? ' selected' : '';
+        html += `<option value="${k.idKat}"${isSel}>${k.namaKat} (${k.parent})</option>`;
     });
     return html;
 }
@@ -1301,7 +1447,11 @@ function efilekelola_createUploadRowContext($c) {
             </div>
         </div>
     </div>`;
-    $c.append(htmlRow); $c.find('#' + rId).slideDown(200);
+    $c.append(htmlRow);
+    var $newRow = $c.find('#' + rId);
+    $newRow.slideDown(200);
+    // Trigger konfigurasi periode & format sesuai kategori terpilih
+    $newRow.find('.efilekelola-kategori-select').trigger('change');
 }
 
 function efilekelola_submitBatchUpload(e) {
