@@ -158,8 +158,8 @@
                     <div class="sultan-filter-item" id="tpg_pg_filterJenjangWrap" style="min-width: 130px; max-width: 180px;">
                         <select id="tpg_pg_filterJenjang" class="form-control">
                             <option value="">Semua Jenjang</option>
+                            <option value="PAUD">PAUD</option>
                             <option value="SD">SD</option>
-                            <option value="PAUD / TK">PAUD / TK</option>
                             <option value="SMP">SMP</option>
                         </select>
                         <i class="fas fa-chevron-down"></i>
@@ -804,17 +804,24 @@
                 const filterStatus = $('#tpg_pg_filterStatus').val() ? $('#tpg_pg_filterStatus').val().toLowerCase() : '';
 
                 var rowUnit = String(rowData.unitKerja || rowData.unit || '').trim();
-                var rowJenjang = String(rowData.jenjang || '').trim();
+                var rowJenjang = String(rowData.jenjang || '').trim().toUpperCase();
+                if (!rowJenjang && rowUnit && window.tpgPgAllUnits && Array.isArray(window.tpgPgAllUnits)) {
+                    var mUnit = window.tpgPgAllUnits.find(function(u) {
+                        var n = typeof u === 'object' ? String(u.nama || "").trim() : String(u || "").trim();
+                        return n.toLowerCase() === rowUnit.toLowerCase();
+                    });
+                    if (mUnit && typeof mUnit === 'object' && mUnit.jenjang) {
+                        rowJenjang = String(mUnit.jenjang).trim().toUpperCase();
+                    }
+                }
                 if (!rowJenjang && rowUnit) {
                     var uUp = rowUnit.toUpperCase();
-                    if (uUp.includes("TK") || uUp.includes("PAUD") || uUp.includes("KOBER") || uUp.includes("TKN")) rowJenjang = "PAUD / TK";
+                    if (uUp.includes("TK") || uUp.includes("PAUD") || uUp.includes("KOBER") || uUp.includes("TKN")) rowJenjang = "PAUD";
                     else if (uUp.includes("SD") || uUp.includes("SDN")) rowJenjang = "SD";
                     else if (uUp.includes("SMP") || uUp.includes("SMPN")) rowJenjang = "SMP";
-                    else if (uUp.includes("SMA") || uUp.includes("SMAN")) rowJenjang = "SMA";
-                    else if (uUp.includes("SMK") || uUp.includes("SMKN")) rowJenjang = "SMK";
                 }
 
-                const fJenjang = filterJenjang ? (rowJenjang.toLowerCase().includes(filterJenjang.toLowerCase()) || filterJenjang.toLowerCase().includes(rowJenjang.toLowerCase())) : true;
+                const fJenjang = filterJenjang ? (rowJenjang === filterJenjang.toUpperCase() || (filterJenjang === "PAUD" && (rowJenjang.includes("TK") || rowJenjang.includes("PAUD")))) : true;
                 const fUnit = filterUnit ? rowUnit.toLowerCase() === filterUnit : true;
                 const fJenis = filterJenisSK ? String(rowData.jenisSK || '').toLowerCase() === filterJenisSK : true;
                 const fPegawai = filterPegawai ? String(rowData.statusPegawai || rowData.kepegawaian || '').toLowerCase().includes(filterPegawai) : true;
@@ -1093,16 +1100,23 @@
 
         if (window.tpgPgAllUnits && Array.isArray(window.tpgPgAllUnits)) {
             window.tpgPgAllUnits.forEach(function(x) {
-                var unit = String(x || "").trim().toUpperCase();
-                if (!unit) return;
-                if (unit.includes("TK") || unit.includes("PAUD") || unit.includes("KOBER") || unit.includes("TKN")) setJenjang.add("PAUD / TK");
-                else if (unit.includes("SD") || unit.includes("SDN")) setJenjang.add("SD");
-                else if (unit.includes("SMP") || unit.includes("SMPN")) setJenjang.add("SMP");
-                else if (unit.includes("SMA") || unit.includes("SMAN")) setJenjang.add("SMA");
-                else if (unit.includes("SMK") || unit.includes("SMKN")) setJenjang.add("SMK");
-                else if (unit.includes("SKB") || unit.includes("PKBM")) setJenjang.add("NON-FORMAL / SKB");
-                else setJenjang.add("LAINNYA");
+                var j = (typeof x === 'object' && x.jenjang) ? String(x.jenjang).trim() : '';
+                if (j) {
+                    setJenjang.add(j);
+                } else {
+                    var unit = (typeof x === 'object' ? String(x.nama || "") : String(x || "")).trim().toUpperCase();
+                    if (!unit) return;
+                    if (unit.includes("TK") || unit.includes("PAUD") || unit.includes("KOBER") || unit.includes("TKN")) setJenjang.add("PAUD");
+                    else if (unit.includes("SD") || unit.includes("SDN")) setJenjang.add("SD");
+                    else if (unit.includes("SMP") || unit.includes("SMPN")) setJenjang.add("SMP");
+                }
             });
+        }
+
+        if (setJenjang.size === 0) {
+            setJenjang.add("PAUD");
+            setJenjang.add("SD");
+            setJenjang.add("SMP");
         }
 
         var arrJenjang = Array.from(setJenjang).sort();
@@ -1112,7 +1126,7 @@
     }
 
     function tpgPg_filterUnitByJenjang() {
-        var jenjang = $('#tpg_pg_in_jenjang').val();
+        var jenjang = String($('#tpg_pg_in_jenjang').val() || "").trim().toUpperCase();
         var $selUnit = $('#tpg_pg_inputUnit').empty().append('<option value="">- Pilih Sekolah -</option>');
         $('#tpg_pg_in_npsn').val('');
         $('#tpg_pg_inputNama').empty().append('<option value="">Pilih Sekolah Dulu</option>').prop('disabled', true);
@@ -1127,17 +1141,22 @@
         }
 
         var units = window.tpgPgAllUnits.filter(function(x) {
-            var unit = String(x || "").trim().toUpperCase();
-            if (jenjang === "PAUD / TK") return (unit.includes("TK") || unit.includes("PAUD") || unit.includes("KOBER") || unit.includes("TKN"));
-            if (jenjang === "SD") return (unit.includes("SD") || unit.includes("SDN"));
-            if (jenjang === "SMP") return (unit.includes("SMP") || unit.includes("SMPN"));
-            if (jenjang === "SMA") return (unit.includes("SMA") || unit.includes("SMAN"));
-            if (jenjang === "SMK") return (unit.includes("SMK") || unit.includes("SMKN"));
-            if (jenjang === "NON-FORMAL / SKB") return (unit.includes("SKB") || unit.includes("PKBM"));
+            var nama = typeof x === 'object' ? String(x.nama || "").trim() : String(x || "").trim();
+            if (!nama) return false;
+            var jUnit = typeof x === 'object' ? String(x.jenjang || "").trim().toUpperCase() : '';
+            if (jUnit) {
+                return jUnit === jenjang;
+            }
+            var uUp = nama.toUpperCase();
+            if (jenjang === "PAUD" || jenjang.includes("TK") || jenjang.includes("PAUD")) return (uUp.includes("TK") || uUp.includes("PAUD") || uUp.includes("KOBER") || uUp.includes("TKN"));
+            if (jenjang === "SD") return (uUp.includes("SD") || uUp.includes("SDN"));
+            if (jenjang === "SMP") return (uUp.includes("SMP") || uUp.includes("SMPN"));
             return true;
+        }).map(function(x) {
+            return typeof x === 'object' ? String(x.nama || "").trim() : String(x || "").trim();
         });
 
-        var unikUnits = [...new Set(units)].filter(Boolean).sort();
+        var unikUnits = [...new Set(units)].filter(Boolean).sort(function(a, b) { return a.localeCompare(b); });
         unikUnits.forEach(function(u) {
             $selUnit.append($('<option>', { value: u, text: u }));
         });
@@ -1146,6 +1165,17 @@
 
     function tpgPg_handleUnitChange() {
         var valUnit = String($('#tpg_pg_inputUnit').val() || "").trim();
+        if (window.tpgPgAllUnits && Array.isArray(window.tpgPgAllUnits)) {
+            var found = window.tpgPgAllUnits.find(function(x) {
+                var nama = typeof x === 'object' ? String(x.nama || "").trim() : String(x || "").trim();
+                return nama.toLowerCase() === valUnit.toLowerCase();
+            });
+            if (found && typeof found === 'object' && found.npsn) {
+                $('#tpg_pg_in_npsn').val(found.npsn);
+            } else {
+                $('#tpg_pg_in_npsn').val('');
+            }
+        }
         tpgPg_populateNamaDropdown(valUnit);
     }
 
