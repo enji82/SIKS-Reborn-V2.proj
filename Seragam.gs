@@ -656,19 +656,56 @@ function seragam_saveBeritaAcara(payload) {
       fileIdBa = file.getId();
     }
 
+    // Jika edit, cari baris aktual berdasarkan NPSN + Tahun atau rowId sebagai fallback
     if (isEdit) {
       var row = parseInt(payload.rowId);
-      sheet.getRange(row, 1, 1, 8).setValues([[
+      var values = sheet.getDataRange().getDisplayValues();
+      var foundRow = -1;
+      
+      for (var r = 1; r < values.length; r++) {
+        if (String(values[r][0]).trim() === String(payload.npsn).trim() && 
+            String(values[r][2]).trim() === String(payload.tahun).trim()) {
+          foundRow = r + 1;
+          break;
+        }
+      }
+
+      var targetRow = (foundRow > 0) ? foundRow : row;
+      sheet.getRange(targetRow, 1, 1, 8).setValues([[
         payload.npsn, payload.nama_sekolah, payload.tahun,
         payload.nama_file_ba, fileUrlBa, fileIdBa,
         now, payload.user_login
       ]]);
     } else {
-      sheet.appendRow([
-        payload.npsn, payload.nama_sekolah, payload.tahun,
-        payload.nama_file_ba, fileUrlBa, fileIdBa,
-        now, payload.user_login
-      ]);
+      // Cek apakah sudah pernah upload untuk NPSN dan Tahun ini untuk mencegah duplikasi baris
+      var values = sheet.getDataRange().getDisplayValues();
+      var existingRow = -1;
+      for (var i = 1; i < values.length; i++) {
+        if (String(values[i][0]).trim() === String(payload.npsn).trim() && 
+            String(values[i][2]).trim() === String(payload.tahun).trim()) {
+          existingRow = i + 1;
+          break;
+        }
+      }
+
+      if (existingRow > 0) {
+        // Hapus file lama jika ada penggantian
+        var oldFileId = values[existingRow - 1][5];
+        if (oldFileId && payload.fileBaBase64) {
+          try { DriveApp.getFileById(oldFileId).setTrashed(true); } catch(err) {}
+        }
+        sheet.getRange(existingRow, 1, 1, 8).setValues([[
+          payload.npsn, payload.nama_sekolah, payload.tahun,
+          payload.nama_file_ba, fileUrlBa, fileIdBa,
+          now, payload.user_login
+        ]]);
+      } else {
+        sheet.appendRow([
+          payload.npsn, payload.nama_sekolah, payload.tahun,
+          payload.nama_file_ba, fileUrlBa, fileIdBa,
+          now, payload.user_login
+        ]);
+      }
     }
 
     return JSON.stringify({ success: true, message: "Berita Acara berhasil disimpan." });
@@ -679,20 +716,35 @@ function seragam_saveBeritaAcara(payload) {
   }
 }
 
-function seragam_deleteBeritaAcara(rowId) {
+function seragam_deleteBeritaAcara(rowId, npsn, tahun) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(30000);
     var sheet = getOrCreateSheetSeragam("Berita_Acara");
-    var row = parseInt(rowId);
-    var fileIdBa = sheet.getRange(row, 6).getValue();
+    var values = sheet.getDataRange().getDisplayValues();
+    var targetRow = parseInt(rowId);
 
-    if (fileIdBa) {
-      try { DriveApp.getFileById(fileIdBa).setTrashed(true); } catch(err) {}
+    // Cari baris akurat jika npsn & tahun disediakan
+    if (npsn && tahun) {
+      for (var i = 1; i < values.length; i++) {
+        if (String(values[i][0]).trim() === String(npsn).trim() && 
+            String(values[i][2]).trim() === String(tahun).trim()) {
+          targetRow = i + 1;
+          break;
+        }
+      }
     }
 
-    sheet.deleteRow(row);
-    return JSON.stringify({ success: true, message: "Berita Acara berhasil dihapus." });
+    if (targetRow > 1 && targetRow <= sheet.getLastRow()) {
+      var fileIdBa = sheet.getRange(targetRow, 6).getValue();
+      if (fileIdBa) {
+        try { DriveApp.getFileById(fileIdBa).setTrashed(true); } catch(err) {}
+      }
+      sheet.deleteRow(targetRow);
+      return JSON.stringify({ success: true, message: "Berita Acara berhasil dihapus." });
+    } else {
+      return JSON.stringify({ success: false, message: "Baris data Berita Acara tidak ditemukan." });
+    }
   } catch(e) {
     return JSON.stringify({ success: false, message: e.message });
   } finally {
