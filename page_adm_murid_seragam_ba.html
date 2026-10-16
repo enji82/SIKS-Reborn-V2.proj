@@ -68,13 +68,12 @@
                 <table id="seragamba_tabelUtama" class="table table-hover table-premium table-sultan-compact text-nowrap mb-0 w-100">
                   <thead class="thead-sultan-premium">
                     <tr>
-                      <th class="text-center align-middle" style="width: 70px;">AKSI</th>
+                      <th class="text-center align-middle" style="width: 75px;">AKSI</th>
                       <th class="text-center align-middle" style="width: 80px;">TAHUN</th>
                       <th class="text-center align-middle" style="width: 100px;">NPSN</th>
                       <th class="text-left align-middle col-sticky-left" style="min-width: 200px;">NAMA SEKOLAH</th>
-                      <th class="text-left align-middle" style="min-width: 240px;">BERITA ACARA (PDF)</th>
-                      <th class="text-left align-middle" style="min-width: 150px;">WAKTU UNGGAH</th>
-                      <th class="text-left align-middle" style="min-width: 130px;">PENGUNGGAH</th>
+                      <th class="text-left align-middle" style="min-width: 250px;">BERITA ACARA (PDF)</th>
+                      <th class="text-left align-middle" style="min-width: 170px;">AKTIVITAS</th>
                     </tr>
                   </thead>
                   <tbody></tbody>
@@ -146,7 +145,7 @@
       IS_ADMIN = checkUserRoleIsAdmin();
       
       // Tampilkan skeleton loader awal
-      SultanUI.renderSkeletonTable('#seragamba_loadingState', 7, 'Menghubungkan ke Server...');
+      SultanUI.renderSkeletonTable('#seragamba_loadingState', 6, 'Menghubungkan ke Server...');
       
       // Load Initial
       initData();
@@ -268,7 +267,7 @@
       var tahun = $('#seragamba_filterTahun').val();
       var npsnQuery = IS_ADMIN ? "SEMUA" : (userLogin.npsn || userLogin.username || "");
 
-      SultanUI.renderSkeletonTable('#seragamba_loadingState', 7, 'Mengambil dokumen berita acara...');
+      SultanUI.renderSkeletonTable('#seragamba_loadingState', 6, 'Mengambil dokumen berita acara...');
       $('#seragamba_tableState').hide();
 
       google.script.run
@@ -315,13 +314,12 @@
       } else {
         SERAGAMBA_TABEL_INSTANCE = SultanTable.init('#seragamba_tabelUtama', {
           columnDefs: [
-            { targets: 0, width: "8%", className: "text-center align-middle" },
-            { targets: 1, width: "8%", className: "text-center align-middle" },
-            { targets: 2, width: "10%", className: "text-center align-middle" },
-            { targets: 3, width: "26%", className: "text-left align-middle col-sticky-left" },
-            { targets: 4, width: "24%", className: "text-left align-middle" },
-            { targets: 5, width: "12%", className: "text-left align-middle" },
-            { targets: 6, width: "12%", className: "text-left align-middle" }
+            { targets: 0, width: "75px", className: "text-center align-middle" },
+            { targets: 1, width: "80px", className: "text-center align-middle" },
+            { targets: 2, width: "100px", className: "text-center align-middle" },
+            { targets: 3, width: "28%", className: "text-left align-middle col-sticky-left" },
+            { targets: 4, width: "28%", className: "text-left align-middle" },
+            { targets: 5, width: "20%", className: "text-left align-middle" }
           ],
           language: {
             emptyTable: "Belum ada berkas Berita Acara yang diunggah."
@@ -331,19 +329,37 @@
 
       var dtArray = [];
       data.forEach(function(row) {
-        var actions = '<div class="d-flex justify-content-center">' +
-          '<button class="btn btn-xs btn-outline-primary mr-1 btn-edit" data-row-id="' + row.rowId + '" title="Unggah Ulang / Edit"><i class="fas fa-edit"></i></button>' +
-          '<button class="btn btn-xs btn-outline-danger btn-delete" data-row-id="' + row.rowId + '" title="Hapus"><i class="fas fa-trash"></i></button>' +
-        '</div>';
-
         var isOwner = IS_ADMIN || String(row.npsn).trim() === String(userLogin.npsn || userLogin.username).trim();
-        if (!isOwner) {
-          actions = '<span class="badge badge-light text-muted"><i class="fas fa-lock mr-1"></i>Terkunci</span>';
-        }
 
+        // 1. Tombol Aksi (Standar SultanUI)
+        var actions = '<div class="d-flex flex-nowrap justify-content-center" style="gap: 4px;">';
+        if (isOwner) {
+          actions += '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning btn-edit" data-row-id="' + row.rowId + '" data-toggle="tooltip" title="Unggah Ulang / Edit">' +
+            '<i class="fas fa-edit"></i>' +
+          '</button>' +
+          '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon btn-delete" data-row-id="' + row.rowId + '" data-toggle="tooltip" title="Hapus Berita Acara">' +
+            '<i class="fas fa-trash-alt"></i>' +
+          '</button>';
+        } else {
+          actions += '<span class="badge badge-light text-muted" data-toggle="tooltip" title="Terkunci (Hanya sekolah bersangkutan/admin yang dapat mengubah)"><i class="fas fa-lock mr-1"></i>Terkunci</span>';
+        }
+        actions += '</div>';
+
+        // 2. Link Berkas Berita Acara (PDF)
         var linkBa = row.url_file_ba 
-          ? '<a href="#" class="btn-preview-pdf badge-ba-pdf" data-url="' + row.url_file_ba + '" data-nama="BA-' + row.nama_sekolah + '"><i class="fas fa-file-pdf mr-1 text-danger"></i>' + (row.nama_file_ba || 'Lihat Berkas') + '</a>' 
+          ? '<a href="#" class="btn-preview-pdf badge-ba-pdf" data-url="' + row.url_file_ba + '" data-nama="BA-' + row.nama_sekolah + '" data-toggle="tooltip" title="Klik untuk Pratinjau Dokumen"><i class="fas fa-file-pdf mr-1 text-danger"></i>' + (row.nama_file_ba || 'Lihat Berkas') + '</a>' 
           : '<span class="text-muted">-</span>';
+
+        // 3. Kolom Aktivitas Terpusat (SultanUI.renderAuditCell)
+        var aktivitasCell = (typeof SultanUI !== 'undefined' && typeof SultanUI.renderAuditCell === 'function')
+          ? SultanUI.renderAuditCell({
+              waktu: row.tgl_upload || "-",
+              user: row.uploader || "-",
+              label: "Diunggah",
+              tooltip: "Diunggah pada " + (row.tgl_upload || "-") + " oleh " + (row.uploader || "-")
+            })
+          : '<div class="text-left font-weight-bold" style="font-size:11.5px;">' + (row.tgl_upload || "-") + '</div>' +
+            '<div class="text-muted" style="font-size:11px;">' + (row.uploader || "-") + '</div>';
 
         dtArray.push([
           actions,
@@ -351,8 +367,7 @@
           row.npsn || "-",
           '<span class="font-weight-bold text-dark">' + (row.nama_sekolah || "-") + '</span>',
           linkBa,
-          row.tgl_upload || "-",
-          row.uploader || "-"
+          aktivitasCell
         ]);
       });
 
@@ -555,7 +570,7 @@
         cancelButtonText: 'Batal'
       }).then((result) => {
         if (result.isConfirmed) {
-          SultanUI.renderSkeletonTable('#seragamba_loadingState', 7, 'Menghapus dokumen...');
+          SultanUI.renderSkeletonTable('#seragamba_loadingState', 6, 'Menghapus dokumen...');
           $('#seragamba_tableState').hide();
 
           google.script.run
