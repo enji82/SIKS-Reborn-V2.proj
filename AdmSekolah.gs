@@ -956,6 +956,19 @@ function getNotifikasiAdmSekolah(role, unit) {
     var uName = String(unit || "").trim().toUpperCase();
     var notifList = []; var unreadCount = 0;
 
+    // Load Data_Sekolah untuk mapping NPSN -> Nama Sekolah
+    var shSekolah = getSheet("USER_DB", "Data_Sekolah");
+    var dataSekolah = shSekolah ? shSekolah.getDataRange().getDisplayValues() : [];
+    var sekolahMap = {};
+    for (var j = 1; j < dataSekolah.length; j++) {
+      var npsn = String(dataSekolah[j][0] || "").trim();
+      var sNama = String(dataSekolah[j][2] || "").trim();
+      if (npsn && sNama) {
+        sekolahMap[npsn] = sNama;
+        sekolahMap[npsn.toUpperCase()] = sNama;
+      }
+    }
+
     for (var i = 1; i < data.length; i++) {
       var row = data[i];
       var docNpsn = String(row[0] || "").trim().toUpperCase();
@@ -981,10 +994,12 @@ function getNotifikasiAdmSekolah(role, unit) {
           unreadCount++;
         }
 
+        var namaSekolah = sekolahMap[docNpsn] || sekolahMap[row[0]] || row[0] || row[9] || "Dokumen Sekolah";
+
         notifList.push({
           rowId: i + 1,
           source: "AdmSekolah",
-          nama: row[0] || row[9] || "Dokumen Sekolah",
+          nama: namaSekolah,
           berkas: row[4] || row[2] || "Administrasi Sekolah",
           status: status,
           waktu: row[8] || row[10] || "",
