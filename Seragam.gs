@@ -29,8 +29,9 @@ function getOrCreateSheetSeragam(sheetName) {
         "Nama_File_Dok", "URL_File_Dok", "ID_File_Dok", "Tgl_Upload", "Uploader"
       ]]);
     } else if (sheetName === "Berita_Acara") {
-      sheet.getRange(1, 1, 1, 8).setValues([[
-        "NPSN", "Nama_Sekolah", "Tahun", "Nama_File_BA", "URL_File_BA", "ID_File_BA", "Tgl_Upload", "Uploader"
+      sheet.getRange(1, 1, 1, 12).setValues([[
+        "NPSN", "Nama_Sekolah", "Tahun", "Nama_File_BA", "URL_File_BA", "ID_File_BA", "Tgl_Upload", "Uploader",
+        "Status", "Catatan", "User_Verif", "Tgl_Verif"
       ]]);
     }
   }
@@ -623,7 +624,11 @@ function seragam_getBeritaAcara(tahun, npsnFilter) {
           url_file_ba: values[i][4],
           id_file_ba: values[i][5],
           tgl_upload: values[i][6],
-          uploader: values[i][7]
+          uploader: values[i][7],
+          status: values[i][8] || "Diproses",
+          catatan: values[i][9] || "",
+          user_verif: values[i][10] || "",
+          tgl_verif: values[i][11] || ""
         });
       }
     }
@@ -656,10 +661,11 @@ function seragam_saveBeritaAcara(payload) {
       fileIdBa = file.getId();
     }
 
+    var values = sheet.getDataRange().getDisplayValues();
+
     // Jika edit, cari baris aktual berdasarkan NPSN + Tahun atau rowId sebagai fallback
     if (isEdit) {
       var row = parseInt(payload.rowId);
-      var values = sheet.getDataRange().getDisplayValues();
       var foundRow = -1;
       
       for (var r = 1; r < values.length; r++) {
@@ -671,14 +677,19 @@ function seragam_saveBeritaAcara(payload) {
       }
 
       var targetRow = (foundRow > 0) ? foundRow : row;
-      sheet.getRange(targetRow, 1, 1, 8).setValues([[
+      var prevStatus = (targetRow <= values.length && values[targetRow - 1][8]) ? values[targetRow - 1][8] : "Diproses";
+      var prevCatatan = (targetRow <= values.length && values[targetRow - 1][9]) ? values[targetRow - 1][9] : "";
+      var prevUserVerif = (targetRow <= values.length && values[targetRow - 1][10]) ? values[targetRow - 1][10] : "";
+      var prevTglVerif = (targetRow <= values.length && values[targetRow - 1][11]) ? values[targetRow - 1][11] : "";
+
+      sheet.getRange(targetRow, 1, 1, 12).setValues([[
         payload.npsn, payload.nama_sekolah, payload.tahun,
         payload.nama_file_ba, fileUrlBa, fileIdBa,
-        now, payload.user_login
+        now, payload.user_login,
+        prevStatus, prevCatatan, prevUserVerif, prevTglVerif
       ]]);
     } else {
       // Cek apakah sudah pernah upload untuk NPSN dan Tahun ini untuk mencegah duplikasi baris
-      var values = sheet.getDataRange().getDisplayValues();
       var existingRow = -1;
       for (var i = 1; i < values.length; i++) {
         if (String(values[i][0]).trim() === String(payload.npsn).trim() && 
@@ -694,21 +705,67 @@ function seragam_saveBeritaAcara(payload) {
         if (oldFileId && payload.fileBaBase64) {
           try { DriveApp.getFileById(oldFileId).setTrashed(true); } catch(err) {}
         }
-        sheet.getRange(existingRow, 1, 1, 8).setValues([[
+        var prevStatus = values[existingRow - 1][8] || "Diproses";
+        var prevCatatan = values[existingRow - 1][9] || "";
+        var prevUserVerif = values[existingRow - 1][10] || "";
+        var prevTglVerif = values[existingRow - 1][11] || "";
+
+        sheet.getRange(existingRow, 1, 1, 12).setValues([[
           payload.npsn, payload.nama_sekolah, payload.tahun,
           payload.nama_file_ba, fileUrlBa, fileIdBa,
-          now, payload.user_login
+          now, payload.user_login,
+          prevStatus, prevCatatan, prevUserVerif, prevTglVerif
         ]]);
       } else {
         sheet.appendRow([
           payload.npsn, payload.nama_sekolah, payload.tahun,
           payload.nama_file_ba, fileUrlBa, fileIdBa,
-          now, payload.user_login
+          now, payload.user_login,
+          "Diproses", "", "", ""
         ]);
       }
     }
 
     return JSON.stringify({ success: true, message: "Berita Acara berhasil disimpan." });
+  } catch(e) {
+    return JSON.stringify({ success: false, message: e.message });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function seragam_verifikasiBeritaAcara(payload) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+    var sheet = getOrCreateSheetSeragam("Berita_Acara");
+    var values = sheet.getDataRange().getDisplayValues();
+    var row = parseInt(payload.rowId);
+
+    // Cari baris akurat jika npsn & tahun disediakan
+    if (payload.npsn && payload.tahun) {
+      for (var i = 1; i < values.length; i++) {
+        if (String(values[i][0]).trim() === String(payload.npsn).trim() && 
+            String(values[i][2]).trim() === String(payload.tahun).trim()) {
+          row = i + 1;
+          break;
+        }
+      }
+    }
+
+    if (row < 2 || row > sheet.getLastRow()) {
+      return JSON.stringify({ success: false, message: "Data Berita Acara tidak ditemukan." });
+    }
+
+    var now = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
+
+    // Kolom 9: Status, 10: Catatan, 11: User_Verif, 12: Tgl_Verif
+    sheet.getRange(row, 9).setValue(payload.status || "Diproses");
+    sheet.getRange(row, 10).setValue(payload.catatan || "");
+    sheet.getRange(row, 11).setValue(payload.user_verif || "Admin");
+    sheet.getRange(row, 12).setValue(now);
+
+    return JSON.stringify({ success: true, message: "Verifikasi Berita Acara berhasil disimpan." });
   } catch(e) {
     return JSON.stringify({ success: false, message: e.message });
   } finally {
