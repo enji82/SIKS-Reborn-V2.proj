@@ -924,29 +924,57 @@ function seragam_getDashboardData(tahun, kategori) {
       }
     });
     
-    // Ambil data Laporan_Penerimaan atau Laporan_Penyerahan beserta Jenis Seragam-nya
-    var sheetName = (String(kategori).toLowerCase() === "penyerahan") ? "Laporan_Penyerahan" : "Laporan_Penerimaan";
-    var shLap = getOrCreateSheetSeragam(sheetName);
-    var dataLap = shLap.getDataRange().getDisplayValues();
-    var listLaporan = []; // Array of {npsn, jenis, sp, dok, tgl, status}
+    // Ambil data Laporan_Penerimaan, Laporan_Penyerahan, atau Berita_Acara
+    var katLower = String(kategori).toLowerCase();
+    var listLaporan = []; // Array of {npsn, jenis, sp, dok, tgl, status, catatan}
     
-    for (var i = 1; i < dataLap.length; i++) {
-      var npsn = String(dataLap[i][0] || "").trim();
-      var thn = String(dataLap[i][2] || "").trim();
-      if (thn === tahun && sdNegeriNpsn[npsn]) {
-        var hasSp = String(dataLap[i][4] || "").trim() !== ""; // URL_File_SP
-        var hasDok = String(dataLap[i][7] || "").trim() !== ""; // URL_File_Dok
-        var tgl = dataLap[i][9];
-        var jenis = String(dataLap[i][12] || "").trim(); // Col 13 (index 12)
-        var statusLapor = String(dataLap[i][21] || "DIPROSES").trim().toUpperCase(); // Col 22 (index 21)
-        listLaporan.push({
-          npsn: npsn,
-          jenis: jenis,
-          sp: hasSp,
-          dok: hasDok,
-          tgl: tgl,
-          status: statusLapor
-        });
+    if (katLower === "berita_acara" || katLower === "berita acara" || katLower === "ba") {
+      var shBa = getOrCreateSheetSeragam("Berita_Acara");
+      var dataBa = shBa.getDataRange().getDisplayValues();
+      for (var i = 1; i < dataBa.length; i++) {
+        var npsn = String(dataBa[i][0] || "").trim();
+        var thn = String(dataBa[i][2] || "").trim();
+        if (thn === tahun && sdNegeriNpsn[npsn]) {
+          var hasBa = String(dataBa[i][4] || "").trim() !== ""; // URL_File_BA
+          var tgl = dataBa[i][6]; // Tgl_Upload
+          var statusBa = String(dataBa[i][8] || "DIPROSES").trim().toUpperCase(); // Status
+          var catatanBa = String(dataBa[i][9] || "").trim(); // Catatan
+          listLaporan.push({
+            npsn: npsn,
+            jenis: "Berita Acara",
+            sp: hasBa,
+            dok: hasBa,
+            tgl: tgl,
+            status: statusBa,
+            catatan: catatanBa
+          });
+        }
+      }
+    } else {
+      var sheetName = (katLower === "penyerahan") ? "Laporan_Penyerahan" : "Laporan_Penerimaan";
+      var shLap = getOrCreateSheetSeragam(sheetName);
+      var dataLap = shLap.getDataRange().getDisplayValues();
+      
+      for (var i = 1; i < dataLap.length; i++) {
+        var npsn = String(dataLap[i][0] || "").trim();
+        var thn = String(dataLap[i][2] || "").trim();
+        if (thn === tahun && sdNegeriNpsn[npsn]) {
+          var hasSp = String(dataLap[i][4] || "").trim() !== ""; // URL_File_SP
+          var hasDok = String(dataLap[i][7] || "").trim() !== ""; // URL_File_Dok
+          var tgl = dataLap[i][9];
+          var jenis = String(dataLap[i][12] || "").trim(); // Col 13 (index 12)
+          var statusLapor = String(dataLap[i][21] || "DIPROSES").trim().toUpperCase(); // Col 22 (index 21)
+          var catatanLapor = String(dataLap[i][22] || "").trim(); // Col 23 (index 22)
+          listLaporan.push({
+            npsn: npsn,
+            jenis: jenis,
+            sp: hasSp,
+            dok: hasDok,
+            tgl: tgl,
+            status: statusLapor,
+            catatan: catatanLapor
+          });
+        }
       }
     }
     
