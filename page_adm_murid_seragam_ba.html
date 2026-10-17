@@ -1,34 +1,3 @@
-<style>
-  /* Sultan Berita Acara Styling */
-  .badge-ba-pdf {
-    display: inline-flex !important;
-    align-items: center;
-    font-weight: 600 !important;
-    font-size: 11px !important;
-    padding: 4px 10px !important;
-    border-radius: 6px !important;
-    background-color: rgba(220, 53, 69, 0.08) !important;
-    color: #c82333 !important;
-    border: 1px solid rgba(220, 53, 69, 0.25) !important;
-    text-decoration: none !important;
-    transition: all 0.2s ease-in-out;
-  }
-  .badge-ba-pdf:hover {
-    background-color: rgba(220, 53, 69, 0.16) !important;
-    color: #a71d2a !important;
-    box-shadow: 0 2px 6px rgba(220, 53, 69, 0.2);
-    text-decoration: none !important;
-  }
-  .dark-mode .badge-ba-pdf {
-    background-color: rgba(220, 53, 69, 0.18) !important;
-    color: #ff7675 !important;
-    border: 1px solid rgba(220, 53, 69, 0.35) !important;
-  }
-  .dark-mode .badge-ba-pdf:hover {
-    background-color: rgba(220, 53, 69, 0.3) !important;
-    color: #ff9f9e !important;
-  }
-</style>
 
 <section class="content sultan-page-transition">
   <div class="container-fluid">
@@ -66,14 +35,13 @@
             <div id="seragamba_tableState" style="display: none;">
               <div class="table-responsive sultan-scroll">
                 <table id="seragamba_tabelUtama" class="table table-hover table-premium table-sultan-compact text-nowrap mb-0 w-100">
-                  <thead class="thead-sultan-premium">
+                  <thead class="thead-sultan-premium text-uppercase font-weight-bold">
                     <tr>
-                      <th class="text-center align-middle" style="width: 75px;">AKSI</th>
-                      <th class="text-center align-middle" style="width: 80px;">TAHUN</th>
-                      <th class="text-center align-middle" style="width: 100px;">NPSN</th>
-                      <th class="text-left align-middle col-sticky-left" style="min-width: 200px;">NAMA SEKOLAH</th>
-                      <th class="text-left align-middle" style="min-width: 250px;">BERITA ACARA (PDF)</th>
-                      <th class="text-left align-middle" style="min-width: 170px;">AKTIVITAS</th>
+                      <th class="text-left align-middle col-sticky-left" style="min-width: 220px;"><span class="sultan-th-title">NAMA SEKOLAH</span></th>
+                      <th class="text-center align-middle" style="width: 90px;"><span class="sultan-th-title">TAHUN</span></th>
+                      <th class="text-center align-middle" style="width: 110px;"><span class="sultan-th-title">DOKUMEN</span></th>
+                      <th class="text-left align-middle" style="min-width: 170px;"><span class="sultan-th-title">AKTIVITAS</span></th>
+                      <th class="text-center align-middle text-nowrap" style="width: 80px;"><span class="sultan-th-title">AKSI</span></th>
                     </tr>
                   </thead>
                   <tbody></tbody>
@@ -315,12 +283,11 @@
       } else {
         SERAGAMBA_TABEL_INSTANCE = SultanTable.init('#seragamba_tabelUtama', {
           columnDefs: [
-            { targets: 0, width: "75px", className: "text-center align-middle" },
-            { targets: 1, width: "80px", className: "text-center align-middle" },
-            { targets: 2, width: "100px", className: "text-center align-middle" },
-            { targets: 3, width: "28%", className: "text-left align-middle col-sticky-left" },
-            { targets: 4, width: "28%", className: "text-left align-middle" },
-            { targets: 5, width: "20%", className: "text-left align-middle" }
+            { targets: 0, className: "text-left align-middle col-sticky-left", width: "36%" },
+            { targets: 1, className: "text-center align-middle text-nowrap", width: "10%" },
+            { targets: 2, className: "text-center align-middle text-nowrap", width: "14%" },
+            { targets: 3, className: "text-left align-middle text-nowrap", width: "24%" },
+            { targets: 4, className: "text-center align-middle text-nowrap", width: "16%" }
           ],
           language: {
             emptyTable: "Belum ada berkas Berita Acara yang diunggah."
@@ -332,7 +299,36 @@
       data.forEach(function(row) {
         var isOwner = IS_ADMIN || String(row.npsn).trim() === String(userLogin.npsn || userLogin.username).trim();
 
-        // 1. Tombol Aksi (Standar SultanUI)
+        // 1. Kolom NAMA SEKOLAH & NPSN (Sticky Left)
+        var namaSekolahClean = (row.nama_sekolah && row.nama_sekolah !== "-") ? row.nama_sekolah : getSchoolNameByNpsn(row.npsn);
+        var npsnClean = row.npsn || "-";
+        var sekolahCell = `
+          <div class="text-left">
+            <div class="sultan-table-primary font-weight-bold" style="color: #800000; font-size: 12.5px; line-height: 1.2;">${SultanUI.escapeHtml(namaSekolahClean)}</div>
+            <div class="sultan-table-secondary text-muted" style="font-size: 11px; margin-top: 2px;">${SultanUI.escapeHtml(npsnClean)}</div>
+          </div>
+        `;
+
+        // 2. Kolom TAHUN (Teks tebal bersih)
+        var tahunCell = `<div class="text-center font-weight-bold text-dark" style="font-size: 12px;">${SultanUI.escapeHtml(row.tahun || "-")}</div>`;
+
+        // 3. Kolom DOKUMEN (Tombol Standar Sultan PDF)
+        var linkBa = row.url_file_ba 
+          ? `<button type="button" class="sultan-btn-pdf btn-preview-pdf" data-url="${row.url_file_ba}" data-nama="BA-${SultanUI.escapeHtml(namaSekolahClean)}" data-toggle="tooltip" title="Lihat Berkas Berita Acara"><i class="fas fa-file-pdf mr-1 text-danger"></i> LIHAT</button>` 
+          : '<span class="text-muted small">-</span>';
+
+        // 4. Kolom AKTIVITAS (Audit Trail Cerdas SultanUI)
+        var aktivitasCell = (typeof SultanUI !== 'undefined' && typeof SultanUI.renderAuditCell === 'function')
+          ? SultanUI.renderAuditCell({
+              waktu: row.tgl_upload || "-",
+              user: row.uploader || "-",
+              label: "Diunggah",
+              tooltip: "Diunggah pada " + (row.tgl_upload || "-") + " oleh " + (row.uploader || "-")
+            })
+          : `<div class="text-left font-weight-bold text-dark" style="font-size:11.5px; line-height:1.2;">${row.tgl_upload || "-"}</div>` +
+            `<div class="text-muted text-lowercase" style="font-size:11px; line-height:1.2;"><span class="font-weight-semibold text-secondary">Diunggah:</span> ${(row.uploader || "-").toLowerCase()}</div>`;
+
+        // 5. Kolom AKSI (Standar SultanUI Action Buttons)
         var actions = '<div class="d-flex flex-nowrap justify-content-center" style="gap: 4px;">';
         if (isOwner) {
           actions += '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning btn-edit" data-row-id="' + row.rowId + '" data-toggle="tooltip" title="Unggah Ulang / Edit">' +
@@ -342,33 +338,16 @@
             '<i class="fas fa-trash-alt"></i>' +
           '</button>';
         } else {
-          actions += '<span class="badge badge-light text-muted" data-toggle="tooltip" title="Terkunci (Hanya sekolah bersangkutan/admin yang dapat mengubah)"><i class="fas fa-lock mr-1"></i>Terkunci</span>';
+          actions += '<span class="text-muted small font-italic mr-1" data-toggle="tooltip" title="Terkunci (Hanya sekolah bersangkutan/admin yang dapat mengubah)"><i class="fas fa-lock mr-1"></i>Terkunci</span>';
         }
         actions += '</div>';
 
-        // 2. Link Berkas Berita Acara (PDF)
-        var linkBa = row.url_file_ba 
-          ? '<a href="#" class="btn-preview-pdf badge-ba-pdf" data-url="' + row.url_file_ba + '" data-nama="BA-' + row.nama_sekolah + '" data-toggle="tooltip" title="Klik untuk Pratinjau Dokumen"><i class="fas fa-file-pdf mr-1 text-danger"></i>' + (row.nama_file_ba || 'Lihat Berkas') + '</a>' 
-          : '<span class="text-muted">-</span>';
-
-        // 3. Kolom Aktivitas Terpusat (SultanUI.renderAuditCell)
-        var aktivitasCell = (typeof SultanUI !== 'undefined' && typeof SultanUI.renderAuditCell === 'function')
-          ? SultanUI.renderAuditCell({
-              waktu: row.tgl_upload || "-",
-              user: row.uploader || "-",
-              label: "Diunggah",
-              tooltip: "Diunggah pada " + (row.tgl_upload || "-") + " oleh " + (row.uploader || "-")
-            })
-          : '<div class="text-left font-weight-bold" style="font-size:11.5px;">' + (row.tgl_upload || "-") + '</div>' +
-            '<div class="text-muted" style="font-size:11px;">' + (row.uploader || "-") + '</div>';
-
         dtArray.push([
-          actions,
-          row.tahun || "-",
-          row.npsn || "-",
-          '<span class="font-weight-bold text-dark">' + (row.nama_sekolah || "-") + '</span>',
+          sekolahCell,
+          tahunCell,
           linkBa,
-          aktivitasCell
+          aktivitasCell,
+          actions
         ]);
       });
 
