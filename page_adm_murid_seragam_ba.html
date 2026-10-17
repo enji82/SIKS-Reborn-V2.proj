@@ -88,47 +88,44 @@
   </div>
 </section>
 
-<!-- MODAL FORM UPLOAD -->
-<div class="modal fade" id="seragamba_modalForm" tabindex="-1" role="dialog" data-backdrop="static">
-  <div class="modal-dialog modal-dialog-centered" role="document">
-    <div class="modal-content border-0 shadow-lg modal-content-sultan">
-      <div class="modal-header">
-        <h5 class="modal-title" id="seragamba_modalTitle">Unggah Berita Acara</h5>
-        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
-      </div>
-      <form id="seragamba_formBa">
-        <input type="hidden" id="seragamba_rowId" name="rowId">
-        <input type="hidden" id="seragamba_id_file_ba" name="id_file_ba">
-        <input type="hidden" id="seragamba_url_file_ba" name="url_file_ba">
-        
-        <div class="modal-body modal-body-sultan p-4">
-          <div class="row">
-            <div class="col-12 mb-3" id="seragamba_groupSekolah">
-              <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Sekolah <span class="text-danger">*</span></label>
-              <select class="form-control" id="seragamba_in_sekolah" required></select>
-              <input type="hidden" id="seragamba_in_sekolah_hidden">
-            </div>
-            <div class="col-12 mb-3">
-              <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Tahun Laporan <span class="text-danger">*</span></label>
-              <select class="form-control" id="seragamba_in_tahun" required></select>
-            </div>
-            <div class="col-12">
-              <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Berkas Berita Acara (PDF, Max 1MB) <span class="text-danger">*</span></label>
-              <div class="custom-file">
-                <input type="file" class="custom-file-input form-control-sultan border-maroon" id="seragamba_file_ba" accept="application/pdf">
-                <label class="custom-file-label text-truncate text-muted" for="seragamba_file_ba">Pilih berkas PDF...</label>
-              </div>
-              <small class="text-muted d-block mt-1" id="seragamba_lbl_ba"></small>
-            </div>
+<!-- TEMPLATES CONTAINER (Dipindah ke modal global saat dipakai) -->
+<div id="seragamba_templates" style="display: none;">
+  <!-- FORM UNGGAH / EDIT BERITA ACARA -->
+  <form id="seragamba_formBa" autocomplete="off">
+    <input type="hidden" id="seragamba_rowId" name="rowId">
+    <input type="hidden" id="seragamba_id_file_ba" name="id_file_ba">
+    <input type="hidden" id="seragamba_url_file_ba" name="url_file_ba">
+    
+    <div class="modal-body modal-body-sultan p-4">
+      <div class="row">
+        <div class="col-12 mb-3" id="seragamba_groupSekolah">
+          <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Sekolah <span class="text-danger">*</span></label>
+          <select class="form-control form-control-sultan" id="seragamba_in_sekolah" required></select>
+          <input type="hidden" id="seragamba_in_sekolah_hidden">
+        </div>
+        <div class="col-12 mb-3">
+          <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Tahun Anggaran <span class="text-danger">*</span></label>
+          <select class="form-control form-control-sultan" id="seragamba_in_tahun" required></select>
+        </div>
+        <div class="col-12">
+          <label class="form-label-sultan small font-weight-bold text-muted text-uppercase">Berkas Berita Acara (PDF, Max 1MB) <span class="text-danger">*</span></label>
+          <div class="custom-file">
+            <input type="file" class="custom-file-input form-control-sultan border-maroon" id="seragamba_file_ba" accept="application/pdf">
+            <label class="custom-file-label text-truncate text-muted" for="seragamba_file_ba">Pilih berkas PDF...</label>
           </div>
+          <small class="text-muted d-block mt-1" id="seragamba_lbl_ba"></small>
         </div>
-        <div class="modal-footer modal-footer-sultan justify-content-between p-3">
-          <button type="button" class="sultan-btn sultan-btn-batal" data-dismiss="modal">BATAL</button>
-          <button type="submit" class="sultan-btn sultan-btn-utama"><i class="fas fa-upload mr-1"></i> UNGGAH DOKUMEN</button>
-        </div>
-      </form>
+      </div>
     </div>
-  </div>
+    <div class="modal-footer modal-footer-sultan justify-content-between p-3">
+      <button type="button" class="sultan-btn sultan-btn-batal" data-dismiss="modal">
+        <i class="fas fa-times mr-1"></i> BATAL
+      </button>
+      <button type="submit" id="seragamba_btnSubmitForm" class="sultan-btn sultan-btn-utama">
+        <i class="fas fa-upload mr-1"></i> SIMPAN DOKUMEN
+      </button>
+    </div>
+  </form>
 </div>
 
 <script>
@@ -147,11 +144,11 @@
       // Tampilkan skeleton loader awal
       SultanUI.renderSkeletonTable('#seragamba_loadingState', 6, 'Menghubungkan ke Server...');
       
-      // Load Initial
+      // Load Initial Data
       initData();
 
       // Custom file input label update + validasi ukuran & tipe
-      $('#seragamba_file_ba').on('change', function() {
+      $(document).off('change', '#seragamba_file_ba').on('change', '#seragamba_file_ba', function() {
         var file = this.files[0];
         if (file) {
           // Validasi tipe berkas
@@ -232,6 +229,9 @@
         '<button type="button" id="seragamba_btnSync" class="sultan-btn-refresh mr-2" title="Segarkan Data dari Server">' +
           '<i class="fas fa-sync-alt"></i>' +
         '</button>' +
+        '<button type="button" id="seragamba_btnExport" class="sultan-btn-refresh mr-2" title="Unduh Data Rekap">' +
+          '<i class="fas fa-file-excel"></i>' +
+        '</button>' +
         '<button class="sultan-btn-tambah" id="seragamba_btnUnggah" type="button"><i class="fas fa-upload mr-1"></i> UNGGAH DOKUMEN</button>';
 
       $('#seragamba_filterBarArea').html(SultanUI.renderFilterBar(filtersConfig, extraButtons));
@@ -254,17 +254,18 @@
       }
 
       // Bind Listeners
-      $('#seragamba_filterTahun').on('change', fetchBaData);
-      $('#seragamba_filterSekolah').on('change', applyLocalFilter);
-      $('#seragamba_btnSync').on('click', fetchBaData);
-      $('#seragamba_btnUnggah').on('click', showUploadModal);
-      $('#seragamba_formBa').on('submit', handleUploadBa);
+      $('#seragamba_filterTahun').off('change').on('change', fetchBaData);
+      $('#seragamba_filterSekolah').off('change').on('change', applyLocalFilter);
+      $('#seragamba_btnSync').off('click').on('click', fetchBaData);
+      $('#seragamba_btnExport').off('click').on('click', exportToExcel);
+      $('#seragamba_btnUnggah').off('click').on('click', showUploadModal);
+      $(document).off('submit', '#seragamba_formBa').on('submit', '#seragamba_formBa', handleUploadBa);
 
       fetchBaData();
     }
 
     function fetchBaData() {
-      var tahun = $('#seragamba_filterTahun').val();
+      var tahun = $('#seragamba_filterTahun').val() || (availableYears[0] || "");
       var npsnQuery = IS_ADMIN ? "SEMUA" : (userLogin.npsn || userLogin.username || "");
 
       SultanUI.renderSkeletonTable('#seragamba_loadingState', 6, 'Mengambil dokumen berita acara...');
@@ -371,7 +372,8 @@
         ]);
       });
 
-      SERAGAMBA_TABEL_INSTANCE.clear().rows.add(dtArray).draw();
+      SERAGAMBA_TABEL_INSTANCE.clear().rows.add(dtArray).draw(false);
+      $('[data-toggle="tooltip"]').tooltip();
 
       var $tbody = $('#seragamba_tabelUtama tbody');
 
@@ -429,50 +431,78 @@
       return "SD Negeri";
     }
 
-    function showUploadModal() {
+    function openGlobalModal(isEdit, rowData) {
+      // Pindahkan form dari templates ke modal global
+      $('#global_modalFormSize .modal-content > form').not('#seragamba_formBa').remove();
+      $('#global_modalFormSize').removeClass('modal-xl modal-lg').addClass('modal-md');
+      
+      $('#global_modalFormHeader')
+        .removeClass('modal-header-sultan-primary modal-header-sultan-warning modal-header-sultan-danger modal-header-sultan-success modal-header-sultan-info modal-header-sultan-dark modal-header-edit modal-header-tambah-edit modal-header-hapus')
+        .addClass(isEdit ? 'modal-header-edit' : 'modal-header-tambah-edit');
+      
+      var modalTitleHtml = isEdit 
+        ? '<i class="fas fa-edit mr-2 shadow-sm"></i> EDIT / GANTI BERITA ACARA'
+        : '<i class="fas fa-upload mr-2 shadow-sm"></i> UNGGAH BERITA ACARA';
+      
+      $('#global_modalFormTitle').html(modalTitleHtml);
+      $('#global_modalFormBody, #global_modalFormFooter').empty().hide();
+      
+      $('#seragamba_formBa').appendTo('#global_modalFormSize .modal-content').show();
+      
+      $('#global_modalForm').off('hidden.bs.modal.seragamba').on('hidden.bs.modal.seragamba', function() {
+        $('#seragamba_formBa').appendTo('#seragamba_templates').hide();
+        $('#global_modalFormBody, #global_modalFormFooter').show();
+      });
+
+      // Reset form
       $('#seragamba_formBa')[0].reset();
       $('#seragamba_rowId').val('');
       $('#seragamba_id_file_ba').val('');
       $('#seragamba_url_file_ba').val('');
-      
       $('#seragamba_lbl_ba').text('');
       $('#seragamba_file_ba').next('.custom-file-label').removeClass("selected").html("Pilih berkas PDF...");
 
-      $('#seragamba_modalTitle').html('<i class="fas fa-upload mr-2"></i> Unggah Berita Acara');
-      
-      if (IS_ADMIN) {
-        $('#seragamba_in_sekolah').prop('disabled', false).val('');
+      var curYear = $('#seragamba_filterTahun').val() || availableYears[0];
+      $('#seragamba_in_tahun').val(curYear);
+
+      if (isEdit && rowData) {
+        $('#seragamba_rowId').val(rowData.rowId);
+        $('#seragamba_id_file_ba').val(rowData.id_file_ba);
+        $('#seragamba_url_file_ba').val(rowData.url_file_ba);
+        $('#seragamba_in_tahun').val(rowData.tahun);
+
+        if (rowData.nama_file_ba) {
+          $('#seragamba_lbl_ba').html('Berkas saat ini: <span class="font-weight-bold text-dark">' + rowData.nama_file_ba + '</span>');
+        }
+
+        if (IS_ADMIN) {
+          $('#seragamba_in_sekolah').val(rowData.npsn).prop('disabled', true);
+        } else {
+          $('#seragamba_in_sekolah_hidden').val(rowData.npsn);
+        }
       } else {
-        var userNpsn = userLogin.npsn || userLogin.username || "";
-        $('#seragamba_in_sekolah_hidden').val(userNpsn);
+        if (IS_ADMIN) {
+          $('#seragamba_in_sekolah').prop('disabled', false).val('');
+        } else {
+          var userNpsn = userLogin.npsn || userLogin.username || "";
+          $('#seragamba_in_sekolah_hidden').val(userNpsn);
+        }
       }
-      
-      $('#seragamba_modalForm').modal('show');
+
+      $('#global_modalForm').modal('show');
+    }
+
+    function showUploadModal() {
+      openGlobalModal(false, null);
     }
 
     function showEditModal(row) {
-      showUploadModal();
-      $('#seragamba_rowId').val(row.rowId);
-      $('#seragamba_id_file_ba').val(row.id_file_ba);
-      $('#seragamba_url_file_ba').val(row.url_file_ba);
-
-      $('#seragamba_in_tahun').val(row.tahun);
-      $('#seragamba_modalTitle').html('<i class="fas fa-edit mr-2"></i> Edit / Ganti Berita Acara');
-
-      if (row.nama_file_ba) $('#seragamba_lbl_ba').html('Berkas saat ini: <span class="font-weight-bold text-dark">' + row.nama_file_ba + '</span>');
-
-      if (IS_ADMIN) {
-        $('#seragamba_in_sekolah').val(row.npsn).prop('disabled', true);
-      } else {
-        $('#seragamba_in_sekolah_hidden').val(row.npsn);
-      }
-
-      $('#seragamba_modalForm').modal('show');
+      openGlobalModal(true, row);
     }
 
     function handleUploadBa(e) {
       e.preventDefault();
-      var btn = $('#seragamba_formBa button[type="submit"]');
+      var btn = $('#seragamba_btnSubmitForm');
       var originalHtml = btn.html();
       
       var fileBa = $('#seragamba_file_ba')[0].files[0];
@@ -506,11 +536,46 @@
         npsn: npsnVal,
         nama_sekolah: namaSekolahVal,
         user_login: userLogin.username || "user",
-        
         url_file_ba: $('#seragamba_url_file_ba').val(),
         id_file_ba: $('#seragamba_id_file_ba').val(),
         nama_file_ba: fileBa ? fileBa.name : (isEdit ? $('#seragamba_lbl_ba').text().replace('Berkas saat ini: ', '') : '')
       };
+
+      function updateLocalCache(newRowData) {
+        var existingIdx = SERAGAMBA_CACHE_DATA.findIndex(function(item) {
+          return String(item.npsn).trim() === String(newRowData.npsn).trim() &&
+                 String(item.tahun).trim() === String(newRowData.tahun).trim();
+        });
+
+        if (existingIdx > -1) {
+          SERAGAMBA_CACHE_DATA[existingIdx] = Object.assign({}, SERAGAMBA_CACHE_DATA[existingIdx], newRowData);
+        } else {
+          SERAGAMBA_CACHE_DATA.unshift(newRowData);
+        }
+        applyLocalFilter();
+      }
+
+      function onSuccessSubmit(resMsg) {
+        btn.html(originalHtml).prop('disabled', false);
+        Sultan.notif.sukses(resMsg || "Berita Acara berhasil disimpan.");
+        $('#global_modalForm').modal('hide');
+
+        var nowStr = new Date().toLocaleDateString('id-ID', {
+          day: '2-digit', month: '2-digit', year: 'numeric'
+        }).replace(/\//g, '-') + ' ' + new Date().toLocaleTimeString('id-ID');
+
+        updateLocalCache({
+          rowId: payload.rowId || ("temp_" + Date.now()),
+          npsn: payload.npsn,
+          nama_sekolah: payload.nama_sekolah,
+          tahun: payload.tahun,
+          nama_file_ba: payload.nama_file_ba,
+          url_file_ba: payload.url_file_ba,
+          id_file_ba: payload.id_file_ba,
+          tgl_upload: nowStr,
+          uploader: payload.user_login
+        });
+      }
 
       if (fileBa) {
         var reader = new FileReader();
@@ -520,13 +585,11 @@
           
           google.script.run
             .withSuccessHandler(function(response) {
-              btn.html(originalHtml).prop('disabled', false);
               var res = JSON.parse(response);
               if (res.success) {
-                Sultan.notif.sukses(res.message);
-                $('#seragamba_modalForm').modal('hide');
-                fetchBaData();
+                onSuccessSubmit(res.message);
               } else {
+                btn.html(originalHtml).prop('disabled', false);
                 Sultan.notif.gagal(res.message);
               }
             })
@@ -540,13 +603,11 @@
       } else {
         google.script.run
           .withSuccessHandler(function(response) {
-            btn.html(originalHtml).prop('disabled', false);
             var res = JSON.parse(response);
             if (res.success) {
-              Sultan.notif.sukses(res.message);
-              $('#seragamba_modalForm').modal('hide');
-              fetchBaData();
+              onSuccessSubmit(res.message);
             } else {
+              btn.html(originalHtml).prop('disabled', false);
               Sultan.notif.gagal(res.message);
             }
           })
@@ -570,29 +631,86 @@
         cancelButtonText: 'Batal'
       }).then((result) => {
         if (result.isConfirmed) {
-          SultanUI.renderSkeletonTable('#seragamba_loadingState', 6, 'Menghapus dokumen...');
-          $('#seragamba_tableState').hide();
+          // Zero-blink local remove
+          var deletedIdx = SERAGAMBA_CACHE_DATA.findIndex(function(item) {
+            return String(item.rowId) === String(row.rowId) || 
+                   (String(item.npsn).trim() === String(row.npsn).trim() && String(item.tahun).trim() === String(row.tahun).trim());
+          });
+
+          var removedItem = null;
+          if (deletedIdx > -1) {
+            removedItem = SERAGAMBA_CACHE_DATA.splice(deletedIdx, 1)[0];
+            applyLocalFilter();
+          }
+
+          Sultan.notif.sukses('Menghapus Berita Acara dari server...');
 
           google.script.run
             .withSuccessHandler(function(response) {
               var res = JSON.parse(response);
               if (res.success) {
                 Sultan.notif.sukses(res.message);
-                fetchBaData();
               } else {
-                SultanUI.hideLoading('#seragamba_loadingState');
-                $('#seragamba_tableState').show();
+                // Rollback jika server gagal
+                if (removedItem) {
+                  SERAGAMBA_CACHE_DATA.splice(deletedIdx, 0, removedItem);
+                  applyLocalFilter();
+                }
                 Sultan.notif.gagal(res.message);
               }
             })
             .withFailureHandler(function(err) {
-              SultanUI.hideLoading('#seragamba_loadingState');
-              $('#seragamba_tableState').show();
+              // Rollback jika server gagal
+              if (removedItem) {
+                SERAGAMBA_CACHE_DATA.splice(deletedIdx, 0, removedItem);
+                applyLocalFilter();
+              }
               Sultan.notif.gagal('Gagal menghapus: ' + err.message);
             })
             .seragam_deleteBeritaAcara(row.rowId, row.npsn, row.tahun);
         }
       });
+    }
+
+    // Export Excel / CSV
+    function exportToExcel() {
+      if (!SERAGAMBA_CACHE_DATA || SERAGAMBA_CACHE_DATA.length === 0) {
+        Sultan.notif.info('Tidak ada data Berita Acara untuk diunduh.');
+        return;
+      }
+
+      var targetSekolah = IS_ADMIN ? $('#seragamba_filterSekolah').val() : (userLogin.npsn || userLogin.username || "");
+      var dataToExport = SERAGAMBA_CACHE_DATA.slice();
+      if (targetSekolah && targetSekolah !== "SEMUA") {
+        dataToExport = dataToExport.filter(function(row) {
+          return String(row.npsn).trim() === String(targetSekolah).trim();
+        });
+      }
+
+      var tahunAktif = $('#seragamba_filterTahun').val() || availableYears[0] || new Date().getFullYear();
+      var csv = "Tahun;NPSN;Nama Sekolah;Nama Berkas;Tgl Upload;Pengunggah;Link Dokumen\n";
+      
+      dataToExport.forEach(function(r) {
+        var row = [
+          '"' + (r.tahun || '') + '"',
+          '"' + (r.npsn || '') + '"',
+          '"' + (r.nama_sekolah || '').replace(/"/g, '""') + '"',
+          '"' + (r.nama_file_ba || '').replace(/"/g, '""') + '"',
+          '"' + (r.tgl_upload || '') + '"',
+          '"' + (r.uploader || '') + '"',
+          '"' + (r.url_file_ba || '') + '"'
+        ];
+        csv += row.join(";") + "\n";
+      });
+
+      var blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
+      var link = document.createElement("a");
+      link.setAttribute("href", URL.createObjectURL(blob));
+      link.setAttribute("download", "Rekap_Berita_Acara_Seragam_" + tahunAktif + ".csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      Sultan.notif.sukses('Data Berita Acara berhasil diunduh.');
     }
 
   })();
