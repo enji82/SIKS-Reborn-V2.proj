@@ -736,17 +736,22 @@
     }
 
     function handleDeleteBa(row) {
-      Swal.fire({
+      var namaSekolahClean = (row.nama_sekolah && row.nama_sekolah !== "-") ? row.nama_sekolah : getSchoolNameByNpsn(row.npsn);
+      var dDate = new Date();
+      var kd = dDate.getFullYear() + "" + String(dDate.getMonth() + 1).padStart(2, '0') + "" + String(dDate.getDate()).padStart(2, '0');
+
+      Sultan.modal.konfirmasiHapus({
         title: 'Hapus Berita Acara',
-        text: 'Apakah Anda yakin ingin menghapus Berita Acara tahun ' + row.tahun + ' untuk ' + row.nama_sekolah + '?',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: '<i class="fas fa-trash mr-1"></i> Ya, Hapus',
-        cancelButtonText: 'Batal'
-      }).then((result) => {
-        if (result.isConfirmed) {
+        kode: kd,
+        teksUtama: 'Apakah Anda yakin ingin menghapus Berita Acara ini?',
+        teksSub: 'Berkas Berita Acara yang dihapus tidak dapat dipulihkan kembali.',
+        detail: {
+          'NAMA SEKOLAH': namaSekolahClean || '-',
+          'NPSN': row.npsn || '-',
+          'TAHUN ANGGARAN': row.tahun || '-',
+          'NAMA BERKAS': row.nama_file_ba || '-'
+        },
+        onConfirm: function() {
           // Zero-blink local remove
           var deletedIdx = SERAGAMBA_CACHE_DATA.findIndex(function(item) {
             return String(item.rowId) === String(row.rowId) || 
@@ -759,29 +764,31 @@
             applyLocalFilter();
           }
 
-          Sultan.notif.sukses('Menghapus Berita Acara dari server...');
+          Sultan.notif.loading('Menghapus Berita Acara...');
 
           google.script.run
             .withSuccessHandler(function(response) {
+              Sultan.notif.tutup();
               var res = JSON.parse(response);
               if (res.success) {
-                Sultan.notif.sukses(res.message);
+                Sultan.notif.crud.hapus();
               } else {
                 // Rollback jika server gagal
                 if (removedItem) {
                   SERAGAMBA_CACHE_DATA.splice(deletedIdx, 0, removedItem);
                   applyLocalFilter();
                 }
-                Sultan.notif.gagal(res.message);
+                Sultan.notif.crud.gagal(res.message);
               }
             })
             .withFailureHandler(function(err) {
+              Sultan.notif.tutup();
               // Rollback jika server gagal
               if (removedItem) {
                 SERAGAMBA_CACHE_DATA.splice(deletedIdx, 0, removedItem);
                 applyLocalFilter();
               }
-              Sultan.notif.gagal('Gagal menghapus: ' + err.message);
+              Sultan.notif.crud.gagal('Gagal menghapus: ' + err.message);
             })
             .seragam_deleteBeritaAcara(row.rowId, row.npsn, row.tahun);
         }
