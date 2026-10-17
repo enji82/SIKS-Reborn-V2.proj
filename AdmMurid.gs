@@ -1064,12 +1064,14 @@ function admMurid_getDashboardData(npsnFilter, tahunFilter, forceRefresh) {
       var npsn = String(spmbData[i][0] || "").trim();
       var thn = String(spmbData[i][2] || "").trim();
       var status = String(spmbData[i][18] || "Diproses").trim();
+      var catatan = String(spmbData[i][19] || "").trim();
       
       if (targetTahun && targetTahun !== "SEMUA" && thn !== targetTahun) continue;
       
       if (schoolStatusMap[npsn]) {
         schoolStatusMap[npsn].spmb = {
           status: status,
+          catatan: catatan,
           fileUrl: spmbData[i][16],
           tglUpload: spmbData[i][20],
           detail: {
@@ -1086,12 +1088,14 @@ function admMurid_getDashboardData(npsnFilter, tahunFilter, forceRefresh) {
       var npsn = String(ijazahData[i][0] || "").trim();
       var thn = String(ijazahData[i][2] || "").trim();
       var status = String(ijazahData[i][12] || "Diproses").trim();
+      var catatan = String(ijazahData[i][13] || "").trim();
       
       if (targetTahun && targetTahun !== "SEMUA" && thn !== targetTahun) continue;
       
       if (schoolStatusMap[npsn]) {
         schoolStatusMap[npsn].ijazah = {
           status: status,
+          catatan: catatan,
           fileUrl: ijazahData[i][7],
           fileUrlTranskrip: ijazahData[i][10],
           fileUrlTranskripKolektif: ijazahData[i][22],
@@ -1109,12 +1113,14 @@ function admMurid_getDashboardData(npsnFilter, tahunFilter, forceRefresh) {
       var npsn = String(arsipData[i][0] || "").trim();
       var thn = String(arsipData[i][2] || "").trim();
       var status = String(arsipData[i][12] || "Diproses").trim();
+      var catatan = String(arsipData[i][13] || "").trim();
       
       if (targetTahun && targetTahun !== "SEMUA" && thn !== targetTahun) continue;
       
       if (schoolStatusMap[npsn]) {
         schoolStatusMap[npsn].arsip_ijazah = {
           status: status,
+          catatan: catatan,
           fileUrl: arsipData[i][7],
           fileUrlTranskrip: arsipData[i][10],
           tglUpload: arsipData[i][14],
@@ -1131,12 +1137,14 @@ function admMurid_getDashboardData(npsnFilter, tahunFilter, forceRefresh) {
       var npsn = String(arsipTkaData[i][0] || "").trim();
       var thn = String(arsipTkaData[i][2] || "").trim();
       var status = String(arsipTkaData[i][12] || "Diproses").trim();
+      var catatan = String(arsipTkaData[i][13] || "").trim();
       
       if (targetTahun && targetTahun !== "SEMUA" && thn !== targetTahun) continue;
       
       if (schoolStatusMap[npsn]) {
         schoolStatusMap[npsn].arsip_tka = {
           status: status,
+          catatan: catatan,
           fileUrl: arsipTkaData[i][7],
           fileDaftarUrl: arsipTkaData[i][10],
           tglUpload: arsipTkaData[i][14],
