@@ -1084,6 +1084,76 @@ function efiledash_renderUnitView(unitTarget) {
   });
 }
 
+function efiledash_formatListGroupedBySekolah(list, isRevisiTolak) {
+  var groups = {};
+  list.forEach(function(item) {
+    var unit = (item && (item.unit || item.sekolah || item.nama_sekolah)) ? String(item.unit || item.sekolah || item.nama_sekolah).trim() : "LAINNYA";
+    if (!groups[unit]) groups[unit] = [];
+    groups[unit].push(item);
+  });
+
+  var sortedUnits = Object.keys(groups).sort(function(a, b) {
+    return a.localeCompare(b, 'id', { sensitivity: 'base' });
+  });
+
+  var out = "";
+  sortedUnits.forEach(function(unitName, uIdx) {
+    out += (uIdx + 1) + ". " + unitName.toUpperCase() + "\n";
+    var ptkList = groups[unitName];
+    ptkList.sort(function(a, b) {
+      var nA = (typeof a === 'string') ? a : (a.nama || "");
+      var nB = (typeof b === 'string') ? b : (b.nama || "");
+      return String(nA).localeCompare(String(nB), 'id', { sensitivity: 'base' });
+    });
+
+    ptkList.forEach(function(item) {
+      var nama = (typeof item === 'string') ? item : (item.nama || "-");
+      var extra = "";
+      if (isRevisiTolak && item && item.statusType) {
+        var stBadge = (item.statusType === 'revisi') ? ' [REVISI]' : ' [DITOLAK]';
+        var cat = item.catatan || item.keterangan || item.alasan;
+        var catText = (cat && cat !== '-') ? " _(Catatan: " + cat + ")_" : "";
+        extra = stBadge + catText;
+      }
+      out += "- " + String(nama).trim().toUpperCase() + extra + "\n";
+    });
+  });
+  return out;
+}
+
+function efiledash_salinKeClipboard(text, pesanSukses) {
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(function() {
+      if (typeof Sultan !== 'undefined' && Sultan.notif) Sultan.notif.sukses(pesanSukses);
+      else alert(pesanSukses);
+    }).catch(function() {
+      efiledash_fallbackSalin(text, pesanSukses);
+    });
+  } else {
+    efiledash_fallbackSalin(text, pesanSukses);
+  }
+}
+
+function efiledash_fallbackSalin(text, pesanSukses) {
+  var textArea = document.createElement("textarea");
+  textArea.value = text;
+  textArea.style.position = "fixed";
+  textArea.style.left = "-999999px";
+  textArea.style.top = "-999999px";
+  document.body.appendChild(textArea);
+  textArea.focus();
+  textArea.select();
+  try {
+    document.execCommand('copy');
+    if (typeof Sultan !== 'undefined' && Sultan.notif) Sultan.notif.sukses(pesanSukses);
+    else alert(pesanSukses);
+  } catch (err) {
+    if (typeof Sultan !== 'undefined' && Sultan.alert) Sultan.alert('error', 'Gagal Salin', 'Browser memblokir izin clipboard.');
+    else alert('Gagal menyalin teks.');
+  }
+  document.body.removeChild(textArea);
+}
+
 function efiledash_salinKeWA() {
   var belumList = window.EFILEDASH_LIST_BELUM_CACHE || [];
   var revisiList = window.EFILEDASH_LIST_REVISI_CACHE || [];
@@ -1109,33 +1179,29 @@ function efiledash_salinKeWA() {
 
   if (belumList.length > 0) {
     text += "🔴 *BELUM UNGGAH (" + belumList.length + " PTK):*\n";
-    belumList.forEach(function(item, i) {
-      var nama = item.nama || "-";
-      var unit = item.unit ? " _(" + item.unit + ")_" : "";
-      text += (i + 1) + ". " + nama + unit + "\n";
-    });
+    text += efiledash_formatListGroupedBySekolah(belumList, false);
     text += "\n";
   }
 
   if (revisiList.length > 0) {
     text += "🟡 *PERLU REVISI (" + revisiList.length + " PTK):*\n";
-    revisiList.forEach(function(item, i) {
-      var nama = item.nama || "-";
-      var unit = item.unit ? " _(" + item.unit + ")_" : "";
-      var ket = (item.catatan || item.keterangan || item.alasan) ? " _[Catatan: " + (item.catatan || item.keterangan || item.alasan) + "]_" : "";
-      text += (i + 1) + ". " + nama + unit + ket + "\n";
+    var revListWithStatus = revisiList.map(function(item) {
+      var c = $.extend({}, (typeof item === 'object') ? item : { nama: item });
+      c.statusType = 'revisi';
+      return c;
     });
+    text += efiledash_formatListGroupedBySekolah(revListWithStatus, true);
     text += "\n";
   }
 
   if (ditolakList.length > 0) {
     text += "⛔ *DITOLAK (" + ditolakList.length + " PTK):*\n";
-    ditolakList.forEach(function(item, i) {
-      var nama = item.nama || "-";
-      var unit = item.unit ? " _(" + item.unit + ")_" : "";
-      var ket = (item.catatan || item.keterangan || item.alasan) ? " _[Alasan: " + (item.catatan || item.keterangan || item.alasan) + "]_" : "";
-      text += (i + 1) + ". " + nama + unit + ket + "\n";
+    var tolListWithStatus = ditolakList.map(function(item) {
+      var c = $.extend({}, (typeof item === 'object') ? item : { nama: item });
+      c.statusType = 'ditolak';
+      return c;
     });
+    text += efiledash_formatListGroupedBySekolah(tolListWithStatus, true);
     text += "\n";
   }
 
@@ -1143,12 +1209,7 @@ function efiledash_salinKeWA() {
   text += "ℹ️ _Bagi PTK yang terdaftar di atas, mohon segera menindaklanjuti dan mengunggah berkas e-file melalui SIKS-Reborn._\n";
   text += "_Terima kasih._";
 
-  navigator.clipboard.writeText(text).then(function() {
-    if (typeof Sultan !== 'undefined' && Sultan.notif) Sultan.notif.sukses('Rekap Belum Unggah, Revisi, dan Ditolak berhasil disalin!');
-    else alert('Rekap berhasil disalin!');
-  }).catch(function() {
-    alert('Browser tidak mendukung Clipboard API.');
-  });
+  efiledash_salinKeClipboard(text, 'Rekap Belum Unggah, Revisi, dan Ditolak berhasil disalin!');
 }
 
 /* =================================================================
@@ -1196,27 +1257,11 @@ function efiledash_salinWaKategori(kategori) {
   text += "=========================================\n\n";
   text += "*TOTAL (" + list.length + " PTK):*\n";
 
-  list.forEach(function(item, i) {
-    var nama = (typeof item === 'string') ? item : (item.nama || "-");
-    var unit = item.unit ? " _(" + item.unit + ")_" : "";
-    var extra = "";
-    if (kategori === 'RevisiTolak' && item && item.statusType) {
-      var stText = (item.statusType === 'revisi') ? '[REVISI]' : '[DITOLAK]';
-      var cat = item.catatan || item.keterangan || item.alasan;
-      var catText = (cat && cat !== '-') ? " _(" + cat + ")_" : "";
-      extra = " " + stText + catText;
-    }
-    text += (i + 1) + ". " + nama + unit + extra + "\n";
-  });
+  text += efiledash_formatListGroupedBySekolah(list, kategori === 'RevisiTolak');
 
   text += "\n=========================================\n";
   text += "_Data dari sistem SIKS-Reborn._";
 
-  navigator.clipboard.writeText(text).then(function() {
-    if (typeof Sultan !== 'undefined' && Sultan.notif) Sultan.notif.sukses('Daftar ' + label + ' berhasil disalin ke WhatsApp!');
-    else alert('Daftar ' + label + ' berhasil disalin!');
-  }).catch(function() {
-    alert('Browser tidak mendukung Clipboard API.');
-  });
+  efiledash_salinKeClipboard(text, 'Daftar ' + label + ' berhasil disalin ke WhatsApp!');
 }
 </script>
