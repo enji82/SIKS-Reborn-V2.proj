@@ -632,6 +632,29 @@ function seragam_getBeritaAcara(tahun, npsnFilter) {
         });
       }
     }
+
+    // Urutkan berdasarkan Last Activity (tgl_verif / tgl_upload terbaru di atas)
+    function parseDateTime(dStr) {
+      if (!dStr) return 0;
+      var s = String(dStr).replace(/'/g, "").trim();
+      if (!s || s === "-") return 0;
+      var parts = s.split(" ");
+      var sep = parts[0].indexOf("-") > -1 ? "-" : "/";
+      var dP = parts[0].split(sep);
+      if (dP.length !== 3) return 0;
+      var tP = (parts[1] || "00:00:00").split(":");
+      return new Date(
+        parseInt(dP[2], 10), parseInt(dP[1], 10) - 1, parseInt(dP[0], 10),
+        parseInt(tP[0] || 0, 10), parseInt(tP[1] || 0, 10), parseInt(tP[2] || 0, 10)
+      ).getTime();
+    }
+
+    result.sort(function(a, b) {
+      var actA = Math.max(parseDateTime(a.tgl_verif), parseDateTime(a.tgl_upload));
+      var actB = Math.max(parseDateTime(b.tgl_verif), parseDateTime(b.tgl_upload));
+      return actB - actA;
+    });
+
     return JSON.stringify({ success: true, data: result });
   } catch(e) {
     return JSON.stringify({ success: false, message: e.message });

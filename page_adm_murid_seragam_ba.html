@@ -368,6 +368,28 @@
         });
       }
 
+      // Urutkan berdasarkan Last Activity (tgl_verif atau tgl_upload terbaru di atas)
+      filtered.sort(function (a, b) {
+        var parseDateTime = function (val) {
+          if (!val) return 0;
+          var s = String(val).replace(/'/g, "").trim();
+          if (!s || s === "-") return 0;
+          var parts = s.split(" ");
+          var sep = parts[0].indexOf("-") > -1 ? "-" : "/";
+          var dP = parts[0].split(sep);
+          if (dP.length !== 3) return 0;
+          var tP = (parts[1] || "00:00:00").split(":");
+          return new Date(
+            parseInt(dP[2], 10), parseInt(dP[1], 10) - 1, parseInt(dP[0], 10),
+            parseInt(tP[0] || 0, 10), parseInt(tP[1] || 0, 10), parseInt(tP[2] || 0, 10)
+          ).getTime();
+        };
+
+        var timeA = Math.max(parseDateTime(a.tgl_verif), parseDateTime(a.tgl_upload));
+        var timeB = Math.max(parseDateTime(b.tgl_verif), parseDateTime(b.tgl_upload));
+        return timeB - timeA;
+      });
+
       renderTable(filtered);
       if (typeof SultanUI !== 'undefined' && typeof SultanUI.adjustFilterBarWidths === 'function') {
         SultanUI.adjustFilterBarWidths('#seragamba_filterBarArea');
