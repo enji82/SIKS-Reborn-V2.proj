@@ -726,7 +726,12 @@ function seragam_saveBeritaAcara(payload) {
       }
     }
 
-    return JSON.stringify({ success: true, message: "Berita Acara berhasil disimpan." });
+    return JSON.stringify({ 
+      success: true, 
+      message: "Berita Acara berhasil disimpan.",
+      url_file_ba: fileUrlBa,
+      id_file_ba: fileIdBa
+    });
   } catch(e) {
     return JSON.stringify({ success: false, message: e.message });
   } finally {

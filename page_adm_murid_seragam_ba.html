@@ -684,8 +684,9 @@
         applyLocalFilter();
       }
 
-      function onSuccessSubmit(resMsg) {
+      function onSuccessSubmit(res) {
         btn.html(originalHtml).prop('disabled', false);
+        var resMsg = (typeof res === 'object' && res.message) ? res.message : res;
         Sultan.notif.sukses(resMsg || "Berita Acara berhasil disimpan.");
         $('#global_modalForm').modal('hide');
 
@@ -693,14 +694,17 @@
           day: '2-digit', month: '2-digit', year: 'numeric'
         }).replace(/\//g, '-') + ' ' + new Date().toLocaleTimeString('id-ID');
 
+        var finalUrlBa = (typeof res === 'object' && res.url_file_ba) ? res.url_file_ba : payload.url_file_ba;
+        var finalIdBa = (typeof res === 'object' && res.id_file_ba) ? res.id_file_ba : payload.id_file_ba;
+
         updateLocalCache({
           rowId: payload.rowId || ("temp_" + Date.now()),
           npsn: payload.npsn,
           nama_sekolah: payload.nama_sekolah,
           tahun: payload.tahun,
           nama_file_ba: payload.nama_file_ba,
-          url_file_ba: payload.url_file_ba,
-          id_file_ba: payload.id_file_ba,
+          url_file_ba: finalUrlBa,
+          id_file_ba: finalIdBa,
           tgl_upload: nowStr,
           uploader: payload.user_login
         });
@@ -716,7 +720,7 @@
             .withSuccessHandler(function(response) {
               var res = JSON.parse(response);
               if (res.success) {
-                onSuccessSubmit(res.message);
+                onSuccessSubmit(res);
               } else {
                 btn.html(originalHtml).prop('disabled', false);
                 Sultan.notif.gagal(res.message);
@@ -734,7 +738,7 @@
           .withSuccessHandler(function(response) {
             var res = JSON.parse(response);
             if (res.success) {
-              onSuccessSubmit(res.message);
+              onSuccessSubmit(res);
             } else {
               btn.html(originalHtml).prop('disabled', false);
               Sultan.notif.gagal(res.message);
