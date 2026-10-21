@@ -24,7 +24,24 @@ function tpgPg_ensureSheet() {
     sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold").setBackground("#d3d3d3");
     sheet.setFrozenRows(1);
   }
+  // Pastikan header kolom tambahan (V: Read By, W-Y: Data INFOGTK) tersedia
+  try {
+    if (sheet.getMaxColumns() < 25) sheet.insertColumnsAfter(sheet.getMaxColumns(), 25 - sheet.getMaxColumns());
+    var extraHeaders = ["Read By", "Gaji Pokok Infogtk", "Bulan Pembayaran Terakhir", "Dokumen Infogtk"];
+    var hdr = sheet.getRange(1, 22, 1, 4).getValues()[0];
+    var needSet = false;
+    for (var h = 0; h < extraHeaders.length; h++) {
+      if (!String(hdr[h] || "").trim()) { hdr[h] = extraHeaders[h]; needSet = true; }
+    }
+    if (needSet) sheet.getRange(1, 22, 1, 4).setValues([hdr]).setFontWeight("bold").setBackground("#d3d3d3");
+  } catch (eHdr) {}
   return sheet;
+}
+
+// Status otomatis "Done" bila Gapok SK = Gapok Infogtk = Nilai Salur Bruto
+function tpgPg_isDone(gajiPokok, gajiInfogtk, nilaiSalur) {
+  var g = Number(gajiPokok || 0), i = Number(gajiInfogtk || 0), b = Number(nilaiSalur || 0);
+  return g > 0 && g === i && g === b;
 }
 
 // 2. Fetch ASN Data
@@ -96,7 +113,7 @@ function tpg_getPerbaikanData(unitKerja, isAdmin) {
     var lastRow = sheet.getLastRow();
     if (lastRow < 2) return { status: 'success', data: [] };
     
-    var data = sheet.getRange(2, 1, lastRow - 1, 21).getValues();
+    var data = sheet.getRange(2, 1, lastRow - 1, 25).getValues();
     var result = [];
     var tz = Session.getScriptTimeZone();
     
@@ -122,7 +139,10 @@ function tpg_getPerbaikanData(unitKerja, isAdmin) {
         bulanTpg: (data[i][10] instanceof Date) ? Utilities.formatDate(data[i][10], tz, "MMMM yyyy") : String(data[i][10] || ""),
         nilaiSalur: data[i][11] || 0,
         dokumenUrl: String(data[i][12] || ""),
-        status: String(data[i][13] || "Diproses"),
+        gajiInfogtk: data[i][22] || 0,
+        bulanBayar: (data[i][23] instanceof Date) ? Utilities.formatDate(data[i][23], tz, "MMMM yyyy") : String(data[i][23] || ""),
+        dokumenInfogtkUrl: String(data[i][24] || ""),
+        status: tpgPg_isDone(data[i][8], data[i][22], data[i][11]) ? "Done" : String(data[i][13] || "Diproses"),
         verifikasiOleh: String(data[i][14] || ""),
         waktuVerifikasi: data[i][15] ? Utilities.formatDate(new Date(data[i][15]), tz, "yyyy-MM-dd'T'HH:mm:ss") : "",
         keterangan: String(data[i][16] || ""),
@@ -213,6 +233,16 @@ function tpg_savePerbaikan(formData) {
       }
     }
     
+    var docInfogtkUrl = "";
+    if (formData.fileInfogtkData) {
+      var folderI = DriveApp.getFolderById(FOLDER_CONFIG[TPG_PG_CONFIG.FOLDER_KEY]);
+      var blobI = Utilities.newBlob(Utilities.base64Decode(formData.fileInfogtkData), formData.fileInfogtkMimeType, formData.fileInfogtkName);
+      var fileI = folderI.createFile(blobI);
+      fileI.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      docInfogtkUrl = fileI.getUrl();
+    }
+    var newStatus = tpgPg_isDone(formData.gajiPokok, formData.gajiInfogtk, formData.nilaiSalur) ? "Done" : "Diproses";
+
     sheet.appendRow([
       newId,
       formData.unitKerja,
@@ -227,11 +257,15 @@ function tpg_savePerbaikan(formData) {
       formData.bulanTpg,
       formData.nilaiSalur,
       docUrl,
-      "Diproses",
+      newStatus,
       "", "", "", // verifikasi
       currentUser,
       now,
-      "", "" // edit
+      "", "", // edit
+      "", // read by
+      formData.gajiInfogtk,
+      formData.bulanBayar,
+      docInfogtkUrl
     ]);
     var savedData = {
       id: newId,
@@ -246,8 +280,11 @@ function tpg_savePerbaikan(formData) {
       noSktpg: formData.noSktpg,
       bulanTpg: formData.bulanTpg,
       nilaiSalur: formData.nilaiSalur,
+      gajiInfogtk: formData.gajiInfogtk,
+      bulanBayar: formData.bulanBayar,
+      dokumenInfogtkUrl: docInfogtkUrl,
       dokumenUrl: docUrl,
-      status: "Diproses",
+      status: newStatus,
       verifikasiOleh: "",
       waktuVerifikasi: "",
       keterangan: "",
@@ -303,8 +340,19 @@ function tpg_updatePerbaikan(formData) {
       docUrl = file.getUrl();
     }
     
+    var docInfogtkUrl = data[rowIndex - 1][24] || "";
+    if (formData.fileInfogtkData) {
+      var folderI = DriveApp.getFolderById(FOLDER_CONFIG[TPG_PG_CONFIG.FOLDER_KEY]);
+      var blobI = Utilities.newBlob(Utilities.base64Decode(formData.fileInfogtkData), formData.fileInfogtkMimeType, formData.fileInfogtkName);
+      var fileI = folderI.createFile(blobI);
+      fileI.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      docInfogtkUrl = fileI.getUrl();
+    }
+    var newStatus = tpgPg_isDone(formData.gajiPokok, formData.gajiInfogtk, formData.nilaiSalur) ? "Done" : "Diproses";
+
     var tmtDate = formData.tmt ? String(formData.tmt).trim() : "";
     
+    sheet.getRange(rowIndex, 23, 1, 3).setValues([[formData.gajiInfogtk, formData.bulanBayar, docInfogtkUrl]]);
     sheet.getRange(rowIndex, 2).setValue(formData.unitKerja);
     sheet.getRange(rowIndex, 3).setValue(formData.namaAsn);
     sheet.getRange(rowIndex, 4).setValue(formData.nip ? "'" + formData.nip : "");
@@ -318,8 +366,9 @@ function tpg_updatePerbaikan(formData) {
     sheet.getRange(rowIndex, 12).setValue(formData.nilaiSalur);
     sheet.getRange(rowIndex, 13).setValue(docUrl);
     
-    // Status kembali ke diproses jika diedit user
-    sheet.getRange(rowIndex, 14).setValue("Diproses");
+    // Semua kondisi status: setiap perubahan data kembali ke Diproses (atau Done otomatis)
+    sheet.getRange(rowIndex, 14).setValue(newStatus);
+    sheet.getRange(rowIndex, 22).setValue(""); // reset read by notifikasi
     sheet.getRange(rowIndex, 15).setValue(""); // clear verifikator
     sheet.getRange(rowIndex, 16).setValue(""); // clear waktu verif
     sheet.getRange(rowIndex, 17).setValue(""); // clear keterangan
@@ -340,8 +389,11 @@ function tpg_updatePerbaikan(formData) {
       noSktpg: formData.noSktpg,
       bulanTpg: formData.bulanTpg,
       nilaiSalur: formData.nilaiSalur,
+      gajiInfogtk: formData.gajiInfogtk,
+      bulanBayar: formData.bulanBayar,
+      dokumenInfogtkUrl: docInfogtkUrl,
       dokumenUrl: docUrl,
-      status: "Diproses",
+      status: newStatus,
       verifikasiOleh: "",
       waktuVerifikasi: "",
       keterangan: "",
@@ -475,7 +527,7 @@ function getNotifikasiPerbaikanGaji(role, unit) {
             if (!isAdmin && readByList.indexOf("User") > -1) isRead = true;
             
             var stLower = status.toLowerCase();
-            var isSelesai = stLower.includes("setuju") || stLower.includes("ok") || stLower.includes("valid") || stLower.includes("selesai");
+            var isSelesai = stLower.includes("setuju") || stLower.includes("usul") || stLower.includes("done") || stLower.includes("ok") || stLower.includes("valid") || stLower.includes("selesai");
             
             if (isAdmin) {
                 unreadCount++;
@@ -655,7 +707,7 @@ function tpg_getDashboardData(unitFilter, forceRefresh) {
 
       unitMap[unit].listSudah.push(itemData);
 
-      if (stNorm.indexOf("setuju") !== -1 || stNorm.indexOf("verifikasi") !== -1) {
+      if (stNorm.indexOf("setuju") !== -1 || stNorm.indexOf("usul") !== -1 || stNorm.indexOf("done") !== -1 || stNorm.indexOf("verifikasi") !== -1) {
         unitMap[unit].diverifikasi++;
       } else if (stNorm.indexOf("revisi") !== -1) {
         unitMap[unit].revisi++;
