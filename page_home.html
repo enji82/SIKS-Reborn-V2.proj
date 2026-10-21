@@ -1797,6 +1797,30 @@
     var headlines = displayList.slice(0, 3);
     var lainnya = displayList.slice(3); // Berita kecil
 
+    // Helper cek apakah user aktif adalah admin atau pemilik berita
+    function cekBolehEditBerita(item) {
+      try {
+        var dataLocal = localStorage.getItem("siksUser");
+        if (!dataLocal) return false;
+        var u = JSON.parse(dataLocal);
+        var role = (u.role || '').toLowerCase();
+        if (role.indexOf('admin') !== -1) return true;
+
+        var myName = (u.nama_lengkap || u.fullName || u.nama || u.username || '').toLowerCase().trim();
+        var myUser = (u.username || '').toLowerCase().trim();
+        var myUnit = (u.unit_kerja || u.unit || u.sekolah || u.npsn || '').toLowerCase().trim();
+
+        var author = (item.pengunggah || '').toLowerCase().trim();
+        var authorUser = (item.userLogin || '').toLowerCase().trim();
+        var itemUnit = (item.unitKerja || '').toLowerCase().trim();
+
+        if (authorUser && myUser && authorUser === myUser) return true;
+        if (author && myName && author === myName) return true;
+        if (myUnit && itemUnit && myUnit === itemUnit) return true;
+      } catch(e) {}
+      return false;
+    }
+
     // 1. KARTU BERITA BESAR (MAKS 3)
     function buatKartuBeritaBesar(item) {
       if (!item) return '';
@@ -1807,9 +1831,17 @@
       if (item.kategori) metaArr.push('<span class="news-meta-tag"><i class="fas fa-folder mr-1"></i> ' + item.kategori + '</span>');
       if (item.tanggal && item.tanggal !== '-') metaArr.push('<span><i class="fas fa-calendar-alt mr-1"></i> ' + item.tanggal + '</span>');
 
+      var canEdit = cekBolehEditBerita(item);
+      var btnEditHtml = '';
+      if (canEdit) {
+        btnEditHtml = '<button type="button" class="btn btn-sm btn-outline-warning font-weight-bold mr-2 shadow-sm" style="border-radius: 8px; font-size: 0.8rem; padding: 5px 12px;" onclick="bukaModalEditBeritaHome(\'' + item.id + '\'); event.stopPropagation();" title="Edit Berita">' +
+          '<i class="fas fa-edit mr-1"></i>Edit' +
+        '</button>';
+      }
+
       return '' +
         '<div class="col-lg-4 col-md-6 col-12 mb-4 d-flex">' +
-          '<div class="headline-card flex-fill">' +
+          '<div class="headline-card flex-fill position-relative">' +
             '<div class="headline-image-wrap">' +
               '<img src="' + img + '" alt="' + (item.judul || '') + '" loading="lazy">' +
             '</div>' +
@@ -1823,10 +1855,11 @@
                 '</h5>' +
                 '<p class="headline-desc small mb-3" style="line-height: 1.55; font-size: 0.82rem;">' + teks + '</p>' +
               '</div>' +
-              '<div class="pt-2">' +
+              '<div class="pt-2 d-flex align-items-center justify-content-between">' +
                 '<button type="button" class="btn btn-sm text-white font-weight-bold shadow-sm" style="background: linear-gradient(135deg, #800000 0%, #4a0000 100%); border-radius: 8px; font-size: 0.8rem; padding: 5px 14px;" onclick="portalBacaBeritaSelengkapnya(\'' + item.id + '\')">' +
                   'Baca Selengkapnya <i class="fas fa-arrow-right ml-1"></i>' +
                 '</button>' +
+                (btnEditHtml ? '<div>' + btnEditHtml + '</div>' : '') +
               '</div>' +
             '</div>' +
           '</div>' +
@@ -1850,6 +1883,14 @@
         if (b.kategori) bMetaArr.push('<span class="news-meta-tag">' + b.kategori + '</span>');
         if (b.tanggal && b.tanggal !== '-') bMetaArr.push('<span class="news-meta-date"><i class="fas fa-calendar-alt mr-1"></i> ' + b.tanggal + '</span>');
 
+        var canEditB = cekBolehEditBerita(b);
+        var btnEditMini = '';
+        if (canEditB) {
+          btnEditMini = '<button type="button" class="btn btn-xs btn-outline-warning font-weight-bold ml-auto" style="border-radius: 6px; font-size: 0.72rem; padding: 2px 8px; z-index: 2;" onclick="bukaModalEditBeritaHome(\'' + b.id + '\'); event.stopPropagation();" title="Edit Berita">' +
+            '<i class="fas fa-edit mr-1"></i>Edit' +
+          '</button>';
+        }
+
         itemsKecilHtml += '' +
           '<div class="col-lg-4 col-md-6 col-12 mb-3">' +
             '<div class="news-mini-card" onclick="portalBacaBeritaSelengkapnya(\'' + b.id + '\')">' +
@@ -1859,6 +1900,7 @@
               '<div style="flex-grow: 1; min-width: 0;">' +
                 '<div class="d-flex align-items-center mb-1" style="gap: 6px;">' +
                   bMetaArr.join('<span style="opacity:0.3; font-size: 0.7rem;">&bull;</span>') +
+                  btnEditMini +
                 '</div>' +
                 '<div class="news-mini-title">' + (b.judul || '') + '</div>' +
                 '<div class="news-mini-desc">' + bTeks + '</div>' +
@@ -1953,14 +1995,23 @@
           mediaAkhir +
         '</div>';
 
+      var canEditModal = (typeof cekBolehEditBerita === 'function') ? cekBolehEditBerita(item) : false;
+
       Swal.fire({
         title: '<h5 class="emading-modal-title font-weight-bold text-left mb-0" style="color: #800000; font-size: 1.25rem; line-height: 1.4;">' + (item.judul || 'Berita') + '</h5>',
         html: modalHtmlContent,
         customClass: { popup: 'rounded-16 emading-detail-popup' },
         width: '760px',
         showCloseButton: true,
+        showCancelButton: canEditModal,
+        cancelButtonText: '<i class="fas fa-edit mr-1"></i> Edit Berita',
+        cancelButtonColor: '#f59e0b',
         confirmButtonText: 'Tutup',
         confirmButtonColor: '#800000'
+      }).then(function (result) {
+        if (result.dismiss === Swal.DismissReason.cancel && canEditModal) {
+          bukaModalEditBeritaHome(item.id);
+        }
       });
     }
   };
@@ -2115,6 +2166,94 @@
 
     $('#emading_modalTulis').modal('show');
   }
+
+  // Buka Modal Edit Berita dari Beranda
+  window.bukaModalEditBeritaHome = function(id) {
+    var art = HOME_CACHE_BERITA.find(function(b) { return String(b.id) === String(id); });
+    if (!art) return;
+
+    HOME_MODAL_FOTO_FILES = [null, null, null];
+    HOME_MODAL_LAMPIRAN_FILE_DATA = null;
+
+    $('#emading_modalTitle').text('Edit Berita E-Mading');
+    $('#emading_btnSimpanArtikel').html('<i class="fas fa-save mr-2"></i>SIMPAN PERUBAHAN');
+
+    $('#emading_idArtikel').val(art.id || '');
+    $('#emading_inputJudul').val(art.judul || '');
+    $('#emading_inputKategori').val(art.kategori || 'Kegiatan');
+    $('#emading_inputPengunggah').val(art.pengunggah || '');
+    $('#emading_inputUnitKerja').val(art.unitKerja || '');
+    $('#emading_editorContent').html(art.isi || '');
+
+    // Posisi foto individual & video
+    var posFoto1 = 'awal';
+    var posFoto2 = 'tengah';
+    var posFoto3 = 'akhir';
+    var posVideo = 'akhir';
+
+    if (art.posisiFotoList && Array.isArray(art.posisiFotoList)) {
+      if (art.posisiFotoList[0]) posFoto1 = art.posisiFotoList[0];
+      if (art.posisiFotoList[1]) posFoto2 = art.posisiFotoList[1];
+      if (art.posisiFotoList[2]) posFoto3 = art.posisiFotoList[2];
+    } else if (art.posisiFoto) {
+      posFoto1 = art.posisiFoto;
+    }
+
+    if (art.posisiVideo) {
+      posVideo = art.posisiVideo;
+    }
+
+    $('#emading_posisiFoto_1').val(posFoto1);
+    $('#emading_posisiFoto_2').val(posFoto2);
+    $('#emading_posisiFoto_3').val(posFoto3);
+    $('#emading_posisiVideo').val(posVideo);
+
+    $('#emading_inputVideoUrl').val(art.videoUrl || '');
+
+    // Reset slot foto terlebih dahulu
+    [1, 2, 3].forEach(function (slot) {
+      $('#emading_existingFotoUrl_' + slot).val('');
+      $('#emading_fileFoto_' + slot).val('');
+      $('#emading_fotoPreviewImg_' + slot).attr('src', '');
+      $('#emading_fotoPreviewWrap_' + slot).addClass('d-none');
+      $('#emading_fotoPlaceholder_' + slot).removeClass('d-none');
+    });
+
+    // Helper konversi Drive URL
+    function konvDriveUrl(url) {
+      if (!url) return '';
+      var m = url.match(/id=([a-zA-Z0-9_-]+)/) || url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      return (m && m[1]) ? ('https://lh3.googleusercontent.com/d/' + m[1] + '=w800') : url;
+    }
+
+    // Tampilkan foto list jika ada
+    var fotos = art.fotoList || (art.fotoUrl ? [art.fotoUrl] : []);
+    fotos.forEach(function (fUrl, idx) {
+      var slot = idx + 1;
+      if (slot <= 3 && fUrl) {
+        $('#emading_existingFotoUrl_' + slot).val(fUrl);
+        $('#emading_fotoPreviewImg_' + slot).attr('src', konvDriveUrl(fUrl));
+        $('#emading_fotoPlaceholder_' + slot).addClass('d-none');
+        $('#emading_fotoPreviewWrap_' + slot).removeClass('d-none');
+      }
+    });
+
+    // Reset & Tampilkan lampiran
+    $('#emading_fileLampiran').val('');
+    $('#emading_labelLampiran').text('Pilih berkas dokumen...');
+    if (art.lampiranUrl) {
+      $('#emading_existingLampiranUrl').val(art.lampiranUrl);
+      $('#emading_existingLampiranNama').val(art.lampiranNama || 'Dokumen Lampiran');
+      $('#emading_txtExistingLampiranNama').text(art.lampiranNama || 'Dokumen');
+      $('#emading_existingLampiranWrap').removeClass('d-none');
+    } else {
+      $('#emading_existingLampiranUrl').val('');
+      $('#emading_existingLampiranNama').val('');
+      $('#emading_existingLampiranWrap').addClass('d-none');
+    }
+
+    $('#emading_modalTulis').modal('show');
+  };
 
   function simpanArtikelHomeModal() {
     var judul = $('#emading_inputJudul').val().trim();
