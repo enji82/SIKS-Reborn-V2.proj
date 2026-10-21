@@ -142,7 +142,9 @@ function tpg_getPerbaikanData(unitKerja, isAdmin) {
         gajiInfogtk: data[i][22] || 0,
         bulanBayar: (data[i][23] instanceof Date) ? Utilities.formatDate(data[i][23], tz, "MMMM yyyy") : String(data[i][23] || ""),
         dokumenInfogtkUrl: String(data[i][24] || ""),
-        status: tpgPg_isDone(data[i][8], data[i][22], data[i][11]) ? "Done" : String(data[i][13] || "Diproses"),
+        status: (String(data[i][13] || "").trim().toLowerCase() === "perlu update") 
+          ? "Perlu Update" 
+          : (tpgPg_isDone(data[i][8], data[i][22], data[i][11]) ? "Done" : String(data[i][13] || "Diproses")),
         verifikasiOleh: String(data[i][14] || ""),
         waktuVerifikasi: data[i][15] ? Utilities.formatDate(new Date(data[i][15]), tz, "yyyy-MM-dd'T'HH:mm:ss") : "",
         keterangan: String(data[i][16] || ""),
