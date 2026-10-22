@@ -145,22 +145,22 @@
       }
 
       // Bind Listeners
-      $('#seragamdata_filterTahun, #seragamdata_filterTahap').on('change', fetchTableData);
+      $('#seragamdata_filterTahun, #seragamdata_filterTahap').off('change').on('change', fetchTableData);
       $(document).off('change', '#seragamdata_filterSekolah').on('change', '#seragamdata_filterSekolah', function() {
         applyLocalFilter();
         if (typeof SultanUI !== 'undefined' && typeof SultanUI.adjustFilterBarWidths === 'function') {
           SultanUI.adjustFilterBarWidths('#seragamdata_filterBarArea');
         }
       });
-      $('#seragamdata_btnSync').on('click', fetchTableData);
+      $('#seragamdata_btnSync').off('click').on('click', fetchTableData);
 
       // Fetch first time
       fetchTableData();
     }
 
     function fetchTableData() {
-      var tahun = $('#seragamdata_filterTahun').val();
-      var tahap = $('#seragamdata_filterTahap').val();
+      var tahun = $('#seragamdata_filterTahun').val() || (availableYears && availableYears[0]) || "2026";
+      var tahap = $('#seragamdata_filterTahap').val() || "Tahap 1";
       var npsnQuery = IS_ADMIN ? "SEMUA" : (userLogin.npsn || userLogin.username || "");
 
       $('#seragamdata_loadingState').show();
@@ -174,35 +174,17 @@
           if (res.success) {
             SERAGAMDATA_CACHE_DATA = res.data || [];
             updateSekolahFilterDropdown();
-            
-            // Initialize Table
-            if (!$.fn.DataTable.isDataTable('#seragamdata_tabelUtama')) {
-              SERAGAMDATA_TABEL_INSTANCE = SultanTable.init('#seragamdata_tabelUtama', {
-                columnDefs: [
-                  { targets: 0, width: "3%", className: "text-center align-middle font-weight-bold text-muted" },
-                  { targets: 1, width: "23%", className: "text-left align-middle col-sticky-left" },
-                  { targets: 2, width: "22%", className: "text-left align-middle" },
-                  { targets: 3, width: "8%", className: "text-center align-middle" },
-                  { targets: 4, width: "8%", className: "text-center align-middle" },
-                  { targets: 5, width: "20%", className: "text-left align-middle text-wrap" },
-                  { targets: 6, width: "16%", className: "text-left align-middle text-wrap" }
-                ],
-                language: { emptyTable: "Tidak ada data penerima seragam gratis pada tahun/tahap ini." }
-              });
-            }
-
             applyLocalFilter();
-            $('#seragamdata_tableState').fadeIn(200);
-            if (SERAGAMDATA_TABEL_INSTANCE) {
-              setTimeout(function () { SERAGAMDATA_TABEL_INSTANCE.columns.adjust(); }, 50);
-            }
+            $('#seragamdata_tableState').show();
           } else {
             Sultan.notif.gagal('Gagal memuat data: ' + res.message);
+            $('#seragamdata_tableState').show();
           }
         })
         .withFailureHandler(function(err) {
           $('#seragamdata_loadingState').hide();
           Sultan.notif.gagal('Gagal memuat data: ' + err.message);
+          $('#seragamdata_tableState').show();
         })
         .seragam_getDataPenerima(tahun, tahap, npsnQuery);
     }
@@ -222,7 +204,7 @@
       $dropdown.empty().append('<option value="SEMUA">Semua Sekolah</option>');
       
       Object.keys(uniqueSchools).sort(function(a, b) {
-        return uniqueSchools[a].localeCompare(uniqueSchools[b]);
+        return String(uniqueSchools[a]).localeCompare(String(uniqueSchools[b]));
       }).forEach(function(npsn) {
         $dropdown.append(`<option value="${npsn}">${uniqueSchools[npsn]}</option>`);
       });
@@ -264,6 +246,23 @@
     }
 
     function renderTable(data) {
+      if ($.fn.DataTable.isDataTable('#seragamdata_tabelUtama')) {
+        SERAGAMDATA_TABEL_INSTANCE = $('#seragamdata_tabelUtama').DataTable();
+      } else {
+        SERAGAMDATA_TABEL_INSTANCE = SultanTable.init('#seragamdata_tabelUtama', {
+          columnDefs: [
+            { targets: 0, width: "3%", className: "text-center align-middle font-weight-bold text-muted" },
+            { targets: 1, width: "23%", className: "text-left align-middle col-sticky-left" },
+            { targets: 2, width: "22%", className: "text-left align-middle" },
+            { targets: 3, width: "8%", className: "text-center align-middle" },
+            { targets: 4, width: "8%", className: "text-center align-middle" },
+            { targets: 5, width: "20%", className: "text-left align-middle text-wrap" },
+            { targets: 6, width: "16%", className: "text-left align-middle text-wrap" }
+          ],
+          language: { emptyTable: "Tidak ada data penerima seragam gratis pada tahun/tahap ini." }
+        });
+      }
+
       if (!SERAGAMDATA_TABEL_INSTANCE) return;
 
       var dtArray = [];
