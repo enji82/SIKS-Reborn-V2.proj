@@ -148,11 +148,11 @@
                                 class="table table-hover table-premium table-sultan-compact text-nowrap mb-0 w-100">
                                 <thead class="thead-sultan-premium text-uppercase font-weight-bold">
                                     <tr>
-                                        <th class="text-left align-middle col-sticky-left" style="width: 19%;"><span class="sultan-th-title">SURAT TUGAS</span></th>
-                                        <th class="text-left align-middle" style="width: 26%;"><span class="sultan-th-title">RINCIAN PERJALANAN DINAS</span></th>
-                                        <th class="text-center align-middle" style="width: 9%;"><span class="sultan-th-title">PESERTA</span></th>
-                                        <th class="text-center align-middle" style="width: 11%;"><span class="sultan-th-title">DOKUMEN</span></th>
-                                        <th class="text-left align-middle" style="width: 11%;"><span class="sultan-th-title">STATUS</span></th>
+                                        <th class="text-left align-middle col-sticky-left" style="width: 18%;"><span class="sultan-th-title">SURAT TUGAS</span></th>
+                                        <th class="text-left align-middle" style="width: 22%;"><span class="sultan-th-title">RINCIAN PERJALANAN DINAS</span></th>
+                                        <th class="text-center align-middle" style="width: 8%;"><span class="sultan-th-title">PESERTA</span></th>
+                                        <th class="text-center align-middle" style="width: 10%;"><span class="sultan-th-title">DOKUMEN</span></th>
+                                        <th class="text-left align-middle" style="width: 18%;"><span class="sultan-th-title">STATUS</span></th>
                                         <th class="text-left align-middle" style="width: 12%;"><span class="sultan-th-title">AKTIVITAS</span></th>
                                         <th class="text-center align-middle" style="width: 12%;"><span class="sultan-th-title">AKSI</span></th>
                                     </tr>
@@ -602,11 +602,11 @@
                     if (!$.fn.DataTable.isDataTable('#perdin_tabelUtama')) {
                         PERDIN_TABEL_INSTANCE = SultanTable.init('#perdin_tabelUtama', {
                             "columnDefs": [
-                                { "targets": 0, "className": "text-left align-middle col-sticky-left", "width": "19%" },
-                                { "targets": 1, "className": "text-left align-middle", "width": "26%" },
-                                { "targets": 2, "className": "text-center align-middle text-nowrap", "width": "9%" },
-                                { "targets": 3, "className": "text-center align-middle text-nowrap", "width": "11%" },
-                                { "targets": 4, "className": "text-left align-middle text-nowrap", "width": "11%" },
+                                { "targets": 0, "className": "text-left align-middle col-sticky-left", "width": "18%" },
+                                { "targets": 1, "className": "text-left align-middle", "width": "22%" },
+                                { "targets": 2, "className": "text-center align-middle text-nowrap", "width": "8%" },
+                                { "targets": 3, "className": "text-center align-middle text-nowrap", "width": "10%" },
+                                { "targets": 4, "className": "text-left align-middle", "width": "18%" },
                                 { "targets": 5, "className": "text-left align-middle text-nowrap", "width": "12%" },
                                 { "targets": 6, "className": "text-center align-middle text-nowrap", "width": "12%" }
                             ],
@@ -678,6 +678,7 @@
             var dSpt = row.tglSpt ? String(row.tglSpt).replace(/'/g, "") : "-";
             var badgeJenis = row.jenis ? `<span class="perdin-badge-jenis">${perdin_escapeHtml(row.jenis)}</span>` : '';
             var pemisahJenis = (badgeJenis && dSpt !== "-") ? `<span class="text-muted font-weight-normal mx-1">&bull;</span>` : '';
+            var namaSekolah = row.sekolah || row.unitKirim || row.userKirim || "-";
             var uiSuratTugas = `
                 <div class="text-left">
                     <div class="sultan-table-primary font-weight-bold" style="color: #800000; font-size: 12.5px; line-height: 1.2;">${safeNoSpt}</div>
@@ -686,12 +687,15 @@
                         ${pemisahJenis}
                         <span class="text-muted"><i class="far fa-calendar-check mr-1"></i>${dSpt}</span>
                     </div>
+                    <div class="font-weight-semibold text-truncate mt-1" style="color: #4b5563; font-size: 11px;" title="${perdin_escapeHtml(namaSekolah)}">
+                        <i class="fas fa-school mr-1 text-secondary"></i>${perdin_escapeHtml(namaSekolah)}
+                    </div>
                 </div>
             `;
 
             // 2. Kolom RINCIAN PERJALANAN DINAS
             var dDinas = String(row.tglMulai || "").replace(/'/g, "") + " s/d " + String(row.tglSelesai || "").replace(/'/g, "");
-            var uiTujuan = row.tujuan ? `<div class="text-dark font-weight-bold text-wrap" style="line-height: 1.3;"><i class="fas fa-map-marker-alt text-danger mr-1"></i>${perdin_escapeHtml(row.tujuan)}</div>` : '';
+            var uiTujuan = row.tujuan ? `<div class="text-primary font-weight-bold text-wrap" style="color: #1a73e8 !important; line-height: 1.3;"><i class="fas fa-map-marker-alt text-primary mr-1"></i>${perdin_escapeHtml(row.tujuan)}</div>` : '';
             var uiKegiatan = row.kegiatan ? `<div class="text-muted text-wrap mt-1" style="font-size: 11px; line-height: 1.3;"><i class="fas fa-tasks mr-1 text-secondary"></i>${perdin_escapeHtml(row.kegiatan)}</div>` : '';
             var uiRincianDinas = `
                 <div class="text-left">
@@ -722,13 +726,20 @@
                 }
             }
 
-            // 5. Kolom STATUS & BACA CATATAN (Standar Terpusat SultanUI)
-            var badgeStatus = SultanUI.renderBadgeStatus(row.status, row.keterangan, {
-                unit: row.tujuan || 'Perjalanan Dinas',
-                dokumen: 'SPT ' + (row.noSpt || ''),
-                verifikator: row.verifikator,
-                waktu: row.tglVerif
-            });
+            // 5. Kolom STATUS & CATATAN LANGSUNG (Teks di bawah badge)
+            var baseBadge = SultanUI.renderBadgeStatus(row.status, "", {});
+            var catatanText = "";
+            if (row.keterangan && String(row.keterangan).trim().length > 1 && String(row.keterangan).trim() !== "-") {
+                catatanText = `
+                    <div class="mt-1 text-wrap text-secondary border-left pl-2" style="font-size: 11px; line-height: 1.3; border-width: 2px !important; border-color: #f59e0b !important;">
+                        <span class="font-weight-bold d-block" style="font-size: 10px; text-transform: uppercase; color: #b45309 !important;">
+                            <i class="fas fa-comment-dots mr-1 text-warning"></i>Catatan:
+                        </span>
+                        <span style="color: #4b5563;">${perdin_escapeHtml(row.keterangan)}</span>
+                    </div>
+                `;
+            }
+            var badgeStatus = `<div class="text-left d-flex flex-column align-items-start">${baseBadge}${catatanText}</div>`;
 
             // 6. Kolom AKTIVITAS (Audit Trail Cerdas)
             var auditWaktu = "-";

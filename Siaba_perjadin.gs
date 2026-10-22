@@ -53,6 +53,44 @@ function getDaftarDinas(tahun, bulan, status) {
     var fBulan = (bulan == null) ? "" : String(bulan).trim();
     var fStatus = (status == null) ? "" : String(status).trim();
 
+    // Ambil mapping unit sekolah per No SPT dari Sheet Detail Peserta
+    var mapUnitSpt = {};
+    try {
+      var sheetPeserta = getSheet(KONFIG_DINAS.DB_KEY, KONFIG_DINAS.SHEET_PESERTA);
+      if (sheetPeserta) {
+        var dataPeserta = sheetPeserta.getDataRange().getDisplayValues();
+        for (var p = 1; p < dataPeserta.length; p++) {
+          var sNo = String(dataPeserta[p][0] || "").trim().toUpperCase();
+          var sUnit = String(dataPeserta[p][3] || "").trim();
+          if (sNo && sUnit && !mapUnitSpt[sNo]) {
+            mapUnitSpt[sNo] = sUnit;
+          }
+        }
+      }
+    } catch(errP) {
+      Logger.log("Info mapUnitSpt: " + errP.message);
+    }
+
+    // Mapping User -> Unit Kerja dari Database User (Fallback pengunggah)
+    var mapUserUnit = {};
+    try {
+      var sheetUser = getSheet("USER_DB", "Data User");
+      if (sheetUser) {
+        var dUser = sheetUser.getDataRange().getValues();
+        for (var u = 1; u < dUser.length; u++) {
+          var uName = String(dUser[u][0] || "").trim().toLowerCase();
+          var uFull = String(dUser[u][2] || "").trim().toLowerCase();
+          var uUnit = String(dUser[u][5] || "").trim();
+          if (uUnit) {
+            if (uName) mapUserUnit[uName] = uUnit;
+            if (uFull) mapUserUnit[uFull] = uUnit;
+          }
+        }
+      }
+    } catch(errU) {
+      Logger.log("Info mapUserUnit: " + errU.message);
+    }
+
     for (var i = 1; i < data.length; i++) {
       var row = data[i];
       if (String(row[cNoSpt] || "").trim() === "") continue; 
@@ -78,12 +116,17 @@ function getDaftarDinas(tahun, bulan, status) {
         var t3 = parseSiabaDateTime(row[cTglVerif]); 
         var lastActivity = Math.max(t1, t2, t3);
 
+        var keySpt = String(row[cNoSpt] || "").trim().toUpperCase();
+        var pengunggahUser = String(row[cUserKirim] || "").trim().toLowerCase();
+        var resolvedSekolah = mapUnitSpt[keySpt] || mapUserUnit[pengunggahUser] || row[cUserKirim] || "-";
+
         result.push({
           rowBaris: i + 1,
           jenis: row[cJenis] || "", noSpt: row[cNoSpt] || "", tglSpt: cleanDate(row[cTglSpt]), tglMulai: cleanDate(row[cTglMulai]), tglSelesai: cleanDate(row[cTglSelesai]),
           tujuan: row[cTujuan] || "", kegiatan: row[cKegiatan] || "", jmlAsn: row[cJmlAsn] || "", dokumen: row[cDokumen] || "", status: row[cStatus] || "", jenisDok: row[cJenisDok] || "",
           tglKirim: cleanDate(row[cTglKirim]), userKirim: row[cUserKirim] || "", lastUpdate: cleanDate(row[cLastUpdate]), lastUser: row[cLastUser] || "",
           tglVerif: cleanDate(row[cTglVerif]), verifikator: row[cVerifikator] || "", keterangan: row[cKeterangan] || "",
+          sekolah: resolvedSekolah,
           timestamp: lastActivity
         });
       }
