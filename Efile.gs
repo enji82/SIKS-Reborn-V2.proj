@@ -608,9 +608,8 @@ function perbaikiEfileData(payload, fileData) {
     sheet.getRange(r, 6).setValue(payload.nama_file);    // F: Nama File
     sheet.getRange(r, 7).setValue(newFileUrl);           // G: URL Baru atau Lama
     sheet.getRange(r, 8).setValue("Diproses");           // H: Reset Status ke Diproses
-    sheet.getRange(r, 9).setValue("");                   // I: Kosongkan Catatan
-    sheet.getRange(r, 13).setValue("");                  // M: Kosongkan Tgl Verifikasi
-    sheet.getRange(r, 14).setValue("");                  // N: Kosongkan User Verifikasi
+    // Kolom 9 (I: Catatan), 13 (M: Tgl Verifikasi), 14 (N: Verifikator) sengaja DIPERTAHANKAN
+    // agar admin dapat melihat catatan verifikasi sebelumnya saat memverifikasi ulang hasil perbaikan.
     sheet.getRange(r, 15).setValue(payload.periode);     // O: Periode
     sheet.getRange(r, 16).setValue(now);                 // P: Tgl_Edit
     sheet.getRange(r, 17).setValue(payload.user_login);  // Q: User_Edit
