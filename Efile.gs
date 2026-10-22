@@ -560,16 +560,52 @@ function hapusEfileData(rowId, securityCode, idPtk) {
 }
 
 function perbaikiEfileData(payload, fileData) {
+  var sheet = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile"); 
+  var r = parseInt(payload.rowId);
+  var oldUrl = "";
+  try { oldUrl = String(sheet.getRange(r, 7).getValue() || "").trim(); } catch(eUrl) {}
+  var newFileUrl = oldUrl; 
+
+  // ============================================================
+  // 1. PROSES GOOGLE DRIVE (DIJALANKAN DULUAN DI LUAR LOCK)
+  // Proses I/O Drive memakan waktu 5-15 detik, sehingga TIDAK BOLEH
+  // menahan ScriptLock agar user lain tidak mengalami lock timeout.
+  // ============================================================
+  if (fileData && fileData.data) {
+    if (oldUrl && oldUrl.includes('drive.google.com')) {
+      try { 
+        var match = oldUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) || oldUrl.match(/id=([a-zA-Z0-9_-]+)/); 
+        if (match && match[1]) DriveApp.getFileById(match[1]).setTrashed(true); 
+      } catch(ex){} 
+    }
+    var pFolder = DriveApp.getFolderById(KONFIG_EFILE.FOLDER_ID);
+    var namaKategori = "";
+    try { namaKategori = sheet.getRange(r, 4).getValue() || "Berkas"; } catch(eKat) { namaKategori = "Berkas"; }
+    
+    // Folder: Kategori berkas - Tahun
+    var folderKatName = namaKategori + " - " + (payload.tahun || "Umum");
+    var idFolderKat = pFolder.getFoldersByName(folderKatName);
+    var fKat = idFolderKat.hasNext() ? idFolderKat.next() : pFolder.createFolder(folderKatName);
+    
+    // Subfolder: Nama Sekolah (Unit Kerja)
+    var unitName = getUnitNameByPtkId(payload.id_ptk);
+    var idFolderUnit = fKat.getFoldersByName(unitName);
+    var fUnit = idFolderUnit.hasNext() ? idFolderUnit.next() : fKat.createFolder(unitName);
+
+    var blob = Utilities.newBlob(Utilities.base64Decode(fileData.data), fileData.mimeType, payload.nama_file);
+    var file = fUnit.createFile(blob); 
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    newFileUrl = file.getUrl();
+  }
+
+  // ============================================================
+  // 2. TULIS KE GOOGLE SHEETS DENGAN LOCK CEPAT (HANYA 1-2 DETIK)
+  // ============================================================
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(30000);
-    var sheet = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile"); var r = parseInt(payload.rowId);
-    var oldUrl = sheet.getRange(r, 7).getValue(); var newFileUrl = oldUrl; 
 
-    // ============================================================
-    // VALIDASI FINGERPRINT: Pastikan rowId benar-benar menunjuk
-    // ke data milik id_ptk yang dikirim dari client sebelum diedit.
-    // ============================================================
+    // VALIDASI FINGERPRINT
     if (payload.id_ptk) {
       var rowIdPtk = String(sheet.getRange(r, 1).getDisplayValue() || "").trim();
       if (rowIdPtk !== String(payload.id_ptk).trim()) {
@@ -577,52 +613,29 @@ function perbaikiEfileData(payload, fileData) {
         return JSON.stringify({ success: false, message: "Penyimpanan dibatalkan: data telah bergeser. Silakan refresh halaman (F5) dan coba lagi." });
       }
     }
-    // ============================================================
 
-    // Jika user mengunggah file baru
-    if (fileData && fileData.data) {
-        if(oldUrl && oldUrl.includes('drive.google.com')) {
-            try { var match = oldUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) || oldUrl.match(/id=([a-zA-Z0-9_-]+)/); if(match && match[1]) DriveApp.getFileById(match[1]).setTrashed(true); } catch(ex){} 
-        }
-        var pFolder = DriveApp.getFolderById(KONFIG_EFILE.FOLDER_ID);
-        var namaKategori = sheet.getRange(r, 4).getValue() || "Berkas";
-        
-        // Folder: Kategori berkas - Tahun
-        var folderKatName = namaKategori + " - " + (payload.tahun || "Umum");
-        var idFolderKat = pFolder.getFoldersByName(folderKatName);
-        var fKat = idFolderKat.hasNext() ? idFolderKat.next() : pFolder.createFolder(folderKatName);
-        
-        // Subfolder: Nama Sekolah (Unit Kerja)
-        var unitName = getUnitNameByPtkId(payload.id_ptk);
-        var idFolderUnit = fKat.getFoldersByName(unitName);
-        var fUnit = idFolderUnit.hasNext() ? idFolderUnit.next() : fKat.createFolder(unitName);
-
-        var blob = Utilities.newBlob(Utilities.base64Decode(fileData.data), fileData.mimeType, payload.nama_file);
-        var file = fUnit.createFile(blob); file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-        newFileUrl = file.getUrl();
-    }
-    
     var now = "'" + Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
 
-    sheet.getRange(r, 5).setValue(payload.tahun);        // E: Tahun
-    sheet.getRange(r, 6).setValue(payload.nama_file);    // F: Nama File
-    sheet.getRange(r, 7).setValue(newFileUrl);           // G: URL Baru atau Lama
-    sheet.getRange(r, 8).setValue("Diproses");           // H: Reset Status ke Diproses
+    // Tulis nilai E-H (kolom 5-8): Tahun, Nama File, URL, Status
+    sheet.getRange(r, 5, 1, 4).setValues([[payload.tahun, payload.nama_file, newFileUrl, "Diproses"]]);
     // Kolom 9 (I: Catatan), 13 (M: Tgl Verifikasi), 14 (N: Verifikator) sengaja DIPERTAHANKAN
     // agar admin dapat melihat catatan verifikasi sebelumnya saat memverifikasi ulang hasil perbaikan.
-    sheet.getRange(r, 15).setValue(payload.periode);     // O: Periode
-    sheet.getRange(r, 16).setValue(now);                 // P: Tgl_Edit
-    sheet.getRange(r, 17).setValue(payload.user_login);  // Q: User_Edit
+    // Tulis nilai O-Q (kolom 15-17): Periode, Tgl_Edit, User_Edit
+    sheet.getRange(r, 15, 1, 3).setValues([[payload.periode, now, payload.user_login]]);
 
     SpreadsheetApp.flush();
     
     try {
-        var npsn = sheet.getRange(r, 12).getDisplayValue();
-        onEfileDataChange(npsn);
+      var npsn = sheet.getRange(r, 12).getDisplayValue();
+      onEfileDataChange(npsn);
     } catch(err) {}
 
     return JSON.stringify({ success: true, message: "Perbaikan data berhasil disimpan." });
-  } catch(e) { return JSON.stringify({ success: false, message: e.message }); } finally { lock.releaseLock(); }
+  } catch(e) { 
+    return JSON.stringify({ success: false, message: e.message }); 
+  } finally { 
+    try { lock.releaseLock(); } catch(lockErr) {} 
+  }
 }
 
 /* ----------------------------------------------------------------------
