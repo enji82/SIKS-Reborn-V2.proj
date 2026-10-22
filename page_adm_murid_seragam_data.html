@@ -146,7 +146,12 @@
 
       // Bind Listeners
       $('#seragamdata_filterTahun, #seragamdata_filterTahap').on('change', fetchTableData);
-      $('#seragamdata_filterSekolah').on('change', applyLocalFilter);
+      $(document).off('change', '#seragamdata_filterSekolah').on('change', '#seragamdata_filterSekolah', function() {
+        applyLocalFilter();
+        if (typeof SultanUI !== 'undefined' && typeof SultanUI.adjustFilterBarWidths === 'function') {
+          SultanUI.adjustFilterBarWidths('#seragamdata_filterBarArea');
+        }
+      });
       $('#seragamdata_btnSync').on('click', fetchTableData);
 
       // Fetch first time
@@ -233,12 +238,15 @@
     }
 
     function applyLocalFilter() {
-      var targetSekolah = IS_ADMIN ? $('#seragamdata_filterSekolah').val() : (userLogin.npsn || userLogin.username || "");
-      var filtered = SERAGAMDATA_CACHE_DATA;
+      var targetSekolah = IS_ADMIN ? ($('#seragamdata_filterSekolah').val() || "SEMUA") : (userLogin.npsn || userLogin.username || "");
+      var filtered = SERAGAMDATA_CACHE_DATA || [];
       
       if (targetSekolah && targetSekolah !== "SEMUA") {
-        filtered = SERAGAMDATA_CACHE_DATA.filter(function(row) {
-          return String(row.npsn).trim() === String(targetSekolah).trim();
+        var targetClean = String(targetSekolah).trim().toUpperCase();
+        filtered = filtered.filter(function(row) {
+          var rowNpsn = String(row.npsn || "").trim().toUpperCase();
+          var rowNama = String(row.nama_sekolah || "").trim().toUpperCase();
+          return rowNpsn === targetClean || rowNama === targetClean;
         });
       }
       
