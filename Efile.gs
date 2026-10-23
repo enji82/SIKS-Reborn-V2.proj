@@ -630,7 +630,12 @@ function perbaikiEfileData(payload, fileData) {
       onEfileDataChange(npsn);
     } catch(err) {}
 
-    return JSON.stringify({ success: true, message: "Perbaikan data berhasil disimpan." });
+    return JSON.stringify({ 
+      success: true, 
+      message: "Perbaikan data berhasil disimpan.",
+      newUrl: newFileUrl,
+      fileName: payload.nama_file
+    });
   } catch(e) { 
     return JSON.stringify({ success: false, message: e.message }); 
   } finally { 
