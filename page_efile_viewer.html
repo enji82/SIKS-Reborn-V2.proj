@@ -474,7 +474,34 @@
                             groupsBySub[fullSubKey].push(f);
                         });
 
-                        Object.keys(groupsBySub).forEach(function (sKey) {
+                        var subKeys = Object.keys(groupsBySub);
+
+                        // Pengurutan khusus untuk SKP: Sasaran -> Triwulan 1 -> Triwulan 2 -> Triwulan 3 -> Triwulan 4 -> Tahunan
+                        var isSKP = String(kat.jenisPeriode || "").toUpperCase() === "SKP" || String(kat.namaKat || "").toUpperCase().includes("SKP");
+                        if (isSKP) {
+                            var skpOrderMap = {
+                                'sasaran': 1,
+                                'triwulan 1': 2,
+                                'triwulan 2': 3,
+                                'triwulan 3': 4,
+                                'triwulan 4': 5,
+                                'tahunan': 6
+                            };
+                            subKeys.sort(function (a, b) {
+                                var titleA = a.split('||')[0].toLowerCase().trim();
+                                var titleB = b.split('||')[0].toLowerCase().trim();
+                                var weightA = skpOrderMap[titleA] || 99;
+                                var weightB = skpOrderMap[titleB] || 99;
+                                if (weightA !== weightB) return weightA - weightB;
+                                return titleA.localeCompare(titleB);
+                            });
+                        } else {
+                            subKeys.sort(function (a, b) {
+                                return a.localeCompare(b);
+                            });
+                        }
+
+                        subKeys.forEach(function (sKey) {
                             var sParts = sKey.split('||');
                             var sTitle = sParts[0];
                             var sMeta = sParts[1] || "";
