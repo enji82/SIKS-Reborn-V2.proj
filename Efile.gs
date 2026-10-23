@@ -398,6 +398,106 @@ function getEfileData(npsnFilter) {
   }
 }
 
+/**
+ * Memastikan skema Database_Efile memiliki kolom hingga Kolom V (22 kolom).
+ * Jika belum, menambahkan header: sub_periode, tmt_tanggal, nama_sub_item, nilai_jp
+ */
+function efilePastikanSkemaDatabaseEfile(sheet) {
+  try {
+    if (!sheet) return;
+    var maxCol = sheet.getLastColumn();
+    if (maxCol < 22) {
+      // Pastikan ada header sampai kolom 18 dulu jika sheet baru
+      if (maxCol < 18) {
+        var baseHeaders = [["id_ptk", "nama_ptk", "id_kategori", "nama_kategori", "tahun", "nama_file", "url", "status", "catatan", "tgl_upload", "uploader", "npsn", "tgl_verif", "verifikator", "periode", "tgl_edit", "user_edit", "survey_scanner"]];
+        sheet.getRange(1, 1, 1, 18).setValues(baseHeaders);
+      }
+      // Tambah kolom 19 s/d 22
+      var newHeaders = [["sub_periode", "tmt_tanggal", "nama_sub_item", "nilai_jp"]];
+      sheet.getRange(1, 19, 1, 4).setValues(newHeaders);
+      SpreadsheetApp.flush();
+    }
+  } catch(e) {
+    Logger.log("Gagal verifikasi skema Database_Efile: " + e.message);
+  }
+}
+
+/**
+ * Parser helper untuk mengekstrak string periode gabungan menjadi nilai atomik
+ */
+function efileParsePeriodeItem(perStr, katName) {
+  var res = { sub_periode: "", tmt_tanggal: "", nama_sub_item: "", nilai_jp: "" };
+  if (!perStr || perStr === "-" || perStr === "PERMANEN") {
+    if (perStr === "PERMANEN") res.sub_periode = "PERMANEN";
+    return res;
+  }
+
+  // DIKLAT: format "YYYY-MM-DD | Nama Diklat | JP"
+  if (perStr.includes("|")) {
+    var parts = perStr.split("|").map(function(s) { return s.trim(); });
+    // Cek apakah format diklat (3 bagian dengan JP angka di ujung)
+    if (parts.length >= 3 && /^\d+$/.test(parts[2])) {
+      res.tmt_tanggal = parts[0];
+      res.nama_sub_item = parts[1];
+      res.nilai_jp = parts[2];
+      res.sub_periode = parts[2] + " JP";
+    } else if (parts.length === 2) {
+      // Pola: Sub Periode | TMT (SK_PPPK, SK_KP, SK_JF) ATAU Tingkat | Tahun Lulus (IJAZAH)
+      if (/^\d{4}-\d{2}-\d{2}$/.test(parts[1]) || /^\d{2}-\d{2}-\d{4}$/.test(parts[1])) {
+        res.sub_periode = parts[0];
+        res.tmt_tanggal = parts[1];
+      } else if (/^\d{4}$/.test(parts[1])) {
+        // Ijazah: "S1 | 2018"
+        res.sub_periode = parts[0];
+        res.tmt_tanggal = parts[1]; // Tahun kelulusan
+      } else {
+        res.sub_periode = parts[0];
+        res.tmt_tanggal = parts[1];
+      }
+    }
+  } else if (/^\d{4}-\d{2}-\d{2}$/.test(perStr)) {
+    // TMT tunggal
+    res.tmt_tanggal = perStr;
+  } else {
+    // SKP / Triwulan / Periode Bulan
+    res.sub_periode = perStr;
+  }
+  return res;
+}
+
+/**
+ * Skrip utility satu kali jalan untuk migrasi dan memecah (backfill) data lama
+ * di kolom O (periode) ke kolom S (sub_periode), T (tmt_tanggal), U (nama_sub_item), V (nilai_jp)
+ */
+function migrasiDanBackfillKolomEfile() {
+  var sheet = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile");
+  if (!sheet) return "Sheet Database_Efile tidak ditemukan.";
+
+  efilePastikanSkemaDatabaseEfile(sheet);
+  var data = sheet.getDataRange().getValues();
+  if (data.length < 2) return "Tidak ada data untuk di-backfill.";
+
+  var updateCount = 0;
+  for (var i = 1; i < data.length; i++) {
+    var rawPeriode = String(data[i][14] || "").trim(); // Kolom O (index 14)
+    var namaKat = String(data[i][3] || "").toUpperCase(); // Kolom D
+    
+    // Cek apakah kolom S s/d V sudah terisi
+    var curSub = String(data[i][18] || "").trim();
+    var curTmt = String(data[i][19] || "").trim();
+    var curNama = String(data[i][20] || "").trim();
+    var curJp = String(data[i][21] || "").trim();
+
+    if (!curSub && !curTmt && !curNama && !curJp && rawPeriode && rawPeriode !== "-") {
+      var parsed = efileParsePeriodeItem(rawPeriode, namaKat);
+      sheet.getRange(i + 1, 19, 1, 4).setValues([[parsed.sub_periode, parsed.tmt_tanggal, parsed.nama_sub_item, parsed.nilai_jp]]);
+      updateCount++;
+    }
+  }
+  SpreadsheetApp.flush();
+  return "Berhasil melakukan backfill data e-file sebanyak " + updateCount + " baris.";
+}
+
 function simpanEfileBatch(batchData) {
   var lock = LockService.getScriptLock();
   try {
