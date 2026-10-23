@@ -913,6 +913,8 @@ function getEfileViewerData(keyword, npsnFilter) {
                 idKat: dataKat[k][0], 
                 namaKat: dataKat[k][1], 
                 parent: dataKat[k][2],
+                format: dataKat[k][3] || "PDF",
+                jenisPeriode: dataKat[k][4] ? String(dataKat[k][4]).trim().toUpperCase() : "TAHUNAN",
                 statusPegawaiWajib: dataKat[k][5] ? String(dataKat[k][5]).trim() : "",
                 klasifikasi_jenjang: dataKat[k][10] || "",
                 klasifikasi_kepeg: dataKat[k][11] || "",
@@ -943,11 +945,18 @@ function getEfileViewerData(keyword, npsnFilter) {
             // Tampilkan SEMUA status berkas (Diproses, Disetujui, Revisi, Ditolak)
             files.push({ 
               id_kategori: dataFile[f][2], 
+              nama_kategori: dataFile[f][3] || "",
               tahun: dataFile[f][4], 
               file_name: dataFile[f][5], 
               url: dataFile[f][6],
               status: dataFile[f][7],
-              periode: dataFile[f][14] || ""
+              catatan: dataFile[f][8] || "",
+              tgl_upload: dataFile[f][9] || "",
+              periode: dataFile[f][14] || "",
+              sub_periode: dataFile[f][18] || "",
+              tmt_tanggal: dataFile[f][19] || "",
+              nama_sub_item: dataFile[f][20] || "",
+              nilai_jp: dataFile[f][21] || ""
             }); 
         }
     }

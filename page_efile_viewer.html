@@ -149,6 +149,7 @@
             }
         });
 
+        // Event toggle folder kategori (Level 1)
         $(document).off('click', '.efile-tree-folder').on('click', '.efile-tree-folder', function () {
             var isOpening = !$(this).hasClass('folder-open');
 
@@ -166,7 +167,30 @@
             }
         });
 
-        $(document).off('click', '.efile-tree-item-file').on('click', '.efile-tree-item-file', function () {
+        // Event toggle folder tahun (Level 2)
+        $(document).off('click', '.efile-tree-year-folder').on('click', '.efile-tree-year-folder', function (e) {
+            e.stopPropagation();
+            var isOpening = !$(this).hasClass('folder-open');
+            $(this).toggleClass('folder-open', isOpening);
+            $(this).next('.efile-tree-year-content').slideToggle(150);
+            var icon = $(this).find('.fa-calendar-alt, .fa-calendar-check');
+            if ($(this).hasClass('folder-open')) {
+                icon.removeClass('fa-calendar-alt').addClass('fa-calendar-check text-primary');
+            } else {
+                icon.removeClass('fa-calendar-check text-primary').addClass('fa-calendar-alt text-secondary');
+            }
+        });
+
+        // Event toggle sub-kategori / group sub-periode (Level 3 jika ada)
+        $(document).off('click', '.efile-tree-subgroup-folder').on('click', '.efile-tree-subgroup-folder', function (e) {
+            e.stopPropagation();
+            var isOpening = !$(this).hasClass('folder-open');
+            $(this).toggleClass('folder-open', isOpening);
+            $(this).next('.efile-tree-subgroup-content').slideToggle(150);
+        });
+
+        $(document).off('click', '.efile-tree-item-file').on('click', '.efile-tree-item-file', function (e) {
+            e.stopPropagation();
             $('.efile-tree-item-file').removeClass('active-file');
             $(this).addClass('active-file');
             var url = $(this).attr('data-url');
@@ -299,6 +323,9 @@
     // =================================================================
     // 4. TREE BUILDER ALGORITHM (PERBAIKAN NAMA FILE DITAMPILKAN)
     // =================================================================
+    // =================================================================
+    // 4. TREE BUILDER MULTI-LEVEL: Kategori -> Tahun -> Sub Kategori -> File
+    // =================================================================
     function efileviewer_buildTree(categories, files, ptkObj) {
         var treeHtml = '';
 
@@ -333,11 +360,11 @@
 
             var catFiles = files.filter(f => String(f.id_kategori).trim() === String(kat.idKat).trim());
             var countAda = catFiles.length;
-
             var badgeAdaClass = countAda > 0 ? 'badge-primary badge-pill' : 'badge-secondary badge-pill';
 
             treeHtml += `
         <div class="tree-node border-bottom border-light">
+            <!-- LEVEL 1: KATEGORI DOKUMEN -->
             <div class="efile-tree-folder d-flex align-items-center py-2 px-3">
                 <i class="fas fa-chevron-right mr-3 text-maroon efile-icon-rotate" style="font-size: 0.9rem; width: 15px; text-align: center;"></i>
                 <span class="font-weight-bold text-dark" style="font-size:13px;"><i class="fas fa-folder text-warning mr-2"></i> ${efileviewer_escapeHtml(kat.namaKat)}</span>
@@ -349,28 +376,113 @@
         `;
 
             if (countAda > 0) {
+                // Kelompokkan berkas berdasarkan TAHUN
+                var groupsByYear = {};
                 catFiles.forEach(function (f) {
-                    var ext = String(f.file_name).split('.').pop().toLowerCase();
-                    var faIcon = "fa-file-pdf text-danger";
-                    if (ext === 'jpg' || ext === 'jpeg' || ext === 'png') { faIcon = "fa-file-image text-success"; }
+                    var yKey = String(f.tahun || "Umum").trim();
+                    if (!yKey || yKey === "-") yKey = "Umum";
+                    if (!groupsByYear[yKey]) groupsByYear[yKey] = [];
+                    groupsByYear[yKey].push(f);
+                });
 
-                    // VAKSIN UI: Menampilkan nama file asli hasil Auto-Rename (Tanpa "Dokumen" kaku)
-                    var displayNama = efileviewer_escapeHtml(f.file_name);
-                    var badgeStatus = efileviewer_buildBadgeStatus(f.status);
-                    var labelPeriode = f.tahun ? ('<span class="text-muted ml-1" style="font-size:11px;font-weight:normal;">(' + efileviewer_escapeHtml(f.tahun) + (f.periode && f.periode !== '-' ? ' · ' + efileviewer_escapeHtml(f.periode) : '') + ')</span>') : '';
+                // Urutkan tahun descending
+                var sortedYears = Object.keys(groupsByYear).sort(function (a, b) {
+                    var numA = parseInt(a, 10) || 0;
+                    var numB = parseInt(b, 10) || 0;
+                    if (numA && numB) return numB - numA;
+                    if (numA) return -1;
+                    if (numB) return 1;
+                    return a.localeCompare(b);
+                });
+
+                sortedYears.forEach(function (yr) {
+                    var yrFiles = groupsByYear[yr];
+
+                    // Periksa apakah dokumen dalam tahun ini memiliki sub kategori
+                    var hasSubCategory = yrFiles.some(function (f) {
+                        return (f.nama_sub_item && f.nama_sub_item.trim() !== '') || 
+                               (f.sub_periode && f.sub_periode.trim() !== '' && f.sub_periode !== '-');
+                    });
 
                     treeHtml += `
-                <div class="efile-tree-item efile-tree-item-file font-weight-bold d-flex flex-column" data-url="${f.url}" data-nama="${displayNama}" style="font-size:13px; cursor:pointer;">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span><i class="fas ${faIcon} mr-2"></i> ${displayNama} ${labelPeriode}</span>
-                        ${badgeStatus}
-                    </div>
-                </div>`;
+                    <div class="efile-tree-year-node border-left border-warning ml-3 my-1">
+                        <!-- LEVEL 2: TAHUN DOKUMEN -->
+                        <div class="efile-tree-year-folder d-flex align-items-center py-1 px-2 text-dark" style="cursor:pointer; font-size:12px; font-weight:600; background:rgba(0,0,0,0.02); border-radius:4px;">
+                            <i class="fas fa-calendar-alt text-secondary mr-2" style="font-size:11px;"></i>
+                            <span>Tahun ${efileviewer_escapeHtml(yr)}</span>
+                            <span class="badge badge-light border text-muted ml-auto" style="font-size:9.5px;">${yrFiles.length} file</span>
+                        </div>
+                        <div class="efile-tree-year-content pl-2 pt-1" style="display:block;">
+                    `;
+
+                    if (hasSubCategory) {
+                        // Kelompokkan berdasarkan Sub Kategori
+                        var groupsBySub = {};
+                        yrFiles.forEach(function (f) {
+                            var subTitle = "";
+                            var subMeta = "";
+
+                            if (f.nama_sub_item) {
+                                subTitle = f.nama_sub_item;
+                                if (f.nilai_jp) subMeta = f.nilai_jp + ' JP';
+                                if (f.tmt_tanggal) {
+                                    var tglStr = f.tmt_tanggal.match(/^\d{4}-\d{2}-\d{2}$/) ? Sultan.format.tanggal(f.tmt_tanggal) : f.tmt_tanggal;
+                                    subMeta += (subMeta ? ' • ' : '') + tglStr;
+                                }
+                            } else if (f.sub_periode && f.sub_periode !== '-') {
+                                subTitle = f.sub_periode;
+                                if (f.tmt_tanggal) {
+                                    var tmtFmt = f.tmt_tanggal.match(/^\d{4}-\d{2}-\d{2}$/) ? Sultan.format.tanggal(f.tmt_tanggal) : f.tmt_tanggal;
+                                    subMeta = 'TMT: ' + tmtFmt;
+                                }
+                            } else if (f.periode && f.periode !== '-') {
+                                subTitle = f.periode;
+                            } else {
+                                subTitle = "Dokumen";
+                            }
+
+                            var fullSubKey = subTitle + (subMeta ? ('||' + subMeta) : '');
+                            if (!groupsBySub[fullSubKey]) groupsBySub[fullSubKey] = [];
+                            groupsBySub[fullSubKey].push(f);
+                        });
+
+                        Object.keys(groupsBySub).forEach(function (sKey) {
+                            var sParts = sKey.split('||');
+                            var sTitle = sParts[0];
+                            var sMeta = sParts[1] || "";
+                            var sFiles = groupsBySub[sKey];
+
+                            treeHtml += `
+                            <div class="efile-tree-subgroup-node border-left border-info ml-2 my-1">
+                                <!-- LEVEL 3: SUB KATEGORI / SUB PERIODE -->
+                                <div class="efile-tree-subgroup-folder d-flex align-items-center py-1 px-2 text-dark" style="cursor:pointer; font-size:11.5px; background:rgba(54,185,204,0.04); border-radius:4px;">
+                                    <i class="fas fa-tag text-info mr-2" style="font-size:10px;"></i>
+                                    <span class="font-weight-bold text-dark text-truncate" style="max-width:230px;" title="${efileviewer_escapeHtml(sTitle)}">${efileviewer_escapeHtml(sTitle)}</span>
+                                    ${sMeta ? `<span class="badge badge-indigo ml-2 py-0 px-1" style="font-size:9.5px; font-weight:normal;">${efileviewer_escapeHtml(sMeta)}</span>` : ''}
+                                </div>
+                                <div class="efile-tree-subgroup-content pl-1">
+                            `;
+
+                            // Render Files di dalam Sub Kategori
+                            sFiles.forEach(function (f) {
+                                treeHtml += efileviewer_renderFileItem(f);
+                            });
+
+                            treeHtml += `</div></div>`;
+                        });
+                    } else {
+                        // Jika tidak ada sub kategori, render file langsung di bawah tahun
+                        yrFiles.forEach(function (f) {
+                            treeHtml += efileviewer_renderFileItem(f);
+                        });
+                    }
+
+                    treeHtml += `</div></div>`;
                 });
             } else {
                 treeHtml += `
-            <div class="efile-tree-item efile-tree-item-empty font-weight-bold" style="font-size:13px;">
-                <i class="fas fa-exclamation-triangle mr-2"></i> [!] Dokumen Kosong
+            <div class="efile-tree-item efile-tree-item-empty font-weight-bold text-muted py-2 px-4" style="font-size:12px;">
+                <i class="fas fa-folder-open mr-2 text-secondary"></i> Belum ada dokumen
             </div>`;
             }
 
@@ -378,6 +490,29 @@
         });
 
         $('#efileviewer_treeContent').html(treeHtml);
+    }
+
+    // Helper render baris file item
+    function efileviewer_renderFileItem(f) {
+        var ext = String(f.file_name).split('.').pop().toLowerCase();
+        var faIcon = "fa-file-pdf text-danger";
+        if (ext === 'jpg' || ext === 'jpeg' || ext === 'png') { faIcon = "fa-file-image text-success"; }
+
+        var displayNama = efileviewer_escapeHtml(f.file_name);
+        var badgeStatus = efileviewer_buildBadgeStatus(f.status);
+
+        return `
+        <div class="efile-tree-item efile-tree-item-file font-weight-normal d-flex align-items-center justify-content-between py-1 px-2 my-1 rounded" 
+             data-url="${f.url}" data-nama="${displayNama}" 
+             style="font-size:11.5px; cursor:pointer; background:rgba(0,0,0,0.015); transition:all 0.15s ease;"
+             onmouseover="this.style.background='rgba(54,185,204,0.1)'" 
+             onmouseout="if(!this.classList.contains('active-file')) this.style.background='rgba(0,0,0,0.015)'">
+            <div class="d-flex align-items-center text-truncate mr-2" style="max-width: 82%;">
+                <i class="fas ${faIcon} mr-2 flex-shrink-0" style="font-size:12px;"></i>
+                <span class="text-truncate text-dark" title="${displayNama}">${displayNama}</span>
+            </div>
+            ${badgeStatus}
+        </div>`;
     }
 
     // =================================================================
