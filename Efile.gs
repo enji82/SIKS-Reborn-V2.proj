@@ -249,6 +249,9 @@ function getEfileData(npsnFilter) {
     var sheet = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile");
     if(!sheet) return JSON.stringify({ success: false, message: "Sheet Database_Efile tidak ditemukan." });
     
+    // Pastikan skema Database_Efile memiliki 22 kolom (A-V)
+    efilePastikanSkemaDatabaseEfile(sheet);
+    
     var data = sheet.getDataRange().getDisplayValues();
     if (data.length < 2) return JSON.stringify({ success: true, data: [] });
 
@@ -279,7 +282,11 @@ function getEfileData(npsnFilter) {
       periode: findCol(["periode", "semester"], 14),
       tgl_edit: findCol(["tgl_edit", "tanggal edit"], 15),
       user_edit: findCol(["user_edit", "pengedit"], 16),
-      survey_scanner: findCol(["survey_scanner", "survey"], 17)
+      survey_scanner: findCol(["survey_scanner", "survey"], 17),
+      sub_periode: findCol(["sub_periode", "sub periode"], 18),
+      tmt_tanggal: findCol(["tmt_tanggal", "tmt", "tanggal"], 19),
+      nama_sub_item: findCol(["nama_sub_item", "nama diklat", "sub item"], 20),
+      nilai_jp: findCol(["nilai_jp", "jp", "jam pelajaran"], 21)
     };
 
     var result = [];
@@ -330,7 +337,11 @@ function getEfileData(npsnFilter) {
                 periode: data[i][colMap.periode] || "-",
                 tgl_edit: data[i][colMap.tgl_edit] || "-",
                 user_edit: data[i][colMap.user_edit] || "-",
-                survey_scanner: data[i][colMap.survey_scanner] || ""
+                survey_scanner: data[i][colMap.survey_scanner] || "",
+                sub_periode: data[i][colMap.sub_periode] || "",
+                tmt_tanggal: data[i][colMap.tmt_tanggal] || "",
+                nama_sub_item: data[i][colMap.nama_sub_item] || "",
+                nilai_jp: data[i][colMap.nilai_jp] || ""
             });
         }
     }
@@ -392,6 +403,7 @@ function simpanEfileBatch(batchData) {
   try {
     lock.waitLock(30000);
     var sheet = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile");
+    efilePastikanSkemaDatabaseEfile(sheet);
     var now = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
     var pFolder = DriveApp.getFolderById(KONFIG_EFILE.FOLDER_ID);
     var rowsToAppend = [];
@@ -434,12 +446,27 @@ function simpanEfileBatch(batchData) {
         continue;
       }
 
-      // Kolom A-Q + R(survey_scanner) = 18 kolom
+      // Ekstraksi nilai atomik jika belum dikirim terpisah
+      var subPeriode = String(item.sub_periode || "").trim();
+      var tmtTanggal = String(item.tmt_tanggal || "").trim();
+      var namaSubItem = String(item.nama_sub_item || "").trim();
+      var nilaiJp = String(item.nilai_jp || "").trim();
+
+      if (!subPeriode && !tmtTanggal && !namaSubItem && !nilaiJp && periodeItem && periodeItem !== "-") {
+        var parsed = efileParsePeriodeItem(periodeItem, item.nama_kategori);
+        subPeriode = parsed.sub_periode;
+        tmtTanggal = parsed.tmt_tanggal;
+        namaSubItem = parsed.nama_sub_item;
+        nilaiJp = parsed.nilai_jp;
+      }
+
+      // Kolom A-R (18 kolom) + S-V (4 kolom atomik baru) = 22 kolom
       rowsToAppend.push([
         item.id_ptk, item.nama_ptk, item.id_kategori, item.nama_kategori,
         item.tahun, item.nama_file, fileUrl, "Diproses", "", "'" + now,
         item.user_login, item.npsn, "", "", periodeItem, "", "",
-        item.survey_scanner || ""
+        item.survey_scanner || "",
+        subPeriode, tmtTanggal, namaSubItem, nilaiJp
       ]);
       laporan.push({ nama_kategori: item.nama_kategori, tahun: item.tahun, periode: periodeItem, result: "OK", alasan: "" });
       berhasilCount++;
@@ -622,6 +649,21 @@ function perbaikiEfileData(payload, fileData) {
     // agar admin dapat melihat catatan verifikasi sebelumnya saat memverifikasi ulang hasil perbaikan.
     // Tulis nilai O-Q (kolom 15-17): Periode, Tgl_Edit, User_Edit
     sheet.getRange(r, 15, 1, 3).setValues([[payload.periode, now, payload.user_login]]);
+
+    // Update kolom atomik 19-22 (S-V): sub_periode, tmt_tanggal, nama_sub_item, nilai_jp
+    var subPeriode = String(payload.sub_periode || "").trim();
+    var tmtTanggal = String(payload.tmt_tanggal || "").trim();
+    var namaSubItem = String(payload.nama_sub_item || "").trim();
+    var nilaiJp = String(payload.nilai_jp || "").trim();
+    if (!subPeriode && !tmtTanggal && !namaSubItem && !nilaiJp && payload.periode && payload.periode !== "-") {
+      var parsed = efileParsePeriodeItem(payload.periode, namaKategori);
+      subPeriode = parsed.sub_periode;
+      tmtTanggal = parsed.tmt_tanggal;
+      namaSubItem = parsed.nama_sub_item;
+      nilaiJp = parsed.nilai_jp;
+    }
+    efilePastikanSkemaDatabaseEfile(sheet);
+    sheet.getRange(r, 19, 1, 4).setValues([[subPeriode, tmtTanggal, namaSubItem, nilaiJp]]);
 
     SpreadsheetApp.flush();
     
