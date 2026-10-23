@@ -933,11 +933,29 @@ $(document).ready(function() {
             $form.trigger('submit');
         }
     });
-    $(document).off('click', '#efilekelola_btnSimpanPerbaiki').on('click', '#efilekelola_btnSimpanPerbaiki', function() {
-        $('#efilekelola_formPerbaiki').submit();
+    $(document).off('click', '#efilekelola_btnSimpanPerbaiki').on('click', '#efilekelola_btnSimpanPerbaiki', function(e) {
+        var $form = $('#efilekelola_formPerbaiki');
+        if ($form.length > 0) {
+            if ($form[0].checkValidity && !$form[0].checkValidity()) {
+                $form.addClass('was-validated');
+                $form[0].reportValidity();
+                return;
+            }
+            e.preventDefault();
+            $form.trigger('submit');
+        }
     });
-    $(document).off('click', '#efilekelola_btnVerifikasi').on('click', '#efilekelola_btnVerifikasi', function() {
-        $('#efilekelola_formVerif').submit();
+    $(document).off('click', '#efilekelola_btnVerifikasi').on('click', '#efilekelola_btnVerifikasi', function(e) {
+        var $form = $('#efilekelola_formVerif');
+        if ($form.length > 0) {
+            if ($form[0].checkValidity && !$form[0].checkValidity()) {
+                $form.addClass('was-validated');
+                $form[0].reportValidity();
+                return;
+            }
+            e.preventDefault();
+            $form.trigger('submit');
+        }
     });
 
     efilekelola_initMasterData();
@@ -1951,15 +1969,23 @@ function efilekelola_bukaModalVerif(rowId) {
 
 function efilekelola_submitPerbaiki(e) {
     e.preventDefault(); var $f = $(this);
-    if (!$f[0].checkValidity()) { $f.addClass('was-validated'); return; }
+    if ($f[0].checkValidity && !$f[0].checkValidity()) { 
+        $f.addClass('was-validated'); 
+        if ($f[0].reportValidity) $f[0].reportValidity();
+        return; 
+    }
     
     var rId = $('#efilekelola_p_rowid').val(); 
     var dLama = EFILEKELOLA_CACHE_DATA.find(r => String(r.rowId) === String(rId));
+    if (!dLama) {
+        Sultan.alert('danger', 'Gagal', 'Data dokumen tidak ditemukan dalam memori. Silakan muat ulang halaman.');
+        return;
+    }
     
     var kData = EFILEKELOLA_MASTER_KAT.find(function(k) { return String(k.idKat).trim() === String(dLama.id_kategori).trim(); });
     var jp = kData ? String(kData.jenisPeriode || 'TAHUNAN').toUpperCase() : '';
 
-    var thn = String($('#efilekelola_p_tahun_input').val()).trim();
+    var thn = String($('#efilekelola_p_tahun_input').val() || '').trim();
     var pIn = $('#efilekelola_p_periode_input');
     var per = '-';
     
@@ -1985,7 +2011,7 @@ function efilekelola_submitPerbaiki(e) {
         var lulusI = String($('#efilekelola_p_periode_ijazah_lulus').val() || '').trim();
         per = (tktI && lulusI) ? (tktI + ' | ' + lulusI) : '';
     } else {
-        per = pIn.is(':visible') ? String(pIn.val()).trim() : "-";
+        per = pIn.is(':visible') ? String(pIn.val() || '').trim() : "-";
     }
 
     if (jp === 'DIKLAT' && per && per !== '-') {
@@ -2015,10 +2041,14 @@ function efilekelola_submitPerbaiki(e) {
     var btn = $('#efilekelola_btnSimpanPerbaiki'); var txt = btn.html(); btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i> MENYIMPAN...');
 
     var fIn = $('#efilekelola_p_file')[0];
-    var hasFile = fIn.files.length > 0;
+    var hasFile = fIn && fIn.files && fIn.files.length > 0;
     
-    var oExt = hasFile ? fIn.files[0].name.split('.').pop().toLowerCase() : dLama.file_name.split('.').pop().toLowerCase();
-    var cName = "[" + thn + "] " + dLama.nama_kategori + " " + dLama.nama + (per && per !== "-" ? " (" + per + ")" : "") + "." + oExt;
+    var defaultExt = "pdf";
+    if (dLama.url && (dLama.url.toLowerCase().indexOf('.jpg') > -1 || dLama.url.toLowerCase().indexOf('.png') > -1 || dLama.url.toLowerCase().indexOf('.jpeg') > -1)) {
+        defaultExt = dLama.url.split('.').pop().split('?')[0].toLowerCase();
+    }
+    var oExt = hasFile ? fIn.files[0].name.split('.').pop().toLowerCase() : (dLama.file_name ? dLama.file_name.split('.').pop().toLowerCase() : defaultExt);
+    var cName = "[" + thn + "] " + (dLama.nama_kategori || "Berkas") + " " + (dLama.nama || "PTK") + (per && per !== "-" ? " (" + per + ")" : "") + "." + oExt;
 
     var payload = { rowId: rId, id_ptk: $('#efilekelola_p_idptk').val(), nama_file: cName, tahun: thn, periode: per, user_login: EFILEKELOLA_USER_AKTIF };
 
