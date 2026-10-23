@@ -432,35 +432,47 @@ function efileParsePeriodeItem(perStr, katName) {
     return res;
   }
 
+  // Helper normalisasi tanggal jika berupa Date object atau string format panjang
+  function normalisasiTgl(t) {
+    if (!t) return "";
+    if (Object.prototype.toString.call(t) === '[object Date]') {
+      return Utilities.formatDate(t, "Asia/Jakarta", "yyyy-MM-dd");
+    }
+    var str = String(t).trim();
+    if (str.includes("GMT") || str.includes("T00:00:00")) {
+      try {
+        var dObj = new Date(str);
+        if (!isNaN(dObj.getTime())) {
+          return Utilities.formatDate(dObj, "Asia/Jakarta", "yyyy-MM-dd");
+        }
+      } catch(e) {}
+    }
+    return str;
+  }
+
   // DIKLAT: format "YYYY-MM-DD | Nama Diklat | JP"
-  if (perStr.includes("|")) {
-    var parts = perStr.split("|").map(function(s) { return s.trim(); });
+  if (String(perStr).includes("|")) {
+    var parts = String(perStr).split("|").map(function(s) { return s.trim(); });
     // Cek apakah format diklat (3 bagian dengan JP angka di ujung)
     if (parts.length >= 3 && /^\d+$/.test(parts[2])) {
-      res.tmt_tanggal = parts[0];
+      res.tmt_tanggal = normalisasiTgl(parts[0]);
       res.nama_sub_item = parts[1];
       res.nilai_jp = parts[2];
       res.sub_periode = parts[2] + " JP";
     } else if (parts.length === 2) {
       // Pola: Sub Periode | TMT (SK_PPPK, SK_KP, SK_JF) ATAU Tingkat | Tahun Lulus (IJAZAH)
-      if (/^\d{4}-\d{2}-\d{2}$/.test(parts[1]) || /^\d{2}-\d{2}-\d{4}$/.test(parts[1])) {
-        res.sub_periode = parts[0];
-        res.tmt_tanggal = parts[1];
-      } else if (/^\d{4}$/.test(parts[1])) {
-        // Ijazah: "S1 | 2018"
-        res.sub_periode = parts[0];
-        res.tmt_tanggal = parts[1]; // Tahun kelulusan
-      } else {
-        res.sub_periode = parts[0];
-        res.tmt_tanggal = parts[1];
-      }
+      res.sub_periode = parts[0];
+      res.tmt_tanggal = normalisasiTgl(parts[1]);
     }
-  } else if (/^\d{4}-\d{2}-\d{2}$/.test(perStr)) {
-    // TMT tunggal
-    res.tmt_tanggal = perStr;
   } else {
-    // SKP / Triwulan / Periode Bulan
-    res.sub_periode = perStr;
+    var norm = normalisasiTgl(perStr);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(norm) || String(perStr).includes("GMT")) {
+      // TMT tunggal
+      res.tmt_tanggal = norm;
+    } else {
+      // SKP / Triwulan / Periode Bulan
+      res.sub_periode = String(perStr).trim();
+    }
   }
   return res;
 }
@@ -482,13 +494,16 @@ function migrasiDanBackfillKolomEfile() {
     var rawPeriode = String(data[i][14] || "").trim(); // Kolom O (index 14)
     var namaKat = String(data[i][3] || "").toUpperCase(); // Kolom D
     
-    // Cek apakah kolom S s/d V sudah terisi
+    // Cek apakah kolom S s/d V belum terisi atau terisi string GMT panjang
     var curSub = String(data[i][18] || "").trim();
     var curTmt = String(data[i][19] || "").trim();
     var curNama = String(data[i][20] || "").trim();
     var curJp = String(data[i][21] || "").trim();
 
-    if (!curSub && !curTmt && !curNama && !curJp && rawPeriode && rawPeriode !== "-") {
+    var perluUpdate = (!curSub && !curTmt && !curNama && !curJp && rawPeriode && rawPeriode !== "-") ||
+                      (curSub.includes("GMT") || curTmt.includes("GMT") || curSub.includes("00:00:00"));
+
+    if (perluUpdate) {
       var parsed = efileParsePeriodeItem(rawPeriode, namaKat);
       sheet.getRange(i + 1, 19, 1, 4).setValues([[parsed.sub_periode, parsed.tmt_tanggal, parsed.nama_sub_item, parsed.nilai_jp]]);
       updateCount++;

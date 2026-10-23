@@ -398,10 +398,35 @@
                 sortedYears.forEach(function (yr) {
                     var yrFiles = groupsByYear[yr];
 
+                    // Helper pembersih tanggal TMT/Periode jika mengandung format panjang GMT
+                    function formatTanggalBersih(val) {
+                        if (!val) return "";
+                        var s = String(val).trim();
+                        if (s.includes("GMT") || s.includes("T00:00:00") || s.includes(" 00:00:00")) {
+                            try {
+                                var dObj = new Date(s);
+                                if (!isNaN(dObj.getTime())) {
+                                    return Sultan.format.tanggal(dObj.toISOString().split('T')[0]);
+                                }
+                            } catch(e) {}
+                        }
+                        if (s.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                            return Sultan.format.tanggal(s);
+                        }
+                        return s;
+                    }
+
                     // Periksa apakah dokumen dalam tahun ini memiliki sub kategori
+                    // Catatan: Jika kategori bertipe PERMANEN/TMT/SK CPNS/SK PNS dan sub_periode hanya tanggal mentah atau "PERMANEN",
+                    // atau nama file sudah cukup jelas, kita rapikan agar tidak membuat sub folder redundan
                     var hasSubCategory = yrFiles.some(function (f) {
-                        return (f.nama_sub_item && f.nama_sub_item.trim() !== '') || 
-                               (f.sub_periode && f.sub_periode.trim() !== '' && f.sub_periode !== '-');
+                        var sp = String(f.sub_periode || "").trim();
+                        var nsi = String(f.nama_sub_item || "").trim();
+                        // Jangan buat sub-folder jika sub_periode hanya berupa tanggal TMT atau "PERMANEN"
+                        if (sp.includes("GMT") || sp.match(/^\d{4}-\d{2}-\d{2}$/) || sp === "PERMANEN" || sp === "-") {
+                            return (nsi !== "");
+                        }
+                        return (nsi !== '') || (sp !== '' && sp !== '-');
                     });
 
                     treeHtml += `
@@ -426,17 +451,20 @@
                                 subTitle = f.nama_sub_item;
                                 if (f.nilai_jp) subMeta = f.nilai_jp + ' JP';
                                 if (f.tmt_tanggal) {
-                                    var tglStr = f.tmt_tanggal.match(/^\d{4}-\d{2}-\d{2}$/) ? Sultan.format.tanggal(f.tmt_tanggal) : f.tmt_tanggal;
+                                    var tglStr = formatTanggalBersih(f.tmt_tanggal);
                                     subMeta += (subMeta ? ' • ' : '') + tglStr;
                                 }
                             } else if (f.sub_periode && f.sub_periode !== '-') {
                                 subTitle = f.sub_periode;
+                                if (subTitle.includes("GMT") || subTitle.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                                    subTitle = formatTanggalBersih(subTitle);
+                                }
                                 if (f.tmt_tanggal) {
-                                    var tmtFmt = f.tmt_tanggal.match(/^\d{4}-\d{2}-\d{2}$/) ? Sultan.format.tanggal(f.tmt_tanggal) : f.tmt_tanggal;
+                                    var tmtFmt = formatTanggalBersih(f.tmt_tanggal);
                                     subMeta = 'TMT: ' + tmtFmt;
                                 }
                             } else if (f.periode && f.periode !== '-') {
-                                subTitle = f.periode;
+                                subTitle = formatTanggalBersih(f.periode);
                             } else {
                                 subTitle = "Dokumen";
                             }
