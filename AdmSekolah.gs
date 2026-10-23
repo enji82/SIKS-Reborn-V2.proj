@@ -414,6 +414,14 @@ function perbaikiAdmSekolahData(payload, fileData) {
     sheet.getRange(r, 14).setValue(now);                 // Tgl_Edit
     sheet.getRange(r, 15).setValue(payload.user_login);  // User_Edit
 
+    // Reset status baca agar notifikasi data yang diedit/diajukan ulang muncul bagi Admin
+    var lastCol = sheet.getLastColumn();
+    var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(function(h) { return String(h).toLowerCase().trim(); });
+    var idxRead = headers.indexOf("dibaca oleh") > -1 ? headers.indexOf("dibaca oleh") : headers.indexOf("read by");
+    if (idxRead > -1) {
+      sheet.getRange(r, idxRead + 1).setValue("User");
+    }
+
     SpreadsheetApp.flush();
     invalidateAdmSekolahDashboardCache();
 
@@ -461,6 +469,15 @@ function verifikasiAdmSekolahData(rowId, status, catatan, adminName) {
     var now = "'" + Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
     sheet.getRange(r, 7).setValue(status); sheet.getRange(r, 8).setValue(catatan);
     sheet.getRange(r, 11).setValue(now); sheet.getRange(r, 12).setValue(adminName); 
+
+    // Reset status baca User agar notifikasi verifikasi baru muncul bagi User
+    var lastCol = sheet.getLastColumn();
+    var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(function(h) { return String(h).toLowerCase().trim(); });
+    var idxRead = headers.indexOf("dibaca oleh") > -1 ? headers.indexOf("dibaca oleh") : headers.indexOf("read by");
+    if (idxRead > -1) {
+      sheet.getRange(r, idxRead + 1).setValue("Admin");
+    }
+
     SpreadsheetApp.flush();
     invalidateAdmSekolahDashboardCache();
 
@@ -969,6 +986,9 @@ function getNotifikasiAdmSekolah(role, unit) {
       }
     }
 
+    var headers = data.length > 0 ? data[0].map(function(h) { return String(h).toLowerCase().trim(); }) : [];
+    var idxRead = headers.indexOf("dibaca oleh") > -1 ? headers.indexOf("dibaca oleh") : headers.indexOf("read by");
+
     for (var i = 1; i < data.length; i++) {
       var row = data[i];
       var docNpsn = String(row[0] || "").trim().toUpperCase();
@@ -985,11 +1005,20 @@ function getNotifikasiAdmSekolah(role, unit) {
 
       if (isTarget) {
         var isRead = false;
+        if (idxRead > -1) {
+          var readByStr = String(row[idxRead] || "").trim();
+          var readByList = readByStr ? readByStr.split(",") : [];
+          if (isAdmin && readByList.indexOf("Admin") > -1) isRead = true;
+          if (!isAdmin && readByList.indexOf("User") > -1) isRead = true;
+        }
+
         var stLower = status.toLowerCase();
         var isDisetujui = stLower.includes("ok") || stLower.includes("setuju") || stLower.includes("valid") || stLower.includes("selesai");
 
-        if (!isAdmin && isDisetujui) {
-          // Skip counter untuk user jika sudah disetujui
+        if (isRead) {
+          // Lewati counter jika sudah dibaca
+        } else if (!isAdmin && isDisetujui && isRead) {
+          // Lewati counter untuk user jika sudah disetujui & dibaca
         } else {
           unreadCount++;
         }
@@ -1031,6 +1060,37 @@ function tandaiNotifAdmSekolahDibaca(rowId, role) {
     if (list.indexOf(mark) === -1) {
       list.push(mark);
       sheet.getRange(rowId, idxRead + 1).setValue(list.join(","));
+    }
+  } catch(e) {}
+}
+
+function tandaiSemuaNotifAdmSekolahDibaca(role, unit) {
+  try {
+    var notifData = getNotifikasiAdmSekolah(role, unit);
+    if (notifData && notifData.recent && notifData.recent.length > 0) {
+      var sheet = getOrCreateSheetAdmSekolah("Database_Dokumen");
+      if (!sheet) return;
+      var lastCol = sheet.getLastColumn();
+      var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(function(h) { return String(h).toLowerCase().trim(); });
+      var idxRead = headers.indexOf("dibaca oleh") > -1 ? headers.indexOf("dibaca oleh") : headers.indexOf("read by");
+      if (idxRead === -1) {
+        sheet.getRange(1, lastCol + 1).setValue("dibaca oleh");
+        idxRead = lastCol;
+      }
+      var rLower = String(role || "").toLowerCase();
+      var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
+      var mark = isAdmin ? "Admin" : "User";
+
+      notifData.recent.forEach(function(item) {
+        if (!item.isRead && item.rowId) {
+          var cur = String(sheet.getRange(item.rowId, idxRead + 1).getValue() || "").trim();
+          var list = cur ? cur.split(",") : [];
+          if (list.indexOf(mark) === -1) {
+            list.push(mark);
+            sheet.getRange(item.rowId, idxRead + 1).setValue(list.join(","));
+          }
+        }
+      });
     }
   } catch(e) {}
 }

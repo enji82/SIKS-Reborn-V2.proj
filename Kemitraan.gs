@@ -285,6 +285,15 @@ function verifikasiKemitraanDokumen(rowId, statusBaru, catatan) {
     var verif = Session.getActiveUser().getEmail() || "Admin";
     sheet.getRange(rowId,11).setValue(statusBaru); sheet.getRange(rowId,12).setValue(catatan||"");
     sheet.getRange(rowId,13).setValue(timestamp); sheet.getRange(rowId,14).setValue(verif);
+
+    // Reset status baca User agar notifikasi verifikasi baru muncul bagi User
+    var lastCol = sheet.getLastColumn();
+    var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(function(h) { return String(h).toLowerCase().trim(); });
+    var idxRead = headers.indexOf("dibaca oleh") > -1 ? headers.indexOf("dibaca oleh") : headers.indexOf("read by");
+    if (idxRead > -1) {
+      sheet.getRange(rowId, idxRead + 1).setValue("Admin");
+    }
+
     SpreadsheetApp.flush(); invalidateKemitraanDashboardCache();
     return JSON.stringify({ success: true, message: "Verifikasi berhasil." });
   } catch(e) { return JSON.stringify({ success: false, message: e.message }); }
@@ -312,6 +321,15 @@ function perbaikiKemitraanDokumen(rowId, tahun, fileDataBase64, fileName, mimeTy
     }
     sheet.getRange(rowId,11).setValue("Diproses"); sheet.getRange(rowId,12).setValue(""); sheet.getRange(rowId,13).setValue(""); sheet.getRange(rowId,14).setValue("");
     sheet.getRange(rowId,15).setValue(tNow); sheet.getRange(rowId,16).setValue(user);
+
+    // Reset status baca agar notifikasi data yang diedit/diajukan ulang muncul bagi Admin
+    var lastCol = sheet.getLastColumn();
+    var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(function(h) { return String(h).toLowerCase().trim(); });
+    var idxRead = headers.indexOf("dibaca oleh") > -1 ? headers.indexOf("dibaca oleh") : headers.indexOf("read by");
+    if (idxRead > -1) {
+      sheet.getRange(rowId, idxRead + 1).setValue("User");
+    }
+
     SpreadsheetApp.flush(); invalidateKemitraanDashboardCache();
     return JSON.stringify({ success: true, message: "Dokumen berhasil diperbarui." });
   } catch(e) { return JSON.stringify({ success: false, message: e.message }); }
@@ -410,6 +428,9 @@ function getNotifikasiKemitraan(role, unit) {
     var uName = String(unit || "").trim().toUpperCase();
     var notifList = []; var unreadCount = 0;
 
+    var headers = data.length > 0 ? data[0].map(function(h) { return String(h).toLowerCase().trim(); }) : [];
+    var idxRead = headers.indexOf("dibaca oleh") > -1 ? headers.indexOf("dibaca oleh") : headers.indexOf("read by");
+
     for (var i = 1; i < data.length; i++) {
       var row = data[i];
       var docNpsn = String(row[1] || "").trim().toUpperCase();
@@ -426,11 +447,20 @@ function getNotifikasiKemitraan(role, unit) {
 
       if (isTarget) {
         var isRead = false;
+        if (idxRead > -1) {
+          var readByStr = String(row[idxRead] || "").trim();
+          var readByList = readByStr ? readByStr.split(",") : [];
+          if (isAdmin && readByList.indexOf("Admin") > -1) isRead = true;
+          if (!isAdmin && readByList.indexOf("User") > -1) isRead = true;
+        }
+
         var stLower = status.toLowerCase();
         var isDisetujui = stLower.includes("ok") || stLower.includes("setuju") || stLower.includes("valid") || stLower.includes("selesai");
 
-        if (!isAdmin && isDisetujui) {
-          // Skip counter untuk user jika sudah disetujui
+        if (isRead) {
+          // Lewati counter jika sudah dibaca
+        } else if (!isAdmin && isDisetujui && isRead) {
+          // Lewati counter untuk user jika sudah disetujui & dibaca
         } else {
           unreadCount++;
         }
@@ -449,5 +479,59 @@ function getNotifikasiKemitraan(role, unit) {
 
     return { count: unreadCount, recent: notifList.slice(0, 5) };
   } catch (e) { return { count: 0, recent: [] }; }
+}
+
+function tandaiNotifKemitraanDibaca(rowId, role) {
+  try {
+    var sheet = getOrCreateSheetKemitraan("Database_Dokumen");
+    if (!sheet) return;
+    var lastCol = sheet.getLastColumn();
+    var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(function(h) { return String(h).toLowerCase().trim(); });
+    var idxRead = headers.indexOf("dibaca oleh") > -1 ? headers.indexOf("dibaca oleh") : headers.indexOf("read by");
+    if (idxRead === -1) {
+      sheet.getRange(1, lastCol + 1).setValue("dibaca oleh");
+      idxRead = lastCol;
+    }
+    var rLower = String(role || "").toLowerCase();
+    var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
+    var mark = isAdmin ? "Admin" : "User";
+    var cur = String(sheet.getRange(rowId, idxRead + 1).getValue() || "").trim();
+    var list = cur ? cur.split(",") : [];
+    if (list.indexOf(mark) === -1) {
+      list.push(mark);
+      sheet.getRange(rowId, idxRead + 1).setValue(list.join(","));
+    }
+  } catch(e) {}
+}
+
+function tandaiSemuaNotifKemitraanDibaca(role, unit) {
+  try {
+    var notifData = getNotifikasiKemitraan(role, unit);
+    if (notifData && notifData.recent && notifData.recent.length > 0) {
+      var sheet = getOrCreateSheetKemitraan("Database_Dokumen");
+      if (!sheet) return;
+      var lastCol = sheet.getLastColumn();
+      var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(function(h) { return String(h).toLowerCase().trim(); });
+      var idxRead = headers.indexOf("dibaca oleh") > -1 ? headers.indexOf("dibaca oleh") : headers.indexOf("read by");
+      if (idxRead === -1) {
+        sheet.getRange(1, lastCol + 1).setValue("dibaca oleh");
+        idxRead = lastCol;
+      }
+      var rLower = String(role || "").toLowerCase();
+      var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
+      var mark = isAdmin ? "Admin" : "User";
+
+      notifData.recent.forEach(function(item) {
+        if (!item.isRead && item.rowId) {
+          var cur = String(sheet.getRange(item.rowId, idxRead + 1).getValue() || "").trim();
+          var list = cur ? cur.split(",") : [];
+          if (list.indexOf(mark) === -1) {
+            list.push(mark);
+            sheet.getRange(item.rowId, idxRead + 1).setValue(list.join(","));
+          }
+        }
+      });
+    }
+  } catch(e) {}
 }
 

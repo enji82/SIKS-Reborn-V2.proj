@@ -943,6 +943,19 @@ function tandaiSemuaNotifGlobalDibaca(role, unit) {
         }
       } catch(ae) {}
     }
+
+    if (typeof tandaiSemuaNotifAdmSekolahDibaca === 'function') {
+      tandaiSemuaNotifAdmSekolahDibaca(role, unit);
+    }
+    if (typeof tandaiSemuaNotifAdmPTKDibaca === 'function') {
+      tandaiSemuaNotifAdmPTKDibaca(role, unit);
+    }
+    if (typeof tandaiSemuaNotifKombelDibaca === 'function') {
+      tandaiSemuaNotifKombelDibaca(role, unit);
+    }
+    if (typeof tandaiSemuaNotifKemitraanDibaca === 'function') {
+      tandaiSemuaNotifKemitraanDibaca(role, unit);
+    }
     
     // Clear Global Cache
     tandaiSemuaNotifMutasiDibaca_Global(role, unit);
