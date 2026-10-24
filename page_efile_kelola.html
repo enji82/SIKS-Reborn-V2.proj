@@ -936,9 +936,11 @@ $(document).ready(function() {
     $(document).off('click', '#efilekelola_btnSimpanPerbaiki').on('click', '#efilekelola_btnSimpanPerbaiki', function(e) {
         var $form = $('#efilekelola_formPerbaiki');
         if ($form.length > 0) {
+            // Nonaktifkan required pada elemen yang tersembunyi agar checkValidity tidak memblokir senyap
+            $form.find(':hidden').prop('required', false);
             if ($form[0].checkValidity && !$form[0].checkValidity()) {
                 $form.addClass('was-validated');
-                $form[0].reportValidity();
+                if ($form[0].reportValidity) $form[0].reportValidity();
                 return;
             }
             e.preventDefault();
@@ -1875,8 +1877,10 @@ function efilekelola_bukaModalPerbaiki(rowId) {
         $('#efilekelola_p_preview_loading').html('<span class="text-white-50"><i class="fas fa-file-excel mr-2"></i>Belum ada berkas digital</span>');
     }
 
+    // Bersihkan form lain jika masih menempel di modal-content sebelum memasang formPerbaiki
+    $('#global_modalFormSize .modal-content > form').not('#efilekelola_formPerbaiki').appendTo('#efilekelola_templates');
     $('#global_modalFormBody, #global_modalFormFooter').hide();
-    $('#efilekelola_formPerbaiki').appendTo('#global_modalFormSize .modal-content');
+    $('#efilekelola_formPerbaiki').appendTo('#global_modalFormSize .modal-content').show();
     
     $('#global_modalForm').off('hidden.bs.modal.efileedit').on('hidden.bs.modal.efileedit', function() {
         $('#global_modalFormHeader').removeClass('modal-header-edit');
@@ -2025,6 +2029,7 @@ function efilekelola_bukaModalVerif(rowId) {
 
 function efilekelola_submitPerbaiki(e) {
     e.preventDefault(); var $f = $(this);
+    $f.find(':hidden').prop('required', false);
     if ($f[0].checkValidity && !$f[0].checkValidity()) { 
         $f.addClass('was-validated'); 
         if ($f[0].reportValidity) $f[0].reportValidity();
