@@ -310,14 +310,14 @@ function verifikasiLokasiUpacara(form) {
     lock.waitLock(10000);
 
     var sheet = getSheet(KONFIG_LOKASI_UPACARA.DB_KEY, KONFIG_LOKASI_UPACARA.SHEET_NAMA);
-    var baris = cariBarisLokasiUpacara(sheet, form.recId, form.tglKirim);
+    var baris = cariBarisLokasiUpacara(sheet, form.recId, form.tglKirim, form);
     if (baris === -1) throw new Error("Data tidak ditemukan atau sudah dihapus oleh user lain.");
 
     sheet.getRange(baris, 9).setValue(form.status);
-    sheet.getRange(baris, 10).setValue("'" + form.keterangan);
+    sheet.getRange(baris, 10).setValue("'" + (form.keterangan || ""));
     var now = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MM-yyyy HH:mm:ss");
     sheet.getRange(baris, 13).setValue("'" + now);
-    sheet.getRange(baris, 14).setValue(form.user_verif);
+    sheet.getRange(baris, 14).setValue(form.user_verif || "Admin");
 
     return "Sukses";
   } catch (e) {
@@ -330,37 +330,75 @@ function verifikasiLokasiUpacara(form) {
 // =====================================================================
 // 5a. SEARCH HELPER — Cari baris data secara dinamis (kebal pergeseran baris)
 // =====================================================================
-function cariBarisLokasiUpacara(sheet, recIdHint, tglKirimTarget) {
+function cariBarisLokasiUpacara(sheet, recIdHint, tglKirimTarget, optPayload) {
   var data = sheet.getDataRange().getDisplayValues();
   var hintIdx = parseInt(recIdHint);
-  var targetTgl = tglKirimTarget ? String(tglKirimTarget).trim() : "";
+  var targetTglKirim = tglKirimTarget ? String(tglKirimTarget).trim() : "";
 
-  // 1. Coba cocokkan indeks hint dengan target tglKirim jika ada
+  var targetNip = optPayload && optPayload.nip ? String(optPayload.nip).replace(/'/g, "").trim() : "";
+  var targetTanggal = optPayload && optPayload.tanggal ? String(optPayload.tanggal).replace(/'/g, "").trim() : "";
+
+  var normalizeToYMD = function(s) {
+    var c = String(s || "").replace(/'/g, "").trim();
+    if (c.match(/^\d{4}-\d{2}-\d{2}$/)) return c;
+    var p = c.split(/[-\/]/);
+    if (p.length === 3 && p[0].length <= 2 && p[2].length === 4) {
+      return p[2] + "-" + p[1].padStart(2, "0") + "-" + p[0].padStart(2, "0");
+    }
+    return c;
+  };
+
+  var normTargetTanggal = targetTanggal !== "" ? normalizeToYMD(targetTanggal) : "";
+
+  // 1. Coba cocokkan indeks hint
   if (!isNaN(hintIdx) && hintIdx >= 2 && hintIdx <= data.length) {
     var row = data[hintIdx - 1];
-    if (targetTgl !== "") {
-      if (String(row[6]).trim() === targetTgl) {
-        return hintIdx;
-      }
-    } else {
-      // Jika tglKirim tidak dikirimkan, gunakan hintIdx jika baris tersebut valid
-      if (row[1] || row[2]) {
+    var rowNip = String(row[2] || "").replace(/'/g, "").trim();
+    var rowTglKirim = String(row[6] || "").trim();
+    var rowTanggal = normalizeToYMD(row[3]);
+
+    // Jika ada NIP & Tanggal dan cocok, langsung valid
+    if (targetNip !== "" && rowNip === targetNip) {
+      if (normTargetTanggal === "" || rowTanggal === normTargetTanggal) {
         return hintIdx;
       }
     }
+
+    // Jika tglKirim cocok
+    if (targetTglKirim !== "" && rowTglKirim === targetTglKirim) {
+      return hintIdx;
+    }
+
+    // Jika tanpa parameter pembanding tapi hintIdx valid dan ada data
+    if (targetTglKirim === "" && targetNip === "" && (row[1] || row[2])) {
+      return hintIdx;
+    }
   }
 
-  // 2. Cari di seluruh baris berdasarkan tglKirimTarget jika ada
-  if (targetTgl !== "") {
+  // 2. Pencocokan Unik berbasis NIP + Tanggal Upacara di seluruh baris
+  if (targetNip !== "") {
     for (var i = 1; i < data.length; i++) {
-      var row = data[i];
-      if (String(row[6]).trim() === targetTgl) {
-        return i + 1;
+      var r = data[i];
+      var rNip = String(r[2] || "").replace(/'/g, "").trim();
+      if (rNip === targetNip) {
+        if (normTargetTanggal === "" || normalizeToYMD(r[3]) === normTargetTanggal) {
+          return i + 1;
+        }
       }
     }
   }
 
-  // 3. Fallback: jika hintIdx adalah indeks baris yang valid dan memiliki data
+  // 3. Cari di seluruh baris berdasarkan tglKirimTarget jika ada
+  if (targetTglKirim !== "") {
+    for (var j = 1; j < data.length; j++) {
+      var rRow = data[j];
+      if (String(rRow[6] || "").trim() === targetTglKirim) {
+        return j + 1;
+      }
+    }
+  }
+
+  // 4. Fallback: jika hintIdx adalah indeks baris yang valid dan memiliki data
   if (!isNaN(hintIdx) && hintIdx >= 2 && hintIdx <= data.length) {
     var rowFallback = data[hintIdx - 1];
     if (rowFallback[1] || rowFallback[2]) {
