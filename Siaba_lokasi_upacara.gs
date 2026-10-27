@@ -333,18 +333,41 @@ function verifikasiLokasiUpacara(form) {
 function cariBarisLokasiUpacara(sheet, recIdHint, tglKirimTarget) {
   var data = sheet.getDataRange().getDisplayValues();
   var hintIdx = parseInt(recIdHint);
+  var targetTgl = tglKirimTarget ? String(tglKirimTarget).trim() : "";
+
+  // 1. Coba cocokkan indeks hint dengan target tglKirim jika ada
   if (!isNaN(hintIdx) && hintIdx >= 2 && hintIdx <= data.length) {
     var row = data[hintIdx - 1];
-    if (String(row[6]).trim() === String(tglKirimTarget).trim()) {
+    if (targetTgl !== "") {
+      if (String(row[6]).trim() === targetTgl) {
+        return hintIdx;
+      }
+    } else {
+      // Jika tglKirim tidak dikirimkan, gunakan hintIdx jika baris tersebut valid
+      if (row[1] || row[2]) {
+        return hintIdx;
+      }
+    }
+  }
+
+  // 2. Cari di seluruh baris berdasarkan tglKirimTarget jika ada
+  if (targetTgl !== "") {
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      if (String(row[6]).trim() === targetTgl) {
+        return i + 1;
+      }
+    }
+  }
+
+  // 3. Fallback: jika hintIdx adalah indeks baris yang valid dan memiliki data
+  if (!isNaN(hintIdx) && hintIdx >= 2 && hintIdx <= data.length) {
+    var rowFallback = data[hintIdx - 1];
+    if (rowFallback[1] || rowFallback[2]) {
       return hintIdx;
     }
   }
-  for (var i = 1; i < data.length; i++) {
-    var row = data[i];
-    if (String(row[6]).trim() === String(tglKirimTarget).trim()) {
-      return i + 1;
-    }
-  }
+
   return -1;
 }
 
