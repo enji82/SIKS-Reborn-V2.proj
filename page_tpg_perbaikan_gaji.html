@@ -1041,18 +1041,34 @@
                 </div>
             `;
 
-            // 5. Kolom KETERANGAN (dihitung dari Gapok SK vs Gapok Infogtk)
+            // 5. Kolom KETERANGAN (Dasar acuan: Gapok SK)
             let gPokok = Number(row.gajiPokok || 0);
             let gInfogtk = Number(row.gajiInfogtk || 0);
+            let nSalur = Number(row.nilaiSalur || 0);
             let badgeKesesuaian = '';
-            if (!gInfogtk) {
-                badgeKesesuaian = '<span class="text-muted small" title="Gaji Pokok Infogtk belum diisi">-</span>';
-            } else if (gPokok === gInfogtk) {
+
+            if (gPokok > 0 && gPokok === gInfogtk && gPokok === nSalur) {
+                // Gapok = Infogtk = Bruto
                 badgeKesesuaian = '<span class="badge-sesuai-pas"><i class="fas fa-check mr-1"></i>Sesuai</span>';
-            } else if (gPokok > gInfogtk) {
-                badgeKesesuaian = '<span class="badge-sesuai-kurang" title="Gaji Pokok SK lebih besar dari Gaji Pokok Infogtk"><i class="fas fa-exclamation-circle mr-1"></i>Belum Sesuai</span>';
+            } else if (!gInfogtk && !nSalur) {
+                badgeKesesuaian = '<span class="text-muted small" title="Data Infogtk & Bruto belum diisi">-</span>';
             } else {
-                badgeKesesuaian = '<span class="badge-sesuai-lebih" title="Gaji Pokok Infogtk lebih besar dari Gaji Pokok SK"><i class="fas fa-info-circle mr-1"></i>Kelebihan</span>';
+                let badges = [];
+                // Evaluasi 1: Infogtk vs Gapok
+                if (gInfogtk === gPokok) {
+                    badges.push('<span class="badge-sesuai-pas" title="Gaji Pokok InfoGTK sudah sesuai dengan SK"><i class="fas fa-check mr-1"></i>Infogtk Sesuai</span>');
+                } else {
+                    badges.push('<span class="badge-sesuai-kurang" title="Gaji Pokok InfoGTK belum sesuai dengan SK"><i class="fas fa-times mr-1"></i>Infogtk Belum Sesuai</span>');
+                }
+
+                // Evaluasi 2: Bruto vs Infogtk
+                if (nSalur === gInfogtk && nSalur > 0) {
+                    badges.push('<span class="badge-sesuai-pas" title="Nilai Salur Bruto sudah sesuai dengan InfoGTK"><i class="fas fa-check mr-1"></i>Transfer Sesuai</span>');
+                } else {
+                    badges.push('<span class="badge-sesuai-kurang" title="Nilai Salur Bruto belum sesuai dengan InfoGTK"><i class="fas fa-times mr-1"></i>Transfer Belum Sesuai</span>');
+                }
+
+                badgeKesesuaian = '<div class="d-flex flex-column align-items-center" style="gap: 3px;">' + badges.join('') + '</div>';
             }
 
             // 6. Kolom DOKUMEN (Tombol LIHAT PDF SK + INFOGTK)
