@@ -275,14 +275,14 @@ function kemitraanCheckDuplikat(sheet, npsn, idKategori, tahun) {
   return { ada: false };
 }
 
-function verifikasiKemitraanDokumen(rowId, statusBaru, catatan) {
+function verifikasiKemitraanDokumen(rowId, statusBaru, catatan, verifikator) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
     var sheet = getOrCreateSheetKemitraan("Database_Dokumen");
     if (!sheet) return JSON.stringify({ success: false, message: "Sheet tidak ditemukan." });
     var timestamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss");
-    var verif = Session.getActiveUser().getEmail() || "Admin";
+    var verif = verifikator || Session.getActiveUser().getEmail() || "Admin";
     sheet.getRange(rowId,11).setValue(statusBaru); sheet.getRange(rowId,12).setValue(catatan||"");
     sheet.getRange(rowId,13).setValue(timestamp); sheet.getRange(rowId,14).setValue(verif);
 
