@@ -98,6 +98,11 @@
                         title="Segarkan Data dari Server">
                         <i class="fas fa-sync-alt"></i>
                     </button>
+
+                    <button type="button" id="unggahcuti_btnExportExcel" class="sultan-btn-excel ml-2 shadow-sm"
+                        title="Unduh Data ke Excel">
+                        <i class="fas fa-file-excel"></i> EKSPOR EXCEL
+                    </button>
                 </div>
 
                 <div class="card card-sultan">
@@ -331,6 +336,7 @@
 
         // VAKSINASI EVENT DELEGATION
         $(document).off('click', '#unggahcuti_btnRefresh').on('click', '#unggahcuti_btnRefresh', unggahcuti_tarikDataServer);
+        $(document).off('click', '#unggahcuti_btnExportExcel').on('click', '#unggahcuti_btnExportExcel', unggahcuti_exportExcel);
         $(document).off('change', '#unggahcuti_filterTahun, #unggahcuti_filterBulan, #unggahcuti_filterStatus, #unggahcuti_filterUnit, #unggahcuti_filterJenjang').on('change', '#unggahcuti_filterTahun, #unggahcuti_filterBulan, #unggahcuti_filterStatus, #unggahcuti_filterUnit, #unggahcuti_filterJenjang', unggahcuti_applyFilter);
 
         $(document).off('change', '#unggahcuti_filterJenjang').on('change', '#unggahcuti_filterJenjang', function () {
@@ -1066,5 +1072,270 @@
             parseInt(dP[2], 10), parseInt(dP[1], 10) - 1, parseInt(dP[0], 10),
             parseInt(tP[0] || 0, 10), parseInt(tP[1] || 0, 10), parseInt(tP[2] || 0, 10)
         ).getTime();
+    }
+
+    // =================================================================
+    // 6. EKSPOR EXCEL (BERDASARKAN PILIHAN FILTER)
+    // =================================================================
+    function unggahcuti_exportExcel() {
+        if (typeof XLSX === 'undefined') {
+            Sultan.alert('error', 'Error', 'Library Excel (SheetJS) belum dimuat. Silakan refresh halaman.');
+            return;
+        }
+
+        var btn = $('#unggahcuti_btnExportExcel');
+        var txt = btn.html();
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Mengunduh...');
+
+        setTimeout(function () {
+            try {
+                var tAdminUnit = UNGGAHCUTI_IS_ADMIN ? $('#unggahcuti_filterUnit').val().toUpperCase() : "";
+                var tUnitUser = String(UNGGAHCUTI_UNIT_TERKUNCI).trim().toUpperCase();
+                var fStatus = $('#unggahcuti_filterStatus').val();
+                var fBulan = $('#unggahcuti_filterBulan').val();
+                var tBulan = (fBulan && fBulan !== "") ? String(fBulan).trim().toLowerCase() : "";
+
+                var fJenjang = $('#unggahcuti_filterJenjang').val();
+                var tJenjang = (fJenjang && fJenjang !== "") ? String(fJenjang).trim().toUpperCase() : "";
+
+                var dataFiltered = (UNGGAHCUTI_CACHE_DATA || []).filter(function (row) {
+                    var rUnit = String(row.unit || "").trim().toUpperCase();
+                    var rJenjang = row.jenjang ? String(row.jenjang).trim().toUpperCase() : "";
+
+                    if (!rJenjang && rUnit) {
+                        if (rUnit.includes("TK") || rUnit.includes("PAUD") || rUnit.includes("KOBER") || rUnit.includes("TKN") || rUnit.includes("TUNAS MUDA")) rJenjang = "PAUD / TK";
+                        else if (rUnit.includes("SD") || rUnit.includes("SDN")) rJenjang = "SD";
+                        else if (rUnit.includes("SMP") || rUnit.includes("SMPN")) rJenjang = "SMP";
+                        else if (rUnit.includes("SMA") || rUnit.includes("SMAN")) rJenjang = "SMA";
+                        else if (rUnit.includes("SMK") || rUnit.includes("SMKN")) rJenjang = "SMK";
+                        else if (rUnit.includes("SKB") || rUnit.includes("PKBM")) rJenjang = "NON-FORMAL / SKB";
+                    }
+
+                    var rBulanRaw = "";
+                    var rawTgl = String(row.tglMulai || "").replace(/'/g, "").trim().toLowerCase();
+                    var mNames = ["januari", "februari", "maret", "april", "mei", "juni", "juli", "agustus", "september", "oktober", "november", "desember"];
+
+                    for (var m = 0; m < mNames.length; m++) {
+                        if (rawTgl.indexOf(mNames[m]) > -1) { rBulanRaw = mNames[m]; break; }
+                    }
+                    if (rBulanRaw === "") {
+                        var pDate = rawTgl.split(/[-/]/);
+                        if (pDate.length === 3) {
+                            var mIdx = pDate[0].length === 4 ? pDate[1] : pDate[1];
+                            rBulanRaw = mNames[parseInt(mIdx, 10) - 1] || "";
+                        }
+                    }
+
+                    var passSekolah = false;
+                    if (UNGGAHCUTI_IS_ADMIN) {
+                        if (tAdminUnit === "SEMUA" || rUnit === tAdminUnit) passSekolah = true;
+                    } else {
+                        if (rUnit === tUnitUser) passSekolah = true;
+                    }
+                    if (!passSekolah) return false;
+
+                    if (tJenjang !== "") {
+                        if (tAdminUnit !== "SEMUA") {
+                            // Loloskan jenjang jika sekolah spesifik dipilih
+                        } else if (rJenjang !== tJenjang) {
+                            return false;
+                        }
+                    }
+
+                    var st = String(row.statusUnggah || "").trim();
+                    if (fStatus === "Belum Unggah" || fStatus === "Belum") {
+                        if (st !== "" && st !== "Belum Unggah") return false;
+                    } else if (fStatus && fStatus !== "") {
+                        if (st !== fStatus) return false;
+                    }
+
+                    if (tBulan !== "" && rBulanRaw !== tBulan) return false;
+
+                    return true;
+                });
+
+                // Urutkan data sesuai tampilan tabel (Last Activity terbaru)
+                dataFiltered.sort(function (a, b) {
+                    var timeA = Math.max(parseSiabaDateTime(a.tglUnggah), parseSiabaDateTime(a.tglEdit), parseSiabaDateTime(a.tglVerif));
+                    var timeB = Math.max(parseSiabaDateTime(b.tglUnggah), parseSiabaDateTime(b.tglEdit), parseSiabaDateTime(b.tglVerif));
+                    return timeB - timeA;
+                });
+
+                if (dataFiltered.length === 0) {
+                    Sultan.alert('warning', 'Data Kosong', 'Tidak ada data formulir cuti untuk diekspor sesuai pilihan filter.');
+                    btn.prop('disabled', false).html(txt);
+                    return;
+                }
+
+                // Waktu cetak: <DD-MM-YYYY> <HH:MM>
+                var now = new Date();
+                var dd = String(now.getDate()).padStart(2, '0');
+                var mm = String(now.getMonth() + 1).padStart(2, '0');
+                var yyyy = now.getFullYear();
+                var hh = String(now.getHours()).padStart(2, '0');
+                var min = String(now.getMinutes()).padStart(2, '0');
+                var tglPerStr = dd + '-' + mm + '-' + yyyy + ' ' + hh + ':' + min;
+
+                var totalCols = 9;
+                var wsData = [];
+
+                // Baris 1: Judul
+                wsData.push(['DAFTAR FORMULIR PERMOHONAN DAN PEMBERIAN CUTI']);
+                // Baris 2: Sub-judul
+                wsData.push(['ASN KORWIL DISDIKBUD KECAMATAN SECANG']);
+                // Baris 3: Tanggal
+                wsData.push(['DATA PER: ' + tglPerStr]);
+                // Baris 4: Kosong
+                wsData.push([]);
+
+                // Baris 5: Header Kolom
+                var headers = ['No.', 'Unit Kerja', 'Nama ASN', 'NIP', 'Jenis Cuti', 'Mulai', 'Selesai', 'Jml. Hari', 'Status'];
+                wsData.push(headers);
+
+                // Baris 6+: Isi Data
+                dataFiltered.forEach(function (r, idx) {
+                    var unitText = String(r.unit || '-').trim();
+                    var namaText = String(r.nama || '-').trim();
+                    var nipText = String(r.nip || '-').trim();
+                    var jenisText = String(r.jenis || '-').trim();
+                    var tglMulaiText = String(r.tglMulai || '-').trim();
+                    var tglSelesaiText = String(r.tglSelesai || '-').trim();
+                    var jmlHariText = r.jumlah ? (String(r.jumlah).trim() + ' Hari') : '0 Hari';
+                    var statusText = String(r.statusUnggah || 'Belum Unggah').trim();
+
+                    wsData.push([
+                        idx + 1,
+                        unitText,
+                        namaText,
+                        nipText,
+                        jenisText,
+                        tglMulaiText,
+                        tglSelesaiText,
+                        jmlHariText,
+                        statusText
+                    ]);
+                });
+
+                var ws = XLSX.utils.aoa_to_sheet(wsData);
+
+                // Merge Cells Judul (Row 0, 1, 2)
+                ws['!merges'] = [
+                    { s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } },
+                    { s: { r: 1, c: 0 }, e: { r: 1, c: totalCols - 1 } },
+                    { s: { r: 2, c: 0 }, e: { r: 2, c: totalCols - 1 } }
+                ];
+
+                // Lebar kolom
+                ws['!cols'] = [
+                    { wch: 6 },   // No.
+                    { wch: 32 },  // Unit Kerja
+                    { wch: 32 },  // Nama ASN
+                    { wch: 24 },  // NIP
+                    { wch: 22 },  // Jenis Cuti
+                    { wch: 18 },  // Mulai
+                    { wch: 18 },  // Selesai
+                    { wch: 14 },  // Jml. Hari
+                    { wch: 16 }   // Status
+                ];
+
+                var thinBorder = {
+                    top: { style: 'thin', color: { rgb: 'CCCCCC' } },
+                    bottom: { style: 'thin', color: { rgb: 'CCCCCC' } },
+                    left: { style: 'thin', color: { rgb: 'CCCCCC' } },
+                    right: { style: 'thin', color: { rgb: 'CCCCCC' } }
+                };
+
+                var headerBorder = {
+                    top: { style: 'medium', color: { rgb: '800000' } },
+                    bottom: { style: 'medium', color: { rgb: '800000' } },
+                    left: { style: 'thin', color: { rgb: 'CCCCCC' } },
+                    right: { style: 'thin', color: { rgb: 'CCCCCC' } }
+                };
+
+                // Styling Cells
+                var range = XLSX.utils.decode_range(ws['!ref']);
+                for (var R = 0; R <= range.e.r; R++) {
+                    for (var C = 0; C <= range.e.c; C++) {
+                        var cellAddr = XLSX.utils.encode_cell({ r: R, c: C });
+                        if (!ws[cellAddr]) ws[cellAddr] = { t: 'z', v: '' };
+                        if (!ws[cellAddr].s) ws[cellAddr].s = {};
+
+                        // Judul (Row 0, 1, 2)
+                        if (R === 0) {
+                            ws[cellAddr].s = {
+                                font: { name: 'Arial', sz: 14, bold: true, color: { rgb: '800000' } },
+                                alignment: { horizontal: 'center', vertical: 'center' }
+                            };
+                        } else if (R === 1) {
+                            ws[cellAddr].s = {
+                                font: { name: 'Arial', sz: 11, bold: true, color: { rgb: '333333' } },
+                                alignment: { horizontal: 'center', vertical: 'center' }
+                            };
+                        } else if (R === 2) {
+                            ws[cellAddr].s = {
+                                font: { name: 'Arial', sz: 10, bold: true, color: { rgb: '666666' } },
+                                alignment: { horizontal: 'center', vertical: 'center' }
+                            };
+                        }
+                        // Header Tabel (Row 4)
+                        else if (R === 4) {
+                            ws[cellAddr].s = {
+                                font: { name: 'Arial', sz: 10, bold: true, color: { rgb: 'FFFFFF' } },
+                                fill: { fgColor: { rgb: '800000' } },
+                                alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+                                border: headerBorder
+                            };
+                        }
+                        // Data Rows (Row 5+)
+                        else if (R >= 5) {
+                            var alignH = 'left';
+                            // Kolom No, Mulai, Selesai, Jml Hari, Status rata tengah
+                            if (C === 0 || C === 5 || C === 6 || C === 7 || C === 8) {
+                                alignH = 'center';
+                            }
+
+                            // Zebra striping lembut
+                            var bgRgb = (R % 2 === 1) ? 'FAFAFA' : 'FFFFFF';
+
+                            ws[cellAddr].s = {
+                                font: { name: 'Arial', sz: 10, color: { rgb: '222222' } },
+                                fill: { fgColor: { rgb: bgRgb } },
+                                alignment: { horizontal: alignH, vertical: 'center' },
+                                border: thinBorder
+                            };
+
+                            // Format khusus NIP sebagai text agar tidak terformat scientific
+                            if (C === 3) {
+                                ws[cellAddr].t = 's';
+                            }
+                        }
+                    }
+                }
+
+                // Row heights
+                ws['!rows'] = [
+                    { hpt: 24 }, // Row 0
+                    { hpt: 18 }, // Row 1
+                    { hpt: 16 }, // Row 2
+                    { hpt: 10 }, // Row 3
+                    { hpt: 26 }  // Row 4 (Header)
+                ];
+
+                var wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Surat Cuti");
+
+                var safeStatusName = fStatus ? fStatus.replace(/[^a-zA-Z0-9]/g, '_') : 'Semua_Status';
+                var filename = 'Daftar_Formulir_Cuti_' + safeStatusName + '_' + dd + mm + yyyy + '.xlsx';
+
+                XLSX.writeFile(wb, filename);
+
+                btn.prop('disabled', false).html(txt);
+                Sultan.notif.sukses('Data berhasil diunduh ke Excel (.xlsx).');
+            } catch (errExport) {
+                console.error("Gagal export excel:", errExport);
+                btn.prop('disabled', false).html(txt);
+                Sultan.alert('error', 'Gagal Ekspor Excel', errExport.message);
+            }
+        }, 150);
     }
 </script>
