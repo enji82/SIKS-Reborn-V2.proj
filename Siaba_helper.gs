@@ -403,6 +403,7 @@ function getDatabasePegawai() {
           nama_tanpa_gelar: item.nama_tanpa_gelar || item.nama,
           nama_dengan_gelar: item.nama_dengan_gelar || item.nama_lengkap || item.nama,
           npsn: item.npsn,
+          jenjang: item.jenjang,
           status: item.status,
           jabatan: item.jabatan,
           hp: item.hp,

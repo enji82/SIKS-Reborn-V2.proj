@@ -447,7 +447,7 @@
         $(document).off('click', '#cuti_btnRefresh').on('click', '#cuti_btnRefresh', cuti_loadDataServer);
         $(document).off('click', '#cuti_btnTambahModal').on('click', '#cuti_btnTambahModal', cuti_bukaModalTambah);
 
-        $(document).off('change', '#cuti_filterStatus, #cuti_filterBulan, #cuti_filterTahun, #cuti_filterUnit, #cuti_filterJenjang').on('change', '#cuti_filterStatus, #cuti_filterBulan, #cuti_filterTahun, #cuti_filterUnit, #cuti_filterJenjang', cuti_applyFilter);
+        $(document).off('change', '#cuti_filterStatus, #cuti_filterBulan, #cuti_filterTahun, #cuti_filterUnit').on('change', '#cuti_filterStatus, #cuti_filterBulan, #cuti_filterTahun, #cuti_filterUnit', cuti_applyFilter);
 
         $(document).off('change', '#cuti_filterJenjang').on('change', '#cuti_filterJenjang', function () {
             cuti_updateDropdownSekolahCascading();
@@ -480,12 +480,21 @@
         google.script.run.withSuccessHandler(function (json) {
             try {
                 CUTI_DB_PEGAWAI_CUTI = JSON.parse(json);
-                cuti_jalankanGatekeeper();
-            } catch (e) { }
+            } catch (e) { CUTI_DB_PEGAWAI_CUTI = []; }
+            cuti_jalankanGatekeeper();
+        }).withFailureHandler(function () {
+            CUTI_DB_PEGAWAI_CUTI = [];
+            cuti_jalankanGatekeeper();
         }).getDatabaseCutiOptions();
 
         google.script.run.withSuccessHandler(function (data) {
-            if (Array.isArray(data)) CUTI_DB_PEGAWAI = data;
+            if (Array.isArray(data)) {
+                CUTI_DB_PEGAWAI = data;
+                if (CUTI_IS_ADMIN) {
+                    cuti_populateJenjang();
+                    cuti_updateDropdownSekolahCascading();
+                }
+            }
         }).getDatabasePegawai();
     });
 
@@ -583,6 +592,11 @@
                     CUTI_DATA_MASTER = Array.isArray(resData) ? resData : [];
                     CUTI_CACHE_KEY = thn;
 
+                    if (CUTI_IS_ADMIN) {
+                        cuti_populateJenjang();
+                        cuti_updateDropdownSekolahCascading();
+                    }
+
                     if (!$.fn.DataTable.isDataTable('#cuti_tabelUtama')) {
                         CUTI_TABEL_INSTANCE = SultanTable.init('#cuti_tabelUtama', {
                             "columnDefs": [
@@ -635,16 +649,7 @@
             var rNpsn = String(row.npsn || "").trim().toUpperCase();
             var rUnit = String(row.unit || "").trim().toUpperCase();
             var rStat = String(row.status || "").trim().toUpperCase();
-            var rJenjang = row.jenjang ? String(row.jenjang).trim().toUpperCase() : "";
-
-            if (!rJenjang && rUnit) {
-                if (rUnit.includes("TK") || rUnit.includes("PAUD") || rUnit.includes("KOBER") || rUnit.includes("TKN") || rUnit.includes("TUNAS MUDA")) rJenjang = "PAUD / TK";
-                else if (rUnit.includes("SD") || rUnit.includes("SDN")) rJenjang = "SD";
-                else if (rUnit.includes("SMP") || rUnit.includes("SMPN")) rJenjang = "SMP";
-                else if (rUnit.includes("SMA") || rUnit.includes("SMAN")) rJenjang = "SMA";
-                else if (rUnit.includes("SMK") || rUnit.includes("SMKN")) rJenjang = "SMK";
-                else if (rUnit.includes("SKB") || rUnit.includes("PKBM")) rJenjang = "NON-FORMAL / SKB";
-            }
+            var rJenjang = cuti_deteksiJenjang(row);
 
             var rBulanIdx = 0;
             var rawTgl = String(row.tglMulai || "").replace(/'/g, "").trim().toLowerCase();
@@ -1286,28 +1291,52 @@
     // =================================================================
     // 6. LOGIKA DROPDOWN CASCADING (MENGGUNAKAN DB CUTI)
     // =================================================================
+    function cuti_getSumberDataSekolah() {
+        var combined = [];
+        if (Array.isArray(CUTI_DB_PEGAWAI) && CUTI_DB_PEGAWAI.length > 0) combined = combined.concat(CUTI_DB_PEGAWAI);
+        if (Array.isArray(CUTI_DB_PEGAWAI_CUTI) && CUTI_DB_PEGAWAI_CUTI.length > 0) combined = combined.concat(CUTI_DB_PEGAWAI_CUTI);
+        if (Array.isArray(CUTI_DATA_MASTER) && CUTI_DATA_MASTER.length > 0) combined = combined.concat(CUTI_DATA_MASTER);
+        return combined;
+    }
+
+    function cuti_deteksiJenjang(x) {
+        if (x && x.jenjang && String(x.jenjang).trim()) {
+            var jRaw = String(x.jenjang).trim().toUpperCase();
+            if (jRaw === "PAUD" || jRaw === "TK" || jRaw === "PAUD / TK") return "PAUD / TK";
+            if (jRaw === "SDS") return "SD";
+            return jRaw;
+        }
+        var unit = String((x && x.unit) || "").trim().toUpperCase();
+        if (!unit) return "";
+        if (unit.includes("TK") || unit.includes("PAUD") || unit.includes("KOBER") || unit.includes("TKN") || unit.includes("TUNAS MUDA") || unit.includes("KB ") || unit.includes("RA ") || unit.includes("SPS") || unit.includes("TPA")) return "PAUD / TK";
+        if (unit.includes("SD") || unit.includes("SDN") || unit.includes("MI ")) return "SD";
+        if (unit.includes("SMP") || unit.includes("SMPN") || unit.includes("MTS")) return "SMP";
+        if (unit.includes("SMA") || unit.includes("SMAN") || unit.includes("MA ")) return "SMA";
+        if (unit.includes("SMK") || unit.includes("SMKN")) return "SMK";
+        if (unit.includes("SKB") || unit.includes("PKBM")) return "NON-FORMAL / SKB";
+        return "";
+    }
+
     function cuti_populateJenjang() {
+        var curModalVal = $('#cuti_in_jenjang').val() || "";
+        var curFilterVal = $('#cuti_filterJenjang').val() || "";
+
         var $selJenjangModal = $('#cuti_in_jenjang').empty().append('<option value="">- Pilih Jenjang -</option>');
         var $selJenjangFilter = $('#cuti_filterJenjang').empty().append('<option value="">Semua Jenjang</option>');
         var setJenjang = new Set();
 
-        var sumberData = (Array.isArray(CUTI_DB_PEGAWAI) && CUTI_DB_PEGAWAI.length > 0) ? CUTI_DB_PEGAWAI : CUTI_DATA_MASTER;
+        var sumberData = cuti_getSumberDataSekolah();
 
         if (Array.isArray(sumberData) && sumberData.length > 0) {
             sumberData.forEach(function(x) {
-                if (x.jenjang && String(x.jenjang).trim()) {
-                    setJenjang.add(String(x.jenjang).trim().toUpperCase());
-                } else {
-                    var unit = String(x.unit || "").trim().toUpperCase();
-                    if (!unit) return;
-                    if (unit.includes("TK") || unit.includes("PAUD") || unit.includes("KOBER") || unit.includes("TKN") || unit.includes("TUNAS MUDA")) setJenjang.add("PAUD / TK");
-                    else if (unit.includes("SD") || unit.includes("SDN")) setJenjang.add("SD");
-                    else if (unit.includes("SMP") || unit.includes("SMPN")) setJenjang.add("SMP");
-                    else if (unit.includes("SMA") || unit.includes("SMAN")) setJenjang.add("SMA");
-                    else if (unit.includes("SMK") || unit.includes("SMKN")) setJenjang.add("SMK");
-                    else if (unit.includes("SKB") || unit.includes("PKBM")) setJenjang.add("NON-FORMAL / SKB");
-                }
+                var j = cuti_deteksiJenjang(x);
+                if (j) setJenjang.add(j);
             });
+        }
+
+        // Pastikan opsi dasar selalu tersedia untuk Admin meskipun data sedang dimuat
+        if (setJenjang.size === 0) {
+            ["PAUD / TK", "SD", "SMP"].forEach(function(j) { setJenjang.add(j); });
         }
 
         var arrJenjang = Array.from(setJenjang).sort();
@@ -1315,6 +1344,10 @@
             $selJenjangModal.append('<option value="' + cuti_escapeHtml(j) + '">' + cuti_escapeHtml(j) + '</option>');
             $selJenjangFilter.append('<option value="' + cuti_escapeHtml(j) + '">' + cuti_escapeHtml(j) + '</option>');
         });
+
+        if (curModalVal && setJenjang.has(curModalVal)) $selJenjangModal.val(curModalVal);
+        if (curFilterVal && setJenjang.has(curFilterVal)) $selJenjangFilter.val(curFilterVal);
+        $selJenjangFilter.prop('disabled', !CUTI_IS_ADMIN);
     }
 
     function cuti_updateDropdownSekolahCascading() {
@@ -1322,51 +1355,46 @@
 
         var selectedJenjang = String($('#cuti_filterJenjang').val() || "").trim().toUpperCase();
         var $selectUnit = $('#cuti_filterUnit');
-        var currentSelectedUnit = $selectUnit.val() ? String($selectUnit.val()).trim().toUpperCase() : "SEMUA";
+        var currentSelectedUnit = $selectUnit.val() ? String($selectUnit.val()).trim() : "SEMUA";
 
-        var uniqueUnits = new Set();
-        var sumberData = (Array.isArray(CUTI_DB_PEGAWAI) && CUTI_DB_PEGAWAI.length > 0) ? CUTI_DB_PEGAWAI : CUTI_DATA_MASTER;
+        var uniqueUnitsMap = new Map();
+        var sumberData = cuti_getSumberDataSekolah();
 
         if (Array.isArray(sumberData) && sumberData.length > 0) {
             sumberData.forEach(function (x) {
                 var unitNama = String(x.unit || "").trim();
                 if (!unitNama) return;
 
-                var unitJenjang = "";
-                if (x.jenjang && String(x.jenjang).trim()) {
-                    unitJenjang = String(x.jenjang).trim().toUpperCase();
-                } else {
-                    var uUp = unitNama.toUpperCase();
-                    if (uUp.includes("TK") || uUp.includes("PAUD") || uUp.includes("KOBER") || uUp.includes("TKN") || uUp.includes("TUNAS MUDA")) unitJenjang = "PAUD / TK";
-                    else if (uUp.includes("SD") || uUp.includes("SDN")) unitJenjang = "SD";
-                    else if (uUp.includes("SMP") || uUp.includes("SMPN")) unitJenjang = "SMP";
-                    else if (uUp.includes("SMA") || uUp.includes("SMAN")) unitJenjang = "SMA";
-                    else if (uUp.includes("SMK") || uUp.includes("SMKN")) unitJenjang = "SMK";
-                    else if (uUp.includes("SKB") || uUp.includes("PKBM")) unitJenjang = "NON-FORMAL / SKB";
-                }
+                var unitJenjang = cuti_deteksiJenjang(x);
 
                 if (!selectedJenjang || unitJenjang === selectedJenjang) {
-                    uniqueUnits.add(unitNama);
+                    var keyUp = unitNama.toUpperCase();
+                    if (!uniqueUnitsMap.has(keyUp)) {
+                        uniqueUnitsMap.set(keyUp, unitNama);
+                    }
                 }
             });
         }
 
-        var sortedUnits = Array.from(uniqueUnits).sort(function(a, b) { return a.localeCompare(b); });
+        var sortedUnits = Array.from(uniqueUnitsMap.values()).sort(function(a, b) { return a.localeCompare(b); });
 
         $selectUnit.empty().append('<option value="SEMUA">Semua Unit Kerja</option>');
         sortedUnits.forEach(function (u) {
             $selectUnit.append($('<option>', { value: u, text: u }));
         });
 
-        if (currentSelectedUnit && uniqueUnits.has(currentSelectedUnit)) {
-            $selectUnit.val(currentSelectedUnit);
+        $selectUnit.prop('disabled', false).removeClass('bg-light text-maroon font-weight-bold');
+
+        var curKeyUp = currentSelectedUnit.toUpperCase();
+        if (currentSelectedUnit !== "SEMUA" && uniqueUnitsMap.has(curKeyUp)) {
+            $selectUnit.val(uniqueUnitsMap.get(curKeyUp));
         } else {
             $selectUnit.val("SEMUA");
         }
     }
 
     function cuti_filterUnitByJenjang() {
-        var jenjang = $('#cuti_in_jenjang').val();
+        var jenjang = String($('#cuti_in_jenjang').val() || "").trim().toUpperCase();
         var $selUnit = $('#cuti_inputUnit').empty().append('<option value="">- Pilih Sekolah -</option>');
         $('#cuti_in_npsn').val('');
         $('#cuti_inputNama').empty().append('<option value="">Pilih Sekolah Dulu</option>').prop('disabled', true);
@@ -1378,15 +1406,9 @@
             return;
         }
 
-        var units = CUTI_DB_PEGAWAI_CUTI.filter(function(x) {
-            var unit = String(x.unit || "").trim().toUpperCase();
-            if (jenjang === "PAUD / TK") return (unit.includes("TK") || unit.includes("PAUD") || unit.includes("KOBER") || unit.includes("TKN"));
-            if (jenjang === "SD") return (unit.includes("SD") || unit.includes("SDN"));
-            if (jenjang === "SMP") return (unit.includes("SMP") || unit.includes("SMPN"));
-            if (jenjang === "SMA") return (unit.includes("SMA") || unit.includes("SMAN"));
-            if (jenjang === "SMK") return (unit.includes("SMK") || unit.includes("SMKN"));
-            if (jenjang === "NON-FORMAL / SKB") return (unit.includes("SKB") || unit.includes("PKBM"));
-            return true;
+        var sumberPegawai = (Array.isArray(CUTI_DB_PEGAWAI_CUTI) && CUTI_DB_PEGAWAI_CUTI.length > 0) ? CUTI_DB_PEGAWAI_CUTI : CUTI_DB_PEGAWAI;
+        var units = (sumberPegawai || []).filter(function(x) {
+            return cuti_deteksiJenjang(x) === jenjang;
         }).map(function(x) { return String(x.unit || "").trim(); });
 
         var unikUnits = [...new Set(units)].filter(Boolean).sort();

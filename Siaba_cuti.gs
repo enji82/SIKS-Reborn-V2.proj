@@ -26,6 +26,8 @@ function getDatabaseCutiOptions() {
           return {
             nip: String(p.nip || "").trim(),
             unit: String(p.unit || "").trim(),
+            npsn: String(p.npsn || "").trim(),
+            jenjang: String(p.jenjang || "").trim(),
             nama: String(p.nama_tanpa_gelar || p.nama || "").trim(),
             nama_tanpa_gelar: String(p.nama_tanpa_gelar || p.nama || "").trim(),
             nama_dengan_gelar: String(p.nama_dengan_gelar || p.nama_lengkap || p.nama || "").trim(),
