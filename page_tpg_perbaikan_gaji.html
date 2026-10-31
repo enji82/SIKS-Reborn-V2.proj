@@ -1460,7 +1460,7 @@
                 }
 
                 // Populate Nama dropdown and select the current user
-                tpgPg_populateNamaDropdown(activeUnit, rowData.namaAsn);
+                tpgPg_populateNamaDropdown(activeUnit, rowData.namaAsn, rowData.nip, rowData);
 
                 if (rowData.dokumenUrl) {
                     $('#tpg_pg_dokumenLamaContainer').show();
@@ -1486,14 +1486,14 @@
         $('#global_modalForm').modal('show');
     }
 
-    function tpgPg_populateNamaDropdown(unitKerja, selectNamaAsn = null) {
+    function tpgPg_populateNamaDropdown(unitKerja, selectNamaAsn = null, selectNip = null, fallbackRowData = null) {
         const selectNama = $('#tpg_pg_inputNama');
         selectNama.html('<option value="">- Memuat Data... -</option>').prop('disabled', true);
 
         google.script.run
             .withSuccessHandler(function (res) {
                 if (res.status === 'success') {
-                    tpgPgGuruList = res.data;
+                    tpgPgGuruList = res.data || [];
                     selectNama.empty();
                     selectNama.append('<option value="">- Pilih Nama ASN -</option>');
                     tpgPgGuruList.forEach(g => {
@@ -1501,10 +1501,36 @@
                     });
                     selectNama.prop('disabled', false);
 
-                    if (selectNamaAsn) {
-                        const guru = tpgPgGuruList.find(g => String(g.nama).trim().toLowerCase() === String(selectNamaAsn).trim().toLowerCase());
+                    if (selectNip || selectNamaAsn) {
+                        const targetNip = selectNip ? String(selectNip).trim() : '';
+                        const targetNama = selectNamaAsn ? String(selectNamaAsn).trim().toLowerCase() : '';
+
+                        let guru = null;
+                        if (targetNip) {
+                            guru = tpgPgGuruList.find(g => String(g.nip).trim() === targetNip);
+                        }
+                        if (!guru && targetNama) {
+                            guru = tpgPgGuruList.find(g => String(g.nama).trim().toLowerCase() === targetNama);
+                        }
+
                         if (guru) {
-                            selectNama.val(guru.nip).trigger('change');
+                            selectNama.val(guru.nip);
+                        } else if (fallbackRowData || selectNamaAsn) {
+                            // Fallback jika ASN tidak ditemukan di daftar guru unit kerja saat ini
+                            const fNip = targetNip || (fallbackRowData ? fallbackRowData.nip : '') || '';
+                            const fNama = selectNamaAsn || (fallbackRowData ? fallbackRowData.namaAsn : '') || fNip;
+                            if (fNip) {
+                                selectNama.append('<option value="' + fNip + '">' + fNama + '</option>');
+                                selectNama.val(fNip);
+                                if (!tpgPgGuruList.some(g => String(g.nip).trim() === fNip)) {
+                                    tpgPgGuruList.push({
+                                        nama: fNama,
+                                        nip: fNip,
+                                        statusPegawai: fallbackRowData ? (fallbackRowData.statusPegawai || '') : '',
+                                        nuptk: fallbackRowData ? (fallbackRowData.nuptk || '') : ''
+                                    });
+                                }
+                            }
                         }
                     }
                 } else {
