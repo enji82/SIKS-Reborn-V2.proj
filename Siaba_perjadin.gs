@@ -398,13 +398,41 @@ function hapusDataDinas(payload) {
     var sheetMaster = getSheet(KONFIG_DINAS.DB_KEY, KONFIG_DINAS.SHEET_MAIN);
     var sheetPeserta = getSheet(KONFIG_DINAS.DB_KEY, KONFIG_DINAS.SHEET_PESERTA);
     
-    var rowId = parseInt(payload.recId);
-    var noSptDihapus = String(sheetMaster.getRange(rowId, 2).getValue()).trim().toUpperCase();
-    
-    if (sheetPeserta && noSptDihapus !== "") {
-      removeDetailPesertaBySpt_(sheetPeserta, noSptDihapus, []);
+    var dataMaster = sheetMaster.getDataRange().getDisplayValues();
+    var hintRow = parseInt(payload.recId);
+    var targetSpt = payload.noSpt ? String(payload.noSpt).trim().toUpperCase() : "";
+    var rowId = -1;
+
+    // 1. Verifikasi baris berdasarkan hint indeks atau kecocokan No SPT
+    if (!isNaN(hintRow) && hintRow >= 2 && hintRow <= dataMaster.length) {
+      var rowVal = dataMaster[hintRow - 1];
+      var sptAtHint = String(rowVal[1] || "").trim().toUpperCase();
+      if (targetSpt === "" || sptAtHint === targetSpt) {
+        rowId = hintRow;
+        if (targetSpt === "") targetSpt = sptAtHint;
+      }
     }
 
+    // 2. Jika hintRow bergeser karena baris lain terhapus, lakukan pencarian linier berdasarkan No SPT
+    if (rowId === -1 && targetSpt !== "") {
+      for (var i = 1; i < dataMaster.length; i++) {
+        if (String(dataMaster[i][1] || "").trim().toUpperCase() === targetSpt) {
+          rowId = i + 1;
+          break;
+        }
+      }
+    }
+
+    if (rowId === -1) {
+      return "Data tidak ditemukan atau sudah dihapus sebelumnya.";
+    }
+
+    // Hapus relasi detail peserta di Sheet Peserta
+    if (sheetPeserta && targetSpt !== "") {
+      removeDetailPesertaBySpt_(sheetPeserta, targetSpt, []);
+    }
+
+    // Hapus seluruh 1 baris penuh di Sheet Utama (Perjalanan_Dinas)
     sheetMaster.deleteRow(rowId);
     SpreadsheetApp.flush();
     return "Sukses";
