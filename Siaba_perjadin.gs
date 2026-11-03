@@ -175,10 +175,11 @@ function simpanSptUnified(payload) {
     // VAKSIN: Backend Source of Truth 
     var dataM = sheetMaster.getDataRange().getDisplayValues();
     var barisKetemu = -1;
-    var targetSpt = String(payload.header.noSpt).trim().toUpperCase();
+    var targetSptLookup = String(payload.originalNoSpt || payload.header.noSpt).trim().toUpperCase();
+    var finalNoSpt = String(payload.header.noSpt).trim().toUpperCase();
 
     for(var j = 1; j < dataM.length; j++){
-      if(String(dataM[j][1]).trim().toUpperCase() === targetSpt) {
+      if(String(dataM[j][1]).trim().toUpperCase() === targetSptLookup) {
         barisKetemu = j + 1;
         break;
       }
@@ -194,6 +195,7 @@ function simpanSptUnified(payload) {
     } else {
       // UPDATE SPT YANG SUDAH ADA
       var r = barisKetemu;
+      if(payload.header.noSpt) sheetMaster.getRange(r, 2).setValue(payload.header.noSpt);
       if(payload.header.jenis) sheetMaster.getRange(r, 1).setValue(payload.header.jenis);
       if(payload.header.tglSpt) sheetMaster.getRange(r, 3).setValue(tglSptTxt);
       if(payload.header.tglMulai) sheetMaster.getRange(r, 4).setValue(tglMulaiTxt);
@@ -236,7 +238,7 @@ function simpanSptUnified(payload) {
     var tglInput = p.waktuInput || sysDateStr;
     rowsPeserta.push([payload.header.noSpt, p.nip, p.nama, p.unit, stPeserta, ketPeserta, tglInput]);
   });
-  removeDetailPesertaBySpt_(sheetDetail, targetSpt, rowsPeserta);
+  removeDetailPesertaBySpt_(sheetDetail, targetSptLookup, rowsPeserta);
 
     SpreadsheetApp.flush();
     return "Sukses";
