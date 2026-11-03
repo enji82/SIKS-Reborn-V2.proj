@@ -216,23 +216,27 @@ function simpanSptUnified(payload) {
         sheetMaster.getRange(r, 18).setValue("");
       }
 
-      // Bersihkan tanda dibaca oleh Admin agar Admin mendapat notifikasi baru
-      var curReadBy = String(sheetMaster.getRange(r, 19).getValue() || "").trim();
-      if (curReadBy !== "") {
-        var list = curReadBy.split(",");
-        var idxAdmin = list.indexOf("Admin");
-        if (idxAdmin > -1) {
-          list.splice(idxAdmin, 1);
-          sheetMaster.getRange(r, 19).setValue(list.join(","));
-        }
+    // Bersihkan tanda dibaca oleh Admin agar Admin mendapat notifikasi baru
+    var curReadBy = String(sheetMaster.getRange(r, 19).getValue() || "").trim();
+    if (curReadBy !== "") {
+      var list = curReadBy.split(",");
+      var idxAdmin = list.indexOf("Admin");
+      if (idxAdmin > -1) {
+        list.splice(idxAdmin, 1);
+        sheetMaster.getRange(r, 19).setValue(list.join(","));
       }
     }
+  }
 
-    var rowsPeserta = [];
-    payload.listPeserta.forEach(function(p){
-      rowsPeserta.push([payload.header.noSpt, p.nip, p.nama, p.unit, "Diproses", "", sysDateStr]);
-    });
-    removeDetailPesertaBySpt_(sheetDetail, targetSpt, rowsPeserta);
+  // Penggabungan Peserta: Jika SPT yang sudah ada, pertahankan status peserta lama (jika ada) atau tambahkan data peserta
+  var rowsPeserta = [];
+  payload.listPeserta.forEach(function(p){
+    var stPeserta = p.status || "Diproses";
+    var ketPeserta = p.keterangan || "";
+    var tglInput = p.waktuInput || sysDateStr;
+    rowsPeserta.push([payload.header.noSpt, p.nip, p.nama, p.unit, stPeserta, ketPeserta, tglInput]);
+  });
+  removeDetailPesertaBySpt_(sheetDetail, targetSpt, rowsPeserta);
 
     SpreadsheetApp.flush();
     return "Sukses";
@@ -351,7 +355,14 @@ function getPesertaDinas(noSpt) {
       var result = [];
       for (var i = 1; i < data.length; i++) {
         if (String(data[i][0]).trim().toUpperCase() === String(noSpt).trim().toUpperCase()) {
-          result.push({ nip: data[i][1], nama: data[i][2], unit: data[i][3], status: data[i][4] });
+          result.push({ 
+            nip: data[i][1], 
+            nama: data[i][2], 
+            unit: data[i][3], 
+            status: data[i][4] || "Diproses",
+            keterangan: data[i][5] || "",
+            waktuInput: data[i][6] || ""
+          });
         }
       }
       return JSON.stringify(result);
