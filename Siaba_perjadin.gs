@@ -209,13 +209,12 @@ function simpanSptUnified(payload) {
       sheetMaster.getRange(r, 14).setValue(sysDateStr); 
       sheetMaster.getRange(r, 15).setValue(userName);   
 
-      // Reset status ke Diproses dan bersihkan verifikasi lama HANYA jika status belum Disetujui
+      // Reset status ke Diproses HANYA jika status belum Disetujui
+      // Catatan, tglVerif, dan verifikator lama sengaja DIPERTAHANKAN
+      // agar Admin dapat melihat histori "Verifikasi Sebelumnya" saat memeriksa data hasil perbaikan
       var currentStatus = String(dataM[r - 1][9]).trim();
       if (currentStatus !== "Disetujui") {
         sheetMaster.getRange(r, 10).setValue("Diproses");
-        sheetMaster.getRange(r, 16).setValue("");
-        sheetMaster.getRange(r, 17).setValue("");
-        sheetMaster.getRange(r, 18).setValue("");
       }
 
     // Bersihkan tanda dibaca oleh Admin agar Admin mendapat notifikasi baru
@@ -388,10 +387,10 @@ function verifikasiDataDinas(payload) {
     sheet.getRange(row, 16).setValue(sysDateStr);   
     sheet.getRange(row, 17).setValue(verifikator);  
 
-    if (payload.keterangan) {
-        sheet.getRange(row, 18).setValue(payload.keterangan);
-    } else if (payload.status === 'Disetujui') {
-        sheet.getRange(row, 18).setValue("");
+    // Catatan diperbarui jika diisi oleh admin.
+    // Jika dikosongkan saat Disetujui/Diproses, tidak menghapus catatan revisi sebelumnya kecuali admin sengaja mengisinya.
+    if (payload.keterangan !== undefined && payload.keterangan !== null && String(payload.keterangan).trim() !== "") {
+        sheet.getRange(row, 18).setValue(String(payload.keterangan).trim());
     }
     
     SpreadsheetApp.flush();

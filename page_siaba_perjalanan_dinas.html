@@ -1308,9 +1308,18 @@
         $('#perdin_vKegiatan').text(data.kegiatan);
         $('#perdin_vJml').text((data.jmlAsn || '0') + ' Orang');
 
-        var ketLama = (data.keterangan && data.keterangan !== "-") ? data.keterangan : "";
-        if (ketLama) { $('#perdin_prevCatatan').text(ketLama); $('#perdin_prevCatatanWrap').show(); }
-        else { $('#perdin_prevCatatan').text(''); $('#perdin_prevCatatanWrap').hide(); }
+        var ketLama = (data.keterangan && data.keterangan !== "-") ? String(data.keterangan).trim() : "";
+        if (ketLama) {
+            var verifInfo = '';
+            if (data.verifikator && data.verifikator !== '-' && data.tglVerif && data.tglVerif !== '-') {
+                verifInfo = ' <span class="text-muted" style="font-size: 11px;">(' + perdin_escapeHtml(data.verifikator) + ' - ' + perdin_escapeHtml(data.tglVerif) + ')</span>';
+            }
+            $('#perdin_prevCatatan').html(perdin_escapeHtml(ketLama) + verifInfo);
+            $('#perdin_prevCatatanWrap').show();
+        } else {
+            $('#perdin_prevCatatan').empty();
+            $('#perdin_prevCatatanWrap').hide();
+        }
         var stButton = String(data.status || "").toLowerCase();
         var initStatus = 'Diproses';
         if (stButton.includes('setuju') || stButton.includes('acc') || stButton.includes('ok')) initStatus = 'Disetujui';
@@ -1318,7 +1327,14 @@
         else if (stButton.includes('tolak')) initStatus = 'Ditolak';
 
         $('#perdin_verifStatus').prop('disabled', false).val(initStatus);
-        $('#perdin_verifCatatan').prop('disabled', false).val(data.keterangan || '');
+        $('#perdin_verifCatatan').prop('disabled', false).val('');
+        if (initStatus === 'Revisi' || initStatus === 'Ditolak') {
+            $('#perdin_reqCatatanVerif').show();
+            $('#perdin_verifCatatan').prop('required', true).attr('placeholder', 'Wajib diisi alasan/catatan verifikasi (min 5 karakter)...');
+        } else {
+            $('#perdin_reqCatatanVerif').hide();
+            $('#perdin_verifCatatan').prop('required', false).attr('placeholder', 'Catatan admin (opsional)...');
+        }
         $('#perdin_btnVerifEksekusi').show().prop('disabled', false).html('<i class="fas fa-check mr-2"></i>VERIFIKASI');
 
         $('#perdin_vListPeserta').html('<li class="text-muted"><i class="fas fa-spinner fa-spin mr-1"></i> Mencari daftar peserta...</li>');
@@ -1364,6 +1380,9 @@
 
         // Pastikan form dikembalikan saat modal ditutup
         $('#global_modalVerifikasi').off('hidden.bs.modal.perdinverif').on('hidden.bs.modal.perdinverif', function () {
+            $('#perdin_prevCatatan').empty();
+            $('#perdin_prevCatatanWrap').hide();
+            $('#perdin_verifCatatan').val('');
             $('#perdin_verifFooter').appendTo('#perdin_formVerif');
             $('#perdin_formVerif').appendTo('#perdin_templates');
             $('#global_verifikasiFooterArea').hide();
@@ -1396,7 +1415,9 @@
                     for (var i = 0; i < PERDIN_CACHE_DATA.length; i++) {
                         if (String(PERDIN_CACHE_DATA[i].rowBaris) === String(rowId)) {
                             PERDIN_CACHE_DATA[i].status = st;
-                            PERDIN_CACHE_DATA[i].keterangan = ket;
+                            if (ket !== "") {
+                                PERDIN_CACHE_DATA[i].keterangan = ket;
+                            }
                             PERDIN_CACHE_DATA[i].tglVerif = "Baru saja";
                             PERDIN_CACHE_DATA[i].verifikator = PERDIN_USER_AKTIF;
                             break;
