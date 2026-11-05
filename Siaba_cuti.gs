@@ -224,6 +224,7 @@ function simpanPengajuanCuti(payload) {
     rowData[4]=tglMulaiIndo; rowData[5]=tglSelesaiIndo; rowData[6]=payload.jumlahHari; rowData[7]=payload.alasan;
     rowData[8]=payload.alamat; rowData[9]="'"+payload.hp; rowData[10]="Diproses"; rowData[11]=""; rowData[12]=linkPdf;
     rowData[13]=sysDateStr; rowData[14]=payload.userInput; 
+    rowData[19]=pData.sisaCT || "0";
     rowData[21]=tglPengajuanFormat; rowData[22]=pData.jabatan; rowData[23]=pData.masa_kerja; rowData[24]=pData.unit;
     rowData[25]=pData.ct; rowData[26]=pData.cb; rowData[27]=pData.cs; rowData[28]=pData.cm; rowData[29]=pData.cap; rowData[30]=pData.cltn;
     rowData[31]=pData["N-2"]; rowData[32]=pData["N-1"]; rowData[33]=pData["N"];
@@ -268,6 +269,7 @@ function updatePengajuanCuti(payload) {
 
     sheet.getRange(rowIndex, 11, 1, 3).setValues([["Diproses", "", linkPdf]]);
     sheet.getRange(rowIndex, 16, 1, 4).setValues([[tglEditStr, payload.userInput, "", ""]]); 
+    sheet.getRange(rowIndex, 20).setValue(pData.sisaCT || "0");
     
     sheet.getRange(rowIndex, 22, 1, 20).setValues([[
       tglPengajuanFormat, pData.jabatan, pData.masa_kerja, pData.unit,
@@ -321,6 +323,71 @@ function ajukanBatalCuti(rowBaris, alasan, userName) {
   } catch (e) { return (e.message.includes("lock")) ? "Sistem sibuk." : "Error: " + e.message; } finally { lock.releaseLock(); }
 }
 
+function regeneratePdfPengajuanCuti(rowBaris) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(20000);
+    var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
+    var row = parseInt(rowBaris);
+    var rowData = sheet.getRange(row, 1, 1, 52).getDisplayValues()[0];
+
+    var unit = rowData[0];
+    var nama = rowData[1];
+    var nip = String(rowData[2] || "").replace(/['\s]/g, "").trim();
+    var jenisCuti = rowData[3];
+    var tglMulai = rowData[4];
+    var tglSelesai = rowData[5];
+    var jumlahHari = rowData[6];
+    var alasan = rowData[7];
+    var alamat = rowData[8];
+    var hp = rowData[9];
+    var tglPengajuan = rowData[21] || "";
+
+    var dbData = getDetailPegawaiByNip(nip);
+    var pejabat = lookupPejabatStruktural(jenisCuti, unit, (dbData ? dbData.golongan : ""), (dbData ? dbData.jabatan : ""));
+    
+    // Normalisasi format tanggal input untuk setupPdfData
+    var payloadMock = {
+      unit: unit,
+      nama: nama,
+      nip: nip,
+      jenisCuti: jenisCuti,
+      jumlahHari: jumlahHari,
+      alasan: alasan,
+      alamat: alamat,
+      hp: hp,
+      tglMulai: "",
+      tglSelesai: "",
+      tglPengajuan: tglPengajuan
+    };
+
+    // Ambil tahun dari tglMulai (misal: "14 Agustus 2026")
+    var dM = parseDateIndo(tglMulai);
+    if (dM && !isNaN(dM.getTime())) {
+      payloadMock.tglMulai = dM.getFullYear() + "-" + String(dM.getMonth() + 1).padStart(2, '0') + "-" + String(dM.getDate()).padStart(2, '0');
+    } else {
+      payloadMock.tglMulai = new Date().getFullYear() + "-01-01";
+    }
+
+    var pData = setupPdfData(payloadMock, dbData, pejabat, tglPengajuan || formatTglIndo(payloadMock.tglMulai), tglMulai, tglSelesai);
+    var linkPdfBaru = generatePdfCuti(pData);
+
+    if (linkPdfBaru) {
+      sheet.getRange(row, 13).setValue(linkPdfBaru);
+    }
+    // Update kolom Sisa CT (kolom 20) dan rincian N-2, N-1, N (kolom 32, 33, 34)
+    sheet.getRange(row, 20).setValue(pData.sisaCT || "0");
+    sheet.getRange(row, 32, 1, 3).setValues([[pData["N-2"], pData["N-1"], pData["N"]]]);
+    SpreadsheetApp.flush();
+
+    return JSON.stringify({ status: "Sukses", url: linkPdfBaru, sisaCT: pData.sisaCT || "0" });
+  } catch (e) {
+    return JSON.stringify({ error: e.message });
+  } finally {
+    try { lock.releaseLock(); } catch(e) {}
+  }
+}
+
 function verifikasiPengajuan(rowBaris, status, catatan, adminName) {
   var lock = LockService.getScriptLock();
   try {
@@ -346,6 +413,34 @@ function verifikasiPengajuan(rowBaris, status, catatan, adminName) {
 /* ======================================================================
    3. HELPERS & GENERATOR PDF
    ====================================================================== */
+
+function getSisaCutiPegawai(targetNip) {
+  var result = { n2: "0", n1: "0", n: "0", total: "0" };
+  if (!targetNip) return result;
+  try {
+    var sheet = getSheet(KONFIG_CUTI.DB_KEY, "Sisa CT");
+    if (!sheet) return result;
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) return result;
+
+    var cleanTarget = String(targetNip).replace(/['\s]/g, "").trim();
+    var values = sheet.getRange(2, 1, lastRow - 1, 13).getDisplayValues();
+    for (var i = 0; i < values.length; i++) {
+      var rowNip = String(values[i][2] || "").replace(/['\s]/g, "").trim();
+      if (rowNip === cleanTarget) {
+        // c=9: Sisa N-2, c=10: Sisa N-1, c=11: Sisa N, c=12: Sisa CT (Total)
+        result.n2 = String(values[i][9] || "0").trim();
+        result.n1 = String(values[i][10] || "0").trim();
+        result.n = String(values[i][11] || "0").trim();
+        result.total = String(values[i][12] || "0").trim();
+        break;
+      }
+    }
+  } catch (e) {
+    Logger.log("Error getSisaCutiPegawai: " + e.message);
+  }
+  return result;
+}
 
 function cekBentrokCuti(nipBaru, tglMulaiBaruStr, tglSelesaiBaruStr, rowIdPengecualian) {
   var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
@@ -466,21 +561,29 @@ function setupPdfData(payload, dbData, pejabat, tglPengajuanFormat, tglMulaiIndo
         d.kepada = dbData?dbData.fullRow[19]:""; d.nama_atasan = dbData?dbData.fullRow[13]:""; d.nip_atasan = dbData?dbData.fullRow[14]:""; d.jabatan_atasan = dbData?dbData.fullRow[15]:""; d.nama_setuju = dbData?dbData.fullRow[16]:""; d.nip_setuju = dbData?dbData.fullRow[17]:""; d.jabatan_setuju = dbData?dbData.fullRow[18]:""; 
     }
     
-    var thnMulai = parseInt(payload.tglMulai.split("-")[0]);
-    if (dbData) { 
-        var tahunDasar = 2023;
-        if (thnMulai >= tahunDasar) {
-            // Menggunakan Rumus Deret Aritmatika (Selisih 12 Index per Tahun)
-            var selisihTahun = thnMulai - tahunDasar;
-            var indexN = 30 + (selisihTahun * 12);
-            var indexN1 = indexN - 2; // Mundur 2 kolom dari N
-            var indexN2 = indexN - 4; // Mundur 4 kolom dari N
+    // 1. Ambil data sisa cuti resmi dari master sheet "Sisa CT" (N, N-1, N-2)
+    var sisaResmi = getSisaCutiPegawai(payload.nip);
+    d["N-2"] = sisaResmi.n2 || "0";
+    d["N-1"] = sisaResmi.n1 || "0";
+    d["N"]   = sisaResmi.n   || "0";
+    d["sisaCT"] = sisaResmi.total || "0";
 
-            // Pastikan index tidak melebihi jumlah kolom di Excel (jaga-jaga jika Admin belum menambah kolom di Spreadsheet 2027)
-            if (indexN < dbData.fullRow.length) {
-                d["N"]   = dbData.fullRow[indexN]   || "0";
-                d["N-1"] = dbData.fullRow[indexN1] || "0";
-                d["N-2"] = dbData.fullRow[indexN2] || "0";
+    // 2. Fallback: jika di sheet "Sisa CT" tidak ditemukan data (keduanya 0 / strip), gunakan data deret sheet "Database Cuti"
+    if ((d["N"] === "0" || d["N"] === "-") && (d["N-1"] === "0" || d["N-1"] === "-") && (d["N-2"] === "0" || d["N-2"] === "-")) {
+        var thnMulai = parseInt(payload.tglMulai.split("-")[0]);
+        if (dbData) { 
+            var tahunDasar = 2023;
+            if (thnMulai >= tahunDasar) {
+                var selisihTahun = thnMulai - tahunDasar;
+                var indexN = 30 + (selisihTahun * 12);
+                var indexN1 = indexN - 2;
+                var indexN2 = indexN - 4;
+
+                if (indexN < dbData.fullRow.length) {
+                    d["N"]   = dbData.fullRow[indexN]   || d["N"];
+                    d["N-1"] = dbData.fullRow[indexN1] || d["N-1"];
+                    d["N-2"] = dbData.fullRow[indexN2] || d["N-2"];
+                }
             }
         }
     }
