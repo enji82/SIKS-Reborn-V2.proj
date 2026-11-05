@@ -125,6 +125,27 @@ function getDataCuti(tahun, bulan, unitFilter) {
     var fTahun = tahun ? String(tahun).trim() : "";
     var fBulan = bulan ? String(bulan).toLowerCase().trim() : "";
 
+    // Peta Lookup Sisa Cuti Tahunan Real-Time dari sheet "Sisa CT"
+    var mapSisaCT = {};
+    try {
+      var sheetSisa = getSheet(KONFIG_CUTI.DB_KEY, "Sisa CT");
+      if (sheetSisa) {
+        var lastSisaRow = sheetSisa.getLastRow();
+        if (lastSisaRow > 1) {
+          // Ambil kolom NIP (indeks 2 / col 3) dan Sisa CT (indeks 12 / col 13)
+          var sisaValues = sheetSisa.getRange(2, 1, lastSisaRow - 1, 13).getDisplayValues();
+          for (var s = 0; s < sisaValues.length; s++) {
+            var sNip = String(sisaValues[s][2] || "").replace(/['\s]/g, "").trim();
+            if (sNip) {
+              mapSisaCT[sNip] = String(sisaValues[s][12] || "0").trim();
+            }
+          }
+        }
+      }
+    } catch (eSisa) {
+      Logger.log("Warning lookup Sisa CT: " + eSisa.message);
+    }
+
     for (var i = 1; i < dataDisplay.length; i++) {
       var rowTxt = dataDisplay[i];
       if (!rowTxt[cNama] && !rowTxt[cNip]) continue;
@@ -148,6 +169,9 @@ function getDataCuti(tahun, bulan, unitFilter) {
       var tVerif = parseSiabaDateTime(rowTxt[cTglVerif]); 
       var lastActivity = Math.max(tInput, tEdit, tVerif);
 
+      var cleanNip = String(rowTxt[cNip] || "").replace(/['\s]/g, "").trim();
+      var realSisaCT = (cleanNip && mapSisaCT.hasOwnProperty(cleanNip)) ? mapSisaCT[cleanNip] : (rowTxt[cSisaCT] || "0");
+
       result.push({
         rowBaris: i + 1,
         unit: rowTxt[cUnit], nama: rowTxt[cNama], nip: rowTxt[cNip], jenis: rowTxt[cJenis],
@@ -157,7 +181,7 @@ function getDataCuti(tahun, bulan, unitFilter) {
         tglInput: rowTxt[cTglInput], userInput: rowTxt[cUserInput],
         tglEdit: rowTxt[cTglEdit], userEdit: rowTxt[cUserEdit],
         tglVerif: rowTxt[cTglVerif], verifikator: rowTxt[cVerifikator],
-        sisaCT: rowTxt[cSisaCT] || "0",
+        sisaCT: realSisaCT,
         tanggal: rowTxt[cTanggal] || "", 
         npsn: rowTxt[cNpsn] || "", 
         timestamp: lastActivity
