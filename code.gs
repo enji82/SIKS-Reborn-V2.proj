@@ -275,18 +275,18 @@ function processLogin(formObj) {
 
         upgradePasswordHashIfPlain(sheet, i + 1, inputPass, storedPass);
 
-        var realName = row[2]; // Nama dari Excel
+        var realName = String(row[2] || "").trim(); // Nama dari Excel
         
         // JIKA NAMA KOSONG DI EXCEL, PAKAI USERNAME AGAR TIDAK ERROR
-        if (!realName || realName === "") realName = row[0];
+        if (!realName || realName === "") realName = String(row[0] || "").trim();
 
         var userObj = {
-          username: row[0],
+          username: String(row[0] || "").trim(),
           nama_lengkap: realName,
           nama: realName,
-          role: row[3],
-          photo: row[4] || "",
-          unit: row[5] || "",
+          role: String(row[3] || "").trim(),
+          photo: row[4] ? String(row[4]).trim() : "",
+          unit: row[5] ? String(row[5]).trim() : "",
           isLoggedIn: true,
           aksesMenu: getAksesMenuUser(row[0]) // Sertakan whitelist hak akses
         };
@@ -1324,11 +1324,11 @@ function getUserProfileByName(username) {
         // A=Username, B=Password, C=Nama Lengkap, D=Role, E=Foto, F=Unit
         return {
           found: true,
-          username: data[i][0],
-          nama_lengkap: data[i][2], // Kolom C
-          role: data[i][3],         // Kolom D
-          photo: data[i][4] || "",  // Kolom E
-          unit: data[i][5] || ""    // Kolom F
+          username: String(data[i][0] || "").trim(),
+          nama_lengkap: String(data[i][2] || "").trim(), // Kolom C
+          role: String(data[i][3] || "").trim(),         // Kolom D
+          photo: data[i][4] ? String(data[i][4]).trim() : "",  // Kolom E
+          unit: data[i][5] ? String(data[i][5]).trim() : ""    // Kolom F
         };
       }
     }

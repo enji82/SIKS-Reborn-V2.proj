@@ -384,11 +384,17 @@ function simpanArtikelEmading(payload) {
           rowIndex = i + 1;
           // Validasi Hak Akses: Hanya pembuat atau role admin yang berhak
           var pembuat = String(data[i][5] || "").trim().toLowerCase();
+          var pengunggahLama = String(data[i][4] || "").trim().toLowerCase();
+          var unitLama = String(data[i][6] || "").trim().toLowerCase();
           var userReq = String(payload.userLogin || "").trim().toLowerCase();
           var roleReq = String(payload.userRole || "").trim().toLowerCase();
-          var isAdminRole = roleReq.indexOf("admin") !== -1 || roleReq.indexOf("verifikator") !== -1 || roleReq.indexOf("korwil") !== -1;
+          var isAdminRole = roleReq.indexOf("admin") !== -1 || roleReq.indexOf("superadmin") !== -1 || roleReq.indexOf("verifikator") !== -1 || roleReq.indexOf("korwil") !== -1;
 
-          if (!isAdminRole && pembuat && userReq && pembuat !== userReq) {
+          var isOwnerMatch = (pembuat && userReq && pembuat === userReq) ||
+                             (pengunggahLama && userReq && pengunggahLama === userReq) ||
+                             (unitLama && unitLama !== "-" && userReq && unitLama === userReq);
+
+          if (!isAdminRole && pembuat && userReq && !isOwnerMatch) {
             return JSON.stringify({ error: "Anda tidak memiliki hak akses untuk mengedit artikel ini." });
           }
           break;
@@ -404,6 +410,7 @@ function simpanArtikelEmading(payload) {
       sheet.getRange(rowIndex, 3).setValue(isiArtikel);
       sheet.getRange(rowIndex, 4).setValue(payload.kategori);
       sheet.getRange(rowIndex, 5).setValue(payload.pengunggah);
+      if (payload.unitKerja !== undefined) sheet.getRange(rowIndex, 7).setValue(payload.unitKerja || "-");
       if (fotoUrlMerged) sheet.getRange(rowIndex, 8).setValue(fotoUrlMerged);
       sheet.getRange(rowIndex, 9).setValue(videoUrl);
       if (lampiranUrl) {

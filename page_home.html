@@ -1779,6 +1779,77 @@
     renderBeritaHome(HOME_CURRENT_BERITA_LIST);
   }
 
+  // Helper ambil sesi user aktif dengan aman (mendukung double-parsed JSON & fallback DOM)
+  function getAktifUserHome() {
+    var u = null;
+    try {
+      if (typeof getSesiUser === 'function') {
+        u = getSesiUser();
+      }
+      if (!u) {
+        var dataLocal = localStorage.getItem("siksUser");
+        if (dataLocal) {
+          u = JSON.parse(dataLocal);
+          if (typeof u === 'string') u = JSON.parse(u);
+        }
+      }
+    } catch (e) {}
+
+    if (u && typeof u === 'object') {
+      return u;
+    }
+
+    // Fallback DOM navbar jika localStorage gagal dibaca
+    var navName = ($('#nav-user-name').text() || $('#dropdown-user-name').text() || '').trim();
+    var navRole = ($('#dropdown-user-role').text() || '').trim();
+    if (navName && navName !== 'Memuat...' && navName !== 'Nama Pengguna') {
+      return {
+        username: navName,
+        nama_lengkap: navName,
+        nama: navName,
+        role: navRole,
+        unit: ''
+      };
+    }
+    return null;
+  }
+
+  // Helper global cek apakah user aktif adalah admin/verifikator/korwil atau pemilik berita
+  window.cekBolehEditBerita = function(item) {
+    try {
+      if (!item) return false;
+      var u = getAktifUserHome();
+      if (!u) return false;
+
+      var role = String(u.role || u.peran || u.level || '').toLowerCase().trim();
+      if (
+        role.indexOf('admin') !== -1 ||
+        role.indexOf('superadmin') !== -1 ||
+        role.indexOf('verifikator') !== -1 ||
+        role.indexOf('korwil') !== -1
+      ) {
+        return true;
+      }
+
+      var myName = String(u.nama_lengkap || u.fullName || u.nama || u.username || '').toLowerCase().trim();
+      var myUser = String(u.username || u.user || u.id || '').toLowerCase().trim();
+      var myUnit = String(u.unit_kerja || u.unit || u.sekolah || u.npsn || '').toLowerCase().trim();
+
+      var author = String(item.pengunggah || '').toLowerCase().trim();
+      var authorUser = String(item.userLogin || '').toLowerCase().trim();
+      var itemUnit = String(item.unitKerja || '').toLowerCase().trim();
+
+      if (authorUser && myUser && authorUser === myUser) return true;
+      if (authorUser && myName && authorUser === myName) return true;
+      if (author && myName && author === myName) return true;
+      if (author && myUser && author === myUser) return true;
+      if (myUnit && itemUnit && itemUnit !== '-' && myUnit === itemUnit) return true;
+    } catch (e) {
+      console.warn("Error cekBolehEditBerita:", e);
+    }
+    return false;
+  };
+
   // Render Feed: 3 Berita Besar + 6 Berita Kecil + Tombol Muat Lainnya
   function renderBeritaHome(list) {
     var $container = $('#home_berita_container');
@@ -1796,30 +1867,6 @@
     var displayList = list.slice(0, HOME_NEWS_VISIBLE_COUNT);
     var headlines = displayList.slice(0, 3);
     var lainnya = displayList.slice(3); // Berita kecil
-
-    // Helper cek apakah user aktif adalah admin atau pemilik berita
-    function cekBolehEditBerita(item) {
-      try {
-        var dataLocal = localStorage.getItem("siksUser");
-        if (!dataLocal) return false;
-        var u = JSON.parse(dataLocal);
-        var role = (u.role || '').toLowerCase();
-        if (role.indexOf('admin') !== -1) return true;
-
-        var myName = (u.nama_lengkap || u.fullName || u.nama || u.username || '').toLowerCase().trim();
-        var myUser = (u.username || '').toLowerCase().trim();
-        var myUnit = (u.unit_kerja || u.unit || u.sekolah || u.npsn || '').toLowerCase().trim();
-
-        var author = (item.pengunggah || '').toLowerCase().trim();
-        var authorUser = (item.userLogin || '').toLowerCase().trim();
-        var itemUnit = (item.unitKerja || '').toLowerCase().trim();
-
-        if (authorUser && myUser && authorUser === myUser) return true;
-        if (author && myName && author === myName) return true;
-        if (myUnit && itemUnit && myUnit === itemUnit) return true;
-      } catch(e) {}
-      return false;
-    }
 
     // 1. KARTU BERITA BESAR (MAKS 3)
     function buatKartuBeritaBesar(item) {
@@ -2133,13 +2180,13 @@
     $('#emading_inputKategori').val('Kegiatan');
     
     // Otomatis isi nama pengunggah dari sesi aktif
-    var dataLocal = localStorage.getItem("siksUser");
-    if (dataLocal) {
-      try {
-        var u = JSON.parse(dataLocal);
-        $('#emading_inputPengunggah').val(u.nama_lengkap || u.fullName || u.nama || u.username || '');
-        $('#emading_inputUnitKerja').val(u.unit_kerja || u.unit || u.sekolah || '');
-      } catch(e){}
+    var u = getAktifUserHome();
+    if (u) {
+      $('#emading_inputPengunggah').val(String(u.nama_lengkap || u.fullName || u.nama || u.username || ''));
+      $('#emading_inputUnitKerja').val(String(u.unit_kerja || u.unit || u.sekolah || ''));
+    } else {
+      $('#emading_inputPengunggah').val('');
+      $('#emading_inputUnitKerja').val('');
     }
 
     $('#emading_editorContent').html('');
@@ -2281,13 +2328,10 @@
 
     var curUser = 'user';
     var curRole = '';
-    var dataLocal = localStorage.getItem("siksUser");
-    if (dataLocal) {
-      try {
-        var u = JSON.parse(dataLocal);
-        curUser = u.username || 'user';
-        curRole = u.role || '';
-      } catch(e){}
+    var u = getAktifUserHome();
+    if (u) {
+      curUser = String(u.username || u.user || u.nama_lengkap || u.nama || 'user').trim();
+      curRole = String(u.role || u.peran || u.level || '').trim();
     }
 
     var existingFotoUrls = [];
