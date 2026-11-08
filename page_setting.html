@@ -107,9 +107,10 @@
                   <div class="col-md-4">
                     <div class="form-group">
                       <label class="form-label-sultan">Role</label>
-                      <select id="su_role" class="form-control form-control-sultan">
-                        <option value="user">User</option>
-                        <option value="admin">Admin</option>
+                      <select id="su_role" class="form-control form-control-sultan" onchange="setting_onRoleChange()">
+                        <option value="user">User (Sekolah)</option>
+                        <option value="Pengawas">Pengawas (Hanya Lihat)</option>
+                        <option value="admin">Admin (Penuh)</option>
                       </select>
                     </div>
                   </div>
@@ -148,6 +149,9 @@
                     <button class="sultan-btn sultan-btn-compact sultan-btn-outline-success" onclick="setting_pilihSemua(true)">Pilih Semua</button>
                     <button class="sultan-btn sultan-btn-compact sultan-btn-outline-secondary" onclick="setting_pilihSemua(false)">Hapus Semua</button>
                   </div>
+                </div>
+                <div id="su_pengawas_info" class="alert alert-info py-2 px-3 mb-2 d-none" style="border-radius:10px; font-size:12px;">
+                  <i class="fas fa-eye mr-1"></i> <b>Role Pengawas (Read-Only):</b> Otomatis memiliki akses melihat seluruh halaman &amp; data sekolah se-kecamatan tanpa bisa melakukan tambah, ubah, hapus, maupun verifikasi data. Menu Pengaturan &amp; Master Kategori otomatis disembunyikan.
                 </div>
                 <div id="su_checklist" class="sultan-akses-checklist">
                   <!-- dirender dari MENU_CONFIG -->
@@ -259,9 +263,12 @@ function setting_renderListUser(list) {
   var html = '';
   list.forEach(function(u) {
     var isActive = SETTING_CURRENT_USER && SETTING_CURRENT_USER.username === u.username;
-    var badgeRole = u.role && u.role.toLowerCase().includes('admin')
-      ? '<span class="badge-role-admin ml-1">ADMIN</span>'
-      : '<span class="badge-role-user ml-1">USER</span>';
+    var rLow = (u.role || '').toLowerCase();
+    var badgeRole = rLow.includes('pengawas')
+      ? '<span class="badge-role-pengawas ml-1">PENGAWAS</span>'
+      : (rLow.includes('admin')
+        ? '<span class="badge-role-admin ml-1">ADMIN</span>'
+        : '<span class="badge-role-user ml-1">USER</span>');
     html += '<div class="setting-user-item ' + (isActive ? 'active' : '') + '" onclick="setting_pilihUser(\'' + u.username + '\')">' +
       '<div class="d-flex justify-content-between align-items-center">' +
         '<div>' +
@@ -304,15 +311,29 @@ function setting_tampilkanPanel(u, isNew) {
   $('#su_username').val(u.username).prop('disabled', !isNew);
   $('#su_password').val(isNew ? '' : '');
   $('#su_nama').val(u.nama);
-  $('#su_role').val(u.role || 'user');
+  var rawRole = String(u.role || 'user').trim();
+  var rLow = rawRole.toLowerCase();
+  var roleVal = rLow.includes('pengawas') ? 'Pengawas' : (rLow.includes('admin') ? 'admin' : 'user');
+  $('#su_role').val(roleVal);
   $('#su_unit').val(u.unit);
   $('#su_btnHapus').toggle(!isNew);
   $('#setting_judulPanel').html(isNew
     ? '<i class="fas fa-user-plus mr-2"></i>Tambah User Baru'
     : '<i class="fas fa-user-edit mr-2"></i>Edit: ' + u.username);
   setting_renderChecklist(u.aksesMenu || []);
+  setting_onRoleChange();
   $('#setting_placeholder').addClass('d-none').removeClass('d-flex');
   $('#setting_panelDetail').removeClass('d-none').addClass('d-flex');
+}
+
+function setting_onRoleChange() {
+  var rVal = ($('#su_role').val() || '').toLowerCase();
+  var isPengawas = rVal.includes('pengawas');
+  var isAdmin = rVal.includes('admin');
+  $('#su_pengawas_info').toggleClass('d-none', !isPengawas);
+  if (isPengawas || isAdmin) {
+    setting_pilihSemua(true);
+  }
 }
 
 // ========================

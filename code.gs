@@ -1069,8 +1069,8 @@ function updateOnlineStatus(username, unitStr, roleStr) {
         var uName = String(u).toLowerCase();
         var uRoleLower = String(userRole).toLowerCase();
         
-        // JANGAN hitung akun admin ke dalam statistik SD/PAUD di Beranda (agar sinkron dengan Navbar)
-        if (uName.indexOf('admin') === -1 && uRoleLower.indexOf('admin') === -1) {
+        // JANGAN hitung akun admin/pengawas ke dalam statistik SD/PAUD di Beranda (agar sinkron dengan Navbar)
+        if (uName.indexOf('admin') === -1 && uRoleLower.indexOf('admin') === -1 && uRoleLower.indexOf('pengawas') === -1) {
           if (userUnit === "SD") {
             countSD++;
           } else if (userUnit === "PAUD") {
@@ -1128,8 +1128,8 @@ function getActiveUsersList() {
         var displayName = nameMap[u] || u;
         var uRoleLower = String(userRole).toLowerCase();
         
-        // Sembunyikan user yang mengandung kata admin
-        if (displayName.toLowerCase().indexOf('admin') === -1 && u.toLowerCase().indexOf('admin') === -1 && uRoleLower.indexOf('admin') === -1) {
+        // Sembunyikan user yang mengandung kata admin / pengawas
+        if (displayName.toLowerCase().indexOf('admin') === -1 && u.toLowerCase().indexOf('admin') === -1 && uRoleLower.indexOf('admin') === -1 && uRoleLower.indexOf('pengawas') === -1) {
           result.push({
             username: displayName,
             unit: userUnit,
@@ -1201,7 +1201,7 @@ function logUserVisit(userData) {
       kategoriUnit = "PAUD";
     } else {
       var userRole = String(userData.role || "").trim().toUpperCase();
-      if (userRole.includes("ADMIN")) kategoriUnit = "ADMIN";
+      if (userRole.includes("ADMIN") || userRole.includes("PENGAWAS")) kategoriUnit = "ADMIN";
     }
 
     // ===== TULIS LOG BARU DULU (PRIORITAS UTAMA) =====

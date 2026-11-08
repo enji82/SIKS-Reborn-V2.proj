@@ -43,8 +43,8 @@ function getMissingDocumentsReport(username, role, unit) {
     Logger.log("=== getMissingDocumentsReport ===");
     Logger.log("NPSN: [" + uName + "] | Role: " + uRole + " | Unit: " + uUnit);
 
-    // 1. Admin/korwil/verifikator: skip semua pengecekan
-    var isAdmin = (uRole.indexOf('admin') > -1 || uRole.indexOf('verifikator') > -1 || uRole.indexOf('korwil') > -1);
+    // 1. Admin/korwil/verifikator/pengawas: skip semua pengecekan
+    var isAdmin = (uRole.indexOf('admin') > -1 || uRole.indexOf('verifikator') > -1 || uRole.indexOf('korwil') > -1 || uRole.indexOf('pengawas') > -1);
     if (isAdmin) return { show: false };
 
     // 2. Identifikasi jenjang dari master Data_Sekolah

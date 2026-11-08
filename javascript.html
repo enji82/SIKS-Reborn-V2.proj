@@ -287,6 +287,10 @@
     },
     modal: {
       showForm: function (opsi) {
+        if (typeof checkUserRoleIsPengawas === 'function' && checkUserRoleIsPengawas()) {
+          Sultan.notif.peringatan('Mode Pengawas: Akun Anda hanya memiliki akses lihat data (Read-Only).');
+          return;
+        }
         var sizeClass = opsi.size || '';
         var theme = opsi.theme || 'primary';
 
@@ -371,6 +375,10 @@
         }
       },
       konfirmasiHapus: function (opsiOrKode, callbackYa) {
+        if (typeof checkUserRoleIsPengawas === 'function' && checkUserRoleIsPengawas()) {
+          Sultan.notif.peringatan('Mode Pengawas: Akun Anda hanya memiliki akses lihat data (Read-Only).');
+          return;
+        }
         var opsi = {};
         if (typeof opsiOrKode === 'string' || typeof opsiOrKode === 'number') {
           opsi.kode = opsiOrKode;
@@ -464,6 +472,10 @@
         });
       },
       verifikasi: function (opsi) {
+        if (typeof checkUserRoleIsPengawas === 'function' && checkUserRoleIsPengawas()) {
+          Sultan.notif.peringatan('Mode Pengawas: Akun Anda hanya memiliki akses lihat data (Read-Only).');
+          return;
+        }
         // ── SAFE CLEANUP (Generic) ──────────────────────────────────────────
         // Jika ada sisa elemen dari verifikasi sebelumnya yang belum sempat
         // dikembalikan ke template (race condition animasi modal), gunakan detach()
@@ -617,14 +629,34 @@
     } catch (e) { return null; }
   }
 
+  function checkUserRoleIsPengawas() {
+    try {
+      var user = getSesiUser();
+      if (!user) return false;
+      var role = String(user.role || "").toLowerCase().trim();
+      return (role.includes('pengawas') || role.includes('viewer') || role.includes('read-only') || role.includes('readonly'));
+    } catch (e) { return false; }
+  }
+
+  function checkUserRoleIsTrueAdmin() {
+    try {
+      var user = getSesiUser();
+      if (!user) return false;
+      var role = String(user.role || "").toLowerCase().trim();
+      if (checkUserRoleIsPengawas()) return false;
+      if (role.includes('admin') || role.includes('verifikator') || role.includes('korwil')) return true;
+      return false;
+    } catch (e) { return false; }
+  }
+
   function checkUserRoleIsAdmin() {
     try {
       var user = getSesiUser();
       if (!user) return false;
       var role = String(user.role || "").toLowerCase();
 
-      // VAKSIN 1: Gunakan .includes() agar "Administrator", "Admin Korwil", dll bisa lolos
-      if (role.includes('admin') || role.includes('verifikator') || role.includes('korwil')) return true;
+      // VAKSIN 1: Gunakan .includes() agar "Administrator", "Admin Korwil", maupun "Pengawas" (Read-Only All View) bisa membuka seluruh halaman & filter sekolah
+      if (role.includes('admin') || role.includes('verifikator') || role.includes('korwil') || role.includes('pengawas') || role.includes('viewer')) return true;
       return false;
     } catch (e) { return false; }
   }
@@ -634,7 +666,22 @@
      ============================================================= */
   $(document).ready(function () {
     console.log("SIKS-REBORN: Engine Started.");
-    $(document).on('show.bs.modal', '.modal', function () { $(this).appendTo('body'); });
+    $(document).on('show.bs.modal', '.modal', function (e) {
+      if (typeof checkUserRoleIsPengawas === 'function' && checkUserRoleIsPengawas()) {
+        var modalId = $(this).attr('id') || '';
+        var blockedModals = [
+          'global_modalForm', 'global_modalHapus', 'global_modalVerifikasi',
+          'lapbulkelola_modalTambahData', 'ptkpaud_modalForm', 'ptksdn_modalForm', 'ptksds_modalForm',
+          'emading_modalTulis', 'aduan_modalForm', 'arsipsiaba_modalForm', 'arsipsiaba_modalBulkUpload', 'arsipsiaba_modalHapus'
+        ];
+        if (blockedModals.indexOf(modalId) !== -1 || modalId.toLowerCase().indexOf('hapus') !== -1 || modalId.toLowerCase().indexOf('verif') !== -1 || modalId.toLowerCase().indexOf('tambah') !== -1) {
+          e.preventDefault();
+          Sultan.notif.peringatan('Mode Pengawas: Akun Anda hanya memiliki akses lihat data (Read-Only).');
+          return false;
+        }
+      }
+      $(this).appendTo('body');
+    });
 
     // Fix: Restore .modal-open on body if another modal is still open when one is hidden
     $(document).on('hidden.bs.modal', '.modal', function () {
@@ -771,7 +818,7 @@
       if (!user) {
         // --- PUBLIC LANDING PAGE MODE (NON-USER / BELUM LOGIN) ---
         // Landing page publik selalu berpenampilan terang bersih resmi
-        $('body').addClass('public-landing-mode').removeClass('sidebar-mini sidebar-mini-md dark-mode');
+        $('body').addClass('public-landing-mode').removeClass('sidebar-mini sidebar-mini-md dark-mode role-pengawas');
         $('#gerbang-login').hide();
         $('#konten-aplikasi').fadeIn('fast');
         
@@ -787,7 +834,7 @@
       }
 
       // --- USER TERDOKUMENTASI / SUDAH LOGIN MODE ---
-      $('body').removeClass('public-landing-mode').addClass('sidebar-mini');
+      $('body').removeClass('public-landing-mode').addClass('sidebar-mini').toggleClass('role-pengawas', checkUserRoleIsPengawas());
       sultan_initDarkMode(); // Pulihkan preferensi dark mode user jika tersimpan
       $('.main-header').removeClass('d-none');
       $('.main-sidebar').removeClass('d-none');
@@ -996,7 +1043,7 @@
         SPA_VIEW_CACHE = {};
 
         // Bersihkan tema dark-mode dari body agar landing page publik selalu terang bersih
-        $('body').removeClass('dark-mode');
+        $('body').removeClass('dark-mode role-pengawas');
         sultan_applyDarkModeUI(false);
 
         // 2. Reset form login jika ada di memori
@@ -1026,6 +1073,7 @@
      ============================================================= */
   function updateUI(u) {
     if (!u) return;
+    $('body').toggleClass('role-pengawas', checkUserRoleIsPengawas());
     var name = u.nama_lengkap || u.fullName || u.nama || u.username || "User";
     var photo = u.photo || u.foto || "";
     var role = u.role || "User";
@@ -1053,16 +1101,20 @@
   function tampilkanMenuAdmin(user) {
     if (!user) return;
     var isAdmin = checkUserRoleIsAdmin();
+    var isTrueAdmin = checkUserRoleIsTrueAdmin();
+    var pengawasAllowedIds = ['lapbul_status', 'sk_status'];
+
     // Tampilkan/sembunyikan menu khusus admin dari MENU_CONFIG (termasuk submenu)
     function processAdminMenu(item) {
       if (item.adminOnly) {
+        var allowItem = isTrueAdmin || (isAdmin && item.id && pengawasAllowedIds.indexOf(item.id) !== -1);
         if (item.id) {
           var el = $('[data-page="' + item.id + '"]').closest('.nav-item');
-          if (isAdmin) { el.removeClass('d-none').show(); }
+          if (allowItem) { el.removeClass('d-none').show(); }
           else { el.addClass('d-none').hide(); }
         } else if (item.isHeader && item._headerId) {
           var elHeader = $('[data-header-id="' + item._headerId + '"]');
-          if (isAdmin) { elHeader.removeClass('d-none').show(); }
+          if (isTrueAdmin) { elHeader.removeClass('d-none').show(); }
           else { elHeader.addClass('d-none').hide(); }
         }
       }
@@ -1071,21 +1123,24 @@
       }
     }
     MENU_CONFIG.forEach(processAdminMenu);
-    // Sembunyikan semua elemen dengan class hide-non-admin untuk non-admin
+
+    // Sembunyikan elemen khusus konfigurasi/pengaturan sistem untuk non-TrueAdmin (termasuk Pengawas)
     $('.hide-non-admin').each(function() {
-      if (isAdmin) { $(this).show(); }
-      else { $(this).hide(); }
+      var pageAttr = $(this).find('[data-page]').attr('data-page') || $(this).attr('data-menu-id') || '';
+      var allowEl = isTrueAdmin || (isAdmin && pengawasAllowedIds.indexOf(pageAttr) !== -1);
+      if (allowEl) { $(this).removeClass('d-none').show(); }
+      else { $(this).addClass('d-none').hide(); }
     });
     var daftarMenuAdmin = ["menuTrashSK", "menu-monitoring-admin", "menu-setting-admin", "menu-monitoring"];
     daftarMenuAdmin.forEach(function (id) {
       var el = document.getElementById(id);
       if (el) {
-        if (isAdmin) { el.classList.remove("d-none"); el.style.display = ""; }
+        if (isTrueAdmin) { el.classList.remove("d-none"); el.style.display = ""; }
         else { el.classList.add("d-none"); el.style.display = "none"; }
       }
     });
 
-    // Sembunyikan section header jika tidak ada menu terlihat di bawahnya (misal: Pengaturan Sistem untuk non-admin)
+    // Sembunyikan section header jika tidak ada menu terlihat di bawahnya (misal: Pengaturan Sistem untuk non-admin / Pengawas)
     $('.sultan-sidebar-header').each(function () {
       var $hdr = $(this);
       var $nextItems = $hdr.nextUntil('.sultan-sidebar-header', '.nav-item');
@@ -1097,7 +1152,7 @@
           return false;
         }
       });
-      if (!hasVisible || !isAdmin && $hdr.hasClass('hide-non-admin')) {
+      if (!hasVisible || (!isTrueAdmin && $hdr.hasClass('hide-non-admin'))) {
         $hdr.hide().addClass('d-none');
       } else {
         $hdr.show().removeClass('d-none');
@@ -2308,6 +2363,7 @@
   }
 
   function sultan_tandaiNotifDibaca(rowId, source) {
+    if (typeof checkUserRoleIsPengawas === 'function' && checkUserRoleIsPengawas()) return;
     var user = getSesiUser();
     if (!user) return;
     var role = user.role || "User";
@@ -2346,6 +2402,10 @@
 
   function sultan_markAllNotifRead(e) {
     if (e) { e.preventDefault(); e.stopPropagation(); }
+    if (typeof checkUserRoleIsPengawas === 'function' && checkUserRoleIsPengawas()) {
+      Sultan.notif.peringatan('Mode Pengawas: Status baca notifikasi tidak diubah (Read-Only).');
+      return;
+    }
     var user = getSesiUser();
     if (!user) return;
 

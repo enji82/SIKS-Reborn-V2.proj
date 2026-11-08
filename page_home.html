@@ -1536,12 +1536,16 @@
 
         // B. Logika Admin vs Sekolah
         var roleUser = (u.role || "").toString().toLowerCase();
-        var isAdmin = roleUser.includes('admin');
+        var isAdmin = (typeof checkUserRoleIsAdmin === 'function' && checkUserRoleIsAdmin()) || roleUser.includes('admin') || roleUser.includes('pengawas');
+        var isPengawas = (typeof checkUserRoleIsPengawas === 'function' && checkUserRoleIsPengawas()) || roleUser.includes('pengawas');
         
         if (isAdmin) {
             $('.widget-admin-only').show();
             $('#sultan-running-text-row').hide();
             $('#home-status-section').hide();
+            if (isPengawas) {
+                $('#btnTulisBeritaHome').hide();
+            }
         } else {
             $('.widget-admin-only').hide();
             $('#home-quick-admin').hide();
@@ -1978,6 +1982,9 @@
       if (!u) return false;
 
       var role = String(u.role || u.peran || u.level || '').toLowerCase().trim();
+      if ((typeof checkUserRoleIsPengawas === 'function' && checkUserRoleIsPengawas()) || role.indexOf('pengawas') !== -1) {
+        return false;
+      }
       if (
         role.indexOf('admin') !== -1 ||
         role.indexOf('superadmin') !== -1 ||
