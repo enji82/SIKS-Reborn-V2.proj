@@ -475,10 +475,16 @@ function hapusArtikelEmading(payload) {
     for (var i = 1; i < data.length; i++) {
       if (String(data[i][0]).trim() === idTarget) {
         var pemilik = String(data[i][5] || "").trim().toLowerCase();
+        var pengunggahLama = String(data[i][4] || "").trim().toLowerCase();
+        var unitLama = String(data[i][6] || "").trim().toLowerCase();
         var userLoginLower = userLogin.toLowerCase();
-        var isAdminRole = userRole.indexOf("admin") !== -1 || userRole.indexOf("verifikator") !== -1 || userRole.indexOf("korwil") !== -1;
+        var isAdminRole = userRole.indexOf("admin") !== -1 || userRole.indexOf("superadmin") !== -1 || userRole.indexOf("verifikator") !== -1 || userRole.indexOf("korwil") !== -1;
 
-        if (!isAdminRole && pemilik !== userLoginLower) {
+        var isOwnerMatch = (pemilik && userLoginLower && pemilik === userLoginLower) ||
+                           (pengunggahLama && userLoginLower && pengunggahLama === userLoginLower) ||
+                           (unitLama && unitLama !== "-" && userLoginLower && unitLama === userLoginLower);
+
+        if (!isAdminRole && !isOwnerMatch) {
           return JSON.stringify({ error: "Akses ditolak: Anda bukan pembuat artikel ini dan bukan Admin." });
         }
 
