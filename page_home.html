@@ -2249,15 +2249,27 @@
       var mediaAkhir = fotoAkhirHtml + (posisiVid === 'akhir' ? videoHtml : '');
 
       // Bersihkan inline color/background dan metadata Office dari isi HTML agar kontras sempurna di Light & Dark Mode
+      // Mencegah unclosed comment/style/xml menelan footer bar modal
       var rawIsi = String(item.isi || '');
       var cleanIsi = rawIsi
-        .replace(/<!--\[if[\s\S]*?<!\[endif\]-->/gi, '')
-        .replace(/<style[\s\S]*?<\/style>/gi, '')
-        .replace(/<xml[\s\S]*?<\/xml>/gi, '')
-        .replace(/<w:[^>]*>[\s\S]*?<\/w:[^>]*>/gi, '')
-        .replace(/<m:[^>]*>[\s\S]*?<\/m:[^>]*>/gi, '')
+        .replace(/<!--\[if[\s\S]*?(?:<!\[endif\]-->|-->|$)/gi, '')
+        .replace(/<!\[if[\s\S]*?(?:<!\[endif\]>|-->|$)/gi, '')
+        .replace(/<!--[\s\S]*?(?:-->|$)/gi, '')
+        .replace(/<style[\s\S]*?(?:<\/style>|$)/gi, '')
+        .replace(/<script[\s\S]*?(?:<\/script>|$)/gi, '')
+        .replace(/<xml[\s\S]*?(?:<\/xml>|$)/gi, '')
+        .replace(/<\/?(?:w|m|o|v):[^>]*>/gi, '')
+        .replace(/<!\[endif\](?:-->)?>?/gi, '')
+        .replace(/<!--|-->/g, '')
         .replace(/color\s*:\s*[^;"]+;?/gi, '')
         .replace(/background(?:-color)?\s*:\s*[^;"]+;?/gi, '');
+
+      // Pastikan seluruh tag HTML seimbang melalui DOM parser agar tidak merusak wrapper modal
+      try {
+        var sandboxDiv = document.createElement('div');
+        sandboxDiv.innerHTML = cleanIsi;
+        cleanIsi = sandboxDiv.innerHTML;
+      } catch (eClean) {}
 
       var lampiranHtml = '';
       if (item.lampiranUrl) {
