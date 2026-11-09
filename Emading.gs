@@ -368,9 +368,14 @@ function simpanArtikelEmading(payload) {
     // Format Link Video jika YouTube agar menjadi embed standard
     var videoUrl = String(payload.videoUrl || "").trim();
 
-    // Sanitasi Isi Artikel: Hapus potensi embed base64 image yang tidak sengaja ter-paste ke teks
+    // Sanitasi Isi Artikel: Hapus potensi embed base64 image dan sampah tag MSO/Office XML/Style
     var isiArtikel = String(payload.isi || "");
     isiArtikel = isiArtikel.replace(/src="data:image\/[^;]+;base64,[^"]+"/gi, 'src="" alt="gambar-dihapus"');
+    isiArtikel = isiArtikel.replace(/<!--\[if[\s\S]*?<!\[endif\]-->/gi, '');
+    isiArtikel = isiArtikel.replace(/<style[\s\S]*?<\/style>/gi, '');
+    isiArtikel = isiArtikel.replace(/<xml[\s\S]*?<\/xml>/gi, '');
+    isiArtikel = isiArtikel.replace(/<w:[^>]*>[\s\S]*?<\/w:[^>]*>/gi, '');
+    isiArtikel = isiArtikel.replace(/<m:[^>]*>[\s\S]*?<\/m:[^>]*>/gi, '');
     if (isiArtikel.length > 48000) {
       isiArtikel = isiArtikel.substring(0, 48000);
     }
