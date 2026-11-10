@@ -503,11 +503,78 @@
     align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 12px;
     padding: 14px 24px;
     background: #f8fafc;
     border-top: 1px solid rgba(0, 0, 0, 0.07);
     flex-shrink: 0 !important;
+  }
+  .emading-modal-actions-left {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .emading-modal-actions-right {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-left: auto;
+  }
+  .emading-btn-like {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 50px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border: 1px solid rgba(220, 53, 69, 0.35);
+    background: #ffffff;
+    color: #dc3545;
+  }
+  .emading-btn-like:hover {
+    background: rgba(220, 53, 69, 0.08);
+    transform: translateY(-1px);
+  }
+  .emading-btn-like.liked {
+    background: linear-gradient(135deg, #e63946 0%, #c1121f 100%) !important;
+    color: #ffffff !important;
+    border-color: #c1121f !important;
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3) !important;
+  }
+  .emading-btn-comment-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 50px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border: 1px solid rgba(13, 110, 253, 0.3);
+    background: #ffffff;
+    color: #0d6efd;
+  }
+  .emading-btn-comment-link:hover {
+    background: rgba(13, 110, 253, 0.08);
+    transform: translateY(-1px);
+    color: #0b5ed7;
+    text-decoration: none;
+  }
+  .dark-mode .emading-btn-like {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 107, 107, 0.4);
+    color: #ff8787;
+  }
+  .dark-mode .emading-btn-comment-link {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(116, 192, 252, 0.4);
+    color: #74c0fc;
   }
 
   /* Dark mode modal artikel Sultan */
@@ -2293,19 +2360,39 @@
 
       var canEditModal = (typeof cekBolehEditBerita === 'function') ? cekBolehEditBerita(item) : false;
 
+      var curUserAktif = (function() {
+        var u = (typeof getAktifUserHome === 'function') ? getAktifUserHome() : null;
+        return u ? String(u.username || u.user || u.nama_lengkap || '').trim() : '';
+      })();
+
+      var localLikedKey = 'siks_mading_liked_' + item.id + '_' + (curUserAktif || 'guest');
+      var isLikedLocally = localStorage.getItem(localLikedKey) === 'true';
+      var jmlSukaTampil = parseInt(item.jmlSuka || 0, 10);
+      var jmlKomentarTampil = parseInt(item.jmlKomentar || 0, 10);
+
+      var likeBtnHtml = '' +
+        '<button type="button" class="emading-btn-like ' + (isLikedLocally ? 'liked' : '') + '" id="home_btn_like_' + item.id + '" onclick="toggleSukaBeritaHome(\'' + item.id + '\');">' +
+          '<i class="' + (isLikedLocally ? 'fas' : 'far') + ' fa-heart mr-1" id="home_ico_like_' + item.id + '"></i>' +
+          '<span id="home_lbl_like_' + item.id + '">' + (isLikedLocally ? 'Disukai' : 'Suka') + '</span>' +
+          '<span class="badge badge-light ml-1" id="home_cnt_like_' + item.id + '" style="font-size: 0.72rem; padding: 2px 6px; border-radius: 50px;">' + jmlSukaTampil + '</span>' +
+        '</button>';
+
+      var commentBtnHtml = '' +
+        '<button type="button" class="emading-btn-comment-link" onclick="Swal.close(); bukaHalamanEmadingDiskusi(\'' + item.id + '\');" title="Lihat atau tulis komentar di E-Mading">' +
+          '<i class="far fa-comments mr-1"></i>' +
+          '<span>Komentar</span>' +
+          '<span class="badge badge-light ml-1" style="font-size: 0.72rem; padding: 2px 6px; border-radius: 50px;">' + jmlKomentarTampil + '</span>' +
+        '</button>';
+
       var ownerActionsHtml = '';
       if (canEditModal) {
         ownerActionsHtml = '' +
-          '<div class="d-flex align-items-center flex-wrap" style="gap: 8px;">' +
-            '<button type="button" class="sultan-btn sultan-btn-sm sultan-btn-warning px-3" onclick="Swal.close(); bukaModalEditBeritaHome(\'' + item.id + '\');">' +
-              '<i class="fas fa-edit mr-1"></i> Edit Berita' +
-            '</button>' +
-            '<button type="button" class="sultan-btn sultan-btn-sm sultan-btn-danger px-3" onclick="Swal.close(); konfirmasiHapusBeritaHome(\'' + item.id + '\');">' +
-              '<i class="fas fa-trash-alt mr-1"></i> Hapus Berita' +
-            '</button>' +
-          '</div>';
-      } else {
-        ownerActionsHtml = '<div class="small text-muted"><i class="fas fa-newspaper mr-1"></i> Portal E-Mading SIKS-Reborn</div>';
+          '<button type="button" class="sultan-btn sultan-btn-sm sultan-btn-warning px-3" onclick="Swal.close(); bukaModalEditBeritaHome(\'' + item.id + '\');">' +
+            '<i class="fas fa-edit mr-1"></i> Edit' +
+          '</button>' +
+          '<button type="button" class="sultan-btn sultan-btn-sm sultan-btn-danger px-3" onclick="Swal.close(); konfirmasiHapusBeritaHome(\'' + item.id + '\');">' +
+            '<i class="fas fa-trash-alt mr-1"></i> Hapus' +
+          '</button>';
       }
 
       var modalHtmlContent = '' +
@@ -2325,10 +2412,16 @@
           lampiranHtml +
         '</div>' +
         '<div class="emading-modal-footer-bar">' +
-          ownerActionsHtml +
-          '<button type="button" class="sultan-btn sultan-btn-sm sultan-btn-aksi-utama px-4 ml-auto" onclick="Swal.close();">' +
-            '<i class="fas fa-check mr-1"></i> Tutup' +
-          '</button>' +
+          '<div class="emading-modal-actions-left">' +
+            likeBtnHtml +
+            commentBtnHtml +
+          '</div>' +
+          '<div class="emading-modal-actions-right">' +
+            ownerActionsHtml +
+            '<button type="button" class="sultan-btn sultan-btn-sm sultan-btn-aksi-utama px-4" onclick="Swal.close();">' +
+              '<i class="fas fa-check mr-1"></i> Tutup' +
+            '</button>' +
+          '</div>' +
         '</div>';
 
       Swal.fire({
@@ -2339,8 +2432,119 @@
         showCloseButton: true,
         showConfirmButton: false,
         showCancelButton: false,
-        showDenyButton: false
+        showDenyButton: false,
+        didOpen: function() {
+          // Sinkronisasi status like dari server secara asynchronous
+          if (curUserAktif) {
+            google.script.run
+              .withSuccessHandler(function(resRaw) {
+                try {
+                  var res = (typeof resRaw === 'string') ? JSON.parse(resRaw) : resRaw;
+                  if (res && res.liked !== undefined) {
+                    localStorage.setItem(localLikedKey, res.liked ? 'true' : 'false');
+                    var $b = $('#home_btn_like_' + item.id);
+                    var $i = $('#home_ico_like_' + item.id);
+                    var $l = $('#home_lbl_like_' + item.id);
+                    if (res.liked) {
+                      $b.addClass('liked');
+                      $i.removeClass('far').addClass('fas');
+                      $l.text('Disukai');
+                    } else {
+                      $b.removeClass('liked');
+                      $i.removeClass('fas').addClass('far');
+                      $l.text('Suka');
+                    }
+                  }
+                } catch(e) {}
+              })
+              .cekStatusSukaEmading(item.id, curUserAktif);
+          }
+        }
       });
+    }
+  };
+
+  // Handler Toggle Suka Berita dari Modal Beranda
+  window.toggleSukaBeritaHome = function(id) {
+    var art = HOME_CACHE_BERITA.find(function(b) { return String(b.id) === String(id); });
+    if (!art) return;
+
+    var u = (typeof getAktifUserHome === 'function') ? getAktifUserHome() : null;
+    var curUser = u ? String(u.username || u.user || u.nama_lengkap || '').trim() : '';
+    if (!curUser) {
+      if (typeof Sultan !== 'undefined') Sultan.alert('warning', 'Perhatian', 'Silakan login terlebih dahulu untuk menyukai berita.');
+      return;
+    }
+
+    var localLikedKey = 'siks_mading_liked_' + id + '_' + curUser;
+    var isCurrentlyLiked = localStorage.getItem(localLikedKey) === 'true';
+
+    // Optimistic UI update
+    var newLiked = !isCurrentlyLiked;
+    var curCount = parseInt(art.jmlSuka || 0, 10);
+    var newCount = newLiked ? (curCount + 1) : Math.max(0, curCount - 1);
+    art.jmlSuka = newCount;
+
+    localStorage.setItem(localLikedKey, newLiked ? 'true' : 'false');
+
+    var $btn = $('#home_btn_like_' + id);
+    var $ico = $('#home_ico_like_' + id);
+    var $lbl = $('#home_lbl_like_' + id);
+    var $cnt = $('#home_cnt_like_' + id);
+
+    if (newLiked) {
+      $btn.addClass('liked');
+      $ico.removeClass('far').addClass('fas');
+      $lbl.text('Disukai');
+    } else {
+      $btn.removeClass('liked');
+      $ico.removeClass('fas').addClass('far');
+      $lbl.text('Suka');
+    }
+    $cnt.text(newCount);
+
+    // Update juga kartu statistik di atas jika ada
+    updateStatistikHomeBerita(HOME_CACHE_BERITA);
+
+    google.script.run
+      .withSuccessHandler(function(resRaw) {
+        try {
+          var res = (typeof resRaw === 'string') ? JSON.parse(resRaw) : resRaw;
+          if (res && res.totalSuka !== undefined) {
+            art.jmlSuka = res.totalSuka;
+            $cnt.text(res.totalSuka);
+            updateStatistikHomeBerita(HOME_CACHE_BERITA);
+          }
+        } catch(e) {}
+      })
+      .withFailureHandler(function() {
+        // Rollback jika server gagal
+        art.jmlSuka = curCount;
+        localStorage.setItem(localLikedKey, isCurrentlyLiked ? 'true' : 'false');
+        if (isCurrentlyLiked) {
+          $btn.addClass('liked');
+          $ico.removeClass('far').addClass('fas');
+          $lbl.text('Disukai');
+        } else {
+          $btn.removeClass('liked');
+          $ico.removeClass('fas').addClass('far');
+          $lbl.text('Suka');
+        }
+        $cnt.text(curCount);
+        updateStatistikHomeBerita(HOME_CACHE_BERITA);
+      })
+      .toggleSukaEmading(id, curUser);
+  };
+
+  // Navigasi ke Halaman E-Mading untuk diskusi / melihat komentar
+  window.bukaHalamanEmadingDiskusi = function(id) {
+    if (typeof loadContent === 'function') {
+      loadContent('emading');
+      if (typeof setSidebarActive === 'function') {
+        setSidebarActive('E-Mading');
+      }
+    } else {
+      console.warn("Fungsi loadContent tidak tersedia.");
     }
   };
 
