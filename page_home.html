@@ -2341,9 +2341,13 @@
       })();
 
       var localLikedKey = 'siks_mading_liked_' + item.id + '_' + (curUserAktif || 'guest');
-      var isLikedLocally = localStorage.getItem(localLikedKey) === 'true';
       var jmlSukaTampil = parseInt(item.jmlSuka || 0, 10);
-      var jmlKomentarTampil = parseInt(item.jmlKomentar || 0, 10);
+      
+      // Jika jumlah suka 0, tidak mungkin berstatus Disukai (mencegah bug 'Disukai 0' akibat cache lama)
+      var isLikedLocally = (jmlSukaTampil > 0) && (localStorage.getItem(localLikedKey) === 'true');
+      if (jmlSukaTampil === 0) {
+        localStorage.removeItem(localLikedKey);
+      }
 
       var likeBtnHtml = '' +
         '<button type="button" class="emading-btn-like ' + (isLikedLocally ? 'liked' : '') + '" id="home_btn_like_' + item.id + '" onclick="toggleSukaBeritaHome(\'' + item.id + '\');">' +
@@ -2477,10 +2481,24 @@
       .withSuccessHandler(function(resRaw) {
         try {
           var res = (typeof resRaw === 'string') ? JSON.parse(resRaw) : resRaw;
-          if (res && res.totalSuka !== undefined) {
-            art.jmlSuka = res.totalSuka;
-            $cnt.text(res.totalSuka);
-            updateStatistikHomeBerita(HOME_CACHE_BERITA);
+          if (res && res.success) {
+            if (res.totalSuka !== undefined) {
+              art.jmlSuka = res.totalSuka;
+              $cnt.text(res.totalSuka);
+              updateStatistikHomeBerita(HOME_CACHE_BERITA);
+            }
+            if (res.liked !== undefined) {
+              localStorage.setItem(localLikedKey, res.liked ? 'true' : 'false');
+              if (res.liked) {
+                $btn.addClass('liked');
+                $ico.removeClass('far').addClass('fas');
+                $lbl.text('Disukai');
+              } else {
+                $btn.removeClass('liked');
+                $ico.removeClass('fas').addClass('far');
+                $lbl.text('Suka');
+              }
+            }
           }
         } catch(e) {}
       })
