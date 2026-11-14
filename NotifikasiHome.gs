@@ -43,9 +43,10 @@ function getMissingDocumentsReport(username, role, unit) {
     Logger.log("=== getMissingDocumentsReport ===");
     Logger.log("NPSN: [" + uName + "] | Role: " + uRole + " | Unit: " + uUnit);
 
-    // 1. Admin/korwil/verifikator/pengawas: skip semua pengecekan
-    var isAdmin = (uRole.indexOf('admin') > -1 || uRole.indexOf('verifikator') > -1 || uRole.indexOf('korwil') > -1 || uRole.indexOf('pengawas') > -1);
+    // 1. Admin/korwil/verifikator/pengawas/viewer: skip semua pengecekan
+    var isAdmin = (uRole.indexOf('admin') > -1 || uRole.indexOf('verifikator') > -1 || uRole.indexOf('korwil') > -1 || uRole.indexOf('pengawas') > -1 || uRole.indexOf('viewer') > -1 || uRole.indexOf('readonly') > -1 || uRole.indexOf('read-only') > -1);
     if (isAdmin) return { show: false };
+    if (!uName && !uUnit) return { show: false };
 
     // 2. Identifikasi jenjang dari master Data_Sekolah
     var isSD = false;
@@ -118,8 +119,10 @@ function getMissingDocumentsReport(username, role, unit) {
 
     for (var i = 0; i < targetBulanLimit; i++) {
       var bLabel = arrBulan[i];
-      if (!uploadedLapbul[bLabel.toLowerCase()]) {
-        missingLapbul.push(bLabel + " " + currentYear);
+      var stLapbul = String(uploadedLapbul[bLabel.toLowerCase()] || "").toLowerCase();
+      var perluPerbaikanLapbul = (stLapbul.indexOf("tolak") > -1 || stLapbul.indexOf("revisi") > -1 || stLapbul.indexOf("perbaikan") > -1 || stLapbul.indexOf("kurang") > -1);
+      if (!stLapbul || perluPerbaikanLapbul) {
+        missingLapbul.push(bLabel + " " + currentYear + (perluPerbaikanLapbul ? " (Perlu Perbaikan)" : ""));
       }
     }
     Logger.log("Lapbul terunggah: " + JSON.stringify(uploadedLapbul));
@@ -168,8 +171,10 @@ function getMissingDocumentsReport(username, role, unit) {
         }
       } catch(e) { Logger.log("SK error: " + e.message); }
 
-      if (skSemester === "Ganjil" && skStatus.ganjil === "Belum") missingSK = true;
-      if (skSemester === "Genap" && skStatus.genap === "Belum") missingSK = true;
+      var stSkAktif = String(skSemester === "Ganjil" ? skStatus.ganjil : skStatus.genap).toLowerCase();
+      if (stSkAktif === "belum" || stSkAktif.indexOf("tolak") > -1 || stSkAktif.indexOf("revisi") > -1 || stSkAktif.indexOf("perbaikan") > -1) {
+        missingSK = true;
+      }
       Logger.log("Hasil cek SK: status=" + JSON.stringify(skStatus));
     }
 
@@ -194,7 +199,7 @@ function getMissingDocumentsReport(username, role, unit) {
             var rTahun = String(row[iTS] || "").trim();
             var rBulan = String(row[iBS] || "").trim();
 
-            var siabaMatch = (rNpsn === uName) || (rUnit === uUnit.toLowerCase());
+            var siabaMatch = (uName && rNpsn === uName) || (uUnit && rUnit === uUnit.toLowerCase());
             if (siabaMatch && rTahun === String(currentYear)) {
               uploadedSiaba.push(rBulan.toLowerCase());
             }

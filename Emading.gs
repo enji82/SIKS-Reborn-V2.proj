@@ -289,6 +289,10 @@ function getDetailArtikelEmading(idArtikel) {
  * Menyimpan artikel baru atau update artikel yang sudah ada
  */
 function simpanArtikelEmading(payload) {
+  var roleCheck = String((payload && payload.userRole) || "").trim().toLowerCase();
+  if (roleCheck.indexOf("pengawas") !== -1 || roleCheck.indexOf("viewer") !== -1 || roleCheck.indexOf("readonly") !== -1 || roleCheck.indexOf("read-only") !== -1) {
+    return JSON.stringify({ error: "Akses ditolak: Role Pengawas hanya memiliki hak lihat (read-only)." });
+  }
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(15000);
@@ -472,6 +476,10 @@ function simpanArtikelEmading(payload) {
  * Pembuat artikel & Admin dapat menghapus artikel
  */
 function hapusArtikelEmading(payload) {
+  var roleCheck = String((payload && payload.userRole) || "").trim().toLowerCase();
+  if (roleCheck.indexOf("pengawas") !== -1 || roleCheck.indexOf("viewer") !== -1 || roleCheck.indexOf("readonly") !== -1 || roleCheck.indexOf("read-only") !== -1) {
+    return JSON.stringify({ error: "Akses ditolak: Role Pengawas hanya memiliki hak lihat (read-only)." });
+  }
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(15000);
