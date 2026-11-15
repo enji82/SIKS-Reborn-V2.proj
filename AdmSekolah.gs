@@ -404,7 +404,9 @@ function perbaikiAdmSekolahData(payload, fileData) {
     var now = "'" + Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
 
     sheet.getRange(r, 4).setValue(payload.tahun);        // Tahun
-    sheet.getRange(r, 5).setValue(payload.nama_file);    // Nama File
+    if (payload.nama_file) {
+      sheet.getRange(r, 5).setValue(payload.nama_file);  // Nama File
+    }
     sheet.getRange(r, 6).setValue(newFileUrl);           // URL
     sheet.getRange(r, 7).setValue("Diproses");           // Status
     sheet.getRange(r, 8).setValue("");                   // Catatan
