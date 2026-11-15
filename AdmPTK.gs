@@ -482,10 +482,8 @@ function verifikasiAdmPtk(payload) {
     var sheet = getOrCreateSheetAdmPtk("Database_Dokumen");
     var r = parseInt(payload.rowId);
     var now = "'" + Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
-    sheet.getRange(r, 10).setValue(payload.status);      // Status
-    sheet.getRange(r, 11).setValue(payload.catatan);     // Catatan
-    sheet.getRange(r, 14).setValue(now);                 // Tgl_Verif
-    sheet.getRange(r, 15).setValue(payload.verifikator); // Verifikator
+    sheet.getRange(r, 10, 1, 2).setValues([[payload.status, payload.catatan]]); // Status & Catatan
+    sheet.getRange(r, 14, 1, 2).setValues([[now, payload.verifikator]]);        // Tgl_Verif & Verifikator
 
     // Reset status baca User agar notifikasi verifikasi baru muncul bagi User
     var lastCol = sheet.getLastColumn();

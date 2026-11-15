@@ -1377,38 +1377,54 @@ function admptk_kelola_submitVerif(e) {
     var $form = $(this); 
     if (!$form[0].checkValidity()) { $form.addClass('was-validated'); return; }
     var payload = { rowId: $('#admptk_kelola_v_rowid').val(), status: $('#admptk_kelola_v_status').val(), catatan: $('#admptk_kelola_v_catatan').val(), verifikator: ADMPTK_KELOLA_USER_AKTIF };
-    var btn = $('#admptk_kelola_btnVerifikasi'); var txt = btn.html(); btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i> Memverifikasi...');
-    
+
+    // Optimistic UI: tutup modal & perbarui tabel seketika tanpa menunggu latensi server
+    if (typeof Sultan !== 'undefined' && Sultan.modal && Sultan.modal.tutupVerifikasi) {
+        Sultan.modal.tutupVerifikasi();
+    } else {
+        $('#global_modalVerifikasi').modal('hide');
+    }
+
+    var idRow = payload.rowId;
+    var idx = ADMPTK_KELOLA_CACHE_DATA.findIndex(r => String(r.rowId) === String(idRow));
+    var prevSnapshot = idx !== -1 ? Object.assign({}, ADMPTK_KELOLA_CACHE_DATA[idx]) : null;
+    if (idx !== -1) {
+        ADMPTK_KELOLA_CACHE_DATA[idx].status = payload.status;
+        ADMPTK_KELOLA_CACHE_DATA[idx].catatan = payload.catatan;
+        ADMPTK_KELOLA_CACHE_DATA[idx].verifikator = payload.verifikator;
+        ADMPTK_KELOLA_CACHE_DATA[idx].tgl_verif = typeof Sultan !== 'undefined' && Sultan.format && Sultan.format.tanggalSekarang ? Sultan.format.tanggalSekarang() : new Date().toISOString();
+    }
+
+    var refreshTabel = function() {
+        if (typeof SultanCRUD !== 'undefined' && typeof SultanCRUD.updateRowPreserved === 'function') {
+            SultanCRUD.updateRowPreserved(ADMPTK_KELOLA_TABEL_INSTANCE, function() {
+                admptk_kelola_terapkanFilterLokal();
+            });
+        } else {
+            admptk_kelola_terapkanFilterLokal();
+        }
+    };
+    refreshTabel();
+
+    var rollbackVerif = function(msg) {
+        if (idx !== -1 && prevSnapshot) {
+            ADMPTK_KELOLA_CACHE_DATA[idx] = prevSnapshot;
+            refreshTabel();
+        }
+        if (typeof Sultan !== 'undefined' && Sultan.notif) Sultan.notif.crud.gagal(msg);
+    };
+
     google.script.run.withSuccessHandler(function(json) {
-        btn.prop('disabled', false).html(txt); 
         var res = JSON.parse(json);
-        if (res.success) { 
-            if (typeof Sultan !== 'undefined' && Sultan.modal && Sultan.modal.tutupVerifikasi) {
-                Sultan.modal.tutupVerifikasi();
-            } else {
-                $('#global_modalVerifikasi').modal('hide');
-            }
-            var idRow = payload.rowId;
-            var idx = ADMPTK_KELOLA_CACHE_DATA.findIndex(r => String(r.rowId) === String(idRow));
-            if (idx !== -1) {
-                ADMPTK_KELOLA_CACHE_DATA[idx].status = payload.status;
-                ADMPTK_KELOLA_CACHE_DATA[idx].catatan = payload.catatan;
-                ADMPTK_KELOLA_CACHE_DATA[idx].verifikator = payload.verifikator;
-                ADMPTK_KELOLA_CACHE_DATA[idx].tgl_verif = typeof Sultan !== 'undefined' && Sultan.format && Sultan.format.tanggalSekarang ? Sultan.format.tanggalSekarang() : new Date().toISOString();
-            }
-            setTimeout(function() {
-                if (typeof Sultan !== 'undefined' && Sultan.notif) Sultan.notif.crud.sukses(res.message || "Verifikasi berhasil.");
-                if (typeof SultanCRUD !== 'undefined' && typeof SultanCRUD.updateRowPreserved === 'function') {
-                    SultanCRUD.updateRowPreserved(ADMPTK_KELOLA_TABEL_INSTANCE, function() {
-                        admptk_kelola_terapkanFilterLokal();
-                    });
-                } else {
-                    admptk_kelola_terapkanFilterLokal();
-                }
-                if (typeof sultan_fetchNotifikasi === 'function') sultan_fetchNotifikasi();
-            }, 300);
-        } else { Sultan.notif.crud.gagal(res.message); }
-    }).withFailureHandler(function(err){ btn.prop('disabled', false).html(txt); Sultan.notif.crud.gagal(err.message); }).verifikasiAdmPtk(payload);
+        if (res.success) {
+            if (typeof Sultan !== 'undefined' && Sultan.notif) Sultan.notif.crud.sukses(res.message || "Verifikasi berhasil.");
+            if (typeof sultan_fetchNotifikasi === 'function') sultan_fetchNotifikasi();
+        } else {
+            rollbackVerif(res.message);
+        }
+    }).withFailureHandler(function(err) {
+        rollbackVerif(err.message);
+    }).verifikasiAdmPtk(payload);
 }
 
 function admptk_kelola_bukaPreview(url) {
