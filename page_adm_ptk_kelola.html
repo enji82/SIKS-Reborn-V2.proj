@@ -1217,16 +1217,30 @@ function admptk_kelola_bukaModalPerbaiki(rowId) {
     $('#admptk_kelola_p_kategori').text(data.nama_kategori);
     $('#admptk_kelola_p_catatan').html(data.catatan ? admptk_kelola_esc(data.catatan) : '<span class="text-muted font-italic">Tidak ada catatan.</span>');
     var katData = ADMPTK_KELOLA_MASTER_KAT.find(k => String(k.idKat).trim() === String(data.id_kategori).trim());
+    var thnWrap = $('#admptk_kelola_p_tahun_wrapper');
     var pWrap = $('#admptk_kelola_p_periode_wrapper'); var pIn = $('#admptk_kelola_p_periode_input'); var maxS = 2 * 1024 * 1024;
-    $('#admptk_kelola_p_tahun_label').html('Tahun <span class="text-danger">*</span>');
-    $('#admptk_kelola_p_tahun_input').replaceWith('<input type="number" id="admptk_kelola_p_tahun_input" class="form-control form-control-sultan" required>'); $('#admptk_kelola_p_tahun_input').val(data.tahun);
+    var normThn = String(data.tahun || "").trim().replace(/^(\d{4})(\d{4})$/, '$1/$2');
+    thnWrap.show();
+    $('#admptk_kelola_p_tahun_label').html('Thn Ajaran <span class="text-danger">*</span>');
+    $('#admptk_kelola_p_tahun_input').replaceWith('<select id="admptk_kelola_p_tahun_input" class="form-control form-control-sultan" required>' + admptk_kelola_generateTapelOptions() + '</select>');
+    if (normThn && $('#admptk_kelola_p_tahun_input option[value="' + normThn + '"]').length === 0) {
+        $('#admptk_kelola_p_tahun_input').append('<option value="' + admptk_kelola_esc(normThn) + '">' + admptk_kelola_esc(normThn) + '</option>');
+    }
+    $('#admptk_kelola_p_tahun_input').val(normThn);
+
     if (katData) {
         var jPeriode = String(katData.jenisPeriode).toUpperCase(); var uk = katData.ukuran || "2"; maxS = uk * 1024 * 1024;
-        if (jPeriode.includes("TMT")) { pWrap.show(); $('#admptk_kelola_p_periode_label').text("TMT"); pIn.replaceWith('<input type="date" id="admptk_kelola_p_periode_input" class="form-control form-control-sultan" required>'); $('#admptk_kelola_p_periode_input').val(data.periode || ""); }
-        else if (jPeriode.includes("TAPEL") || jPeriode.includes("TAHUN PELAJARAN")) { pWrap.show(); $('#admptk_kelola_p_periode_label').text("Semester"); pIn.replaceWith('<select id="admptk_kelola_p_periode_input" class="form-control form-control-sultan" required><option value="">Pilih</option><option value="Semester 1">Semester 1 (Ganjil)</option><option value="Semester 2">Semester 2 (Genap)</option></select>'); $('#admptk_kelola_p_tahun_label').html('Thn Pelajaran <span class="text-danger">*</span>'); $('#admptk_kelola_p_tahun_input').replaceWith('<select id="admptk_kelola_p_tahun_input" class="form-control form-control-sultan" required>' + admptk_kelola_generateTapelOptions() + '</select>'); var normThn = String(data.tahun || "").trim().replace(/^(\d{4})(\d{4})$/, '$1/$2'); if (normThn && $('#admptk_kelola_p_tahun_input option[value="' + normThn + '"]').length === 0) { $('#admptk_kelola_p_tahun_input').append('<option value="' + admptk_kelola_esc(normThn) + '">' + admptk_kelola_esc(normThn) + '</option>'); } $('#admptk_kelola_p_tahun_input').val(normThn); $('#admptk_kelola_p_periode_input').val(data.periode || ""); }
+        var bulanOpts = '<option value="">Pilih Bulan</option><option>Jan</option><option>Feb</option><option>Mar</option><option>Apr</option><option>Mei</option><option>Jun</option><option>Jul</option><option>Agu</option><option>Sep</option><option>Okt</option><option>Nov</option><option>Des</option>';
+        if (jPeriode.includes("TMT")) {
+            thnWrap.hide();
+            $('#admptk_kelola_p_tahun_input').replaceWith('<input type="hidden" id="admptk_kelola_p_tahun_input" value="' + admptk_kelola_esc(data.tahun || new Date().getFullYear()) + '">');
+            pWrap.show(); $('#admptk_kelola_p_periode_label').text("TMT"); pIn.replaceWith('<input type="date" id="admptk_kelola_p_periode_input" class="form-control form-control-sultan" required>'); $('#admptk_kelola_p_periode_input').val(data.periode || "");
+        }
+        else if (jPeriode === "BULANAN") { pWrap.show(); $('#admptk_kelola_p_periode_label').text("Bulan"); pIn.replaceWith('<select id="admptk_kelola_p_periode_input" class="form-control form-control-sultan" required>' + bulanOpts + '</select>'); $('#admptk_kelola_p_periode_input').val(data.periode || ""); }
+        else if (jPeriode.includes("TAPEL") || jPeriode.includes("TAHUN PELAJARAN")) { pWrap.show(); $('#admptk_kelola_p_periode_label').text("Semester"); pIn.replaceWith('<select id="admptk_kelola_p_periode_input" class="form-control form-control-sultan" required><option value="">Pilih</option><option value="Semester 1">Semester 1 (Ganjil)</option><option value="Semester 2">Semester 2 (Genap)</option></select>'); $('#admptk_kelola_p_periode_input').val(data.periode || ""); }
         else if (jPeriode.includes("SEMESTER")) { pWrap.show(); $('#admptk_kelola_p_periode_label').text("Semester"); pIn.replaceWith('<select id="admptk_kelola_p_periode_input" class="form-control form-control-sultan" required><option value="">Pilih</option><option value="Semester 1">Semester 1 (Jan - Jun)</option><option value="Semester 2">Semester 2 (Jul - Des)</option></select>'); $('#admptk_kelola_p_periode_input').val(data.periode || ""); }
         else if (jPeriode.includes("TRIWULAN")) { pWrap.show(); $('#admptk_kelola_p_periode_label').text("Triwulan"); pIn.replaceWith('<select id="admptk_kelola_p_periode_input" class="form-control form-control-sultan" required><option value="">Pilih</option><option value="Triwulan 1">Triwulan 1</option><option value="Triwulan 2">Triwulan 2</option><option value="Triwulan 3">Triwulan 3</option><option value="Triwulan 4">Triwulan 4</option></select>'); $('#admptk_kelola_p_periode_input').val(data.periode || ""); }
-        else if (jPeriode.includes("PERIODE") || jPeriode.includes("BULANAN")) { pWrap.show(); $('#admptk_kelola_p_periode_label').text("Periode"); pIn.replaceWith('<input type="text" id="admptk_kelola_p_periode_input" class="form-control form-control-sultan" required>'); $('#admptk_kelola_p_periode_input').val(data.periode || ""); }
+        else if (jPeriode.includes("PERIODE")) { pWrap.show(); $('#admptk_kelola_p_periode_label').text("Periode"); pIn.replaceWith('<input type="text" id="admptk_kelola_p_periode_input" class="form-control form-control-sultan" required>'); $('#admptk_kelola_p_periode_input').val(data.periode || ""); }
         else { pWrap.hide(); pIn.replaceWith('<input type="text" id="admptk_kelola_p_periode_input" class="form-control form-control-sultan">'); $('#admptk_kelola_p_periode_input').prop('required', false).val(data.periode || "-"); }
         var fmt = String(katData.format).toUpperCase(); var fileIn = $('#admptk_kelola_p_file'); var fLbl = $('#admptk_kelola_p_lblFormat'); var fIco = $('#admptk_kelola_p_iconFormat');
         fileIn.attr('data-max-size', maxS);
