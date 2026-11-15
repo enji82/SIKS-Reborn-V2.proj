@@ -1097,3 +1097,66 @@ function tandaiSemuaNotifAdmSekolahDibaca(role, unit) {
   } catch(e) {}
 }
 
+/**
+ * Fungsi migrasi satu kali untuk memperbaiki kolom A (NPSN) di sheet Database_Dokumen
+ * yang masih berisi Nama Sekolah menjadi kode NPSN resmi dari USER_DB -> Data_Sekolah.
+ * Jalankan manual dari editor Apps Script.
+ */
+function migrasiNpsnDatabaseDokumen() {
+  var shSekolah = getSheet("USER_DB", "Data_Sekolah");
+  if (!shSekolah) {
+    Logger.log("Sheet Data_Sekolah tidak ditemukan.");
+    return "Sheet Data_Sekolah tidak ditemukan.";
+  }
+  var dataSekolah = shSekolah.getDataRange().getDisplayValues();
+  var mapNamaToNpsn = {};
+  for (var j = 1; j < dataSekolah.length; j++) {
+    var rNpsn = String(dataSekolah[j][0]).trim();
+    var rNama = String(dataSekolah[j][2]).trim().toUpperCase();
+    if (rNpsn && rNama) {
+      mapNamaToNpsn[rNama] = rNpsn;
+    }
+  }
+
+  var shDoc = getOrCreateSheetAdmSekolah("Database_Dokumen");
+  if (!shDoc) {
+    Logger.log("Sheet Database_Dokumen tidak ditemukan.");
+    return "Sheet Database_Dokumen tidak ditemukan.";
+  }
+
+  var lastRow = shDoc.getLastRow();
+  if (lastRow < 2) return "Tidak ada data di Database_Dokumen.";
+
+  var colARange = shDoc.getRange(2, 1, lastRow - 1, 1);
+  var colAValues = colARange.getDisplayValues();
+  var updatedCount = 0;
+  var notFound = [];
+
+  for (var i = 0; i < colAValues.length; i++) {
+    var val = String(colAValues[i][0]).trim();
+    if (!val) continue;
+    // Jika bukan angka NPSN (misal berisi huruf / nama sekolah)
+    if (!/^\d{8}$/.test(val)) {
+      var npsnResmi = mapNamaToNpsn[val.toUpperCase()];
+      if (npsnResmi) {
+        colAValues[i][0] = npsnResmi;
+        updatedCount++;
+      } else {
+        notFound.push("Baris " + (i + 2) + ": " + val);
+      }
+    }
+  }
+
+  if (updatedCount > 0) {
+    colARange.setValues(colAValues);
+    SpreadsheetApp.flush();
+    invalidateAdmSekolahDashboardCache();
+  }
+
+  var summary = "Migrasi selesai. Diperbarui: " + updatedCount + " baris. Tidak ditemukan di master: " + notFound.length + " baris.";
+  Logger.log(summary);
+  if (notFound.length > 0) Logger.log("Daftar tidak ditemukan:\n" + notFound.join("\n"));
+  return summary;
+}
+
+
