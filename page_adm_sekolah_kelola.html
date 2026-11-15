@@ -310,11 +310,8 @@ $(document).ready(function() {
             var jPeriode = String(katData.jenisPeriode).toUpperCase();
             var katWrapEl = row.find('.admsekolahkelola-kat-wrapper');
             var thnWrapEl = row.find('.admsekolahkelola-tahun-wrapper');
-            var thnInput = row.find('.admsekolahkelola-tahun-input');
-            
-            // Reset Tahun input to number by default
-            thnWrapEl.find('.form-label-sultan').html('Tahun <span class="text-danger">*</span>');
-            thnInput.replaceWith('<input type="number" class="form-control form-control-sultan border-maroon admsekolahkelola-tahun-input" placeholder="202X" min="1980" max="2050" required>');
+            var isTapel = (jPeriode === "SEMESTER_TAPEL" || jPeriode.includes("TAPEL") || jPeriode.includes("PELAJARAN"));
+            admsekolahkelola_setTahunField(thnWrapEl, isTapel, 'admsekolahkelola-tahun-input border-maroon', '');
             
             if(jPeriode.includes("TMT")) {
                 katWrapEl.removeClass('col-md-5').addClass('col-md-3');
@@ -337,10 +334,6 @@ $(document).ready(function() {
                 katWrapEl.removeClass('col-md-5').addClass('col-md-3');
                 pWrap.removeClass('col-md-2').addClass('col-md-3').show(); pLabel.text("Semester");
                 pInput.replaceWith('<select class="form-control form-control-sultan border-maroon admsekolahkelola-periode-input" required><option value="">- Pilih -</option><option value="Semester 1">Semester 1 (Ganjil)</option><option value="Semester 2">Semester 2 (Genap)</option></select>');
-                
-                // Ubah Tahun input ke text untuk Tahun Pelajaran
-                thnWrapEl.find('.form-label-sultan').html('Thn Pelajaran <span class="text-danger">*</span>');
-                row.find('.admsekolahkelola-tahun-input').replaceWith('<input type="text" class="form-control form-control-sultan border-maroon admsekolahkelola-tahun-input" placeholder="Contoh: 2026/2027" required pattern="^[0-9]{4}/[0-9]{4}$" title="Format harus YYYY/YYYY">');
                 
             } else if(jPeriode === "SEMESTER_KALENDER" || jPeriode.includes("KALENDER") || (jPeriode.includes("SEMESTER") && !jPeriode.includes("PELAJARAN"))) {
                 katWrapEl.removeClass('col-md-5').addClass('col-md-3');
@@ -1028,9 +1021,9 @@ function admsekolahkelola_bukaModalPerbaiki(rowId) {
     var pWrap = $('#admsekolahkelola_p_periode_wrapper'); var pIn = $('#admsekolahkelola_p_periode_input');
     var maxS = 2 * 1024 * 1024;
     
-    $('#admsekolahkelola_p_tahun_label').html('Tahun <span class="text-danger">*</span>');
-    $('#admsekolahkelola_p_tahun_input').replaceWith('<input type="number" id="admsekolahkelola_p_tahun_input" class="form-control form-control-sultan border-warning" required>');
-    $('#admsekolahkelola_p_tahun_input').val(data.tahun);
+    var pThnWrap = $('#admsekolahkelola_p_tahun_wrapper');
+    var isTapelPerbaiki = katData ? (String(katData.jenisPeriode).toUpperCase().includes("TAPEL") || String(katData.jenisPeriode).toUpperCase().includes("PELAJARAN")) : false;
+    admsekolahkelola_setTahunField(pThnWrap, isTapelPerbaiki, 'border-warning font-weight-bold', 'admsekolahkelola_p_tahun_input', data.tahun);
     
     if(katData) {
         var jPeriode = String(katData.jenisPeriode).toUpperCase();
@@ -1047,11 +1040,6 @@ function admsekolahkelola_bukaModalPerbaiki(rowId) {
             $('#admsekolahkelola_p_periode_wrap').show();
             $('#admsekolahkelola_p_periode_label').text("Semester");
             $('#admsekolahkelola_p_periode_input').replaceWith('<select id="admsekolahkelola_p_periode_input" class="form-control font-weight-bold form-control-sultan" required><option value="">- Pilih -</option><option value="Semester 1">Semester 1 (Ganjil)</option><option value="Semester 2">Semester 2 (Genap)</option></select>');
-            
-            // Text input untuk Tapel
-            $('#admsekolahkelola_p_tahun_label').html('Thn Pelajaran <span class="text-danger">*</span>');
-            $('#admsekolahkelola_p_tahun_input').replaceWith('<input type="text" id="admsekolahkelola_p_tahun_input" class="form-control font-weight-bold form-control-sultan" placeholder="Contoh: 2026/2027" required pattern="^[0-9]{4}/[0-9]{4}$" title="Format harus YYYY/YYYY">');
-            $('#admsekolahkelola_p_tahun_input').val(data.tahun);
             $('#admsekolahkelola_p_periode_input').val((data.periode || "").replace(" (Ganjil)", "").replace(" (Genap)", ""));
         } else if(jPeriode === "SEMESTER_KALENDER" || jPeriode.includes("KALENDER") || (jPeriode.includes("SEMESTER") && !jPeriode.includes("PELAJARAN"))) {
             $('#admsekolahkelola_p_periode_wrap').show(); pWrap.show(); $('#admsekolahkelola_p_periode_label').text("Semester"); 
@@ -1082,6 +1070,43 @@ function admsekolahkelola_bukaModalPerbaiki(rowId) {
     $('#global_modalFormBody, #global_modalFormFooter').hide(); $('#admsekolahkelola_formPerbaiki').appendTo('#global_modalFormSize .modal-content');
     $('#global_modalForm').off('hidden.bs.modal.admsekolahperbaiki').on('hidden.bs.modal.admsekolahperbaiki', function() { $('#admsekolahkelola_formPerbaiki').appendTo('#admsekolahkelola_templates'); $('#global_modalFormBody, #global_modalFormFooter').show(); });
     $('#global_modalForm').modal('show');
+}
+
+function admsekolahkelola_getTapelOptions(selectedVal) {
+    var now = new Date();
+    var startYear = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
+    var defaultTapel = startYear + "/" + (startYear + 1);
+    var targetVal = selectedVal ? String(selectedVal).trim() : defaultTapel;
+    var list = [];
+    for (var y = startYear - 2; y <= startYear + 1; y++) {
+        list.push(y + "/" + (y + 1));
+    }
+    if (targetVal && list.indexOf(targetVal) === -1 && /^[0-9]{4}\/[0-9]{4}$/.test(targetVal)) {
+        list.unshift(targetVal);
+    }
+    var opts = '<option value="">- Pilih Tahun Pelajaran -</option>';
+    list.forEach(function(tp) {
+        opts += '<option value="' + tp + '"' + (tp === targetVal ? ' selected' : '') + '>' + tp + '</option>';
+    });
+    return opts;
+}
+
+function admsekolahkelola_setTahunField(wrapEl, isTapel, extraClass, idAttr, val) {
+    var lbl = wrapEl.find('label').first();
+    var curInput = wrapEl.find('input, select').first();
+    var idPart = idAttr ? ' id="' + idAttr + '"' : '';
+    wrapEl.find('.admsekolahkelola-tahun-hint').remove();
+    if (isTapel) {
+        lbl.html('Tahun Pelajaran <span class="text-danger">*</span>');
+        curInput.replaceWith('<select' + idPart + ' class="form-control form-control-sultan ' + extraClass + '" required>' + admsekolahkelola_getTapelOptions(val) + '</select>');
+        wrapEl.append('<small class="form-text text-primary admsekolahkelola-tahun-hint" style="font-size:11px;"><i class="fas fa-info-circle mr-1"></i>Pilih Tahun Pelajaran (YYYY/YYYY)</small>');
+    } else {
+        var curYear = new Date().getFullYear();
+        lbl.html('Tahun Kalender <span class="text-danger">*</span>');
+        curInput.replaceWith('<input type="number"' + idPart + ' class="form-control form-control-sultan ' + extraClass + '" placeholder="Contoh: ' + curYear + '" min="1980" max="2050" required>');
+        if (val) wrapEl.find('input').first().val(val);
+        wrapEl.append('<small class="form-text text-muted admsekolahkelola-tahun-hint" style="font-size:11px;"><i class="fas fa-info-circle mr-1"></i>Tahun kalender 4 digit (mis. ' + curYear + ')</small>');
+    }
 }
 
 function admsekolahkelola_submitPerbaiki(e) {
