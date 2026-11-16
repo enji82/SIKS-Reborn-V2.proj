@@ -56,6 +56,9 @@ const SPREADSHEET_IDS = {
   SIKS_DB_LAYANAN: "1D_i4CH23wtXWWS9jhtKDRxeQkebqsw8jGT4Lqi_120U",
 };
 
+// Saklar (Feature Flag) Cutover Fase 4: ubah ke `true` saat siap mengarahkan Login ke SIKS_DB_MASTER
+const USE_CENTRAL_USERS_DB = false;
+
 // 2. FOLDER CONFIG (Digunakan oleh semua file .gs lainnya)
 const FOLDER_CONFIG = {
   MAIN_SK: "1GwIow8B4O1OWoq3nhpzDbMO53LXJJUKs", // Folder Utama SK
@@ -268,7 +271,9 @@ function processLogin(formObj) {
       return { status: 'error', message: 'Username minimal 3 karakter dan password tidak boleh kosong.' };
     }
 
-    var sheet = getSheet("USER_DB", SPREADSHEET_IDS.SHEET_USER_NAME);
+    var sheet = USE_CENTRAL_USERS_DB
+      ? SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_MASTER).getSheetByName("tbl_users")
+      : getSheet("USER_DB", SPREADSHEET_IDS.SHEET_USER_NAME);
     var data = sheet.getDataRange().getValues();
 
     for (var i = 1; i < data.length; i++) {
@@ -349,7 +354,9 @@ function getAksesMenuUser(username) {
 
 function getDaftarUser() {
   try {
-    var sheet = getSheet("USER_DB", SPREADSHEET_IDS.SHEET_USER_NAME);
+    var sheet = USE_CENTRAL_USERS_DB
+      ? SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_MASTER).getSheetByName("tbl_users")
+      : getSheet("USER_DB", SPREADSHEET_IDS.SHEET_USER_NAME);
     if (!sheet) return JSON.stringify([]);
     var data = sheet.getDataRange().getValues();
     var result = [];
