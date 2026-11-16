@@ -9,6 +9,14 @@ const KONFIG_CUTI = {
   SHEET_DB: "Database Cuti"
 };
 
+function getCutiSheet_(sheetName) {
+  if (typeof USE_CENTRAL_SIABA_DB !== "undefined" && USE_CENTRAL_SIABA_DB) {
+    if (sheetName === "Sisa CT") return getSiabaCentralSheet("tbl_siaba_sisa_cuti");
+    if (sheetName === "Data Atasan") return getSiabaCentralSheet("tbl_siaba_data_atasan");
+  }
+  return getSheet(KONFIG_CUTI.DB_KEY, sheetName);
+}
+
 /* ======================================================================
    0. SISTEM KEAMANAN NPSN & MASTER DATABASE
    ====================================================================== */
@@ -128,7 +136,7 @@ function getDataCuti(tahun, bulan, unitFilter) {
     // Peta Lookup Sisa Cuti Tahunan Real-Time dari sheet "Sisa CT"
     var mapSisaCT = {};
     try {
-      var sheetSisa = getSheet(KONFIG_CUTI.DB_KEY, "Sisa CT");
+      var sheetSisa = getCutiSheet_("Sisa CT");
       if (sheetSisa) {
         var lastSisaRow = sheetSisa.getLastRow();
         if (lastSisaRow > 1) {
@@ -418,7 +426,7 @@ function getSisaCutiPegawai(targetNip) {
   var result = { n2: "0", n1: "0", n: "0", total: "0" };
   if (!targetNip) return result;
   try {
-    var sheet = getSheet(KONFIG_CUTI.DB_KEY, "Sisa CT");
+    var sheet = getCutiSheet_("Sisa CT");
     if (!sheet) return result;
     var lastRow = sheet.getLastRow();
     if (lastRow < 2) return result;
@@ -511,7 +519,7 @@ function getDetailPegawaiByNip(targetNip) {
 
 function lookupPejabatStruktural(jenisCuti, unitUser, golUser, tugasUser) {
   try {
-      var sheet = getSheet(KONFIG_CUTI.DB_KEY, "Data Atasan");
+      var sheet = getCutiSheet_("Data Atasan");
       var data = sheet.getDataRange().getDisplayValues();
       var j = String(jenisCuti).toLowerCase().trim();
       var t = String(tugasUser).toLowerCase().trim();
@@ -696,7 +704,7 @@ function parseDateIndo(str) {
    ====================================================================== */
 function getSisaCutiData() {
   try {
-    var sheet = getSheet(KONFIG_CUTI.DB_KEY, "Sisa CT");
+    var sheet = getCutiSheet_("Sisa CT");
     
     var lastRow = sheet.getLastRow();
     if (lastRow < 1) return JSON.stringify({ headers: [], data: [] });
