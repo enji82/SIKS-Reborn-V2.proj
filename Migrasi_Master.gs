@@ -253,7 +253,8 @@ function syncMasterPTK() {
   var sources = [
     { key: "PTK_SD_DB", sheetName: "Master Data GTK", jenjangDefault: "SD Negeri" },
     { key: "PTK_SD_DB", sheetName: "Master Data GTK SDS", jenjangDefault: "SD Swasta" },
-    { key: "PTK_PAUD_DB", sheetName: "Master Data GTK PAUD", jenjangDefault: "PAUD" }
+    { key: "PTK_PAUD_DB", sheetName: "Master Data GTK PAUD", jenjangDefault: "PAUD" },
+    { key: "PPPK_PW_DB", sheetName: "", jenjangDefault: "PPPK PW" }
   ];
 
   var now = new Date();
