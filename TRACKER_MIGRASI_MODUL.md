@@ -39,6 +39,25 @@ Dokumen ini mencatat status pengerjaan, pemetaan database, dan hasil pengujian u
 
 ---
 
+## Urutan Prioritas Pengerjaan (Rekomendasi)
+
+Agar pengerjaan aman dan saling mendukung, berikut urutan resmi yang kita gunakan:
+
+1. **Gelombang 1 — Pondasi Data Induk**
+   - Pengaturan & Login (`code.gs`) — *Sudah selesai*
+   - Data PTK (`PTK.gs`) & PPPK PW (`PPPK_PW.gs`) → lengkapi `tbl_ptk`
+   - Administrasi Sekolah (`AdmSekolah.gs`) → lengkapi `tbl_sekolah`
+2. **Gelombang 2 — Modul Kepegawaian Harian (SIABA)**
+   - Selesaikan integrasi penuh `Siaba_cuti.gs`, lalu `Siaba_perjadin.gs`, `Siaba_lupa.gs`, `Siaba_salah.gs`, dan `Siaba_presensi.gs` ke `SIKS_DB_SIABA`.
+3. **Gelombang 3 — Modul Administrasi & Laporan Inti**
+   - Laporan Bulan (`Lapbul.gs`), SK Pembagian Tugas (`SK.gs`), E-File PTK (`Efile.gs`), TPG (`TPG_Perbaikan.gs`), Administrasi PTK (`AdmPTK.gs`).
+4. **Gelombang 4 — Modul Murid**
+   - Jumlah Murid (`Murid.gs`) dan Administrasi Murid (`AdmMurid.gs`).
+5. **Gelombang 5 — Modul Pendukung & Monitoring**
+   - Komunitas Belajar (`KomBel.gs`), Tata Naskah Dinas (`TataNaskahDinas.gs`), Kemitraan (`Kemitraan.gs`), dan Monitoring Aktivitas (`NotifikasiHome.gs`).
+
+---
+
 ## Catatan Penting untuk Penerus Proyek
 1. **Jangan hapus spreadsheet lama** sebelum seluruh status di tabel atas bertanda `[x]`.
 2. Setiap kali menambah/mengubah modul, perbarui kolom **Status Migrasi Data**, **Status Kode & Saklar**, dan **Hasil Pengujian** di tabel ini.
