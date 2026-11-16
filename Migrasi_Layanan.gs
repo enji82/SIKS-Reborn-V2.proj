@@ -396,3 +396,27 @@ function syncTataNaskahDinas() {
   Logger.log("syncTataNaskahDinas selesai: " + (srcData.length - 1) + " baris.");
   return { tbl_tnd: srcData.length - 1 };
 }
+
+/**
+ * Menyalin data Administrasi Sekolah (Database_Dokumen) ke tbl_adm_sekolah di SIKS_DB_LAYANAN.
+ */
+function syncAdmSekolah() {
+  var dstSs = SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_LAYANAN);
+  var srcSs = SpreadsheetApp.openById(SPREADSHEET_IDS.ADM_SEKOLAH_DB);
+  var srcSheet = srcSs.getSheetByName("Database_Dokumen") || srcSs.getSheets()[0];
+  if (!srcSheet) return { tbl_adm_sekolah: 0 };
+
+  var dstSheet = dstSs.getSheetByName("tbl_adm_sekolah");
+  if (!dstSheet) dstSheet = dstSs.insertSheet("tbl_adm_sekolah");
+
+  var srcData = srcSheet.getDataRange().getValues();
+  if (srcData.length < 2) return { tbl_adm_sekolah: 0 };
+
+  dstSheet.clearContents();
+  dstSheet.getRange(1, 1, srcData.length, srcData[0].length).setValues(srcData);
+  dstSheet.getRange(1, 1, 1, srcData[0].length).setFontWeight("bold");
+  dstSheet.setFrozenRows(1);
+
+  Logger.log("syncAdmSekolah selesai: " + (srcData.length - 1) + " baris.");
+  return { tbl_adm_sekolah: srcData.length - 1 };
+}

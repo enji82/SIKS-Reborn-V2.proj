@@ -8,6 +8,12 @@ const KONFIG_ADM_SEKOLAH = {
 };
 
 function getOrCreateSheetAdmSekolah(sheetName) {
+  if (typeof USE_CENTRAL_LAYANAN_DB !== "undefined" && USE_CENTRAL_LAYANAN_DB) {
+    if (sheetName === "Database_Dokumen") {
+      var central = getLayananCentralSheet("tbl_adm_sekolah");
+      if (central) return central;
+    }
+  }
   var ss = getDB(KONFIG_ADM_SEKOLAH.DB_KEY);
   var sheet = ss.getSheetByName(sheetName);
   if (!sheet) {
