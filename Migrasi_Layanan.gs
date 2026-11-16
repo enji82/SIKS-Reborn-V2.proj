@@ -372,3 +372,27 @@ function syncAdmMurid() {
   Logger.log("syncAdmMurid selesai: " + (srcData.length - 1) + " baris.");
   return { tbl_adm_murid: srcData.length - 1 };
 }
+
+/**
+ * Menyalin data Tata Naskah Dinas (TATA_NASKAH_DINAS_DB) ke tbl_tnd di SIKS_DB_LAYANAN.
+ */
+function syncTataNaskahDinas() {
+  var dstSs = SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_LAYANAN);
+  var srcSs = SpreadsheetApp.openById(SPREADSHEET_IDS.TATA_NASKAH_DINAS_DB);
+  var srcSheet = srcSs.getSheets()[0];
+  if (!srcSheet) return { tbl_tnd: 0 };
+
+  var dstSheet = dstSs.getSheetByName("tbl_tnd");
+  if (!dstSheet) dstSheet = dstSs.insertSheet("tbl_tnd");
+
+  var srcData = srcSheet.getDataRange().getValues();
+  if (srcData.length < 2) return { tbl_tnd: 0 };
+
+  dstSheet.clearContents();
+  dstSheet.getRange(1, 1, srcData.length, srcData[0].length).setValues(srcData);
+  dstSheet.getRange(1, 1, 1, srcData[0].length).setFontWeight("bold");
+  dstSheet.setFrozenRows(1);
+
+  Logger.log("syncTataNaskahDinas selesai: " + (srcData.length - 1) + " baris.");
+  return { tbl_tnd: srcData.length - 1 };
+}
