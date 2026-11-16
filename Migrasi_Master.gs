@@ -216,3 +216,130 @@ function syncMasterSekolah() {
   Logger.log("Sync tbl_sekolah selesai. Ditambahkan: " + toInsert.length + " baris.");
   return { inserted: toInsert.length };
 }
+
+/**
+ * Menyalin data PTK dari PTK_SD_DB dan PTK_PAUD_DB ke tbl_ptk di SIKS_DB_MASTER.
+ * Aman dijalankan berkali-kali: mencegah duplikasi berdasarkan NIP / NIK / (Nama + Sekolah).
+ */
+function syncMasterPTK() {
+  var dstSs = SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_MASTER);
+  var dstSheet = dstSs.getSheetByName("tbl_ptk");
+  if (!dstSheet) throw new Error("Sheet 'tbl_ptk' belum ada. Jalankan setupMasterSheets() terlebih dahulu.");
+
+  // Mapping nama sekolah -> npsn dari tbl_sekolah
+  var npsnBySekolah = {};
+  var sekolahSheet = dstSs.getSheetByName("tbl_sekolah");
+  if (sekolahSheet) {
+    var sekData = sekolahSheet.getDataRange().getValues();
+    for (var s = 1; s < sekData.length; s++) {
+      var sNpsn = String(sekData[s][0] || "").trim();
+      var sNama = String(sekData[s][1] || "").trim().toLowerCase();
+      if (sNama && sNpsn) npsnBySekolah[sNama] = sNpsn;
+    }
+  }
+
+  var dstData = dstSheet.getDataRange().getValues();
+  var existingKeys = {};
+  for (var i = 1; i < dstData.length; i++) {
+    var exNip = String(dstData[i][1] || "").trim();
+    var exNik = String(dstData[i][2] || "").trim();
+    var exNama = String(dstData[i][4] || "").trim().toLowerCase();
+    var exNpsn = String(dstData[i][9] || "").trim();
+    if (exNip) existingKeys["nip:" + exNip] = true;
+    if (exNik) existingKeys["nik:" + exNik] = true;
+    if (exNama) existingKeys["nama:" + exNama + "|" + exNpsn] = true;
+  }
+
+  var sources = [
+    { key: "PTK_SD_DB", jenjangDefault: "SD" },
+    { key: "PTK_PAUD_DB", jenjangDefault: "PAUD" }
+  ];
+
+  var now = new Date();
+  var toInsert = [];
+
+  sources.forEach(function (src) {
+    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS[src.key]);
+    var sheet = ss.getSheets()[0];
+    if (!sheet) return;
+
+    var data = sheet.getDataRange().getValues();
+    if (data.length < 2) return;
+
+    // Cari baris header (baris 1-5) yang mengandung kolom Nama
+    var headerIdx = -1;
+    var idxNama = -1;
+    for (var rCheck = 0; rCheck < Math.min(5, data.length); rCheck++) {
+      var cIdx = findColIndex_(data[rCheck], ["nama", "nama lengkap", "nama_lengkap", "nama ptk", "nama guru"]);
+      if (cIdx !== -1) {
+        headerIdx = rCheck;
+        idxNama = cIdx;
+        break;
+      }
+    }
+    if (headerIdx === -1) return;
+
+    var h = data[headerIdx];
+    var idxNip = findColIndex_(h, ["nip"]);
+    var idxNik = findColIndex_(h, ["nik", "no ktp", "no_ktp"]);
+    var idxNuptk = findColIndex_(h, ["nuptk"]);
+    var idxJk = findColIndex_(h, ["jk", "jenis kelamin", "jenis_kelamin", "l/p"]);
+    var idxTmpLahir = findColIndex_(h, ["tempat lahir", "tempat_lahir"]);
+    var idxTglLahir = findColIndex_(h, ["tanggal lahir", "tanggal_lahir", "tgl lahir"]);
+    var idxSekolah = findColIndex_(h, ["sekolah", "nama sekolah", "nama_sekolah", "unit kerja", "satuan pendidikan"]);
+    var idxNpsn = findColIndex_(h, ["npsn"]);
+    var idxStatusPeg = findColIndex_(h, ["status kepegawaian", "status_kepegawaian", "status pegawai", "status"]);
+    var idxJabatan = findColIndex_(h, ["jabatan", "jenis ptk", "tugas"]);
+    var idxPangkat = findColIndex_(h, ["pangkat", "golongan", "pangkat/golongan", "pangkat_golongan"]);
+    var idxHp = findColIndex_(h, ["no hp", "no_hp", "hp", "telepon", "wa", "no wa"]);
+    var idxEmail = findColIndex_(h, ["email"]);
+
+    for (var r = headerIdx + 1; r < data.length; r++) {
+      var row = data[r];
+      var nama = String(row[idxNama] || "").trim();
+      if (!nama) continue;
+
+      var nip = idxNip > -1 ? String(row[idxNip] || "").trim() : "";
+      var nik = idxNik > -1 ? String(row[idxNik] || "").trim() : "";
+      var namaSekolah = idxSekolah > -1 ? String(row[idxSekolah] || "").trim() : "";
+      var npsn = idxNpsn > -1 ? String(row[idxNpsn] || "").trim() : (npsnBySekolah[namaSekolah.toLowerCase()] || "");
+
+      if (nip && existingKeys["nip:" + nip]) continue;
+      if (nik && existingKeys["nik:" + nik]) continue;
+      if (existingKeys["nama:" + nama.toLowerCase() + "|" + npsn]) continue;
+
+      var idPtk = nip || nik || ("PTK-" + src.jenjangDefault + "-" + (dstData.length + toInsert.length + 1));
+
+      toInsert.push([
+        idPtk,
+        nip,
+        nik,
+        idxNuptk > -1 ? String(row[idxNuptk] || "").trim() : "",
+        nama,
+        idxJk > -1 ? String(row[idxJk] || "").trim() : "",
+        idxTmpLahir > -1 ? String(row[idxTmpLahir] || "").trim() : "",
+        idxTglLahir > -1 ? row[idxTglLahir] : "",
+        src.jenjangDefault,
+        npsn,
+        idxStatusPeg > -1 ? String(row[idxStatusPeg] || "").trim() : "",
+        idxJabatan > -1 ? String(row[idxJabatan] || "").trim() : "",
+        idxPangkat > -1 ? String(row[idxPangkat] || "").trim() : "",
+        idxHp > -1 ? String(row[idxHp] || "").trim() : "",
+        idxEmail > -1 ? String(row[idxEmail] || "").trim() : "",
+        "AKTIF",
+        now
+      ]);
+
+      if (nip) existingKeys["nip:" + nip] = true;
+      if (nik) existingKeys["nik:" + nik] = true;
+      existingKeys["nama:" + nama.toLowerCase() + "|" + npsn] = true;
+    }
+  });
+
+  if (toInsert.length > 0) {
+    dstSheet.getRange(dstSheet.getLastRow() + 1, 1, toInsert.length, 17).setValues(toInsert);
+  }
+
+  Logger.log("Sync tbl_ptk selesai. Ditambahkan: " + toInsert.length + " baris.");
+  return { inserted: toInsert.length };
+}
