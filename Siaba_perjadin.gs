@@ -9,12 +9,22 @@ const KONFIG_DINAS = {
   SHEET_PESERTA: "Perjalanan_Dinas_Peserta"
 };
 
+function getDinasSheet_(sheetName) {
+  if (typeof USE_CENTRAL_SIABA_DB !== "undefined" && USE_CENTRAL_SIABA_DB) {
+    if (sheetName === KONFIG_DINAS.SHEET_MAIN) {
+      var central = getSiabaCentralSheet("tbl_siaba_dinas");
+      if (central) return central;
+    }
+  }
+  return getSheet(KONFIG_DINAS.DB_KEY, sheetName);
+}
+
 /* ----------------------------------------------------------------------
    1. GET DAFTAR DINAS (UNTUK DATATABLES)
    ---------------------------------------------------------------------- */
 function getDaftarDinas(tahun, bulan, status) {
   try {
-    var sheet = getSheet(KONFIG_DINAS.DB_KEY, KONFIG_DINAS.SHEET_MAIN);
+    var sheet = getDinasSheet_(KONFIG_DINAS.SHEET_MAIN);
 
     var data = sheet.getDataRange().getDisplayValues();
     if (!data || data.length <= 1) return JSON.stringify([]);
@@ -147,7 +157,7 @@ function simpanSptUnified(payload) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000); 
-    var sheetMaster = getSheet(KONFIG_DINAS.DB_KEY, KONFIG_DINAS.SHEET_MAIN);
+    var sheetMaster = getDinasSheet_(KONFIG_DINAS.SHEET_MAIN);
     var sheetDetail = getSheet(KONFIG_DINAS.DB_KEY, KONFIG_DINAS.SHEET_PESERTA);
     
     if (!sheetDetail) {
@@ -324,7 +334,7 @@ function cariPegawaiDatabase(keyword) {
 
 function cekInfoSpt(noSpt) {
   try {
-    var sheet = getSheet(KONFIG_DINAS.DB_KEY, KONFIG_DINAS.SHEET_MAIN);
+    var sheet = getDinasSheet_(KONFIG_DINAS.SHEET_MAIN);
     
     var data = sheet.getDataRange().getDisplayValues();
     for (var i = 1; i < data.length; i++) {
@@ -377,7 +387,7 @@ function verifikasiDataDinas(payload) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
-    var sheet = getSheet(KONFIG_DINAS.DB_KEY, KONFIG_DINAS.SHEET_MAIN);
+    var sheet = getDinasSheet_(KONFIG_DINAS.SHEET_MAIN);
     var row = parseInt(payload.recId);
     var verifikator = payload.user_verif || "Admin";
     var now = new Date();
@@ -407,7 +417,7 @@ function hapusDataDinas(payload) {
     var d = new Date(); var kd = d.getFullYear()+""+String(d.getMonth()+1).padStart(2,'0')+""+String(d.getDate()).padStart(2,'0');
     if (payload.kode !== kd) return "KODE_SALAH";
       
-    var sheetMaster = getSheet(KONFIG_DINAS.DB_KEY, KONFIG_DINAS.SHEET_MAIN);
+    var sheetMaster = getDinasSheet_(KONFIG_DINAS.SHEET_MAIN);
     var sheetPeserta = getSheet(KONFIG_DINAS.DB_KEY, KONFIG_DINAS.SHEET_PESERTA);
     
     var dataMaster = sheetMaster.getDataRange().getDisplayValues();
@@ -484,7 +494,7 @@ function toHtmlDate(textDate) {
    ---------------------------------------------------------------------- */
 function getNotifikasiPerdin(role, unit) {
   try {
-    var sheet = getSheet(KONFIG_DINAS.DB_KEY, KONFIG_DINAS.SHEET_MAIN);
+    var sheet = getDinasSheet_(KONFIG_DINAS.SHEET_MAIN);
 
     var data = sheet.getDataRange().getDisplayValues();
     var rLower = String(role || "").toLowerCase();
@@ -560,7 +570,7 @@ function getNotifikasiPerdin(role, unit) {
 
 function tandaiNotifPerdinDibaca(rowId, role) {
   try {
-    var sheet = getSheet(KONFIG_DINAS.DB_KEY, KONFIG_DINAS.SHEET_MAIN);
+    var sheet = getDinasSheet_(KONFIG_DINAS.SHEET_MAIN);
     var rIdx = parseInt(rowId);
     if (isNaN(rIdx)) return false;
     
@@ -582,7 +592,7 @@ function tandaiNotifPerdinDibaca(rowId, role) {
 
 function tandaiSemuaNotifPerdinDibaca(role, unit) {
   try {
-    var sheet = getSheet(KONFIG_DINAS.DB_KEY, KONFIG_DINAS.SHEET_MAIN);
+    var sheet = getDinasSheet_(KONFIG_DINAS.SHEET_MAIN);
     var data = sheet.getDataRange().getDisplayValues();
     var rLower = String(role || "").toLowerCase();
     var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
