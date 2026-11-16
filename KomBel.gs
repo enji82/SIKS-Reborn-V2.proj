@@ -10,6 +10,12 @@ const KONFIG_KOMBEL = {
 };
 
 function getOrCreateSheetKombel(sheetName) {
+  if (typeof USE_CENTRAL_LAYANAN_DB !== "undefined" && USE_CENTRAL_LAYANAN_DB) {
+    if (sheetName === "Database_Dokumen") {
+      var central = getLayananCentralSheet("tbl_kombel");
+      if (central) return central;
+    }
+  }
   var ss = getDB(KONFIG_KOMBEL.DB_KEY);
   var sheet = ss.getSheetByName(sheetName);
   if (!sheet) {

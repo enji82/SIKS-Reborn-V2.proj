@@ -9,6 +9,12 @@ const KONFIG_KEMITRAAN = {
 };
 
 function getOrCreateSheetKemitraan(sheetName) {
+  if (typeof USE_CENTRAL_LAYANAN_DB !== "undefined" && USE_CENTRAL_LAYANAN_DB) {
+    if (sheetName === "Database_Dokumen") {
+      var central = getLayananCentralSheet("tbl_kemitraan");
+      if (central) return central;
+    }
+  }
   var ss = getDB(KONFIG_KEMITRAAN.DB_KEY);
   var sName = "Kemitraan_" + sheetName;
   var sheet = ss.getSheetByName(sName);

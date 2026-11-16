@@ -22,7 +22,7 @@ Dokumen ini mencatat status pengerjaan, pemetaan database, dan hasil pengujian u
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | 1 | **Laporan Bulan (Lapbul)** | `Lapbul.gs` | `SIKS_DB_LAYANAN` (`tbl_lapbul_sd`, `tbl_lapbul_paud`) | `[x]` SD (1.251 baris) & PAUD (531 baris) | `[x]` `USE_CENTRAL_LAYANAN_DB` | **Berhasil** (Dashboard, Kelola Data, Status Data normal) |
 | 2 | **SK Pembagian Tugas** | `SK.gs` | `SIKS_DB_LAYANAN` (`tbl_sk`) | `[x]` 324 baris | `[x]` `USE_CENTRAL_LAYANAN_DB` | **Berhasil** (Dashboard, Kelola Data, Status Data normal) |
-| 3 | **Administrasi Sekolah** | `AdmSekolah.gs` | `SIKS_DB_MASTER` (`tbl_sekolah`) & `SIKS_DB_LAYANAN` | `[~]` `tbl_sekolah` terisi 65 baris | `[ ]` Belum | - |
+| 3 | **Administrasi Sekolah** | `AdmSekolah.gs` | `SIKS_DB_MASTER` (`tbl_sekolah`) & `SIKS_DB_LAYANAN` (`tbl_adm_sekolah`) | `[x]` 65 sekolah & `Database_Dokumen` | `[x]` `USE_CENTRAL_LAYANAN_DB` | **Berhasil** (Administrasi Sekolah normal) |
 | 4 | **Data PTK** | `PTK.gs` | `SIKS_DB_MASTER` (`tbl_ptk`) | `[x]` 486 baris (SDN 253 + SDS/PAUD 233) | `[~]` `USE_CENTRAL_PTK_DB` aktif untuk filter unit & status | **Berhasil** (filter & daftar PTK tampil normal) |
 | 5 | **E-File PTK** | `Efile.gs` | `SIKS_DB_LAYANAN` (`tbl_efile`) | `[x]` 3.370 baris | `[x]` `USE_CENTRAL_LAYANAN_DB` | **Berhasil** (Dashboard, Kelola Berkas, Viewer, Master Kategori normal) |
 | 6 | **SIABA** (Presensi, Cuti, Dinas, Lupa, Salah, TA/PA) | `Siaba_*.gs` | `SIKS_DB_SIABA` (`tbl_siaba_*`) | `[x]` Cuti (234), Dinas (234), Lupa (234), Salah (232), Data Atasan, Sisa CT | `[~]` `USE_CENTRAL_SIABA_DB` aktif untuk `Sisa CT` & `Data Atasan` di `Siaba_cuti.gs` | **Berhasil** (uji Sisa Cuti & Pengajuan Cuti normal) |
