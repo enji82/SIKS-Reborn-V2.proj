@@ -132,8 +132,10 @@ function findColIndex_(headers, candidates) {
 }
 
 /**
- * Menyalin data sekolah dari DATA_SEKOLAH ke tbl_sekolah di SIKS_DB_MASTER.
- * Aman dijalankan berkali-kali: hanya menambah NPSN yang belum ada.
+ * Menyalin data sekolah dari DATA_SEKOLAH (sheet 'Data Sekolah' berformat kolom per jenjang:
+ * KB | TK | SD | SD Negeri | SD Swasta | SIABA) ke tbl_sekolah di SIKS_DB_MASTER.
+ * Sekaligus mencocokkan NPSN dari tbl_users (jika ada).
+ * Aman dijalankan berkali-kali: hanya menambah sekolah yang belum ada.
  */
 function syncMasterSekolah() {
   var srcSs = SpreadsheetApp.openById(SPREADSHEET_IDS.DATA_SEKOLAH);
@@ -144,71 +146,67 @@ function syncMasterSekolah() {
   var dstSheet = dstSs.getSheetByName("tbl_sekolah");
   if (!dstSheet) throw new Error("Sheet 'tbl_sekolah' belum ada. Jalankan setupMasterSheets() terlebih dahulu.");
 
-  var srcData = srcSheet.getDataRange().getValues();
-  if (srcData.length < 2) return { inserted: 0 };
-
-  // Cari baris header (cek baris 1 sampai 5) yang mengandung kolom NPSN
-  var headerRowIdx = -1;
-  var idxNpsn = -1;
-  for (var rCheck = 0; rCheck < Math.min(5, srcData.length); rCheck++) {
-    var candidateIdx = findColIndex_(srcData[rCheck], ["npsn", "kode npsn", "kode_npsn", "id_sekolah", "id sekolah"]);
-    if (candidateIdx !== -1) {
-      headerRowIdx = rCheck;
-      idxNpsn = candidateIdx;
-      break;
+  // Ambil mapping nama_sekolah -> npsn dari tbl_users (jika sudah di-sync)
+  var npsnByNama = {};
+  var userSheet = dstSs.getSheetByName("tbl_users");
+  if (userSheet) {
+    var userData = userSheet.getDataRange().getValues();
+    for (var u = 1; u < userData.length; u++) {
+      var uNama = String(userData[u][2] || "").trim().toLowerCase();
+      var uNpsn = String(userData[u][4] || "").trim();
+      if (uNama && uNpsn && !npsnByNama[uNama]) {
+        npsnByNama[uNama] = uNpsn;
+      }
     }
   }
 
-  if (idxNpsn === -1) {
-    throw new Error(
-      "Kolom 'NPSN' tidak ditemukan di sheet '" + srcSheet.getName() +
-      "'. Header baris 1: [" + srcData[0].join(" | ") + "]"
-    );
-  }
-
-  var h = srcData[headerRowIdx];
-  var idxNama = findColIndex_(h, ["nama_sekolah", "nama sekolah", "sekolah", "nama satuan pendidikan"]);
-  var idxJenjang = findColIndex_(h, ["jenjang", "bentuk pendidikan"]);
-  var idxStatus = findColIndex_(h, ["status_sekolah", "status sekolah", "status"]);
-  var idxAlamat = findColIndex_(h, ["alamat", "alamat jalan"]);
-  var idxKec = findColIndex_(h, ["kecamatan"]);
-  var idxKab = findColIndex_(h, ["kabupaten", "kabupaten/kota"]);
-  var idxPos = findColIndex_(h, ["kode_pos", "kode pos"]);
-  var idxTelp = findColIndex_(h, ["telepon", "no_telp", "no telp"]);
-  var idxEmail = findColIndex_(h, ["email"]);
-  var idxKepsek = findColIndex_(h, ["kepala_sekolah", "kepala sekolah", "nama kepsek"]);
-  var idxNipKepsek = findColIndex_(h, ["nip_kepsek", "nip kepala sekolah", "nip kepsek"]);
-
   var dstData = dstSheet.getDataRange().getValues();
-  var existingNpsn = {};
+  var existingKeys = {};
   for (var i = 1; i < dstData.length; i++) {
-    var npsn = String(dstData[i][0] || "").trim();
-    if (npsn) existingNpsn[npsn] = true;
+    var exNpsn = String(dstData[i][0] || "").trim();
+    var exNama = String(dstData[i][1] || "").trim().toLowerCase();
+    if (exNpsn) existingKeys["npsn:" + exNpsn] = true;
+    if (exNama) existingKeys["nama:" + exNama] = true;
   }
 
+  var srcData = srcSheet.getDataRange().getValues();
+  if (srcData.length < 2) return { inserted: 0 };
+
+  var headers = srcData[0];
   var now = new Date();
   var toInsert = [];
-  for (var r = headerRowIdx + 1; r < srcData.length; r++) {
-    var row = srcData[r];
-    var npsnVal = String(row[idxNpsn] || "").trim();
-    if (!npsnVal || existingNpsn[npsnVal]) continue;
 
-    toInsert.push([
-      npsnVal,
-      idxNama > -1 ? String(row[idxNama] || "").trim() : "",
-      idxJenjang > -1 ? String(row[idxJenjang] || "").trim() : "",
-      idxStatus > -1 ? String(row[idxStatus] || "").trim() : "",
-      idxAlamat > -1 ? String(row[idxAlamat] || "").trim() : "",
-      idxKec > -1 ? String(row[idxKec] || "").trim() : "",
-      idxKab > -1 ? String(row[idxKab] || "").trim() : "",
-      idxPos > -1 ? String(row[idxPos] || "").trim() : "",
-      idxTelp > -1 ? String(row[idxTelp] || "").trim() : "",
-      idxEmail > -1 ? String(row[idxEmail] || "").trim() : "",
-      idxKepsek > -1 ? String(row[idxKepsek] || "").trim() : "",
-      idxNipKepsek > -1 ? String(row[idxNipKepsek] || "").trim() : "",
-      now
-    ]);
-    existingNpsn[npsnVal] = true;
+  for (var col = 0; col < headers.length; col++) {
+    var kategori = String(headers[col] || "").trim();
+    if (!kategori) continue;
+
+    var jenjang = kategori;
+    var statusSekolah = "";
+    if (kategori.toLowerCase().indexOf("negeri") > -1) statusSekolah = "Negeri";
+    else if (kategori.toLowerCase().indexOf("swasta") > -1) statusSekolah = "Swasta";
+
+    for (var r = 1; r < srcData.length; r++) {
+      var namaSekolah = String(srcData[r][col] || "").trim();
+      if (!namaSekolah) continue;
+
+      var keyNama = "nama:" + namaSekolah.toLowerCase();
+      if (existingKeys[keyNama]) continue;
+
+      var npsnVal = npsnByNama[namaSekolah.toLowerCase()] || "";
+      if (npsnVal && existingKeys["npsn:" + npsnVal]) continue;
+
+      toInsert.push([
+        npsnVal,          // npsn
+        namaSekolah,      // nama_sekolah
+        jenjang,          // jenjang
+        statusSekolah,    // status_sekolah
+        "", "", "", "", "", "", "", "", // alamat s/d nip_kepsek
+        now               // updated_at
+      ]);
+
+      existingKeys[keyNama] = true;
+      if (npsnVal) existingKeys["npsn:" + npsnVal] = true;
+    }
   }
 
   if (toInsert.length > 0) {
