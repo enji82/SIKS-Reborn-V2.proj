@@ -15,6 +15,10 @@ function getDinasSheet_(sheetName) {
       var central = getSiabaCentralSheet("tbl_siaba_dinas");
       if (central) return central;
     }
+    if (sheetName === KONFIG_DINAS.SHEET_PESERTA) {
+      var centralPeserta = getSiabaCentralSheet("tbl_siaba_dinas_peserta");
+      if (centralPeserta) return centralPeserta;
+    }
   }
   return getSheet(KONFIG_DINAS.DB_KEY, sheetName);
 }
@@ -66,7 +70,7 @@ function getDaftarDinas(tahun, bulan, status) {
     // Ambil mapping unit sekolah per No SPT dari Sheet Detail Peserta
     var mapUnitSpt = {};
     try {
-      var sheetPeserta = getSheet(KONFIG_DINAS.DB_KEY, KONFIG_DINAS.SHEET_PESERTA);
+      var sheetPeserta = getDinasSheet_(KONFIG_DINAS.SHEET_PESERTA);
       if (sheetPeserta) {
         var dataPeserta = sheetPeserta.getDataRange().getDisplayValues();
         for (var p = 1; p < dataPeserta.length; p++) {
@@ -158,7 +162,7 @@ function simpanSptUnified(payload) {
   try {
     lock.waitLock(10000); 
     var sheetMaster = getDinasSheet_(KONFIG_DINAS.SHEET_MAIN);
-    var sheetDetail = getSheet(KONFIG_DINAS.DB_KEY, KONFIG_DINAS.SHEET_PESERTA);
+    var sheetDetail = getDinasSheet_(KONFIG_DINAS.SHEET_PESERTA);
     
     if (!sheetDetail) {
       sheetDetail = ss.insertSheet("Perjalanan_Dinas_Peserta");
@@ -360,7 +364,7 @@ function cekInfoSpt(noSpt) {
 
 function getPesertaDinas(noSpt) {
   try {
-      var sheet = getSheet(KONFIG_DINAS.DB_KEY, KONFIG_DINAS.SHEET_PESERTA);
+      var sheet = getDinasSheet_(KONFIG_DINAS.SHEET_PESERTA);
       
       var data = sheet.getDataRange().getDisplayValues();
       var result = [];
@@ -418,7 +422,7 @@ function hapusDataDinas(payload) {
     if (payload.kode !== kd) return "KODE_SALAH";
       
     var sheetMaster = getDinasSheet_(KONFIG_DINAS.SHEET_MAIN);
-    var sheetPeserta = getSheet(KONFIG_DINAS.DB_KEY, KONFIG_DINAS.SHEET_PESERTA);
+    var sheetPeserta = getDinasSheet_(KONFIG_DINAS.SHEET_PESERTA);
     
     var dataMaster = sheetMaster.getDataRange().getDisplayValues();
     var hintRow = parseInt(payload.recId);

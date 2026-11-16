@@ -487,28 +487,33 @@ function syncSiabaSisaCuti() {
 }
 
 /**
- * Menyalin sheet 'Perjalanan_Dinas' dari SIABA_DINAS_DB ke tbl_siaba_dinas
- * dengan mempertahankan seluruh kolom aslinya agar siap dipakai langsung oleh Siaba_perjadin.gs.
+ * Menyalin sheet 'Perjalanan_Dinas' dan 'Perjalanan_Dinas_Peserta' dari SIABA_DINAS_DB
+ * ke SIKS_DB_SIABA dengan mempertahankan seluruh kolom aslinya.
  */
 function syncSiabaDinasExact() {
   var srcSs = SpreadsheetApp.openById(SPREADSHEET_IDS.SIABA_DINAS_DB);
-  var srcSheet = srcSs.getSheetByName("Perjalanan_Dinas") || srcSs.getSheets()[0];
-  if (!srcSheet) return { tbl_siaba_dinas: 0 };
-
   var dstSs = SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_SIABA);
-  var dstSheet = dstSs.getSheetByName("tbl_siaba_dinas");
-  if (!dstSheet) dstSheet = dstSs.insertSheet("tbl_siaba_dinas");
+  var pairs = [
+    { src: "Perjalanan_Dinas", dst: "tbl_siaba_dinas" },
+    { src: "Perjalanan_Dinas_Peserta", dst: "tbl_siaba_dinas_peserta" }
+  ];
 
-  var srcData = srcSheet.getDataRange().getValues();
-  if (srcData.length < 2) return { tbl_siaba_dinas: 0 };
+  var res = {};
+  pairs.forEach(function (p) {
+    var srcSheet = srcSs.getSheetByName(p.src);
+    if (!srcSheet) { res[p.dst] = 0; return; }
+    var dstSheet = dstSs.getSheetByName(p.dst) || dstSs.insertSheet(p.dst);
+    var srcData = srcSheet.getDataRange().getValues();
+    if (srcData.length < 2) { res[p.dst] = 0; return; }
+    dstSheet.clearContents();
+    dstSheet.getRange(1, 1, srcData.length, srcData[0].length).setValues(srcData);
+    dstSheet.getRange(1, 1, 1, srcData[0].length).setFontWeight("bold");
+    dstSheet.setFrozenRows(1);
+    res[p.dst] = srcData.length - 1;
+  });
 
-  dstSheet.clearContents();
-  dstSheet.getRange(1, 1, srcData.length, srcData[0].length).setValues(srcData);
-  dstSheet.getRange(1, 1, 1, srcData[0].length).setFontWeight("bold");
-  dstSheet.setFrozenRows(1);
-
-  Logger.log("syncSiabaDinasExact selesai: " + (srcData.length - 1) + " baris.");
-  return { tbl_siaba_dinas: srcData.length - 1 };
+  Logger.log("syncSiabaDinasExact selesai: " + JSON.stringify(res));
+  return res;
 }
 
 /**
