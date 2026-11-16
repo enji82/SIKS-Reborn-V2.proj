@@ -462,3 +462,34 @@ function syncMasterMurid() {
   Logger.log("Sync tbl_murid selesai. Ditambahkan: " + toInsert.length + " baris.");
   return { inserted: toInsert.length };
 }
+
+/**
+ * Menjalankan sinkronisasi semua data master sekaligus (User, Sekolah, PTK).
+ * Aman dijalankan otomatis oleh trigger harian.
+ */
+function syncAllMaster() {
+  var resUsers = syncMasterUsers();
+  var resSekolah = syncMasterSekolah();
+  var resPtk = syncMasterPTK();
+  Logger.log("syncAllMaster selesai: Users=" + resUsers.inserted + ", Sekolah=" + resSekolah.inserted + ", PTK=" + resPtk.inserted);
+  return { users: resUsers.inserted, sekolah: resSekolah.inserted, ptk: resPtk.inserted };
+}
+
+/**
+ * Memasang jadwal otomatis (Trigger) agar syncAllMaster() berjalan setiap malam pukul 01:00.
+ * Cukup dijalankan SEKALI saja dari Apps Script Editor.
+ */
+function setupMasterSyncTrigger() {
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === "syncAllMaster") {
+      ScriptApp.deleteTrigger(triggers[i]);
+    }
+  }
+  ScriptApp.newTrigger("syncAllMaster")
+    .timeBased()
+    .everyDays(1)
+    .atHour(1)
+    .create();
+  Logger.log("Trigger harian syncAllMaster (pukul 01:00) berhasil dipasang.");
+}

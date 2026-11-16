@@ -40,9 +40,9 @@ Dari sebelumnya ~40 spreadsheet terpisah di `code.gs` (`SPREADSHEET_IDS`), selur
 - [x] **Fase 0: Persiapan & Dokumen Aturan**
   - Menyepakati aturan main dan membuat `PANDUAN_DATABASE.md`.
   - *Selanjutnya:* Menyiapkan 3 Google Spreadsheet kosong sesuai arsitektur target.
-- [ ] **Fase 1: Sentralisasi `SIKS_DB_MASTER`**
+- [x] **Fase 1: Sentralisasi `SIKS_DB_MASTER`**
   - Memetakan kolom standar untuk `tbl_sekolah`, `tbl_ptk`, `tbl_murid`, `tbl_users`, dan `tbl_referensi`.
-  - Membuat script migrasi otomatis + sinkronisasi berkala dari spreadsheet lama.
+  - Membuat script migrasi otomatis + sinkronisasi berkala dari spreadsheet lama (`Migrasi_Master.gs`).
   - Membuat lapisan akses data terpusat (`Database.gs`).
 - [ ] **Fase 2: Migrasi Modul Prioritas (`SIKS_DB_SIABA` & `Lapbul`)**
   - Memindahkan data dan kode modul SIABA serta Laporan Bulanan.
