@@ -3,12 +3,22 @@
    Spreadsheet ID: 1yvRXr-tyWv42nJfJLedELp-_R_WEo5gDxwCRIQTUVtk
    ====================================================================== */
 
+function getTndSheet_(sheetName) {
+  if (typeof USE_CENTRAL_LAYANAN_DB !== "undefined" && USE_CENTRAL_LAYANAN_DB) {
+    if (sheetName === "kode_urut_sekolah") {
+      var central = getLayananCentralSheet("tbl_tnd");
+      if (central) return central;
+    }
+  }
+  return getSheet("TATA_NASKAH_DINAS_DB", sheetName);
+}
+
 /**
  * Mengambil data kode urut sekolah untuk penomoran surat dinas.
  */
 function getKodeUrutSekolah() {
   try {
-    var sheet = getSheet("TATA_NASKAH_DINAS_DB", "kode_urut_sekolah");
+    var sheet = getTndSheet_("kode_urut_sekolah");
     var lastRow = sheet.getLastRow();
     if (lastRow < 2) return JSON.stringify([]);
     
