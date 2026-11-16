@@ -80,18 +80,18 @@ function syncSiabaCuti() {
 
   var h = srcData[0];
   var idxId = findColIndex_(h, ["id", "id_cuti", "no", "kode"]);
-  var idxTgl = findColIndex_(h, ["tanggal", "tgl pengajuan", "tanggal_pengajuan", "timestamp"]);
+  var idxTgl = findColIndex_(h, ["tanggal input", "tanggal", "tgl pengajuan", "tanggal_pengajuan", "timestamp"]);
   var idxNip = findColIndex_(h, ["nip"]);
-  var idxNama = findColIndex_(h, ["nama", "nama ptk", "nama pegawai", "nama_lengkap"]);
+  var idxNama = findColIndex_(h, ["asn", "nama", "nama ptk", "nama pegawai", "nama_lengkap"]);
   var idxNpsn = findColIndex_(h, ["npsn"]);
-  var idxUnit = findColIndex_(h, ["unit kerja", "sekolah", "nama sekolah", "unit_kerja"]);
+  var idxUnit = findColIndex_(h, ["unit kerja", "sekolah", "nama sekolah", "unit_kerja", "unit"]);
   var idxJenis = findColIndex_(h, ["jenis cuti", "jenis_cuti", "jenis"]);
-  var idxMulai = findColIndex_(h, ["mulai", "tanggal mulai", "tgl mulai", "tanggal_mulai"]);
-  var idxSelesai = findColIndex_(h, ["selesai", "tanggal selesai", "tgl selesai", "tanggal_selesai"]);
-  var idxLama = findColIndex_(h, ["lama", "lama hari", "jumlah hari", "lama_hari"]);
+  var idxMulai = findColIndex_(h, ["tmc", "mulai", "tanggal mulai", "tgl mulai", "tanggal_mulai"]);
+  var idxSelesai = findColIndex_(h, ["tsc", "selesai", "tanggal selesai", "tgl selesai", "tanggal_selesai"]);
+  var idxLama = findColIndex_(h, ["jumlah", "lama", "lama hari", "jumlah hari", "lama_hari"]);
   var idxAlasan = findColIndex_(h, ["alasan", "keterangan"]);
   var idxStatus = findColIndex_(h, ["status", "status_verifikasi", "status verifikasi"]);
-  var idxUrl = findColIndex_(h, ["url", "link", "dokumen", "file", "url_dokumen"]);
+  var idxUrl = findColIndex_(h, ["file", "unggah file", "url", "link", "dokumen", "url_dokumen"]);
 
   var dstData = dstSheet.getDataRange().getValues();
   var existingIds = {};
