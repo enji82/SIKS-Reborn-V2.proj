@@ -31,9 +31,9 @@ Dokumen ini mencatat status pengerjaan, pemetaan database, dan hasil pengujian u
 | 9 | **Jumlah Murid** | `Murid.gs` | `SIKS_DB_LAYANAN` (`tbl_lapbul_sd`, `tbl_lapbul_paud`) | `[x]` Ikut tersalin di data Lapbul | `[ ]` Belum | - |
 | 10 | **Administrasi Murid** | `AdmMurid.gs` | `SIKS_DB_LAYANAN` (`tbl_adm_murid`) | `[x]` 12 baris (`Database_SPMB`) | `[x]` `USE_CENTRAL_LAYANAN_DB` | **Berhasil** (Dashboard, SPMB, Ijazah, TKA, Seragam Gratis normal) |
 | 11 | **Administrasi PTK** | `AdmPTK.gs` | `SIKS_DB_LAYANAN` (`tbl_adm_ptk`) | `[x]` 63 baris | `[x]` `USE_CENTRAL_LAYANAN_DB` | **Berhasil** (Dashboard, Kelola, Lihat, Master Kategori normal) |
-| 12 | **Komunitas Belajar** | `KomBel.gs` | `SIKS_DB_LAYANAN` (`tbl_kombel`) | `[~]` Script ada (`syncLayananAll`) | `[ ]` Belum | - |
+| 12 | **Komunitas Belajar** | `KomBel.gs` | `SIKS_DB_LAYANAN` (`tbl_kombel`) | `[x]` Tersinkronisasi (`syncKombelAndKemitraan`) | `[x]` `USE_CENTRAL_LAYANAN_DB` | **Berhasil** (Komunitas Belajar normal) |
 | 13 | **Tata Naskah Dinas** | `TataNaskahDinas.gs` | `SIKS_DB_LAYANAN` (`tbl_tnd`) | `[x]` 27 baris | `[x]` `USE_CENTRAL_LAYANAN_DB` | **Berhasil** (Pedoman, Kode SD, Klasifikasi Arsip, Template normal) |
-| 14 | **Kemitraan & Kerja Sama** | `Kemitraan.gs` | `SIKS_DB_LAYANAN` (`tbl_kemitraan`) | `[~]` Script ada (`syncLayananAll`) | `[ ]` Belum | - |
+| 14 | **Kemitraan & Kerja Sama** | `Kemitraan.gs` | `SIKS_DB_LAYANAN` (`tbl_kemitraan`) | `[x]` Tersinkronisasi (`syncKombelAndKemitraan`) | `[x]` `USE_CENTRAL_LAYANAN_DB` | **Berhasil** (Kemitraan & Kerja Sama normal) |
 | 15 | **Pengaturan (Login & User)** | `code.gs` | `SIKS_DB_MASTER` (`tbl_users`) | `[x]` Tersinkronisasi | `[x]` `USE_CENTRAL_USERS_DB` | **Berhasil** (uji login normal) |
 | 16 | **Monitoring Aktivitas** | `code.gs` / `NotifikasiHome.gs` | `SIKS_DB_MASTER` / `SIKS_DB_LAYANAN` | `[ ]` Belum dipetakan | `[ ]` Belum | - |
 

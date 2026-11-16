@@ -3,6 +3,20 @@ const KONFIG_MURID = {
   SD_DB: "LAPBUL_SD_DB"
 };
 
+function getMuridSheet_(dbKey, sheetName) {
+  if (typeof USE_CENTRAL_LAYANAN_DB !== "undefined" && USE_CENTRAL_LAYANAN_DB) {
+    if (dbKey === KONFIG_MURID.SD_DB && sheetName === "Input SD") {
+      var centralSd = getLayananCentralSheet("tbl_lapbul_sd");
+      if (centralSd) return centralSd;
+    }
+    if (dbKey === KONFIG_MURID.PAUD_DB && sheetName === "Input PAUD") {
+      var centralPaud = getLayananCentralSheet("tbl_lapbul_paud");
+      if (centralPaud) return centralPaud;
+    }
+  }
+  return getSheet(dbKey, sheetName);
+}
+
 function getDataMuridPAUDRombel() {
   var sheet = getSheet(KONFIG_MURID.PAUD_DB, "Murid Rombel PAUD");
   if (!sheet) return [];
@@ -173,7 +187,7 @@ function getDashboardMuridData(tahunFilter, bulanFilter, userNpsn, userUnitKerja
   // 1. DATA SD
   // =========================================================
   try {
-    var sheetInputSD = getSheet(KONFIG_MURID.SD_DB, "Input SD");
+    var sheetInputSD = getMuridSheet_(KONFIG_MURID.SD_DB, "Input SD");
     
     if (sheetInputSD) {
         var lastRow = sheetInputSD.getLastRow();
@@ -307,7 +321,7 @@ function getDashboardMuridData(tahunFilter, bulanFilter, userNpsn, userUnitKerja
   // 2. DATA PAUD
   // =========================================================
   try {
-    var sheetInputPAUD = getSheet(KONFIG_MURID.PAUD_DB, "Input PAUD");
+    var sheetInputPAUD = getMuridSheet_(KONFIG_MURID.PAUD_DB, "Input PAUD");
     if (sheetInputPAUD) {
         var lastRow = sheetInputPAUD.getLastRow();
         var lastRow = sheetInputPAUD.getLastRow();
