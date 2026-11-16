@@ -8,12 +8,22 @@ const KONFIG_SALAH = {
   SHEET_NAMA: "Salah_Presensi"
 };
 
+function getSalahSheet_(sheetName) {
+  if (typeof USE_CENTRAL_SIABA_DB !== "undefined" && USE_CENTRAL_SIABA_DB) {
+    if (sheetName === KONFIG_SALAH.SHEET_NAMA) {
+      var central = getSiabaCentralSheet("tbl_siaba_salah");
+      if (central) return central;
+    }
+  }
+  return getSheet(KONFIG_SALAH.DB_KEY, sheetName);
+}
+
 // =================================================================
 // 2. FUNGSI BACA DATA (DENGAN VAKSIN TANGGAL & KOLOM O/NPSN)
 // =================================================================
 function getDaftarSalahPresensi(tahun, bulan) {
   try {
-    var sheet = getSheet(KONFIG_SALAH.DB_KEY, KONFIG_SALAH.SHEET_NAMA);
+    var sheet = getSalahSheet_(KONFIG_SALAH.SHEET_NAMA);
 
     var data = sheet.getDataRange().getDisplayValues(); 
     if (!data || data.length <= 1) return JSON.stringify([]);
@@ -104,7 +114,7 @@ function simpanSalahAbsen(form) {
   try {
     lock.waitLock(10000); 
     
-    var sheet = getSheet(KONFIG_SALAH.DB_KEY, KONFIG_SALAH.SHEET_NAMA);
+    var sheet = getSalahSheet_(KONFIG_SALAH.SHEET_NAMA);
     
     var tglSimpan = form.tanggal; 
     var jamSimpan = String(form.waktu); 
@@ -165,7 +175,7 @@ function updateSalahAbsen(form) {
   try {
     lock.waitLock(10000); 
  
-    var sheet = getSheet(KONFIG_SALAH.DB_KEY, KONFIG_SALAH.SHEET_NAMA);
+    var sheet = getSalahSheet_(KONFIG_SALAH.SHEET_NAMA);
     var barisKetemu = parseInt(form.recId);
 
     var targetNip = String(form.nip_lama).trim();
@@ -221,7 +231,7 @@ function hapusSalahAbsen(dataKirim) {
   try {
     lock.waitLock(10000);
  
-    var sheetMain = getSheet(KONFIG_SALAH.DB_KEY, KONFIG_SALAH.SHEET_NAMA);
+    var sheetMain = getSalahSheet_(KONFIG_SALAH.SHEET_NAMA);
 
     var rowIdx = parseInt(dataKirim.recId);
     if (isNaN(rowIdx)) throw new Error("ID Baris tidak valid.");
@@ -255,7 +265,7 @@ function verifikasiSalahAbsen(form) {
   try {
     lock.waitLock(10000);
  
-    var sheet = getSheet(KONFIG_SALAH.DB_KEY, KONFIG_SALAH.SHEET_NAMA);
+    var sheet = getSalahSheet_(KONFIG_SALAH.SHEET_NAMA);
     
     var baris = parseInt(form.recId);
     if (isNaN(baris) || baris < 2) throw new Error("ID Baris tidak valid.");
@@ -352,7 +362,7 @@ function getNotifikasiSalah(role, unit) {
 
 function tandaiNotifSalahDibaca(rowId, role) {
   try {
-    var sheet = getSheet(KONFIG_SALAH.DB_KEY, KONFIG_SALAH.SHEET_NAMA);
+    var sheet = getSalahSheet_(KONFIG_SALAH.SHEET_NAMA);
     var rIdx = parseInt(rowId);
     if (isNaN(rIdx)) return false;
     
@@ -374,7 +384,7 @@ function tandaiNotifSalahDibaca(rowId, role) {
 
 function tandaiSemuaNotifSalahDibaca(role, unit) {
   try {
-    var sheet = getSheet(KONFIG_SALAH.DB_KEY, KONFIG_SALAH.SHEET_NAMA);
+    var sheet = getSalahSheet_(KONFIG_SALAH.SHEET_NAMA);
     var data = sheet.getDataRange().getDisplayValues();
     
     var rLower = String(role || "").toLowerCase();

@@ -9,6 +9,16 @@ const KONFIG_LUPA = {
   get FOLDER_ID() { return FOLDER_CONFIG.SIABA_LUPA; }
 };
 
+function getLupaSheet_(sheetName) {
+  if (typeof USE_CENTRAL_SIABA_DB !== "undefined" && USE_CENTRAL_SIABA_DB) {
+    if (sheetName === KONFIG_LUPA.SHEET_NAMA) {
+      var central = getSiabaCentralSheet("tbl_siaba_lupa");
+      if (central) return central;
+    }
+  }
+  return getSheet(KONFIG_LUPA.DB_KEY, sheetName);
+}
+
 /* ======================================================================
    SISTEM KEAMANAN (MENGAMBIL DATA BERDASARKAN NPSN)
    ====================================================================== */
@@ -22,7 +32,7 @@ const KONFIG_LUPA = {
    ====================================================================== */
 function getDaftarLupaPresensi(tahun, bulan) {
   try {
-    var sheet = getSheet(KONFIG_LUPA.DB_KEY, KONFIG_LUPA.SHEET_NAMA);
+    var sheet = getLupaSheet_(KONFIG_LUPA.SHEET_NAMA);
 
     var data = sheet.getDataRange().getDisplayValues(); 
     if (!data || data.length <= 1) return JSON.stringify([]);
@@ -91,7 +101,7 @@ function getDaftarLupaPresensi(tahun, bulan) {
    FUNGSI TULIS DATA (CREATE & UPDATE DENGAN ANTI-BENTROK)
    ====================================================================== */
 function cekBentrokLupa(nipBaru, tglBaruStr, jenisBaru, rowIdPengecualian) {
-  var sheet = getSheet(KONFIG_LUPA.DB_KEY, KONFIG_LUPA.SHEET_NAMA);
+  var sheet = getLupaSheet_(KONFIG_LUPA.SHEET_NAMA);
   var data = sheet.getDataRange().getValues();
   
   var tglBaruYMD = normalizeToYMD(tglBaruStr);
@@ -116,7 +126,7 @@ function cekBentrokLupa(nipBaru, tglBaruStr, jenisBaru, rowIdPengecualian) {
 }
 
 function cekBatasLupaPerBulan(nipAsn, tglBaru, rowIdPengecualian) {
-  var sheet = getSheet(KONFIG_LUPA.DB_KEY, KONFIG_LUPA.SHEET_NAMA);
+  var sheet = getLupaSheet_(KONFIG_LUPA.SHEET_NAMA);
   var data = sheet.getDataRange().getValues();
 
   // Ambil prefix tahun-bulan dari tanggal baru (format hasil normalizeToYMD: "yyyy-MM-dd")
@@ -155,7 +165,7 @@ function simpanLupaPresensi(dataKirim) {
       return "Gagal: Batas maksimal pengajuan lupa presensi adalah 5 kali per bulan. Anda sudah mengajukan " + jumlahBulanIni + "x pada bulan ini.";
     }
  
-    var sheet = getSheet(KONFIG_LUPA.DB_KEY, KONFIG_LUPA.SHEET_NAMA);
+    var sheet = getLupaSheet_(KONFIG_LUPA.SHEET_NAMA);
 
     var jamSimpan = dataKirim.waktu;
     if (jamSimpan && jamSimpan.includes(":")) {
@@ -202,7 +212,7 @@ function updateLupaPresensi(form, fileData) {
     var err = cekBentrokLupa(targetNip, tglSimpan, form.jenis, baris);
     if (err) return err;
  
-    var sheet = getSheet(KONFIG_LUPA.DB_KEY, KONFIG_LUPA.SHEET_NAMA);
+    var sheet = getLupaSheet_(KONFIG_LUPA.SHEET_NAMA);
     
     var rangeLama = sheet.getRange(baris, 1, 1, 17); 
     var valLama = rangeLama.getValues()[0];
@@ -272,7 +282,7 @@ function hapusLupaPresensi(dataKirim) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
-    var sheetMain = getSheet(KONFIG_LUPA.DB_KEY, KONFIG_LUPA.SHEET_NAMA);
+    var sheetMain = getLupaSheet_(KONFIG_LUPA.SHEET_NAMA);
 
     var rowIdx = parseInt(dataKirim.recId);
     if (isNaN(rowIdx)) throw new Error("ID Baris tidak valid.");
@@ -317,7 +327,7 @@ function verifikasiLupaPresensi(form) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
-    var sheet = getSheet(KONFIG_LUPA.DB_KEY, KONFIG_LUPA.SHEET_NAMA);
+    var sheet = getLupaSheet_(KONFIG_LUPA.SHEET_NAMA);
     
     var baris = parseInt(form.recId);
     if (isNaN(baris) || baris < 2) throw new Error("ID Baris tidak valid.");
@@ -413,7 +423,7 @@ function getNotifikasiLupa(role, unit) {
 
 function tandaiNotifLupaDibaca(rowId, role) {
   try {
-    var sheet = getSheet(KONFIG_LUPA.DB_KEY, KONFIG_LUPA.SHEET_NAMA);
+    var sheet = getLupaSheet_(KONFIG_LUPA.SHEET_NAMA);
     var rIdx = parseInt(rowId);
     if (isNaN(rIdx)) return false;
     
@@ -435,7 +445,7 @@ function tandaiNotifLupaDibaca(rowId, role) {
 
 function tandaiSemuaNotifLupaDibaca(role, unit) {
   try {
-    var sheet = getSheet(KONFIG_LUPA.DB_KEY, KONFIG_LUPA.SHEET_NAMA);
+    var sheet = getLupaSheet_(KONFIG_LUPA.SHEET_NAMA);
     var data = sheet.getDataRange().getDisplayValues();
     
     var rLower = String(role || "").toLowerCase();
