@@ -251,8 +251,9 @@ function syncMasterPTK() {
   }
 
   var sources = [
-    { key: "PTK_SD_DB", jenjangDefault: "SD" },
-    { key: "PTK_PAUD_DB", jenjangDefault: "PAUD" }
+    { key: "PTK_SD_DB", sheetName: "sinkron_gtk_sdn", jenjangDefault: "SD" },
+    { key: "PTK_SD_DB", sheetName: "sinkron_gtk_sds", jenjangDefault: "SD" },
+    { key: "PTK_PAUD_DB", sheetName: "sinkron_gtk_paud", jenjangDefault: "PAUD" }
   ];
 
   var now = new Date();
@@ -260,8 +261,11 @@ function syncMasterPTK() {
 
   sources.forEach(function (src) {
     var ss = SpreadsheetApp.openById(SPREADSHEET_IDS[src.key]);
-    var sheet = ss.getSheets()[0];
-    if (!sheet) return;
+    var sheet = ss.getSheetByName(src.sheetName) || ss.getSheets()[0];
+    if (!sheet) {
+      Logger.log("Sheet tidak ditemukan: " + src.sheetName);
+      return;
+    }
 
     var data = sheet.getDataRange().getValues();
     if (data.length < 2) return;
@@ -270,14 +274,17 @@ function syncMasterPTK() {
     var headerIdx = -1;
     var idxNama = -1;
     for (var rCheck = 0; rCheck < Math.min(5, data.length); rCheck++) {
-      var cIdx = findColIndex_(data[rCheck], ["nama", "nama lengkap", "nama_lengkap", "nama ptk", "nama guru"]);
+      var cIdx = findColIndex_(data[rCheck], ["nama", "nama lengkap", "nama_lengkap", "nama ptk", "nama gtk", "nama guru"]);
       if (cIdx !== -1) {
         headerIdx = rCheck;
         idxNama = cIdx;
         break;
       }
     }
-    if (headerIdx === -1) return;
+    if (headerIdx === -1) {
+      Logger.log("Header Nama tidak ditemukan di " + src.sheetName + ". Baris 1: " + data[0].join(" | "));
+      return;
+    }
 
     var h = data[headerIdx];
     var idxNip = findColIndex_(h, ["nip"]);
