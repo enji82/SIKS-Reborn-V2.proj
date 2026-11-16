@@ -30,7 +30,7 @@ Dokumen ini mencatat status pengerjaan, pemetaan database, dan hasil pengujian u
 | 8 | **PPPK PW** | `PPPK_PW.gs` | `SIKS_DB_MASTER` (`tbl_ptk`) & `SIKS_DB_LAYANAN` (dokumen PK) | `[x]` Data pegawai sudah di `tbl_ptk` | `[ ]` Belum (dokumen PK) | - |
 | 9 | **Jumlah Murid** | `Murid.gs` | `SIKS_DB_LAYANAN` (`tbl_lapbul_sd`, `tbl_lapbul_paud`) | `[x]` Ikut tersalin di data Lapbul | `[ ]` Belum | - |
 | 10 | **Administrasi Murid** | `AdmMurid.gs` | `SIKS_DB_LAYANAN` (`tbl_adm_murid`) | `[x]` 12 baris (`Database_SPMB`) | `[ ]` Belum | - |
-| 11 | **Administrasi PTK** | `AdmPTK.gs` | `SIKS_DB_LAYANAN` (`tbl_adm_ptk`) | `[x]` 63 baris | `[ ]` Belum | - |
+| 11 | **Administrasi PTK** | `AdmPTK.gs` | `SIKS_DB_LAYANAN` (`tbl_adm_ptk`) | `[x]` 63 baris | `[x]` `USE_CENTRAL_LAYANAN_DB` | **Berhasil** (Dashboard, Kelola, Lihat, Master Kategori normal) |
 | 12 | **Komunitas Belajar** | `KomBel.gs` | `SIKS_DB_LAYANAN` (`tbl_kombel`) | `[~]` Script ada (`syncLayananAll`) | `[ ]` Belum | - |
 | 13 | **Tata Naskah Dinas** | `TataNaskahDinas.gs` | `SIKS_DB_LAYANAN` (`tbl_tnd`) | `[x]` 27 baris | `[ ]` Belum | - |
 | 14 | **Kemitraan & Kerja Sama** | `Kemitraan.gs` | `SIKS_DB_LAYANAN` (`tbl_kemitraan`) | `[~]` Script ada (`syncLayananAll`) | `[ ]` Belum | - |

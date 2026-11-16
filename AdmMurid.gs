@@ -10,6 +10,12 @@ const KONFIG_ADM_MURID = {
 };
 
 function getOrCreateSheetAdmMurid(sheetName) {
+  if (typeof USE_CENTRAL_LAYANAN_DB !== "undefined" && USE_CENTRAL_LAYANAN_DB) {
+    if (sheetName === "Database_SPMB") {
+      var central = getLayananCentralSheet("tbl_adm_murid");
+      if (central) return central;
+    }
+  }
   var ss = getDB(KONFIG_ADM_MURID.DB_KEY);
   var sheet = ss.getSheetByName(sheetName);
   if (!sheet) {
