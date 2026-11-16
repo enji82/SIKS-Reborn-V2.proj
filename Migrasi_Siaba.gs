@@ -137,3 +137,156 @@ function syncSiabaCuti() {
   Logger.log("Sync tbl_siaba_cuti selesai. Ditambahkan: " + toInsert.length + " baris.");
   return { inserted: toInsert.length };
 }
+
+/**
+ * Menyalin data Perjalanan Dinas dari SIABA_DINAS_DB ke tbl_siaba_dinas.
+ */
+function syncSiabaDinas() {
+  var srcSs = SpreadsheetApp.openById(SPREADSHEET_IDS.SIABA_DINAS_DB);
+  var srcSheet = srcSs.getSheets()[0];
+  if (!srcSheet) return { inserted: 0 };
+
+  var dstSs = SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_SIABA);
+  var dstSheet = dstSs.getSheetByName("tbl_siaba_dinas");
+  if (!dstSheet) throw new Error("Sheet 'tbl_siaba_dinas' belum ada.");
+
+  var srcData = srcSheet.getDataRange().getValues();
+  if (srcData.length < 2) return { inserted: 0 };
+
+  var h = srcData[0];
+  var idxId = findColIndex_(h, ["id", "id_dinas", "no", "kode"]);
+  var idxTgl = findColIndex_(h, ["tanggal", "tgl pengajuan", "tanggal_pengajuan", "timestamp"]);
+  var idxNip = findColIndex_(h, ["nip"]);
+  var idxNama = findColIndex_(h, ["nama", "nama ptk", "nama pegawai", "nama_lengkap"]);
+  var idxNpsn = findColIndex_(h, ["npsn"]);
+  var idxUnit = findColIndex_(h, ["unit kerja", "sekolah", "nama sekolah", "unit_kerja"]);
+  var idxMulai = findColIndex_(h, ["mulai", "tanggal mulai", "tgl mulai", "tanggal_mulai"]);
+  var idxSelesai = findColIndex_(h, ["selesai", "tanggal selesai", "tgl selesai", "tanggal_selesai"]);
+  var idxTujuan = findColIndex_(h, ["tujuan", "tempat"]);
+  var idxKeperluan = findColIndex_(h, ["keperluan", "keterangan", "uraian"]);
+  var idxStatus = findColIndex_(h, ["status", "status_verifikasi", "status verifikasi"]);
+  var idxUrl = findColIndex_(h, ["url", "link", "dokumen", "file", "url_dokumen"]);
+
+  var dstData = dstSheet.getDataRange().getValues();
+  var existingIds = {};
+  for (var i = 1; i < dstData.length; i++) {
+    var idVal = String(dstData[i][0] || "").trim();
+    if (idVal) existingIds[idVal] = true;
+  }
+
+  var now = new Date();
+  var toInsert = [];
+  for (var r = 1; r < srcData.length; r++) {
+    var row = srcData[r];
+    var nama = idxNama > -1 ? String(row[idxNama] || "").trim() : "";
+    var nip = idxNip > -1 ? String(row[idxNip] || "").trim() : "";
+    if (!nama && !nip) continue;
+
+    var idDinas = idxId > -1 && row[idxId] ? String(row[idxId]).trim() : ("DINAS-" + (r + 1));
+    if (existingIds[idDinas]) continue;
+
+    toInsert.push([
+      idDinas,
+      idxTgl > -1 ? row[idxTgl] : "",
+      nip,
+      nama,
+      idxNpsn > -1 ? String(row[idxNpsn] || "").trim() : "",
+      idxUnit > -1 ? String(row[idxUnit] || "").trim() : "",
+      idxMulai > -1 ? row[idxMulai] : "",
+      idxSelesai > -1 ? row[idxSelesai] : "",
+      idxTujuan > -1 ? String(row[idxTujuan] || "").trim() : "",
+      idxKeperluan > -1 ? String(row[idxKeperluan] || "").trim() : "",
+      idxStatus > -1 ? String(row[idxStatus] || "").trim() : "",
+      idxUrl > -1 ? String(row[idxUrl] || "").trim() : "",
+      now
+    ]);
+    existingIds[idDinas] = true;
+  }
+
+  if (toInsert.length > 0) {
+    dstSheet.getRange(dstSheet.getLastRow() + 1, 1, toInsert.length, 13).setValues(toInsert);
+  }
+
+  Logger.log("Sync tbl_siaba_dinas selesai. Ditambahkan: " + toInsert.length + " baris.");
+  return { inserted: toInsert.length };
+}
+
+/**
+ * Menyalin data Lupa Presensi dari SIABA_LUPA_DB ke tbl_siaba_lupa.
+ */
+function syncSiabaLupa() {
+  var srcSs = SpreadsheetApp.openById(SPREADSHEET_IDS.SIABA_LUPA_DB);
+  var srcSheet = srcSs.getSheets()[0];
+  if (!srcSheet) return { inserted: 0 };
+
+  var dstSs = SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_SIABA);
+  var dstSheet = dstSs.getSheetByName("tbl_siaba_lupa");
+  if (!dstSheet) throw new Error("Sheet 'tbl_siaba_lupa' belum ada.");
+
+  var srcData = srcSheet.getDataRange().getValues();
+  if (srcData.length < 2) return { inserted: 0 };
+
+  var h = srcData[0];
+  var idxId = findColIndex_(h, ["id", "id_lupa", "no", "kode"]);
+  var idxTgl = findColIndex_(h, ["tanggal", "tgl presensi", "tanggal_presensi"]);
+  var idxNip = findColIndex_(h, ["nip"]);
+  var idxNama = findColIndex_(h, ["nama", "nama ptk", "nama pegawai", "nama_lengkap"]);
+  var idxNpsn = findColIndex_(h, ["npsn"]);
+  var idxUnit = findColIndex_(h, ["unit kerja", "sekolah", "nama sekolah", "unit_kerja"]);
+  var idxJenis = findColIndex_(h, ["jenis", "jenis lupa", "jenis_lupa", "keterangan"]);
+  var idxAlasan = findColIndex_(h, ["alasan", "uraian"]);
+  var idxStatus = findColIndex_(h, ["status", "status_verifikasi", "status verifikasi"]);
+  var idxUrl = findColIndex_(h, ["url", "link", "dokumen", "file", "url_dokumen"]);
+
+  var dstData = dstSheet.getDataRange().getValues();
+  var existingIds = {};
+  for (var i = 1; i < dstData.length; i++) {
+    var idVal = String(dstData[i][0] || "").trim();
+    if (idVal) existingIds[idVal] = true;
+  }
+
+  var now = new Date();
+  var toInsert = [];
+  for (var r = 1; r < srcData.length; r++) {
+    var row = srcData[r];
+    var nama = idxNama > -1 ? String(row[idxNama] || "").trim() : "";
+    var nip = idxNip > -1 ? String(row[idxNip] || "").trim() : "";
+    if (!nama && !nip) continue;
+
+    var idLupa = idxId > -1 && row[idxId] ? String(row[idxId]).trim() : ("LUPA-" + (r + 1));
+    if (existingIds[idLupa]) continue;
+
+    toInsert.push([
+      idLupa,
+      idxTgl > -1 ? row[idxTgl] : "",
+      nip,
+      nama,
+      idxNpsn > -1 ? String(row[idxNpsn] || "").trim() : "",
+      idxUnit > -1 ? String(row[idxUnit] || "").trim() : "",
+      idxJenis > -1 ? String(row[idxJenis] || "").trim() : "",
+      idxAlasan > -1 ? String(row[idxAlasan] || "").trim() : "",
+      idxStatus > -1 ? String(row[idxStatus] || "").trim() : "",
+      idxUrl > -1 ? String(row[idxUrl] || "").trim() : "",
+      now
+    ]);
+    existingIds[idLupa] = true;
+  }
+
+  if (toInsert.length > 0) {
+    dstSheet.getRange(dstSheet.getLastRow() + 1, 1, toInsert.length, 11).setValues(toInsert);
+  }
+
+  Logger.log("Sync tbl_siaba_lupa selesai. Ditambahkan: " + toInsert.length + " baris.");
+  return { inserted: toInsert.length };
+}
+
+/**
+ * Menjalankan sinkronisasi SIABA (Cuti, Dinas, Lupa) sekaligus.
+ */
+function syncSiabaAll() {
+  var cuti = syncSiabaCuti();
+  var dinas = syncSiabaDinas();
+  var lupa = syncSiabaLupa();
+  Logger.log("syncSiabaAll selesai: Cuti=" + cuti.inserted + ", Dinas=" + dinas.inserted + ", Lupa=" + lupa.inserted);
+  return { cuti: cuti.inserted, dinas: dinas.inserted, lupa: lupa.inserted };
+}
