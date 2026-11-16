@@ -32,6 +32,11 @@ const SIABA_SCHEMA = {
   tbl_siaba_ta_pa: [
     "id_tapa", "tanggal", "nip", "nama_ptk", "npsn", "unit_kerja",
     "jenis", "keterangan", "status_verifikasi", "updated_at"
+  ],
+  tbl_siaba_data_atasan: [
+    "jenis_cuti", "jabatan", "golongan", "nama_sekolah",
+    "jabatan_atasan", "nama_atasan", "nip_atasan",
+    "jabatan_setuju", "nama_setuju", "nip_setuju", "kepada"
   ]
 };
 
@@ -414,6 +419,36 @@ function syncSiabaTaPa() {
 
   Logger.log("Sync tbl_siaba_ta_pa selesai. Ditambahkan: " + toInsert.length + " baris.");
   return { inserted: toInsert.length };
+}
+
+/**
+ * Menyalin sheet referensi 'Data Atasan' dari SIABA_CUTI_DB ke tbl_siaba_data_atasan.
+ */
+function syncSiabaDataAtasan() {
+  var srcSs = SpreadsheetApp.openById(SPREADSHEET_IDS.SIABA_CUTI_DB);
+  var srcSheet = srcSs.getSheetByName("Data Atasan");
+  if (!srcSheet) {
+    Logger.log("Sheet 'Data Atasan' tidak ditemukan di SIABA_CUTI_DB.");
+    return { inserted: 0 };
+  }
+
+  var dstSs = SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_SIABA);
+  var dstSheet = dstSs.getSheetByName("tbl_siaba_data_atasan");
+  if (!dstSheet) {
+    setupSiabaSheets();
+    dstSheet = dstSs.getSheetByName("tbl_siaba_data_atasan");
+  }
+
+  var srcData = srcSheet.getDataRange().getValues();
+  if (srcData.length < 2) return { inserted: 0 };
+
+  dstSheet.clearContents();
+  dstSheet.getRange(1, 1, srcData.length, srcData[0].length).setValues(srcData);
+  dstSheet.getRange(1, 1, 1, srcData[0].length).setFontWeight("bold");
+  dstSheet.setFrozenRows(1);
+
+  Logger.log("Sync tbl_siaba_data_atasan selesai. Total baris data: " + (srcData.length - 1));
+  return { inserted: srcData.length - 1 };
 }
 
 /**
