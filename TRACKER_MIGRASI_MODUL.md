@@ -20,7 +20,7 @@ Dokumen ini mencatat status pengerjaan, pemetaan database, dan hasil pengujian u
 
 | No | Modul | File `.gs` Terkait | Target Database & Sheet | Status Migrasi Data | Status Kode & Saklar | Hasil Pengujian (*Testing*) |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| 1 | **Laporan Bulan (Lapbul)** | `Lapbul.gs` | `SIKS_DB_LAYANAN` (`tbl_lapbul_sd`, `tbl_lapbul_paud`) | `[x]` SD (1.251 baris) & PAUD (531 baris) | `[ ]` Belum | - |
+| 1 | **Laporan Bulan (Lapbul)** | `Lapbul.gs` | `SIKS_DB_LAYANAN` (`tbl_lapbul_sd`, `tbl_lapbul_paud`) | `[x]` SD (1.251 baris) & PAUD (531 baris) | `[x]` `USE_CENTRAL_LAYANAN_DB` | **Berhasil** (Dashboard, Kelola Data, Status Data normal) |
 | 2 | **SK Pembagian Tugas** | `SK.gs` | `SIKS_DB_LAYANAN` (`tbl_sk`) | `[x]` 324 baris | `[x]` `USE_CENTRAL_LAYANAN_DB` | **Berhasil** (Dashboard, Kelola Data, Status Data normal) |
 | 3 | **Administrasi Sekolah** | `AdmSekolah.gs` | `SIKS_DB_MASTER` (`tbl_sekolah`) & `SIKS_DB_LAYANAN` | `[~]` `tbl_sekolah` terisi 65 baris | `[ ]` Belum | - |
 | 4 | **Data PTK** | `PTK.gs` | `SIKS_DB_MASTER` (`tbl_ptk`) | `[x]` 486 baris (SDN 253 + SDS/PAUD 233) | `[~]` `USE_CENTRAL_PTK_DB` aktif untuk filter unit & status | **Berhasil** (filter & daftar PTK tampil normal) |
