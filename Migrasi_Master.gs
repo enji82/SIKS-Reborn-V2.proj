@@ -147,8 +147,26 @@ function syncMasterSekolah() {
   var srcData = srcSheet.getDataRange().getValues();
   if (srcData.length < 2) return { inserted: 0 };
 
-  var h = srcData[0];
-  var idxNpsn = findColIndex_(h, ["npsn"]);
+  // Cari baris header (cek baris 1 sampai 5) yang mengandung kolom NPSN
+  var headerRowIdx = -1;
+  var idxNpsn = -1;
+  for (var rCheck = 0; rCheck < Math.min(5, srcData.length); rCheck++) {
+    var candidateIdx = findColIndex_(srcData[rCheck], ["npsn", "kode npsn", "kode_npsn", "id_sekolah", "id sekolah"]);
+    if (candidateIdx !== -1) {
+      headerRowIdx = rCheck;
+      idxNpsn = candidateIdx;
+      break;
+    }
+  }
+
+  if (idxNpsn === -1) {
+    throw new Error(
+      "Kolom 'NPSN' tidak ditemukan di sheet '" + srcSheet.getName() +
+      "'. Header baris 1: [" + srcData[0].join(" | ") + "]"
+    );
+  }
+
+  var h = srcData[headerRowIdx];
   var idxNama = findColIndex_(h, ["nama_sekolah", "nama sekolah", "sekolah", "nama satuan pendidikan"]);
   var idxJenjang = findColIndex_(h, ["jenjang", "bentuk pendidikan"]);
   var idxStatus = findColIndex_(h, ["status_sekolah", "status sekolah", "status"]);
@@ -161,8 +179,6 @@ function syncMasterSekolah() {
   var idxKepsek = findColIndex_(h, ["kepala_sekolah", "kepala sekolah", "nama kepsek"]);
   var idxNipKepsek = findColIndex_(h, ["nip_kepsek", "nip kepala sekolah", "nip kepsek"]);
 
-  if (idxNpsn === -1) throw new Error("Kolom 'NPSN' tidak ditemukan di sheet sumber DATA_SEKOLAH.");
-
   var dstData = dstSheet.getDataRange().getValues();
   var existingNpsn = {};
   for (var i = 1; i < dstData.length; i++) {
@@ -172,7 +188,7 @@ function syncMasterSekolah() {
 
   var now = new Date();
   var toInsert = [];
-  for (var r = 1; r < srcData.length; r++) {
+  for (var r = headerRowIdx + 1; r < srcData.length; r++) {
     var row = srcData[r];
     var npsnVal = String(row[idxNpsn] || "").trim();
     if (!npsnVal || existingNpsn[npsnVal]) continue;
