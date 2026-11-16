@@ -135,3 +135,11 @@ function getFilterOptionsPTK_Central() {
     statuses: Object.keys(statusSet).sort()
   });
 }
+
+/**
+ * Mengambil sheet dari SIKS_DB_SIABA (tbl_siaba_cuti, tbl_siaba_dinas, tbl_siaba_lupa, tbl_siaba_salah, dll).
+ */
+function getSiabaCentralSheet(sheetName) {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_SIABA);
+  return ss.getSheetByName(sheetName);
+}
