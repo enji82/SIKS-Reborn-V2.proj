@@ -68,7 +68,7 @@ function setupSiabaSheets() {
  */
 function syncSiabaCuti() {
   var srcSs = SpreadsheetApp.openById(SPREADSHEET_IDS.SIABA_CUTI_DB);
-  var srcSheet = srcSs.getSheets()[0];
+  var srcSheet = srcSs.getSheetByName("Form Cuti") || srcSs.getSheets()[0];
   if (!srcSheet) throw new Error("Sheet sumber cuti tidak ditemukan di SIABA_CUTI_DB.");
 
   var dstSs = SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_SIABA);
