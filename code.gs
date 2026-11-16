@@ -49,6 +49,11 @@ const SPREADSHEET_IDS = {
   EMADING_DB: "1OUIfYXgcI3aK6bz4woyQohG26cKJMK-KikLBr13Tbwk",
   KOMBEL_DB: "1YhanZZ_AGcxh1_tH_EJuvX0R2Hq6Dn9L7-cq9HWyAfI", // Database Komunitas Belajar
   KEMITRAAN_DB: "1b0yyl-PuZPX1z7oi_OyLu8aX6_-Ke_Ch6c9TwICBJHU", // Database Kemitraan & Kerja Sama
+
+  // DATABASE TERPUSAT BARU (FASE 1+)
+  SIKS_DB_MASTER: "1o_CpA5GbOI0IYuE9gscSEpk7eEUIeg-wJ_dl6vR_VqU",
+  SIKS_DB_SIABA: "1WmQMlHWk-H5lr5fDvK_WhT7UtW7iGj4NnzrU1waYj5U",
+  SIKS_DB_LAYANAN: "1D_i4CH23wtXWWS9jhtKDRxeQkebqsw8jGT4Lqi_120U",
 };
 
 // 2. FOLDER CONFIG (Digunakan oleh semua file .gs lainnya)
