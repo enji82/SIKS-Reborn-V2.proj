@@ -115,3 +115,90 @@ function syncMasterUsers() {
   Logger.log("Sync tbl_users selesai. Ditambahkan: " + toInsert.length + " baris.");
   return { inserted: toInsert.length };
 }
+
+/**
+ * Helper: Mencari indeks kolom berdasarkan beberapa kemungkinan nama header (case-insensitive).
+ */
+function findColIndex_(headers, candidates) {
+  for (var c = 0; c < candidates.length; c++) {
+    var target = candidates[c].toLowerCase().trim();
+    for (var i = 0; i < headers.length; i++) {
+      if (String(headers[i] || "").toLowerCase().trim() === target) {
+        return i;
+      }
+    }
+  }
+  return -1;
+}
+
+/**
+ * Menyalin data sekolah dari DATA_SEKOLAH ke tbl_sekolah di SIKS_DB_MASTER.
+ * Aman dijalankan berkali-kali: hanya menambah NPSN yang belum ada.
+ */
+function syncMasterSekolah() {
+  var srcSs = SpreadsheetApp.openById(SPREADSHEET_IDS.DATA_SEKOLAH);
+  var srcSheet = srcSs.getSheetByName("Data Sekolah") || srcSs.getSheets()[0];
+  if (!srcSheet) throw new Error("Sheet sumber sekolah tidak ditemukan di DATA_SEKOLAH.");
+
+  var dstSs = SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_MASTER);
+  var dstSheet = dstSs.getSheetByName("tbl_sekolah");
+  if (!dstSheet) throw new Error("Sheet 'tbl_sekolah' belum ada. Jalankan setupMasterSheets() terlebih dahulu.");
+
+  var srcData = srcSheet.getDataRange().getValues();
+  if (srcData.length < 2) return { inserted: 0 };
+
+  var h = srcData[0];
+  var idxNpsn = findColIndex_(h, ["npsn"]);
+  var idxNama = findColIndex_(h, ["nama_sekolah", "nama sekolah", "sekolah", "nama satuan pendidikan"]);
+  var idxJenjang = findColIndex_(h, ["jenjang", "bentuk pendidikan"]);
+  var idxStatus = findColIndex_(h, ["status_sekolah", "status sekolah", "status"]);
+  var idxAlamat = findColIndex_(h, ["alamat", "alamat jalan"]);
+  var idxKec = findColIndex_(h, ["kecamatan"]);
+  var idxKab = findColIndex_(h, ["kabupaten", "kabupaten/kota"]);
+  var idxPos = findColIndex_(h, ["kode_pos", "kode pos"]);
+  var idxTelp = findColIndex_(h, ["telepon", "no_telp", "no telp"]);
+  var idxEmail = findColIndex_(h, ["email"]);
+  var idxKepsek = findColIndex_(h, ["kepala_sekolah", "kepala sekolah", "nama kepsek"]);
+  var idxNipKepsek = findColIndex_(h, ["nip_kepsek", "nip kepala sekolah", "nip kepsek"]);
+
+  if (idxNpsn === -1) throw new Error("Kolom 'NPSN' tidak ditemukan di sheet sumber DATA_SEKOLAH.");
+
+  var dstData = dstSheet.getDataRange().getValues();
+  var existingNpsn = {};
+  for (var i = 1; i < dstData.length; i++) {
+    var npsn = String(dstData[i][0] || "").trim();
+    if (npsn) existingNpsn[npsn] = true;
+  }
+
+  var now = new Date();
+  var toInsert = [];
+  for (var r = 1; r < srcData.length; r++) {
+    var row = srcData[r];
+    var npsnVal = String(row[idxNpsn] || "").trim();
+    if (!npsnVal || existingNpsn[npsnVal]) continue;
+
+    toInsert.push([
+      npsnVal,
+      idxNama > -1 ? String(row[idxNama] || "").trim() : "",
+      idxJenjang > -1 ? String(row[idxJenjang] || "").trim() : "",
+      idxStatus > -1 ? String(row[idxStatus] || "").trim() : "",
+      idxAlamat > -1 ? String(row[idxAlamat] || "").trim() : "",
+      idxKec > -1 ? String(row[idxKec] || "").trim() : "",
+      idxKab > -1 ? String(row[idxKab] || "").trim() : "",
+      idxPos > -1 ? String(row[idxPos] || "").trim() : "",
+      idxTelp > -1 ? String(row[idxTelp] || "").trim() : "",
+      idxEmail > -1 ? String(row[idxEmail] || "").trim() : "",
+      idxKepsek > -1 ? String(row[idxKepsek] || "").trim() : "",
+      idxNipKepsek > -1 ? String(row[idxNipKepsek] || "").trim() : "",
+      now
+    ]);
+    existingNpsn[npsnVal] = true;
+  }
+
+  if (toInsert.length > 0) {
+    dstSheet.getRange(dstSheet.getLastRow() + 1, 1, toInsert.length, 13).setValues(toInsert);
+  }
+
+  Logger.log("Sync tbl_sekolah selesai. Ditambahkan: " + toInsert.length + " baris.");
+  return { inserted: toInsert.length };
+}
