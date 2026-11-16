@@ -350,3 +350,115 @@ function syncMasterPTK() {
   Logger.log("Sync tbl_ptk selesai. Ditambahkan: " + toInsert.length + " baris.");
   return { inserted: toInsert.length };
 }
+
+/**
+ * Menyalin data murid dari ADM_MURID_DB ke tbl_murid di SIKS_DB_MASTER.
+ * Aman dijalankan berkali-kali: mencegah duplikasi berdasarkan NISN / (Nama + Sekolah).
+ */
+function syncMasterMurid() {
+  var dstSs = SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_MASTER);
+  var dstSheet = dstSs.getSheetByName("tbl_murid");
+  if (!dstSheet) throw new Error("Sheet 'tbl_murid' belum ada. Jalankan setupMasterSheets() terlebih dahulu.");
+
+  // Mapping nama sekolah -> npsn dari tbl_sekolah
+  var npsnBySekolah = {};
+  var sekolahSheet = dstSs.getSheetByName("tbl_sekolah");
+  if (sekolahSheet) {
+    var sekData = sekolahSheet.getDataRange().getValues();
+    for (var s = 1; s < sekData.length; s++) {
+      var sNpsn = String(sekData[s][0] || "").trim();
+      var sNama = String(sekData[s][1] || "").trim().toLowerCase();
+      if (sNama && sNpsn) npsnBySekolah[sNama] = sNpsn;
+    }
+  }
+
+  var dstData = dstSheet.getDataRange().getValues();
+  var existingKeys = {};
+  for (var i = 1; i < dstData.length; i++) {
+    var exNisn = String(dstData[i][0] || "").trim();
+    var exNama = String(dstData[i][2] || "").trim().toLowerCase();
+    var exNpsn = String(dstData[i][6] || "").trim();
+    if (exNisn) existingKeys["nisn:" + exNisn] = true;
+    if (exNama) existingKeys["nama:" + exNama + "|" + exNpsn] = true;
+  }
+
+  var srcSs = SpreadsheetApp.openById(SPREADSHEET_IDS.ADM_MURID_DB);
+  var sheet = srcSs.getSheets()[0];
+  if (!sheet) throw new Error("Sheet sumber murid tidak ditemukan di ADM_MURID_DB.");
+
+  var data = sheet.getDataRange().getValues();
+  if (data.length < 2) return { inserted: 0 };
+
+  var headerIdx = -1;
+  var idxNama = -1;
+  for (var rCheck = 0; rCheck < Math.min(5, data.length); rCheck++) {
+    var cIdx = findColIndex_(data[rCheck], ["nama", "nama murid", "nama siswa", "nama lengkap", "nama_lengkap", "nama peserta didik"]);
+    if (cIdx !== -1) {
+      headerIdx = rCheck;
+      idxNama = cIdx;
+      break;
+    }
+  }
+  if (headerIdx === -1) {
+    Logger.log("Header Nama Murid tidak ditemukan di '" + sheet.getName() + "'. Baris 1: " + data[0].join(" | "));
+    return { inserted: 0 };
+  }
+
+  var h = data[headerIdx];
+  var idxNisn = findColIndex_(h, ["nisn"]);
+  var idxNik = findColIndex_(h, ["nik"]);
+  var idxJk = findColIndex_(h, ["jk", "jenis kelamin", "jenis_kelamin", "l/p"]);
+  var idxTmpLahir = findColIndex_(h, ["tempat lahir", "tempat_lahir"]);
+  var idxTglLahir = findColIndex_(h, ["tanggal lahir", "tanggal_lahir", "tgl lahir"]);
+  var idxSekolah = findColIndex_(h, ["sekolah", "nama sekolah", "nama_sekolah", "satuan pendidikan"]);
+  var idxNpsn = findColIndex_(h, ["npsn"]);
+  var idxJenjang = findColIndex_(h, ["jenjang"]);
+  var idxKelas = findColIndex_(h, ["kelas", "tingkat", "tingkat_kelas"]);
+  var idxRombel = findColIndex_(h, ["rombel"]);
+  var idxAyah = findColIndex_(h, ["nama ayah", "nama_ayah", "ayah"]);
+  var idxIbu = findColIndex_(h, ["nama ibu", "nama_ibu", "ibu"]);
+  var idxAlamat = findColIndex_(h, ["alamat"]);
+
+  var now = new Date();
+  var toInsert = [];
+  for (var r = headerIdx + 1; r < data.length; r++) {
+    var row = data[r];
+    var nama = String(row[idxNama] || "").trim();
+    if (!nama) continue;
+
+    var nisn = idxNisn > -1 ? String(row[idxNisn] || "").trim() : "";
+    var namaSekolah = idxSekolah > -1 ? String(row[idxSekolah] || "").trim() : "";
+    var npsn = idxNpsn > -1 ? String(row[idxNpsn] || "").trim() : (npsnBySekolah[namaSekolah.toLowerCase()] || "");
+
+    if (nisn && existingKeys["nisn:" + nisn]) continue;
+    if (existingKeys["nama:" + nama.toLowerCase() + "|" + npsn]) continue;
+
+    toInsert.push([
+      nisn,
+      idxNik > -1 ? String(row[idxNik] || "").trim() : "",
+      nama,
+      idxJk > -1 ? String(row[idxJk] || "").trim() : "",
+      idxTmpLahir > -1 ? String(row[idxTmpLahir] || "").trim() : "",
+      idxTglLahir > -1 ? row[idxTglLahir] : "",
+      npsn,
+      idxJenjang > -1 ? String(row[idxJenjang] || "").trim() : "",
+      idxKelas > -1 ? String(row[idxKelas] || "").trim() : "",
+      idxRombel > -1 ? String(row[idxRombel] || "").trim() : "",
+      idxAyah > -1 ? String(row[idxAyah] || "").trim() : "",
+      idxIbu > -1 ? String(row[idxIbu] || "").trim() : "",
+      idxAlamat > -1 ? String(row[idxAlamat] || "").trim() : "",
+      "AKTIF",
+      now
+    ]);
+
+    if (nisn) existingKeys["nisn:" + nisn] = true;
+    existingKeys["nama:" + nama.toLowerCase() + "|" + npsn] = true;
+  }
+
+  if (toInsert.length > 0) {
+    dstSheet.getRange(dstSheet.getLastRow() + 1, 1, toInsert.length, 15).setValues(toInsert);
+  }
+
+  Logger.log("Sync tbl_murid selesai. Ditambahkan: " + toInsert.length + " baris.");
+  return { inserted: toInsert.length };
+}
