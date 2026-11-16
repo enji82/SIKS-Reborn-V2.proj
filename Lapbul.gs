@@ -9,11 +9,25 @@ const KONFIG_LAPBUL = {
     USER_DB: "USER_DB"
 };
 
+function getLapbulSheet_(dbKey, sheetName) {
+  if (typeof USE_CENTRAL_LAYANAN_DB !== "undefined" && USE_CENTRAL_LAYANAN_DB) {
+    if (dbKey === KONFIG_LAPBUL.SD_DB && sheetName === "Input SD") {
+      var centralSd = getLayananCentralSheet("tbl_lapbul_sd");
+      if (centralSd) return centralSd;
+    }
+    if (dbKey === KONFIG_LAPBUL.PAUD_DB && sheetName === "Input PAUD") {
+      var centralPaud = getLayananCentralSheet("tbl_lapbul_paud");
+      if (centralPaud) return centralPaud;
+    }
+  }
+  return getSheet(dbKey, sheetName);
+}
+
 /* ======================================================================
    0. INISIALISASI SCHEMA (MENAMBAH KOLOM DATA PTK)
    ====================================================================== */
 function initLapbulSchema() {
-  var sheetSD = getSheet(KONFIG_LAPBUL.SD_DB, "Input SD");
+  var sheetSD = getLapbulSheet_(KONFIG_LAPBUL.SD_DB, "Input SD");
   if (sheetSD) {
     var headers = sheetSD.getRange(1, 1, 1, sheetSD.getLastColumn()).getValues()[0];
     var hasDataPtk = false;
@@ -914,7 +928,7 @@ function getDetailGeneral(dbKey, namaSheet, rowId) {
 
 function lapbul_getLastMonthDataSD(npsn) {
   try {
-    var sheet = getSheet(KONFIG_LAPBUL.SD_DB, "Input SD");
+    var sheet = getLapbulSheet_(KONFIG_LAPBUL.SD_DB, "Input SD");
     if (!sheet) return { status: 'error', message: "Sheet tidak ditemukan!" };
 
     var lastRow = sheet.getLastRow();
@@ -1648,7 +1662,7 @@ function lapbul_getPreviousMonthDataSD(npsn, currentBulan, currentTahun) {
   }
   
   try {
-    var sheet = getSheet(KONFIG_LAPBUL.SD_DB, "Input SD");
+    var sheet = getLapbulSheet_(KONFIG_LAPBUL.SD_DB, "Input SD");
     if (!sheet) return { status: 'error', message: "Sheet Input SD tidak ditemukan!" };
 
     var lastRow = sheet.getLastRow();
@@ -1718,7 +1732,7 @@ function checkAndCreateColumnsPAUD(sheet, form) {
 
 function lapbul_getLastMonthDataPAUD(npsn) {
   try {
-    var sheet = getSheet(KONFIG_LAPBUL.PAUD_DB, "Input PAUD");
+    var sheet = getLapbulSheet_(KONFIG_LAPBUL.PAUD_DB, "Input PAUD");
     if (!sheet) return { status: 'error', message: "Sheet tidak ditemukan!" };
 
     var lastRow = sheet.getLastRow();
@@ -1804,7 +1818,7 @@ function lapbul_getPreviousMonthDataPAUD(npsn, currentBulan, currentTahun) {
   }
   
   try {
-    var sheet = getSheet(KONFIG_LAPBUL.PAUD_DB, "Input PAUD");
+    var sheet = getLapbulSheet_(KONFIG_LAPBUL.PAUD_DB, "Input PAUD");
     if (!sheet) return { status: 'error', message: "Sheet Input PAUD tidak ditemukan!" };
 
     var lastRow = sheet.getLastRow();
