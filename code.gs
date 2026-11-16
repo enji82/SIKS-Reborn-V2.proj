@@ -57,10 +57,10 @@ const SPREADSHEET_IDS = {
 };
 
 // Saklar (Feature Flag) Cutover Fase 4: ubah ke `true` saat siap mengarahkan Login ke SIKS_DB_MASTER
-const USE_CENTRAL_USERS_DB = false;
-const USE_CENTRAL_PTK_DB = false;
-const USE_CENTRAL_SIABA_DB = false;
-const USE_CENTRAL_LAYANAN_DB = false;
+const USE_CENTRAL_USERS_DB = true;
+const USE_CENTRAL_PTK_DB = true;
+const USE_CENTRAL_SIABA_DB = true;
+const USE_CENTRAL_LAYANAN_DB = true;
 
 // 2. FOLDER CONFIG (Digunakan oleh semua file .gs lainnya)
 const FOLDER_CONFIG = {
