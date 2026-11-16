@@ -12,6 +12,9 @@ const KONFIG_PTK = {
 // 1. AMBIL OPSI FILTER (UNIT & STATUS)
 function getFilterOptionsPTK() {
   try {
+    if (typeof USE_CENTRAL_PTK_DB !== "undefined" && USE_CENTRAL_PTK_DB) {
+      return getFilterOptionsPTK_Central();
+    }
     const cache = CacheService.getScriptCache();
     const cacheKey = "ptk_filter_options";
     const cached = cache.get(cacheKey);

@@ -111,3 +111,27 @@ function getMasterUserByUsername(username) {
   }
   return null;
 }
+
+/**
+ * Mengambil opsi filter (daftar sekolah/unit & status kepegawaian) dari SIKS_DB_MASTER.
+ */
+function getFilterOptionsPTK_Central() {
+  var sekolahList = getMasterSekolah();
+  var ptkList = getMasterPTK();
+  var unitSet = {};
+  var statusSet = {};
+
+  for (var i = 0; i < sekolahList.length; i++) {
+    var namaSek = String(sekolahList[i].nama_sekolah || "").trim();
+    if (namaSek) unitSet[namaSek] = true;
+  }
+  for (var j = 0; j < ptkList.length; j++) {
+    var st = String(ptkList[j].status_kepegawaian || "").trim();
+    if (st) statusSet[st] = true;
+  }
+
+  return JSON.stringify({
+    units: Object.keys(unitSet).sort(),
+    statuses: Object.keys(statusSet).sort()
+  });
+}
