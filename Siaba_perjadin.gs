@@ -10,12 +10,7 @@ const KONFIG_DINAS = {
 };
 
 function getDinasSheet_(sheetName) {
-  if (typeof USE_CENTRAL_SIABA_DB !== "undefined" && USE_CENTRAL_SIABA_DB) {
-    if (sheetName === KONFIG_DINAS.SHEET_MAIN) {
-      var central = getSiabaCentralSheet("tbl_siaba_dinas");
-      if (central) return central;
-    }
-  }
+  // Sementara tetap membaca sheet lama karena getDaftarDinas() memakai indeks kolom tetap
   return getSheet(KONFIG_DINAS.DB_KEY, sheetName);
 }
 
