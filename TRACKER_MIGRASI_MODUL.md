@@ -35,7 +35,7 @@ Dokumen ini mencatat status pengerjaan, pemetaan database, dan hasil pengujian u
 | 13 | **Tata Naskah Dinas** | `TataNaskahDinas.gs` | `SIKS_DB_LAYANAN` (`tbl_tnd`) | `[x]` 27 baris | `[x]` `USE_CENTRAL_LAYANAN_DB` | **Berhasil** (Pedoman, Kode SD, Klasifikasi Arsip, Template normal) |
 | 14 | **Kemitraan & Kerja Sama** | `Kemitraan.gs` | `SIKS_DB_LAYANAN` (`tbl_kemitraan`) | `[x]` Tersinkronisasi (`syncKombelAndKemitraan`) | `[x]` `USE_CENTRAL_LAYANAN_DB` | **Berhasil** (Kemitraan & Kerja Sama normal) |
 | 15 | **Pengaturan (Login & User)** | `code.gs` | `SIKS_DB_MASTER` (`tbl_users`) | `[x]` Tersinkronisasi | `[x]` `USE_CENTRAL_USERS_DB` | **Berhasil** (uji login normal) |
-| 16 | **Monitoring Aktivitas** | `code.gs` / `NotifikasiHome.gs` | `SIKS_DB_MASTER` / `SIKS_DB_LAYANAN` | `[ ]` Belum dipetakan | `[ ]` Belum | - |
+| 16 | **Monitoring Aktivitas** | `code.gs` / `NotifikasiHome.gs` | `SIKS_DB_LAYANAN` (`tbl_lapbul_*`, `tbl_sk`) | `[x]` Ikut tersalin di Lapbul & SK | `[x]` `USE_CENTRAL_LAYANAN_DB` | **Berhasil** (Beranda & Notifikasi normal) |
 
 ---
 
