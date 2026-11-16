@@ -251,9 +251,8 @@ function syncMasterPTK() {
   }
 
   var sources = [
-    { key: "PTK_SD_DB", sheetName: "sinkron_gtk_sdn", jenjangDefault: "SD" },
-    { key: "PTK_SD_DB", sheetName: "sinkron_gtk_sds", jenjangDefault: "SD" },
-    { key: "PTK_PAUD_DB", sheetName: "sinkron_gtk_paud", jenjangDefault: "PAUD" }
+    { key: "PTK_SD_DB", sheetName: "Master Data GTK", jenjangDefault: "SD" },
+    { key: "PTK_PAUD_DB", sheetName: "Master Data GTK", jenjangDefault: "PAUD" }
   ];
 
   var now = new Date();
