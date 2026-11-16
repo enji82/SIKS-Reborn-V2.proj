@@ -264,3 +264,45 @@ function syncLapbulAll() {
   Logger.log("syncLapbulAll selesai: " + JSON.stringify(result));
   return result;
 }
+
+/**
+ * Menyalin data SK Pembagian Tugas (Unggah_SK) & E-File PTK (Database_Efile)
+ * ke SIKS_DB_LAYANAN dengan mempertahankan seluruh kolom aslinya.
+ */
+function syncSkAndEfile() {
+  var dstSs = SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_LAYANAN);
+  var sources = [
+    { dbKey: "SK_DATA_DB", srcSheetName: "Unggah_SK", dstSheetName: "tbl_sk" },
+    { dbKey: "EFILE_DB", srcSheetName: "Database_Efile", dstSheetName: "tbl_efile" }
+  ];
+
+  var result = {};
+  sources.forEach(function (src) {
+    var srcSs = SpreadsheetApp.openById(SPREADSHEET_IDS[src.dbKey]);
+    var srcSheet = srcSs.getSheetByName(src.srcSheetName);
+    if (!srcSheet) {
+      result[src.dstSheetName] = 0;
+      return;
+    }
+
+    var dstSheet = dstSs.getSheetByName(src.dstSheetName);
+    if (!dstSheet) {
+      dstSheet = dstSs.insertSheet(src.dstSheetName);
+    }
+
+    var srcData = srcSheet.getDataRange().getValues();
+    if (srcData.length < 2) {
+      result[src.dstSheetName] = 0;
+      return;
+    }
+
+    dstSheet.clearContents();
+    dstSheet.getRange(1, 1, srcData.length, srcData[0].length).setValues(srcData);
+    dstSheet.getRange(1, 1, 1, srcData[0].length).setFontWeight("bold");
+    dstSheet.setFrozenRows(1);
+    result[src.dstSheetName] = srcData.length - 1;
+  });
+
+  Logger.log("syncSkAndEfile selesai: " + JSON.stringify(result));
+  return result;
+}
