@@ -8,6 +8,15 @@ const TPG_PG_CONFIG = {
   FOLDER_KEY: "TPG_PERBAIKAN_DOCS"
 };
 
+function getTpgPgSheet_() {
+  if (typeof USE_CENTRAL_LAYANAN_DB !== "undefined" && USE_CENTRAL_LAYANAN_DB) {
+    var central = getLayananCentralSheet("tbl_tpg_perbaikan");
+    if (central) return central;
+  }
+  var ss = SpreadsheetApp.openById(SPREADSHEET_IDS[TPG_PG_CONFIG.DB_KEY]);
+  return ss.getSheetByName(TPG_PG_CONFIG.SHEET_NAME);
+}
+
 // 1. Setup Sheet
 function tpgPg_ensureSheet() {
   var ss = SpreadsheetApp.openById(SPREADSHEET_IDS[TPG_PG_CONFIG.DB_KEY]);
@@ -487,8 +496,7 @@ function tpg_getDaftarUnit() {
 // ======================================================================
 function getNotifikasiPerbaikanGaji(role, unit) {
   try {
-    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS[TPG_PG_CONFIG.DB_KEY]);
-    var sheet = ss.getSheetByName(TPG_PG_CONFIG.SHEET_NAME);
+    var sheet = getTpgPgSheet_();
     if (!sheet) return { count: 0, recent: [] };
 
     var data = sheet.getDataRange().getValues();
@@ -571,8 +579,7 @@ function getNotifikasiPerbaikanGaji(role, unit) {
 
 function tandaiSemuaNotifPerbaikanGajiDibaca(role, unit) {
   try {
-    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS[TPG_PG_CONFIG.DB_KEY]);
-    var sheet = ss.getSheetByName(TPG_PG_CONFIG.SHEET_NAME);
+    var sheet = getTpgPgSheet_();
     if (!sheet) return;
     var data = sheet.getDataRange().getValues();
     if (data.length < 2) return;
@@ -617,8 +624,7 @@ function tandaiSemuaNotifPerbaikanGajiDibaca(role, unit) {
 
 function tandaiNotifPerbaikanGajiDibaca(rowId, role) {
   try {
-    var ss = SpreadsheetApp.openById(SPREADSHEET_IDS[TPG_PG_CONFIG.DB_KEY]);
-    var sheet = ss.getSheetByName(TPG_PG_CONFIG.SHEET_NAME);
+    var sheet = getTpgPgSheet_();
     if (!sheet) return;
     
     var rLower = String(role || "").toLowerCase();
