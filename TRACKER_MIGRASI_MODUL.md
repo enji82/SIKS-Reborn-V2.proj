@@ -27,7 +27,7 @@ Dokumen ini mencatat status pengerjaan, pemetaan database, dan hasil pengujian u
 | 5 | **E-File PTK** | `Efile.gs` | `SIKS_DB_LAYANAN` (`tbl_efile`) | `[ ]` Belum dipetakan | `[ ]` Belum | - |
 | 6 | **SIABA** (Presensi, Cuti, Dinas, Lupa, Salah, TA/PA) | `Siaba_*.gs` | `SIKS_DB_SIABA` (`tbl_siaba_*`) | `[x]` Cuti (234), Dinas (234), Lupa (234), Salah (232), Data Atasan, Sisa CT | `[~]` `USE_CENTRAL_SIABA_DB` aktif untuk `Sisa CT` & `Data Atasan` di `Siaba_cuti.gs` | **Berhasil** (uji Sisa Cuti & Pengajuan Cuti normal) |
 | 7 | **TPG** | `TPG_Perbaikan.gs` | `SIKS_DB_LAYANAN` (`tbl_tpg_perbaikan`) | `[~]` Sheet siap | `[ ]` Belum | - |
-| 8 | **PPPK PW** | `PPPK_PW.gs` | `SIKS_DB_MASTER` (`tbl_ptk`) / `SIKS_DB_LAYANAN` | `[ ]` Belum digabung ke `tbl_ptk` | `[ ]` Belum | - |
+| 8 | **PPPK PW** | `PPPK_PW.gs` | `SIKS_DB_MASTER` (`tbl_ptk`) & `SIKS_DB_LAYANAN` (dokumen PK) | `[x]` Data pegawai sudah di `tbl_ptk` | `[ ]` Belum (dokumen PK) | - |
 | 9 | **Jumlah Murid** | `Murid.gs` | `SIKS_DB_LAYANAN` (`tbl_rekap_murid`) | `[ ]` Belum dipetakan (berupa rekapitulasi) | `[ ]` Belum | - |
 | 10 | **Administrasi Murid** | `AdmMurid.gs` | `SIKS_DB_LAYANAN` (`tbl_adm_murid`) | `[ ]` Belum dipetakan (`Database_SPMB` berupa rekap) | `[ ]` Belum | - |
 | 11 | **Administrasi PTK** | `AdmPTK.gs` | `SIKS_DB_LAYANAN` (`tbl_adm_ptk`) | `[ ]` Belum dipetakan | `[ ]` Belum | - |
