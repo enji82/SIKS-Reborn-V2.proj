@@ -28,7 +28,7 @@ Dokumen ini mencatat status pengerjaan, pemetaan database, dan hasil pengujian u
 | 6 | **SIABA** (Presensi, Cuti, Dinas, Lupa, Salah, TA/PA) | `Siaba_*.gs` | `SIKS_DB_SIABA` (`tbl_siaba_*`) | `[x]` Cuti (234), Dinas (234), Lupa (234), Salah (232), Data Atasan, Sisa CT | `[~]` `USE_CENTRAL_SIABA_DB` aktif untuk `Sisa CT` & `Data Atasan` di `Siaba_cuti.gs` | **Berhasil** (uji Sisa Cuti & Pengajuan Cuti normal) |
 | 7 | **TPG** | `TPG_Perbaikan.gs` | `SIKS_DB_LAYANAN` (`tbl_tpg_perbaikan`) | `[x]` 101 baris | `[x]` `USE_CENTRAL_LAYANAN_DB` | **Berhasil** (Dashboard, Perbaikan Gaji, Peraturan normal) |
 | 8 | **PPPK PW** | `PPPK_PW.gs` | `SIKS_DB_MASTER` (`tbl_ptk`) & `SIKS_DB_LAYANAN` (dokumen PK) | `[x]` Data pegawai sudah di `tbl_ptk` | `[ ]` Belum (dokumen PK) | - |
-| 9 | **Jumlah Murid** | `Murid.gs` | `SIKS_DB_LAYANAN` (`tbl_lapbul_sd`, `tbl_lapbul_paud`) | `[x]` Ikut tersalin di data Lapbul | `[ ]` Belum | - |
+| 9 | **Jumlah Murid** | `Murid.gs` | `SIKS_DB_LAYANAN` (`tbl_lapbul_sd`, `tbl_lapbul_paud`) | `[x]` Ikut tersalin di data Lapbul | `[x]` `USE_CENTRAL_LAYANAN_DB` | **Berhasil** (Jumlah Murid normal) |
 | 10 | **Administrasi Murid** | `AdmMurid.gs` | `SIKS_DB_LAYANAN` (`tbl_adm_murid`) | `[x]` 12 baris (`Database_SPMB`) | `[x]` `USE_CENTRAL_LAYANAN_DB` | **Berhasil** (Dashboard, SPMB, Ijazah, TKA, Seragam Gratis normal) |
 | 11 | **Administrasi PTK** | `AdmPTK.gs` | `SIKS_DB_LAYANAN` (`tbl_adm_ptk`) | `[x]` 63 baris | `[x]` `USE_CENTRAL_LAYANAN_DB` | **Berhasil** (Dashboard, Kelola, Lihat, Master Kategori normal) |
 | 12 | **Komunitas Belajar** | `KomBel.gs` | `SIKS_DB_LAYANAN` (`tbl_kombel`) | `[x]` Tersinkronisasi (`syncKombelAndKemitraan`) | `[x]` `USE_CENTRAL_LAYANAN_DB` | **Berhasil** (Komunitas Belajar normal) |
