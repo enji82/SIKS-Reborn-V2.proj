@@ -32,7 +32,7 @@ Dokumen ini mencatat status pengerjaan, pemetaan database, dan hasil pengujian u
 | 10 | **Administrasi Murid** | `AdmMurid.gs` | `SIKS_DB_LAYANAN` (`tbl_adm_murid`) | `[x]` 12 baris (`Database_SPMB`) | `[ ]` Belum | - |
 | 11 | **Administrasi PTK** | `AdmPTK.gs` | `SIKS_DB_LAYANAN` (`tbl_adm_ptk`) | `[x]` 63 baris | `[ ]` Belum | - |
 | 12 | **Komunitas Belajar** | `KomBel.gs` | `SIKS_DB_LAYANAN` (`tbl_kombel`) | `[~]` Script ada (`syncLayananAll`) | `[ ]` Belum | - |
-| 13 | **Tata Naskah Dinas** | `TataNaskahDinas.gs` | `SIKS_DB_LAYANAN` (`tbl_tnd`) | `[ ]` Belum dipetakan | `[ ]` Belum | - |
+| 13 | **Tata Naskah Dinas** | `TataNaskahDinas.gs` | `SIKS_DB_LAYANAN` (`tbl_tnd`) | `[x]` 27 baris | `[ ]` Belum | - |
 | 14 | **Kemitraan & Kerja Sama** | `Kemitraan.gs` | `SIKS_DB_LAYANAN` (`tbl_kemitraan`) | `[~]` Script ada (`syncLayananAll`) | `[ ]` Belum | - |
 | 15 | **Pengaturan (Login & User)** | `code.gs` | `SIKS_DB_MASTER` (`tbl_users`) | `[x]` Tersinkronisasi | `[x]` `USE_CENTRAL_USERS_DB` | **Berhasil** (uji login normal) |
 | 16 | **Monitoring Aktivitas** | `code.gs` / `NotifikasiHome.gs` | `SIKS_DB_MASTER` / `SIKS_DB_LAYANAN` | `[ ]` Belum dipetakan | `[ ]` Belum | - |

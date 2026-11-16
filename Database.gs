@@ -143,3 +143,11 @@ function getSiabaCentralSheet(sheetName) {
   var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_SIABA);
   return ss.getSheetByName(sheetName);
 }
+
+/**
+ * Mengambil sheet dari SIKS_DB_LAYANAN (tbl_sk, tbl_efile, tbl_tpg_perbaikan, tbl_lapbul_sd, dll).
+ */
+function getLayananCentralSheet(sheetName) {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_LAYANAN);
+  return ss.getSheetByName(sheetName);
+}

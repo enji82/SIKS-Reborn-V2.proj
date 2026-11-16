@@ -60,6 +60,7 @@ const SPREADSHEET_IDS = {
 const USE_CENTRAL_USERS_DB = false;
 const USE_CENTRAL_PTK_DB = false;
 const USE_CENTRAL_SIABA_DB = false;
+const USE_CENTRAL_LAYANAN_DB = false;
 
 // 2. FOLDER CONFIG (Digunakan oleh semua file .gs lainnya)
 const FOLDER_CONFIG = {

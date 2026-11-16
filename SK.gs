@@ -6,6 +6,16 @@
 /* ======================================================================
    HELPER FUNCTIONS
    ====================================================================== */
+function getSkSheet_(sheetName) {
+  if (typeof USE_CENTRAL_LAYANAN_DB !== "undefined" && USE_CENTRAL_LAYANAN_DB) {
+    if (sheetName === "Unggah_SK") {
+      var central = getLayananCentralSheet("tbl_sk");
+      if (central) return central;
+    }
+  }
+  return getSheet("SK_DATA_DB", sheetName);
+}
+
 function handleError(context, error) {
   Logger.log("ERROR [" + context + "]: " + error);
   rekamCCTV("ERROR " + context, error.toString()); 
@@ -57,7 +67,7 @@ function getMappingMasterNpsn() {
    ====================================================================== */
 function processManualForm(formData) {
   try {
-    const sheet = getSheet("SK_DATA_DB", "Unggah_SK");
+    const sheet = getSkSheet_("Unggah_SK");
     
     const mainFolder = DriveApp.getFolderById(FOLDER_CONFIG.MAIN_SK);
     const folderTahun = getOrCreateFolder(mainFolder, formData.tahunAjaran.replace(/\//g, '-'));
@@ -100,7 +110,7 @@ function simpanPerubahanSK(form) {
   try {
     rekamCCTV("START EDIT", "No SK: " + form.nomorSk);
  
-    var sheet = getSheet("SK_DATA_DB", "Unggah_SK");
+    var sheet = getSkSheet_("Unggah_SK");
     var rowIdx = parseInt(form.editRowId);
 
     if (isNaN(rowIdx)) throw "Row ID Invalid";
@@ -179,7 +189,7 @@ function getDaftarSK() {
   }
   
   try {
-    var sheet = getSheet("SK_DATA_DB", "Unggah_SK");
+    var sheet = getSkSheet_("Unggah_SK");
     var data = sheet.getDataRange().getDisplayValues();
     if (data.length < 2) return [];
 
@@ -274,7 +284,7 @@ function getDaftarSK() {
    ====================================================================== */
 function cekDuplikatSK(payload) {
   try {
-    const sheet = getSheet("SK_DATA_DB", "Unggah_SK");
+    const sheet = getSkSheet_("Unggah_SK");
     var data = sheet.getDataRange().getDisplayValues();
     
     var tSd = String(payload.namaSd).trim().toUpperCase();
@@ -314,7 +324,7 @@ function hapusDataSK(form) {
       return { success: false, message: "KODE_SALAH" };
     }
  
-    const sheetSource = getSheet("SK_DATA_DB", "Unggah_SK");
+    const sheetSource = getSkSheet_("Unggah_SK");
     
     var sheetTrash = getSheet("SK_DATA_DB", "Trash_SK");
     if (!sheetTrash) {
@@ -371,7 +381,7 @@ function hapusDataSK(form) {
 
 function verifikasiDataSK(form) {
   try {
-    var sheet = getSheet("SK_DATA_DB", "Unggah_SK");
+    var sheet = getSkSheet_("Unggah_SK");
     var rowIdx = parseInt(form.verifRowId);
 
     if (isNaN(rowIdx) || rowIdx < 2) return { success: false, message: "ID Baris tidak valid!" };
@@ -442,7 +452,7 @@ function getTrashSK() {
 function restoreDataSK(form) {
   try {
     const sheetTrash = getSheet("SK_DATA_DB", "Trash_SK");
-    const sheetActive = getSheet("SK_DATA_DB", "Unggah_SK");
+    const sheetActive = getSkSheet_("Unggah_SK");
     
     var rowIdx = parseInt(form.rowId);
     var values = sheetTrash.getRange(rowIdx, 1, 1, sheetTrash.getLastColumn()).getDisplayValues()[0];
@@ -1023,7 +1033,7 @@ function tandaiSemuaNotifMutasiDibaca_Global(role, unit) {
 
 function tandaiNotifDibaca(rowId, role) {
   try {
-    var sheet = getSheet("SK_DATA_DB", "Unggah_SK");
+    var sheet = getSkSheet_("Unggah_SK");
     var rIdx = parseInt(rowId);
     if (isNaN(rIdx)) return false;
     
@@ -1047,7 +1057,7 @@ function tandaiNotifDibaca(rowId, role) {
 
 function tandaiSemuaNotifDibaca(role, unit) {
   try {
-    var sheet = getSheet("SK_DATA_DB", "Unggah_SK");
+    var sheet = getSkSheet_("Unggah_SK");
     var data = sheet.getDataRange().getDisplayValues();
     
     var rLower = String(role || "").toLowerCase();
@@ -1095,7 +1105,7 @@ function tandaiSemuaNotifDibaca(role, unit) {
    ====================================================================== */
 function migrateBelajarIdFilesToMain() {
   try {
-    var sheet = getSheet("SK_DATA_DB", "Unggah_SK");
+    var sheet = getSkSheet_("Unggah_SK");
     var targetFolderId = FOLDER_CONFIG.MAIN_SK; // Folder utama SK
     var targetFolder = DriveApp.getFolderById(targetFolderId);
     var data = sheet.getDataRange().getValues();
@@ -1157,7 +1167,7 @@ function migrateBelajarIdFilesToMain() {
    ====================================================================== */
 function autoMatchUploadedFiles() {
   try {
-    var sheet = getSheet("SK_DATA_DB", "Unggah_SK");
+    var sheet = getSkSheet_("Unggah_SK");
     var targetFolderId = FOLDER_CONFIG.MAIN_SK; // Folder utama SK
     var targetFolder = DriveApp.getFolderById(targetFolderId);
     var data = sheet.getDataRange().getValues();
@@ -1222,7 +1232,7 @@ function autoMatchUploadedFiles() {
    ====================================================================== */
 function organizeAndRenameFiles() {
   try {
-    var sheet = getSheet("SK_DATA_DB", "Unggah_SK");
+    var sheet = getSkSheet_("Unggah_SK");
     var mainFolderId = FOLDER_CONFIG.MAIN_SK; 
     var mainFolder = DriveApp.getFolderById(mainFolderId);
     var data = sheet.getDataRange().getValues();
