@@ -93,7 +93,7 @@ function getMissingDocumentsReport(username, role, unit) {
 
     var uploadedLapbul = {};
     try {
-      var sheetLapbul = getSheet(dbKeyLapbul, sheetNameLapbul);
+      var sheetLapbul = getLapbulSheet_(dbKeyLapbul, sheetNameLapbul);
       var rawLapbul   = sheetLapbul.getDataRange().getDisplayValues();
       if (rawLapbul.length >= 2) {
         var hdr = rawLapbul[0].map(function(h){ return String(h).toLowerCase().trim(); });
@@ -146,7 +146,7 @@ function getMissingDocumentsReport(username, role, unit) {
       Logger.log("Target SK Cycle: TA=[" + skTA + "]");
 
       try {
-        var sheetSK = getSheet("SK_DATA_DB", "Unggah_SK");
+        var sheetSK = getSkSheet_("Unggah_SK");
         var rawSK   = sheetSK.getDataRange().getDisplayValues();
 
         for (var j = 1; j < rawSK.length; j++) {
