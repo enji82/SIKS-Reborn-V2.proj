@@ -17,6 +17,12 @@ const KONFIG_ADM_PTK = {
 };
 
 function getOrCreateSheetAdmPtk(sheetName) {
+  if (typeof USE_CENTRAL_LAYANAN_DB !== "undefined" && USE_CENTRAL_LAYANAN_DB) {
+    if (sheetName === "Database_Dokumen") {
+      var central = getLayananCentralSheet("tbl_adm_ptk");
+      if (central) return central;
+    }
+  }
   var ss = getDB(KONFIG_ADM_PTK.DB_KEY);
   var sheet = ss.getSheetByName(sheetName);
   if (!sheet) {
