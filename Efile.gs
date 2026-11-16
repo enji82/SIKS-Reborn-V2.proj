@@ -7,8 +7,18 @@ const KONFIG_EFILE = {
   get FOLDER_ID() { return FOLDER_CONFIG.EFILE_DOCS; }
 };
 
+function getEfileSheet_(sheetName) {
+  if (typeof USE_CENTRAL_LAYANAN_DB !== "undefined" && USE_CENTRAL_LAYANAN_DB) {
+    if (sheetName === "Database_Efile") {
+      var central = getLayananCentralSheet("tbl_efile");
+      if (central) return central;
+    }
+  }
+  return getSheet(KONFIG_EFILE.DB_KEY, sheetName);
+}
+
 function migrasiStrukturFolderEfile() {
-  var sheet = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile");
+  var sheet = getEfileSheet_("Database_Efile");
   if (!sheet) return "Sheet Database_Efile tidak ditemukan.";
   
   var data = sheet.getDataRange().getValues();
@@ -246,7 +256,7 @@ function getEfileData(npsnFilter) {
     } catch(e) {}
     
     // 2. Load Database_Efile
-    var sheet = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile");
+    var sheet = getEfileSheet_("Database_Efile");
     if(!sheet) return JSON.stringify({ success: false, message: "Sheet Database_Efile tidak ditemukan." });
     
     // Pastikan skema Database_Efile memiliki 22 kolom (A-V)
@@ -482,7 +492,7 @@ function efileParsePeriodeItem(perStr, katName) {
  * di kolom O (periode) ke kolom S (sub_periode), T (tmt_tanggal), U (nama_sub_item), V (nilai_jp)
  */
 function migrasiDanBackfillKolomEfile() {
-  var sheet = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile");
+  var sheet = getEfileSheet_("Database_Efile");
   if (!sheet) return "Sheet Database_Efile tidak ditemukan.";
 
   efilePastikanSkemaDatabaseEfile(sheet);
@@ -517,7 +527,7 @@ function simpanEfileBatch(batchData) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(30000);
-    var sheet = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile");
+    var sheet = getEfileSheet_("Database_Efile");
     efilePastikanSkemaDatabaseEfile(sheet);
     var now = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
     var pFolder = DriveApp.getFolderById(KONFIG_EFILE.FOLDER_ID);
@@ -625,7 +635,7 @@ function verifikasiEfileData(rowId, status, catatan, adminName, idPtk) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(30000);
-    var sheet = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile"); var r = parseInt(rowId);
+    var sheet = getEfileSheet_("Database_Efile"); var r = parseInt(rowId);
 
     // ============================================================
     // VALIDASI FINGERPRINT: Cek apakah kolom A (id_ptk) di baris r
@@ -669,7 +679,7 @@ function hapusEfileData(rowId, securityCode, idPtk) {
     lock.waitLock(30000);
     var d = new Date(); var kd = d.getFullYear()+""+String(d.getMonth()+1).padStart(2,'0')+""+String(d.getDate()).padStart(2,'0');
     if (String(securityCode).trim() !== kd) return JSON.stringify({ success: false, message: "Kode Keamanan Salah!" });
-    var sheet = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile"); var r = parseInt(rowId);
+    var sheet = getEfileSheet_("Database_Efile"); var r = parseInt(rowId);
 
     // ============================================================
     // VALIDASI FINGERPRINT: Pastikan rowId benar-benar menunjuk
@@ -702,7 +712,7 @@ function hapusEfileData(rowId, securityCode, idPtk) {
 }
 
 function perbaikiEfileData(payload, fileData) {
-  var sheet = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile"); 
+  var sheet = getEfileSheet_("Database_Efile"); 
   var r = parseInt(payload.rowId);
   var oldUrl = "";
   try { oldUrl = String(sheet.getRange(r, 7).getValue() || "").trim(); } catch(eUrl) {}
@@ -805,7 +815,7 @@ function perbaikiEfileData(payload, fileData) {
    ---------------------------------------------------------------------- */
 function getNotifikasiEfile(role, unit) {
   try {
-    var sheet = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile");
+    var sheet = getEfileSheet_("Database_Efile");
     if (!sheet) return { count: 0, recent: [] };
     var data = sheet.getDataRange().getDisplayValues();
     var rLower = String(role || "").toLowerCase();
@@ -849,7 +859,7 @@ function getNotifikasiEfile(role, unit) {
 
 function tandaiNotifEfileDibaca(rowId, role) {
     try {
-        var sheet = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile");
+        var sheet = getEfileSheet_("Database_Efile");
         var r = parseInt(rowId); var mark = (role === "Admin") ? "Admin" : "User";
         // Kolom R (18) = Notif_ReadMark (dipindahkan dari kolom P agar tidak bentrok dengan Tgl_Edit)
         var cur = String(sheet.getRange(r, 18).getDisplayValue() || "").trim();
@@ -938,7 +948,7 @@ function getEfileViewerData(keyword, npsnFilter) {
         }
     }
  
-    var shFile = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile"); 
+    var shFile = getEfileSheet_("Database_Efile"); 
     var dataFile = shFile.getDataRange().getDisplayValues(); 
     var files = [];
     
@@ -1181,7 +1191,7 @@ function getEfileDashboardData(idKategori, namaKategori, forceRefresh) {
       Logger.log("Gagal memetakan Database_PTK lama di dashboard: " + e.message);
     }
     
-    var shEfile = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile");
+    var shEfile = getEfileSheet_("Database_Efile");
     var dataEfile = shEfile ? shEfile.getDataRange().getDisplayValues() : [];
     
     var efileMap = {};
@@ -1468,7 +1478,7 @@ function onEfileDataChange(npsn) {
  * Contoh: auditVerifikasiEfile("26-07-2026")
  */
 function auditVerifikasiEfile(tanggal) {
-  var sheet = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile");
+  var sheet = getEfileSheet_("Database_Efile");
   var data = sheet.getDataRange().getDisplayValues();
   var hasilAudit = [];
   var targetTgl = tanggal || Utilities.formatDate(new Date(new Date().getTime() - 86400000), "Asia/Jakarta", "dd-MM-yyyy"); // default: kemarin
@@ -1506,7 +1516,7 @@ function auditVerifikasiEfile(tanggal) {
  */
 function resetVerifikasiEfile(arrBaris) {
   if (!arrBaris || arrBaris.length === 0) { Logger.log("Tidak ada baris yang direset."); return; }
-  var sheet = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile");
+  var sheet = getEfileSheet_("Database_Efile");
   arrBaris.forEach(function(baris) {
     var r = parseInt(baris);
     sheet.getRange(r, 8).setValue("Diproses"); // H: Status
@@ -1534,7 +1544,7 @@ function resetVerifikasiEfile(arrBaris) {
  * dan membandingkan dengan ID PTK yang seharusnya ada.
  */
 function cekJumlahDataEfile() {
-  var sheet = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile");
+  var sheet = getEfileSheet_("Database_Efile");
   var data = sheet.getDataRange().getDisplayValues();
   var jumlahBaris = data.length - 1; // minus header
   Logger.log("Jumlah baris data saat ini: " + jumlahBaris);
@@ -1820,7 +1830,7 @@ function getEfileDashboardUnitLengkap(npsn, tahun) {
     }
 
     // 4. Ambil data unggahan dari Database_Efile
-    var shEfile = getSheet(KONFIG_EFILE.DB_KEY, "Database_Efile");
+    var shEfile = getEfileSheet_("Database_Efile");
     var dataEfile = shEfile ? shEfile.getDataRange().getDisplayValues() : [];
     
     // Petakan unggahan berdasarkan Kategori -> PTK ID
