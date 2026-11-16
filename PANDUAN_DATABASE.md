@@ -46,8 +46,8 @@ Dari sebelumnya ~40 spreadsheet terpisah di `code.gs` (`SPREADSHEET_IDS`), selur
   - Membuat lapisan akses data terpusat (`Database.gs`).
 - [x] **Fase 2: Migrasi Modul Prioritas (`SIKS_DB_SIABA`)**
   - Memindahkan data Cuti, Dinas, Lupa, Salah, dan TA/PA ke `SIKS_DB_SIABA` (`Migrasi_Siaba.gs`) beserta trigger sinkronisasi harian otomatis.
-- [ ] **Fase 3: Migrasi Modul Pendukung (`SIKS_DB_LAYANAN`)**
-  - Memindahkan modul SK, E-File, TPG, Seragam, Aduan, E-Mading, KomBel, dan Kemitraan secara bertahap.
+- [x] **Fase 3: Migrasi Modul Pendukung (`SIKS_DB_LAYANAN`)**
+  - Membuat 7 sheet standar di `SIKS_DB_LAYANAN` (`Migrasi_Layanan.gs`) beserta trigger sinkronisasi harian otomatis (pukul 02:00).
 - [ ] **Fase 4: Peralihan Resmi (*Cutover*)**
   - Sinkronisasi data terakhir (jeda ~15–30 menit).
   - Mengarahkan web utama ke 3 spreadsheet baru dan mengunci spreadsheet lama sebagai arsip (*read-only*).
