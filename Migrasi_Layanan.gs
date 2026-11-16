@@ -420,3 +420,43 @@ function syncAdmSekolah() {
   Logger.log("syncAdmSekolah selesai: " + (srcData.length - 1) + " baris.");
   return { tbl_adm_sekolah: srcData.length - 1 };
 }
+
+/**
+ * Menyalin data KomBel (Database_Dokumen) & Kemitraan (Kemitraan_Database_Dokumen)
+ * ke SIKS_DB_LAYANAN dengan mempertahankan seluruh kolom aslinya.
+ */
+function syncKombelAndKemitraan() {
+  var dstSs = SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_LAYANAN);
+  var sources = [
+    { dbKey: "KOMBEL_DB", srcSheetName: "Database_Dokumen", dstSheetName: "tbl_kombel" },
+    { dbKey: "KEMITRAAN_DB", srcSheetName: "Kemitraan_Database_Dokumen", dstSheetName: "tbl_kemitraan" }
+  ];
+
+  var result = {};
+  sources.forEach(function (src) {
+    var srcSs = SpreadsheetApp.openById(SPREADSHEET_IDS[src.dbKey]);
+    var srcSheet = srcSs.getSheetByName(src.srcSheetName);
+    if (!srcSheet) {
+      result[src.dstSheetName] = 0;
+      return;
+    }
+
+    var dstSheet = dstSs.getSheetByName(src.dstSheetName);
+    if (!dstSheet) dstSheet = dstSs.insertSheet(src.dstSheetName);
+
+    var srcData = srcSheet.getDataRange().getValues();
+    if (srcData.length < 2) {
+      result[src.dstSheetName] = 0;
+      return;
+    }
+
+    dstSheet.clearContents();
+    dstSheet.getRange(1, 1, srcData.length, srcData[0].length).setValues(srcData);
+    dstSheet.getRange(1, 1, 1, srcData[0].length).setFontWeight("bold");
+    dstSheet.setFrozenRows(1);
+    result[src.dstSheetName] = srcData.length - 1;
+  });
+
+  Logger.log("syncKombelAndKemitraan selesai: " + JSON.stringify(result));
+  return result;
+}
