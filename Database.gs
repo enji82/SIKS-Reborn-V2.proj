@@ -151,3 +151,21 @@ function getLayananCentralSheet(sheetName) {
   var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_LAYANAN);
   return ss.getSheetByName(sheetName);
 }
+
+/**
+ * Mematikan seluruh trigger sinkronisasi harian (syncAllMaster, syncSiabaAll, syncLayananAll)
+ * secara otomatis saat web utama sudah resmi menggunakan database terpusat.
+ */
+function disableAllSyncTriggers() {
+  var targetFns = { syncAllMaster: true, syncSiabaAll: true, syncLayananAll: true };
+  var triggers = ScriptApp.getProjectTriggers();
+  var removed = 0;
+  for (var i = 0; i < triggers.length; i++) {
+    if (targetFns[triggers[i].getHandlerFunction()]) {
+      ScriptApp.deleteTrigger(triggers[i]);
+      removed++;
+    }
+  }
+  Logger.log("Trigger sinkronisasi dimatikan: " + removed + " trigger.");
+  return { removed: removed };
+}
