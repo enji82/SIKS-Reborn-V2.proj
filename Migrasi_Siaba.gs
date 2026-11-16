@@ -487,6 +487,31 @@ function syncSiabaSisaCuti() {
 }
 
 /**
+ * Menyalin sheet 'Perjalanan_Dinas' dari SIABA_DINAS_DB ke tbl_siaba_dinas
+ * dengan mempertahankan seluruh kolom aslinya agar siap dipakai langsung oleh Siaba_perjadin.gs.
+ */
+function syncSiabaDinasExact() {
+  var srcSs = SpreadsheetApp.openById(SPREADSHEET_IDS.SIABA_DINAS_DB);
+  var srcSheet = srcSs.getSheetByName("Perjalanan_Dinas") || srcSs.getSheets()[0];
+  if (!srcSheet) return { tbl_siaba_dinas: 0 };
+
+  var dstSs = SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_SIABA);
+  var dstSheet = dstSs.getSheetByName("tbl_siaba_dinas");
+  if (!dstSheet) dstSheet = dstSs.insertSheet("tbl_siaba_dinas");
+
+  var srcData = srcSheet.getDataRange().getValues();
+  if (srcData.length < 2) return { tbl_siaba_dinas: 0 };
+
+  dstSheet.clearContents();
+  dstSheet.getRange(1, 1, srcData.length, srcData[0].length).setValues(srcData);
+  dstSheet.getRange(1, 1, 1, srcData[0].length).setFontWeight("bold");
+  dstSheet.setFrozenRows(1);
+
+  Logger.log("syncSiabaDinasExact selesai: " + (srcData.length - 1) + " baris.");
+  return { tbl_siaba_dinas: srcData.length - 1 };
+}
+
+/**
  * Menjalankan sinkronisasi semua modul SIABA sekaligus.
  */
 function syncSiabaAll() {
