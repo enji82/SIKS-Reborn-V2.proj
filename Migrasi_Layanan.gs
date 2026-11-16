@@ -34,7 +34,9 @@ const LAYANAN_SCHEMA = {
   tbl_seragam: [
     "id_seragam", "tanggal", "npsn", "nama_sekolah", "jumlah_penerima",
     "status", "url_dokumen", "updated_at"
-  ]
+  ],
+  tbl_lapbul_sd: ["id_lapbul", "npsn", "nama_sekolah", "bulan", "tahun", "status", "url_file", "updated_at"],
+  tbl_lapbul_paud: ["id_lapbul", "npsn", "nama_sekolah", "bulan", "tahun", "status", "url_file", "updated_at"]
 };
 
 /**
@@ -219,4 +221,46 @@ function setupLayananSyncTrigger() {
     .atHour(2)
     .create();
   Logger.log("Trigger harian syncLayananAll (pukul 02:00) berhasil dipasang.");
+}
+
+/**
+ * Menyalin data Laporan Bulanan (Input SD & Input PAUD) ke SIKS_DB_LAYANAN
+ * dengan mempertahankan seluruh kolom aslinya agar siap dipakai langsung oleh Lapbul.gs.
+ */
+function syncLapbulAll() {
+  var dstSs = SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_LAYANAN);
+  var sources = [
+    { dbKey: "LAPBUL_SD_DB", srcSheetName: "Input SD", dstSheetName: "tbl_lapbul_sd" },
+    { dbKey: "LAPBUL_PAUD_DB", srcSheetName: "Input PAUD", dstSheetName: "tbl_lapbul_paud" }
+  ];
+
+  var result = {};
+  sources.forEach(function (src) {
+    var srcSs = SpreadsheetApp.openById(SPREADSHEET_IDS[src.dbKey]);
+    var srcSheet = srcSs.getSheetByName(src.srcSheetName);
+    if (!srcSheet) {
+      result[src.dstSheetName] = 0;
+      return;
+    }
+
+    var dstSheet = dstSs.getSheetByName(src.dstSheetName);
+    if (!dstSheet) {
+      dstSheet = dstSs.insertSheet(src.dstSheetName);
+    }
+
+    var srcData = srcSheet.getDataRange().getValues();
+    if (srcData.length < 2) {
+      result[src.dstSheetName] = 0;
+      return;
+    }
+
+    dstSheet.clearContents();
+    dstSheet.getRange(1, 1, srcData.length, srcData[0].length).setValues(srcData);
+    dstSheet.getRange(1, 1, 1, srcData[0].length).setFontWeight("bold");
+    dstSheet.setFrozenRows(1);
+    result[src.dstSheetName] = srcData.length - 1;
+  });
+
+  Logger.log("syncLapbulAll selesai: " + JSON.stringify(result));
+  return result;
 }
