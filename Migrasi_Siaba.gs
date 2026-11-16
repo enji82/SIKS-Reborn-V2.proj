@@ -281,12 +281,182 @@ function syncSiabaLupa() {
 }
 
 /**
- * Menjalankan sinkronisasi SIABA (Cuti, Dinas, Lupa) sekaligus.
+ * Menyalin data Salah Presensi dari SIABA_SALAH_DB ke tbl_siaba_salah.
+ */
+function syncSiabaSalah() {
+  var srcSs = SpreadsheetApp.openById(SPREADSHEET_IDS.SIABA_SALAH_DB);
+  var srcSheet = srcSs.getSheets()[0];
+  if (!srcSheet) return { inserted: 0 };
+
+  var dstSs = SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_SIABA);
+  var dstSheet = dstSs.getSheetByName("tbl_siaba_salah");
+  if (!dstSheet) throw new Error("Sheet 'tbl_siaba_salah' belum ada.");
+
+  var srcData = srcSheet.getDataRange().getValues();
+  if (srcData.length < 2) return { inserted: 0 };
+
+  var h = srcData[0];
+  var idxId = findColIndex_(h, ["id", "id_salah", "no", "kode"]);
+  var idxTgl = findColIndex_(h, ["tanggal", "tgl presensi", "tanggal_presensi"]);
+  var idxNip = findColIndex_(h, ["nip"]);
+  var idxNama = findColIndex_(h, ["nama", "nama ptk", "nama pegawai", "nama_lengkap"]);
+  var idxNpsn = findColIndex_(h, ["npsn"]);
+  var idxUnit = findColIndex_(h, ["unit kerja", "sekolah", "nama sekolah", "unit_kerja"]);
+  var idxKet = findColIndex_(h, ["keterangan", "keterangan_salah", "kesalahan"]);
+  var idxPerbaikan = findColIndex_(h, ["perbaikan", "usulan", "koreksi"]);
+  var idxStatus = findColIndex_(h, ["status", "status_verifikasi", "status verifikasi"]);
+  var idxUrl = findColIndex_(h, ["url", "link", "dokumen", "file", "url_dokumen"]);
+
+  var dstData = dstSheet.getDataRange().getValues();
+  var existingIds = {};
+  for (var i = 1; i < dstData.length; i++) {
+    var idVal = String(dstData[i][0] || "").trim();
+    if (idVal) existingIds[idVal] = true;
+  }
+
+  var now = new Date();
+  var toInsert = [];
+  for (var r = 1; r < srcData.length; r++) {
+    var row = srcData[r];
+    var nama = idxNama > -1 ? String(row[idxNama] || "").trim() : "";
+    var nip = idxNip > -1 ? String(row[idxNip] || "").trim() : "";
+    if (!nama && !nip) continue;
+
+    var idSalah = idxId > -1 && row[idxId] ? String(row[idxId]).trim() : ("SALAH-" + (r + 1));
+    if (existingIds[idSalah]) continue;
+
+    toInsert.push([
+      idSalah,
+      idxTgl > -1 ? row[idxTgl] : "",
+      nip,
+      nama,
+      idxNpsn > -1 ? String(row[idxNpsn] || "").trim() : "",
+      idxUnit > -1 ? String(row[idxUnit] || "").trim() : "",
+      idxKet > -1 ? String(row[idxKet] || "").trim() : "",
+      idxPerbaikan > -1 ? String(row[idxPerbaikan] || "").trim() : "",
+      idxStatus > -1 ? String(row[idxStatus] || "").trim() : "",
+      idxUrl > -1 ? String(row[idxUrl] || "").trim() : "",
+      now
+    ]);
+    existingIds[idSalah] = true;
+  }
+
+  if (toInsert.length > 0) {
+    dstSheet.getRange(dstSheet.getLastRow() + 1, 1, toInsert.length, 11).setValues(toInsert);
+  }
+
+  Logger.log("Sync tbl_siaba_salah selesai. Ditambahkan: " + toInsert.length + " baris.");
+  return { inserted: toInsert.length };
+}
+
+/**
+ * Menyalin data TA/PA dari SIABA_TA_PA ke tbl_siaba_ta_pa.
+ */
+function syncSiabaTaPa() {
+  var srcSs = SpreadsheetApp.openById(SPREADSHEET_IDS.SIABA_TA_PA);
+  var srcSheet = srcSs.getSheets()[0];
+  if (!srcSheet) return { inserted: 0 };
+
+  var dstSs = SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_SIABA);
+  var dstSheet = dstSs.getSheetByName("tbl_siaba_ta_pa");
+  if (!dstSheet) throw new Error("Sheet 'tbl_siaba_ta_pa' belum ada.");
+
+  var srcData = srcSheet.getDataRange().getValues();
+  if (srcData.length < 2) return { inserted: 0 };
+
+  var h = srcData[0];
+  var idxId = findColIndex_(h, ["id", "id_tapa", "no", "kode"]);
+  var idxTgl = findColIndex_(h, ["tanggal", "tgl"]);
+  var idxNip = findColIndex_(h, ["nip"]);
+  var idxNama = findColIndex_(h, ["nama", "nama ptk", "nama pegawai", "nama_lengkap"]);
+  var idxNpsn = findColIndex_(h, ["npsn"]);
+  var idxUnit = findColIndex_(h, ["unit kerja", "sekolah", "nama sekolah", "unit_kerja"]);
+  var idxJenis = findColIndex_(h, ["jenis", "kategori", "ta/pa"]);
+  var idxKet = findColIndex_(h, ["keterangan", "alasan"]);
+  var idxStatus = findColIndex_(h, ["status", "status_verifikasi", "status verifikasi"]);
+
+  var dstData = dstSheet.getDataRange().getValues();
+  var existingIds = {};
+  for (var i = 1; i < dstData.length; i++) {
+    var idVal = String(dstData[i][0] || "").trim();
+    if (idVal) existingIds[idVal] = true;
+  }
+
+  var now = new Date();
+  var toInsert = [];
+  for (var r = 1; r < srcData.length; r++) {
+    var row = srcData[r];
+    var nama = idxNama > -1 ? String(row[idxNama] || "").trim() : "";
+    var nip = idxNip > -1 ? String(row[idxNip] || "").trim() : "";
+    if (!nama && !nip) continue;
+
+    var idTapa = idxId > -1 && row[idxId] ? String(row[idxId]).trim() : ("TAPA-" + (r + 1));
+    if (existingIds[idTapa]) continue;
+
+    toInsert.push([
+      idTapa,
+      idxTgl > -1 ? row[idxTgl] : "",
+      nip,
+      nama,
+      idxNpsn > -1 ? String(row[idxNpsn] || "").trim() : "",
+      idxUnit > -1 ? String(row[idxUnit] || "").trim() : "",
+      idxJenis > -1 ? String(row[idxJenis] || "").trim() : "",
+      idxKet > -1 ? String(row[idxKet] || "").trim() : "",
+      idxStatus > -1 ? String(row[idxStatus] || "").trim() : "",
+      now
+    ]);
+    existingIds[idTapa] = true;
+  }
+
+  if (toInsert.length > 0) {
+    dstSheet.getRange(dstSheet.getLastRow() + 1, 1, toInsert.length, 10).setValues(toInsert);
+  }
+
+  Logger.log("Sync tbl_siaba_ta_pa selesai. Ditambahkan: " + toInsert.length + " baris.");
+  return { inserted: toInsert.length };
+}
+
+/**
+ * Menjalankan sinkronisasi semua modul SIABA sekaligus.
  */
 function syncSiabaAll() {
   var cuti = syncSiabaCuti();
   var dinas = syncSiabaDinas();
   var lupa = syncSiabaLupa();
-  Logger.log("syncSiabaAll selesai: Cuti=" + cuti.inserted + ", Dinas=" + dinas.inserted + ", Lupa=" + lupa.inserted);
-  return { cuti: cuti.inserted, dinas: dinas.inserted, lupa: lupa.inserted };
+  var salah = syncSiabaSalah();
+  var tapa = syncSiabaTaPa();
+  Logger.log(
+    "syncSiabaAll selesai: Cuti=" + cuti.inserted +
+    ", Dinas=" + dinas.inserted +
+    ", Lupa=" + lupa.inserted +
+    ", Salah=" + salah.inserted +
+    ", TAPA=" + tapa.inserted
+  );
+  return {
+    cuti: cuti.inserted,
+    dinas: dinas.inserted,
+    lupa: lupa.inserted,
+    salah: salah.inserted,
+    tapa: tapa.inserted
+  };
+}
+
+/**
+ * Memasang jadwal otomatis (Trigger) agar syncSiabaAll() berjalan setiap malam pukul 01:30.
+ * Cukup dijalankan SEKALI saja dari Apps Script Editor.
+ */
+function setupSiabaSyncTrigger() {
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === "syncSiabaAll") {
+      ScriptApp.deleteTrigger(triggers[i]);
+    }
+  }
+  ScriptApp.newTrigger("syncSiabaAll")
+    .timeBased()
+    .everyDays(1)
+    .atHour(1)
+    .nearMinute(30)
+    .create();
+  Logger.log("Trigger harian syncSiabaAll (pukul 01:30) berhasil dipasang.");
 }
