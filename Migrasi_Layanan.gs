@@ -348,3 +348,27 @@ function syncTpgAndAdmPtk() {
   Logger.log("syncTpgAndAdmPtk selesai: " + JSON.stringify(result));
   return result;
 }
+
+/**
+ * Menyalin data Administrasi Murid (Database_SPMB) ke tbl_adm_murid di SIKS_DB_LAYANAN.
+ */
+function syncAdmMurid() {
+  var dstSs = SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_LAYANAN);
+  var srcSs = SpreadsheetApp.openById(SPREADSHEET_IDS.ADM_MURID_DB);
+  var srcSheet = srcSs.getSheetByName("Database_SPMB") || srcSs.getSheets()[0];
+  if (!srcSheet) return { tbl_adm_murid: 0 };
+
+  var dstSheet = dstSs.getSheetByName("tbl_adm_murid");
+  if (!dstSheet) dstSheet = dstSs.insertSheet("tbl_adm_murid");
+
+  var srcData = srcSheet.getDataRange().getValues();
+  if (srcData.length < 2) return { tbl_adm_murid: 0 };
+
+  dstSheet.clearContents();
+  dstSheet.getRange(1, 1, srcData.length, srcData[0].length).setValues(srcData);
+  dstSheet.getRange(1, 1, 1, srcData[0].length).setFontWeight("bold");
+  dstSheet.setFrozenRows(1);
+
+  Logger.log("syncAdmMurid selesai: " + (srcData.length - 1) + " baris.");
+  return { tbl_adm_murid: srcData.length - 1 };
+}
