@@ -44,9 +44,8 @@ Dari sebelumnya ~40 spreadsheet terpisah di `code.gs` (`SPREADSHEET_IDS`), selur
   - Memetakan kolom standar untuk `tbl_sekolah`, `tbl_ptk`, `tbl_murid`, `tbl_users`, dan `tbl_referensi`.
   - Membuat script migrasi otomatis + sinkronisasi berkala dari spreadsheet lama (`Migrasi_Master.gs`).
   - Membuat lapisan akses data terpusat (`Database.gs`).
-- [ ] **Fase 2: Migrasi Modul Prioritas (`SIKS_DB_SIABA` & `Lapbul`)**
-  - Memindahkan data dan kode modul SIABA serta Laporan Bulanan.
-  - Uji coba paralel di versi *testing* hingga data dan perhitungan 100% cocok.
+- [x] **Fase 2: Migrasi Modul Prioritas (`SIKS_DB_SIABA`)**
+  - Memindahkan data Cuti, Dinas, Lupa, Salah, dan TA/PA ke `SIKS_DB_SIABA` (`Migrasi_Siaba.gs`) beserta trigger sinkronisasi harian otomatis.
 - [ ] **Fase 3: Migrasi Modul Pendukung (`SIKS_DB_LAYANAN`)**
   - Memindahkan modul SK, E-File, TPG, Seragam, Aduan, E-Mading, KomBel, dan Kemitraan secara bertahap.
 - [ ] **Fase 4: Peralihan Resmi (*Cutover*)**
