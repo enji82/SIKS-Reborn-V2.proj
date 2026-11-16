@@ -37,6 +37,11 @@ const SIABA_SCHEMA = {
     "jenis_cuti", "jabatan", "golongan", "nama_sekolah",
     "jabatan_atasan", "nama_atasan", "nip_atasan",
     "jabatan_setuju", "nama_setuju", "nip_setuju", "kepada"
+  ],
+  tbl_siaba_sisa_cuti: [
+    "unit_kerja", "nama_asn", "nip", "status",
+    "n_2", "n_1", "n", "jml_n", "diambil",
+    "sisa_n_2", "sisa_n_1", "sisa_n", "sisa_ct"
   ]
 };
 
@@ -448,6 +453,36 @@ function syncSiabaDataAtasan() {
   dstSheet.setFrozenRows(1);
 
   Logger.log("Sync tbl_siaba_data_atasan selesai. Total baris data: " + (srcData.length - 1));
+  return { inserted: srcData.length - 1 };
+}
+
+/**
+ * Menyalin sheet ringkasan 'Sisa CT' dari SIABA_CUTI_DB ke tbl_siaba_sisa_cuti.
+ */
+function syncSiabaSisaCuti() {
+  var srcSs = SpreadsheetApp.openById(SPREADSHEET_IDS.SIABA_CUTI_DB);
+  var srcSheet = srcSs.getSheetByName("Sisa CT");
+  if (!srcSheet) {
+    Logger.log("Sheet 'Sisa CT' tidak ditemukan di SIABA_CUTI_DB.");
+    return { inserted: 0 };
+  }
+
+  var dstSs = SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_SIABA);
+  var dstSheet = dstSs.getSheetByName("tbl_siaba_sisa_cuti");
+  if (!dstSheet) {
+    setupSiabaSheets();
+    dstSheet = dstSs.getSheetByName("tbl_siaba_sisa_cuti");
+  }
+
+  var srcData = srcSheet.getDataRange().getValues();
+  if (srcData.length < 2) return { inserted: 0 };
+
+  dstSheet.clearContents();
+  dstSheet.getRange(1, 1, srcData.length, srcData[0].length).setValues(srcData);
+  dstSheet.getRange(1, 1, 1, srcData[0].length).setFontWeight("bold");
+  dstSheet.setFrozenRows(1);
+
+  Logger.log("Sync tbl_siaba_sisa_cuti selesai. Total baris data: " + (srcData.length - 1));
   return { inserted: srcData.length - 1 };
 }
 
