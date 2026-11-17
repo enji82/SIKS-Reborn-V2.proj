@@ -1,172 +1,399 @@
-<section class="content pt-3">
-  <div class="container-fluid">
-    <div class="d-flex justify-content-end mb-2">
-      <button type="button" class="sultan-btn-tambah" onclick="openModalImportPresensi()">
-        <i class="fas fa-plus"></i> TAMBAH
-      </button>
-    </div>
+<section class="content">
+    <div class="container-fluid">
+        <div class="row justify-content-center">
+            <div class="col-12">
 
-    <div class="card-sultan">
-      <div class="card-body p-3">
-        <div class="table-responsive">
-          <table class="table table-hover table-sultan" id="tblImportPresensi">
-            <thead>
-              <tr>
-                <th style="width:55px;" class="text-center">No</th>
-                <th>Bulan</th>
-                <th>Tahun</th>
-                <th>Link Spreadsheet</th>
-                <th>ID Spreadsheet</th>
-                <th>Status</th>
-                <th style="width:120px;" class="text-center">Aksi</th>
-              </tr>
-            </thead>
-            <tbody id="tbodyImportPresensi">
-              <tr><td colspan="7" class="text-center text-muted py-4"><i class="fas fa-spinner fa-spin mr-1"></i> Memuat data...</td></tr>
-            </tbody>
-          </table>
+                <!-- FILTER BAR (STANDAR GLOBAL SULTAN: TAHUN | REFRESH | TAMBAH) -->
+                <div class="sultan-filter-pill-container shadow-sm mb-4">
+                    <!-- 1. TAHUN -->
+                    <div class="sultan-filter-item sultan-filter-auto">
+                        <select id="imp_filterTahun" class="form-control" style="min-width: 85px !important; max-width: 115px !important;"></select>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+
+                    <div class="divider-vertical d-none d-md-block"></div>
+
+                    <!-- 2. REFRESH -->
+                    <button type="button" id="imp_btnRefresh" class="sultan-btn-refresh" title="Segarkan Data dari Server">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+
+                    <div class="ml-auto d-none d-md-block"></div>
+
+                    <!-- 3. TAMBAH -->
+                    <button type="button" id="imp_btnTambah" class="sultan-btn-tambah">
+                        <i class="fas fa-plus"></i> TAMBAH
+                    </button>
+                </div>
+
+                <!-- CARD TABEL UTAMA (STANDAR GLOBAL SULTAN) -->
+                <div class="card-sultan">
+                    <div class="card-body p-3">
+
+                        <div id="imp_loadingState"></div>
+
+                        <div id="imp_tableState" style="display: none;">
+                            <table id="imp_tabelUtama"
+                                class="table table-hover table-premium table-sultan-compact text-nowrap mb-0 w-100">
+                                <thead class="thead-sultan-premium text-uppercase font-weight-bold">
+                                    <tr>
+                                        <th class="text-center align-middle" style="width: 7%;"><span class="sultan-th-title">NO</span></th>
+                                        <th class="text-left align-middle" style="width: 15%;"><span class="sultan-th-title">BULAN</span></th>
+                                        <th class="text-center align-middle" style="width: 10%;"><span class="sultan-th-title">TAHUN</span></th>
+                                        <th class="text-center align-middle" style="width: 16%;"><span class="sultan-th-title">LINK SPREADSHEET</span></th>
+                                        <th class="text-left align-middle" style="width: 27%;"><span class="sultan-th-title">ID SPREADSHEET</span></th>
+                                        <th class="text-center align-middle" style="width: 13%;"><span class="sultan-th-title">STATUS</span></th>
+                                        <th class="text-center align-middle" style="width: 12%;"><span class="sultan-th-title">AKSI</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
         </div>
-      </div>
     </div>
-  </div>
 </section>
 
-<!-- Modal Tambah / Edit (Bootstrap 4 / AdminLTE) -->
-<div class="modal fade" id="modalImportPresensi" tabindex="-1" role="dialog" aria-hidden="true">
-  <div class="modal-dialog" role="document">
-    <div class="modal-content">
-      <div class="modal-header bg-maroon text-white">
-        <h5 class="modal-title font-weight-bold" id="modalImportTitle">Tambah Sumber Presensi</h5>
-        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-          <span aria-hidden="true">&times;</span>
-        </button>
-      </div>
-      <div class="modal-body">
-        <input type="hidden" id="impRowIndex" value="">
-        <div class="row">
-          <div class="col-md-6 form-group">
-            <label class="font-weight-bold">Bulan</label>
-            <select class="form-control" id="impBulan">
-              <option value="Januari">Januari</option>
-              <option value="Februari">Februari</option>
-              <option value="Maret">Maret</option>
-              <option value="April">April</option>
-              <option value="Mei">Mei</option>
-              <option value="Juni">Juni</option>
-              <option value="Juli">Juli</option>
-              <option value="Agustus">Agustus</option>
-              <option value="September">September</option>
-              <option value="Oktober">Oktober</option>
-              <option value="November">November</option>
-              <option value="Desember">Desember</option>
-            </select>
-          </div>
-          <div class="col-md-6 form-group">
-            <label class="font-weight-bold">Tahun</label>
-            <input type="number" class="form-control" id="impTahun" value="2026" min="2020" max="2035">
-          </div>
+<!-- TEMPLATE FORM MODAL GLOBAL SULTAN -->
+<div id="imp_templates" style="display:none;">
+    <form id="imp_formUtama">
+        <div class="modal-body modal-body-sultan p-4">
+            <input type="hidden" id="imp_inputRowIndex">
+
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="form-group form-group-sultan mb-0">
+                        <label class="form-label-sultan">BULAN <span class="text-danger">*</span></label>
+                        <select id="imp_inputBulan" class="form-control form-control-sultan font-weight-bold" required>
+                            <option value="">- Pilih Bulan -</option>
+                            <option value="Januari">Januari</option>
+                            <option value="Februari">Februari</option>
+                            <option value="Maret">Maret</option>
+                            <option value="April">April</option>
+                            <option value="Mei">Mei</option>
+                            <option value="Juni">Juni</option>
+                            <option value="Juli">Juli</option>
+                            <option value="Agustus">Agustus</option>
+                            <option value="September">September</option>
+                            <option value="Oktober">Oktober</option>
+                            <option value="November">November</option>
+                            <option value="Desember">Desember</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group form-group-sultan mb-0">
+                        <label class="form-label-sultan">TAHUN <span class="text-danger">*</span></label>
+                        <input type="number" id="imp_inputTahun" class="form-control form-control-sultan font-weight-bold" min="2020" max="2035" required>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mb-0">
+                <div class="col-12">
+                    <div class="form-group form-group-sultan mb-0">
+                        <label class="form-label-sultan">LINK SPREADSHEET REKAP PRESENSI <span class="text-danger">*</span></label>
+                        <input type="url" id="imp_inputLink" class="form-control form-control-sultan font-weight-bold" placeholder="https://docs.google.com/spreadsheets/d/..." required>
+                        <small class="text-muted font-italic d-block mt-2">
+                            <i class="fas fa-info-circle mr-1"></i> Tempelkan tautan Google Spreadsheet rekap presensi bulanan. ID Spreadsheet akan diekstrak secara otomatis oleh sistem.
+                        </small>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="form-group mb-0">
-          <label class="font-weight-bold">Link Spreadsheet</label>
-          <input type="url" class="form-control" id="impLink" placeholder="https://docs.google.com/spreadsheets/d/...">
-          <small class="form-text text-muted">ID Spreadsheet akan diambil otomatis dari link.</small>
+
+        <div class="modal-footer modal-footer-tambah-edit justify-content-between align-items-center">
+            <button type="button" class="sultan-btn sultan-btn-secondary font-weight-bold" data-dismiss="modal">
+                <i class="fas fa-times mr-2"></i>BATAL
+            </button>
+            <button type="submit" id="imp_btnSimpanForm" class="sultan-btn sultan-btn-primary font-weight-bold">
+                <i class="fas fa-cloud-upload-alt mr-2"></i>SIMPAN
+            </button>
         </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Batal</button>
-        <button type="button" class="btn btn-primary btn-sm" onclick="simpanImportPresensi()">
-          <i class="fas fa-save mr-1"></i> Simpan
-        </button>
-      </div>
-    </div>
-  </div>
+    </form>
 </div>
 
 <script>
-  var importPresensiData = [];
+    var IMP_CACHE_DATA = [];
+    var IMP_DATA_MASTER = {};
+    var IMP_TABEL_INSTANCE = null;
+    var IMP_IS_LOADING = false;
 
-  function loadImportPresensi() {
-    google.script.run
-      .withSuccessHandler(function(resStr) {
-        var res = JSON.parse(resStr);
-        var tbody = document.getElementById("tbodyImportPresensi");
-        if (res.status !== "success") {
-          tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">' + (res.message || "Gagal memuat data") + '</td></tr>';
-          return;
+    $(document).ready(function () {
+        IMP_TABEL_INSTANCE = null;
+        $('#imp_tableState').hide();
+        SultanUI.showLoading('#imp_loadingState', 'Memuat daftar sumber presensi...');
+
+        // Isi dropdown Tahun (Semua Tahun + rentang tahun)
+        var thn = new Date().getFullYear();
+        var $selThn = $('#imp_filterTahun').empty();
+        $selThn.append('<option value="">Semua Tahun</option>');
+        for (var i = thn - 3; i <= thn + 1; i++) {
+            $selThn.append('<option value="' + i + '">' + i + '</option>');
         }
-        importPresensiData = res.data || [];
-        if (importPresensiData.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">Belum ada data sumber presensi.</td></tr>';
-          return;
-        }
-        var html = "";
-        importPresensiData.forEach(function(item, idx) {
-          html += '<tr>' +
-            '<td class="text-center">' + (idx + 1) + '</td>' +
-            '<td>' + item.bulan + '</td>' +
-            '<td>' + item.tahun + '</td>' +
-            '<td><a href="' + item.link + '" target="_blank" class="btn btn-xs btn-outline-info"><i class="fas fa-external-link-alt mr-1"></i>Buka Sheet</a></td>' +
-            '<td><code>' + item.idSpreadsheet + '</code></td>' +
-            '<td><span class="badge badge-secondary">' + item.status + '</span></td>' +
-            '<td class="text-center">' +
-              '<button class="btn btn-warning btn-xs mr-1" onclick="editImportPresensi(' + idx + ')" title="Edit"><i class="fas fa-edit"></i></button>' +
-              '<button class="btn btn-danger btn-xs" onclick="hapusImportPresensi(' + item.rowIndex + ')" title="Hapus"><i class="fas fa-trash"></i></button>' +
-            '</td>' +
-          '</tr>';
+        $selThn.val(String(thn));
+
+        // Event Delegation
+        $(document).off('change', '#imp_filterTahun').on('change', '#imp_filterTahun', imp_terapkanFilterLokal);
+        $(document).off('click', '#imp_btnRefresh').on('click', '#imp_btnRefresh', imp_tarikDataServer);
+        $(document).off('click', '#imp_btnTambah').on('click', '#imp_btnTambah', imp_bukaModalTambah);
+        $(document).off('submit', '#imp_formUtama').on('submit', '#imp_formUtama', imp_submitFormUtama);
+        $(document).off('click', '.imp-btn-edit').on('click', '.imp-btn-edit', function () {
+            imp_bukaModalEdit($(this).data('id'));
         });
-        tbody.innerHTML = html;
-      })
-      .getImportPresensiList();
-  }
+        $(document).off('click', '.imp-btn-hapus').on('click', '.imp-btn-hapus', function () {
+            imp_bukaModalHapus($(this).data('id'));
+        });
 
-  function openModalImportPresensi() {
-    document.getElementById("modalImportTitle").innerText = "Tambah Sumber Presensi";
-    document.getElementById("impRowIndex").value = "";
-    document.getElementById("impLink").value = "";
-    $('#modalImportPresensi').modal('show');
-  }
+        imp_tarikDataServer();
+    });
 
-  function editImportPresensi(idx) {
-    var item = importPresensiData[idx];
-    if (!item) return;
-    document.getElementById("modalImportTitle").innerText = "Edit Sumber Presensi";
-    document.getElementById("impRowIndex").value = item.rowIndex;
-    document.getElementById("impBulan").value = item.bulan;
-    document.getElementById("impTahun").value = item.tahun;
-    document.getElementById("impLink").value = item.link;
-    $('#modalImportPresensi').modal('show');
-  }
-
-  function simpanImportPresensi() {
-    var payload = {
-      rowIndex: document.getElementById("impRowIndex").value,
-      bulan: document.getElementById("impBulan").value,
-      tahun: document.getElementById("impTahun").value,
-      link: document.getElementById("impLink").value
-    };
-    google.script.run
-      .withSuccessHandler(function(resStr) {
-        var res = JSON.parse(resStr);
-        if (res.status === "success") {
-          $('#modalImportPresensi').modal('hide');
-          loadImportPresensi();
-        } else {
-          alert(res.message);
+    function imp_kembalikanFormKeTemplate() {
+        if ($('#imp_formUtama').length > 1) {
+            $('#imp_formUtama').slice(1).remove();
         }
-      })
-      .saveImportPresensi(payload);
-  }
+        $('#imp_formUtama').appendTo('#imp_templates');
+    }
 
-  function hapusImportPresensi(rowIndex) {
-    if (!confirm("Yakin ingin menghapus sumber presensi ini?")) return;
-    google.script.run
-      .withSuccessHandler(function(resStr) {
-        var res = JSON.parse(resStr);
-        if (res.status === "success") loadImportPresensi();
-        else alert(res.message);
-      })
-      .deleteImportPresensi(rowIndex);
-  }
+    function imp_tarikDataServer() {
+        if (IMP_IS_LOADING) return;
+        IMP_IS_LOADING = true;
 
-  loadImportPresensi();
+        var btn = $('#imp_btnRefresh');
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin text-maroon"></i>');
+
+        if (!$.fn.DataTable.isDataTable('#imp_tabelUtama')) {
+            $('#imp_tableState').hide();
+            SultanUI.showLoading('#imp_loadingState', 'Menyinkronkan data dari server...');
+        }
+
+        google.script.run
+            .withSuccessHandler(function (resStr) {
+                IMP_IS_LOADING = false;
+                btn.prop('disabled', false).html('<i class="fas fa-sync-alt"></i>');
+                try {
+                    var res = JSON.parse(resStr);
+                    if (res.status !== "success") {
+                        SultanUI.showLoading('#imp_loadingState', '<span class="text-danger"><i class="fas fa-exclamation-triangle mb-2"></i><br>' + SultanUI.escapeHtml(res.message || "Gagal memuat data") + '</span>');
+                        return;
+                    }
+                    IMP_CACHE_DATA = res.data || [];
+                    imp_terapkanFilterLokal();
+                } catch (e) {
+                    SultanUI.showLoading('#imp_loadingState', '<span class="text-danger">Gagal memproses struktur data.</span>');
+                }
+            })
+            .withFailureHandler(function () {
+                IMP_IS_LOADING = false;
+                btn.prop('disabled', false).html('<i class="fas fa-sync-alt"></i>');
+                SultanUI.showLoading('#imp_loadingState', '<span class="text-danger"><i class="fas fa-wifi mb-2"></i><br>Koneksi Server Terputus.</span>');
+            })
+            .getImportPresensiList();
+    }
+
+    function imp_terapkanFilterLokal() {
+        var filterThn = String($('#imp_filterTahun').val() || "").trim();
+        var hasil = IMP_CACHE_DATA.filter(function (row) {
+            if (!filterThn) return true;
+            return String(row.tahun || "").trim() === filterThn;
+        });
+        imp_renderTabel(hasil);
+    }
+
+    function imp_renderTabel(hasil) {
+        var isFirstLoad = !$.fn.DataTable.isDataTable('#imp_tabelUtama');
+        var dtArray = [];
+        IMP_DATA_MASTER = {};
+
+        hasil.forEach(function (row, idx) {
+            var id = String(row.rowIndex);
+            IMP_DATA_MASTER[id] = row;
+
+            var uiNo = '<span class="font-weight-bold text-muted">' + (idx + 1) + '</span>';
+            var uiBulan = '<span class="sultan-table-primary font-weight-bold" style="color: #800000; font-size: 12.5px;">' + SultanUI.escapeHtml(row.bulan || '-') + '</span>';
+            var uiTahun = '<span class="font-weight-bold text-dark">' + SultanUI.escapeHtml(row.tahun || '-') + '</span>';
+
+            var btnLink = row.link
+                ? '<a href="' + SultanUI.escapeHtml(row.link) + '" target="_blank" class="sultan-btn-pdf" data-toggle="tooltip" title="Buka Spreadsheet Sumber"><i class="fas fa-external-link-alt mr-1"></i> BUKA SHEET</a>'
+                : '<span class="text-muted small">-</span>';
+
+            var uiIdSheet = '<code class="font-weight-bold" style="font-size: 11.5px;">' + SultanUI.escapeHtml(row.idSpreadsheet || '-') + '</code>';
+
+            var badgeStatus = SultanUI.renderBadgeStatus(row.status || 'Belum Diproses', '', {
+                unit: 'Import Presensi ' + (row.bulan || '') + ' ' + (row.tahun || ''),
+                dokumen: row.idSpreadsheet || '-'
+            });
+
+            var btnEdit = '<button class="sultan-btn-aksi sultan-btn-aksi-warning imp-btn-edit" data-id="' + id + '" data-toggle="tooltip" title="Edit Sumber"><i class="fas fa-pencil-alt"></i></button>';
+            var btnHapus = '<button class="sultan-btn-aksi sultan-btn-aksi-maroon imp-btn-hapus" data-id="' + id + '" data-toggle="tooltip" title="Hapus Sumber"><i class="fas fa-trash-alt"></i></button>';
+            var aksiHTML = '<div class="d-flex flex-nowrap justify-content-center" style="gap:4px;">' + btnEdit + btnHapus + '</div>';
+
+            dtArray.push([
+                uiNo,
+                uiBulan,
+                uiTahun,
+                btnLink,
+                uiIdSheet,
+                badgeStatus,
+                aksiHTML
+            ]);
+        });
+
+        if (isFirstLoad) {
+            IMP_TABEL_INSTANCE = SultanTable.init('#imp_tabelUtama', {
+                "data": dtArray,
+                "columnDefs": [
+                    { "targets": 0, "className": "text-center align-middle", "width": "7%" },
+                    { "targets": 1, "className": "text-left align-middle", "width": "15%" },
+                    { "targets": 2, "className": "text-center align-middle", "width": "10%" },
+                    { "targets": 3, "className": "text-center align-middle text-nowrap", "width": "16%" },
+                    { "targets": 4, "className": "text-left align-middle text-nowrap", "width": "27%" },
+                    { "targets": 5, "className": "text-center align-middle text-nowrap", "width": "13%" },
+                    { "targets": 6, "className": "text-center align-middle text-nowrap", "width": "12%" }
+                ],
+                "order": [[0, "asc"]],
+                "language": { "emptyTable": "Belum ada data sumber presensi." }
+            });
+
+            SultanUI.hideLoading('#imp_loadingState');
+            $('#imp_tableState').show();
+            setTimeout(function () { IMP_TABEL_INSTANCE.columns.adjust(); }, 100);
+        } else {
+            IMP_TABEL_INSTANCE.clear().rows.add(dtArray).draw(false);
+            if ($('#imp_tableState').is(':hidden')) {
+                SultanUI.hideLoading('#imp_loadingState');
+                $('#imp_tableState').show();
+            }
+        }
+    }
+
+    function imp_bukaModalTambah() {
+        imp_kembalikanFormKeTemplate();
+        $('#global_modalFormSize .modal-content').find('#imp_formUtama').remove();
+        $('#imp_formUtama')[0].reset();
+        $('#imp_inputRowIndex').val('');
+        $('#imp_inputTahun').val($('#imp_filterTahun').val() || new Date().getFullYear());
+
+        $('#global_modalFormSize').removeClass('modal-xl modal-lg').addClass('modal-md');
+        $('#global_modalFormHeader').removeClass().addClass('modal-header modal-header-tambah-edit');
+        $('#global_modalFormTitle').html('<i class="fas fa-file-import mr-2"></i> TAMBAH SUMBER PRESENSI BULANAN');
+
+        $('#global_modalFormBody, #global_modalFormFooter').hide();
+        $('#imp_formUtama').appendTo('#global_modalFormSize .modal-content');
+
+        $('#global_modalForm').off('hidden.bs.modal.imp').on('hidden.bs.modal.imp', function () {
+            imp_kembalikanFormKeTemplate();
+            $('#global_modalFormBody, #global_modalFormFooter').show();
+        });
+
+        $('#imp_btnSimpanForm').removeClass('modal-btn-perbarui').addClass('modal-btn-simpan').html('<i class="fas fa-cloud-upload-alt mr-2"></i>SIMPAN');
+        $('#global_modalForm').modal('show');
+    }
+
+    function imp_bukaModalEdit(id) {
+        var row = IMP_DATA_MASTER[id];
+        if (!row) return;
+
+        imp_kembalikanFormKeTemplate();
+        $('#global_modalFormSize .modal-content').find('#imp_formUtama').remove();
+        $('#imp_formUtama')[0].reset();
+
+        $('#imp_inputRowIndex').val(row.rowIndex);
+        $('#imp_inputBulan').val(row.bulan);
+        $('#imp_inputTahun').val(row.tahun);
+        $('#imp_inputLink').val(row.link);
+
+        $('#global_modalFormSize').removeClass('modal-xl modal-lg').addClass('modal-md');
+        $('#global_modalFormHeader').removeClass().addClass('modal-header modal-header-edit');
+        $('#global_modalFormTitle').html('<i class="fas fa-edit mr-2"></i> EDIT SUMBER PRESENSI BULANAN');
+
+        $('#global_modalFormBody, #global_modalFormFooter').hide();
+        $('#imp_formUtama').appendTo('#global_modalFormSize .modal-content');
+
+        $('#global_modalForm').off('hidden.bs.modal.imp').on('hidden.bs.modal.imp', function () {
+            imp_kembalikanFormKeTemplate();
+            $('#global_modalFormBody, #global_modalFormFooter').show();
+        });
+
+        $('#imp_btnSimpanForm').removeClass('modal-btn-simpan').addClass('modal-btn-perbarui').html('<i class="fas fa-edit mr-2"></i>PERBARUI');
+        $('#global_modalForm').modal('show');
+    }
+
+    function imp_submitFormUtama(e) {
+        e.preventDefault();
+        var formAktif = $(e.target);
+        var btn = formAktif.find('button[type="submit"]');
+        var txt = btn.html();
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Menyimpan...');
+
+        var payload = {
+            rowIndex: formAktif.find('#imp_inputRowIndex').val(),
+            bulan: formAktif.find('#imp_inputBulan').val(),
+            tahun: formAktif.find('#imp_inputTahun').val(),
+            link: formAktif.find('#imp_inputLink').val()
+        };
+
+        google.script.run
+            .withSuccessHandler(function (resStr) {
+                btn.prop('disabled', false).html(txt);
+                var res = JSON.parse(resStr);
+                if (res.status === "success") {
+                    var $modal = formAktif.closest('.modal');
+                    $modal.one('hidden.bs.modal', function () {
+                        imp_tarikDataServer();
+                        Sultan.notif.sukses(res.message || 'Data berhasil disimpan.');
+                    });
+                    $modal.modal('hide');
+                } else {
+                    Sultan.alert('error', 'Gagal Menyimpan', res.message || 'Terjadi kesalahan.');
+                }
+            })
+            .withFailureHandler(function (err) {
+                btn.prop('disabled', false).html(txt);
+                Sultan.alert('error', 'Koneksi Server Gagal', err.message);
+            })
+            .saveImportPresensi(payload);
+    }
+
+    function imp_bukaModalHapus(id) {
+        var row = IMP_DATA_MASTER[id];
+        if (!row) return;
+
+        var d = new Date();
+        var kd = d.getFullYear() + "" + String(d.getMonth() + 1).padStart(2, '0') + "" + String(d.getDate()).padStart(2, '0');
+
+        Sultan.modal.konfirmasiHapus({
+            title: 'HAPUS SUMBER PRESENSI',
+            teksUtama: 'Apakah Anda yakin ingin menghapus sumber presensi bulan ' + (row.bulan || '') + ' ' + (row.tahun || '') + '?',
+            teksSub: 'Tindakan ini permanen dan baris sumber akan dihapus dari database.',
+            kode: kd,
+            showReason: false,
+            detail: {
+                'Bulan / Tahun': (row.bulan || '-') + ' ' + (row.tahun || '-'),
+                'ID Spreadsheet': row.idSpreadsheet || '-'
+            },
+            onConfirm: function (done) {
+                google.script.run
+                    .withSuccessHandler(function (resStr) {
+                        if (typeof done === 'function') done();
+                        var res = JSON.parse(resStr);
+                        if (res.status === "success") {
+                            imp_tarikDataServer();
+                            Sultan.notif.sukses(res.message || 'Data berhasil dihapus.');
+                        } else {
+                            Sultan.alert('error', 'Gagal Menghapus', res.message || 'Terjadi kesalahan.');
+                        }
+                    })
+                    .withFailureHandler(function (err) {
+                        if (typeof done === 'function') done();
+                        Sultan.alert('error', 'Koneksi Server Gagal', err.message);
+                    })
+                    .deleteImportPresensi(row.rowIndex);
+            }
+        });
+    }
 </script>
