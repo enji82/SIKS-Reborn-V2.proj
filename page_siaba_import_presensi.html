@@ -1,0 +1,170 @@
+<div class="container-fluid py-3">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h4 class="mb-0 fw-bold"><i class="bi bi-cloud-arrow-down me-2"></i>Import Presensi Bulanan</h4>
+      <small class="text-muted">Kelola sumber spreadsheet rekap presensi bulanan (Khusus Admin)</small>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="openModalImportPresensi()">
+      <i class="bi bi-plus-lg me-1"></i> Tambah Sumber
+    </button>
+  </div>
+
+  <div class="card shadow-sm border-0">
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover table-bordered align-middle" id="tblImportPresensi">
+          <thead class="table-light">
+            <tr>
+              <th style="width:60px;" class="text-center">No</th>
+              <th>Bulan</th>
+              <th>Tahun</th>
+              <th>Link Spreadsheet</th>
+              <th>ID Spreadsheet</th>
+              <th>Status</th>
+              <th style="width:150px;" class="text-center">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyImportPresensi">
+            <tr><td colspan="7" class="text-center text-muted py-4">Memuat data...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Tambah / Edit -->
+<div class="modal fade" id="modalImportPresensi" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold" id="modalImportTitle">Tambah Sumber Presensi</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="impRowIndex" value="">
+        <div class="row g-2 mb-3">
+          <div class="col-6">
+            <label class="form-label fw-semibold">Bulan</label>
+            <select class="form-select" id="impBulan">
+              <option value="Januari">Januari</option>
+              <option value="Februari">Februari</option>
+              <option value="Maret">Maret</option>
+              <option value="April">April</option>
+              <option value="Mei">Mei</option>
+              <option value="Juni">Juni</option>
+              <option value="Juli">Juli</option>
+              <option value="Agustus">Agustus</option>
+              <option value="September">September</option>
+              <option value="Oktober">Oktober</option>
+              <option value="November">November</option>
+              <option value="Desember">Desember</option>
+            </select>
+          </div>
+          <div class="col-6">
+            <label class="form-label fw-semibold">Tahun</label>
+            <input type="number" class="form-control" id="impTahun" value="2026" min="2020" max="2035">
+          </div>
+        </div>
+        <div class="mb-2">
+          <label class="form-label fw-semibold">Link Spreadsheet</label>
+          <input type="url" class="form-control" id="impLink" placeholder="https://docs.google.com/spreadsheets/d/...">
+          <small class="text-muted">ID Spreadsheet akan diambil otomatis dari link.</small>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+        <button type="button" class="btn btn-primary btn-sm" onclick="simpanImportPresensi()">Simpan</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  var importPresensiData = [];
+
+  function loadImportPresensi() {
+    google.script.run
+      .withSuccessHandler(function(resStr) {
+        var res = JSON.parse(resStr);
+        var tbody = document.getElementById("tbodyImportPresensi");
+        if (res.status !== "success") {
+          tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">' + (res.message || "Gagal memuat data") + '</td></tr>';
+          return;
+        }
+        importPresensiData = res.data || [];
+        if (importPresensiData.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">Belum ada data sumber presensi.</td></tr>';
+          return;
+        }
+        var html = "";
+        importPresensiData.forEach(function(item, idx) {
+          html += '<tr>' +
+            '<td class="text-center">' + (idx + 1) + '</td>' +
+            '<td>' + item.bulan + '</td>' +
+            '<td>' + item.tahun + '</td>' +
+            '<td><a href="' + item.link + '" target="_blank" class="text-decoration-none"><i class="bi bi-box-arrow-up-right me-1"></i>Buka Sheet</a></td>' +
+            '<td><code>' + item.idSpreadsheet + '</code></td>' +
+            '<td><span class="badge bg-secondary">' + item.status + '</span></td>' +
+            '<td class="text-center">' +
+              '<button class="btn btn-outline-warning btn-sm me-1" onclick="editImportPresensi(' + idx + ')" title="Edit"><i class="bi bi-pencil"></i></button>' +
+              '<button class="btn btn-outline-danger btn-sm" onclick="hapusImportPresensi(' + item.rowIndex + ')" title="Hapus"><i class="bi bi-trash"></i></button>' +
+            '</td>' +
+          '</tr>';
+        });
+        tbody.innerHTML = html;
+      })
+      .getImportPresensiList();
+  }
+
+  function openModalImportPresensi() {
+    document.getElementById("modalImportTitle").innerText = "Tambah Sumber Presensi";
+    document.getElementById("impRowIndex").value = "";
+    document.getElementById("impLink").value = "";
+    new bootstrap.Modal(document.getElementById("modalImportPresensi")).show();
+  }
+
+  function editImportPresensi(idx) {
+    var item = importPresensiData[idx];
+    if (!item) return;
+    document.getElementById("modalImportTitle").innerText = "Edit Sumber Presensi";
+    document.getElementById("impRowIndex").value = item.rowIndex;
+    document.getElementById("impBulan").value = item.bulan;
+    document.getElementById("impTahun").value = item.tahun;
+    document.getElementById("impLink").value = item.link;
+    new bootstrap.Modal(document.getElementById("modalImportPresensi")).show();
+  }
+
+  function simpanImportPresensi() {
+    var payload = {
+      rowIndex: document.getElementById("impRowIndex").value,
+      bulan: document.getElementById("impBulan").value,
+      tahun: document.getElementById("impTahun").value,
+      link: document.getElementById("impLink").value
+    };
+    google.script.run
+      .withSuccessHandler(function(resStr) {
+        var res = JSON.parse(resStr);
+        if (res.status === "success") {
+          bootstrap.Modal.getInstance(document.getElementById("modalImportPresensi")).hide();
+          loadImportPresensi();
+        } else {
+          alert(res.message);
+        }
+      })
+      .saveImportPresensi(payload);
+  }
+
+  function hapusImportPresensi(rowIndex) {
+    if (!confirm("Yakin ingin menghapus sumber presensi ini?")) return;
+    google.script.run
+      .withSuccessHandler(function(resStr) {
+        var res = JSON.parse(resStr);
+        if (res.status === "success") loadImportPresensi();
+        else alert(res.message);
+      })
+      .deleteImportPresensi(rowIndex);
+  }
+
+  loadImportPresensi();
+</script>
