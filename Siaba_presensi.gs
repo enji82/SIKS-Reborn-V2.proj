@@ -29,7 +29,7 @@ function getPresensiTargetId_(filterTahun, filterBulan) {
       for (var i = 0; i < rows.length; i++) {
         if (String(rows[i][1]).trim() == String(filterTahun).trim() &&
             String(rows[i][0]).trim().toLowerCase() == String(filterBulan).trim().toLowerCase()) {
-          return { targetId: String(rows[i][3]).trim(), customSheet: "" };
+          return { targetId: String(rows[i][3]).trim(), customSheet: "Data Siaba" };
         }
       }
     }
