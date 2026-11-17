@@ -106,6 +106,11 @@
                   <i class="fas fa-calendar-alt mr-2"></i>KALENDER HARI LIBUR
                 </a>
               </li>
+              <li class="nav-item">
+                <a class="nav-link font-weight-bold py-2" id="konfigJadwal_tabKhusus-tab" data-toggle="tab" href="#konfigJadwal_tabKhusus" role="tab" aria-controls="konfigJadwal_tabKhusus" aria-selected="false" onclick="konfigKhusus_load()">
+                  <i class="fas fa-calendar-day mr-2"></i>JADWAL KHUSUS
+                </a>
+              </li>
             </ul>
           </div>
         </div>
@@ -348,9 +353,124 @@
     </div>
   </form>
 
+          <!-- TAB 3: JADWAL KHUSUS (PER TANGGAL) -->
+          <div class="tab-pane fade" id="konfigJadwal_tabKhusus" role="tabpanel">
+            <div class="card card-sultan shadow-sm">
+              <div class="card-body p-4">
+                <h6 class="konfig-section-title font-weight-bold text-uppercase mb-3">
+                  <i class="fas fa-calendar-day mr-2"></i>Pengaturan Jam Kerja Khusus (Rentang Tanggal)
+                </h6>
+                <div class="row mb-3">
+                  <div class="col-md-3 form-group">
+                    <label class="form-label-sultan">TANGGAL MULAI</label>
+                    <input type="date" id="khusus_tglMulai" class="form-control form-control-sultan">
+                  </div>
+                  <div class="col-md-3 form-group">
+                    <label class="form-label-sultan">TANGGAL SELESAI</label>
+                    <input type="date" id="khusus_tglSelesai" class="form-control form-control-sultan">
+                  </div>
+                  <div class="col-md-2 form-group">
+                    <label class="form-label-sultan">JAM DATANG</label>
+                    <input type="time" id="khusus_jamDatang" class="form-control form-control-sultan" value="08:00">
+                  </div>
+                  <div class="col-md-2 form-group">
+                    <label class="form-label-sultan">TOLERANSI</label>
+                    <input type="time" id="khusus_toleransi" class="form-control form-control-sultan" value="08:15">
+                  </div>
+                  <div class="col-md-2 form-group">
+                    <label class="form-label-sultan">JAM PULANG</label>
+                    <input type="time" id="khusus_jamPulang" class="form-control form-control-sultan" value="15:00">
+                  </div>
+                </div>
+                <div class="row mb-3 align-items-end">
+                  <div class="col-md-9 form-group mb-0">
+                    <label class="form-label-sultan">KETERANGAN (MISAL: RAMADAN / KEGIATAN KHUSUS)</label>
+                    <input type="text" id="khusus_keterangan" class="form-control form-control-sultan" placeholder="Contoh: Jam Kerja Bulan Ramadan">
+                  </div>
+                  <div class="col-md-3 text-right">
+                    <button type="button" class="sultan-btn sultan-btn-primary w-100 font-weight-bold" onclick="konfigKhusus_simpan()">
+                      <i class="fas fa-plus mr-1"></i> TAMBAH JADWAL
+                    </button>
+                  </div>
+                </div>
+
+                <div class="table-responsive mt-3">
+                  <table class="table table-hover table-premium table-sultan-compact mb-0 w-100">
+                    <thead class="thead-sultan-premium text-uppercase font-weight-bold">
+                      <tr>
+                        <th>Tanggal Mulai</th>
+                        <th>Tanggal Selesai</th>
+                        <th>Datang</th>
+                        <th>Toleransi</th>
+                        <th>Pulang</th>
+                        <th>Keterangan</th>
+                        <th class="text-center">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody id="khusus_tbody">
+                      <tr><td colspan="7" class="text-center text-muted py-3">Klik tab untuk memuat data...</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
 </div>
 
 <script>
+function konfigKhusus_load() {
+  google.script.run.withSuccessHandler(function(resStr) {
+    var res = JSON.parse(resStr);
+    var tbody = document.getElementById("khusus_tbody");
+    if (res.status !== "success" || !res.data || res.data.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">Belum ada jadwal khusus.</td></tr>';
+      return;
+    }
+    var html = "";
+    res.data.forEach(function(item) {
+      html += '<tr>' +
+        '<td>' + item.tanggalMulai + '</td>' +
+        '<td>' + item.tanggalSelesai + '</td>' +
+        '<td>' + item.jamDatang + '</td>' +
+        '<td>' + item.toleransi + '</td>' +
+        '<td>' + item.jamPulang + '</td>' +
+        '<td>' + (item.keterangan || '-') + '</td>' +
+        '<td class="text-center"><button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon" onclick="konfigKhusus_hapus(' + item.rowIndex + ')" title="Hapus"><i class="fas fa-trash-alt"></i></button></td>' +
+      '</tr>';
+    });
+    tbody.innerHTML = html;
+  }).getJadwalKhusus();
+}
+
+function konfigKhusus_simpan() {
+  var payload = {
+    tanggalMulai: document.getElementById("khusus_tglMulai").value,
+    tanggalSelesai: document.getElementById("khusus_tglSelesai").value,
+    jamDatang: document.getElementById("khusus_jamDatang").value,
+    toleransi: document.getElementById("khusus_toleransi").value,
+    jamPulang: document.getElementById("khusus_jamPulang").value,
+    keterangan: document.getElementById("khusus_keterangan").value
+  };
+  google.script.run.withSuccessHandler(function(resStr) {
+    var res = JSON.parse(resStr);
+    if (res.status === "success") {
+      if (typeof Sultan !== "undefined" && Sultan.notif) Sultan.notif.sukses(res.message);
+      konfigKhusus_load();
+    } else {
+      alert(res.message);
+    }
+  }).saveJadwalKhusus(payload);
+}
+
+function konfigKhusus_hapus(rowIndex) {
+  if (!confirm("Hapus jadwal khusus ini?")) return;
+  google.script.run.withSuccessHandler(function(resStr) {
+    var res = JSON.parse(resStr);
+    if (res.status === "success") konfigKhusus_load();
+    else alert(res.message);
+  }).deleteJadwalKhusus(rowIndex);
+}
 $(document).ready(function() {
     // Populate tahun dropdowns
     var currYear = new Date().getFullYear();
