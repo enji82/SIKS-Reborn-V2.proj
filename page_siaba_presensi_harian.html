@@ -425,6 +425,18 @@ var HARIAN_TABEL_INSTANCE = null;
 var HARIAN_VIEW_MODE = "matriks"; // 'matriks' atau 'rekap'
 var HARIAN_KONFIG_JADWAL = null;
 var HARIAN_KALENDER_LIBUR = [];
+var HARIAN_JADWAL_KHUSUS = [];
+
+function harian_getJadwalKhusus(tglIso) {
+    if (!tglIso || !HARIAN_JADWAL_KHUSUS || HARIAN_JADWAL_KHUSUS.length === 0) return null;
+    for (var i = 0; i < HARIAN_JADWAL_KHUSUS.length; i++) {
+        var jk = HARIAN_JADWAL_KHUSUS[i];
+        if (jk.tanggalMulai && jk.tanggalSelesai && tglIso >= jk.tanggalMulai && tglIso <= jk.tanggalSelesai) {
+            return jk;
+        }
+    }
+    return null;
+}
 
 var HARIAN_USER_AKTIF = "";
 var HARIAN_IS_ADMIN = false;
@@ -641,9 +653,11 @@ function harian_tarikDataServer() {
                 if (data.konfig && data.konfig.jadwal) {
                     HARIAN_KONFIG_JADWAL = data.konfig.jadwal;
                     HARIAN_KALENDER_LIBUR = data.konfig.kalenderLibur || [];
+                    HARIAN_JADWAL_KHUSUS = data.konfig.jadwalKhusus || [];
                 } else {
                     HARIAN_KONFIG_JADWAL = null;
                     HARIAN_KALENDER_LIBUR = [];
+                    HARIAN_JADWAL_KHUSUS = [];
                 }
 
                 if(HARIAN_IS_ADMIN) harian_populateDropdownUnit();
@@ -803,7 +817,13 @@ function harian_formatComboCell(dVal, pVal, dayNum, thn, blnNama) {
     var toleransiStd = "07:00"; // > 07:00 Terlambat
     var jamPulangStd = isJumat ? "16:00" : "15:30";
 
-    if (HARIAN_KONFIG_JADWAL) {
+    var tglIso = filterY + "-" + String(filterMIdx + 1).padStart(2, '0') + "-" + String(dayNum).padStart(2, '0');
+    var jkOverride = harian_getJadwalKhusus(tglIso);
+    if (jkOverride) {
+        jamDatangStd = jkOverride.jamDatang || "07:00";
+        toleransiStd = jkOverride.toleransi || jamDatangStd;
+        jamPulangStd = jkOverride.jamPulang || jamPulangStd;
+    } else if (HARIAN_KONFIG_JADWAL) {
         if (isJumat) {
             jamDatangStd = HARIAN_KONFIG_JADWAL.jamDatangJumat || "07:00";
             toleransiStd = HARIAN_KONFIG_JADWAL.toleransiTerlambatJumat || jamDatangStd;
@@ -1106,7 +1126,13 @@ function harian_bukaModalDetailPegawai(row) {
         var toleransiStd = "07:00";
         var jamPulangStd = isJumat ? "16:00" : "15:30";
 
-        if (HARIAN_KONFIG_JADWAL) {
+        var tglIso = filterY + "-" + String(filterMIdx + 1).padStart(2, '0') + "-" + String(d).padStart(2, '0');
+    var jkOverride = harian_getJadwalKhusus(tglIso);
+    if (jkOverride) {
+        jamDatangStd = jkOverride.jamDatang || "07:00";
+        toleransiStd = jkOverride.toleransi || jamDatangStd;
+        jamPulangStd = jkOverride.jamPulang || jamPulangStd;
+    } else if (HARIAN_KONFIG_JADWAL) {
             if (isJumat) {
                 jamDatangStd = HARIAN_KONFIG_JADWAL.jamDatangJumat || "07:00";
                 toleransiStd = HARIAN_KONFIG_JADWAL.toleransiTerlambatJumat || jamDatangStd;

@@ -149,10 +149,33 @@ function getSiabaKonfigJadwal(tahun, bulan) {
       }
     }
 
+    let daftarKhusus = [];
+    try {
+      const sheetKhusus = ss.getSheetByName("SIABA_KONFIG_JADWAL_KHUSUS");
+      if (sheetKhusus && sheetKhusus.getLastRow() >= 2) {
+        const kData = sheetKhusus.getRange(2, 1, sheetKhusus.getLastRow() - 1, 7).getDisplayValues();
+        for (let k = 0; k < kData.length; k++) {
+          const kr = kData[k];
+          if (!kr[0] || !kr[1]) continue;
+          if (String(kr[6] || "Aktif").trim().toLowerCase() === "aktif") {
+            daftarKhusus.push({
+              tanggalMulai: String(kr[0]).trim(),
+              tanggalSelesai: String(kr[1]).trim(),
+              jamDatang: String(kr[2]).trim(),
+              toleransi: String(kr[3] || kr[2]).trim(),
+              jamPulang: String(kr[4]).trim(),
+              keterangan: String(kr[5] || "").trim()
+            });
+          }
+        }
+      }
+    } catch (errK) {}
+
     return JSON.stringify({
       status: "success",
       jadwal: configJadwal,
-      kalenderLibur: daftarLibur
+      kalenderLibur: daftarLibur,
+      jadwalKhusus: daftarKhusus
     });
   } catch (e) {
     return JSON.stringify({ status: "error", message: e.message });
