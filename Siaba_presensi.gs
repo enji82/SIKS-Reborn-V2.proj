@@ -216,16 +216,7 @@ function getSiabaTidakFilters() {
 
 function getSiabaTidakData(filterTahun, filterBulan, filterUnit) {
   try {
-    const sheetLookup = getSheet("SIABA_LOOKUP_DB", "Lookup Siaba");
-    const dataLookup = sheetLookup.getDataRange().getDisplayValues();
-    let targetId = "";
-    
-    for (let i = 1; i < dataLookup.length; i++) {
-        if (dataLookup[i][0] == filterTahun && dataLookup[i][1] == filterBulan) {
-            targetId = dataLookup[i][2]; 
-            break; 
-        }
-    }
+    let targetId = getPresensiTargetId_(filterTahun, filterBulan).targetId;
 
     if (!targetId) return JSON.stringify({ error: `Data ${filterBulan} ${filterTahun} belum ada di Lookup.` });
 
