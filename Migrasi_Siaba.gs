@@ -503,7 +503,7 @@ function syncSiabaDinasExact() {
     var srcSheet = srcSs.getSheetByName(p.src);
     if (!srcSheet) { res[p.dst] = 0; return; }
     var dstSheet = dstSs.getSheetByName(p.dst) || dstSs.insertSheet(p.dst);
-    var srcData = srcSheet.getDataRange().getValues();
+    var srcData = srcSheet.getDataRange().getDisplayValues();
     if (srcData.length < 2) { res[p.dst] = 0; return; }
     dstSheet.clearContents();
     dstSheet.getRange(1, 1, srcData.length, srcData[0].length).setValues(srcData);
@@ -533,7 +533,7 @@ function syncSiabaLupaSalahExact() {
     var srcSheet = srcSs.getSheetByName(p.src) || srcSs.getSheets()[0];
     if (!srcSheet) { res[p.dst] = 0; return; }
     var dstSheet = dstSs.getSheetByName(p.dst) || dstSs.insertSheet(p.dst);
-    var srcData = srcSheet.getDataRange().getValues();
+    var srcData = srcSheet.getDataRange().getDisplayValues();
     if (srcData.length < 2) { res[p.dst] = 0; return; }
     dstSheet.clearContents();
     dstSheet.getRange(1, 1, srcData.length, srcData[0].length).setValues(srcData);
@@ -563,7 +563,7 @@ function syncSiabaTaPaExact() {
     var srcSheet = srcSs.getSheetByName(p.src);
     if (!srcSheet) { res[p.dst] = 0; return; }
     var dstSheet = dstSs.getSheetByName(p.dst) || dstSs.insertSheet(p.dst);
-    var srcData = srcSheet.getDataRange().getValues();
+    var srcData = srcSheet.getDataRange().getDisplayValues();
     if (srcData.length < 2) { res[p.dst] = 0; return; }
     dstSheet.clearContents();
     dstSheet.getRange(1, 1, srcData.length, srcData[0].length).setValues(srcData);
@@ -590,7 +590,7 @@ function syncSiabaKonfigJadwal() {
     var srcSheet = srcSs.getSheetByName(name);
     if (!srcSheet) { res[name] = 0; return; }
     var dstSheet = dstSs.getSheetByName(name) || dstSs.insertSheet(name);
-    var srcData = srcSheet.getDataRange().getValues();
+    var srcData = srcSheet.getDataRange().getDisplayValues();
     if (srcData.length < 1) { res[name] = 0; return; }
     dstSheet.clearContents();
     dstSheet.getRange(1, 1, srcData.length, srcData[0].length).setValues(srcData);
