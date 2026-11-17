@@ -142,16 +142,8 @@ function getSiabaApelFilters() {
 
 function getSiabaDataApel(filterTahun, filterBulan, filterUnit) {
   try {
-    const sheetLookup = getSheet("SIABA_LOOKUP_DB", "Lookup Siaba");
-    const dataLookup = sheetLookup.getDataRange().getDisplayValues();
-    
-    let targetId = "";
-    for (let i = 1; i < dataLookup.length; i++) {
-        if (dataLookup[i][0] == filterTahun && dataLookup[i][1] == filterBulan) {
-            targetId = dataLookup[i][2]; 
-            break; 
-        }
-    }
+    let targetId = getPresensiTargetId_(filterTahun, filterBulan).targetId;
+    if (!targetId) return JSON.stringify({ error: "Data Periode " + filterBulan + " " + filterTahun + " belum tersedia." });
 
     const ssTarget = getDBById(targetId);
     const sheetTarget = ssTarget.getSheetByName("Data Apel");
