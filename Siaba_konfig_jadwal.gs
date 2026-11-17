@@ -247,6 +247,88 @@ function simpanSiabaKonfigJadwal(payloadStr) {
   }
 }
 
+/* ======================================================================
+   JADWAL KHUSUS PER TANGGAL (OVERRIDE RENTANG TANGGAL)
+   Sheet: SIABA_KONFIG_JADWAL_KHUSUS di SIKS_DB_SIABA
+   ====================================================================== */
+function getOrCreateJadwalKhususSheet_() {
+  var ss = getKonfigJadwalSs_();
+  var headers = [
+    "Tanggal_Mulai", "Tanggal_Selesai", "Jam_Datang",
+    "Toleransi_Terlambat", "Jam_Pulang", "Keterangan", "Status"
+  ];
+  return getOrCreateKonfigSheet_(ss, "SIABA_KONFIG_JADWAL_KHUSUS", headers);
+}
+
+function getJadwalKhusus() {
+  try {
+    var sheet = getOrCreateJadwalKhususSheet_();
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) return JSON.stringify({ status: "success", data: [] });
+
+    var data = sheet.getRange(2, 1, lastRow - 1, 7).getDisplayValues();
+    var list = [];
+    for (var i = 0; i < data.length; i++) {
+      var r = data[i];
+      if (!r[0] && !r[1]) continue;
+      list.push({
+        rowIndex: i + 2,
+        tanggalMulai: r[0],
+        tanggalSelesai: r[1],
+        jamDatang: r[2],
+        toleransi: r[3],
+        jamPulang: r[4],
+        keterangan: r[5],
+        status: r[6] || "Aktif"
+      });
+    }
+    return JSON.stringify({ status: "success", data: list });
+  } catch (e) {
+    return JSON.stringify({ status: "error", message: e.message });
+  }
+}
+
+function saveJadwalKhusus(payload) {
+  try {
+    var tglMulai = String(payload.tanggalMulai || "").trim();
+    var tglSelesai = String(payload.tanggalSelesai || "").trim();
+    var jamDatang = String(payload.jamDatang || "").trim();
+    var toleransi = String(payload.toleransi || "").trim();
+    var jamPulang = String(payload.jamPulang || "").trim();
+    var ket = String(payload.keterangan || "").trim();
+    var status = String(payload.status || "Aktif").trim();
+    var rowIndex = payload.rowIndex ? parseInt(payload.rowIndex, 10) : 0;
+
+    if (!tglMulai || !tglSelesai || !jamDatang || !jamPulang) {
+      return JSON.stringify({ status: "error", message: "Tanggal Mulai, Tanggal Selesai, Jam Datang, dan Jam Pulang wajib diisi." });
+    }
+
+    var sheet = getOrCreateJadwalKhususSheet_();
+    var rowValues = [tglMulai, tglSelesai, jamDatang, toleransi || jamDatang, jamPulang, ket, status];
+    if (rowIndex >= 2) {
+      sheet.getRange(rowIndex, 1, 1, 7).setValues([rowValues]);
+    } else {
+      sheet.appendRow(rowValues);
+    }
+    return JSON.stringify({ status: "success", message: "Jadwal khusus berhasil disimpan." });
+  } catch (e) {
+    return JSON.stringify({ status: "error", message: e.message });
+  }
+}
+
+function deleteJadwalKhusus(rowIndex) {
+  try {
+    var idx = parseInt(rowIndex, 10);
+    if (!idx || idx < 2) return JSON.stringify({ status: "error", message: "Baris tidak valid." });
+    var sheet = getOrCreateJadwalKhususSheet_();
+    sheet.deleteRow(idx);
+    return JSON.stringify({ status: "success", message: "Jadwal khusus berhasil dihapus." });
+  } catch (e) {
+    return JSON.stringify({ status: "error", message: e.message });
+  }
+}
+
+
 /**
  * Menyimpan / Perbarui Hari Libur di Kalender
  */
@@ -328,6 +410,88 @@ function simpanSiabaHariLibur(payloadStr) {
   }
 }
 
+/* ======================================================================
+   JADWAL KHUSUS PER TANGGAL (OVERRIDE RENTANG TANGGAL)
+   Sheet: SIABA_KONFIG_JADWAL_KHUSUS di SIKS_DB_SIABA
+   ====================================================================== */
+function getOrCreateJadwalKhususSheet_() {
+  var ss = getKonfigJadwalSs_();
+  var headers = [
+    "Tanggal_Mulai", "Tanggal_Selesai", "Jam_Datang",
+    "Toleransi_Terlambat", "Jam_Pulang", "Keterangan", "Status"
+  ];
+  return getOrCreateKonfigSheet_(ss, "SIABA_KONFIG_JADWAL_KHUSUS", headers);
+}
+
+function getJadwalKhusus() {
+  try {
+    var sheet = getOrCreateJadwalKhususSheet_();
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) return JSON.stringify({ status: "success", data: [] });
+
+    var data = sheet.getRange(2, 1, lastRow - 1, 7).getDisplayValues();
+    var list = [];
+    for (var i = 0; i < data.length; i++) {
+      var r = data[i];
+      if (!r[0] && !r[1]) continue;
+      list.push({
+        rowIndex: i + 2,
+        tanggalMulai: r[0],
+        tanggalSelesai: r[1],
+        jamDatang: r[2],
+        toleransi: r[3],
+        jamPulang: r[4],
+        keterangan: r[5],
+        status: r[6] || "Aktif"
+      });
+    }
+    return JSON.stringify({ status: "success", data: list });
+  } catch (e) {
+    return JSON.stringify({ status: "error", message: e.message });
+  }
+}
+
+function saveJadwalKhusus(payload) {
+  try {
+    var tglMulai = String(payload.tanggalMulai || "").trim();
+    var tglSelesai = String(payload.tanggalSelesai || "").trim();
+    var jamDatang = String(payload.jamDatang || "").trim();
+    var toleransi = String(payload.toleransi || "").trim();
+    var jamPulang = String(payload.jamPulang || "").trim();
+    var ket = String(payload.keterangan || "").trim();
+    var status = String(payload.status || "Aktif").trim();
+    var rowIndex = payload.rowIndex ? parseInt(payload.rowIndex, 10) : 0;
+
+    if (!tglMulai || !tglSelesai || !jamDatang || !jamPulang) {
+      return JSON.stringify({ status: "error", message: "Tanggal Mulai, Tanggal Selesai, Jam Datang, dan Jam Pulang wajib diisi." });
+    }
+
+    var sheet = getOrCreateJadwalKhususSheet_();
+    var rowValues = [tglMulai, tglSelesai, jamDatang, toleransi || jamDatang, jamPulang, ket, status];
+    if (rowIndex >= 2) {
+      sheet.getRange(rowIndex, 1, 1, 7).setValues([rowValues]);
+    } else {
+      sheet.appendRow(rowValues);
+    }
+    return JSON.stringify({ status: "success", message: "Jadwal khusus berhasil disimpan." });
+  } catch (e) {
+    return JSON.stringify({ status: "error", message: e.message });
+  }
+}
+
+function deleteJadwalKhusus(rowIndex) {
+  try {
+    var idx = parseInt(rowIndex, 10);
+    if (!idx || idx < 2) return JSON.stringify({ status: "error", message: "Baris tidak valid." });
+    var sheet = getOrCreateJadwalKhususSheet_();
+    sheet.deleteRow(idx);
+    return JSON.stringify({ status: "success", message: "Jadwal khusus berhasil dihapus." });
+  } catch (e) {
+    return JSON.stringify({ status: "error", message: e.message });
+  }
+}
+
+
 /**
  * Menghapus Hari Libur dari Kalender
  */
@@ -372,3 +536,85 @@ function hapusSiabaHariLibur(tanggal) {
     try { lock.releaseLock(); } catch(le) {}
   }
 }
+
+/* ======================================================================
+   JADWAL KHUSUS PER TANGGAL (OVERRIDE RENTANG TANGGAL)
+   Sheet: SIABA_KONFIG_JADWAL_KHUSUS di SIKS_DB_SIABA
+   ====================================================================== */
+function getOrCreateJadwalKhususSheet_() {
+  var ss = getKonfigJadwalSs_();
+  var headers = [
+    "Tanggal_Mulai", "Tanggal_Selesai", "Jam_Datang",
+    "Toleransi_Terlambat", "Jam_Pulang", "Keterangan", "Status"
+  ];
+  return getOrCreateKonfigSheet_(ss, "SIABA_KONFIG_JADWAL_KHUSUS", headers);
+}
+
+function getJadwalKhusus() {
+  try {
+    var sheet = getOrCreateJadwalKhususSheet_();
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) return JSON.stringify({ status: "success", data: [] });
+
+    var data = sheet.getRange(2, 1, lastRow - 1, 7).getDisplayValues();
+    var list = [];
+    for (var i = 0; i < data.length; i++) {
+      var r = data[i];
+      if (!r[0] && !r[1]) continue;
+      list.push({
+        rowIndex: i + 2,
+        tanggalMulai: r[0],
+        tanggalSelesai: r[1],
+        jamDatang: r[2],
+        toleransi: r[3],
+        jamPulang: r[4],
+        keterangan: r[5],
+        status: r[6] || "Aktif"
+      });
+    }
+    return JSON.stringify({ status: "success", data: list });
+  } catch (e) {
+    return JSON.stringify({ status: "error", message: e.message });
+  }
+}
+
+function saveJadwalKhusus(payload) {
+  try {
+    var tglMulai = String(payload.tanggalMulai || "").trim();
+    var tglSelesai = String(payload.tanggalSelesai || "").trim();
+    var jamDatang = String(payload.jamDatang || "").trim();
+    var toleransi = String(payload.toleransi || "").trim();
+    var jamPulang = String(payload.jamPulang || "").trim();
+    var ket = String(payload.keterangan || "").trim();
+    var status = String(payload.status || "Aktif").trim();
+    var rowIndex = payload.rowIndex ? parseInt(payload.rowIndex, 10) : 0;
+
+    if (!tglMulai || !tglSelesai || !jamDatang || !jamPulang) {
+      return JSON.stringify({ status: "error", message: "Tanggal Mulai, Tanggal Selesai, Jam Datang, dan Jam Pulang wajib diisi." });
+    }
+
+    var sheet = getOrCreateJadwalKhususSheet_();
+    var rowValues = [tglMulai, tglSelesai, jamDatang, toleransi || jamDatang, jamPulang, ket, status];
+    if (rowIndex >= 2) {
+      sheet.getRange(rowIndex, 1, 1, 7).setValues([rowValues]);
+    } else {
+      sheet.appendRow(rowValues);
+    }
+    return JSON.stringify({ status: "success", message: "Jadwal khusus berhasil disimpan." });
+  } catch (e) {
+    return JSON.stringify({ status: "error", message: e.message });
+  }
+}
+
+function deleteJadwalKhusus(rowIndex) {
+  try {
+    var idx = parseInt(rowIndex, 10);
+    if (!idx || idx < 2) return JSON.stringify({ status: "error", message: "Baris tidak valid." });
+    var sheet = getOrCreateJadwalKhususSheet_();
+    sheet.deleteRow(idx);
+    return JSON.stringify({ status: "success", message: "Jadwal khusus berhasil dihapus." });
+  } catch (e) {
+    return JSON.stringify({ status: "error", message: e.message });
+  }
+}
+
