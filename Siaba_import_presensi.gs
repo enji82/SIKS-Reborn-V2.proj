@@ -28,6 +28,33 @@ function getImportPresensiList() {
   try {
     var sheet = getImportPresensiSheet_();
     var lastRow = sheet.getLastRow();
+
+    // Auto-migrasi awal dari SIABA_KONFIG_DB (sheet "ID") jika tbl_siaba_sumber_presensi masih kosong
+    if (lastRow < 2 && SPREADSHEET_IDS.SIABA_KONFIG_DB) {
+      try {
+        var srcSs = SpreadsheetApp.openById(SPREADSHEET_IDS.SIABA_KONFIG_DB);
+        var srcSheet = srcSs.getSheetByName("ID");
+        if (srcSheet && srcSheet.getLastRow() >= 2) {
+          var srcData = srcSheet.getRange(2, 1, srcSheet.getLastRow() - 1, 4).getDisplayValues();
+          var rowsToInsert = [];
+          for (var s = 0; s < srcData.length; s++) {
+            var b = String(srcData[s][0] || "").trim();
+            var t = String(srcData[s][1] || "").trim();
+            var l = String(srcData[s][2] || "").trim();
+            var idS = String(srcData[s][3] || "").trim() || extractSpreadsheetIdFromUrl_(l);
+            if (!b && !t && !l) continue;
+            rowsToInsert.push([b, t, l, idS, "", "Sudah Diproses"]);
+          }
+          if (rowsToInsert.length > 0) {
+            sheet.getRange(2, 1, rowsToInsert.length, 6).setValues(rowsToInsert);
+            lastRow = sheet.getLastRow();
+          }
+        }
+      } catch (errSync) {
+        Logger.log("Auto-sync ID gagal: " + errSync);
+      }
+    }
+
     if (lastRow < 2) return JSON.stringify({ status: "success", data: [] });
 
     var data = sheet.getRange(2, 1, lastRow - 1, 6).getDisplayValues();
