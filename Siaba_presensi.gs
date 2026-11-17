@@ -21,19 +21,34 @@ function getSiabaFilters() {
   return JSON.stringify(getLookupFilters());
 }
 
+function getPresensiTargetId_(filterTahun, filterBulan) {
+  if (typeof USE_CENTRAL_SIABA_DB !== "undefined" && USE_CENTRAL_SIABA_DB) {
+    var central = getSiabaCentralSheet("tbl_siaba_sumber_presensi");
+    if (central && central.getLastRow() >= 2) {
+      var rows = central.getRange(2, 1, central.getLastRow() - 1, 4).getDisplayValues();
+      for (var i = 0; i < rows.length; i++) {
+        if (String(rows[i][1]).trim() == String(filterTahun).trim() &&
+            String(rows[i][0]).trim().toLowerCase() == String(filterBulan).trim().toLowerCase()) {
+          return { targetId: String(rows[i][3]).trim(), customSheet: "" };
+        }
+      }
+    }
+  }
+  var sheetLookup = getSheet("SIABA_LOOKUP_DB", "Lookup Siaba");
+  var dataLookup = sheetLookup.getDataRange().getDisplayValues();
+  for (var j = 1; j < dataLookup.length; j++) {
+    if (dataLookup[j][0] == filterTahun && dataLookup[j][1] == filterBulan) {
+      return { targetId: dataLookup[j][2], customSheet: dataLookup[j][3] };
+    }
+  }
+  return { targetId: "", customSheet: "" };
+}
+
 function getSiabaPresensiHarian(filterTahun, filterBulan, filterUnit) {
   try {
-    const sheetLookup = getSheet("SIABA_LOOKUP_DB", "Lookup Siaba");
-    const dataLookup = sheetLookup.getDataRange().getDisplayValues();
-    
-    let targetId = "", customSheet = "";
-    for (let i = 1; i < dataLookup.length; i++) {
-        if (dataLookup[i][0] == filterTahun && dataLookup[i][1] == filterBulan) {
-            targetId = dataLookup[i][2];
-            customSheet = dataLookup[i][3];     
-            break; 
-        }
-    }
+    var targetInfo = getPresensiTargetId_(filterTahun, filterBulan);
+    let targetId = targetInfo.targetId;
+    let customSheet = targetInfo.customSheet;
     
     if (!targetId) return JSON.stringify({ error: "Data Periode " + filterBulan + " " + filterTahun + " belum tersedia." });
 
