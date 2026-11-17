@@ -1,3 +1,17 @@
+function getPresensiTaPaSheet_(sheetName) {
+  if (typeof USE_CENTRAL_SIABA_DB !== "undefined" && USE_CENTRAL_SIABA_DB) {
+    if (sheetName === "Rekap_Terlambat") {
+      var centralT = getSiabaCentralSheet("tbl_siaba_terlambat");
+      if (centralT) return centralT;
+    }
+    if (sheetName === "Rekap_Pulang_Awal") {
+      var centralP = getSiabaCentralSheet("tbl_siaba_pulang_awal");
+      if (centralP) return centralP;
+    }
+  }
+  return getSheet("SIABA_TA_PA", sheetName);
+}
+
 /* ======================================================================
    SIABA PRESENSI HARIAN - DISPLAY VALUES VERSION
    (BAB VIII COMPLIANT)
@@ -88,6 +102,20 @@ function getSiabaPresensiHarian(filterTahun, filterBulan, filterUnit) {
   }
 }
 
+function getPresensiTaPaSheet_(sheetName) {
+  if (typeof USE_CENTRAL_SIABA_DB !== "undefined" && USE_CENTRAL_SIABA_DB) {
+    if (sheetName === "Rekap_Terlambat") {
+      var centralT = getSiabaCentralSheet("tbl_siaba_terlambat");
+      if (centralT) return centralT;
+    }
+    if (sheetName === "Rekap_Pulang_Awal") {
+      var centralP = getSiabaCentralSheet("tbl_siaba_pulang_awal");
+      if (centralP) return centralP;
+    }
+  }
+  return getSheet("SIABA_TA_PA", sheetName);
+}
+
 /* ======================================================================
    SIABA APEL & UPACARA - DISPLAY VALUES VERSION
    (BAB VIII COMPLIANT)
@@ -155,6 +183,20 @@ function getSiabaDataApel(filterTahun, filterBulan, filterUnit) {
   } catch (e) {
     return JSON.stringify({ error: "SYSTEM ERROR: " + e.message });
   }
+}
+
+function getPresensiTaPaSheet_(sheetName) {
+  if (typeof USE_CENTRAL_SIABA_DB !== "undefined" && USE_CENTRAL_SIABA_DB) {
+    if (sheetName === "Rekap_Terlambat") {
+      var centralT = getSiabaCentralSheet("tbl_siaba_terlambat");
+      if (centralT) return centralT;
+    }
+    if (sheetName === "Rekap_Pulang_Awal") {
+      var centralP = getSiabaCentralSheet("tbl_siaba_pulang_awal");
+      if (centralP) return centralP;
+    }
+  }
+  return getSheet("SIABA_TA_PA", sheetName);
 }
 
 /* ======================================================================
@@ -230,13 +272,27 @@ function getSiabaTidakData(filterTahun, filterBulan, filterUnit) {
   }
 }
 
+function getPresensiTaPaSheet_(sheetName) {
+  if (typeof USE_CENTRAL_SIABA_DB !== "undefined" && USE_CENTRAL_SIABA_DB) {
+    if (sheetName === "Rekap_Terlambat") {
+      var centralT = getSiabaCentralSheet("tbl_siaba_terlambat");
+      if (centralT) return centralT;
+    }
+    if (sheetName === "Rekap_Pulang_Awal") {
+      var centralP = getSiabaCentralSheet("tbl_siaba_pulang_awal");
+      if (centralP) return centralP;
+    }
+  }
+  return getSheet("SIABA_TA_PA", sheetName);
+}
+
 /* ======================================================================
    SIABA TERLAMBAT (SMART CACHE SUPPORT - BAB VIII COMPLIANT)
    ====================================================================== */
 
 function getSiabaTerlambatFilters() {
   try {
-    const sheet = getSheet("SIABA_TA_PA", "Rekap_Terlambat");
+    const sheet = getPresensiTaPaSheet_("Rekap_Terlambat");
     const lastRow = sheet.getLastRow();
     if (lastRow < 3) return JSON.stringify({ years: [] });
     
@@ -257,7 +313,7 @@ function getSiabaTerlambatFilters() {
 
 function getSiabaTerlambatData(filterTahun, filterUnit) {
   try {
-    const sheet = getSheet("SIABA_TA_PA", "Rekap_Terlambat");
+    const sheet = getPresensiTaPaSheet_("Rekap_Terlambat");
     const maxCol = sheet.getLastColumn(); 
     const lastRow = sheet.getLastRow();
     
@@ -306,13 +362,27 @@ function getSiabaTerlambatData(filterTahun, filterUnit) {
   }
 }
 
+function getPresensiTaPaSheet_(sheetName) {
+  if (typeof USE_CENTRAL_SIABA_DB !== "undefined" && USE_CENTRAL_SIABA_DB) {
+    if (sheetName === "Rekap_Terlambat") {
+      var centralT = getSiabaCentralSheet("tbl_siaba_terlambat");
+      if (centralT) return centralT;
+    }
+    if (sheetName === "Rekap_Pulang_Awal") {
+      var centralP = getSiabaCentralSheet("tbl_siaba_pulang_awal");
+      if (centralP) return centralP;
+    }
+  }
+  return getSheet("SIABA_TA_PA", sheetName);
+}
+
 /* ======================================================================
    SIABA PULANG AWAL (BAB VIII COMPLIANT)
    ====================================================================== */
 
 function getSiabaPulangFilters() {
   try {
-    const sheet = getSheet("SIABA_TA_PA", "Rekap_Pulang_Awal"); 
+    const sheet = getPresensiTaPaSheet_("Rekap_Pulang_Awal"); 
     const lastRow = sheet.getLastRow();
     if (lastRow < 3) return JSON.stringify({ years: [] });
     
@@ -331,7 +401,7 @@ function getSiabaPulangFilters() {
 
 function getSiabaPulangData(filterTahun, filterUnit) {
   try {
-    const sheet = getSheet("SIABA_TA_PA", "Rekap_Pulang_Awal"); 
+    const sheet = getPresensiTaPaSheet_("Rekap_Pulang_Awal"); 
     const maxCol = sheet.getLastColumn(); 
     const lastRow = sheet.getLastRow();
 
@@ -378,6 +448,20 @@ function getSiabaPulangData(filterTahun, filterUnit) {
   } catch (e) {
     return JSON.stringify({ error: "SYSTEM ERROR: " + e.message });
   }
+}
+
+function getPresensiTaPaSheet_(sheetName) {
+  if (typeof USE_CENTRAL_SIABA_DB !== "undefined" && USE_CENTRAL_SIABA_DB) {
+    if (sheetName === "Rekap_Terlambat") {
+      var centralT = getSiabaCentralSheet("tbl_siaba_terlambat");
+      if (centralT) return centralT;
+    }
+    if (sheetName === "Rekap_Pulang_Awal") {
+      var centralP = getSiabaCentralSheet("tbl_siaba_pulang_awal");
+      if (centralP) return centralP;
+    }
+  }
+  return getSheet("SIABA_TA_PA", sheetName);
 }
 
 /* ======================================================================
@@ -466,6 +550,20 @@ function getSiabaUnduhData(folderId) {
     isRoot: isRoot,
     items: items
   };
+}
+
+function getPresensiTaPaSheet_(sheetName) {
+  if (typeof USE_CENTRAL_SIABA_DB !== "undefined" && USE_CENTRAL_SIABA_DB) {
+    if (sheetName === "Rekap_Terlambat") {
+      var centralT = getSiabaCentralSheet("tbl_siaba_terlambat");
+      if (centralT) return centralT;
+    }
+    if (sheetName === "Rekap_Pulang_Awal") {
+      var centralP = getSiabaCentralSheet("tbl_siaba_pulang_awal");
+      if (centralP) return centralP;
+    }
+  }
+  return getSheet("SIABA_TA_PA", sheetName);
 }
 
 /* ======================================================================

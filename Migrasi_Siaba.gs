@@ -547,6 +547,36 @@ function syncSiabaLupaSalahExact() {
 }
 
 /**
+ * Menyalin sheet 'Rekap_Terlambat' dan 'Rekap_Pulang_Awal' dari SIABA_TA_PA
+ * ke SIKS_DB_SIABA dengan mempertahankan seluruh kolom aslinya.
+ */
+function syncSiabaTaPaExact() {
+  var srcSs = SpreadsheetApp.openById(SPREADSHEET_IDS.SIABA_TA_PA);
+  var dstSs = SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_SIABA);
+  var pairs = [
+    { src: "Rekap_Terlambat", dst: "tbl_siaba_terlambat" },
+    { src: "Rekap_Pulang_Awal", dst: "tbl_siaba_pulang_awal" }
+  ];
+
+  var res = {};
+  pairs.forEach(function (p) {
+    var srcSheet = srcSs.getSheetByName(p.src);
+    if (!srcSheet) { res[p.dst] = 0; return; }
+    var dstSheet = dstSs.getSheetByName(p.dst) || dstSs.insertSheet(p.dst);
+    var srcData = srcSheet.getDataRange().getValues();
+    if (srcData.length < 2) { res[p.dst] = 0; return; }
+    dstSheet.clearContents();
+    dstSheet.getRange(1, 1, srcData.length, srcData[0].length).setValues(srcData);
+    dstSheet.getRange(1, 1, 1, srcData[0].length).setFontWeight("bold");
+    dstSheet.setFrozenRows(1);
+    res[p.dst] = srcData.length - 1;
+  });
+
+  Logger.log("syncSiabaTaPaExact selesai: " + JSON.stringify(res));
+  return res;
+}
+
+/**
  * Menjalankan sinkronisasi semua modul SIABA sekaligus.
  */
 function syncSiabaAll() {
