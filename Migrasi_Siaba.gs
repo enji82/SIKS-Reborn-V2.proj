@@ -577,6 +577,33 @@ function syncSiabaTaPaExact() {
 }
 
 /**
+ * Menyalin sheet 'SIABA_KONFIG_JAM_KERJA' dan 'SIABA_KALENDER_LIBUR' dari SIABA_KONFIG_DB
+ * ke SIKS_DB_SIABA dengan mempertahankan seluruh kolom aslinya.
+ */
+function syncSiabaKonfigJadwal() {
+  var srcSs = SpreadsheetApp.openById(SPREADSHEET_IDS.SIABA_KONFIG_DB);
+  var dstSs = SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_SIABA);
+  var sheets = ["SIABA_KONFIG_JAM_KERJA", "SIABA_KALENDER_LIBUR"];
+
+  var res = {};
+  sheets.forEach(function (name) {
+    var srcSheet = srcSs.getSheetByName(name);
+    if (!srcSheet) { res[name] = 0; return; }
+    var dstSheet = dstSs.getSheetByName(name) || dstSs.insertSheet(name);
+    var srcData = srcSheet.getDataRange().getValues();
+    if (srcData.length < 1) { res[name] = 0; return; }
+    dstSheet.clearContents();
+    dstSheet.getRange(1, 1, srcData.length, srcData[0].length).setValues(srcData);
+    dstSheet.getRange(1, 1, 1, srcData[0].length).setFontWeight("bold");
+    dstSheet.setFrozenRows(1);
+    res[name] = Math.max(0, srcData.length - 1);
+  });
+
+  Logger.log("syncSiabaKonfigJadwal selesai: " + JSON.stringify(res));
+  return res;
+}
+
+/**
  * Menjalankan sinkronisasi semua modul SIABA sekaligus.
  */
 function syncSiabaAll() {
