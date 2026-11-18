@@ -228,7 +228,7 @@
 
             <div id="perdin_areaFormUtama" style="opacity:0.45; pointer-events:none; filter:grayscale(40%);">
                 <div class="row">
-                    <div class="col-12 mb-3">
+                    <div class="col-12 mb-3" id="perdin_cardSuratTugas">
                         <div class="card card-sultan shadow-sm border-0 h-100">
                             <div class="card-header border-bottom py-2 d-flex justify-content-between align-items-center" style="background: transparent;">
                                 <h6 class="m-0 font-weight-bold text-maroon"
@@ -324,7 +324,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-12">
+                    <div class="col-12" id="perdin_cardPeserta">
                         <div class="card card-sultan shadow-sm border-0 h-100 d-flex flex-column">
                             <div class="card-header border-bottom py-2 d-flex justify-content-between align-items-center"
                                 style="background: transparent;">
@@ -854,10 +854,13 @@
     // =================================================================
     // 4. LOGIKA MODAL FORM (VAKSIN ANTI-MACET)
     // =================================================================
+    var PERDIN_OPENED_FROM_EDIT = false;
+
     function perdin_bukaModalEdit(rowId) {
         var row = PERDIN_DATA_MASTER[rowId];
         if (!row) return;
         perdin_bukaModalTambah();
+        PERDIN_OPENED_FROM_EDIT = true;
         $('#global_modalFormHeader').removeClass().addClass('modal-header modal-header-sultan-warning');
         $('#global_modalFormTitle').html('<i class="fas fa-edit mr-2"></i>Edit Data Perjalanan Dinas');
 
@@ -877,6 +880,7 @@
     }
 
     function perdin_bukaModalTambah() {
+        PERDIN_OPENED_FROM_EDIT = false;
         PERDIN_UNI_IS_NEW_SPT = true;
         PERDIN_UNI_TEMP_PESERTA = [];
         PERDIN_IS_FORM_LOCKED = false;
@@ -909,6 +913,8 @@
         });
 
         $('#perdin_areaFormUtama').show().css({ opacity: 0.45, pointerEvents: 'none', filter: 'grayscale(40%)' });
+        $('#perdin_cardSuratTugas, #perdin_cardPeserta').css({ opacity: 1, pointerEvents: 'auto', filter: 'none' });
+        $('#perdin_inputJenisDokTop, #perdin_inputJabatanPenandatangan, #perdin_inputNamaPenandatangan').prop('disabled', false);
         $('#perdin_btnSimpanForm').removeClass('modal-btn-perbarui modal-btn-simpan').addClass('sultan-btn sultan-btn-primary font-weight-bold px-4').hide();
         perdin_lockFormControls(false);
 
@@ -967,21 +973,38 @@
                             $('#perdin_inputTglSelesai').val(res.data.tglSelesai);
                             $('#perdin_inputTujuan').val(res.data.tujuan);
                             $('#perdin_inputKegiatan').val(res.data.kegiatan);
-                            $('#perdin_inputJenisDok').val(res.data.jenisDok || 'ST Final');
-                            if (res.data.jenisDok) $('#perdin_inputJenisDokTop').val(res.data.jenisDok);
+
+                            var rawJnsDok = String(res.data.jenisDok || "ST Final").trim();
+                            var normJnsDok = "ST Final";
+                            if (rawJnsDok.toUpperCase().includes("SEMENTARA")) normJnsDok = "ST Sementara (Belum Ditandatangani)";
+                            else if (rawJnsDok.toUpperCase().includes("UNDANGAN")) normJnsDok = "Surat Undangan";
+                            $('#perdin_inputJenisDok').val(normJnsDok);
+                            $('#perdin_inputJenisDokTop').val(normJnsDok);
                             if (res.data.jabatanPenandatangan) $('#perdin_inputJabatanPenandatangan').val(res.data.jabatanPenandatangan);
                             if (res.data.namaPenandatangan) $('#perdin_inputNamaPenandatangan').val(res.data.namaPenandatangan);
 
                             var st = String(res.data.status || "").toLowerCase();
-                            var currentDok = String(res.data.jenisDok || "").toUpperCase();
+                            var currentDok = normJnsDok.toUpperCase();
 
-                            if (st.includes('setuju') || st.includes('acc') || st.includes('ok')) {
+                            if (!PERDIN_OPENED_FROM_EDIT) {
+                                // DIBUKA DARI TOMBOL + TAMBAH & NOMOR SURAT SUDAH ADA:
+                                // Kunci Card DATA SURAT TUGAS, tampilkan pesan, izinkan hanya tambah peserta
+                                PERDIN_IS_UPDATE_DOC_MODE = false;
+                                $('#perdin_wrapperNoSptBaru').hide();
+                                $('#perdin_inputNoSptBaru').val('').prop('required', false);
+                                perdin_lockFormControls(true, res.data.status || 'Terdaftar', true);
+                                $('#perdin_inputFile').prop('required', false);
+                                $('#perdin_reqFileAsterisk').hide();
+                                msgEl.removeClass('text-maroon text-muted text-danger text-warning text-info').addClass('text-success font-weight-bold').html('<i class="fas fa-check-circle mr-1"></i> Surat Tugas sudah ada, Anda bisa langsung menambahkan peserta.');
+                                $('#perdin_btnSimpanForm').removeClass('modal-btn-perbarui modal-btn-simpan').addClass('sultan-btn sultan-btn-primary font-weight-bold px-4').show().html('<i class="fas fa-save mr-2"></i> SIMPAN');
+                            } else if (st.includes('setuju') || st.includes('acc') || st.includes('ok')) {
                                 if (currentDok !== 'SPT' && currentDok !== 'ST FINAL') {
                                     // MODE UPDATE DOKUMEN FINAL (ST Sementara / Undangan -> ST Final)
                                     PERDIN_IS_UPDATE_DOC_MODE = true;
                                     PERDIN_IS_APPEND_MODE = false;
                                     PERDIN_IS_FORM_LOCKED = false;
 
+                                    $('#perdin_cardSuratTugas').css({ opacity: 1, pointerEvents: 'auto', filter: 'none' });
                                     $('#perdin_fieldHeader').prop('disabled', false);
                                     // Kunci rincian kegiatan & jadwal
                                     $('#perdin_inputJenis, #perdin_inputTglMulai, #perdin_inputTglSelesai, #perdin_inputTujuan, #perdin_inputKegiatan').prop('disabled', true).addClass('bg-light');
@@ -992,7 +1015,8 @@
                                     $('#perdin_inputTglSpt').prop('disabled', false).removeClass('bg-light').prop('required', true);
 
                                     $('#perdin_divUniFile').show();
-                                    $('#perdin_inputJenisDok').val('SPT').prop('disabled', false).removeClass('bg-light');
+                                    $('#perdin_inputJenisDok').val('ST Final').prop('disabled', false).removeClass('bg-light');
+                                    $('#perdin_inputJenisDokTop').val('ST Final').prop('disabled', false);
                                     $('#perdin_inputFile').prop('disabled', false).prop('required', true);
                                     $('#perdin_reqFileAsterisk').show();
                                     
@@ -1071,26 +1095,31 @@
         PERDIN_IS_APPEND_MODE = !!allowAppendPeserta;
 
         if (isLocked) {
-            $('#perdin_fieldHeader').prop('disabled', true); 
+            $('#perdin_fieldHeader').prop('disabled', true);
+            $('#perdin_cardSuratTugas').css({ opacity: 0.45, pointerEvents: 'none', filter: 'grayscale(40%)' });
+            $('#perdin_inputJenisDokTop, #perdin_inputJabatanPenandatangan, #perdin_inputNamaPenandatangan').prop('disabled', true);
             $('#perdin_divUniFile').hide(); 
             var badgeColor = String(statusText).toLowerCase().includes('tolak') ? 'badge-sultan-ditolak' : 'badge-sultan-disetujui';
-            $('#perdin_badgeStatusSpt').attr('class', 'float-right badge badge-sultan ' + badgeColor).html('<i class="fas fa-lock mr-1"></i> ' + perdin_escapeHtml(statusText));
+            $('#perdin_badgeStatusSpt').attr('class', 'badge badge-sultan ' + badgeColor).html('<i class="fas fa-lock mr-1"></i> ' + perdin_escapeHtml(statusText));
 
             if (allowAppendPeserta) {
-                // Izinkan menambah peserta walaupun SPT sudah disetujui
+                // Izinkan menambah peserta walaupun SPT sudah terdaftar
+                $('#perdin_cardPeserta').css({ opacity: 1, pointerEvents: 'auto', filter: 'none' });
                 $('#perdin_btnTambahAsn').show();
-                $('#perdin_btnSimpanForm').removeClass('modal-btn-simpan').addClass('modal-btn-perbarui').show().html('<i class="fas fa-user-plus mr-2"></i> TAMBAH PESERTA KE SPT');
+                $('#perdin_btnSimpanForm').removeClass('modal-btn-perbarui modal-btn-simpan').addClass('sultan-btn sultan-btn-primary font-weight-bold px-4').show().html('<i class="fas fa-save mr-2"></i> SIMPAN');
             } else {
                 $('#perdin_btnSimpanForm').hide(); 
                 $('#perdin_btnTambahAsn').hide();
             }
         } else {
             PERDIN_IS_APPEND_MODE = false;
-            $('#perdin_fieldHeader').prop('disabled', false); 
+            $('#perdin_fieldHeader').prop('disabled', false);
+            $('#perdin_cardSuratTugas, #perdin_cardPeserta').css({ opacity: 1, pointerEvents: 'auto', filter: 'none' });
+            $('#perdin_inputJenisDokTop, #perdin_inputJabatanPenandatangan, #perdin_inputNamaPenandatangan').prop('disabled', false);
             $('#perdin_divUniFile').show(); 
             $('#perdin_btnSimpanForm').show(); 
             $('#perdin_btnTambahAsn').show();
-            $('#perdin_badgeStatusSpt').attr('class', 'float-right badge badge-sultan badge-sultan-diproses').text('DIPROSES');
+            $('#perdin_badgeStatusSpt').attr('class', 'badge badge-sultan badge-sultan-diproses').text('DIPROSES');
         }
     }
 
