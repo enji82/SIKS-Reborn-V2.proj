@@ -713,6 +713,55 @@ function initRiwayatCtDariSisaCt(tahunAktif) {
 }
 
 /**
+ * Mengimpor riwayat CT tahun 2024 dan 2025 dari sheet 'Hitung Cuti' (SIABA_CUTI_DB)
+ * ke tbl_siaba_riwayat_ct di SIKS_DB_SIABA tanpa menduplikasi data yang sudah ada.
+ */
+function importRiwayatCtHistoris() {
+  var srcSs = SpreadsheetApp.openById(SPREADSHEET_IDS.SIABA_CUTI_DB);
+  var srcSheet = srcSs.getSheetByName("Hitung Cuti");
+  if (!srcSheet) return { inserted: 0, message: "Sheet 'Hitung Cuti' tidak ditemukan." };
+
+  var dstSs = SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_SIABA);
+  var dstSheet = dstSs.getSheetByName("tbl_siaba_riwayat_ct");
+  if (!dstSheet) throw new Error("Jalankan initRiwayatCtDariSisaCt() terlebih dahulu.");
+
+  var existing = {};
+  if (dstSheet.getLastRow() >= 2) {
+    var exData = dstSheet.getRange(2, 1, dstSheet.getLastRow() - 1, 2).getDisplayValues();
+    for (var i = 0; i < exData.length; i++) {
+      existing[String(exData[i][0]).trim() + "|" + String(exData[i][1]).trim()] = true;
+    }
+  }
+
+  var data = srcSheet.getDataRange().getValues();
+  var toInsert = [];
+
+  for (var r = 1; r < data.length; r++) {
+    var row = data[r];
+    var nip = String(row[0] || "").trim();
+    if (!nip) continue;
+
+    // Tahun 2024: N-2 (5), N-1 (6), N (7), Jml 2024 (8), Diambil 2024 (9), Sisa CT 2024 (16)
+    if (!existing[nip + "|2024"]) {
+      toInsert.push([nip, "2024", Number(row[7]) || 0, Number(row[6]) || 0, Number(row[5]) || 0, Number(row[8]) || 0, Number(row[9]) || 0, Number(row[16]) || 0]);
+      existing[nip + "|2024"] = true;
+    }
+    // Tahun 2025: N-2 (17), N-1 (18), N (19), Jml 2025 (20), Diambil 2025 (21), Sisa CT 2025 (28)
+    if (!existing[nip + "|2025"]) {
+      toInsert.push([nip, "2025", Number(row[19]) || 0, Number(row[18]) || 0, Number(row[17]) || 0, Number(row[20]) || 0, Number(row[21]) || 0, Number(row[28]) || 0]);
+      existing[nip + "|2025"] = true;
+    }
+  }
+
+  if (toInsert.length > 0) {
+    dstSheet.getRange(dstSheet.getLastRow() + 1, 1, toInsert.length, 8).setValues(toInsert);
+  }
+
+  Logger.log("importRiwayatCtHistoris (2024 & 2025) selesai: " + toInsert.length + " baris.");
+  return { inserted: toInsert.length };
+}
+
+/**
  * Menjalankan sinkronisasi semua modul SIABA sekaligus.
  */
 function syncSiabaAll() {
