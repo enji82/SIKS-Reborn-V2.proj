@@ -602,3 +602,35 @@ function buildUnifiedTblPtk() {
   Logger.log("buildUnifiedTblPtk selesai: " + outRows.length + " baris, " + unifiedHeaders.length + " kolom gabungan.");
   return { rows: outRows.length, cols: unifiedHeaders.length };
 }
+
+/**
+ * Menghapus kolom-kolom di tbl_ptk yang seluruh isinya (baris 2 ke bawah) kosong melompong,
+ * agar tbl_ptk bersih dari kolom sisa yang tidak terpakai.
+ */
+function bersihkanKolomKosongTblPtk() {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_MASTER);
+  var sheet = ss.getSheetByName("tbl_ptk");
+  if (!sheet || sheet.getLastRow() < 2) return { deletedCols: 0 };
+
+  var data = sheet.getDataRange().getDisplayValues();
+  var numCols = data[0].length;
+  var deleted = 0;
+
+  // Iterasi dari kanan ke kiri agar indeks kolom tidak bergeser saat dihapus
+  for (var c = numCols - 1; c >= 3; c--) {
+    var hasValue = false;
+    for (var r = 1; r < data.length; r++) {
+      if (String(data[r][c] || "").trim() !== "") {
+        hasValue = true;
+        break;
+      }
+    }
+    if (!hasValue) {
+      sheet.deleteColumn(c + 1);
+      deleted++;
+    }
+  }
+
+  Logger.log("bersihkanKolomKosongTblPtk selesai: " + deleted + " kolom kosong dihapus.");
+  return { deletedCols: deleted };
+}
