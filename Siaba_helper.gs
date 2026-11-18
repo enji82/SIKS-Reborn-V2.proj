@@ -392,6 +392,41 @@ function getMasterPegawaiUnified(options) {
  * Nama disajikan tanpa gelar untuk efisiensi tabel, serta menyertakan nama_dengan_gelar untuk keperluan form cuti.
  */
 function getDatabasePegawai() {
+  if (typeof USE_CENTRAL_PTK_DB !== "undefined" && USE_CENTRAL_PTK_DB && typeof getMasterPTK === "function") {
+    try {
+      var ptkList = getMasterPTK();
+      var sekList = getMasterSekolah();
+      var namaByNpsn = {};
+      for (var s = 0; s < sekList.length; s++) {
+        var sn = String(sekList[s].npsn || "").trim();
+        if (sn) namaByNpsn[sn] = String(sekList[s].nama_sekolah || "").trim();
+      }
+      var resCentral = [];
+      for (var i = 0; i < ptkList.length; i++) {
+        var p = ptkList[i];
+        var st = String(p.status_kepegawaian || "").toUpperCase();
+        if (st && st.indexOf("PNS") === -1 && st.indexOf("PPPK") === -1) continue;
+        var npsn = String(p.npsn || "").trim();
+        var nama = String(p.nama_lengkap || "").trim();
+        resCentral.push({
+          unit: namaByNpsn[npsn] || "",
+          nip: String(p.nip || "").trim(),
+          nama: nama,
+          nama_tanpa_gelar: nama,
+          nama_dengan_gelar: nama,
+          npsn: npsn,
+          jenjang: String(p.jenjang || "").trim(),
+          status: String(p.status_kepegawaian || "").trim(),
+          jabatan: String(p.jabatan || "").trim(),
+          hp: String(p.no_hp || "").trim(),
+          alamat: ""
+        });
+      }
+      if (resCentral.length > 0) return resCentral;
+    } catch (errCentral) {
+      Logger.log("getDatabasePegawai central fallback warning: " + errCentral.message);
+    }
+  }
   try {
     var listAsn = getMasterPegawaiUnified({ jenisPegawai: "ASN_ONLY" });
     if (Array.isArray(listAsn) && listAsn.length > 0) {
