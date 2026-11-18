@@ -915,6 +915,30 @@ function isiInfoPegawaiRiwayatCt() {
 }
 
 /**
+ * Menyalin sheet 'Lokasi_Upacara' dari SIABA_LOKASI_UPACARA_DB
+ * ke tbl_siaba_lokasi_upacara di SIKS_DB_SIABA.
+ */
+function syncSiabaLokasiUpacara() {
+  var srcSs = SpreadsheetApp.openById(SPREADSHEET_IDS.SIABA_LOKASI_UPACARA_DB);
+  var srcSheet = srcSs.getSheetByName("Lokasi_Upacara") || srcSs.getSheets()[0];
+  if (!srcSheet) return { tbl_siaba_lokasi_upacara: 0 };
+
+  var dstSs = SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_SIABA);
+  var dstSheet = dstSs.getSheetByName("tbl_siaba_lokasi_upacara") || dstSs.insertSheet("tbl_siaba_lokasi_upacara");
+
+  var srcData = srcSheet.getDataRange().getDisplayValues();
+  if (srcData.length < 1) return { tbl_siaba_lokasi_upacara: 0 };
+
+  dstSheet.clearContents();
+  dstSheet.getRange(1, 1, srcData.length, srcData[0].length).setValues(srcData);
+  dstSheet.getRange(1, 1, 1, srcData[0].length).setFontWeight("bold");
+  dstSheet.setFrozenRows(1);
+
+  Logger.log("syncSiabaLokasiUpacara selesai: " + Math.max(0, srcData.length - 1) + " baris.");
+  return { tbl_siaba_lokasi_upacara: Math.max(0, srcData.length - 1) };
+}
+
+/**
  * Menjalankan sinkronisasi semua modul SIABA sekaligus.
  */
 function syncSiabaAll() {

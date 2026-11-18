@@ -10,6 +10,14 @@ const KONFIG_LOKASI_UPACARA = {
   SHEET_NAMA: "Lokasi_Upacara"
 };
 
+function getLokasiUpacaraSheet_() {
+  if (typeof USE_CENTRAL_SIABA_DB !== "undefined" && USE_CENTRAL_SIABA_DB) {
+    var central = getSiabaCentralSheet("tbl_siaba_lokasi_upacara");
+    if (central) return central;
+  }
+  return getLokasiUpacaraSheet_();
+}
+
 /*
  * Struktur kolom sheet Lokasi_Upacara (1-based):
  *  A(1)  Unit Kerja
@@ -35,7 +43,7 @@ const KONFIG_LOKASI_UPACARA = {
 // =====================================================================
 function getDaftarLokasiUpacara(filterUnit, filterTahun, filterBulan) {
   try {
-    var sheet = getSheet(KONFIG_LOKASI_UPACARA.DB_KEY, KONFIG_LOKASI_UPACARA.SHEET_NAMA);
+    var sheet = getLokasiUpacaraSheet_();
     var data  = sheet.getDataRange().getDisplayValues();
     var result = [];
 
@@ -115,7 +123,7 @@ function simpanLokasiUpacara(form) {
   try {
     lock.waitLock(10000);
 
-    var sheet = getSheet(KONFIG_LOKASI_UPACARA.DB_KEY, KONFIG_LOKASI_UPACARA.SHEET_NAMA);
+    var sheet = getLokasiUpacaraSheet_();
     var data  = sheet.getDataRange().getValues();
 
     var nipBaru = String(form.nip_asn).replace(/'/g, "").trim();
@@ -187,7 +195,7 @@ function updateLokasiUpacara(form) {
   try {
     lock.waitLock(10000);
 
-    var sheet = getSheet(KONFIG_LOKASI_UPACARA.DB_KEY, KONFIG_LOKASI_UPACARA.SHEET_NAMA);
+    var sheet = getLokasiUpacaraSheet_();
     var baris = cariBarisLokasiUpacara(sheet, form.recId, form.tglKirim);
     if (baris === -1) throw new Error("Data tidak ditemukan atau sudah dihapus oleh user lain.");
 
@@ -271,7 +279,7 @@ function hapusLokasiUpacara(dataKirim) {
   try {
     lock.waitLock(10000);
 
-    var sheet  = getSheet(KONFIG_LOKASI_UPACARA.DB_KEY, KONFIG_LOKASI_UPACARA.SHEET_NAMA);
+    var sheet  = getLokasiUpacaraSheet_();
     var rowIdx = cariBarisLokasiUpacara(sheet, dataKirim.recId, dataKirim.tglKirim);
     if (rowIdx === -1) throw new Error("Data tidak ditemukan atau sudah dihapus oleh user lain.");
 
@@ -309,7 +317,7 @@ function verifikasiLokasiUpacara(form) {
   try {
     lock.waitLock(10000);
 
-    var sheet = getSheet(KONFIG_LOKASI_UPACARA.DB_KEY, KONFIG_LOKASI_UPACARA.SHEET_NAMA);
+    var sheet = getLokasiUpacaraSheet_();
     var baris = cariBarisLokasiUpacara(sheet, form.recId, form.tglKirim, form);
     if (baris === -1) throw new Error("Data tidak ditemukan atau sudah dihapus oleh user lain.");
 
@@ -513,7 +521,7 @@ function getNotifikasiLokasi(role, unit) {
 
 function tandaiNotifLokasiDibaca(rowId, role) {
   try {
-    var sheet = getSheet(KONFIG_LOKASI_UPACARA.DB_KEY, KONFIG_LOKASI_UPACARA.SHEET_NAMA);
+    var sheet = getLokasiUpacaraSheet_();
     var rIdx = parseInt(rowId);
     if (isNaN(rIdx)) return false;
 
@@ -535,7 +543,7 @@ function tandaiNotifLokasiDibaca(rowId, role) {
 
 function tandaiSemuaNotifLokasiDibaca(role, unit) {
   try {
-    var sheet = getSheet(KONFIG_LOKASI_UPACARA.DB_KEY, KONFIG_LOKASI_UPACARA.SHEET_NAMA);
+    var sheet = getLokasiUpacaraSheet_();
     var data = sheet.getDataRange().getDisplayValues();
 
     var rLower = String(role || "").toLowerCase();
