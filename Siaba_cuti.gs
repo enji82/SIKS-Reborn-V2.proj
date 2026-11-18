@@ -781,22 +781,25 @@ function getRekapData(targetInput) {
 
         var key = nip || (nama + "|" + unit);
         if (!byKey[key]) {
-          byKey[key] = { unit: unit, nama: nama, nip: nip, ct: 0, cb: 0, cs: 0, cm: 0, cap: 0, cltn: 0 };
+          byKey[key] = {
+            unit: unit, nama: nama, nip: nip,
+            ctA: 0, ctH: 0, cbA: 0, cbH: 0, csA: 0, csH: 0,
+            cmA: 0, cmH: 0, capA: 0, capH: 0, cltnA: 0, cltnH: 0
+          };
         }
-        if (jenis.indexOf("TAHUNAN") > -1 || jenis === "CT") byKey[key].ct += jml;
-        else if (jenis.indexOf("BESAR") > -1 || jenis === "CB") byKey[key].cb += jml;
-        else if (jenis.indexOf("SAKIT") > -1 || jenis === "CS") byKey[key].cs += jml;
-        else if (jenis.indexOf("MELAHIRKAN") > -1 || jenis === "CM") byKey[key].cm += jml;
-        else if (jenis.indexOf("PENTING") > -1 || jenis === "CAP") byKey[key].cap += jml;
-        else if (jenis.indexOf("TANGGUNGAN") > -1 || jenis === "CLTN") byKey[key].cltn += jml;
+        if (jenis.indexOf("TAHUNAN") > -1 || jenis === "CT") { byKey[key].ctA += 1; byKey[key].ctH += jml; }
+        else if (jenis.indexOf("BESAR") > -1 || jenis === "CB") { byKey[key].cbA += 1; byKey[key].cbH += jml; }
+        else if (jenis.indexOf("SAKIT") > -1 || jenis === "CS") { byKey[key].csA += 1; byKey[key].csH += jml; }
+        else if (jenis.indexOf("MELAHIRKAN") > -1 || jenis === "CM") { byKey[key].cmA += 1; byKey[key].cmH += jml; }
+        else if (jenis.indexOf("PENTING") > -1 || jenis === "CAP") { byKey[key].capA += 1; byKey[key].capH += jml; }
+        else if (jenis.indexOf("TANGGUNGAN") > -1 || jenis === "CLTN") { byKey[key].cltnA += 1; byKey[key].cltnH += jml; }
       }
 
-      var h1 = ["Unit Kerja", "Nama ASN", "NIP", "CT", "", "CB", "", "CS", "", "CM", "", "CAP", "", "CLTN", "Total"];
-      var h2 = ["Unit Kerja", "Nama ASN", "NIP", "Hari", "Ket", "Hari", "Ket", "Hari", "Ket", "Hari", "Ket", "Hari", "Ket", "Hari", "Total"];
+      var h1 = ["Unit Kerja", "Nama ASN", "NIP", "CT", "", "CB", "", "CS", "", "CM", "", "CAP", "", "CLTN", ""];
+      var h2 = ["Unit Kerja", "Nama ASN", "NIP", "Ajuan", "Hari", "Ajuan", "Hari", "Ajuan", "Hari", "Ajuan", "Hari", "Ajuan", "Hari", "Ajuan", "Hari"];
       var dataOut = Object.keys(byKey).sort().map(function(k) {
         var o = byKey[k];
-        var tot = o.ct + o.cb + o.cs + o.cm + o.cap + o.cltn;
-        return [o.unit, o.nama, o.nip, o.ct, "", o.cb, "", o.cs, "", o.cm, "", o.cap, "", o.cltn, tot];
+        return [o.unit, o.nama, o.nip, o.ctA, o.ctH, o.cbA, o.cbH, o.csA, o.csH, o.cmA, o.cmH, o.capA, o.capH, o.cltnA, o.cltnH];
       });
       return JSON.stringify({ h1: h1, h2: h2, data: dataOut });
     } catch (eR) {
