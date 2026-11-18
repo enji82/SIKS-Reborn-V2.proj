@@ -795,11 +795,11 @@ function getRekapData(targetInput) {
         else if (jenis.indexOf("TANGGUNGAN") > -1 || jenis === "CLTN") { byKey[key].cltnA += 1; byKey[key].cltnH += jml; }
       }
 
-      var h1 = ["Unit Kerja", "Nama ASN", "NIP", "CT", "", "CB", "", "CS", "", "CM", "", "CAP", "", "CLTN", ""];
+      var h1 = ["Unit Kerja", "Nama ASN", "NIP", "CT", "", "CS", "", "CAP", "", "CM", "", "CB", "", "CLTN", ""];
       var h2 = ["Unit Kerja", "Nama ASN", "NIP", "Ajuan", "Hari", "Ajuan", "Hari", "Ajuan", "Hari", "Ajuan", "Hari", "Ajuan", "Hari", "Ajuan", "Hari"];
       var dataOut = Object.keys(byKey).sort().map(function(k) {
         var o = byKey[k];
-        return [o.unit, o.nama, o.nip, o.ctA, o.ctH, o.cbA, o.cbH, o.csA, o.csH, o.cmA, o.cmH, o.capA, o.capH, o.cltnA, o.cltnH];
+        return [o.unit, o.nama, o.nip, o.ctA, o.ctH, o.csA, o.csH, o.capA, o.capH, o.cmA, o.cmH, o.cbA, o.cbH, o.cltnA, o.cltnH];
       });
       return JSON.stringify({ h1: h1, h2: h2, data: dataOut });
     } catch (eR) {
