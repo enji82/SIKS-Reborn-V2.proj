@@ -506,6 +506,8 @@ function syncPtkFullToMaster() {
     { dbKey: "PTK_SD_DB", sheetName: "gtk_non_aktif" },
     { dbKey: "PTK_SD_DB", sheetName: "gtk_non_aktif_sds" },
     { dbKey: "PTK_SD_DB", sheetName: "usulan_koreksi_ktp_sdn" },
+    { dbKey: "PTK_SD_DB", sheetName: "usulan_mutasi_sdn" },
+    { dbKey: "PTK_SD_DB", sheetName: "usulan_mutasi_sds" },
     { dbKey: "PTK_SD_DB", sheetName: "isian_jabatan" },
     { dbKey: "PTK_SD_DB", sheetName: "isian_tugas_di_sekolah" },
     { dbKey: "PTK_SD_DB", sheetName: "data_pangkat" },
