@@ -604,6 +604,36 @@ function syncSiabaKonfigJadwal() {
 }
 
 /**
+ * Menyalin sheet 'arsip_siaba' dan 'master_sekolah' dari ARSIP_SIABA_DB
+ * ke SIKS_DB_SIABA dengan mempertahankan seluruh kolom aslinya.
+ */
+function syncSiabaArsip() {
+  var srcSs = SpreadsheetApp.openById(SPREADSHEET_IDS.ARSIP_SIABA_DB);
+  var dstSs = SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_SIABA);
+  var pairs = [
+    { src: "arsip_siaba", dst: "tbl_siaba_arsip" },
+    { src: "master_sekolah", dst: "tbl_siaba_arsip_master" }
+  ];
+
+  var res = {};
+  pairs.forEach(function (p) {
+    var srcSheet = srcSs.getSheetByName(p.src);
+    if (!srcSheet) { res[p.dst] = 0; return; }
+    var dstSheet = dstSs.getSheetByName(p.dst) || dstSs.insertSheet(p.dst);
+    var srcData = srcSheet.getDataRange().getDisplayValues();
+    if (srcData.length < 1) { res[p.dst] = 0; return; }
+    dstSheet.clearContents();
+    dstSheet.getRange(1, 1, srcData.length, srcData[0].length).setValues(srcData);
+    dstSheet.getRange(1, 1, 1, srcData[0].length).setFontWeight("bold");
+    dstSheet.setFrozenRows(1);
+    res[p.dst] = Math.max(0, srcData.length - 1);
+  });
+
+  Logger.log("syncSiabaArsip selesai: " + JSON.stringify(res));
+  return res;
+}
+
+/**
  * Menjalankan sinkronisasi semua modul SIABA sekaligus.
  */
 function syncSiabaAll() {

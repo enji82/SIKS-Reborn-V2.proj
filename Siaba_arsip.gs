@@ -8,10 +8,24 @@ const KONFIG_ARSIP_SIABA = {
   get FOLDER_ROOT_ID() { return FOLDER_CONFIG.ARSIP_SIABA || "1D0rwRT_tIj9QZTPPG3cRk4NRcbhMzDHm"; }
 };
 
+function getArsipSiabaSheet_(sheetName) {
+  if (typeof USE_CENTRAL_SIABA_DB !== "undefined" && USE_CENTRAL_SIABA_DB) {
+    if (sheetName === "arsip_siaba") {
+      var centralA = getSiabaCentralSheet("tbl_siaba_arsip");
+      if (centralA) return centralA;
+    }
+    if (sheetName === "master_sekolah") {
+      var centralM = getSiabaCentralSheet("tbl_siaba_arsip_master");
+      if (centralM) return centralM;
+    }
+  }
+  return getSheet(KONFIG_ARSIP_SIABA.DB_ARSIP, sheetName);
+}
+
 // 0. Dapatkan Daftar Master Sekolah + Status per Periode
 function arsipsiaba_getMasterDanStatus(tahun, bulan) {
   try {
-    var sheetMaster = getSheet(KONFIG_ARSIP_SIABA.DB_ARSIP, "master_sekolah");
+    var sheetMaster = getArsipSiabaSheet_("master_sekolah");
     if (!sheetMaster) return { error: "Sheet master_sekolah tidak ditemukan di spreadsheet arsip." };
 
     var lastRow = sheetMaster.getLastRow();
@@ -89,7 +103,7 @@ function arsipsiaba_getDaftarUnit() {
 // 2. Dapatkan Data Arsip yang sudah diunggah
 function arsipsiaba_getDataArsip(tahunFilter, bulanFilter) {
   try {
-    var sheet = getSheet(KONFIG_ARSIP_SIABA.DB_ARSIP, "arsip_siaba");
+    var sheet = getArsipSiabaSheet_("arsip_siaba");
     if (!sheet) return { error: "Sheet arsip_siaba tidak ditemukan." };
     
     var lastRow = sheet.getLastRow();
@@ -138,7 +152,7 @@ function arsipsiaba_getOrCreateFolder(parentFolder, folderName) {
 function arsipsiaba_simpanArsip(payload) {
   try {
     var isEdit = payload.mode === "edit";
-    var sheet = getSheet(KONFIG_ARSIP_SIABA.DB_ARSIP, "arsip_siaba");
+    var sheet = getArsipSiabaSheet_("arsip_siaba");
     if (!sheet) return { error: "Sheet arsip_siaba tidak ditemukan." };
     
     var timestamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MM-yyyy HH:mm:ss");
@@ -248,7 +262,7 @@ function arsipsiaba_getDashboardBelumLapor(tahun, bulan) {
 // 6. Proses Hapus Arsip (Soft Delete)
 function arsipsiaba_hapusArsip(rowId, userLogin) {
   try {
-    var sheet = getSheet(KONFIG_ARSIP_SIABA.DB_ARSIP, "arsip_siaba");
+    var sheet = getArsipSiabaSheet_("arsip_siaba");
     var sheetTrash = getSheet(KONFIG_ARSIP_SIABA.DB_ARSIP, "arsip_siaba_trash");
     
     // Auto-create sheet trash jika belum ada
