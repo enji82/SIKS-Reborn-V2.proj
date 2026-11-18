@@ -53,7 +53,18 @@ function getSiabaMetric(type) {
   };
 
   try {
-    var sh = getSheet(config.key, config.tab);
+    var sh = null;
+    if (typeof USE_CENTRAL_SIABA_DB !== "undefined" && USE_CENTRAL_SIABA_DB) {
+      var mapCentral = {
+        "Lupa_Presensi": "tbl_siaba_lupa",
+        "Salah_Presensi": "tbl_siaba_salah",
+        "Perjalanan_Dinas": "tbl_siaba_dinas",
+        "Form Cuti": "tbl_siaba_form_cuti",
+        "Lokasi_Upacara": "tbl_siaba_lokasi_upacara"
+      };
+      if (mapCentral[config.tab]) sh = getSiabaCentralSheet(mapCentral[config.tab]);
+    }
+    if (!sh) sh = getSheet(config.key, config.tab);
     if (sh) {
       var data = sh.getDataRange().getValues();
       for (var i = 1; i < data.length; i++) {
