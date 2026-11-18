@@ -634,6 +634,30 @@ function syncSiabaArsip() {
 }
 
 /**
+ * Menyalin sheet 'Form Cuti' (52 kolom A-AZ) dari SIABA_CUTI_DB ke tbl_siaba_form_cuti
+ * di SIKS_DB_SIABA agar cetak PDF & seluruh fitur cuti berjalan 100% di database baru.
+ */
+function syncSiabaFormCutiExact() {
+  var srcSs = SpreadsheetApp.openById(SPREADSHEET_IDS.SIABA_CUTI_DB);
+  var srcSheet = srcSs.getSheetByName("Form Cuti");
+  if (!srcSheet) return { tbl_siaba_form_cuti: 0 };
+
+  var dstSs = SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_SIABA);
+  var dstSheet = dstSs.getSheetByName("tbl_siaba_form_cuti") || dstSs.insertSheet("tbl_siaba_form_cuti");
+
+  var srcData = srcSheet.getDataRange().getDisplayValues();
+  if (srcData.length < 2) return { tbl_siaba_form_cuti: 0 };
+
+  dstSheet.clearContents();
+  dstSheet.getRange(1, 1, srcData.length, srcData[0].length).setValues(srcData);
+  dstSheet.getRange(1, 1, 1, srcData[0].length).setFontWeight("bold");
+  dstSheet.setFrozenRows(1);
+
+  Logger.log("syncSiabaFormCutiExact selesai: " + (srcData.length - 1) + " baris.");
+  return { tbl_siaba_form_cuti: srcData.length - 1 };
+}
+
+/**
  * Menjalankan sinkronisasi semua modul SIABA sekaligus.
  */
 function syncSiabaAll() {

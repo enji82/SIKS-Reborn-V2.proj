@@ -11,6 +11,10 @@ const KONFIG_CUTI = {
 
 function getCutiSheet_(sheetName) {
   if (typeof USE_CENTRAL_SIABA_DB !== "undefined" && USE_CENTRAL_SIABA_DB) {
+    if (sheetName === KONFIG_CUTI.SHEET_MAIN) {
+      var centralForm = getSiabaCentralSheet("tbl_siaba_form_cuti");
+      if (centralForm) return centralForm;
+    }
     if (sheetName === "Sisa CT") return getSiabaCentralSheet("tbl_siaba_sisa_cuti");
     if (sheetName === "Data Atasan") return getSiabaCentralSheet("tbl_siaba_data_atasan");
   }
@@ -100,7 +104,7 @@ function cuti_findCol(headers, target) {
    ====================================================================== */
 function getDataCuti(tahun, bulan, unitFilter) { 
   try {
-    var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
+    var sheet = getCutiSheet_(KONFIG_CUTI.SHEET_MAIN);
     
     var lastRow = sheet.getLastRow();
     if (lastRow < 2) return JSON.stringify([]);
@@ -215,7 +219,7 @@ function simpanPengajuanCuti(payload) {
     var errorBentrok = cekBentrokCuti(payload.nip, payload.tglMulai, payload.tglSelesai, null);
     if (errorBentrok) return errorBentrok;
 
-    var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
+    var sheet = getCutiSheet_(KONFIG_CUTI.SHEET_MAIN);
     
     var sysDateStr = "'" + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MM-yyyy HH:mm:ss");
     var tglMulaiIndo = formatIndoText(payload.tglMulai);
@@ -254,7 +258,7 @@ function updatePengajuanCuti(payload) {
     var errorBentrok = cekBentrokCuti(payload.nip, payload.tglMulai, payload.tglSelesai, rowIndex);
     if (errorBentrok) return errorBentrok;
 
-    var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
+    var sheet = getCutiSheet_(KONFIG_CUTI.SHEET_MAIN);
     
     var statusLama = String(sheet.getRange(rowIndex, 11).getValue()).toLowerCase();
     if (statusLama.includes("ok") || statusLama.includes("setuju")) return "Gagal: Data sudah Disetujui.";
@@ -300,7 +304,7 @@ function hapusPengajuanCuti(rowBaris, kodeInput, userDelete) {
     var d = new Date(); var kd = d.getFullYear()+""+String(d.getMonth()+1).padStart(2,'0')+""+String(d.getDate()).padStart(2,'0');
     if (String(kodeInput).trim() !== kd) return "KODE_SALAH";
 
-    var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
+    var sheet = getCutiSheet_(KONFIG_CUTI.SHEET_MAIN);
     sheet.deleteRow(parseInt(rowBaris));
     SpreadsheetApp.flush();
     return "Sukses";
@@ -311,7 +315,7 @@ function ajukanBatalCuti(rowBaris, alasan, userName) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
-    var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
+    var sheet = getCutiSheet_(KONFIG_CUTI.SHEET_MAIN);
     var row = parseInt(rowBaris);
     var oldKet = String(sheet.getRange(row, 12).getValue());
     var sysDateStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MM-yyyy HH:mm:ss");
@@ -335,7 +339,7 @@ function regeneratePdfPengajuanCuti(rowBaris) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(20000);
-    var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
+    var sheet = getCutiSheet_(KONFIG_CUTI.SHEET_MAIN);
     var row = parseInt(rowBaris);
     var rowData = sheet.getRange(row, 1, 1, 52).getDisplayValues()[0];
 
@@ -400,7 +404,7 @@ function verifikasiPengajuan(rowBaris, status, catatan, adminName) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(20000);
-    var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
+    var sheet = getCutiSheet_(KONFIG_CUTI.SHEET_MAIN);
     var row = parseInt(rowBaris);
     var rowData = sheet.getRange(row, 1, 1, 52).getDisplayValues()[0];
 
@@ -451,7 +455,7 @@ function getSisaCutiPegawai(targetNip) {
 }
 
 function cekBentrokCuti(nipBaru, tglMulaiBaruStr, tglSelesaiBaruStr, rowIdPengecualian) {
-  var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
+  var sheet = getCutiSheet_(KONFIG_CUTI.SHEET_MAIN);
   var data = sheet.getDataRange().getDisplayValues();
   var d1 = new Date(tglMulaiBaruStr); d1.setHours(0,0,0,0);
   var d2 = new Date(tglSelesaiBaruStr); d2.setHours(0,0,0,0);
@@ -761,7 +765,7 @@ function getRekapData(targetInput) {
 
 function getUnitOptionsUnggah() {
   try {
-    var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
+    var sheet = getCutiSheet_(KONFIG_CUTI.SHEET_MAIN);
     
     var lastRow = sheet.getLastRow();
     if (lastRow < 2) return [];
@@ -784,7 +788,7 @@ function getUnitOptionsUnggah() {
 
 function getDaftarUnggahCuti(tahun, bulan, unit, status) {
   try {
-    var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
+    var sheet = getCutiSheet_(KONFIG_CUTI.SHEET_MAIN);
 
     var lastRow = sheet.getLastRow();
     if (lastRow < 2) return JSON.stringify([]);
@@ -874,7 +878,7 @@ function getDaftarUnggahCuti(tahun, bulan, unit, status) {
 
 function simpanUnggahSurat(form, fileData) {
   try {
-    var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
+    var sheet = getCutiSheet_(KONFIG_CUTI.SHEET_MAIN);
     var row = parseInt(form.recId);
     
     if (isNaN(row) || row < 2) throw new Error("Data tidak valid.");
@@ -921,7 +925,7 @@ function simpanUnggahSurat(form, fileData) {
 
 function verifikasiUnggahSurat(form) {
   try {
-    var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
+    var sheet = getCutiSheet_(KONFIG_CUTI.SHEET_MAIN);
     var row = parseInt(form.recId);
 
     var now = new Date();
@@ -942,7 +946,7 @@ function verifikasiUnggahSurat(form) {
    ---------------------------------------------------------------------- */
 function getNotifikasiCuti(role, unit) {
   try {
-    var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
+    var sheet = getCutiSheet_(KONFIG_CUTI.SHEET_MAIN);
     var data = sheet.getDataRange().getDisplayValues();
     var rLower = String(role || "").toLowerCase();
     var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
@@ -984,7 +988,7 @@ function getNotifikasiCuti(role, unit) {
 
 function getNotifikasiSuratCuti(role, unit) {
   try {
-    var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
+    var sheet = getCutiSheet_(KONFIG_CUTI.SHEET_MAIN);
     var data = sheet.getDataRange().getDisplayValues();
     var rLower = String(role || "").toLowerCase();
     var isAdmin = (rLower.indexOf('admin') > -1 || rLower.indexOf('verifikator') > -1 || rLower.indexOf('korwil') > -1);
@@ -1067,7 +1071,7 @@ function getNotifikasiSuratCuti(role, unit) {
 
 function tandaiNotifCutiDibaca(rowId, role) {
     try {
-        var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
+        var sheet = getCutiSheet_(KONFIG_CUTI.SHEET_MAIN);
         var rIdx = parseInt(rowId);
         var mark = (role === "Admin") ? "Admin" : "User";
         var cur = String(sheet.getRange(rIdx, 49).getDisplayValue() || "").trim();
@@ -1079,7 +1083,7 @@ function tandaiNotifCutiDibaca(rowId, role) {
 
 function tandaiNotifSuratCutiDibaca(rowId, role) {
     try {
-        var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
+        var sheet = getCutiSheet_(KONFIG_CUTI.SHEET_MAIN);
         var r = parseInt(rowId); var mark = (role === "Admin") ? "Admin" : "User";
         var cur = String(sheet.getRange(r, 52).getDisplayValue() || "").trim();
         if (cur === "") sheet.getRange(r, 52).setValue(mark);
@@ -1090,7 +1094,7 @@ function tandaiNotifSuratCutiDibaca(rowId, role) {
 
 function tandaiSemuaNotifCutiDibaca(role, unit) {
     try {
-        var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
+        var sheet = getCutiSheet_(KONFIG_CUTI.SHEET_MAIN);
         var data = sheet.getDataRange().getDisplayValues();
         var mark = (role === "Admin") ? "Admin" : "User";
         for (var i = 1; i < data.length; i++) {
@@ -1115,7 +1119,7 @@ function tandaiSemuaNotifCutiDibaca(role, unit) {
  * Jalankan SEKALI dari Apps Script Editor: Run > backfillTglUnggahCuti
  */
 function backfillTglUnggahCuti() {
-  var sheet = getSheet(KONFIG_CUTI.DB_KEY, KONFIG_CUTI.SHEET_MAIN);
+  var sheet = getCutiSheet_(KONFIG_CUTI.SHEET_MAIN);
   var lastRow = sheet.getLastRow();
   if (lastRow < 2) { Logger.log("Tidak ada data."); return; }
 
