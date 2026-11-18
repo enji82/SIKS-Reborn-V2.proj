@@ -658,6 +658,61 @@ function syncSiabaFormCutiExact() {
 }
 
 /**
+ * Membuat sheet tbl_siaba_riwayat_ct (8 kolom tetap) dan mengisi data awal tahun aktif
+ * dari tbl_siaba_sisa_cuti di SIKS_DB_SIABA.
+ */
+function initRiwayatCtDariSisaCt(tahunAktif) {
+  var tahun = String(tahunAktif || new Date().getFullYear());
+  var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_SIABA);
+  var srcSheet = ss.getSheetByName("tbl_siaba_sisa_cuti");
+  if (!srcSheet || srcSheet.getLastRow() < 2) {
+    return { inserted: 0, message: "tbl_siaba_sisa_cuti kosong." };
+  }
+
+  var dstSheet = ss.getSheetByName("tbl_siaba_riwayat_ct");
+  if (!dstSheet) {
+    dstSheet = ss.insertSheet("tbl_siaba_riwayat_ct");
+    var headers = ["nip", "tahun", "jatah_tahun_ini", "sisa_n_1", "sisa_n_2", "total_hak_ct", "diambil", "sisa_akhir"];
+    dstSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    dstSheet.getRange(1, 1, 1, headers.length).setFontWeight("bold");
+    dstSheet.setFrozenRows(1);
+  }
+
+  var existing = {};
+  if (dstSheet.getLastRow() >= 2) {
+    var exData = dstSheet.getRange(2, 1, dstSheet.getLastRow() - 1, 2).getDisplayValues();
+    for (var i = 0; i < exData.length; i++) {
+      existing[String(exData[i][0]).trim() + "|" + String(exData[i][1]).trim()] = true;
+    }
+  }
+
+  var srcData = srcSheet.getDataRange().getValues();
+  var toInsert = [];
+  for (var r = 1; r < srcData.length; r++) {
+    var row = srcData[r];
+    var nip = String(row[2] || "").trim();
+    if (!nip || existing[nip + "|" + tahun]) continue;
+
+    var n2 = Number(row[4]) || 0;
+    var n1 = Number(row[5]) || 0;
+    var n0 = Number(row[6]) || 12;
+    var jmlN = Number(row[7]) || (n0 + n1 + n2);
+    var diambil = Number(row[8]) || 0;
+    var sisaAkhir = Number(row[12]) || (jmlN - diambil);
+
+    toInsert.push([nip, tahun, n0, n1, n2, jmlN, diambil, sisaAkhir]);
+    existing[nip + "|" + tahun] = true;
+  }
+
+  if (toInsert.length > 0) {
+    dstSheet.getRange(dstSheet.getLastRow() + 1, 1, toInsert.length, 8).setValues(toInsert);
+  }
+
+  Logger.log("initRiwayatCtDariSisaCt (" + tahun + ") selesai: " + toInsert.length + " baris.");
+  return { inserted: toInsert.length };
+}
+
+/**
  * Menjalankan sinkronisasi semua modul SIABA sekaligus.
  */
 function syncSiabaAll() {
