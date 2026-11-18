@@ -529,3 +529,71 @@ function syncPtkFullToMaster() {
   Logger.log("syncPtkFullToMaster selesai: " + JSON.stringify(res));
   return res;
 }
+
+/**
+ * Menyatukan seluruh kolom & baris dari Master Data GTK (SDN), Master Data GTK SDS (SDS),
+ * dan Master Data GTK PAUD (PAUD) ke dalam 1 tabel induk tunggal: tbl_ptk di SIKS_DB_MASTER.
+ */
+function buildUnifiedTblPtk() {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_MASTER);
+  var sources = [
+    { sheetName: "Master Data GTK", jenjang: "SD Negeri" },
+    { sheetName: "Master Data GTK SDS", jenjang: "SD Swasta" },
+    { sheetName: "Master Data GTK PAUD", jenjang: "PAUD" }
+  ];
+
+  var unifiedHeaders = ["id_ptk", "jenjang", "status_aktif"];
+  var headerIndexMap = { "id_ptk": 0, "jenjang": 1, "status_aktif": 2 };
+  var allSheetsData = [];
+
+  sources.forEach(function (src) {
+    var sh = ss.getSheetByName(src.sheetName);
+    if (!sh || sh.getLastRow() < 2) return;
+    var vals = sh.getDataRange().getDisplayValues();
+    var hdrs = vals[0];
+    for (var c = 0; c < hdrs.length; c++) {
+      var hName = String(hdrs[c] || "").trim();
+      if (!hName) continue;
+      var hKey = hName.toLowerCase();
+      if (headerIndexMap[hKey] === undefined) {
+        headerIndexMap[hKey] = unifiedHeaders.length;
+        unifiedHeaders.push(hName);
+      }
+    }
+    allSheetsData.push({ jenjang: src.jenjang, hdrs: hdrs, rows: vals.slice(1) });
+  });
+
+  var outRows = [];
+  var counter = 1;
+  allSheetsData.forEach(function (sObj) {
+    for (var r = 0; r < sObj.rows.length; r++) {
+      var row = sObj.rows[r];
+      var hasContent = row.some(function (cell) { return String(cell || "").trim() !== ""; });
+      if (!hasContent) continue;
+
+      var newRow = new Array(unifiedHeaders.length).fill("");
+      newRow[0] = "PTK-" + counter++;
+      newRow[1] = sObj.jenjang;
+      newRow[2] = "AKTIF";
+
+      for (var c = 0; c < sObj.hdrs.length; c++) {
+        var hKey = String(sObj.hdrs[c] || "").trim().toLowerCase();
+        if (hKey && headerIndexMap[hKey] !== undefined) {
+          newRow[headerIndexMap[hKey]] = row[c];
+        }
+      }
+      outRows.push(newRow);
+    }
+  });
+
+  var dstSheet = ss.getSheetByName("tbl_ptk") || ss.insertSheet("tbl_ptk");
+  dstSheet.clearContents();
+  dstSheet.getRange(1, 1, 1, unifiedHeaders.length).setValues([unifiedHeaders]).setFontWeight("bold");
+  dstSheet.setFrozenRows(1);
+  if (outRows.length > 0) {
+    dstSheet.getRange(2, 1, outRows.length, unifiedHeaders.length).setValues(outRows);
+  }
+
+  Logger.log("buildUnifiedTblPtk selesai: " + outRows.length + " baris, " + unifiedHeaders.length + " kolom gabungan.");
+  return { rows: outRows.length, cols: unifiedHeaders.length };
+}
