@@ -5,7 +5,7 @@
    ====================================================================== */
 
 const KONFIG_PTK = {
-  DB_KEY: "PTK_DB",
+  get DB_KEY() { return (typeof USE_CENTRAL_PTK_DB !== "undefined" && USE_CENTRAL_PTK_DB) ? "SIKS_DB_MASTER" : "PTK_DB"; },
   SHEET_PTK: "Master Data GTK"
 };
 
