@@ -875,6 +875,46 @@ function generateJatahCtTahunBaru(tahunBaru) {
 }
 
 /**
+ * Mengisi kolom bantu Nama ASN (kolom I) dan Status Kepegawaian (kolom J)
+ * di tbl_siaba_riwayat_ct berdasarkan NIP dari tbl_ptk & tbl_siaba_sisa_cuti.
+ */
+function isiInfoPegawaiRiwayatCt() {
+  var ssSiaba = SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_SIABA);
+  var sheet = ssSiaba.getSheetByName("tbl_siaba_riwayat_ct");
+  if (!sheet || sheet.getLastRow() < 2) return { updated: 0 };
+
+  var infoByNip = {};
+  var sisaSheet = ssSiaba.getSheetByName("tbl_siaba_sisa_cuti");
+  if (sisaSheet && sisaSheet.getLastRow() >= 2) {
+    var sData = sisaSheet.getRange(2, 1, sisaSheet.getLastRow() - 1, 4).getDisplayValues();
+    for (var s = 0; s < sData.length; s++) {
+      var sNip = String(sData[s][2] || "").trim();
+      if (sNip) infoByNip[sNip] = { nama: sData[s][1], status: sData[s][3] };
+    }
+  }
+
+  var ptkList = typeof getMasterPTK === "function" ? getMasterPTK() : [];
+  for (var p = 0; p < ptkList.length; p++) {
+    var pNip = String(ptkList[p].nip || "").trim();
+    if (pNip && !infoByNip[pNip]) {
+      infoByNip[pNip] = { nama: ptkList[p].nama_lengkap || "", status: ptkList[p].status_kepegawaian || "" };
+    }
+  }
+
+  sheet.getRange(1, 9, 1, 2).setValues([["nama_asn", "status_kepegawaian"]]).setFontWeight("bold");
+  var nips = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getDisplayValues();
+  var out = [];
+  for (var i = 0; i < nips.length; i++) {
+    var n = String(nips[i][0] || "").trim();
+    var inf = infoByNip[n] || { nama: "", status: "" };
+    out.push([inf.nama, inf.status]);
+  }
+  sheet.getRange(2, 9, out.length, 2).setValues(out);
+  Logger.log("isiInfoPegawaiRiwayatCt selesai: " + out.length + " baris.");
+  return { updated: out.length };
+}
+
+/**
  * Menjalankan sinkronisasi semua modul SIABA sekaligus.
  */
 function syncSiabaAll() {
