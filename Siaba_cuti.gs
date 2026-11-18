@@ -730,6 +730,23 @@ function getSisaCutiData() {
 }
 
 function getRekapYears() {
+  if (typeof USE_CENTRAL_SIABA_DB !== "undefined" && USE_CENTRAL_SIABA_DB) {
+    try {
+      var sheetForm = getCutiSheet_(KONFIG_CUTI.SHEET_MAIN);
+      if (sheetForm && sheetForm.getLastRow() >= 2) {
+        var tglVals = sheetForm.getRange(2, 5, sheetForm.getLastRow() - 1, 1).getDisplayValues();
+        var yrSet = {};
+        for (var i = 0; i < tglVals.length; i++) {
+          var m = String(tglVals[i][0] || "").match(/(20\d{2})/);
+          if (m) yrSet[m[1]] = true;
+        }
+        var yrs = Object.keys(yrSet).sort().reverse();
+        if (yrs.length > 0) {
+          return yrs.map(function(y) { return { tahun: y, id: y }; });
+        }
+      }
+    } catch (eC) {}
+  }
   try {
     var sheet = getSheet(KONFIG_CUTI.DB_KEY, "Jumlah Cuti");
     var lastRow = sheet.getLastRow();
@@ -742,6 +759,50 @@ function getRekapYears() {
 }
 
 function getRekapData(targetInput) {
+  if (typeof USE_CENTRAL_SIABA_DB !== "undefined" && USE_CENTRAL_SIABA_DB && /^\d{4}$/.test(String(targetInput || "").trim())) {
+    try {
+      var yrTarget = String(targetInput).trim();
+      var sheetForm = getCutiSheet_(KONFIG_CUTI.SHEET_MAIN);
+      var rows = sheetForm.getDataRange().getDisplayValues();
+      var byKey = {};
+      for (var i = 1; i < rows.length; i++) {
+        var r = rows[i];
+        var tmc = String(r[4] || "");
+        if (tmc.indexOf(yrTarget) === -1) continue;
+        var st = String(r[10] || "").toLowerCase();
+        if (st.indexOf("tolak") > -1) continue;
+
+        var unit = String(r[0] || "").trim();
+        var nama = String(r[1] || "").trim();
+        var nip = String(r[2] || "").trim();
+        var jenis = String(r[3] || "").toUpperCase();
+        var jml = parseInt(r[6], 10) || 0;
+        if (!nama && !nip) continue;
+
+        var key = nip || (nama + "|" + unit);
+        if (!byKey[key]) {
+          byKey[key] = { unit: unit, nama: nama, nip: nip, ct: 0, cb: 0, cs: 0, cm: 0, cap: 0, cltn: 0 };
+        }
+        if (jenis.indexOf("TAHUNAN") > -1 || jenis === "CT") byKey[key].ct += jml;
+        else if (jenis.indexOf("BESAR") > -1 || jenis === "CB") byKey[key].cb += jml;
+        else if (jenis.indexOf("SAKIT") > -1 || jenis === "CS") byKey[key].cs += jml;
+        else if (jenis.indexOf("MELAHIRKAN") > -1 || jenis === "CM") byKey[key].cm += jml;
+        else if (jenis.indexOf("PENTING") > -1 || jenis === "CAP") byKey[key].cap += jml;
+        else if (jenis.indexOf("TANGGUNGAN") > -1 || jenis === "CLTN") byKey[key].cltn += jml;
+      }
+
+      var h1 = ["Unit Kerja", "Nama ASN", "NIP", "CT", "", "CB", "", "CS", "", "CM", "", "CAP", "", "CLTN", "Total"];
+      var h2 = ["Unit Kerja", "Nama ASN", "NIP", "Hari", "Ket", "Hari", "Ket", "Hari", "Ket", "Hari", "Ket", "Hari", "Ket", "Hari", "Total"];
+      var dataOut = Object.keys(byKey).sort().map(function(k) {
+        var o = byKey[k];
+        var tot = o.ct + o.cb + o.cs + o.cm + o.cap + o.cltn;
+        return [o.unit, o.nama, o.nip, o.ct, "", o.cb, "", o.cs, "", o.cm, "", o.cap, "", o.cltn, tot];
+      });
+      return JSON.stringify({ h1: h1, h2: h2, data: dataOut });
+    } catch (eR) {
+      return JSON.stringify({ error: "Error: " + eR.toString() });
+    }
+  }
   var sheet;
   try { sheet = getSheet(KONFIG_CUTI.DB_KEY, targetInput); } catch(e) {}
   if (!sheet) {
