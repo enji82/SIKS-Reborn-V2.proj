@@ -54,7 +54,7 @@ function getSekolahByNpsn(npsn) {
 function getMasterPTK(filterNpsn) {
   var sheet = getMasterSpreadsheet_().getSheetByName("tbl_ptk");
   if (!sheet) return [];
-  var data = sheet.getDataRange().getValues();
+  var data = sheet.getDataRange().getDisplayValues();
   if (data.length < 2) return [];
 
   var headers = data[0];
@@ -62,12 +62,22 @@ function getMasterPTK(filterNpsn) {
   var result = [];
   for (var i = 1; i < data.length; i++) {
     var row = data[i];
-    if (!row[4]) continue; // nama_lengkap kosong
-    if (targetNpsn && String(row[9] || "").trim() !== targetNpsn) continue;
     var obj = {};
     for (var c = 0; c < headers.length; c++) {
-      obj[headers[c]] = row[c];
+      var hName = String(headers[c] || "").trim();
+      if (hName) obj[hName] = row[c];
     }
+    // Normalisasi field standar agar kompatibel dengan modul lain
+    obj.nama_lengkap = obj.nama_lengkap || obj["Nama Lengkap"] || obj["Nama"] || obj["Nama GTK"] || "";
+    obj.nip = obj.nip || obj["NIP"] || "";
+    obj.nik = obj.nik || obj["NIK"] || "";
+    obj.npsn = obj.npsn || obj["NPSN"] || "";
+    obj.status_kepegawaian = obj.status_kepegawaian || obj["Status Kepegawaian"] || obj["Status Pegawai"] || obj["Status"] || "";
+    obj.jabatan = obj.jabatan || obj["Jabatan"] || obj["Jenis PTK"] || "";
+    obj.no_hp = obj.no_hp || obj["No HP"] || obj["HP"] || "";
+
+    if (!obj.nama_lengkap) continue;
+    if (targetNpsn && String(obj.npsn || "").trim() !== targetNpsn) continue;
     result.push(obj);
   }
   return result;
