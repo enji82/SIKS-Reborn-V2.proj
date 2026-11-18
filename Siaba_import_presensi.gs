@@ -118,3 +118,41 @@ function deleteImportPresensi(rowIndex) {
     return JSON.stringify({ status: "error", message: e.message });
   }
 }
+
+/**
+ * Memproses / memvalidasi spreadsheet sumber presensi bulanan
+ * dan memperbarui status & waktu proses di tbl_siaba_sumber_presensi.
+ */
+function prosesImportPresensi(rowIndex) {
+  try {
+    var idx = parseInt(rowIndex, 10);
+    if (!idx || idx < 2) return JSON.stringify({ status: "error", message: "Baris tidak valid." });
+
+    var sheet = getImportPresensiSheet_();
+    var row = sheet.getRange(idx, 1, 1, 6).getDisplayValues()[0];
+    var bulan = String(row[0] || "").trim();
+    var tahun = String(row[1] || "").trim();
+    var idSpreadsheet = String(row[3] || "").trim();
+
+    if (!idSpreadsheet) {
+      return JSON.stringify({ status: "error", message: "ID Spreadsheet kosong." });
+    }
+
+    var srcSs = SpreadsheetApp.openById(idSpreadsheet);
+    var srcSheet = srcSs.getSheetByName("Data Siaba") || srcSs.getSheets()[0];
+    if (!srcSheet) {
+      return JSON.stringify({ status: "error", message: "Sheet 'Data Siaba' tidak ditemukan di spreadsheet sumber." });
+    }
+
+    var totalBaris = Math.max(0, srcSheet.getLastRow() - 1);
+    var nowStr = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd/MM/yyyy HH:mm");
+    sheet.getRange(idx, 5, 1, 2).setValues([[nowStr, "Sudah Diproses"]]);
+
+    return JSON.stringify({
+      status: "success",
+      message: "Sumber presensi " + bulan + " " + tahun + " berhasil diproses (" + totalBaris + " data pegawai terbaca)."
+    });
+  } catch (e) {
+    return JSON.stringify({ status: "error", message: "Gagal memproses: " + e.message });
+  }
+}

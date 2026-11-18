@@ -142,6 +142,9 @@
         $(document).off('click', '#imp_btnRefresh').on('click', '#imp_btnRefresh', imp_tarikDataServer);
         $(document).off('click', '#imp_btnTambah').on('click', '#imp_btnTambah', imp_bukaModalTambah);
         $(document).off('submit', '#imp_formUtama').on('submit', '#imp_formUtama', imp_submitFormUtama);
+        $(document).off('click', '.imp-btn-proses').on('click', '.imp-btn-proses', function () {
+            imp_prosesSumber($(this).data('id'));
+        });
         $(document).off('click', '.imp-btn-edit').on('click', '.imp-btn-edit', function () {
             imp_bukaModalEdit($(this).data('id'));
         });
@@ -151,6 +154,26 @@
 
         imp_tarikDataServer();
     });
+
+    function imp_prosesSumber(id) {
+        var row = IMP_DATA_MASTER[id];
+        if (!row) return;
+        Sultan.notif.info('Memproses data ' + (row.bulan || '') + ' ' + (row.tahun || '') + '...');
+        google.script.run
+            .withSuccessHandler(function (resStr) {
+                var res = JSON.parse(resStr);
+                if (res.status === "success") {
+                    Sultan.notif.sukses(res.message);
+                    imp_tarikDataServer();
+                } else {
+                    Sultan.alert('error', 'Gagal Memproses', res.message || 'Terjadi kesalahan.');
+                }
+            })
+            .withFailureHandler(function (err) {
+                Sultan.alert('error', 'Koneksi Server Gagal', err.message);
+            })
+            .prosesImportPresensi(row.rowIndex);
+    }
 
     function imp_kembalikanFormKeTemplate() {
         if ($('#imp_formUtama').length > 1) {
@@ -228,9 +251,10 @@
                 dokumen: row.idSpreadsheet || '-'
             });
 
+            var btnProses = '<button class="sultan-btn-aksi sultan-btn-aksi-primary imp-btn-proses" data-id="' + id + '" data-toggle="tooltip" title="Proses / Validasi Data"><i class="fas fa-sync-alt"></i></button>';
             var btnEdit = '<button class="sultan-btn-aksi sultan-btn-aksi-warning imp-btn-edit" data-id="' + id + '" data-toggle="tooltip" title="Edit Sumber"><i class="fas fa-pencil-alt"></i></button>';
             var btnHapus = '<button class="sultan-btn-aksi sultan-btn-aksi-maroon imp-btn-hapus" data-id="' + id + '" data-toggle="tooltip" title="Hapus Sumber"><i class="fas fa-trash-alt"></i></button>';
-            var aksiHTML = '<div class="d-flex flex-nowrap justify-content-center" style="gap:4px;">' + btnEdit + btnHapus + '</div>';
+            var aksiHTML = '<div class="d-flex flex-nowrap justify-content-center" style="gap:4px;">' + btnProses + btnEdit + btnHapus + '</div>';
 
             dtArray.push([
                 uiNo,
