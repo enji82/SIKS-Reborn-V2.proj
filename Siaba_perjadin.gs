@@ -60,6 +60,8 @@ function getDaftarDinas(tahun, bulan, status) {
     var cTglVerif = findCol(["tglverif", "tgl_verif"], 15);
     var cVerifikator = findCol(["verifikator", "admin_verif"], 16);
     var cKeterangan = findCol(["keterangan", "ket"], 17);
+    var cJabatanTtd = findCol(["jabatan_penandatangan", "jabatan penandatangan"], 19);
+    var cNamaTtd = findCol(["nama_penandatangan", "nama penandatangan"], 20);
 
     var result = [];
     
@@ -140,6 +142,7 @@ function getDaftarDinas(tahun, bulan, status) {
           tujuan: row[cTujuan] || "", kegiatan: row[cKegiatan] || "", jmlAsn: row[cJmlAsn] || "", dokumen: row[cDokumen] || "", status: row[cStatus] || "", jenisDok: row[cJenisDok] || "",
           tglKirim: cleanDate(row[cTglKirim]), userKirim: row[cUserKirim] || "", lastUpdate: cleanDate(row[cLastUpdate]), lastUser: row[cLastUser] || "",
           tglVerif: cleanDate(row[cTglVerif]), verifikator: row[cVerifikator] || "", keterangan: row[cKeterangan] || "",
+          jabatanPenandatangan: row[cJabatanTtd] || "", namaPenandatangan: row[cNamaTtd] || "",
           sekolah: resolvedSekolah,
           timestamp: lastActivity
         });
@@ -199,12 +202,17 @@ function simpanSptUnified(payload) {
       }
     }
 
+    if (sheetMaster.getLastColumn() < 21) {
+      sheetMaster.getRange(1, 20, 1, 2).setValues([["Jabatan_Penandatangan", "Nama_Penandatangan"]]);
+    }
+
     if (barisKetemu === -1) {
       // SPT BARU
       sheetMaster.appendRow([
         payload.header.jenis, payload.header.noSpt, tglSptTxt, tglMulaiTxt, tglSelesaiTxt,
         payload.header.tujuan, payload.header.kegiatan, payload.listPeserta.length, fileUrl, "Diproses", 
-        payload.header.jenisDok, sysDateStr, userName, "", "", "", "", ""
+        payload.header.jenisDok, sysDateStr, userName, "", "", "", "", "", "",
+        payload.header.jabatanPenandatangan || "", payload.header.namaPenandatangan || ""
       ]);
     } else {
       // UPDATE SPT YANG SUDAH ADA
@@ -218,6 +226,8 @@ function simpanSptUnified(payload) {
       if(payload.header.kegiatan) sheetMaster.getRange(r, 7).setValue(payload.header.kegiatan);
       if(fileUrl !== "") sheetMaster.getRange(r, 9).setValue(fileUrl);
       if(payload.header.jenisDok) sheetMaster.getRange(r, 11).setValue(payload.header.jenisDok);
+      if(payload.header.jabatanPenandatangan) sheetMaster.getRange(r, 20).setValue(payload.header.jabatanPenandatangan);
+      if(payload.header.namaPenandatangan) sheetMaster.getRange(r, 21).setValue(payload.header.namaPenandatangan);
 
       sheetMaster.getRange(r, 8).setValue(payload.listPeserta.length); // Update sesuai jumlah list baru
       sheetMaster.getRange(r, 14).setValue(sysDateStr); 
@@ -353,7 +363,9 @@ function cekInfoSpt(noSpt) {
             tujuan: data[i][5],
             kegiatan: data[i][6],
             status: data[i][9],
-            jenisDok: data[i][10]
+            jenisDok: data[i][10],
+            jabatanPenandatangan: data[i][19] || "",
+            namaPenandatangan: data[i][20] || ""
           }
         });
       }
