@@ -408,14 +408,18 @@ function getDatabasePegawai() {
         if (st && st.indexOf("PNS") === -1 && st.indexOf("PPPK") === -1) continue;
         var npsn = String(p.npsn || "").trim();
         var nama = String(p.nama_lengkap || "").trim();
+        var unitNama = namaByNpsn[npsn] || "";
+        if (!unitNama) continue;
+        var rawJenjang = String(p.jenjang || "").toUpperCase();
+        var normJenjang = rawJenjang.indexOf("SD") > -1 ? "SD" : (rawJenjang.indexOf("PAUD") > -1 || rawJenjang.indexOf("TK") > -1 ? "PAUD / TK" : rawJenjang);
         resCentral.push({
-          unit: namaByNpsn[npsn] || "",
+          unit: unitNama,
           nip: String(p.nip || "").trim(),
           nama: nama,
           nama_tanpa_gelar: nama,
           nama_dengan_gelar: nama,
           npsn: npsn,
-          jenjang: String(p.jenjang || "").trim(),
+          jenjang: normJenjang,
           status: String(p.status_kepegawaian || "").trim(),
           jabatan: String(p.jabatan || "").trim(),
           hp: String(p.no_hp || "").trim(),
