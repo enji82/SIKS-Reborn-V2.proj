@@ -762,6 +762,119 @@ function importRiwayatCtHistoris() {
 }
 
 /**
+ * Menghitung ulang seluruh saldo di tbl_siaba_riwayat_ct secara berantai (FIFO, maks 6 hari/tahun).
+ * Jalankan setelah ada revisi jatah_tahun_ini atau diambil di tahun mana pun.
+ */
+function recalculateAllRiwayatCt() {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_SIABA);
+  var sheet = ss.getSheetByName("tbl_siaba_riwayat_ct");
+  if (!sheet || sheet.getLastRow() < 2) return { updated: 0 };
+
+  var data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 8).getValues();
+  var byNip = {};
+  for (var i = 0; i < data.length; i++) {
+    var nip = String(data[i][0] || "").trim();
+    if (!nip) continue;
+    if (!byNip[nip]) byNip[nip] = [];
+    byNip[nip].push({ idx: i, row: data[i] });
+  }
+
+  Object.keys(byNip).forEach(function (nip) {
+    var list = byNip[nip];
+    list.sort(function (a, b) { return Number(a.row[1]) - Number(b.row[1]); });
+
+    var carryN1 = null;
+    var carryN2 = null;
+    for (var k = 0; k < list.length; k++) {
+      var r = list[k].row;
+      var n0 = Number(r[2]) || 0;
+      var n1 = (carryN1 !== null) ? carryN1 : (Number(r[3]) || 0);
+      var n2 = (carryN2 !== null) ? carryN2 : (Number(r[4]) || 0);
+      var diambil = Number(r[6]) || 0;
+
+      var totalHak = n0 + n1 + n2;
+      var sisaAkhir = Math.max(0, totalHak - diambil);
+
+      // FIFO: potong n2 -> n1 -> n0
+      var sisaPakai = diambil;
+      var remN2 = Math.max(0, n2 - sisaPakai);
+      sisaPakai = Math.max(0, sisaPakai - n2);
+      var remN1 = Math.max(0, n1 - sisaPakai);
+      sisaPakai = Math.max(0, sisaPakai - n1);
+      var remN0 = Math.max(0, n0 - sisaPakai);
+
+      r[3] = n1;
+      r[4] = n2;
+      r[5] = totalHak;
+      r[7] = sisaAkhir;
+
+      carryN1 = Math.min(6, remN0);
+      carryN2 = Math.min(6, remN1);
+    }
+  });
+
+  sheet.getRange(2, 1, data.length, 8).setValues(data);
+  Logger.log("recalculateAllRiwayatCt selesai: " + data.length + " baris diperbarui.");
+  return { updated: data.length };
+}
+
+/**
+ * Membuat baris jatah CT tahun baru di tbl_siaba_riwayat_ct untuk seluruh pegawai.
+ * Contoh: generateJatahCtTahunBaru(2027)
+ */
+function generateJatahCtTahunBaru(tahunBaru) {
+  var targetTahun = String(tahunBaru || (new Date().getFullYear() + 1));
+  var prevTahun = String(Number(targetTahun) - 1);
+  var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_SIABA);
+  var sheet = ss.getSheetByName("tbl_siaba_riwayat_ct");
+  if (!sheet || sheet.getLastRow() < 2) return { inserted: 0 };
+
+  var data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 8).getValues();
+  var existingTarget = {};
+  var prevRows = [];
+
+  for (var i = 0; i < data.length; i++) {
+    var nip = String(data[i][0] || "").trim();
+    var th = String(data[i][1] || "").trim();
+    if (th === targetTahun) existingTarget[nip] = true;
+    if (th === prevTahun) prevRows.push(data[i]);
+  }
+
+  var toInsert = [];
+  for (var p = 0; p < prevRows.length; p++) {
+    var pr = prevRows[p];
+    var pNip = String(pr[0] || "").trim();
+    if (!pNip || existingTarget[pNip]) continue;
+
+    var n0 = Number(pr[2]) || 0;
+    var n1 = Number(pr[3]) || 0;
+    var n2 = Number(pr[4]) || 0;
+    var diambil = Number(pr[6]) || 0;
+
+    var sisaPakai = diambil;
+    sisaPakai = Math.max(0, sisaPakai - n2);
+    var remN1 = Math.max(0, n1 - sisaPakai);
+    sisaPakai = Math.max(0, sisaPakai - n1);
+    var remN0 = Math.max(0, n0 - sisaPakai);
+
+    var newN1 = Math.min(6, remN0);
+    var newN2 = Math.min(6, remN1);
+    var newN0 = 12;
+    var totalHak = newN0 + newN1 + newN2;
+
+    toInsert.push([pNip, targetTahun, newN0, newN1, newN2, totalHak, 0, totalHak]);
+    existingTarget[pNip] = true;
+  }
+
+  if (toInsert.length > 0) {
+    sheet.getRange(sheet.getLastRow() + 1, 1, toInsert.length, 8).setValues(toInsert);
+  }
+
+  Logger.log("generateJatahCtTahunBaru (" + targetTahun + ") selesai: " + toInsert.length + " baris.");
+  return { inserted: toInsert.length };
+}
+
+/**
  * Menjalankan sinkronisasi semua modul SIABA sekaligus.
  */
 function syncSiabaAll() {
