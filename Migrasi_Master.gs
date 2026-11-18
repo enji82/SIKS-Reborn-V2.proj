@@ -493,3 +493,39 @@ function setupMasterSyncTrigger() {
     .create();
   Logger.log("Trigger harian syncAllMaster (pukul 01:00) berhasil dipasang.");
 }
+
+/**
+ * Menyalin sheet lengkap PTK (SDN, SDS, PAUD, dan sheet pendukungnya)
+ * ke SIKS_DB_MASTER dengan mempertahankan seluruh kolom aslinya.
+ */
+function syncPtkFullToMaster() {
+  var dstSs = SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_MASTER);
+  var items = [
+    { dbKey: "PTK_SD_DB", sheetName: "Master Data GTK" },
+    { dbKey: "PTK_SD_DB", sheetName: "Master Data GTK SDS" },
+    { dbKey: "PTK_SD_DB", sheetName: "gtk_non_aktif" },
+    { dbKey: "PTK_SD_DB", sheetName: "gtk_non_aktif_sds" },
+    { dbKey: "PTK_SD_DB", sheetName: "usulan_koreksi_ktp_sdn" },
+    { dbKey: "PTK_PAUD_DB", sheetName: "Master Data GTK PAUD" }
+  ];
+
+  var res = {};
+  items.forEach(function (it) {
+    var srcSs = SpreadsheetApp.openById(SPREADSHEET_IDS[it.dbKey]);
+    var srcSheet = srcSs.getSheetByName(it.sheetName);
+    if (!srcSheet) { res[it.sheetName] = 0; return; }
+
+    var dstSheet = dstSs.getSheetByName(it.sheetName) || dstSs.insertSheet(it.sheetName);
+    var srcData = srcSheet.getDataRange().getDisplayValues();
+    if (srcData.length < 1) { res[it.sheetName] = 0; return; }
+
+    dstSheet.clearContents();
+    dstSheet.getRange(1, 1, srcData.length, srcData[0].length).setValues(srcData);
+    dstSheet.getRange(1, 1, 1, srcData[0].length).setFontWeight("bold");
+    dstSheet.setFrozenRows(1);
+    res[it.sheetName] = Math.max(0, srcData.length - 1);
+  });
+
+  Logger.log("syncPtkFullToMaster selesai: " + JSON.stringify(res));
+  return res;
+}
