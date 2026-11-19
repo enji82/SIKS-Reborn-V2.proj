@@ -1306,6 +1306,32 @@ function moveDataPTKToNonAktif(id, reason, userLogin) {
       return "Error: " + eC.message;
     }
   }
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+  } catch(lockErr) {
+    return "Error: Sistem sedang sibuk digunakan pengguna lain. Coba lagi dalam beberapa saat.";
+  }
+  try {
+    var sheetSource = getSheet(KONFIG_PTK.DB_KEY, KONFIG_PTK.SHEET_PTK); 
+    var sheetTarget = getSheet(KONFIG_PTK.DB_KEY, "gtk_non_aktif");
+    if (!sheetTarget) { 
+      var ss = getDB(KONFIG_PTK.DB_KEY);
+      sheetTarget = ss.insertSheet("gtk_non_aktif"); 
+      var headers = sheetSource.getRange(1, 1, 1, sheetSource.getLastColumn()).getValues(); 
+      headers[0].push("Alasan Hapus", "Tanggal Hapus", "User Hapus"); 
+      sheetTarget.getRange(1, 1, 1, headers[0].length).setValues(headers); 
+    }
+    var data = sheetSource.getDataRange().getValues(); var rowIndex = -1;
+    for (var i = 1; i < data.length; i++) { if (String(data[i][0]) === String(id)) { rowIndex = i; break; } }
+    if (rowIndex === -1) return "Data tidak ditemukan.";
+    var rowData = data[rowIndex]; var deleteTime = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MM-yyyy HH:mm:ss");
+    rowData.push(reason, deleteTime, userLogin); sheetTarget.appendRow(rowData); sheetSource.deleteRow(rowIndex + 1);
+    SpreadsheetApp.flush();
+    return "Sukses";
+  } catch (e) { return "Error: " + e.message; }
+  finally { lock.releaseLock(); }
+}
 
 function hapusPermanenPTKSDN(id) {
   var lock = LockService.getScriptLock();
@@ -1339,32 +1365,6 @@ function hapusPermanenPTKSDN(id) {
   } finally {
     lock.releaseLock();
   }
-}
-  var lock = LockService.getScriptLock();
-  try {
-    lock.waitLock(10000);
-  } catch(lockErr) {
-    return "Error: Sistem sedang sibuk digunakan pengguna lain. Coba lagi dalam beberapa saat.";
-  }
-  try {
-    var sheetSource = getSheet(KONFIG_PTK.DB_KEY, KONFIG_PTK.SHEET_PTK); 
-    var sheetTarget = getSheet(KONFIG_PTK.DB_KEY, "gtk_non_aktif");
-    if (!sheetTarget) { 
-      var ss = getDB(KONFIG_PTK.DB_KEY);
-      sheetTarget = ss.insertSheet("gtk_non_aktif"); 
-      var headers = sheetSource.getRange(1, 1, 1, sheetSource.getLastColumn()).getValues(); 
-      headers[0].push("Alasan Hapus", "Tanggal Hapus", "User Hapus"); 
-      sheetTarget.getRange(1, 1, 1, headers[0].length).setValues(headers); 
-    }
-    var data = sheetSource.getDataRange().getValues(); var rowIndex = -1;
-    for (var i = 1; i < data.length; i++) { if (String(data[i][0]) === String(id)) { rowIndex = i; break; } }
-    if (rowIndex === -1) return "Data tidak ditemukan.";
-    var rowData = data[rowIndex]; var deleteTime = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MM-yyyy HH:mm:ss");
-    rowData.push(reason, deleteTime, userLogin); sheetTarget.appendRow(rowData); sheetSource.deleteRow(rowIndex + 1);
-    SpreadsheetApp.flush();
-    return "Sukses";
-  } catch (e) { return "Error: " + e.message; }
-  finally { lock.releaseLock(); }
 }
 
 function getDataKeadaanGTK() { var sheet = getSheet(KONFIG_PTK.DB_KEY, "Keadaan GTK"); if (!sheet) return []; var lastRow = sheet.getLastRow(); if (lastRow < 3) return []; return sheet.getRange(3, 1, lastRow - 2, 67).getDisplayValues(); }
