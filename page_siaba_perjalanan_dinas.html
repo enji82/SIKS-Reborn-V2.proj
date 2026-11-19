@@ -1189,6 +1189,14 @@
 
     window.perdin_hapusPesertaUni = function (index) {
         var target = PERDIN_UNI_TEMP_PESERTA[index];
+        if (!PERDIN_IS_ADMIN && target && PERDIN_USER_UNIT) {
+            var targetUnit = String(target.unit || '').trim().toUpperCase();
+            var userUnit = String(PERDIN_USER_UNIT || '').trim().toUpperCase();
+            if (targetUnit && targetUnit !== userUnit) {
+                Sultan.alert('warning', 'Akses Ditolak', 'Anda tidak dapat menghapus peserta dari sekolah lain.');
+                return;
+            }
+        }
         if (PERDIN_IS_APPEND_MODE && target && target.isExisting) {
             Sultan.alert('warning', 'Terkunci', 'Peserta yang sudah terdaftar sebelumnya tidak dapat dihapus saat penambahan susulan.');
             return;
@@ -1203,16 +1211,25 @@
         $('#perdin_emptyState').hide(); var h = '';
         PERDIN_UNI_TEMP_PESERTA.forEach(function (row, idx) {
             var canDelete = true;
-            if (PERDIN_IS_APPEND_MODE) {
+            var lockTitle = 'Peserta Terdaftar';
+            if (!PERDIN_IS_ADMIN && PERDIN_USER_UNIT) {
+                var rowUnit = String(row.unit || '').trim().toUpperCase();
+                var userUnit = String(PERDIN_USER_UNIT || '').trim().toUpperCase();
+                if (rowUnit && rowUnit !== userUnit) {
+                    canDelete = false;
+                    lockTitle = 'Peserta Sekolah Lain (Terkunci)';
+                }
+            }
+            if (canDelete && PERDIN_IS_APPEND_MODE) {
                 canDelete = !row.isExisting; // Peserta lama tidak bisa dihapus oleh sekolah yang baru gabung
-            } else if (PERDIN_IS_FORM_LOCKED) {
+            } else if (canDelete && PERDIN_IS_FORM_LOCKED) {
                 canDelete = false;
             }
 
             var badgeNew = row.isNewAdded ? ' <span class="badge badge-success ml-1" style="font-size:9px;">BARU</span>' : '';
             var btnDel = canDelete 
                 ? `<button type="button" class="perdin-btn-remove" onclick="perdin_hapusPesertaUni(${idx})" title="Keluarkan Peserta"><i class="fas fa-times"></i></button>`
-                : '<i class="fas fa-lock text-muted" title="Peserta Terdaftar"></i>';
+                : `<i class="fas fa-lock text-muted" title="${lockTitle}"></i>`;
             h += `<tr><td class="pl-3 align-middle text-uppercase perdin-table-nama">${perdin_escapeHtml(row.nama)}${badgeNew}</td><td class="align-middle perdin-table-nip">${perdin_escapeHtml(row.nip)}</td><td class="align-middle text-uppercase perdin-table-unit">${perdin_escapeHtml(row.unit)}</td><td class="text-center align-middle">${btnDel}</td></tr>`;
         });
         $('#perdin_tabelPeserta').html(h);
