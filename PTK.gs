@@ -311,52 +311,60 @@ function getDataPTKSD(filterUnit, filterStatus) {
  */
 function getDataRiwayatPembaruan() {
   try {
-    var sheet = getSheet(KONFIG_PTK.DB_KEY, KONFIG_PTK.SHEET_PTK);
+    var ctx = getTblPtkSdnContext_();
+    var sheet = ctx.sheet;
+    var c = ctx.colMap;
     if (!sheet) return JSON.stringify({ data: [], lapbulMap: {} });
     var lastRow = sheet.getLastRow();
     if (lastRow < 2) return JSON.stringify({ data: [], lapbulMap: {} });
 
-    // Baca A (1) s.d. AI (35) → 35 kolom, indeks 0–34
-    var data = sheet.getRange(2, 1, lastRow - 1, 35).getValues();
+    var data = sheet.getRange(2, 1, lastRow - 1, ctx.totalCols).getValues();
     var tz = Session.getScriptTimeZone();
     var result = [];
 
+    var parseDateSafe = function(val) {
+      if (!val || val === "" || val === "-") return null;
+      if (val instanceof Date && !isNaN(val.getTime())) return val;
+      var s = String(val).trim();
+      var m = s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+      if (m) {
+        return new Date(parseInt(m[3], 10), parseInt(m[2], 10) - 1, parseInt(m[1], 10), parseInt(m[4] || "0", 10), parseInt(m[5] || "0", 10), parseInt(m[6] || "0", 10));
+      }
+      var d = new Date(s);
+      return isNaN(d.getTime()) ? null : d;
+    };
+
     for (var i = 0; i < data.length; i++) {
       var row = data[i];
-      if (!row[0]) continue; // Lewati baris kosong
+      if (!row[c.id]) continue;
+      if (ctx.useCentral) {
+        if (c.jenjang > -1 && String(row[c.jenjang] || "").trim() !== "SD Negeri") continue;
+        if (c.status_aktif > -1 && String(row[c.status_aktif] || "AKTIF").trim().toUpperCase() === "NON_AKTIF") continue;
+      }
 
-      // Helper: format date object → string DD/MM/YYYY HH:mm, atau "" jika kosong
-      var fmtDate = function(val) {
-        if (!val || val === "") return "";
-        try {
-          var d = (val instanceof Date) ? val : new Date(val);
-          if (isNaN(d.getTime())) return "";
-          return Utilities.formatDate(d, tz, "dd/MM/yyyy HH:mm");
-        } catch(e) { return ""; }
-      };
+      var dInput = c.diinput > -1 ? parseDateSafe(row[c.diinput]) : null;
+      var dEdit = c.diedit > -1 ? parseDateSafe(row[c.diedit]) : null;
 
-      // Tanggal input baru (kolom AF = index 31) dan tanggal diperbarui (kolom AH = index 33)
-      var tglInputBaru  = fmtDate(row[31]); // AF
-      var tglDiperbarui = fmtDate(row[33]); // AH
+      var tglInputBaru = dInput ? Utilities.formatDate(dInput, tz, "dd/MM/yyyy HH:mm") : "";
+      var tglDiperbarui = dEdit ? Utilities.formatDate(dEdit, tz, "dd/MM/yyyy HH:mm") : "";
 
-      // Timestamp mentah (ms) untuk kalkulasi MAX di frontend
-      var tsInputBaru  = (row[31] && row[31] instanceof Date) ? row[31].getTime() : 0;
-      var tsDiperbarui = (row[33] && row[33] instanceof Date) ? row[33].getTime() : 0;
-      var tsEfektif    = Math.max(tsInputBaru, tsDiperbarui);
+      var tsInputBaru = dInput ? dInput.getTime() : 0;
+      var tsDiperbarui = dEdit ? dEdit.getTime() : 0;
+      var tsEfektif = Math.max(tsInputBaru, tsDiperbarui);
 
       result.push({
-        id          : row[0],
-        npsn        : row[1],
-        unit        : row[2],
-        nama_lengkap: row[6],
-        nip         : row[7],
-        status_peg  : row[19],
-        jabatan     : row[20],
-        tgl_input_baru  : tglInputBaru,
-        user_input_baru : row[32] || "",      // AG
-        tgl_diperbarui  : tglDiperbarui,
-        user_diperbarui : row[34] || "",      // AI
-        ts_efektif      : tsEfektif           // ms, untuk perbandingan di frontend
+        id             : row[c.id],
+        npsn           : c.npsn > -1 ? row[c.npsn] : "",
+        unit           : c.unit > -1 ? row[c.unit] : "",
+        nama_lengkap   : c.nama_lengkap > -1 ? row[c.nama_lengkap] : "",
+        nip            : c.nip > -1 ? row[c.nip] : "",
+        status_peg     : c.status_peg > -1 ? row[c.status_peg] : "",
+        jabatan        : c.jabatan > -1 ? row[c.jabatan] : "",
+        tgl_input_baru : tglInputBaru,
+        user_input_baru: c.user_input > -1 ? (row[c.user_input] || "") : "",
+        tgl_diperbarui : tglDiperbarui,
+        user_diperbarui: c.user_edit > -1 ? (row[c.user_edit] || "") : "",
+        ts_efektif     : tsEfektif
       });
     }
     var lapbulMap = getJumlahLapbulSdnMap_();
