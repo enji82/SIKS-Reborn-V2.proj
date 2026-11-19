@@ -203,7 +203,7 @@ function buildPtkListSdn_() {
     status_peg: findCol(["status kepegawaian", "status_kepegawaian", "status_peg", "status pegawai", "status"], 19),
     jabatan: findCol(["jabatan"], 20),
     tmt_jabatan: findCol(["tmt_jabatan", "tmt jabatan"], 21),
-    pangkat: findCol(["pangkat", "pangkat_gol", "pangkat/gol"], 22),
+    pangkat: findCol(["pangkat/golongan", "pangkat / golongan", "pangkat golongan", "pangkat_golongan", "golongan", "pangkat", "pangkat_gol", "pangkat/gol"], 22),
     tmt_gol: findCol(["tmt_gol", "tmt gol", "tmt golongan"], 23),
     mkg: findCol(["mkg", "misa kerja"], 24),
     tugas: findCol(["tugas", "tugas utama"], 25),
