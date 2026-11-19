@@ -1193,6 +1193,22 @@ function reactivatePtkSDN(form) {
 }
 
 function moveDataPTKToNonAktif(id, reason, userLogin) {
+  if (typeof USE_CENTRAL_PTK_DB !== "undefined" && USE_CENTRAL_PTK_DB && String(id || "").indexOf("PTK-") === 0) {
+    try {
+      var tblPtk = getSheet("SIKS_DB_MASTER", "tbl_ptk");
+      var vals = tblPtk.getRange(2, 1, tblPtk.getLastRow() - 1, 1).getDisplayValues();
+      for (var k = 0; k < vals.length; k++) {
+        if (String(vals[k][0]).trim() === String(id).trim()) {
+          tblPtk.getRange(k + 2, 3).setValue("NON_AKTIF");
+          CacheService.getScriptCache().remove("PTK_LIST_SDN");
+          return "Sukses: Data PTK berhasil dinonaktifkan di tbl_ptk.";
+        }
+      }
+      return "Error: ID PTK tidak ditemukan di tbl_ptk.";
+    } catch (eC) {
+      return "Error: " + eC.message;
+    }
+  }
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
