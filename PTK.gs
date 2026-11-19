@@ -1876,21 +1876,26 @@ function getDataKebutuhanGuruSDNMaster() {
  */
 function getDataRekapKeadaanSDN() {
   try {
-    var sheet = getSheet(KONFIG_PTK.DB_KEY, KONFIG_PTK.SHEET_PTK);
-    if (!sheet) return JSON.stringify({ success: false, message: "Sheet Master Data GTK tidak ditemukan.", schools: [] });
+    var ctx = getTblPtkSdnContext_();
+    var sheet = ctx.sheet;
+    var c = ctx.colMap;
+    if (!sheet) return JSON.stringify({ success: false, message: "Sheet PTK tidak ditemukan.", schools: [] });
     var lastRow = sheet.getLastRow();
     if (lastRow < 2) return JSON.stringify({ success: true, schools: [] });
 
-    // Baca kolom A (1) s/d Z (26): ID(0), NPSN(1), Unit(2), ..., StatusPeg(19), ..., Tugas(25)
-    var data = sheet.getRange(2, 1, lastRow - 1, 26).getValues();
+    var data = sheet.getRange(2, 1, lastRow - 1, ctx.totalCols).getValues();
     var schoolMap = {};
 
     for (var i = 0; i < data.length; i++) {
       var row = data[i];
-      if (!row[0]) continue; // Lewati baris tanpa ID
+      if (!row[c.id]) continue;
+      if (ctx.useCentral) {
+        if (c.jenjang > -1 && String(row[c.jenjang] || "").trim() !== "SD Negeri") continue;
+        if (c.status_aktif > -1 && String(row[c.status_aktif] || "AKTIF").trim().toUpperCase() === "NON_AKTIF") continue;
+      }
 
-      var npsn = String(row[1] || "").trim();
-      var unit = String(row[2] || "").trim();
+      var npsn = c.npsn > -1 ? String(row[c.npsn] || "").trim() : "";
+      var unit = c.unit > -1 ? String(row[c.unit] || "").trim() : "";
       if (!unit && !npsn) continue;
 
       var schoolKey = npsn || unit;
@@ -1928,7 +1933,7 @@ function getDataRekapKeadaanSDN() {
       if (!sch.npsn && npsn) sch.npsn = npsn;
 
       // 1. Normalisasi Status Kepegawaian
-      var st = String(row[19] || "").trim().toUpperCase();
+      var st = c.status_peg > -1 ? String(row[c.status_peg] || "").trim().toUpperCase() : "";
       var statusKey = "non_asn";
       if (st.indexOf("CPNS") !== -1) {
         statusKey = "cpns";
@@ -1943,7 +1948,7 @@ function getDataRekapKeadaanSDN() {
       }
 
       // 2. Normalisasi Tugas / Jabatan
-      var tg = String(row[25] || "").trim().toUpperCase();
+      var tg = c.tugas > -1 ? String(row[c.tugas] || "").trim().toUpperCase() : "";
       var jabKey = "tendik_lainnya";
       var roleGroup = "tendik"; // 'ks', 'guru', 'tendik'
 
