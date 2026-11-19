@@ -203,7 +203,7 @@ function buildPtkListSdn_() {
     status_peg: findCol(["status kepegawaian", "status_kepegawaian", "status_peg", "status pegawai", "status"], 19),
     jabatan: findCol(["jabatan"], 20),
     tmt_jabatan: findCol(["tmt_jabatan", "tmt jabatan"], 21),
-    pangkat: findCol(["pangkat/golongan", "pangkat / golongan", "pangkat golongan", "pangkat_golongan", "golongan", "pangkat", "pangkat_gol", "pangkat/gol"], 22),
+    pangkat: findCol(["pangkat, gol/ruang", "pangkat/golongan", "pangkat / golongan", "pangkat golongan", "pangkat_golongan", "golongan", "pangkat", "pangkat_gol", "pangkat/gol"], 22),
     tmt_gol: findCol(["tmt_gol", "tmt gol", "tmt golongan"], 23),
     mkg: findCol(["mkg", "misa kerja"], 24),
     tugas: findCol(["tugas", "tugas utama"], 25),
@@ -215,7 +215,7 @@ function buildPtkListSdn_() {
     diinput: findCol(["diinput", "tgl input"], 31),
     user_input: findCol(["user_input", "penginput"], 32),
     diedit: findCol(["diedit", "tgl edit"], 33),
-    user_edit: findCol(["user_edit", "pengedit"], 34),
+    user_edit: findCol(["user edit", "user_edit", "pengedit"], 34),
     jenis_dok: findCol(["jenis_dok", "jenis dokumen"], 35),
     file_url: findCol(["file_url", "url", "file"], 36)
   };
