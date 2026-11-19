@@ -183,7 +183,7 @@ function buildPtkListSdn_() {
   var colMap = {
     id: findCol(["id", "id_ptk", "id ptk"], 0),
     npsn: findCol(["npsn"], 1),
-    unit: findCol(["unit", "nama_sekolah", "sekolah"], 2),
+    unit: findCol(["unit kerja", "unit_kerja", "unit", "nama_sekolah", "sekolah", "satuan pendidikan"], 2),
     gelar_depan: findCol(["gelar_depan", "gelar depan"], 3),
     nama_no_gelar: findCol(["nama_no_gelar", "nama tanpa gelar"], 4),
     gelar_belakang: findCol(["gelar_belakang", "gelar belakang"], 5),
