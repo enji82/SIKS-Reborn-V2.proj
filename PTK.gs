@@ -216,6 +216,7 @@ function buildPtkListSdn_() {
     user_input: findCol(["user_input", "penginput"], 32),
     diedit: findCol(["diedit", "tgl edit"], 33),
     user_edit: findCol(["user edit", "user_edit", "pengedit"], 34),
+    status_aktif: findCol(["status_aktif"], 2),
     jenis_dok: findCol(["jenis_dok", "jenis dokumen"], 35),
     file_url: findCol(["file_url", "url", "file"], 36)
   };
@@ -276,6 +277,7 @@ function buildPtkListSdn_() {
       user_input: row[colMap.user_input],
       diedit: valDiedit ? Utilities.formatDate(new Date(valDiedit), tz, "dd/MM/yy HH:mm") : "",
       user_edit: row[colMap.user_edit],
+      status_aktif: String(row[colMap.status_aktif] || "AKTIF").trim().toUpperCase(),
       jenis_dok: row[colMap.jenis_dok] || "",
       file_url: row[colMap.file_url] || "",
       is_pending_baru: !!pendingPtkIds[String(rowId)]
