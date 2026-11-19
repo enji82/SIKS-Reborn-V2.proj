@@ -1682,6 +1682,88 @@ function getDataBezettingSDNMaster() {
  * Menghitung formasi kebutuhan & distribusi guru langsung dari Master Data GTK real-time.
  * Output: JSON string { success: true, schools: [...] }
  */
+/**
+ * Helper: Ambil JML ROMBEL & JML MURID kiriman bulan terakhir per sekolah
+ * langsung dari tbl_lapbul_sd (SIKS_DB_LAYANAN) dengan fallback sheet Kebutuhan Guru.
+ */
+function getRombelMuridFromLapbulSd_() {
+  var map = {};
+  try {
+    var lapbulSheet = (typeof USE_CENTRAL_LAYANAN_DB !== "undefined" && USE_CENTRAL_LAYANAN_DB && typeof getLayananCentralSheet === "function")
+      ? getLayananCentralSheet("tbl_lapbul_sd")
+      : getSheet("LAPBUL_SD_DB", "Input SD");
+
+    if (lapbulSheet && lapbulSheet.getLastRow() >= 2) {
+      var data = lapbulSheet.getDataRange().getValues();
+      var hdrs = data[0].map(function(h) { return String(h || "").toLowerCase().trim(); });
+      var findIdx = function(patterns) {
+        for (var p = 0; p < patterns.length; p++) {
+          for (var c = 0; c < hdrs.length; c++) {
+            if (hdrs[c] === patterns[p] || hdrs[c].indexOf(patterns[p]) !== -1) return c;
+          }
+        }
+        return -1;
+      };
+
+      var idxNpsn = findIdx(["npsn"]);
+      var idxUnit = findIdx(["nama sekolah", "nama_sekolah", "unit kerja", "sekolah"]);
+      var idxTahun = findIdx(["tahun"]);
+      var idxBulan = findIdx(["bulan"]);
+      var idxRombel = findIdx(["total rombel", "jumlah rombel", "jml rombel", "rombel"]);
+      var idxMurid = findIdx(["jumlah murid akhir", "total murid", "jumlah murid", "jml murid", "akhir bulan", "murid"]);
+
+      var bulanOrder = {
+        "januari": 1, "februari": 2, "maret": 3, "april": 4, "mei": 5, "juni": 6,
+        "juli": 7, "agustus": 8, "september": 9, "oktober": 10, "november": 11, "desember": 12
+      };
+
+      var bestScore = {};
+      for (var i = 1; i < data.length; i++) {
+        var r = data[i];
+        var npsn = idxNpsn > -1 ? String(r[idxNpsn] || "").trim() : "";
+        var unit = idxUnit > -1 ? String(r[idxUnit] || "").trim() : "";
+        if (!npsn && !unit) continue;
+
+        var thn = idxTahun > -1 ? (parseInt(r[idxTahun], 10) || 0) : 0;
+        var blnRaw = idxBulan > -1 ? String(r[idxBulan] || "").trim().toLowerCase() : "";
+        var blnNum = bulanOrder[blnRaw] || parseInt(blnRaw, 10) || 0;
+        var score = thn * 100 + blnNum;
+
+        var key = npsn || unit.toUpperCase();
+        if (bestScore[key] === undefined || score >= bestScore[key]) {
+          bestScore[key] = score;
+          var rombel = idxRombel > -1 ? (parseInt(r[idxRombel], 10) || 0) : 0;
+          var murid = idxMurid > -1 ? (parseInt(r[idxMurid], 10) || 0) : 0;
+          var info = { rombel: rombel, murid: murid, unit: unit, npsn: npsn };
+          if (npsn) map[npsn] = info;
+          if (unit) map[unit] = info;
+        }
+      }
+    }
+  } catch (eLap) {
+    Logger.log("getRombelMuridFromLapbulSd_ error: " + eLap.message);
+  }
+
+  // Fallback untuk sekolah yang belum ada di tbl_lapbul_sd
+  try {
+    var kgSheet = getSheet(KONFIG_PTK.DB_KEY, "Kebutuhan Guru");
+    if (kgSheet && kgSheet.getLastRow() >= 3) {
+      var kgData = kgSheet.getRange(3, 1, kgSheet.getLastRow() - 2, 4).getValues();
+      for (var k = 0; k < kgData.length; k++) {
+        var kUnit = String(kgData[k][0] || "").trim();
+        var kNpsn = String(kgData[k][1] || "").trim();
+        var kRombel = parseInt(kgData[k][2], 10) || 0;
+        var kMurid = parseInt(kgData[k][3], 10) || 0;
+        var infoFb = { rombel: kRombel, murid: kMurid, unit: kUnit, npsn: kNpsn };
+        if (kNpsn && !map[kNpsn]) map[kNpsn] = infoFb;
+        if (kUnit && !map[kUnit]) map[kUnit] = infoFb;
+      }
+    }
+  } catch (eKg) {}
+
+  return map;
+}
+
 function getDataKebutuhanGuruSDNMaster() {
   try {
     var ctx = getTblPtkSdnContext_();
@@ -1691,23 +1773,8 @@ function getDataKebutuhanGuruSDNMaster() {
     var lastRow = sheet.getLastRow();
     if (lastRow < 2) return JSON.stringify({ success: true, schools: [] });
 
-    // Map Rombel & Murid dari sheet Kebutuhan Guru / Database Sekolah
-    var rombelMuridMap = {};
-    try {
-      var kgSheet = getSheet(KONFIG_PTK.DB_KEY, "Kebutuhan Guru");
-      if (kgSheet && kgSheet.getLastRow() >= 3) {
-        var kgData = kgSheet.getRange(3, 1, kgSheet.getLastRow() - 2, 4).getValues();
-        for (var k = 0; k < kgData.length; k++) {
-          var kUnit = String(kgData[k][0] || "").trim();
-          var kNpsn = String(kgData[k][1] || "").trim();
-          var kRombel = parseInt(kgData[k][2]) || 0;
-          var kMurid = parseInt(kgData[k][3]) || 0;
-          var info = { rombel: kRombel, murid: kMurid, unit: kUnit, npsn: kNpsn };
-          if (kNpsn) rombelMuridMap[kNpsn] = info;
-          if (kUnit) rombelMuridMap[kUnit] = info;
-        }
-      }
-    } catch (eKg) {}
+    // Map Rombel & Murid langsung dari Laporan Bulan SD terakhir (tbl_lapbul_sd)
+    var rombelMuridMap = getRombelMuridFromLapbulSd_();
 
     var data = sheet.getRange(2, 1, lastRow - 1, ctx.totalCols).getValues();
     var schoolMap = {};
