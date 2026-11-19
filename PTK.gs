@@ -167,7 +167,7 @@ function buildPtkListSdn_() {
   if (useCentral) {
     var hdr = allData[0];
     allData = [hdr].concat(allData.slice(1).filter(function(r) {
-      return String(r[1] || "").trim() === "SD Negeri" && String(r[2] || "AKTIF").trim().toUpperCase() === "AKTIF";
+      return String(r[1] || "").trim() === "SD Negeri";
     }));
   }
 
@@ -192,7 +192,7 @@ function buildPtkListSdn_() {
     tmp_lahir: findCol(["tmp_lahir", "tempat lahir"], 8),
     tgl_lahir: findCol(["tgl_lahir", "tanggal lahir"], 9),
     nik: findCol(["nik"], 10),
-    lp: findCol(["lp", "jenis kelamin", "jk"], 11),
+    lp: findCol(["l/p", "lp", "jenis kelamin", "jenis_kelamin", "jk"], 11),
     agama: findCol(["agama"], 12),
     pendidikan: findCol(["pendidikan"], 13),
     jurusan: findCol(["jurusan"], 14),
@@ -1883,7 +1883,7 @@ function getDataPTKSDS() {
       tmp_lahir: findCol(["tmp_lahir", "tempat lahir"], 8),
       tgl_lahir: findCol(["tgl_lahir", "tanggal lahir"], 9),
       nik: findCol(["nik"], 10),
-      lp: findCol(["lp", "jenis kelamin", "jk"], 11),
+      lp: findCol(["l/p", "lp", "jenis kelamin", "jenis_kelamin", "jk"], 11),
       agama: findCol(["agama"], 12),
       pendidikan: findCol(["pendidikan"], 13),
       jurusan: findCol(["jurusan"], 14),
