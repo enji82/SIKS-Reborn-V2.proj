@@ -542,9 +542,11 @@ function syncPtkFullToMaster() {
 function buildUnifiedTblPtk() {
   var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_MASTER);
   var sources = [
-    { sheetName: "Master Data GTK", jenjang: "SD Negeri" },
-    { sheetName: "Master Data GTK SDS", jenjang: "SD Swasta" },
-    { sheetName: "Master Data GTK PAUD", jenjang: "PAUD" }
+    { sheetName: "Master Data GTK", jenjang: "SD Negeri", statusAktif: "AKTIF" },
+    { sheetName: "Master Data GTK SDS", jenjang: "SD Swasta", statusAktif: "AKTIF" },
+    { sheetName: "Master Data GTK PAUD", jenjang: "PAUD", statusAktif: "AKTIF" },
+    { sheetName: "gtk_non_aktif", jenjang: "SD Negeri", statusAktif: "NON_AKTIF" },
+    { sheetName: "gtk_non_aktif_sds", jenjang: "SD Swasta", statusAktif: "NON_AKTIF" }
   ];
 
   var unifiedHeaders = ["id_ptk", "jenjang", "status_aktif"];
@@ -565,7 +567,7 @@ function buildUnifiedTblPtk() {
         unifiedHeaders.push(hName);
       }
     }
-    allSheetsData.push({ jenjang: src.jenjang, hdrs: hdrs, rows: vals.slice(1) });
+    allSheetsData.push({ jenjang: src.jenjang, statusAktif: src.statusAktif, hdrs: hdrs, rows: vals.slice(1) });
   });
 
   var outRows = [];
@@ -579,7 +581,7 @@ function buildUnifiedTblPtk() {
       var newRow = new Array(unifiedHeaders.length).fill("");
       newRow[0] = "PTK-" + counter++;
       newRow[1] = sObj.jenjang;
-      newRow[2] = "AKTIF";
+      newRow[2] = sObj.statusAktif || "AKTIF";
 
       for (var c = 0; c < sObj.hdrs.length; c++) {
         var hKey = String(sObj.hdrs[c] || "").trim().toLowerCase();
