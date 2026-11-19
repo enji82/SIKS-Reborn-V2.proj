@@ -3297,7 +3297,7 @@ function hapusUsulanPTKSDN(dataKirim) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
-    var sheetUsulan = getSheet("PTK_DB", "usulan_mutasi_sdn");
+    var sheetUsulan = getSheet(KONFIG_PTK.DB_KEY, "usulan_mutasi_sdn");
 
     if (!sheetUsulan) throw new Error("Sheet usulan tidak ditemukan.");
 
@@ -3344,7 +3344,7 @@ function hapusUsulanPTKSDN(dataKirim) {
 // =============================================================
 function getNotifikasiMutasiSDN(role, unit) {
   try {
-    var sheet = getSheet("PTK_DB", "usulan_mutasi_sdn");
+    var sheet = getSheet(KONFIG_PTK.DB_KEY, "usulan_mutasi_sdn");
     if (!sheet) return { count: 0, recent: [] };
     
     var data = sheet.getDataRange().getValues();
@@ -3418,7 +3418,7 @@ function getNotifikasiMutasiSDN(role, unit) {
 
 function tandaiNotifMutasiSDNDibaca(rowId, role) {
   try {
-    var sheet = getSheet("PTK_DB", "usulan_mutasi_sdn");
+    var sheet = getSheet(KONFIG_PTK.DB_KEY, "usulan_mutasi_sdn");
     if (!sheet) return;
     
     var currentRead = String(sheet.getRange(rowId, 15).getValue() || "").trim(); // Kolom O
