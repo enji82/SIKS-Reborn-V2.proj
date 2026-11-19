@@ -528,7 +528,8 @@
             { id: 'ptkpaud_filterJenjang', value: 'SEMUA', text: 'Semua Jenjang' },
             { id: 'ptkpaud_filterUnit', placeholder: 'Memvalidasi Akses...', disabled: true },
             { id: 'ptkpaud_filterStatus', value: 'SEMUA', text: 'Semua Status' },
-            { id: 'ptkpaud_filterJabatan', value: 'SEMUA', text: 'Semua Jabatan' }
+            { id: 'ptkpaud_filterJabatan', value: 'SEMUA', text: 'Semua Jabatan' },
+            { id: 'ptkpaud_filterAktif', value: 'AKTIF', text: 'Aktif' }
         ];
         var extraButtons = `
             <div class="divider-vertical d-none d-md-block mx-2"></div>
@@ -625,6 +626,8 @@
     // 3. GATEKEEPER & FETCH
     // =================================================================
     function ptkpaud_validasiAksesUser() {
+        $('#ptkpaud_tableState').hide();
+        SultanUI.showLoading('#ptkpaud_loadingState', 'Mengambil data PTK dari server...');
         // Ambil Master Data Sekolah untuk konsistensi Jenjang & Lembaga Modal/Filter
         google.script.run.withSuccessHandler(function (jsonMaster) {
             try {
@@ -732,6 +735,14 @@
         // Populate Dropdown Unit Lembaga sesuai Jenjang terpilih
         ptkpaud_updateUnitDropdown();
 
+        var curAktif = $('#ptkpaud_filterAktif').val() || "AKTIF";
+        var $selAktif = $('#ptkpaud_filterAktif').empty()
+            .append('<option value="AKTIF">Aktif</option>')
+            .append('<option value="NON_AKTIF">Tidak Aktif</option>')
+            .append('<option value="SEMUA">Semua</option>');
+        $selAktif.val(curAktif);
+        $selAktif.off('change.aktif').on('change.aktif', ptkpaud_terapkanFilterLokal);
+
         var curStat = $('#ptkpaud_filterStatus').val();
         var $selStatus = $('#ptkpaud_filterStatus').empty().append('<option value="SEMUA">- Semua Status -</option>');
         Array.from(uniqueStatus).sort().forEach(function (s) { $selStatus.append($('<option>', { value: s, text: s })); });
@@ -783,6 +794,7 @@
     }
 
     function ptkpaud_terapkanFilterLokal() {
+        var fAktif = $('#ptkpaud_filterAktif').val() || "AKTIF";
         var fJenjang = $('#ptkpaud_filterJenjang').val() || "SEMUA";
         var fStatus = $('#ptkpaud_filterStatus').val() || "SEMUA";
         var fJabatan = $('#ptkpaud_filterJabatan').val() || "SEMUA";
@@ -794,6 +806,9 @@
         var clJabatan = ptkpaud_cleanString(fJabatan);
 
         var hasil = PTKPAUD_CACHE_DATA.filter(function (row) {
+            var rAktif = String(row.status_aktif || "AKTIF").trim().toUpperCase();
+            var passAktif = (fAktif === "SEMUA") || (rAktif === fAktif);
+
             var rUnit = ptkpaud_cleanString(row.unit);
             var rJenjang = ptkpaud_cleanString(row.jenjang);
             var rStatus = ptkpaud_cleanString(row.status_peg);
@@ -807,7 +822,7 @@
             var passStatus = (clStatus === "SEMUA") || (rStatus === clStatus);
             var passJabatan = (clJabatan === "SEMUA") || (rJabatan === clJabatan);
 
-            return passUnit && passJenjang && passStatus && passJabatan;
+            return passAktif && passUnit && passJenjang && passStatus && passJabatan;
         });
 
         ptkpaud_renderTabel(hasil);
@@ -947,9 +962,14 @@
             // ── 14. TOMBOL AKSI (Paling Kanan) ────────────────────────────
             var btnEdit = '';
             var btnHapus = '';
+            var isNonAktif = String(row.status_aktif || "AKTIF").trim().toUpperCase() === "NON_AKTIF";
             if (PTKPAUD_IS_ADMIN) {
                 btnEdit = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning" onclick="ptkpaud_bukaModalEdit(\'' + masterKey + '\')" title="Edit / Mutasi"><i class="fas fa-pencil-alt"></i></button>';
-                btnHapus = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon" onclick="ptkpaud_bukaModalHapus(\'' + masterKey + '\', \'' + ptkpaud_escapeJs(row.nama_lengkap) + '\')" title="Pindah ke Arsip Non-Aktif"><i class="fas fa-trash-alt"></i></button>';
+                if (isNonAktif) {
+                    btnHapus = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-danger" onclick="ptkpaud_bukaModalHapusPermanen(\'' + masterKey + '\', \'' + ptkpaud_escapeJs(row.nama_lengkap) + '\')" title="Hapus Permanen"><i class="fas fa-trash"></i></button>';
+                } else {
+                    btnHapus = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon" onclick="ptkpaud_bukaModalHapus(\'' + masterKey + '\', \'' + ptkpaud_escapeJs(row.nama_lengkap) + '\')" title="Non-Aktifkan PTK"><i class="fas fa-user-slash"></i></button>';
+                }
             } else {
                 btnEdit = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning" onclick="ptkpaud_bukaModalEdit(\'' + masterKey + '\')" title="Edit Data"><i class="fas fa-pencil-alt"></i></button>';
             }
@@ -1488,7 +1508,7 @@
                     if (res === 'Sukses') {
                         Sultan.notif.crud.hapus();
                         var dIdx = PTKPAUD_CACHE_DATA.findIndex(function(r) { return String(r.id) === String(realId); });
-                        if (dIdx !== -1) { PTKPAUD_CACHE_DATA.splice(dIdx, 1); }
+                        if (dIdx !== -1) { PTKPAUD_CACHE_DATA[dIdx].status_aktif = 'NON_AKTIF'; }
                         ptkpaud_terapkanFilterLokal();
                     } else { Sultan.notif.crud.gagal(res); }
                 })
@@ -1497,6 +1517,37 @@
                     Sultan.notif.crud.gagal(err.message);
                 })
                 .deleteDataPTKPAUD(realId, alasan, PTKPAUD_USER_AKTIF);
+        });
+    }
+
+    function ptkpaud_bukaModalHapusPermanen(masterKey, nama) {
+        if (!PTKPAUD_IS_ADMIN) return Sultan.notif.warning('Hanya Admin yang dapat menghapus data secara permanen.');
+        var d = PTKPAUD_DATA_MASTER[masterKey];
+        var realId = d ? d.id : masterKey;
+
+        Sultan.modal.konfirmasiHapus({
+            judul: 'Hapus Permanen PTK PAUD',
+            teksUtama: 'Apakah Anda yakin ingin menghapus PERMANEN data PTK ini?',
+            teksSub: 'Data atas nama ' + nama + ' akan dihapus selamanya dari database dan tidak dapat dikembalikan.',
+            detailHtml: '<div class="p-2 bg-light rounded text-uppercase font-weight-bold text-center text-danger">' + nama + '</div>',
+            wajibAlasan: false,
+            autoClose: false
+        }, function(alasan, closeCallback) {
+            google.script.run
+                .withSuccessHandler(function(res) {
+                    closeCallback();
+                    if (res === 'Sukses') {
+                        Sultan.notif.crud.hapus();
+                        var dIdx = PTKPAUD_CACHE_DATA.findIndex(function(r) { return String(r.id) === String(realId); });
+                        if (dIdx !== -1) { PTKPAUD_CACHE_DATA.splice(dIdx, 1); }
+                        ptkpaud_terapkanFilterLokal();
+                    } else { Sultan.notif.crud.gagal(res); }
+                })
+                .withFailureHandler(function(err) {
+                    closeCallback();
+                    Sultan.notif.crud.gagal(err.message);
+                })
+                .hapusPermanenPTKPAUD(realId);
         });
     }
 
