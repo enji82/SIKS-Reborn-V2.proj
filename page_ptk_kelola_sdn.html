@@ -2248,23 +2248,25 @@
             teksUtama: 'Apakah Anda yakin ingin menonaktifkan data PTK ini?',
             teksSub: 'Tindakan ini akan memindahkan data PTK atas nama ' + nama + ' ke arsip Non-Aktif.',
             detailHtml: '<div class="p-2 bg-light rounded text-uppercase font-weight-bold text-center">' + nama + '</div>',
-            wajibAlasan: true
-        }, function(alasan, closeCallback) {
-            google.script.run
-                .withSuccessHandler(function(res) {
-                    closeCallback();
-                    if (res === 'Sukses') {
-                        Sultan.notif.crud.hapus();
-                        var dIdx = PTKSDN_CACHE_DATA.findIndex(function(r) { return String(r.id) === String(realId); });
-                        if (dIdx !== -1) { PTKSDN_CACHE_DATA.splice(dIdx, 1); }
-                        ptksdn_terapkanFilterLokal();
-                    } else { Sultan.notif.crud.gagal(res); }
-                })
-                .withFailureHandler(function(err) {
-                    closeCallback();
-                    Sultan.notif.crud.gagal(err.message);
-                })
-                .moveDataPTKToNonAktif(realId, alasan, PTKSDN_USER_AKTIF);
+            wajibAlasan: true,
+            showReason: true,
+            onConfirm: function(done, alasan) {
+                google.script.run
+                    .withSuccessHandler(function(res) {
+                        if (typeof done === 'function') done();
+                        if (String(res).indexOf('Sukses') === 0) {
+                            Sultan.notif.crud.hapus();
+                            var dIdx = PTKSDN_CACHE_DATA.findIndex(function(r) { return String(r.id) === String(realId); });
+                            if (dIdx !== -1) { PTKSDN_CACHE_DATA[dIdx].status_aktif = 'NON_AKTIF'; }
+                            ptksdn_terapkanFilterLokal();
+                        } else { Sultan.notif.crud.gagal(res); }
+                    })
+                    .withFailureHandler(function(err) {
+                        if (typeof done === 'function') done();
+                        Sultan.notif.crud.gagal(err.message);
+                    })
+                    .moveDataPTKToNonAktif(realId, alasan, PTKSDN_USER_AKTIF);
+            }
         });
     }
 
