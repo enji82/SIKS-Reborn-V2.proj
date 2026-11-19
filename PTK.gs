@@ -411,6 +411,59 @@ function getTanggalCutoffPembaruan() {
  */
 function getDataRiwayatPembaruanSds() {
   try {
+    var tz = Session.getScriptTimeZone();
+    var fmtDate = function(val) {
+      if (!val || val === "") return "";
+      try {
+        var d = (val instanceof Date) ? val : new Date(val);
+        if (isNaN(d.getTime())) return "";
+        return Utilities.formatDate(d, tz, "dd/MM/yyyy HH:mm");
+      } catch(e) { return ""; }
+    };
+
+    if (typeof USE_CENTRAL_PTK_DB !== "undefined" && USE_CENTRAL_PTK_DB) {
+      var ctx = getTblPtkSdnContext_();
+      if (!ctx) return JSON.stringify({ data: [], lapbulMap: {} });
+      var c = ctx.colMap;
+      var idxNiy = ctx.headers.indexOf("niy");
+      var data = ctx.sheet.getDataRange().getValues();
+      var result = [];
+
+      for (var i = 1; i < data.length; i++) {
+        var row = data[i];
+        var jenjang = c.jenjang > -1 ? String(row[c.jenjang] || "").trim() : "";
+        var statusAktif = c.status_aktif > -1 ? String(row[c.status_aktif] || "AKTIF").trim().toUpperCase() : "AKTIF";
+        if (jenjang !== "SD Swasta" || statusAktif !== "AKTIF") continue;
+        var rowId = c.id > -1 ? row[c.id] : "";
+        if (!rowId) continue;
+
+        var rawInput = c.diinput > -1 ? row[c.diinput] : "";
+        var rawEdit = c.diedit > -1 ? row[c.diedit] : "";
+        var tglInputBaru = fmtDate(rawInput);
+        var tglDiperbarui = fmtDate(rawEdit);
+        var tsInputBaru = (rawInput && rawInput instanceof Date) ? rawInput.getTime() : 0;
+        var tsDiperbarui = (rawEdit && rawEdit instanceof Date) ? rawEdit.getTime() : 0;
+        var tsEfektif = Math.max(tsInputBaru, tsDiperbarui);
+
+        result.push({
+          id              : rowId,
+          npsn            : c.npsn > -1 ? row[c.npsn] : "",
+          unit            : c.unit > -1 ? row[c.unit] : "",
+          nama_lengkap    : c.nama_lengkap > -1 ? row[c.nama_lengkap] : "",
+          niy             : idxNiy > -1 ? (row[idxNiy] || "") : "",
+          status_peg      : c.status_peg > -1 ? row[c.status_peg] : "",
+          jabatan         : c.jabatan > -1 ? row[c.jabatan] : "",
+          tgl_input_baru  : tglInputBaru,
+          user_input_baru : c.user_input > -1 ? (row[c.user_input] || "") : "",
+          tgl_diperbarui  : tglDiperbarui,
+          user_diperbarui : c.user_edit > -1 ? (row[c.user_edit] || "") : "",
+          ts_efektif      : tsEfektif
+        });
+      }
+      var lapbulMap = getJumlahLapbulSdsMap_();
+      return JSON.stringify({ data: result, lapbulMap: lapbulMap });
+    }
+
     var sheet = getSheet(KONFIG_PTK.DB_KEY, "Master Data GTK SDS");
     if (!sheet) return JSON.stringify({ data: [], lapbulMap: {} });
     var lastRow = sheet.getLastRow();
@@ -2132,6 +2185,61 @@ function getDataRekapKeadaanSDN() {
 // =============================================================
 function getDataPTKSDS() {
   try {
+    if (typeof USE_CENTRAL_PTK_DB !== "undefined" && USE_CENTRAL_PTK_DB) {
+      var ctx = getTblPtkSdnContext_();
+      if (!ctx) return JSON.stringify([]);
+      var c = ctx.colMap;
+      var idxNiy = ctx.headers.indexOf("niy");
+      var idxInpassing = ctx.headers.indexOf("inpassing");
+      var idxTmtInpassing = ctx.headers.indexOf("tmt_inpassing");
+      var data = ctx.sheet.getDataRange().getDisplayValues();
+      var result = [];
+      for (var i = 1; i < data.length; i++) {
+        var row = data[i];
+        var jenjang = c.jenjang > -1 ? String(row[c.jenjang] || "").trim() : "";
+        if (jenjang !== "SD Swasta") continue;
+        var rowId = c.id > -1 ? row[c.id] : "";
+        if (!rowId) continue;
+        result.push({
+          id: rowId,
+          status_aktif: c.status_aktif > -1 ? (String(row[c.status_aktif] || "AKTIF").trim().toUpperCase()) : "AKTIF",
+          npsn: c.npsn > -1 ? (row[c.npsn] || "") : "",
+          unit: c.unit > -1 ? (row[c.unit] || "") : "",
+          gelar_depan: c.gelar_depan > -1 ? (row[c.gelar_depan] || "") : "",
+          nama_no_gelar: c.nama_no_gelar > -1 ? (row[c.nama_no_gelar] || "") : "",
+          gelar_belakang: c.gelar_belakang > -1 ? (row[c.gelar_belakang] || "") : "",
+          nama_lengkap: c.nama_lengkap > -1 ? (row[c.nama_lengkap] || "") : "",
+          niy: idxNiy > -1 ? (row[idxNiy] || "") : "",
+          tmp_lahir: c.tmp_lahir > -1 ? (row[c.tmp_lahir] || "") : "",
+          tgl_lahir: c.tgl_lahir > -1 ? (row[c.tgl_lahir] || "") : "",
+          nik: c.nik > -1 ? (row[c.nik] || "") : "",
+          lp: c.lp > -1 ? (row[c.lp] || "") : "",
+          agama: c.agama > -1 ? (row[c.agama] || "") : "",
+          pendidikan: c.pendidikan > -1 ? (row[c.pendidikan] || "") : "",
+          jurusan: c.jurusan > -1 ? (row[c.jurusan] || "") : "",
+          thn_lulus: c.thn_lulus > -1 ? (row[c.thn_lulus] || "") : "",
+          alamat_ktp: c.alamat_ktp > -1 ? (row[c.alamat_ktp] || "") : "",
+          alamat_domisili: c.alamat_domisili > -1 ? (row[c.alamat_domisili] || "") : "",
+          hp: c.hp > -1 ? (row[c.hp] || "") : "",
+          status_peg: c.status_peg > -1 ? (row[c.status_peg] || "") : "",
+          jabatan: c.jabatan > -1 ? (row[c.jabatan] || "") : "",
+          tmt_jabatan: c.tmt_jabatan > -1 ? (row[c.tmt_jabatan] || "") : "",
+          inpassing: idxInpassing > -1 ? (row[idxInpassing] || "") : "",
+          tmt_inpassing: idxTmtInpassing > -1 ? (row[idxTmtInpassing] || "") : "",
+          nuptk: c.nuptk > -1 ? (row[c.nuptk] || "") : "",
+          serdik: c.serdik > -1 ? (row[c.serdik] || "") : "",
+          dapodik: c.dapodik > -1 ? (row[c.dapodik] || "") : "",
+          tugtam: c.tugtam > -1 ? (row[c.tugtam] || "") : "",
+          diinput: c.diinput > -1 ? (row[c.diinput] || "") : "",
+          user_input: c.user_input > -1 ? (row[c.user_input] || "") : "",
+          diedit: c.diedit > -1 ? (row[c.diedit] || "") : "",
+          user_edit: c.user_edit > -1 ? (row[c.user_edit] || "") : "",
+          email: c.email > -1 ? (row[c.email] || "") : ""
+        });
+      }
+      return JSON.stringify(result);
+    }
+
     var sheet = getSheet(KONFIG_PTK.DB_KEY, "Master Data GTK SDS"); 
     if (!sheet) return JSON.stringify([]);
     var lastRow = sheet.getLastRow(); 
@@ -2236,6 +2344,64 @@ function getDataPTKSDS() {
 
 function checkAndGetPtkNonAktifSDSByNIK(nik) {
   try {
+    var inputNik = String(nik).replace(/'/g, "").trim();
+    if (!inputNik) return JSON.stringify({ found: false });
+
+    if (typeof USE_CENTRAL_PTK_DB !== "undefined" && USE_CENTRAL_PTK_DB) {
+      var ctx = getTblPtkSdnContext_();
+      if (!ctx) return JSON.stringify({ found: false });
+      var c = ctx.colMap;
+      var idxNiy = ctx.headers.indexOf("niy");
+      var idxInpassing = ctx.headers.indexOf("inpassing");
+      var idxTmtInpassing = ctx.headers.indexOf("tmt_inpassing");
+      var dataDisplay = ctx.sheet.getDataRange().getDisplayValues();
+      for (var i = 1; i < dataDisplay.length; i++) {
+        var row = dataDisplay[i];
+        var jenjang = c.jenjang > -1 ? String(row[c.jenjang] || "").trim() : "";
+        var statusAktif = c.status_aktif > -1 ? String(row[c.status_aktif] || "AKTIF").trim().toUpperCase() : "AKTIF";
+        if (jenjang !== "SD Swasta" || statusAktif !== "NON_AKTIF") continue;
+        var rowNik = c.nik > -1 ? String(row[c.nik] || "").replace(/'/g, "").trim() : "";
+        if (rowNik === inputNik) {
+          return JSON.stringify({
+            found: true,
+            id: c.id > -1 ? row[c.id] : "",
+            nama_lengkap: (c.nama_lengkap > -1 ? row[c.nama_lengkap] : "") || (c.nama_no_gelar > -1 ? row[c.nama_no_gelar] : "") || "",
+            nik: rowNik,
+            lembaga_lama: c.unit > -1 ? (row[c.unit] || "") : "",
+            alasan_non_aktif: c.alasan_hapus > -1 ? (row[c.alasan_hapus] || "Mutasi / Non-Aktif") : "Mutasi / Non-Aktif",
+            tgl_non_aktif: c.tgl_hapus > -1 ? (row[c.tgl_hapus] || "") : "",
+            data: {
+              gelar_depan: c.gelar_depan > -1 ? (row[c.gelar_depan] || "") : "",
+              nama_no_gelar: c.nama_no_gelar > -1 ? (row[c.nama_no_gelar] || "") : "",
+              gelar_belakang: c.gelar_belakang > -1 ? (row[c.gelar_belakang] || "") : "",
+              niy: idxNiy > -1 ? (row[idxNiy] || "") : "",
+              tmp_lahir: c.tmp_lahir > -1 ? (row[c.tmp_lahir] || "") : "",
+              tgl_lahir: c.tgl_lahir > -1 ? (row[c.tgl_lahir] || "") : "",
+              lp: c.lp > -1 ? (row[c.lp] || "") : "",
+              agama: c.agama > -1 ? (row[c.agama] || "") : "",
+              pendidikan: c.pendidikan > -1 ? (row[c.pendidikan] || "") : "",
+              jurusan: c.jurusan > -1 ? (row[c.jurusan] || "") : "",
+              thn_lulus: c.thn_lulus > -1 ? (row[c.thn_lulus] || "") : "",
+              alamat_ktp: c.alamat_ktp > -1 ? (row[c.alamat_ktp] || "") : "",
+              alamat_domisili: c.alamat_domisili > -1 ? (row[c.alamat_domisili] || "") : "",
+              hp: c.hp > -1 ? (row[c.hp] || "") : "",
+              status_peg: c.status_peg > -1 ? (row[c.status_peg] || "") : "",
+              jabatan: c.jabatan > -1 ? (row[c.jabatan] || "") : "",
+              tmt_jabatan: c.tmt_jabatan > -1 ? (row[c.tmt_jabatan] || "") : "",
+              inpassing: idxInpassing > -1 ? (row[idxInpassing] || "") : "",
+              tmt_inpassing: idxTmtInpassing > -1 ? (row[idxTmtInpassing] || "") : "",
+              nuptk: c.nuptk > -1 ? (row[c.nuptk] || "") : "",
+              serdik: c.serdik > -1 ? (row[c.serdik] || "") : "",
+              dapodik: c.dapodik > -1 ? (row[c.dapodik] || "") : "",
+              tugtam: c.tugtam > -1 ? (row[c.tugtam] || "") : "",
+              email: c.email > -1 ? (row[c.email] || "") : ""
+            }
+          });
+        }
+      }
+      return JSON.stringify({ found: false });
+    }
+
     var sheetTarget = getSheet(KONFIG_PTK.DB_KEY, "gtk_non_aktif_sds");
     if (!sheetTarget) return JSON.stringify({ found: false });
     var dataDisplay = sheetTarget.getDataRange().getDisplayValues();
@@ -2290,6 +2456,80 @@ function checkAndGetPtkNonAktifSDSByNIK(nik) {
 
 function reactivatePtkSDS(form) {
   try {
+    if (typeof USE_CENTRAL_PTK_DB !== "undefined" && USE_CENTRAL_PTK_DB) {
+      var ctx = getTblPtkSdnContext_();
+      if (!ctx) return "Error: Tabel tbl_ptk tidak ditemukan.";
+      var c = ctx.colMap;
+      var idxNiy = ctx.headers.indexOf("niy");
+      var idxInpassing = ctx.headers.indexOf("inpassing");
+      var idxTmtInpassing = ctx.headers.indexOf("tmt_inpassing");
+      var inputNik = String(form.nik).replace(/'/g, "").trim();
+      var dataDisplay = ctx.sheet.getDataRange().getDisplayValues();
+      var dataValues = ctx.sheet.getDataRange().getValues();
+      var rowIdx = -1;
+      var originalRow = [];
+
+      for (var i = 1; i < dataDisplay.length; i++) {
+        var jenjang = c.jenjang > -1 ? String(dataDisplay[i][c.jenjang] || "").trim() : "";
+        var statusAktif = c.status_aktif > -1 ? String(dataDisplay[i][c.status_aktif] || "AKTIF").trim().toUpperCase() : "AKTIF";
+        if (jenjang !== "SD Swasta" || statusAktif !== "NON_AKTIF") continue;
+        var rowNik = c.nik > -1 ? String(dataDisplay[i][c.nik] || "").replace(/'/g, "").trim() : "";
+        if (rowNik === inputNik) {
+          rowIdx = i + 1;
+          originalRow = dataValues[i];
+          break;
+        }
+      }
+      if (rowIdx === -1) return "Error: Data non-aktif dengan NIK ini tidak ditemukan.";
+
+      var timestamp = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss");
+      var rawNpsn = form.npsn_baru || form.npsn_login || form.npsn || "";
+      var npsnNum = parseInt(String(rawNpsn).replace(/[^0-9]/g, ''), 10);
+      var finalNpsn = isNaN(npsnNum) ? rawNpsn : npsnNum;
+      var finalUnit = form.unit_kerja || form.unit_login || form.unit || "";
+      var namaFull = (form.gelar_depan ? form.gelar_depan + " " : "") + form.nama_lengkap + (form.gelar_belakang ? ", " + form.gelar_belakang : "");
+
+      var rowArr = originalRow.slice();
+      if (c.status_aktif > -1) rowArr[c.status_aktif] = "AKTIF";
+      if (c.npsn > -1) rowArr[c.npsn] = finalNpsn;
+      if (c.unit > -1) rowArr[c.unit] = finalUnit;
+      if (c.gelar_depan > -1) rowArr[c.gelar_depan] = form.gelar_depan || originalRow[c.gelar_depan] || "";
+      if (c.nama_no_gelar > -1) rowArr[c.nama_no_gelar] = form.nama_lengkap || originalRow[c.nama_no_gelar] || "";
+      if (c.gelar_belakang > -1) rowArr[c.gelar_belakang] = form.gelar_belakang || originalRow[c.gelar_belakang] || "";
+      if (c.nama_lengkap > -1) rowArr[c.nama_lengkap] = namaFull || originalRow[c.nama_lengkap] || "";
+      if (idxNiy > -1) rowArr[idxNiy] = "'" + (form.niy || originalRow[idxNiy] || "");
+      if (c.tmp_lahir > -1) rowArr[c.tmp_lahir] = form.tmp_lahir || originalRow[c.tmp_lahir] || "";
+      if (c.tgl_lahir > -1) rowArr[c.tgl_lahir] = convertStringToDate_(form.tgl_lahir || originalRow[c.tgl_lahir]);
+      if (c.nik > -1) rowArr[c.nik] = "'" + (form.nik || originalRow[c.nik] || "");
+      if (c.lp > -1) rowArr[c.lp] = form.lp || originalRow[c.lp] || "";
+      if (c.agama > -1) rowArr[c.agama] = form.agama || originalRow[c.agama] || "";
+      if (c.pendidikan > -1) rowArr[c.pendidikan] = form.pendidikan || originalRow[c.pendidikan] || "";
+      if (c.jurusan > -1) rowArr[c.jurusan] = form.jurusan || originalRow[c.jurusan] || "";
+      if (c.thn_lulus > -1) rowArr[c.thn_lulus] = form.thn_lulus || originalRow[c.thn_lulus] || "";
+      if (c.alamat_ktp > -1) rowArr[c.alamat_ktp] = form.alamat_ktp || originalRow[c.alamat_ktp] || "";
+      if (c.alamat_domisili > -1) rowArr[c.alamat_domisili] = form.alamat_domisili || originalRow[c.alamat_domisili] || "";
+      if (c.hp > -1) rowArr[c.hp] = "'" + (form.hp || originalRow[c.hp] || "");
+      if (c.status_peg > -1) rowArr[c.status_peg] = form.status_peg || originalRow[c.status_peg] || "";
+      if (c.jabatan > -1) rowArr[c.jabatan] = form.jabatan || originalRow[c.jabatan] || "";
+      if (c.tmt_jabatan > -1) rowArr[c.tmt_jabatan] = convertStringToDate_(form.tmt_jabatan || originalRow[c.tmt_jabatan]);
+      if (idxInpassing > -1) rowArr[idxInpassing] = form.inpassing || originalRow[idxInpassing] || "";
+      if (idxTmtInpassing > -1) rowArr[idxTmtInpassing] = convertStringToDate_(form.tmt_inpassing || originalRow[idxTmtInpassing]);
+      if (c.nuptk > -1) rowArr[c.nuptk] = "'" + (form.nuptk || originalRow[c.nuptk] || "");
+      if (c.serdik > -1) rowArr[c.serdik] = form.serdik || originalRow[c.serdik] || "";
+      if (c.dapodik > -1) rowArr[c.dapodik] = form.dapodik || originalRow[c.dapodik] || "";
+      if (c.tugtam > -1) rowArr[c.tugtam] = form.tugtam || originalRow[c.tugtam] || "";
+      if (c.diedit > -1) rowArr[c.diedit] = timestamp;
+      if (c.user_edit > -1) rowArr[c.user_edit] = form.user_login || "";
+      if (c.email > -1) rowArr[c.email] = form.email || originalRow[c.email] || "";
+      if (c.alasan_hapus > -1) rowArr[c.alasan_hapus] = "";
+      if (c.tgl_hapus > -1) rowArr[c.tgl_hapus] = "";
+      if (c.user_hapus > -1) rowArr[c.user_hapus] = "";
+
+      ctx.sheet.getRange(rowIdx, 1, 1, rowArr.length).setValues([rowArr]);
+      SpreadsheetApp.flush();
+      return "Sukses";
+    }
+
     var sheetNonAktif = getSheet(KONFIG_PTK.DB_KEY, "gtk_non_aktif_sds");
     var sheetAktif = getSheet(KONFIG_PTK.DB_KEY, "Master Data GTK SDS");
     if (!sheetNonAktif || !sheetAktif) return "Error: Sheet database tidak ditemukan.";
@@ -2363,6 +2603,77 @@ function reactivatePtkSDS(form) {
 }
 
 function insertDataPTKSDS(form) {
+  if (typeof USE_CENTRAL_PTK_DB !== "undefined" && USE_CENTRAL_PTK_DB) {
+    var ctx = getTblPtkSdnContext_();
+    if (!ctx) return "Error: Tabel tbl_ptk tidak ditemukan.";
+    var c = ctx.colMap;
+    var idxNiy = ctx.headers.indexOf("niy");
+    var idxInpassing = ctx.headers.indexOf("inpassing");
+    var idxTmtInpassing = ctx.headers.indexOf("tmt_inpassing");
+    var data = ctx.sheet.getDataRange().getValues();
+    var inputNik = String(form.nik || "").replace(/'/g, "").trim();
+
+    for (var i = 1; i < data.length; i++) {
+      var rowNik = c.nik > -1 ? String(data[i][c.nik] || "").replace(/'/g, "").trim() : "";
+      if (rowNik === inputNik && inputNik !== "") {
+        var rowStatus = c.status_aktif > -1 ? String(data[i][c.status_aktif] || "AKTIF").trim().toUpperCase() : "AKTIF";
+        var rowJenjang = c.jenjang > -1 ? String(data[i][c.jenjang] || "").trim() : "";
+        if (rowStatus === "NON_AKTIF" && rowJenjang === "SD Swasta") {
+          var resCheckNonAktif = JSON.parse(checkAndGetPtkNonAktifSDSByNIK(inputNik));
+          if (resCheckNonAktif.found) return "NON_AKTIF_FOUND:" + JSON.stringify(resCheckNonAktif);
+        }
+        var namaExist = c.nama_lengkap > -1 ? data[i][c.nama_lengkap] : "";
+        return "NIK " + inputNik + " sudah terdaftar atas nama " + namaExist + ", hubungi admin.";
+      }
+    }
+
+    var newId = "SDS-" + new Date().getTime();
+    var namaFull = (form.gelar_depan ? form.gelar_depan + " " : "") + form.nama_lengkap + (form.gelar_belakang ? ", " + form.gelar_belakang : "");
+    var timestamp = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss");
+    var rawNpsn = form.npsn_baru || form.npsn_login || "";
+    var npsnNum = parseInt(String(rawNpsn).replace(/[^0-9]/g, ''), 10);
+    var finalNpsn = isNaN(npsnNum) ? rawNpsn : npsnNum;
+
+    var rowArr = new Array(ctx.headers.length);
+    for (var h = 0; h < rowArr.length; h++) rowArr[h] = "";
+    if (c.id > -1) rowArr[c.id] = newId;
+    if (c.jenjang > -1) rowArr[c.jenjang] = "SD Swasta";
+    if (c.status_aktif > -1) rowArr[c.status_aktif] = "AKTIF";
+    if (c.npsn > -1) rowArr[c.npsn] = finalNpsn;
+    if (c.unit > -1) rowArr[c.unit] = form.unit_kerja || form.unit_login || "";
+    if (c.gelar_depan > -1) rowArr[c.gelar_depan] = form.gelar_depan || "";
+    if (c.nama_no_gelar > -1) rowArr[c.nama_no_gelar] = form.nama_lengkap || "";
+    if (c.gelar_belakang > -1) rowArr[c.gelar_belakang] = form.gelar_belakang || "";
+    if (c.nama_lengkap > -1) rowArr[c.nama_lengkap] = namaFull || "";
+    if (idxNiy > -1) rowArr[idxNiy] = form.niy || "";
+    if (c.tmp_lahir > -1) rowArr[c.tmp_lahir] = form.tmp_lahir || "";
+    if (c.tgl_lahir > -1) rowArr[c.tgl_lahir] = convertStringToDate_(form.tgl_lahir);
+    if (c.nik > -1) rowArr[c.nik] = "'" + (form.nik || "");
+    if (c.lp > -1) rowArr[c.lp] = form.lp || "";
+    if (c.agama > -1) rowArr[c.agama] = form.agama || "";
+    if (c.pendidikan > -1) rowArr[c.pendidikan] = form.pendidikan || "";
+    if (c.jurusan > -1) rowArr[c.jurusan] = form.jurusan || "";
+    if (c.thn_lulus > -1) rowArr[c.thn_lulus] = form.thn_lulus || "";
+    if (c.alamat_ktp > -1) rowArr[c.alamat_ktp] = form.alamat_ktp || "";
+    if (c.alamat_domisili > -1) rowArr[c.alamat_domisili] = form.alamat_domisili || "";
+    if (c.hp > -1) rowArr[c.hp] = "'" + (form.hp || "");
+    if (c.status_peg > -1) rowArr[c.status_peg] = form.status_peg || "";
+    if (c.jabatan > -1) rowArr[c.jabatan] = form.jabatan || "";
+    if (c.tmt_jabatan > -1) rowArr[c.tmt_jabatan] = convertStringToDate_(form.tmt_jabatan);
+    if (idxInpassing > -1) rowArr[idxInpassing] = form.inpassing || "";
+    if (idxTmtInpassing > -1) rowArr[idxTmtInpassing] = convertStringToDate_(form.tmt_inpassing);
+    if (c.nuptk > -1) rowArr[c.nuptk] = "'" + (form.nuptk || "");
+    if (c.serdik > -1) rowArr[c.serdik] = form.serdik || "";
+    if (c.dapodik > -1) rowArr[c.dapodik] = form.dapodik || "";
+    if (c.tugtam > -1) rowArr[c.tugtam] = form.tugtam || "";
+    if (c.diinput > -1) rowArr[c.diinput] = timestamp;
+    if (c.user_input > -1) rowArr[c.user_input] = form.user_login || "";
+    if (c.email > -1) rowArr[c.email] = form.email || "";
+
+    ctx.sheet.appendRow(rowArr);
+    return "Sukses";
+  }
+
   var sheet = getSheet(KONFIG_PTK.DB_KEY, "Master Data GTK SDS");
   var data = sheet.getDataRange().getValues(); var inputNik = String(form.nik).trim(); 
   for (var i = 1; i < data.length; i++) { var rowNik = String(data[i][10]).replace(/'/g, "").trim(); if (rowNik === inputNik) return "NIK " + inputNik + " sudah terdaftar atas nama " + data[i][6] + ", hubungi admin."; }
@@ -2392,6 +2703,82 @@ function insertDataPTKSDS(form) {
 }
 
 function updateDataPTKSDS(form) {
+  if (typeof USE_CENTRAL_PTK_DB !== "undefined" && USE_CENTRAL_PTK_DB) {
+    var ctx = getTblPtkSdnContext_();
+    if (!ctx) return "Error: Tabel tbl_ptk tidak ditemukan.";
+    var c = ctx.colMap;
+    var idxNiy = ctx.headers.indexOf("niy");
+    var idxInpassing = ctx.headers.indexOf("inpassing");
+    var idxTmtInpassing = ctx.headers.indexOf("tmt_inpassing");
+    var data = ctx.sheet.getDataRange().getValues();
+    var rowIdx = -1;
+    var idStr = String(form.id).trim();
+
+    for (var i = 1; i < data.length; i++) {
+      var jenjang = c.jenjang > -1 ? String(data[i][c.jenjang] || "").trim() : "";
+      if (jenjang !== "SD Swasta") continue;
+      if (c.id > -1 && String(data[i][c.id]).trim() === idStr) {
+        rowIdx = i + 1;
+        break;
+      }
+    }
+    if (rowIdx == -1) return "Error: ID tidak ditemukan.";
+
+    var inputNik = String(form.nik || "").replace(/'/g, "").trim();
+    if (inputNik !== "") {
+      for (var i = 1; i < data.length; i++) {
+        var rowNik = c.nik > -1 ? String(data[i][c.nik] || "").replace(/'/g, '').trim() : "";
+        var rowId = c.id > -1 ? String(data[i][c.id]).trim() : "";
+        if (rowNik === inputNik && rowId !== idStr) {
+          var namaExist = c.nama_lengkap > -1 ? data[i][c.nama_lengkap] : "";
+          return "Gagal: NIK " + inputNik + " sudah dipakai oleh " + namaExist;
+        }
+      }
+    }
+
+    var rowArr = data[rowIdx - 1].slice();
+    var namaFull = (form.gelar_depan ? form.gelar_depan + " " : "") + form.nama_lengkap + (form.gelar_belakang ? ", " + form.gelar_belakang : "");
+    var timestamp = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss");
+
+    if (form.npsn_baru && form.unit_kerja) {
+      var npsnVal = parseInt(String(form.npsn_baru).replace(/[^0-9]/g, ''), 10);
+      if (c.npsn > -1) rowArr[c.npsn] = isNaN(npsnVal) ? form.npsn_baru : npsnVal;
+      if (c.unit > -1) rowArr[c.unit] = form.unit_kerja;
+    }
+
+    if (c.gelar_depan > -1) rowArr[c.gelar_depan] = form.gelar_depan || "";
+    if (c.nama_no_gelar > -1) rowArr[c.nama_no_gelar] = form.nama_lengkap || "";
+    if (c.gelar_belakang > -1) rowArr[c.gelar_belakang] = form.gelar_belakang || "";
+    if (c.nama_lengkap > -1) rowArr[c.nama_lengkap] = namaFull || "";
+    if (idxNiy > -1) rowArr[idxNiy] = form.niy || "";
+    if (c.tmp_lahir > -1) rowArr[c.tmp_lahir] = form.tmp_lahir || "";
+    if (c.tgl_lahir > -1) rowArr[c.tgl_lahir] = convertStringToDate_(form.tgl_lahir);
+    if (c.nik > -1) rowArr[c.nik] = "'" + (form.nik || "");
+    if (c.lp > -1) rowArr[c.lp] = form.lp || "";
+    if (c.agama > -1) rowArr[c.agama] = form.agama || "";
+    if (c.pendidikan > -1) rowArr[c.pendidikan] = form.pendidikan || "";
+    if (c.jurusan > -1) rowArr[c.jurusan] = form.jurusan || "";
+    if (c.thn_lulus > -1) rowArr[c.thn_lulus] = form.thn_lulus || "";
+    if (c.alamat_ktp > -1) rowArr[c.alamat_ktp] = form.alamat_ktp || "";
+    if (c.alamat_domisili > -1) rowArr[c.alamat_domisili] = form.alamat_domisili || "";
+    if (c.hp > -1) rowArr[c.hp] = "'" + (form.hp || "");
+    if (c.status_peg > -1) rowArr[c.status_peg] = form.status_peg || "";
+    if (c.jabatan > -1) rowArr[c.jabatan] = form.jabatan || "";
+    if (c.tmt_jabatan > -1) rowArr[c.tmt_jabatan] = convertStringToDate_(form.tmt_jabatan);
+    if (idxInpassing > -1) rowArr[idxInpassing] = form.inpassing || "";
+    if (idxTmtInpassing > -1) rowArr[idxTmtInpassing] = convertStringToDate_(form.tmt_inpassing);
+    if (c.nuptk > -1) rowArr[c.nuptk] = "'" + (form.nuptk || "");
+    if (c.serdik > -1) rowArr[c.serdik] = form.serdik || "";
+    if (c.dapodik > -1) rowArr[c.dapodik] = form.dapodik || "";
+    if (c.tugtam > -1) rowArr[c.tugtam] = form.tugtam || "";
+    if (c.diedit > -1) rowArr[c.diedit] = timestamp;
+    if (c.user_edit > -1) rowArr[c.user_edit] = form.user_login || "";
+    if (c.email > -1) rowArr[c.email] = form.email || "";
+
+    ctx.sheet.getRange(rowIdx, 1, 1, rowArr.length).setValues([rowArr]);
+    return "Sukses";
+  }
+
   var sheet = getSheet(KONFIG_PTK.DB_KEY, "Master Data GTK SDS");
   var data = sheet.getDataRange().getValues();
   var rowIdx = -1; 
@@ -2434,6 +2821,30 @@ function updateDataPTKSDS(form) {
 }
 
 function deleteDataPTKSDS(id, alasan, userLogin) {
+  if (typeof USE_CENTRAL_PTK_DB !== "undefined" && USE_CENTRAL_PTK_DB) {
+    var ctx = getTblPtkSdnContext_();
+    if (!ctx) return "Error: Tabel tbl_ptk tidak ditemukan.";
+    var c = ctx.colMap;
+    var data = ctx.sheet.getDataRange().getValues();
+    var rowIdx = -1;
+    var idStr = String(id).trim();
+    for (var i = 1; i < data.length; i++) {
+      var jenjang = c.jenjang > -1 ? String(data[i][c.jenjang] || "").trim() : "";
+      if (jenjang !== "SD Swasta") continue;
+      if (c.id > -1 && String(data[i][c.id]).trim() === idStr) {
+        rowIdx = i + 1;
+        break;
+      }
+    }
+    if (rowIdx == -1) return "Error: Data tidak ditemukan.";
+    var tglHapus = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MM-yyyy HH:mm:ss");
+    if (c.status_aktif > -1) ctx.sheet.getRange(rowIdx, c.status_aktif + 1).setValue("NON_AKTIF");
+    if (c.alasan_hapus > -1) ctx.sheet.getRange(rowIdx, c.alasan_hapus + 1).setValue(alasan || "");
+    if (c.tgl_hapus > -1) ctx.sheet.getRange(rowIdx, c.tgl_hapus + 1).setValue(tglHapus);
+    if (c.user_hapus > -1) ctx.sheet.getRange(rowIdx, c.user_hapus + 1).setValue(userLogin || "");
+    return "Sukses";
+  }
+
   var sheetSource = getSheet(KONFIG_PTK.DB_KEY, "Master Data GTK SDS"); 
   var sheetTarget = getSheet(KONFIG_PTK.DB_KEY, "gtk_non_aktif_sds"); 
   if (!sheetTarget) { 
@@ -2448,6 +2859,30 @@ function deleteDataPTKSDS(id, alasan, userLogin) {
   if (rowIdx == -1) return "Error: Data tidak ditemukan.";
   rowData.push(alasan, Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MM-yyyy HH:mm:ss"), userLogin);
   sheetTarget.appendRow(rowData); sheetSource.deleteRow(rowIdx); return "Sukses";
+}
+
+function hapusPermanenPTKSDS(id) {
+  try {
+    if (typeof USE_CENTRAL_PTK_DB !== "undefined" && USE_CENTRAL_PTK_DB) {
+      var ctx = getTblPtkSdnContext_();
+      if (!ctx) return "Error: Tabel tbl_ptk tidak ditemukan.";
+      var c = ctx.colMap;
+      var data = ctx.sheet.getDataRange().getValues();
+      var idStr = String(id).trim();
+      for (var i = 1; i < data.length; i++) {
+        var jenjang = c.jenjang > -1 ? String(data[i][c.jenjang] || "").trim() : "";
+        var statusAktif = c.status_aktif > -1 ? String(data[i][c.status_aktif] || "").trim().toUpperCase() : "";
+        if (jenjang === "SD Swasta" && statusAktif === "NON_AKTIF" && c.id > -1 && String(data[i][c.id]).trim() === idStr) {
+          ctx.sheet.deleteRow(i + 1);
+          return "Sukses";
+        }
+      }
+      return "Error: Data PTK non-aktif tidak ditemukan.";
+    }
+    return "Error: Fitur Hapus Permanen hanya tersedia pada database terpusat.";
+  } catch (e) {
+    return "Error: " + e.message;
+  }
 }
 
 function getDataKeadaanGTKSDS() { var sheet = getSheet(KONFIG_PTK.DB_KEY, "Keadaan GTK SDS"); if (!sheet) return []; var lastRow = sheet.getLastRow(); if (lastRow < 3) return []; return sheet.getRange(3, 1, lastRow - 2, 27).getDisplayValues(); }
@@ -3568,7 +4003,6 @@ function tandaiNotifMutasiSDNDibaca(rowId, role) {
 
 function ajukanMutasiPTKSDS(idPtk, jenis, tujuan, tanggal, base64Data, fileName, userPengusul) {
   try {
-    var sheetSource = getSheet("PTK_DB", "Master Data GTK SDS");
     var sheetUsulan = getSheet("PTK_DB", "usul_mutasi_sds");
     
     // Buat sheet usulan jika belum ada
@@ -3579,20 +4013,39 @@ function ajukanMutasiPTKSDS(idPtk, jenis, tujuan, tanggal, base64Data, fileName,
       sheetUsulan.getRange(1, 1, 1, headers.length).setValues([headers]);
     }
     
-    // Ambil data PTK untuk tahu nama dan lembaga asal
-    var dataPTK = sheetSource.getDataRange().getValues();
-    var ptkRow = null;
-    for (var i = 1; i < dataPTK.length; i++) {
-      if (String(dataPTK[i][0]) === String(idPtk)) {
-        ptkRow = dataPTK[i];
-        break;
+    var namaPtk = "";
+    var lembagaAsal = "";
+    var foundPtk = false;
+
+    if (typeof USE_CENTRAL_PTK_DB !== "undefined" && USE_CENTRAL_PTK_DB) {
+      var ctx = getTblPtkSdnContext_();
+      if (!ctx) return "Error: Tabel tbl_ptk tidak ditemukan.";
+      var c = ctx.colMap;
+      var dataPTK = ctx.sheet.getDataRange().getValues();
+      for (var i = 1; i < dataPTK.length; i++) {
+        var jenjang = c.jenjang > -1 ? String(dataPTK[i][c.jenjang] || "").trim() : "";
+        if (jenjang !== "SD Swasta") continue;
+        if (c.id > -1 && String(dataPTK[i][c.id]) === String(idPtk)) {
+          namaPtk = c.nama_lengkap > -1 ? (dataPTK[i][c.nama_lengkap] || "") : "";
+          lembagaAsal = c.unit > -1 ? (dataPTK[i][c.unit] || "") : "";
+          foundPtk = true;
+          break;
+        }
+      }
+    } else {
+      var sheetSource = getSheet("PTK_DB", "Master Data GTK SDS");
+      var dataPTK = sheetSource.getDataRange().getValues();
+      for (var i = 1; i < dataPTK.length; i++) {
+        if (String(dataPTK[i][0]) === String(idPtk)) {
+          namaPtk = dataPTK[i][6];
+          lembagaAsal = dataPTK[i][2];
+          foundPtk = true;
+          break;
+        }
       }
     }
     
-    if (!ptkRow) return "Error: Data PTK tidak ditemukan.";
-    
-    var namaPtk = ptkRow[6]; // Kolom G (Nama Lengkap)
-    var lembagaAsal = ptkRow[2]; // Kolom C (Unit/Lembaga)
+    if (!foundPtk) return "Error: Data PTK tidak ditemukan.";
     
     // Upload file ke Drive (Conditional)
     var fileUrl = "-";
@@ -3807,36 +4260,64 @@ function eksekusiMutasiPTKSDS(idUsulan, keputusan, userEksekutor) {
     var catatan = statusParts[1] || "";
     
     if (mainStatus === "Setuju") {
-      // Cari data PTK
-      var dataPTK = sheetSource.getDataRange().getValues();
-      var ptkRowIdx = -1;
-      
-      for (var i = 1; i < dataPTK.length; i++) {
-        if (String(dataPTK[i][0]) === String(idPtk)) {
-          ptkRowIdx = i + 1;
-          break;
+      if (typeof USE_CENTRAL_PTK_DB !== "undefined" && USE_CENTRAL_PTK_DB) {
+        var ctx = getTblPtkSdnContext_();
+        if (!ctx) return "Error: Tabel tbl_ptk tidak ditemukan.";
+        var c = ctx.colMap;
+        var dataPTK = ctx.sheet.getDataRange().getValues();
+        var ptkRowIdx = -1;
+        for (var i = 1; i < dataPTK.length; i++) {
+          var jenjang = c.jenjang > -1 ? String(dataPTK[i][c.jenjang] || "").trim() : "";
+          if (jenjang !== "SD Swasta") continue;
+          if (c.id > -1 && String(dataPTK[i][c.id]) === String(idPtk)) {
+            ptkRowIdx = i + 1;
+            break;
+          }
         }
-      }
-      
-      if (ptkRowIdx === -1) return "Error: Data PTK tidak ditemukan di Master Data.";
-      
-      if (jenis === "Dalam Kecamatan") {
-        // Mutasi Lokal: Ubah Unit/Lembaga di Master Data
-        sheetSource.getRange(ptkRowIdx, 3).setValue(tujuan);
+        if (ptkRowIdx === -1) return "Error: Data PTK tidak ditemukan di Master Data.";
+
+        if (jenis === "Dalam Kecamatan") {
+          if (c.unit > -1) ctx.sheet.getRange(ptkRowIdx, c.unit + 1).setValue(tujuan);
+          if (c.diedit > -1) ctx.sheet.getRange(ptkRowIdx, c.diedit + 1).setValue(timestamp);
+          if (c.user_edit > -1) ctx.sheet.getRange(ptkRowIdx, c.user_edit + 1).setValue(userEksekutor || "");
+        } else {
+          if (c.status_aktif > -1) ctx.sheet.getRange(ptkRowIdx, c.status_aktif + 1).setValue("NON_AKTIF");
+          if (c.alasan_hapus > -1) ctx.sheet.getRange(ptkRowIdx, c.alasan_hapus + 1).setValue("Mutasi: " + jenis);
+          if (c.tgl_hapus > -1) ctx.sheet.getRange(ptkRowIdx, c.tgl_hapus + 1).setValue(timestamp);
+          if (c.user_hapus > -1) ctx.sheet.getRange(ptkRowIdx, c.user_hapus + 1).setValue(userEksekutor || "");
+        }
       } else {
-        // Mutasi Luar Kecamatan atau Tidak Aktif: Pindahkan ke sheet "gtk_non_aktif_sds"
-        var sheetTarget = ss.getSheetByName("gtk_non_aktif_sds");
-        if (!sheetTarget) {
-          sheetTarget = ss.insertSheet("gtk_non_aktif_sds");
-          var headers = sheetSource.getRange(1, 1, 1, sheetSource.getLastColumn()).getValues();
-          headers[0].push("Alasan Hapus", "Tanggal Hapus", "User Hapus");
-          sheetTarget.getRange(1, 1, 1, headers[0].length).setValues(headers);
+        // Cari data PTK
+        var dataPTK = sheetSource.getDataRange().getValues();
+        var ptkRowIdx = -1;
+        
+        for (var i = 1; i < dataPTK.length; i++) {
+          if (String(dataPTK[i][0]) === String(idPtk)) {
+            ptkRowIdx = i + 1;
+            break;
+          }
         }
         
-        var rowToMove = dataPTK[ptkRowIdx - 1];
-        rowToMove.push("Mutasi: " + jenis, timestamp, userEksekutor);
-        sheetTarget.appendRow(rowToMove);
-        sheetSource.deleteRow(ptkRowIdx);
+        if (ptkRowIdx === -1) return "Error: Data PTK tidak ditemukan di Master Data.";
+        
+        if (jenis === "Dalam Kecamatan") {
+          // Mutasi Lokal: Ubah Unit/Lembaga di Master Data
+          sheetSource.getRange(ptkRowIdx, 3).setValue(tujuan);
+        } else {
+          // Mutasi Luar Kecamatan atau Tidak Aktif: Pindahkan ke sheet "gtk_non_aktif_sds"
+          var sheetTarget = ss.getSheetByName("gtk_non_aktif_sds");
+          if (!sheetTarget) {
+            sheetTarget = ss.insertSheet("gtk_non_aktif_sds");
+            var headers = sheetSource.getRange(1, 1, 1, sheetSource.getLastColumn()).getValues();
+            headers[0].push("Alasan Hapus", "Tanggal Hapus", "User Hapus");
+            sheetTarget.getRange(1, 1, 1, headers[0].length).setValues(headers);
+          }
+          
+          var rowToMove = dataPTK[ptkRowIdx - 1];
+          rowToMove.push("Mutasi: " + jenis, timestamp, userEksekutor);
+          sheetTarget.appendRow(rowToMove);
+          sheetSource.deleteRow(ptkRowIdx);
+        }
       }
     }
     

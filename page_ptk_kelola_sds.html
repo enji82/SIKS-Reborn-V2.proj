@@ -461,7 +461,8 @@
         var filtersConfig = [
             { id: 'ptksds_filterUnit', placeholder: 'Memvalidasi Akses...', disabled: true },
             { id: 'ptksds_filterStatus', value: 'SEMUA', text: 'Semua Status' },
-            { id: 'ptksds_filterJabatan', value: 'SEMUA', text: 'Semua Jabatan' }
+            { id: 'ptksds_filterJabatan', value: 'SEMUA', text: 'Semua Jabatan' },
+            { id: 'ptksds_filterAktif', value: 'AKTIF', text: 'Aktif' }
         ];
         var extraButtons = `
             <div class="divider-vertical d-none d-md-block mx-2"></div>
@@ -474,6 +475,7 @@
             </button>
         `;
         $('#ptksds_filterBarArea').html(SultanUI.renderFilterBar(filtersConfig, extraButtons));
+        $('#ptksds_filterAktif').html('<option value="AKTIF" selected>Aktif</option><option value="NON_AKTIF">Tidak Aktif</option><option value="SEMUA">Semua</option>');
 
         try {
             var user = getSesiUser() || {};
@@ -490,8 +492,8 @@
         $(document).off('click', '#ptksds_btnSync').on('click', '#ptksds_btnSync', ptksds_tarikDataServer);
         $(document).off('click', '#ptksds_btnTambah').on('click', '#ptksds_btnTambah', ptksds_bukaModalTambah);
 
-        $(document).off('change', '#ptksds_filterUnit, #ptksds_filterStatus, #ptksds_filterJabatan')
-            .on('change', '#ptksds_filterUnit, #ptksds_filterStatus, #ptksds_filterJabatan', ptksds_terapkanFilterLokal);
+        $(document).off('change', '#ptksds_filterUnit, #ptksds_filterStatus, #ptksds_filterJabatan, #ptksds_filterAktif')
+            .on('change', '#ptksds_filterUnit, #ptksds_filterStatus, #ptksds_filterJabatan, #ptksds_filterAktif', ptksds_terapkanFilterLokal);
 
         $(document).off('change', '#ptksds_selPendidikan').on('change', '#ptksds_selPendidikan', ptksds_cekJurusan);
 
@@ -665,6 +667,7 @@
     }
 
     function ptksds_terapkanFilterLokal() {
+        var fAktif = $('#ptksds_filterAktif').val() || "AKTIF";
         var fStatus = $('#ptksds_filterStatus').val() || "SEMUA";
         var fJabatan = $('#ptksds_filterJabatan').val() || "SEMUA";
         var tAdminUnit = PTKSDS_IS_ADMIN ? ($('#ptksds_filterUnit').val() || "SEMUA").toUpperCase() : "";
@@ -674,6 +677,9 @@
         var clJabatan = ptksds_cleanString(fJabatan);
 
         var hasil = PTKSDS_CACHE_DATA.filter(function (row) {
+            var rAktif = String(row.status_aktif || "AKTIF").trim().toUpperCase();
+            var passAktif = (fAktif === "SEMUA") || (rAktif === fAktif);
+
             var rUnit = ptksds_cleanString(row.unit);
             var rStatus = ptksds_cleanString(row.status_peg);
             var rJabatan = ptksds_cleanString(row.jabatan);
@@ -685,7 +691,7 @@
             var passStatus = (clStatus === "SEMUA") || (rStatus === clStatus);
             var passJabatan = (clJabatan === "SEMUA") || (rJabatan === clJabatan);
 
-            return passUnit && passStatus && passJabatan;
+            return passAktif && passUnit && passStatus && passJabatan;
         });
 
         ptksds_renderTabel(hasil);
@@ -812,9 +818,14 @@
             // ── 13. TOMBOL AKSI (Paling Kanan) ────────────────────────────
             var btnEdit = '';
             var btnHapus = '';
+            var isNonAktif = String(row.status_aktif || "AKTIF").trim().toUpperCase() === "NON_AKTIF";
             if (PTKSDS_IS_ADMIN) {
                 btnEdit = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning" onclick="ptksds_bukaModalEdit(\'' + masterKey + '\')" title="Edit / Mutasi"><i class="fas fa-pencil-alt"></i></button>';
-                btnHapus = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon" onclick="ptksds_bukaModalHapus(\'' + masterKey + '\', \'' + ptksds_escapeJs(row.nama_lengkap) + '\')" title="Pindah ke Arsip Non-Aktif"><i class="fas fa-trash-alt"></i></button>';
+                if (isNonAktif) {
+                    btnHapus = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon" onclick="ptksds_bukaModalHapusPermanen(\'' + masterKey + '\', \'' + ptksds_escapeJs(row.nama_lengkap) + '\')" title="Hapus Permanen dari Database"><i class="fas fa-trash-alt"></i></button>';
+                } else {
+                    btnHapus = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon" onclick="ptksds_bukaModalHapus(\'' + masterKey + '\', \'' + ptksds_escapeJs(row.nama_lengkap) + '\')" title="Nonaktifkan PTK"><i class="fas fa-user-slash"></i></button>';
+                }
             } else {
                 btnEdit = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning" onclick="ptksds_bukaModalEdit(\'' + masterKey + '\')" title="Edit Data"><i class="fas fa-pencil-alt"></i></button>';
             }
@@ -1246,28 +1257,69 @@
     function ptksds_bukaModalHapus(masterKey, nama) {
         var row = PTKSDS_DATA_MASTER[masterKey];
         var realId = row ? row.id : masterKey;
-        Sultan.modal.hapus({
+        Sultan.modal.konfirmasiHapus({
             title: 'HAPUS DATA PTK SDS',
-            teksUtama: 'Apakah Anda yakin ingin menghapus data PTK ini?',
-            teksSub: 'Tindakan ini permanen. Seluruh berkas digital e-file PTK atas nama ' + nama + ' akan terhapus.',
-            detailHtml: '<div class="p-2 bg-light rounded text-uppercase font-weight-bold text-center">' + nama + '</div>',
-            wajibAlasan: true
-        }, function(alasan, closeCallback) {
-            google.script.run
-                .withSuccessHandler(function(res) {
-                    closeCallback();
-                    if (res === 'Sukses') {
-                        Sultan.notif.crud.hapus();
-                        var dIdx = PTKSDS_CACHE_DATA.findIndex(function(r) { return String(r.id) === String(realId); });
-                        if (dIdx !== -1) { PTKSDS_CACHE_DATA.splice(dIdx, 1); }
-                        ptksds_terapkanFilterLokal();
-                    } else { Sultan.notif.crud.gagal(res); }
-                })
-                .withFailureHandler(function(err) {
-                    closeCallback();
-                    Sultan.notif.crud.gagal(err.message);
-                })
-                .deleteDataPTKSDS(realId, alasan, PTKSDS_USER_AKTIF);
+            teksUtama: 'Apakah Anda yakin ingin menonaktifkan data PTK ini?',
+            teksSub: 'Tindakan ini akan memindahkan data PTK atas nama ' + nama + ' ke arsip Non-Aktif.',
+            detail: {
+                'NAMA PTK': nama || (row ? row.nama_lengkap : '-'),
+                'UNIT KERJA': (row && row.unit) ? row.unit : '-',
+                'NIY / NIK': (row && row.niy && row.niy !== '-') ? row.niy : ((row && row.nik) ? row.nik : '-')
+            },
+            showReason: true,
+            autoClose: false,
+            onConfirm: function(alasan, done) {
+                google.script.run
+                    .withSuccessHandler(function(res) {
+                        if (typeof done === 'function') done();
+                        if (String(res).indexOf('Sukses') === 0) {
+                            Sultan.notif.crud.hapus();
+                            var dIdx = PTKSDS_CACHE_DATA.findIndex(function(r) { return String(r.id) === String(realId); });
+                            if (dIdx !== -1) { PTKSDS_CACHE_DATA[dIdx].status_aktif = 'NON_AKTIF'; }
+                            if (row) row.status_aktif = 'NON_AKTIF';
+                            ptksds_terapkanFilterLokal();
+                        } else { Sultan.notif.crud.gagal(res); }
+                    })
+                    .withFailureHandler(function(err) {
+                        if (typeof done === 'function') done();
+                        Sultan.notif.crud.gagal(err.message);
+                    })
+                    .deleteDataPTKSDS(realId, alasan, PTKSDS_USER_AKTIF);
+            }
+        });
+    }
+
+    function ptksds_bukaModalHapusPermanen(masterKey, nama) {
+        var row = PTKSDS_DATA_MASTER[masterKey];
+        var realId = row ? row.id : masterKey;
+        Sultan.modal.konfirmasiHapus({
+            title: 'HAPUS PERMANEN DATA PTK SDS',
+            teksUtama: 'Apakah Anda yakin ingin menghapus PERMANEN data PTK ini?',
+            teksSub: 'Tindakan ini tidak dapat dibatalkan. Baris data atas nama ' + nama + ' akan dihapus permanen dari database tbl_ptk.',
+            detail: {
+                'NAMA PTK': nama || (row ? row.nama_lengkap : '-'),
+                'UNIT KERJA': (row && row.unit) ? row.unit : '-',
+                'NIY / NIK': (row && row.niy && row.niy !== '-') ? row.niy : ((row && row.nik) ? row.nik : '-')
+            },
+            showReason: false,
+            autoClose: false,
+            onConfirm: function(alasan, done) {
+                google.script.run
+                    .withSuccessHandler(function(res) {
+                        if (typeof done === 'function') done();
+                        if (String(res).indexOf('Sukses') === 0) {
+                            Sultan.notif.crud.hapus();
+                            var dIdx = PTKSDS_CACHE_DATA.findIndex(function(r) { return String(r.id) === String(realId); });
+                            if (dIdx !== -1) { PTKSDS_CACHE_DATA.splice(dIdx, 1); }
+                            ptksds_terapkanFilterLokal();
+                        } else { Sultan.notif.crud.gagal(res); }
+                    })
+                    .withFailureHandler(function(err) {
+                        if (typeof done === 'function') done();
+                        Sultan.notif.crud.gagal(err.message);
+                    })
+                    .hapusPermanenPTKSDS(realId);
+            }
         });
     }
 </script>
