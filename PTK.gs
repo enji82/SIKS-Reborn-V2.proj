@@ -154,12 +154,22 @@ function fixDuplicateIdPTKPAUD() {
 
 // 2. AMBIL DATA UTAMA (cache + baca kolom terbatas)
 function buildPtkListSdn_() {
-  var sheet = getSheet(KONFIG_PTK.DB_KEY, KONFIG_PTK.SHEET_PTK);
+  var useCentral = (typeof USE_CENTRAL_PTK_DB !== "undefined" && USE_CENTRAL_PTK_DB);
+  var sheet = useCentral
+    ? getSheet("SIKS_DB_MASTER", "tbl_ptk")
+    : getSheet(KONFIG_PTK.DB_KEY, KONFIG_PTK.SHEET_PTK);
   var lastRow = sheet.getLastRow();
   if (lastRow < 2) return [];
 
   var allData = sheet.getDataRange().getValues();
   if (allData.length < 2) return [];
+
+  if (useCentral) {
+    var hdr = allData[0];
+    allData = [hdr].concat(allData.slice(1).filter(function(r) {
+      return String(r[1] || "").trim() === "SD Negeri" && String(r[2] || "AKTIF").trim().toUpperCase() === "AKTIF";
+    }));
+  }
 
   var headers = allData[0].map(function(h) { return String(h).toLowerCase().trim(); });
   var findCol = function(nameList, defaultIdx) {
