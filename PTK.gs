@@ -181,7 +181,7 @@ function buildPtkListSdn_() {
   };
 
   var colMap = {
-    id: findCol(["id", "id_ptk", "id ptk"], 0),
+    id: findCol(["id_ptk", "id", "id ptk"], 0),
     npsn: findCol(["npsn"], 1),
     unit: findCol(["unit kerja", "unit_kerja", "unit", "nama_sekolah", "sekolah", "satuan pendidikan"], 2),
     gelar_depan: findCol(["gelar_depan", "gelar depan"], 3),
@@ -1874,7 +1874,7 @@ function getDataPTKSDS() {
     };
 
     var colMap = {
-      id: findCol(["id", "id_ptk", "id ptk"], 0),
+      id: findCol(["id_ptk", "id", "id ptk"], 0),
       npsn: findCol(["npsn"], 1),
       unit: findCol(["unit", "nama_sekolah", "sekolah", "lembaga"], 2),
       gelar_depan: findCol(["gelar_depan", "gelar depan"], 3),
@@ -2206,7 +2206,7 @@ function getDataPTKPAUD() {
     };
 
     var colMap = {
-      id: findCol(["id", "id_ptk", "id ptk"], 0),
+      id: findCol(["id_ptk", "id", "id ptk"], 0),
       npsn: findCol(["npsn"], 1),
       unit: findCol(["unit", "nama_sekolah", "sekolah", "lembaga"], 2),
       jenjang: findCol(["jenjang"], 3),
