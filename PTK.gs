@@ -1457,10 +1457,14 @@ function getDataBezettingSDNMaster() {
 
     for (var i = 0; i < data.length; i++) {
       var row = data[i];
-      if (!row[0]) continue;
+      if (!row[c.id]) continue;
+      if (ctx.useCentral) {
+        if (c.jenjang > -1 && String(row[c.jenjang] || "").trim() !== "SD Negeri") continue;
+        if (c.status_aktif > -1 && String(row[c.status_aktif] || "AKTIF").trim().toUpperCase() === "NON_AKTIF") continue;
+      }
 
-      var npsn = String(row[1] || "").trim();
-      var unit = String(row[2] || "").trim();
+      var npsn = c.npsn > -1 ? String(row[c.npsn] || "").trim() : "";
+      var unit = c.unit > -1 ? String(row[c.unit] || "").trim() : "";
       if (!unit && !npsn) continue;
 
       var schoolKey = npsn || unit;
@@ -1680,8 +1684,10 @@ function getDataBezettingSDNMaster() {
  */
 function getDataKebutuhanGuruSDNMaster() {
   try {
-    var sheet = getSheet(KONFIG_PTK.DB_KEY, KONFIG_PTK.SHEET_PTK);
-    if (!sheet) return JSON.stringify({ success: false, message: "Sheet Master Data GTK tidak ditemukan.", schools: [] });
+    var ctx = getTblPtkSdnContext_();
+    var sheet = ctx.sheet;
+    var c = ctx.colMap;
+    if (!sheet) return JSON.stringify({ success: false, message: "Sheet PTK tidak ditemukan.", schools: [] });
     var lastRow = sheet.getLastRow();
     if (lastRow < 2) return JSON.stringify({ success: true, schools: [] });
 
@@ -1703,8 +1709,7 @@ function getDataKebutuhanGuruSDNMaster() {
       }
     } catch (eKg) {}
 
-    // Baca kolom A (1) s/d Z (26) Master Data GTK
-    var data = sheet.getRange(2, 1, lastRow - 1, 26).getValues();
+    var data = sheet.getRange(2, 1, lastRow - 1, ctx.totalCols).getValues();
     var schoolMap = {};
 
     function initJabatanItem() {
@@ -1734,10 +1739,14 @@ function getDataKebutuhanGuruSDNMaster() {
 
     for (var i = 0; i < data.length; i++) {
       var row = data[i];
-      if (!row[0]) continue;
+      if (!row[c.id]) continue;
+      if (ctx.useCentral) {
+        if (c.jenjang > -1 && String(row[c.jenjang] || "").trim() !== "SD Negeri") continue;
+        if (c.status_aktif > -1 && String(row[c.status_aktif] || "AKTIF").trim().toUpperCase() === "NON_AKTIF") continue;
+      }
 
-      var npsn = String(row[1] || "").trim();
-      var unit = String(row[2] || "").trim();
+      var npsn = c.npsn > -1 ? String(row[c.npsn] || "").trim() : "";
+      var unit = c.unit > -1 ? String(row[c.unit] || "").trim() : "";
       if (!unit && !npsn) continue;
 
       var schoolKey = npsn || unit;
@@ -1761,7 +1770,7 @@ function getDataKebutuhanGuruSDNMaster() {
       if (!sch.npsn && npsn) sch.npsn = npsn;
 
       // 1. Normalisasi Status Kepegawaian & Non ASN Cutoff
-      var st = String(row[19] || "").trim().toUpperCase();
+      var st = c.status_peg > -1 ? String(row[c.status_peg] || "").trim().toUpperCase() : "";
       var statusKey = "non_asn_lt";
 
       if (st.indexOf("CPNS") !== -1) {
@@ -1773,8 +1782,8 @@ function getDataKebutuhanGuruSDNMaster() {
       } else if (st.indexOf("PNS") !== -1) {
         statusKey = "pns";
       } else {
-        // Non ASN - cek tanggal TMT Jabatan (kolom V = index 21)
-        var tmtVal = row[21];
+        // Non ASN - cek tanggal TMT Jabatan
+        var tmtVal = c.tmt_jabatan > -1 ? row[c.tmt_jabatan] : "";
         var tmtDate = null;
         if (tmtVal instanceof Date && !isNaN(tmtVal.getTime())) {
           tmtDate = tmtVal;
@@ -1794,7 +1803,7 @@ function getDataKebutuhanGuruSDNMaster() {
       }
 
       // 2. Normalisasi Tugas
-      var tg = String(row[25] || "").trim().toUpperCase();
+      var tg = c.tugas > -1 ? String(row[c.tugas] || "").trim().toUpperCase() : "";
       var jabKey = "";
 
       if (tg.indexOf("KEPALA") !== -1) {
