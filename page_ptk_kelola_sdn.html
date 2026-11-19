@@ -2247,10 +2247,14 @@
             title: 'HAPUS DATA PTK SDN',
             teksUtama: 'Apakah Anda yakin ingin menonaktifkan data PTK ini?',
             teksSub: 'Tindakan ini akan memindahkan data PTK atas nama ' + nama + ' ke arsip Non-Aktif.',
-            detailHtml: '<div class="p-2 bg-light rounded text-uppercase font-weight-bold text-center">' + nama + '</div>',
-            wajibAlasan: true,
+            detail: {
+                'NAMA PTK': nama || (row ? row.nama_lengkap : '-'),
+                'UNIT KERJA': (row && row.unit) ? row.unit : '-',
+                'NIP / NIK': (row && row.nip && row.nip !== '-') ? row.nip : ((row && row.nik) ? row.nik : '-')
+            },
             showReason: true,
-            onConfirm: function(done, alasan) {
+            autoClose: false,
+            onConfirm: function(alasan, done) {
                 google.script.run
                     .withSuccessHandler(function(res) {
                         if (typeof done === 'function') done();
@@ -2258,8 +2262,11 @@
                             Sultan.notif.crud.hapus();
                             var dIdx = PTKSDN_CACHE_DATA.findIndex(function(r) { return String(r.id) === String(realId); });
                             if (dIdx !== -1) { PTKSDN_CACHE_DATA[dIdx].status_aktif = 'NON_AKTIF'; }
+                            if (row) row.status_aktif = 'NON_AKTIF';
                             ptksdn_terapkanFilterLokal();
-                        } else { Sultan.notif.crud.gagal(res); }
+                        } else {
+                            Sultan.notif.crud.gagal(res);
+                        }
                     })
                     .withFailureHandler(function(err) {
                         if (typeof done === 'function') done();
