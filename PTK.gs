@@ -1387,31 +1387,18 @@ function getDataBezettingSDN() { return getDataBezettingSDNMaster(); }
  */
 function getDataBezettingSDNMaster() {
   try {
-    var sheet = getSheet(KONFIG_PTK.DB_KEY, KONFIG_PTK.SHEET_PTK);
-    if (!sheet) return JSON.stringify({ success: false, message: "Sheet Master Data GTK tidak ditemukan.", schools: [] });
+    var ctx = getTblPtkSdnContext_();
+    var sheet = ctx.sheet;
+    var c = ctx.colMap;
+    if (!sheet) return JSON.stringify({ success: false, message: "Sheet PTK tidak ditemukan.", schools: [] });
     var lastRow = sheet.getLastRow();
     if (lastRow < 2) return JSON.stringify({ success: true, schools: [] });
 
-    // 1. Ambil Data Rombel & Murid dari sheet Kebutuhan Guru
-    var rombelMuridMap = {};
-    try {
-      var kgSheet = getSheet(KONFIG_PTK.DB_KEY, "Kebutuhan Guru");
-      if (kgSheet && kgSheet.getLastRow() >= 3) {
-        var kgData = kgSheet.getRange(3, 1, kgSheet.getLastRow() - 2, 4).getValues();
-        for (var k = 0; k < kgData.length; k++) {
-          var kUnit = String(kgData[k][0] || "").trim();
-          var kNpsn = String(kgData[k][1] || "").trim();
-          var kRombel = parseInt(kgData[k][2]) || 0;
-          var kMurid = parseInt(kgData[k][3]) || 0;
-          var info = { rombel: kRombel, murid: kMurid, unit: kUnit, npsn: kNpsn };
-          if (kNpsn) rombelMuridMap[kNpsn] = info;
-          if (kUnit) rombelMuridMap[kUnit] = info;
-        }
-      }
-    } catch (eKg) {}
+    // 1. Ambil Data Rombel & Murid langsung dari tbl_lapbul_sd terakhir
+    var rombelMuridMap = getRombelMuridFromLapbulSd_();
 
-    // 2. Baca Kolom A (1) s/d Z (26) Master Data GTK
-    var data = sheet.getRange(2, 1, lastRow - 1, 26).getValues();
+    // 2. Baca seluruh kolom tbl_ptk
+    var data = sheet.getRange(2, 1, lastRow - 1, ctx.totalCols).getValues();
     var schoolMap = {};
 
     function initBezettingJabatan() {
@@ -1429,9 +1416,34 @@ function getDataBezettingSDNMaster() {
       };
     }
 
-    // Inisialisasi sekolah dari rombelMuridMap
+    // Map sekolah aktif SD Negeri dari tbl_sekolah agar sekolah tutup (seperti SDN PAYAMAN 2) tidak ikut muncul
+    var activeSdnNpsn = {};
+    var activeSdnNama = {};
+    if (typeof getMasterSekolah === "function") {
+      try {
+        var masterSek = getMasterSekolah();
+        masterSek.forEach(function(ms) {
+          var jjg = String(ms.jenjang || "").trim().toUpperCase();
+          if (jjg === "SD NEGERI" || jjg === "SDN") {
+            if (ms.npsn) activeSdnNpsn[String(ms.npsn).trim()] = true;
+            if (ms.nama_sekolah) activeSdnNama[String(ms.nama_sekolah).trim().toUpperCase()] = true;
+          }
+        });
+      } catch (eMs) {}
+    }
+    var hasMasterSdn = Object.keys(activeSdnNpsn).length > 0 || Object.keys(activeSdnNama).length > 0;
+
+    // Inisialisasi sekolah dari rombelMuridMap (hanya SD Negeri yang masih aktif di tbl_sekolah)
     Object.keys(rombelMuridMap).forEach(function(key) {
       var ref = rombelMuridMap[key];
+      var uUpper = String(ref.unit || "").trim().toUpperCase();
+      var nStr = String(ref.npsn || "").trim();
+      if (hasMasterSdn) {
+        if (!activeSdnNpsn[nStr] && !activeSdnNama[uUpper]) return;
+      } else {
+        var isSdn = (uUpper.indexOf("SD NEGERI") !== -1 || uUpper.indexOf("SDN") !== -1) && uUpper.indexOf("SWASTA") === -1 && uUpper.indexOf("SDS") === -1;
+        if (!isSdn) return;
+      }
       var sKey = ref.npsn || ref.unit;
       if (!schoolMap[sKey]) {
         schoolMap[sKey] = {
@@ -1489,8 +1501,8 @@ function getDataBezettingSDNMaster() {
       if (!sch.unit && unit) sch.unit = unit;
       if (!sch.npsn && npsn) sch.npsn = npsn;
 
-      // Status Pegawai (Kolom T / index 19)
-      var st = String(row[19] || "").trim().toUpperCase();
+      // Status Pegawai
+      var st = c.status_peg > -1 ? String(row[c.status_peg] || "").trim().toUpperCase() : "";
       var isCpns = (st.indexOf("CPNS") !== -1);
       var isPw = (st.indexOf("PPPK PW") !== -1 || st.indexOf("PARUH WAKTU") !== -1 || st.indexOf("PW") !== -1);
       var isPppk = !isPw && (st.indexOf("PPPK") !== -1);
@@ -1500,7 +1512,7 @@ function getDataBezettingSDNMaster() {
       // Cek apakah Non-ASN < 3-8-2023
       var isNonAsnLt = false;
       if (!isAsnGroup) {
-        var tmtVal = row[21]; // Kolom V
+        var tmtVal = c.tmt_jabatan > -1 ? row[c.tmt_jabatan] : "";
         var tmtDate = null;
         if (tmtVal instanceof Date && !isNaN(tmtVal.getTime())) {
           tmtDate = tmtVal;
@@ -1521,7 +1533,7 @@ function getDataBezettingSDNMaster() {
       var isPens1 = false;
       var isPens2 = false;
       if (isAsnGroup) {
-        var tglLahirStr = parseIndoDate(row[9]); // Kolom J (index 9)
+        var tglLahirStr = c.tgl_lahir > -1 ? parseIndoDate(row[c.tgl_lahir]) : "";
         if (tglLahirStr) {
           var partsLahir = tglLahirStr.split('-');
           if (partsLahir.length === 3) {
@@ -1539,8 +1551,8 @@ function getDataBezettingSDNMaster() {
         }
       }
 
-      // Tugas / Jabatan (Kolom Z / index 25)
-      var tg = String(row[25] || "").trim().toUpperCase();
+      // Tugas / Jabatan
+      var tg = c.tugas > -1 ? String(row[c.tugas] || "").trim().toUpperCase() : "";
 
       if (tg.indexOf("KEPALA") !== -1) {
         var ks = sch.ks;
@@ -1710,7 +1722,10 @@ function getRombelMuridFromLapbulSd_() {
       var idxTahun = findIdx(["tahun"]);
       var idxBulan = findIdx(["bulan"]);
       var idxRombel = findIdx(["total rombel", "jumlah rombel", "jml rombel", "rombel"]);
-      var idxMurid = findIdx(["jumlah murid akhir", "total murid", "jumlah murid", "jml murid", "akhir bulan", "murid"]);
+      var idxMurid = findIdx(["jumlah murid akhir", "total murid", "jumlah murid", "jml murid", "jumlah_akhir", "jml_akhir", "akhir bulan", "murid"]);
+      if (idxMurid === -1 && hdrs.length > 226) {
+        idxMurid = 226; // Kolom HS di Input SD / tbl_lapbul_sd
+      }
 
       var bulanOrder = {
         "januari": 1, "februari": 2, "maret": 3, "april": 4, "mei": 5, "juni": 6,
@@ -1783,9 +1798,34 @@ function getDataKebutuhanGuruSDNMaster() {
       return { keb: 0, cpns: 0, pns: 0, pppk: 0, pw: 0, non_asn_lt: 0, non_asn_gt: 0, selisih: 0, ket: "Sesuai" };
     }
 
-    // Inisialisasi sekolah dari rombelMuridMap
+    // Map sekolah aktif SD Negeri dari tbl_sekolah agar sekolah tutup (seperti SDN PAYAMAN 2) tidak ikut muncul
+    var activeSdnNpsn = {};
+    var activeSdnNama = {};
+    if (typeof getMasterSekolah === "function") {
+      try {
+        var masterSek = getMasterSekolah();
+        masterSek.forEach(function(ms) {
+          var jjg = String(ms.jenjang || "").trim().toUpperCase();
+          if (jjg === "SD NEGERI" || jjg === "SDN") {
+            if (ms.npsn) activeSdnNpsn[String(ms.npsn).trim()] = true;
+            if (ms.nama_sekolah) activeSdnNama[String(ms.nama_sekolah).trim().toUpperCase()] = true;
+          }
+        });
+      } catch (eMs) {}
+    }
+    var hasMasterSdn = Object.keys(activeSdnNpsn).length > 0 || Object.keys(activeSdnNama).length > 0;
+
+    // Inisialisasi sekolah dari rombelMuridMap (hanya SD Negeri yang masih aktif di tbl_sekolah)
     Object.keys(rombelMuridMap).forEach(function(key) {
       var ref = rombelMuridMap[key];
+      var uUpper = String(ref.unit || "").trim().toUpperCase();
+      var nStr = String(ref.npsn || "").trim();
+      if (hasMasterSdn) {
+        if (!activeSdnNpsn[nStr] && !activeSdnNama[uUpper]) return;
+      } else {
+        var isSdn = (uUpper.indexOf("SD NEGERI") !== -1 || uUpper.indexOf("SDN") !== -1) && uUpper.indexOf("SWASTA") === -1 && uUpper.indexOf("SDS") === -1;
+        if (!isSdn) return;
+      }
       var sKey = ref.npsn || ref.unit;
       if (!schoolMap[sKey]) {
         schoolMap[sKey] = {
