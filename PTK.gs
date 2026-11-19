@@ -1306,6 +1306,40 @@ function moveDataPTKToNonAktif(id, reason, userLogin) {
       return "Error: " + eC.message;
     }
   }
+
+function hapusPermanenPTKSDN(id) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+  } catch (lockErr) {
+    return "Error: Sistem sedang sibuk digunakan pengguna lain. Coba lagi dalam beberapa saat.";
+  }
+  try {
+    var ctx = getTblPtkSdnContext_();
+    var sheet = ctx.sheet;
+    var c = ctx.colMap;
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) return "Error: Data kosong.";
+
+    var vals = sheet.getRange(2, 1, lastRow - 1, Math.max(c.id + 1, c.old_id + 1, 4)).getDisplayValues();
+    var targetId = String(id || "").trim();
+    for (var k = 0; k < vals.length; k++) {
+      var rId = String(vals[k][c.id] || "").trim();
+      var rOldId = c.old_id > -1 ? String(vals[k][c.old_id] || "").trim() : "";
+      if (rId === targetId || (rOldId && rOldId === targetId)) {
+        sheet.deleteRow(k + 2);
+        SpreadsheetApp.flush();
+        invalidatePtkSdnDataCache_();
+        return "Sukses: Data PTK berhasil dihapus permanen.";
+      }
+    }
+    return "Error: ID PTK (" + targetId + ") tidak ditemukan.";
+  } catch (e) {
+    return "Error: " + e.message;
+  } finally {
+    lock.releaseLock();
+  }
+}
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);

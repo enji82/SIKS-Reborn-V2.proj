@@ -1157,9 +1157,14 @@
             // ── TOMBOL AKSI ───────────────────────────────────────────────
             var btnEdit = '';
             var btnHapus = '';
+            var isNonAktif = String(row.status_aktif || "AKTIF").trim().toUpperCase() === "NON_AKTIF";
             if (PTKSDN_IS_ADMIN) {
                 btnEdit  = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning" onclick="ptksdn_bukaModalEdit(\'' + masterKey + '\')" title="Edit / Mutasi"><i class="fas fa-pencil-alt"></i></button>';
-                btnHapus = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon" onclick="ptksdn_bukaModalHapus(\'' + masterKey + '\', \'' + ptksdn_escapeJs(row.nama_lengkap) + '\')" title="Pensiun/Meninggal/Mutasi Keluar"><i class="fas fa-trash-alt"></i></button>';
+                if (isNonAktif) {
+                    btnHapus = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon" onclick="ptksdn_bukaModalHapusPermanen(\'' + masterKey + '\', \'' + ptksdn_escapeJs(row.nama_lengkap) + '\')" title="Hapus Permanen dari Database"><i class="fas fa-trash-alt"></i></button>';
+                } else {
+                    btnHapus = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-maroon" onclick="ptksdn_bukaModalHapus(\'' + masterKey + '\', \'' + ptksdn_escapeJs(row.nama_lengkap) + '\')" title="Nonaktifkan PTK"><i class="fas fa-user-slash"></i></button>';
+                }
             } else {
                 btnEdit  = '<button type="button" class="sultan-btn-aksi sultan-btn-aksi-warning" onclick="ptksdn_bukaModalEdit(\'' + masterKey + '\')" title="Edit Data"><i class="fas fa-pencil-alt"></i></button>';
             }
@@ -2273,6 +2278,42 @@
                         Sultan.notif.crud.gagal(err.message);
                     })
                     .moveDataPTKToNonAktif(realId, alasan, PTKSDN_USER_AKTIF);
+            }
+        });
+    }
+
+    function ptksdn_bukaModalHapusPermanen(masterKey, nama) {
+        var row = PTKSDN_DATA_MASTER[masterKey];
+        var realId = row ? row.id : masterKey;
+        Sultan.modal.konfirmasiHapus({
+            title: 'HAPUS PERMANEN DATA PTK',
+            teksUtama: 'Apakah Anda yakin ingin menghapus PERMANEN data PTK ini?',
+            teksSub: 'Tindakan ini tidak dapat dibatalkan. Baris data atas nama ' + nama + ' akan dihapus permanen dari database tbl_ptk.',
+            detail: {
+                'NAMA PTK': nama || (row ? row.nama_lengkap : '-'),
+                'UNIT KERJA': (row && row.unit) ? row.unit : '-',
+                'NIP / NIK': (row && row.nip && row.nip !== '-') ? row.nip : ((row && row.nik) ? row.nik : '-')
+            },
+            showReason: false,
+            autoClose: false,
+            onConfirm: function(alasan, done) {
+                google.script.run
+                    .withSuccessHandler(function(res) {
+                        if (typeof done === 'function') done();
+                        if (String(res).indexOf('Sukses') === 0) {
+                            Sultan.notif.crud.hapus();
+                            var dIdx = PTKSDN_CACHE_DATA.findIndex(function(r) { return String(r.id) === String(realId); });
+                            if (dIdx !== -1) { PTKSDN_CACHE_DATA.splice(dIdx, 1); }
+                            ptksdn_terapkanFilterLokal();
+                        } else {
+                            Sultan.notif.crud.gagal(res);
+                        }
+                    })
+                    .withFailureHandler(function(err) {
+                        if (typeof done === 'function') done();
+                        Sultan.notif.crud.gagal(err.message);
+                    })
+                    .hapusPermanenPTKSDN(realId);
             }
         });
     }
