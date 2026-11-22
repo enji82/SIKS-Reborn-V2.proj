@@ -693,25 +693,24 @@ function getDataProyeksiPensiunSDN() {
         var statusRaw = c.status_peg > -1 ? String(row[c.status_peg] || "").trim().toUpperCase() : "";
         if (statusValid.indexOf(statusRaw) === -1) continue;
 
-        var tglLahir = parseIndoDate(c.tgl_lahir > -1 ? row[c.tgl_lahir] : "");
-        if (!tglLahir || isNaN(tglLahir.getTime())) continue;
+        var unitStr = c.unit > -1 ? String(row[c.unit] || "").trim() : "";
+        if (unitStr.toUpperCase().indexOf("PAYAMAN 2") !== -1) continue;
 
-        var tglPensiun = new Date(tglLahir.getFullYear() + 60, tglLahir.getMonth() + 1, 1);
+        var tglLahir = parseIndoDate(c.tgl_lahir > -1 ? row[c.tgl_lahir] : "");
+        if (!tglLahir) continue;
+
         result.push({
           id: rowId,
           npsn: c.npsn > -1 ? row[c.npsn] : "",
-          unit: c.unit > -1 ? row[c.unit] : "",
+          unit: unitStr,
           nama: c.nama_lengkap > -1 ? row[c.nama_lengkap] : "",
           nip: c.nip > -1 ? String(row[c.nip] || "").replace(/'/g, "") : "",
-          tgl_lahir: Utilities.formatDate(tglLahir, "Asia/Jakarta", "dd/MM/yyyy"),
-          tgl_pensiun: Utilities.formatDate(tglPensiun, "Asia/Jakarta", "dd/MM/yyyy"),
-          tahun_pensiun: tglPensiun.getFullYear(),
-          bulan_pensiun: tglPensiun.getMonth() + 1,
+          tgl_lahir: tglLahir,
           status_peg: statusRaw,
           jabatan: c.jabatan > -1 ? row[c.jabatan] : ""
         });
       }
-      return JSON.stringify(result);
+      return result;
     }
 
     var sheet = getSheet(KONFIG_PTK.DB_KEY, KONFIG_PTK.SHEET_PTK);
@@ -1521,120 +1520,80 @@ function hapusPermanenPTKSDN(id) {
 
 function getDataKeadaanGTK() {
   if (typeof USE_CENTRAL_PTK_DB !== "undefined" && USE_CENTRAL_PTK_DB) {
-    var ssMaster = getDB("SIKS_DB_MASTER");
-    var sheetSekolah = ssMaster ? ssMaster.getSheetByName("tbl_sekolah") : null;
-    var validSdnNpsn = {};
-    var schoolMap = {};
-
-    if (sheetSekolah) {
-      var sData = sheetSekolah.getDataRange().getDisplayValues();
-      var sHead = sData[0].map(function(h) { return String(h).toLowerCase().trim(); });
-      var sIdxNpsn = sHead.indexOf("npsn");
-      var sIdxNama = sHead.indexOf("nama_sekolah");
-      if (sIdxNama === -1) sIdxNama = sHead.indexOf("unit");
-      var sIdxJenjang = sHead.indexOf("jenjang");
-      var sIdxStatus = sHead.indexOf("status");
-      for (var i = 1; i < sData.length; i++) {
-        var row = sData[i];
-        var jenjang = sIdxJenjang > -1 ? String(row[sIdxJenjang] || "").trim().toUpperCase() : "";
-        var status = sIdxStatus > -1 ? String(row[sIdxStatus] || "").trim().toUpperCase() : "";
-        if (jenjang !== "SD" || status !== "NEGERI") continue;
-        var npsn = sIdxNpsn > -1 ? String(row[sIdxNpsn] || "").trim() : "";
-        var unit = sIdxNama > -1 ? String(row[sIdxNama] || "").trim() : "";
-        if (npsn && unit) {
-          validSdnNpsn[npsn] = unit;
-          var arr = [unit, npsn];
-          for (var k = 2; k < 67; k++) arr.push(0);
-          schoolMap[npsn] = arr;
-        }
-      }
+    // Daftar SD Negeri aktif dari master sekolah (jenjang "SD NEGERI")
+    var activeSdnNpsn = {};
+    var hasMaster = false;
+    if (typeof getMasterSekolah === "function") {
+      try {
+        getMasterSekolah().forEach(function(ms) {
+          var jjg = String(ms.jenjang || "").trim().toUpperCase();
+          if ((jjg === "SD NEGERI" || jjg === "SDN") && ms.npsn) {
+            activeSdnNpsn[String(ms.npsn).trim()] = true;
+            hasMaster = true;
+          }
+        });
+      } catch (eMs) {}
     }
 
-    var ctx = getTblPtkSdnContext_();
-    if (!ctx) return [];
-    var c = ctx.colMap;
-    var data = ctx.sheet.getDataRange().getDisplayValues();
-
-    for (var i = 1; i < data.length; i++) {
-      var row = data[i];
-      var jenjang = c.jenjang > -1 ? String(row[c.jenjang] || "").trim() : "";
-      var statusAktif = c.status_aktif > -1 ? String(row[c.status_aktif] || "AKTIF").trim().toUpperCase() : "AKTIF";
-      if (jenjang !== "SD Negeri" || statusAktif !== "AKTIF") continue;
-
-      var npsn = c.npsn > -1 ? String(row[c.npsn] || "").trim() : "";
-      if (!npsn || !schoolMap[npsn]) continue;
-
-      var r = schoolMap[npsn];
-      var jab = c.jabatan > -1 ? String(row[c.jabatan] || "").trim().toUpperCase() : "";
-      var stat = c.status_peg > -1 ? String(row[c.status_peg] || "").trim().toUpperCase() : "";
-
-      // Status kategori: 0=PNS/CPNS, 1=PPPK, 2=PPPK Paruh Waktu, 3=GTT/PTT/Sukwan
-      var stIdx = 3;
-      if (stat.indexOf("PARUH WAKTU") > -1) stIdx = 2;
-      else if (stat.indexOf("PPPK") > -1) stIdx = 1;
-      else if (stat.indexOf("PNS") > -1 || stat.indexOf("CPNS") > -1) stIdx = 0;
-
-      // Jabatan kategori (masing-masing 4 kolom atau 3 kolom)
-      if (jab.indexOf("KEPALA") > -1) {
-        if (stIdx === 0) r[2]++;
-        else if (stIdx === 1) r[3]++;
-        else r[4]++;
-      } else if (jab.indexOf("KELAS") > -1) {
-        r[5 + stIdx]++;
-      } else if (jab.indexOf("PJOK") > -1 || jab.indexOf("PENJAS") > -1 || jab.indexOf("OLAHRAGA") > -1) {
-        r[9 + stIdx]++;
-      } else if (jab.indexOf("PAI") > -1 || jab.indexOf("AGAMA ISLAM") > -1) {
-        r[13 + stIdx]++;
-      } else if (jab.indexOf("INGGRIS") > -1 || jab.indexOf("B.ING") > -1 || jab.indexOf("B. ING") > -1) {
-        r[17 + stIdx]++;
-      } else if (jab.indexOf("GURU") > -1) {
-        r[21 + stIdx]++;
-      } else if (jab.indexOf("PENJAGA") > -1) {
-        r[25 + stIdx]++;
-      } else if (jab.indexOf("TAS") > -1 || jab.indexOf("TATA USAHA") > -1 || jab.indexOf("ADMINISTRASI") > -1 || jab.indexOf("OPERATOR") > -1) {
-        r[29 + stIdx]++;
-      } else if (jab.indexOf("PERPUS") > -1 || jab.indexOf("PUSTAKA") > -1) {
-        r[33 + stIdx]++;
-      } else {
-        r[37 + stIdx]++;
-      }
-    }
-
+    // Gunakan hitungan yang sama dengan halaman Keadaan PTK SDN (berbasis kolom "tugas")
+    var rekap = JSON.parse(getDataRekapKeadaanSDN());
+    var schools = (rekap && rekap.schools) ? rekap.schools : [];
     var result = [];
-    Object.keys(schoolMap).sort().forEach(function(k) {
-      var r = schoolMap[k];
-      // Total per status (PNS, PPPK, PPPK PW, GTT/PTT)
-      var pnsGuru = r[2] + r[5] + r[9] + r[13] + r[17] + r[21];
-      var pnsTendik = r[25] + r[29] + r[33] + r[37];
-      var pppkGuru = r[3] + r[6] + r[10] + r[14] + r[18] + r[22];
-      var pppkTendik = r[26] + r[30] + r[34] + r[38];
-      var pwGuru = r[4] + r[7] + r[11] + r[15] + r[19] + r[23];
-      var pwTendik = r[27] + r[31] + r[35] + r[39];
-      var gtt = r[8] + r[12] + r[16] + r[20] + r[24];
-      var ptt = r[28] + r[32] + r[36] + r[40];
-      r[49] = r[2];
-      r[50] = r[5] + r[9] + r[13] + r[17] + r[21];
-      r[51] = pnsTendik;
-      r[52] = pnsGuru + pnsTendik;
-      r[53] = r[3];
-      r[54] = r[6] + r[10] + r[14] + r[18] + r[22];
-      r[55] = pppkTendik;
-      r[56] = pppkGuru + pppkTendik;
-      r[57] = pwGuru;
-      r[58] = pwTendik;
-      r[59] = pwGuru + pwTendik;
-      r[60] = gtt;
-      r[61] = ptt;
-      r[62] = pnsGuru + pnsTendik;
-      r[63] = pppkGuru + pppkTendik;
-      r[64] = pwGuru + pwTendik;
-      r[65] = gtt + ptt;
-      r[66] = r[62] + r[63] + r[64] + r[65];
+
+    schools.forEach(function(s) {
+      var npsn = String(s.npsn || "").trim();
+
+      var r = [s.unit || "", npsn];
+      for (var k = 2; k < 67; k++) r.push(0);
+      var J = s.jabatan;
+      var asnPns = function(o) { return (o.pns || 0) + (o.cpns || 0); };
+
+      // Kepala Sekolah
+      r[2] = asnPns(J.ks);
+      r[3] = J.ks.pppk || 0;
+      // Guru Kelas, PJOK, PAI, Kristen: [pns, pppk, pw, non_asn]
+      var setGuru = function(base, o) {
+        r[base] = asnPns(o); r[base + 1] = o.pppk || 0; r[base + 2] = o.pppk_pw || 0; r[base + 3] = o.non_asn || 0;
+      };
+      setGuru(5, J.guru_kelas);
+      setGuru(10, J.guru_pjok);
+      setGuru(15, J.guru_pai);
+      setGuru(20, J.guru_kristen);
+      // Tendik: pengelola umum, operator, pengelola layanan, penata layanan (+ tendik lainnya)
+      setGuru(25, J.pengelola_umum);
+      setGuru(30, J.operator_layanan);
+      setGuru(35, J.pengelola_layanan);
+      setGuru(40, J.penata_layanan);
+      r[40] += asnPns(J.tendik_lainnya);
+      r[41] += J.tendik_lainnya.pppk || 0;
+      r[42] += J.tendik_lainnya.pppk_pw || 0;
+      r[46] = J.tendik_lainnya.non_asn || 0;
+
+      // Ringkasan per status (dipakai kartu KPI & selisih "guru lain")
+      var S = s.status;
+      r[49] = (S.pns.ks || 0) + (S.cpns.ks || 0);
+      r[50] = (S.pns.guru || 0) + (S.cpns.guru || 0);
+      r[51] = (S.pns.tendik || 0) + (S.cpns.tendik || 0);
+      r[52] = r[49] + r[50] + r[51];
+      r[53] = S.pppk.ks || 0;
+      r[54] = S.pppk.guru || 0;
+      r[55] = S.pppk.tendik || 0;
+      r[56] = r[53] + r[54] + r[55];
+      r[57] = (S.pppk_pw.guru || 0) + (S.pppk_pw.ks || 0);
+      r[58] = S.pppk_pw.tendik || 0;
+      r[59] = r[57] + r[58];
+      r[60] = (S.non_asn.guru || 0) + (S.non_asn.ks || 0);
+      r[61] = S.non_asn.tendik || 0;
+      r[62] = r[52];
+      r[63] = r[56];
+      r[64] = r[59];
+      r[65] = r[60] + r[61];
+      r[66] = S.total.jml || 0;
+
       result.push(r.map(function(v, idx) { return idx < 2 ? v : String(v); }));
     });
     return result;
   }
-
   var sheet = getSheet(KONFIG_PTK.DB_KEY, "Keadaan GTK"); if (!sheet) return []; var lastRow = sheet.getLastRow(); if (lastRow < 3) return []; return sheet.getRange(3, 1, lastRow - 2, 67).getDisplayValues();
 }
 function getDataKebutuhanGuru() { return getDataKebutuhanGuruSDNMaster(); }
@@ -1685,7 +1644,8 @@ function getDataBezettingSDNMaster() {
         var masterSek = getMasterSekolah();
         masterSek.forEach(function(ms) {
           var jjg = String(ms.jenjang || "").trim().toUpperCase();
-          if (jjg === "SD NEGERI" || jjg === "SDN") {
+          var sts = String(ms.status || "").trim().toUpperCase();
+          if (jjg === "SD NEGERI" || jjg === "SDN" || (jjg === "SD" && sts === "NEGERI")) {
             if (ms.npsn) activeSdnNpsn[String(ms.npsn).trim()] = true;
             if (ms.nama_sekolah) activeSdnNama[String(ms.nama_sekolah).trim().toUpperCase()] = true;
           }
@@ -1698,6 +1658,7 @@ function getDataBezettingSDNMaster() {
     Object.keys(rombelMuridMap).forEach(function(key) {
       var ref = rombelMuridMap[key];
       var uUpper = String(ref.unit || "").trim().toUpperCase();
+      if (uUpper.indexOf("PAYAMAN 2") !== -1) return;
       var nStr = String(ref.npsn || "").trim();
       if (hasMasterSdn) {
         if (!activeSdnNpsn[nStr] && !activeSdnNama[uUpper]) return;
@@ -1738,7 +1699,10 @@ function getDataBezettingSDNMaster() {
 
       var npsn = c.npsn > -1 ? String(row[c.npsn] || "").trim() : "";
       var unit = c.unit > -1 ? String(row[c.unit] || "").trim() : "";
+      var uUpper = unit.toUpperCase();
       if (!unit && !npsn) continue;
+      if (uUpper.indexOf("PAYAMAN 2") !== -1) continue;
+      if (hasMasterSdn && !activeSdnNpsn[npsn] && !activeSdnNama[uUpper]) continue;
 
       var schoolKey = npsn || unit;
       if (!schoolMap[schoolKey]) {
@@ -2062,14 +2026,19 @@ function getDataKebutuhanGuruSDNMaster() {
     // Map sekolah aktif SD Negeri dari tbl_sekolah agar sekolah tutup (seperti SDN PAYAMAN 2) tidak ikut muncul
     var activeSdnNpsn = {};
     var activeSdnNama = {};
+    var sdnUnitToNpsn = {};
     if (typeof getMasterSekolah === "function") {
       try {
         var masterSek = getMasterSekolah();
         masterSek.forEach(function(ms) {
           var jjg = String(ms.jenjang || "").trim().toUpperCase();
-          if (jjg === "SD NEGERI" || jjg === "SDN") {
-            if (ms.npsn) activeSdnNpsn[String(ms.npsn).trim()] = true;
-            if (ms.nama_sekolah) activeSdnNama[String(ms.nama_sekolah).trim().toUpperCase()] = true;
+          var sts = String(ms.status || "").trim().toUpperCase();
+          if (jjg === "SD NEGERI" || jjg === "SDN" || (jjg === "SD" && sts === "NEGERI")) {
+            var mNpsn = ms.npsn ? String(ms.npsn).replace(/'/g, "").trim() : "";
+            var mNama = ms.nama_sekolah ? String(ms.nama_sekolah).trim().toUpperCase() : "";
+            if (mNpsn) activeSdnNpsn[mNpsn] = true;
+            if (mNama) activeSdnNama[mNama] = true;
+            if (mNpsn && mNama) sdnUnitToNpsn[mNama] = mNpsn;
           }
         });
       } catch (eMs) {}
@@ -2080,17 +2049,19 @@ function getDataKebutuhanGuruSDNMaster() {
     Object.keys(rombelMuridMap).forEach(function(key) {
       var ref = rombelMuridMap[key];
       var uUpper = String(ref.unit || "").trim().toUpperCase();
-      var nStr = String(ref.npsn || "").trim();
+      if (uUpper.indexOf("PAYAMAN 2") !== -1) return;
+      var nStr = String(ref.npsn || "").replace(/'/g, "").trim();
+      if (!nStr && uUpper && sdnUnitToNpsn[uUpper]) nStr = sdnUnitToNpsn[uUpper];
       if (hasMasterSdn) {
         if (!activeSdnNpsn[nStr] && !activeSdnNama[uUpper]) return;
       } else {
         var isSdn = (uUpper.indexOf("SD NEGERI") !== -1 || uUpper.indexOf("SDN") !== -1) && uUpper.indexOf("SWASTA") === -1 && uUpper.indexOf("SDS") === -1;
         if (!isSdn) return;
       }
-      var sKey = ref.npsn || ref.unit;
+      var sKey = nStr || uUpper;
       if (!schoolMap[sKey]) {
         schoolMap[sKey] = {
-          npsn: ref.npsn || "",
+          npsn: nStr,
           unit: ref.unit || "",
           rombel: ref.rombel || 0,
           murid: ref.murid || 0,
@@ -2113,11 +2084,15 @@ function getDataKebutuhanGuruSDNMaster() {
         if (c.status_aktif > -1 && String(row[c.status_aktif] || "AKTIF").trim().toUpperCase() === "NON_AKTIF") continue;
       }
 
-      var npsn = c.npsn > -1 ? String(row[c.npsn] || "").trim() : "";
+      var npsn = c.npsn > -1 ? String(row[c.npsn] || "").replace(/'/g, "").trim() : "";
       var unit = c.unit > -1 ? String(row[c.unit] || "").trim() : "";
+      var uUpper = unit.toUpperCase();
+      if (uUpper.indexOf("PAYAMAN 2") !== -1) continue;
+      if (!npsn && uUpper && sdnUnitToNpsn[uUpper]) npsn = sdnUnitToNpsn[uUpper];
       if (!unit && !npsn) continue;
+      if (hasMasterSdn && !activeSdnNpsn[npsn] && !activeSdnNama[uUpper]) continue;
 
-      var schoolKey = npsn || unit;
+      var schoolKey = npsn || uUpper;
       if (!schoolMap[schoolKey]) {
         var refInfo = rombelMuridMap[npsn] || rombelMuridMap[unit] || { rombel: 0, murid: 0 };
         schoolMap[schoolKey] = {
@@ -3211,7 +3186,7 @@ function getDataKebutuhanGuruSDS() {
         var row = sData[i];
         var jenjang = sIdxJenjang > -1 ? String(row[sIdxJenjang] || "").trim().toUpperCase() : "";
         var status = sIdxStatus > -1 ? String(row[sIdxStatus] || "").trim().toUpperCase() : "";
-        if (jenjang !== "SD" || status !== "SWASTA") continue;
+        if (!(jenjang === "SD SWASTA" || jenjang === "SDS" || (jenjang === "SD" && status === "SWASTA"))) continue;
         var npsn = sIdxNpsn > -1 ? String(row[sIdxNpsn] || "").trim() : "";
         var unit = sIdxNama > -1 ? String(row[sIdxNama] || "").trim() : "";
         if (npsn && unit) {
@@ -4099,14 +4074,14 @@ function getDataKeadaanGTKPAUD() {
       var r = schoolMap[key];
       var jab = c.jabatan > -1 ? String(row[c.jabatan] || "").trim().toUpperCase() : "";
       var stat = c.status_peg > -1 ? String(row[c.status_peg] || "").trim().toUpperCase() : "";
-      var isAsn = (stat.indexOf("PNS") > -1 || stat.indexOf("PPPK") > -1 || stat.indexOf("ASN") > -1);
+      var isAsn = (stat.indexOf("PNS") > -1 || stat.indexOf("PPPK") > -1 || (stat.indexOf("ASN") > -1 && stat.indexOf("NON") === -1));
       var isTetap = (stat.indexOf("GTY") > -1 || stat.indexOf("PTY") > -1 || stat.indexOf("TETAP YAYASAN") > -1);
 
       if (jab.indexOf("KEPALA") > -1) {
-        r[isAsn ? 3 : 4]++;
+        r[isAsn ? 4 : 3]++;
       } else if (jab.indexOf("KELAS") > -1 || jab.indexOf("GURU PAUD") > -1 || jab.indexOf("GURU TK") > -1 || jab.indexOf("GURU KB") > -1) {
-        if (isAsn) r[5]++;
-        else if (isTetap) r[6]++;
+        if (isAsn) r[6]++;
+        else if (isTetap) r[5]++;
         else r[7]++;
       } else if (jab.indexOf("EXTRA") > -1 || jab.indexOf("EKSTRA") > -1) {
         r[isTetap ? 8 : 9]++;
@@ -4128,15 +4103,15 @@ function getDataKeadaanGTKPAUD() {
     var result = [];
     Object.keys(schoolMap).sort().forEach(function(k) {
       var r = schoolMap[k];
-      var jmlAsn = r[3] + r[5];
-      var jmlGty = r[4] + r[6] + r[8] + r[10] + r[12];
+      var jmlAsn = r[4] + r[6];
+      var jmlGty = r[3] + r[5] + r[8] + r[10] + r[12];
       var jmlPty = r[14] + r[16] + r[18] + r[20];
       var jmlGtt = r[7] + r[9] + r[11] + r[13];
       var jmlPtt = r[15] + r[17] + r[19] + r[21];
-      r[22] = jmlAsn;
-      r[23] = jmlGty;
-      r[24] = jmlPty;
-      r[25] = jmlGtt;
+      r[22] = jmlGty;
+      r[23] = jmlAsn;
+      r[24] = jmlGtt;
+      r[25] = jmlPty;
       r[26] = jmlPtt;
       r[27] = jmlAsn + jmlGty + jmlPty + jmlGtt + jmlPtt;
       result.push(r.map(function(v, idx) { return idx < 3 ? v : String(v); }));
@@ -4169,7 +4144,7 @@ function getDataValidasiPTKSDS() {
         var row = sData[i];
         var jenjang = sIdxJenjang > -1 ? String(row[sIdxJenjang] || "").trim().toUpperCase() : "";
         var status = sIdxStatus > -1 ? String(row[sIdxStatus] || "").trim().toUpperCase() : "";
-        if (jenjang !== "SD" || status !== "SWASTA") continue;
+        if (!(jenjang === "SD SWASTA" || jenjang === "SDS" || (jenjang === "SD" && status === "SWASTA"))) continue;
         var npsn = sIdxNpsn > -1 ? String(row[sIdxNpsn] || "").trim() : "";
         var unit = sIdxNama > -1 ? String(row[sIdxNama] || "").trim() : "";
         if (npsn && unit) schoolMap[npsn] = unit;
