@@ -2417,6 +2417,7 @@ function getDataPTKSDS() {
           hp: c.hp > -1 ? (row[c.hp] || "") : "",
           status_peg: c.status_peg > -1 ? (row[c.status_peg] || "") : "",
           jabatan: c.jabatan > -1 ? (row[c.jabatan] || "") : "",
+          mengajar_kelas: c.mengajar_kelas > -1 ? String(row[c.mengajar_kelas] || "").trim() : "",
           tmt_jabatan: c.tmt_jabatan > -1 ? (row[c.tmt_jabatan] || "") : "",
           inpassing: idxInpassing > -1 ? (row[idxInpassing] || "") : "",
           tmt_inpassing: idxTmtInpassing > -1 ? (row[idxTmtInpassing] || "") : "",
@@ -2581,6 +2582,7 @@ function checkAndGetPtkNonAktifSDSByNIK(nik) {
               hp: c.hp > -1 ? (row[c.hp] || "") : "",
               status_peg: c.status_peg > -1 ? (row[c.status_peg] || "") : "",
               jabatan: c.jabatan > -1 ? (row[c.jabatan] || "") : "",
+          mengajar_kelas: c.mengajar_kelas > -1 ? String(row[c.mengajar_kelas] || "").trim() : "",
               tmt_jabatan: c.tmt_jabatan > -1 ? (row[c.tmt_jabatan] || "") : "",
               inpassing: idxInpassing > -1 ? (row[idxInpassing] || "") : "",
               tmt_inpassing: idxTmtInpassing > -1 ? (row[idxTmtInpassing] || "") : "",
@@ -2705,6 +2707,7 @@ function reactivatePtkSDS(form) {
       if (c.hp > -1) rowArr[c.hp] = "'" + (form.hp || originalRow[c.hp] || "");
       if (c.status_peg > -1) rowArr[c.status_peg] = form.status_peg || originalRow[c.status_peg] || "";
       if (c.jabatan > -1) rowArr[c.jabatan] = form.jabatan || originalRow[c.jabatan] || "";
+      if (c.mengajar_kelas > -1) rowArr[c.mengajar_kelas] = "'" + (form.mengajar_kelas || originalRow[c.mengajar_kelas] || "-");
       if (c.tmt_jabatan > -1) rowArr[c.tmt_jabatan] = convertStringToDate_(form.tmt_jabatan || originalRow[c.tmt_jabatan]);
       if (idxInpassing > -1) rowArr[idxInpassing] = form.inpassing || originalRow[idxInpassing] || "";
       if (idxTmtInpassing > -1) rowArr[idxTmtInpassing] = convertStringToDate_(form.tmt_inpassing || originalRow[idxTmtInpassing]);
@@ -2853,6 +2856,7 @@ function insertDataPTKSDS(form) {
     if (c.hp > -1) rowArr[c.hp] = "'" + (form.hp || "");
     if (c.status_peg > -1) rowArr[c.status_peg] = form.status_peg || "";
     if (c.jabatan > -1) rowArr[c.jabatan] = form.jabatan || "";
+    if (c.mengajar_kelas > -1) rowArr[c.mengajar_kelas] = "'" + (form.mengajar_kelas || "-");
     if (c.tmt_jabatan > -1) rowArr[c.tmt_jabatan] = convertStringToDate_(form.tmt_jabatan);
     if (idxInpassing > -1) rowArr[idxInpassing] = form.inpassing || "";
     if (idxTmtInpassing > -1) rowArr[idxTmtInpassing] = convertStringToDate_(form.tmt_inpassing);
@@ -2958,6 +2962,7 @@ function updateDataPTKSDS(form) {
     if (c.hp > -1) rowArr[c.hp] = "'" + (form.hp || "");
     if (c.status_peg > -1) rowArr[c.status_peg] = form.status_peg || "";
     if (c.jabatan > -1) rowArr[c.jabatan] = form.jabatan || "";
+    if (c.mengajar_kelas > -1) rowArr[c.mengajar_kelas] = "'" + (form.mengajar_kelas || "-");
     if (c.tmt_jabatan > -1) rowArr[c.tmt_jabatan] = convertStringToDate_(form.tmt_jabatan);
     if (idxInpassing > -1) rowArr[idxInpassing] = form.inpassing || "";
     if (idxTmtInpassing > -1) rowArr[idxTmtInpassing] = convertStringToDate_(form.tmt_inpassing);
@@ -3366,6 +3371,7 @@ function getDataPTKPAUD() {
           hp: c.hp > -1 ? (row[c.hp] || "") : "",
           status_peg: c.status_peg > -1 ? (row[c.status_peg] || "") : "",
           jabatan: c.jabatan > -1 ? (row[c.jabatan] || "") : "",
+          mengajar_kelas: c.mengajar_kelas > -1 ? String(row[c.mengajar_kelas] || "").trim() : "",
           tmt_jabatan: c.tmt_jabatan > -1 ? (row[c.tmt_jabatan] || "") : "",
           inpassing: idxInpassing > -1 ? (row[idxInpassing] || "") : "",
           tmt_inpassing: idxTmtInpassing > -1 ? (row[idxTmtInpassing] || "") : "",
@@ -3531,6 +3537,7 @@ function checkAndGetPtkNonAktifPAUDByNIK(nik) {
               hp: c.hp > -1 ? (row[c.hp] || "") : "",
               status_peg: c.status_peg > -1 ? (row[c.status_peg] || "") : "",
               jabatan: c.jabatan > -1 ? (row[c.jabatan] || "") : "",
+          mengajar_kelas: c.mengajar_kelas > -1 ? String(row[c.mengajar_kelas] || "").trim() : "",
               tmt_jabatan: c.tmt_jabatan > -1 ? (row[c.tmt_jabatan] || "") : "",
               inpassing: idxInpassing > -1 ? (row[idxInpassing] || "") : "",
               tmt_inpassing: idxTmtInpassing > -1 ? (row[idxTmtInpassing] || "") : "",
@@ -3653,6 +3660,7 @@ function reactivatePtkPAUD(form) {
       if (c.hp > -1) rowArr[c.hp] = "'" + (form.hp || originalRow[c.hp] || "");
       if (c.status_peg > -1) rowArr[c.status_peg] = form.status_peg || originalRow[c.status_peg] || "";
       if (c.jabatan > -1) rowArr[c.jabatan] = form.jabatan || originalRow[c.jabatan] || "";
+      if (c.mengajar_kelas > -1) rowArr[c.mengajar_kelas] = "'" + (form.mengajar_kelas || originalRow[c.mengajar_kelas] || "-");
       if (c.tmt_jabatan > -1) rowArr[c.tmt_jabatan] = convertStringToDate_(form.tmt_jabatan || originalRow[c.tmt_jabatan]);
       if (idxInpassing > -1) rowArr[idxInpassing] = form.inpassing || originalRow[idxInpassing] || "";
       if (idxTmtInpassing > -1) rowArr[idxTmtInpassing] = convertStringToDate_(form.tmt_inpassing || originalRow[idxTmtInpassing]);
@@ -3802,6 +3810,7 @@ function insertDataPTKPAUD(form, base64Data, fileName, jenisDokumen, userPengusu
       if (c.hp > -1) rowArr[c.hp] = "'" + (form.hp || "");
       if (c.status_peg > -1) rowArr[c.status_peg] = form.status_peg || "";
       if (c.jabatan > -1) rowArr[c.jabatan] = form.jabatan || "";
+    if (c.mengajar_kelas > -1) rowArr[c.mengajar_kelas] = "'" + (form.mengajar_kelas || "-");
       if (c.tmt_jabatan > -1) rowArr[c.tmt_jabatan] = convertStringToDate_(form.tmt_jabatan);
       if (idxInpassing > -1) rowArr[idxInpassing] = form.inpassing || "";
       if (idxTmtInpassing > -1) rowArr[idxTmtInpassing] = convertStringToDate_(form.tmt_inpassing);
@@ -3929,6 +3938,7 @@ function updateDataPTKPAUD(form) {
     if (c.hp > -1) rowArr[c.hp] = "'" + (form.hp || "");
     if (c.status_peg > -1) rowArr[c.status_peg] = form.status_peg || "";
     if (c.jabatan > -1) rowArr[c.jabatan] = form.jabatan || "";
+    if (c.mengajar_kelas > -1) rowArr[c.mengajar_kelas] = "'" + (form.mengajar_kelas || "-");
     if (c.tmt_jabatan > -1) rowArr[c.tmt_jabatan] = convertStringToDate_(form.tmt_jabatan);
     if (idxInpassing > -1) rowArr[idxInpassing] = form.inpassing || "";
     if (idxTmtInpassing > -1) rowArr[idxTmtInpassing] = convertStringToDate_(form.tmt_inpassing);
