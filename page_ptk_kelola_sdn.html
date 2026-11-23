@@ -482,6 +482,17 @@
                             <div class="form-row">
                                 <div class="col-md-4 mb-3">
                                     <label
+                                        class="form-label-sultan small font-weight-bold text-muted text-uppercase">NIP
+                                        (18 Digit) <span id="ptksdn_nipRequiredStar"
+                                            class="text-danger">*</span></label>
+                                    <input type="text" id="ptksdn_inputNip" name="nip"
+                                        class="form-control form-control-sultan" maxlength="18" pattern="\d*"
+                                        placeholder="Wajib diisi selain Tenaga Non ASN" required>
+                                    <small id="ptksdn_nipHint" class="text-muted font-italic">*Wajib diisi selain Tenaga
+                                        Non ASN</small>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label
                                         class="form-label-sultan small font-weight-bold text-muted text-uppercase">Tugas
                                         di Sekolah <span class="text-danger">*</span></label>
                                     <select name="tugas" id="ptksdn_selTugas" class="form-control form-control-sultan"
@@ -491,14 +502,19 @@
                                 </div>
                                 <div class="col-md-4 mb-3">
                                     <label
-                                        class="form-label-sultan small font-weight-bold text-muted text-uppercase">NIP
-                                        (18 Digit) <span id="ptksdn_nipRequiredStar"
-                                            class="text-danger">*</span></label>
-                                    <input type="text" id="ptksdn_inputNip" name="nip"
-                                        class="form-control form-control-sultan" maxlength="18" pattern="\d*"
-                                        placeholder="Wajib diisi selain Tenaga Non ASN" required>
-                                    <small id="ptksdn_nipHint" class="text-muted font-italic">*Wajib diisi selain Tenaga
-                                        Non ASN</small>
+                                        class="form-label-sultan small font-weight-bold text-muted text-uppercase">Mengajar
+                                        Kelas <span class="text-danger">*</span></label>
+                                    <input type="hidden" name="mengajar_kelas" id="ptksdn_valMengajarKelas" value="-">
+                                    <select id="ptksdn_selMengajarKelas" class="form-control form-control-sultan" style="display:none;">
+                                        <option value="">-Pilih Kelas-</option>
+                                        <option value="1">1</option><option value="1A">1A</option><option value="1B">1B</option><option value="1C">1C</option>
+                                        <option value="2">2</option><option value="2A">2A</option><option value="2B">2B</option><option value="2C">2C</option>
+                                        <option value="3">3</option><option value="3A">3A</option><option value="3B">3B</option><option value="3C">3C</option>
+                                        <option value="4">4</option><option value="4A">4A</option><option value="4B">4B</option><option value="4C">4C</option>
+                                        <option value="5">5</option><option value="5A">5A</option><option value="5B">5B</option><option value="5C">5C</option>
+                                        <option value="6">6</option><option value="6A">6A</option><option value="6B">6B</option><option value="6C">6C</option>
+                                    </select>
+                                    <input type="text" id="ptksdn_inputMengajarKelas" class="form-control form-control-sultan bg-light" value="-" readonly>
                                 </div>
                             </div>
 
@@ -829,6 +845,15 @@
             ptksdn_togglePangkatFields();
             ptksdn_toggleJabatanTugas();
             ptksdn_toggleNipLogic();
+            ptksdn_toggleMengajarKelas();
+        });
+
+        $(document).off('change', '#ptksdn_selTugas').on('change', '#ptksdn_selTugas', ptksdn_toggleMengajarKelas);
+        $(document).off('change', '#ptksdn_selMengajarKelas').on('change', '#ptksdn_selMengajarKelas', function () {
+            $('#ptksdn_valMengajarKelas').val($(this).val());
+        });
+        $(document).off('input', '#ptksdn_inputMengajarKelas').on('input', '#ptksdn_inputMengajarKelas', function () {
+            $('#ptksdn_valMengajarKelas').val($(this).val());
         });
 
         $(document).off('change', '#ptksdn_selPendidikan').on('change', '#ptksdn_selPendidikan', ptksdn_toggleJurusanField);
@@ -1287,6 +1312,38 @@
 
         if (listJabatan) listJabatan.forEach(function (item) { $selJabatan.append($('<option>', { value: item, text: item })); });
         if (listTugas) listTugas.forEach(function (item) { $selTugas.append($('<option>', { value: item, text: item })); });
+        ptksdn_toggleMengajarKelas();
+    }
+
+    function ptksdn_toggleMengajarKelas(presetVal) {
+        var tugas = String($('#ptksdn_selTugas').val() || '').trim();
+        var $sel = $('#ptksdn_selMengajarKelas');
+        var $inp = $('#ptksdn_inputMengajarKelas');
+        var $val = $('#ptksdn_valMengajarKelas');
+        var hasPreset = (presetVal !== undefined && presetVal !== null);
+        var presetStr = hasPreset ? String(presetVal).trim() : '';
+
+        if (tugas === 'Guru Kelas') {
+            $inp.hide().prop('required', false);
+            $sel.show().prop('required', true);
+            if (hasPreset) {
+                $sel.val(presetStr === '-' ? '' : presetStr);
+            }
+            $val.val($sel.val() || '');
+        } else if (tugas.indexOf('Guru') === 0) {
+            $sel.hide().prop('required', false);
+            $inp.show().prop('readonly', false).prop('required', true).removeClass('bg-light');
+            if (hasPreset) {
+                $inp.val(presetStr === '-' ? '' : presetStr);
+            } else if ($inp.val() === '-') {
+                $inp.val('');
+            }
+            $val.val($inp.val());
+        } else {
+            $sel.hide().prop('required', false);
+            $inp.show().val('-').prop('readonly', true).prop('required', false).addClass('bg-light');
+            $val.val('-');
+        }
     }
 
     function ptksdn_togglePangkatFields() {
@@ -1792,6 +1849,7 @@
         ptksdn_toggleJabatanTugas();
         $('#ptksdn_selJabatan').val(data.jabatan);
         $('#ptksdn_selTugas').val(data.tugas);
+        ptksdn_toggleMengajarKelas(data.mengajar_kelas || '');
         ptksdn_togglePangkatFields();
         ptksdn_toggleNipLogic();
 
@@ -1897,6 +1955,7 @@
 
         $('#ptksdn_selJabatan').empty().append('<option value="">-Pilih Status Dulu-</option>');
         $('#ptksdn_selTugas').empty().append('<option value="">-Pilih Status Dulu-</option>');
+        ptksdn_toggleMengajarKelas('-');
 
         $('#ptksdn_wrapperPangkat').hide();
         ptksdn_toggleJurusanField();
@@ -1975,6 +2034,7 @@
         ptksdn_toggleJabatanTugas();
         $('#ptksdn_selJabatan').val(row.jabatan);
         $('#ptksdn_selTugas').val(row.tugas);
+        ptksdn_toggleMengajarKelas(row.mengajar_kelas || '');
         ptksdn_togglePangkatFields();
         ptksdn_toggleNipLogic();
 
@@ -2189,6 +2249,7 @@
                             cData.mkg = (formData.mkg_thn || '0') + ' Tahun ' + (formData.mkg_bln || '0') + ' Bulan';
                         }
                         cData.tugas = formData.tugas;
+                        cData.mengajar_kelas = formData.mengajar_kelas;
                         cData.nuptk = formData.nuptk;
                         cData.serdik = formData.serdik;
                         cData.dapodik = formData.dapodik;

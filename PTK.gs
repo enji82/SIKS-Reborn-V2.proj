@@ -207,6 +207,7 @@ function buildPtkListSdn_() {
     tmt_gol: findCol(["tmt_gol", "tmt gol", "tmt golongan"], 23),
     mkg: findCol(["mkg", "misa kerja"], 24),
     tugas: findCol(["tugas", "tugas utama"], 25),
+    mengajar_kelas: findCol(["mengajar_kelas", "mengajar kelas"], -1),
     nuptk: findCol(["nuptk"], 26),
     serdik: findCol(["serdik"], 27),
     dapodik: findCol(["dapodik"], 28),
@@ -268,6 +269,7 @@ function buildPtkListSdn_() {
       tmt_gol: parseIndoDate(row[colMap.tmt_gol]),
       mkg: row[colMap.mkg],
       tugas: row[colMap.tugas],
+      mengajar_kelas: colMap.mengajar_kelas > -1 ? String(row[colMap.mengajar_kelas] || "").trim() : "",
       nuptk: row[colMap.nuptk],
       serdik: row[colMap.serdik],
       dapodik: row[colMap.dapodik],
@@ -810,8 +812,15 @@ function getTblPtkSdnContext_() {
     archive_dok: findCol(["riwayat dokumen", "arsip dokumen", "archive"], 37 + off),
     alasan_hapus: findCol(["alasan hapus"], -1),
     tgl_hapus: findCol(["tanggal hapus"], -1),
-    user_hapus: findCol(["user hapus"], -1)
+    user_hapus: findCol(["user hapus"], -1),
+    mengajar_kelas: findCol(["mengajar_kelas", "mengajar kelas"], -1)
   };
+  if (colMap.mengajar_kelas === -1 && sheet) {
+    lastCol++;
+    sheet.getRange(1, lastCol).setValue("mengajar_kelas");
+    headers.push("mengajar_kelas");
+    colMap.mengajar_kelas = lastCol - 1;
+  }
   return { useCentral: useCentral, sheet: sheet, headers: headers, colMap: colMap, totalCols: lastCol };
 }
 
@@ -861,6 +870,7 @@ function applyPtkMasterRowUpdate_(sheet, rowIndex, form, extras) {
   setC(c.tmt_gol, convertStringToDate_(form.tmt_gol));
   setC(c.mkg, mkg);
   setC(c.tugas, form.tugas || "");
+  setC(c.mengajar_kelas, "'" + (form.mengajar_kelas || "-"));
   setC(c.nuptk, "'" + (form.nuptk || ""));
   setC(c.serdik, form.serdik || "");
   setC(c.dapodik, form.dapodik || "");
@@ -1044,6 +1054,7 @@ function insertDataPTK(form, base64Data, fileName, jenisDokumen, userPengusul) {
     setC(c.tmt_gol, convertStringToDate_(form.tmt_gol));
     setC(c.mkg, mkg);
     setC(c.tugas, form.tugas || "");
+  setC(c.mengajar_kelas, "'" + (form.mengajar_kelas || "-"));
     setC(c.nuptk, "'" + (form.nuptk || ""));
     setC(c.serdik, form.serdik || "");
     setC(c.dapodik, form.dapodik || "");
