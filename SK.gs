@@ -32,7 +32,7 @@ function getOrCreateFolder(parentFolder, folderName) {
  * Sheet ID: 1wiDKez4rL5UYnpP2-OZjYowvmt1nRx-fIMy9trJlhBA
  */
 function getMappingMasterNpsn() {
-  var cacheKey = "MAP_MASTER_NPSN_CACHE";
+  var cacheKey = "MAP_MASTER_NPSN_CACHE_V3";
   var cache = CacheService.getScriptCache();
   try {
     var cached = cache.get(cacheKey);
@@ -41,25 +41,63 @@ function getMappingMasterNpsn() {
 
   try {
     var mapping = {};
-    if (typeof getMasterSekolah === "function") {
-      getMasterSekolah().forEach(function(ms) {
-        var npsn = String(ms.npsn || "").replace(/'/g, "").trim();
-        var sekolah = String(ms.nama_sekolah || ms.unit || "").trim().toUpperCase();
-        if (sekolah !== "" && npsn !== "") {
-          mapping[sekolah] = npsn;
+    var isValidNpsn = function(v) {
+      var s = String(v || "").replace(/'/g, "").trim();
+      return s.length >= 6 && s.length <= 12 && /^[0-9A-Z]+$/i.test(s);
+    };
+
+    // 1. Ambil dari tbl_ptk di SIKS_DB_MASTER (paling lengkap & sudah terpusat)
+    try {
+      if (typeof getTblPtkSdnContext_ === "function") {
+        var ctx = getTblPtkSdnContext_();
+        if (ctx && ctx.sheet) {
+          var c = ctx.colMap;
+          var pData = ctx.sheet.getDataRange().getDisplayValues();
+          for (var i = 1; i < pData.length; i++) {
+            var pNpsn = c.npsn > -1 ? String(pData[i][c.npsn] || "").replace(/'/g, "").trim() : "";
+            var pUnit = c.unit > -1 ? String(pData[i][c.unit] || "").trim().toUpperCase() : "";
+            if (pUnit && isValidNpsn(pNpsn) && !mapping[pUnit]) {
+              mapping[pUnit] = pNpsn;
+            }
+          }
         }
-      });
-    } else {
-      const sheet = getSheet("USER_DB", "Data User");
-      const data = sheet.getDataRange().getValues();
-      for (var i = 1; i < data.length; i++) {
-         var npsn = String(data[i][7] || "").trim();
-         var sekolah = String(data[i][8] || "").trim().toUpperCase();
-         if (sekolah !== "" && npsn !== "") {
-            mapping[sekolah] = npsn;
-         }
       }
-    }
+    } catch (ePtk) {}
+
+    // 2. Lengkapi dari USER_DB -> Data_Sekolah & Data User jika ada yang belum tercakup
+    try {
+      var shDS = getSheet("USER_DB", "Data_Sekolah");
+      if (shDS) {
+        var dDS = shDS.getDataRange().getDisplayValues();
+        for (var j = 1; j < dDS.length; j++) {
+          var npsnDS = String(dDS[j][0] || "").replace(/'/g, "").trim();
+          var namaDS = String(dDS[j][2] || "").trim().toUpperCase();
+          if (namaDS && isValidNpsn(npsnDS) && !mapping[namaDS]) {
+            mapping[namaDS] = npsnDS;
+          }
+        }
+      }
+    } catch (eDS) {}
+
+    // 3. Baca & sekalian perbaiki kolom npsn di tbl_sekolah (SIKS_DB_MASTER) yang kosong / berisi ID Drive
+    try {
+      var ssMaster = getDB("SIKS_DB_MASTER");
+      var shSek = ssMaster ? ssMaster.getSheetByName("tbl_sekolah") : null;
+      if (shSek) {
+        var sData = shSek.getDataRange().getValues();
+        for (var k = 1; k < sData.length; k++) {
+          var curNpsn = String(sData[k][0] || "").replace(/'/g, "").trim();
+          var curNama = String(sData[k][1] || "").trim().toUpperCase();
+          if (!curNama) continue;
+          if (isValidNpsn(curNpsn)) {
+            if (!mapping[curNama]) mapping[curNama] = curNpsn;
+          } else if (mapping[curNama]) {
+            shSek.getRange(k + 1, 1).setValue(mapping[curNama]);
+          }
+        }
+      }
+    } catch (eSek) {}
+
     try {
       cache.put(cacheKey, JSON.stringify(mapping), 1800); // Cache 30 menit
     } catch(e) {}
@@ -501,16 +539,11 @@ function getSiabaStatusData() {
 
     // Potong 2 baris pertama, ambil dari indeks 2 (baris ke-3) sampai habis
     var rows = rawData.slice(2); 
-    var mapNpsn = (typeof getMappingMasterNpsn === "function") ? getMappingMasterNpsn() : {};
 
-    // Ambil list nama sekolah dari Kolom 1 (Index 0) untuk dropdown filter & perbaiki NPSN dari tbl_sekolah
+    // Ambil list nama sekolah dari Kolom 1 (Index 0) untuk dropdown filter
     var listSekolah = [];
     rows.forEach(r => {
       if(r[0] && r[0] !== "") {
-         var namaKey = String(r[0]).trim().toUpperCase();
-         if (mapNpsn[namaKey]) {
-           r[1] = mapNpsn[namaKey];
-         }
          listSekolah.push(r[0]);
       }
     });

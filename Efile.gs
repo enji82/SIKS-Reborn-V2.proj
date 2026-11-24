@@ -871,6 +871,18 @@ function tandaiNotifEfileDibaca(rowId, role) {
 
 function getUnitNameByPtkId(idPtk) {
   try {
+    if (typeof USE_CENTRAL_PTK_DB !== "undefined" && USE_CENTRAL_PTK_DB && typeof getTblPtkSdnContext_ === "function") {
+      var ctx = getTblPtkSdnContext_();
+      if (ctx && ctx.sheet) {
+        var c = ctx.colMap;
+        var data = ctx.sheet.getDataRange().getDisplayValues();
+        for (var i = 1; i < data.length; i++) {
+          if (c.id > -1 && String(data[i][c.id]).trim() === String(idPtk).trim()) {
+            return (c.unit > -1 ? String(data[i][c.unit]).trim() : "") || "Lainnya";
+          }
+        }
+      }
+    }
     var shPtk = getSheet(KONFIG_EFILE.DB_KEY, "Database_PTK");
     if (!shPtk) return "Lainnya";
     var dataPtk = shPtk.getDataRange().getValues();
@@ -1018,18 +1030,29 @@ function getEfileDashboardInit(npsnFilter) {
         }
     }
     
-    var shSekolah = getSheet("USER_DB", "Data_Sekolah");
-    var dataSekolah = shSekolah ? shSekolah.getDataRange().getDisplayValues() : [];
     var listSekolahMaster = [];
     var mapSekolahSeen = {};
-
-    for (var s = 1; s < dataSekolah.length; s++) {
-      var rNpsn = String(dataSekolah[s][0]).trim();
-      var rJenjang = String(dataSekolah[s][1]).trim().toUpperCase();
-      var rNama = String(dataSekolah[s][2]).trim();
-      if (rNama && !mapSekolahSeen[rNama]) {
-        mapSekolahSeen[rNama] = true;
-        listSekolahMaster.push({ npsn: rNpsn, namaSekolah: rNama, nama: rNama, unit: rNama, jenjang: rJenjang });
+    if (typeof getMasterSekolah === "function") {
+      getMasterSekolah().forEach(function(ms) {
+        var rNpsn = String(ms.npsn || "").replace(/'/g, "").trim();
+        var rJenjang = String(ms.jenjang || "").trim().toUpperCase();
+        var rNama = String(ms.nama_sekolah || ms.unit || "").trim();
+        if (rNama && !mapSekolahSeen[rNama]) {
+          mapSekolahSeen[rNama] = true;
+          listSekolahMaster.push({ npsn: rNpsn, namaSekolah: rNama, nama: rNama, unit: rNama, jenjang: rJenjang });
+        }
+      });
+    } else {
+      var shSekolah = getSheet("USER_DB", "Data_Sekolah");
+      var dataSekolah = shSekolah ? shSekolah.getDataRange().getDisplayValues() : [];
+      for (var s = 1; s < dataSekolah.length; s++) {
+        var rNpsn = String(dataSekolah[s][0]).trim();
+        var rJenjang = String(dataSekolah[s][1]).trim().toUpperCase();
+        var rNama = String(dataSekolah[s][2]).trim();
+        if (rNama && !mapSekolahSeen[rNama]) {
+          mapSekolahSeen[rNama] = true;
+          listSekolahMaster.push({ npsn: rNpsn, namaSekolah: rNama, nama: rNama, unit: rNama, jenjang: rJenjang });
+        }
       }
     }
 

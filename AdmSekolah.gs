@@ -32,6 +32,25 @@ function getOrCreateSheetAdmSekolah(sheetName) {
   return sheet;
 }
 
+function getSekolahRowsAdmSekolah_() {
+  if (typeof getMasterSekolah === "function") {
+    var list = getMasterSekolah();
+    if (list && list.length > 0) {
+      var rows = [["NPSN", "Jenjang", "Nama Sekolah", "Status", "Kecamatan"]];
+      list.forEach(function(ms) {
+        var npsn = String(ms.npsn || "").replace(/'/g, "").trim();
+        var nama = String(ms.nama_sekolah || ms.unit || "").trim();
+        if (npsn || nama) {
+          rows.push([npsn, String(ms.jenjang || "").trim(), nama, String(ms.status_sekolah || ms.status || "").trim(), String(ms.kecamatan || "").trim()]);
+        }
+      });
+      return rows;
+    }
+  }
+  var shSekolah = getSheet("USER_DB", "Data_Sekolah");
+  return shSekolah ? shSekolah.getDataRange().getDisplayValues() : [];
+}
+
 
 /* ----------------------------------------------------------------------
    1. MASTER KATEGORI
@@ -64,8 +83,7 @@ function getAdmSekolahMasterData(npsnFilter) {
     }
     
     // Ambil Data Sekolah dari USER_DB -> Data_Sekolah (Sesuai kesepakatan menggunakan database sekolah Lapbul)
-    var shSekolah = getSheet("USER_DB", "Data_Sekolah");
-    var dataSekolah = shSekolah ? shSekolah.getDataRange().getDisplayValues() : [];
+    var dataSekolah = getSekolahRowsAdmSekolah_();
     var resSekolah = [];
     
     for(var j=1; j<dataSekolah.length; j++) {
@@ -160,8 +178,7 @@ function hapusAdmSekolahMaster(idKategori) {
 function getAdmSekolahData(npsnFilter) {
   try {
     // 1. Load Data_Sekolah untuk lookup
-    var shSekolah = getSheet("USER_DB", "Data_Sekolah");
-    var dataSekolah = shSekolah ? shSekolah.getDataRange().getDisplayValues() : [];
+    var dataSekolah = getSekolahRowsAdmSekolah_();
     var sekolahMap = {}; 
     var nameToNpsnMap = {};
     for(var j=1; j<dataSekolah.length; j++) {
@@ -292,8 +309,7 @@ function simpanAdmSekolahBatch(batchData) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(30000);
-    var ss = getDB(KONFIG_ADM_SEKOLAH.DB_KEY);
-    var sheet = ss.getSheetByName("Database_Dokumen");
+    var sheet = getOrCreateSheetAdmSekolah("Database_Dokumen");
     if (!sheet) {
       sheet = ss.insertSheet("Database_Dokumen");
       sheet.appendRow(["NPSN", "ID_Kategori", "Nama_Kategori", "Tahun", "File_Name", "URL", "Status", "Catatan", "Tgl_Upload", "Uploader", "Tgl_Verif", "Verifikator", "Periode", "Tgl_Edit", "User_Edit"]);
@@ -516,8 +532,7 @@ function getAdmSekolahDashboardInit(npsnFilter) {
         }
     }
     
-    var shSekolah = getSheet("USER_DB", "Data_Sekolah");
-    var dataSekolah = shSekolah ? shSekolah.getDataRange().getDisplayValues() : [];
+    var dataSekolah = getSekolahRowsAdmSekolah_();
     var myUnit = "";
     
     if (npsnFilter && npsnFilter !== "SEMUA") {
@@ -564,8 +579,7 @@ function getAdmSekolahDashboardData(idKategori, forceRefresh) {
       }
     }
     
-    var shSekolah = getSheet("USER_DB", "Data_Sekolah");
-    var dataSekolah = shSekolah ? shSekolah.getDataRange().getDisplayValues() : [];
+    var dataSekolah = getSekolahRowsAdmSekolah_();
     var sekolahList = [];
     
     for (var j = 1; j < dataSekolah.length; j++) {
@@ -812,8 +826,7 @@ function getAdmSekolahViewerInit(npsnFilter) {
       }
     }
     
-    var shSekolah = getSheet("USER_DB", "Data_Sekolah");
-    var dataSekolah = shSekolah ? shSekolah.getDataRange().getDisplayValues() : [];
+    var dataSekolah = getSekolahRowsAdmSekolah_();
     var schools = [];
     
     // Kembalikan semua daftar master sekolah agar resolusi nama/NPSN di sisi client selalu akurat
@@ -844,8 +857,7 @@ function getAdmSekolahViewerData(npsn, npsnFilter) {
     var cleanFilter = String(npsnFilter || "").trim();
     var cleanFilterNorm = normalizeAdmKey(cleanFilter);
     
-    var shSekolah = getSheet("USER_DB", "Data_Sekolah");
-    var dataSekolah = shSekolah ? shSekolah.getDataRange().getDisplayValues() : [];
+    var dataSekolah = getSekolahRowsAdmSekolah_();
     var schoolInfo = null;
     var resolvedNpsn = "";
     
@@ -982,8 +994,7 @@ function getNotifikasiAdmSekolah(role, unit) {
     var notifList = []; var unreadCount = 0;
 
     // Load Data_Sekolah untuk mapping NPSN -> Nama Sekolah
-    var shSekolah = getSheet("USER_DB", "Data_Sekolah");
-    var dataSekolah = shSekolah ? shSekolah.getDataRange().getDisplayValues() : [];
+    var dataSekolah = getSekolahRowsAdmSekolah_();
     var sekolahMap = {};
     for (var j = 1; j < dataSekolah.length; j++) {
       var npsn = String(dataSekolah[j][0] || "").trim();
