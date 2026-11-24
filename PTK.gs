@@ -5771,6 +5771,59 @@ function getPTKSekolahByNpsnLapbul(npsn, jenjang) {
       return String(v);
     };
 
+    if (typeof USE_CENTRAL_PTK_DB !== "undefined" && USE_CENTRAL_PTK_DB) {
+      var ctx = getTblPtkSdnContext_();
+      if (!ctx) return [];
+      var c = ctx.colMap;
+      var idxNiy = ctx.headers.indexOf("niy");
+      var idxInpassing = ctx.headers.indexOf("inpassing");
+      var data = ctx.sheet.getDataRange().getValues();
+      var resCentral = [];
+      for (var i = 1; i < data.length; i++) {
+        var r = data[i];
+        var rowId = c.id > -1 ? r[c.id] : "";
+        if (!rowId) continue;
+        var statusAktif = c.status_aktif > -1 ? String(r[c.status_aktif] || "AKTIF").trim().toUpperCase() : "AKTIF";
+        if (statusAktif === "NON_AKTIF") continue;
+        var rowJenjang = c.jenjang > -1 ? String(r[c.jenjang] || "").trim() : "";
+        if (rowJenjang !== "SD Negeri" && rowJenjang !== "SD Swasta") continue;
+        var rowNpsn = c.npsn > -1 ? String(r[c.npsn] || "").replace(/'/g, "").trim() : "";
+        if (rowNpsn !== searchNpsn) continue;
+
+        var isSdn = (rowJenjang === "SD Negeri");
+        var nipNiy = isSdn ? (c.nip > -1 ? String(r[c.nip] || "") : "") : (idxNiy > -1 ? String(r[idxNiy] || "") : "");
+        var jabTugas = isSdn ? (c.tugas > -1 ? String(r[c.tugas] || "") : "") : (c.jabatan > -1 ? String(r[c.jabatan] || "") : "");
+        var golAsn = isSdn ? (c.pangkat > -1 ? String(r[c.pangkat] || "") : "") : (idxInpassing > -1 ? String(r[idxInpassing] || "") : "");
+        var mengajarVal = c.mengajar_kelas > -1 ? String(r[c.mengajar_kelas] || "").trim() : "";
+
+        resCentral.push({
+          id_ptk       : rowId,
+          npsn_asal    : rowNpsn,
+          unit         : c.unit > -1 ? String(r[c.unit] || "") : "",
+          nama         : c.nama_lengkap > -1 ? String(r[c.nama_lengkap] || "") : "",
+          nip_niy      : nipNiy.replace(/'/g, ""),
+          tempat_lahir : c.tmp_lahir > -1 ? String(r[c.tmp_lahir] || "-") : "-",
+          tgl_lahir    : fmtTgl(c.tgl_lahir > -1 ? r[c.tgl_lahir] : ""),
+          jk           : c.lp > -1 ? String(r[c.lp] || "") : "",
+          agama        : c.agama > -1 ? String(r[c.agama] || "-") : "-",
+          pendidikan   : c.pendidikan > -1 ? String(r[c.pendidikan] || "") : "",
+          status       : c.status_peg > -1 ? String(r[c.status_peg] || "") : "",
+          jabatan      : jabTugas,
+          tmt          : fmtTgl(c.tmt_jabatan > -1 ? r[c.tmt_jabatan] : ""),
+          gol_asn      : golAsn,
+          nuptk        : c.nuptk > -1 ? String(r[c.nuptk] || "").replace(/'/g, "") : "",
+          serdik       : c.serdik > -1 ? String(r[c.serdik] || "") : "",
+          dapodik      : c.dapodik > -1 ? String(r[c.dapodik] || "") : "",
+          sumber       : isSdn ? 'SDN' : 'SDS',
+          is_induk     : true,
+          jabatan_lapbul : '',
+          mengajar     : mengajarVal,
+          alpa: '', sakit: '', izin: '', cuti: '', tugas_luar: '', tugas_belajar: '', lainnya: ''
+        });
+      }
+      return resCentral;
+    }
+
     // ── Helper map baris SDN → objek ──
     // Pemetaan kolom berdasarkan buildPtkListSdn_:
     // A(0)=ID, B(1)=NPSN, C(2)=Unit, D(3)=gelar_depan, E(4)=nama_no_gelar, F(5)=gelar_belakang
@@ -5891,6 +5944,60 @@ function searchPTKGlobalLapbul(keyword, jenjang) {
       if (v instanceof Date) return Utilities.formatDate(v, tz, 'dd-MM-yyyy');
       return String(v);
     };
+
+    if (typeof USE_CENTRAL_PTK_DB !== "undefined" && USE_CENTRAL_PTK_DB) {
+      var ctx = getTblPtkSdnContext_();
+      if (!ctx) return [];
+      var c = ctx.colMap;
+      var idxNiy = ctx.headers.indexOf("niy");
+      var idxInpassing = ctx.headers.indexOf("inpassing");
+      var data = ctx.sheet.getDataRange().getValues();
+      for (var i = 1; i < data.length; i++) {
+        if (results.length >= 50) break;
+        var r = data[i];
+        var rowId = c.id > -1 ? r[c.id] : "";
+        if (!rowId) continue;
+        var statusAktif = c.status_aktif > -1 ? String(r[c.status_aktif] || "AKTIF").trim().toUpperCase() : "AKTIF";
+        if (statusAktif === "NON_AKTIF") continue;
+        var rowJenjang = c.jenjang > -1 ? String(r[c.jenjang] || "").trim() : "";
+        if (rowJenjang !== "SD Negeri" && rowJenjang !== "SD Swasta") continue;
+
+        var isSdn = (rowJenjang === "SD Negeri");
+        var nama = c.nama_lengkap > -1 ? String(r[c.nama_lengkap] || "") : "";
+        var nipNiy = isSdn ? (c.nip > -1 ? String(r[c.nip] || "") : "") : (idxNiy > -1 ? String(r[idxNiy] || "") : "");
+        var nuptk = c.nuptk > -1 ? String(r[c.nuptk] || "") : "";
+        if (nama.toLowerCase().indexOf(key) !== -1 || nipNiy.toLowerCase().indexOf(key) !== -1 || nuptk.toLowerCase().indexOf(key) !== -1) {
+          var jabTugas = isSdn ? (c.tugas > -1 ? String(r[c.tugas] || "") : "") : (c.jabatan > -1 ? String(r[c.jabatan] || "") : "");
+          var golAsn = isSdn ? (c.pangkat > -1 ? String(r[c.pangkat] || "") : "") : (idxInpassing > -1 ? String(r[idxInpassing] || "") : "");
+          var mengajarVal = c.mengajar_kelas > -1 ? String(r[c.mengajar_kelas] || "").trim() : "";
+          results.push({
+            id_ptk       : rowId,
+            npsn_asal    : c.npsn > -1 ? String(r[c.npsn] || "").replace(/'/g, "").trim() : "",
+            unit         : c.unit > -1 ? String(r[c.unit] || "") : "",
+            nama         : nama,
+            nip_niy      : nipNiy.replace(/'/g, ""),
+            tempat_lahir : c.tmp_lahir > -1 ? String(r[c.tmp_lahir] || "-") : "-",
+            tgl_lahir    : fmtTgl(c.tgl_lahir > -1 ? r[c.tgl_lahir] : ""),
+            jk           : c.lp > -1 ? String(r[c.lp] || "") : "",
+            agama        : c.agama > -1 ? String(r[c.agama] || "-") : "-",
+            pendidikan   : c.pendidikan > -1 ? String(r[c.pendidikan] || "") : "",
+            status       : c.status_peg > -1 ? String(r[c.status_peg] || "") : "",
+            jabatan      : jabTugas,
+            tmt          : fmtTgl(c.tmt_jabatan > -1 ? r[c.tmt_jabatan] : ""),
+            gol_asn      : golAsn,
+            nuptk        : nuptk.replace(/'/g, ""),
+            serdik       : c.serdik > -1 ? String(r[c.serdik] || "") : "",
+            dapodik      : c.dapodik > -1 ? String(r[c.dapodik] || "") : "",
+            sumber       : isSdn ? 'SDN' : 'SDS',
+            is_induk     : false,
+            jabatan_lapbul : '',
+            mengajar     : mengajarVal,
+            alpa: '', sakit: '', izin: '', cuti: '', tugas_luar: '', tugas_belajar: '', lainnya: ''
+          });
+        }
+      }
+      return results;
+    }
 
     // ── Cari di SDN ──
     // Kolom: G(6)=nama, H(7)=nip, AA(26)=nuptk, N(13)=pendidikan, T(19)=status, U(20)=jabatan

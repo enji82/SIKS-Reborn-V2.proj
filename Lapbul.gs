@@ -53,7 +53,8 @@ function getLapbulPtkInduk(npsn, statusSekolah) {
     });
     // Add default values for lapbul specific inputs
     filtered.forEach(function(item) {
-      item.mengajar_kelas = "-";
+      item.mengajar_kelas = item.mengajar_kelas || "-";
+      item.mengajar = item.mengajar_kelas;
       item.absen_dd = ""; item.absen_dl = ""; item.absen_ct = ""; 
       item.absen_cap = ""; item.absen_cs = ""; item.absen_cm = ""; item.absen_a = "";
     });
@@ -81,7 +82,8 @@ function searchLapbulPtkGlobal(keyword) {
     
     matched = matched.slice(0, 20); // Limit to 20 results
     matched.forEach(function(item) {
-      item.mengajar_kelas = "-";
+      item.mengajar_kelas = item.mengajar_kelas || "-";
+      item.mengajar = item.mengajar_kelas;
       item.absen_dd = ""; item.absen_dl = ""; item.absen_ct = ""; 
       item.absen_cap = ""; item.absen_cs = ""; item.absen_cm = ""; item.absen_a = "";
     });
