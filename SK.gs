@@ -40,17 +40,25 @@ function getMappingMasterNpsn() {
   } catch (e) {}
 
   try {
-    const sheet = getSheet("USER_DB", "Data User");
-    const data = sheet.getDataRange().getValues();
-    
     var mapping = {};
-    // Kolom H (Index 7): NPSN, Kolom I (Index 8): Nama Sekolah
-    for (var i = 1; i < data.length; i++) {
-       var npsn = String(data[i][7] || "").trim();
-       var sekolah = String(data[i][8] || "").trim().toUpperCase(); // Normalisasi ke Uppercase
-       if (sekolah !== "" && npsn !== "") {
+    if (typeof getMasterSekolah === "function") {
+      getMasterSekolah().forEach(function(ms) {
+        var npsn = String(ms.npsn || "").replace(/'/g, "").trim();
+        var sekolah = String(ms.nama_sekolah || ms.unit || "").trim().toUpperCase();
+        if (sekolah !== "" && npsn !== "") {
           mapping[sekolah] = npsn;
-       }
+        }
+      });
+    } else {
+      const sheet = getSheet("USER_DB", "Data User");
+      const data = sheet.getDataRange().getValues();
+      for (var i = 1; i < data.length; i++) {
+         var npsn = String(data[i][7] || "").trim();
+         var sekolah = String(data[i][8] || "").trim().toUpperCase();
+         if (sekolah !== "" && npsn !== "") {
+            mapping[sekolah] = npsn;
+         }
+      }
     }
     try {
       cache.put(cacheKey, JSON.stringify(mapping), 1800); // Cache 30 menit
@@ -493,11 +501,16 @@ function getSiabaStatusData() {
 
     // Potong 2 baris pertama, ambil dari indeks 2 (baris ke-3) sampai habis
     var rows = rawData.slice(2); 
+    var mapNpsn = (typeof getMappingMasterNpsn === "function") ? getMappingMasterNpsn() : {};
 
-    // Ambil list nama sekolah dari Kolom 1 (Index 0) untuk dropdown filter
+    // Ambil list nama sekolah dari Kolom 1 (Index 0) untuk dropdown filter & perbaiki NPSN dari tbl_sekolah
     var listSekolah = [];
     rows.forEach(r => {
       if(r[0] && r[0] !== "") {
+         var namaKey = String(r[0]).trim().toUpperCase();
+         if (mapNpsn[namaKey]) {
+           r[1] = mapNpsn[namaKey];
+         }
          listSekolah.push(r[0]);
       }
     });
@@ -526,24 +539,36 @@ function getDashboardSK(filterTahun, filterSemester) {
   } catch (e) {}
 
   try {
-    const db = getDB("SK_DATA_DB");
-    const sheetData = db.getSheetByName("Unggah_SK");
+    const sheetData = getSkSheet_("Unggah_SK");
     if (!sheetData) return { error: "Sheet 'Unggah_SK' tidak ditemukan!" };
     var rawData = sheetData.getDataRange().getValues();
     var rows = rawData.slice(1); 
 
     var masterSekolah = [];
     var masterSekolahSet = new Set();
-    var sheetMaster = db.getSheetByName("Master_Sekolah");
-    if (sheetMaster) {
-        var rawMaster = sheetMaster.getDataRange().getValues();
-        for (var i = 1; i < rawMaster.length; i++) {
-            if(rawMaster[i][0]) {
-                var sName = String(rawMaster[i][0]).trim();
-                masterSekolah.push(sName);
-                masterSekolahSet.add(sName.toUpperCase());
-            }
+    if (typeof getMasterSekolah === "function") {
+      getMasterSekolah().forEach(function(ms) {
+        var jjg = String(ms.jenjang || "").trim().toUpperCase();
+        if (jjg.indexOf("SD") === -1) return;
+        var sName = String(ms.nama_sekolah || ms.unit || "").trim();
+        if (sName && !masterSekolahSet.has(sName.toUpperCase())) {
+          masterSekolah.push(sName);
+          masterSekolahSet.add(sName.toUpperCase());
         }
+      });
+    } else {
+      const db = getDB("SK_DATA_DB");
+      var sheetMaster = db.getSheetByName("Master_Sekolah");
+      if (sheetMaster) {
+          var rawMaster = sheetMaster.getDataRange().getValues();
+          for (var i = 1; i < rawMaster.length; i++) {
+              if(rawMaster[i][0]) {
+                  var sName = String(rawMaster[i][0]).trim();
+                  masterSekolah.push(sName);
+                  masterSekolahSet.add(sName.toUpperCase());
+              }
+          }
+      }
     }
 
     var stats = {
