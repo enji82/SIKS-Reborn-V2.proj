@@ -656,21 +656,18 @@ function tpg_getDashboardData(unitFilter, forceRefresh) {
 
     var listData = rawRes.data || [];
 
-    // Map data sekolah untuk NPSN & Jenjang
+    // Map data sekolah untuk NPSN & Jenjang dari SIKS_DB_MASTER (tbl_sekolah)
     var npsnMap = {};
     var jenjangMap = {};
     try {
-      var sheetSekolah = getSheet("USER_DB", "Data_Sekolah");
-      if (sheetSekolah) {
-        var dataSek = sheetSekolah.getDataRange().getValues();
-        for (var s = 1; s < dataSek.length; s++) {
-          var sNpsn = String(dataSek[s][0] || "").trim();
-          var sJenj = String(dataSek[s][1] || "").trim().toUpperCase();
-          var sNama = String(dataSek[s][2] || "").trim();
-          if (sNama) {
-            if (sNpsn) npsnMap[sNama] = sNpsn;
-            if (sJenj) jenjangMap[sNama] = sJenj;
-          }
+      var listSek = getMasterSekolah();
+      for (var s = 0; s < listSek.length; s++) {
+        var sNpsn = String(listSek[s].npsn || "").trim();
+        var sJenj = String(listSek[s].jenjang || "").trim().toUpperCase();
+        var sNama = String(listSek[s].nama || "").trim();
+        if (sNama) {
+          if (sNpsn) npsnMap[sNama] = sNpsn;
+          if (sJenj) jenjangMap[sNama] = sJenj;
         }
       }
     } catch (eSek) {

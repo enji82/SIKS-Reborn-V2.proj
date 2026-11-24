@@ -108,22 +108,19 @@ function pppkpw_getInitData(unitFilter) {
     var jenjangMap = {};
     var sekolahMasterList = [];
 
-    // 0. Ambil Data Sekolah Resmi dari Master USER_DB -> Data_Sekolah
+    // 0. Ambil Data Sekolah Resmi dari SIKS_DB_MASTER (tbl_sekolah)
     try {
-      var shSekolah = getSheet("USER_DB", "Data_Sekolah");
-      if (shSekolah && shSekolah.getLastRow() >= 2) {
-        var dSekolah = shSekolah.getRange(2, 1, shSekolah.getLastRow() - 1, 4).getDisplayValues();
-        dSekolah.forEach(function(r) {
-          var npsn = String(r[0] || "").trim();
-          var jenjang = String(r[1] || "").trim();
-          var nama = String(r[2] || "").trim();
-          if (nama) {
-            if (npsn) npsnMap[nama] = npsn;
-            if (jenjang) jenjangMap[nama] = jenjang;
-            sekolahMasterList.push({ npsn: npsn, jenjang: jenjang, nama: nama });
-          }
-        });
-      }
+      var listSekolah = getMasterSekolah();
+      listSekolah.forEach(function(s) {
+        var npsn = String(s.npsn || "").trim();
+        var jenjang = String(s.jenjang || "").trim();
+        var nama = String(s.nama || "").trim();
+        if (nama) {
+          if (npsn) npsnMap[nama] = npsn;
+          if (jenjang) jenjangMap[nama] = jenjang;
+          sekolahMasterList.push({ npsn: npsn, jenjang: jenjang, nama: nama });
+        }
+      });
     } catch (eSek) {
       Logger.log("pppkpw_getInitData sekolah master error: " + eSek.message);
     }
@@ -563,6 +560,73 @@ function pppkpw_verifikasi(payload) {
    7. DASHBOARD
    ----------------------------------------------------------------------- */
 
+function pppkpw_getAllPegawaiForDash_(unitFilter) {
+  var allPegawai = [];
+  var targetUnit = String(unitFilter || "").trim().toUpperCase();
+
+  try {
+    if (typeof getMasterPegawaiUnified === "function") {
+      var listPw = getMasterPegawaiUnified({ jenisPegawai: "PPPK_PW" });
+      if (Array.isArray(listPw) && listPw.length > 0) {
+        listPw.forEach(function(p) {
+          var unit = String(p.unit || "").trim();
+          if (targetUnit && targetUnit !== "SEMUA" && unit.toUpperCase() !== targetUnit) return;
+          var nama = String(p.nama || "").trim();
+          if (!nama) return;
+          allPegawai.push({
+            unit: unit,
+            nama: nama,
+            nip: String(p.nip || "").trim(),
+            jabatan: String(p.tugas || p.jabatan || "").trim()
+          });
+        });
+        return allPegawai;
+      }
+    }
+  } catch (eUnified) {
+    Logger.log("pppkpw_getAllPegawaiForDash_ unified warning: " + eUnified.message);
+  }
+
+  var sheet = getSheet("PTK_DB", "Master Data GTK");
+  if (sheet && sheet.getLastRow() >= 2) {
+    var ptkData = sheet.getRange(2, 1, sheet.getLastRow() - 1, 26).getDisplayValues();
+    ptkData.forEach(function(row) {
+      if (!row[0] || !pppkpw_isPppkPw(row[19])) return;
+      var unit = String(row[2] || "").trim();
+      if (targetUnit && targetUnit !== "SEMUA" && unit.toUpperCase() !== targetUnit) return;
+      var nama = String(row[4] || "").trim();
+      if (!nama) return;
+      allPegawai.push({
+        unit: unit,
+        nama: nama,
+        nip: String(row[7] || "").trim(),
+        jabatan: String(row[25] || "").trim()
+      });
+    });
+  }
+  return allPegawai;
+}
+
+function pppkpw_getSekolahMaps_() {
+  var npsnMap = {};
+  var jenjangMap = {};
+  try {
+    var listSekolah = getMasterSekolah();
+    listSekolah.forEach(function(s) {
+      var npsn = String(s.npsn || "").trim();
+      var jenjang = String(s.jenjang || "").trim();
+      var nama = String(s.nama || "").trim();
+      if (nama) {
+        if (npsn) npsnMap[nama] = npsn;
+        if (jenjang) jenjangMap[nama] = jenjang;
+      }
+    });
+  } catch (esk) {
+    Logger.log("pppkpw_getSekolahMaps_ error: " + esk.message);
+  }
+  return { npsnMap: npsnMap, jenjangMap: jenjangMap };
+}
+
 function pppkpw_getDashboardData(unitFilter, tahun, forceRefresh) {
   try {
     var cacheKey = "PPPKPW_DASH_" + (tahun || "ALL") + "_" + (unitFilter || "ALL");
@@ -571,26 +635,7 @@ function pppkpw_getDashboardData(unitFilter, tahun, forceRefresh) {
       if (cached) return cached;
     }
 
-    var sheet = getSheet("PTK_DB", "Master Data GTK");
-    var allPegawai = [];
-    if (sheet) {
-      var lastRow = sheet.getLastRow();
-      if (lastRow >= 2) {
-        var ptkData = sheet.getRange(2, 1, lastRow - 1, 26).getDisplayValues();
-        var targetUnit = String(unitFilter || "").trim().toUpperCase();
-        ptkData.forEach(function(row) {
-          if (!row[0]) return;
-          if (!pppkpw_isPppkPw(row[19])) return; // Col T
-          var unit    = String(row[2] || "").trim(); // Col C
-          if (targetUnit && targetUnit !== "SEMUA" && unit.toUpperCase() !== targetUnit) return;
-          var nama    = String(row[4] || "").trim(); // Col E
-          var nip     = String(row[7] || "").trim(); // Col H
-          var jabatan = String(row[25] || "").trim(); // Col Z
-          if (!nama) return;
-          allPegawai.push({ unit: unit, nama: nama, nip: nip, jabatan: jabatan });
-        });
-      }
-    }
+    var allPegawai = pppkpw_getAllPegawaiForDash_(unitFilter);
 
     var uploadedMap = {};
     var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.PPPK_PW_DB);
@@ -610,24 +655,10 @@ function pppkpw_getDashboardData(unitFilter, tahun, forceRefresh) {
       }
     });
 
-    // Bangun npsnMap dan jenjangMap dari Data_Sekolah
-    var npsnMap = {};
-    var jenjangMap = {};
-    try {
-      var shSekolah = getSheet("USER_DB", "Data_Sekolah");
-      if (shSekolah && shSekolah.getLastRow() >= 2) {
-        var dSekolah = shSekolah.getRange(2, 1, shSekolah.getLastRow() - 1, 4).getDisplayValues();
-        dSekolah.forEach(function(r) {
-          var npsn = String(r[0] || "").trim();
-          var jenjang = String(r[1] || "").trim();
-          var nama = String(r[2] || "").trim();
-          if (nama) {
-            if (npsn) npsnMap[nama] = npsn;
-            if (jenjang) jenjangMap[nama] = jenjang;
-          }
-        });
-      }
-    } catch(esk) { Logger.log("pppkpw_getDashboardData sekolah map error: " + esk.message); }
+    // Bangun npsnMap dan jenjangMap dari SIKS_DB_MASTER (tbl_sekolah)
+    var sekMaps = pppkpw_getSekolahMaps_();
+    var npsnMap = sekMaps.npsnMap;
+    var jenjangMap = sekMaps.jenjangMap;
 
     var unitMap = {};
     allPegawai.forEach(function(p) {
@@ -1294,26 +1325,7 @@ function pppkpw_spmt_getDashboardData(unitFilter, tahun, forceRefresh) {
       if (cached) return cached;
     }
 
-    var sheet = getSheet("PTK_DB", "Master Data GTK");
-    var allPegawai = [];
-    if (sheet) {
-      var lastRow = sheet.getLastRow();
-      if (lastRow >= 2) {
-        var ptkData = sheet.getRange(2, 1, lastRow - 1, 26).getDisplayValues();
-        var targetUnit = String(unitFilter || "").trim().toUpperCase();
-        ptkData.forEach(function(row) {
-          if (!row[0]) return;
-          if (!pppkpw_isPppkPw(row[19])) return;
-          var unit    = String(row[2] || "").trim();
-          if (targetUnit && targetUnit !== "SEMUA" && unit.toUpperCase() !== targetUnit) return;
-          var nama    = String(row[4] || "").trim();
-          var nip     = String(row[7] || "").trim();
-          var jabatan = String(row[25] || "").trim();
-          if (!nama) return;
-          allPegawai.push({ unit: unit, nama: nama, nip: nip, jabatan: jabatan });
-        });
-      }
-    }
+    var allPegawai = pppkpw_getAllPegawaiForDash_(unitFilter);
 
     var uploadedMap = {};
     var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.PPPK_PW_DB);
@@ -1333,24 +1345,10 @@ function pppkpw_spmt_getDashboardData(unitFilter, tahun, forceRefresh) {
       }
     });
 
-    // Bangun npsnMap dan jenjangMap dari Data_Sekolah
-    var npsnMap = {};
-    var jenjangMap = {};
-    try {
-      var shSekolah2 = getSheet("USER_DB", "Data_Sekolah");
-      if (shSekolah2 && shSekolah2.getLastRow() >= 2) {
-        var dSekolah2 = shSekolah2.getRange(2, 1, shSekolah2.getLastRow() - 1, 4).getDisplayValues();
-        dSekolah2.forEach(function(r) {
-          var npsn = String(r[0] || "").trim();
-          var jenjang = String(r[1] || "").trim();
-          var nama = String(r[2] || "").trim();
-          if (nama) {
-            if (npsn) npsnMap[nama] = npsn;
-            if (jenjang) jenjangMap[nama] = jenjang;
-          }
-        });
-      }
-    } catch(esk) { Logger.log("pppkpw_spmt_getDashboardData sekolah map error: " + esk.message); }
+    // Bangun npsnMap dan jenjangMap dari SIKS_DB_MASTER (tbl_sekolah)
+    var sekMaps2 = pppkpw_getSekolahMaps_();
+    var npsnMap = sekMaps2.npsnMap;
+    var jenjangMap = sekMaps2.jenjangMap;
 
     var unitMap = {};
     allPegawai.forEach(function(p) {
