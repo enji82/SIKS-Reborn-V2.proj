@@ -947,6 +947,7 @@ function harian_renderTabel(dataRows) {
                        <th class="text-center align-middle px-2 bg-soft-info">CM</th>
                        <th class="text-center align-middle px-2 bg-soft-purple">DD</th>
                        <th class="text-center align-middle px-2 bg-soft-purple">DL</th>
+                       <th class="text-center align-middle px-2 bg-soft-danger">A</th>
                        <th class="text-center align-middle px-2 bg-soft-orange">TA</th>
                        <th class="text-center align-middle px-2 bg-soft-orange">WAKTU TA</th>
                        <th class="text-center align-middle px-2 bg-soft-orange">PLA</th>
@@ -1010,6 +1011,33 @@ function harian_renderTabel(dataRows) {
                         else if (visIdx === 20) display = `<span class="text-danger font-weight-bold">${safeVal}</span>`;
                     }
                     arrRow.push(display);
+                    if (visIdx === 15) {
+                        var valA = 0;
+                        var now = new Date();
+                        var curY = now.getFullYear(), curMIdx = now.getMonth(), curD = now.getDate();
+                        var mNames = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+                        var filterMIdx = mNames.indexOf(bl);
+                        var filterY = parseInt(th) || curY;
+
+                        for (var dCheck = 1; dCheck <= numDays; dCheck++) {
+                            var infoHari = harian_getNamaHari(th, bl, dCheck);
+                            var liburObj = harian_isTanggalMerah(th, bl, dCheck);
+                            var isHariLibur = infoHari.isWeekend || (liburObj !== null);
+                            var isMasaDepan = (filterY > curY) || (filterY === curY && filterMIdx > curMIdx) || (filterY === curY && filterMIdx === curMIdx && dCheck > curD);
+                            if (isHariLibur || isMasaDepan) continue;
+
+                            var dIdxC = 22 + (dCheck - 1) * 2;
+                            var pIdxC = 23 + (dCheck - 1) * 2;
+                            var strD = String(row[dIdxC] || "").trim().toUpperCase();
+                            var strP = String(row[pIdxC] || "").trim().toUpperCase();
+                            var isDValid = (strD && strD !== "-" && strD !== "0" && strD !== "TP");
+                            var isPValid = (strP && strP !== "-" && strP !== "0" && strP !== "TP");
+                            if (!isDValid && !isPValid) {
+                                valA++;
+                            }
+                        }
+                        arrRow.push(valA === 0 ? `<span class="text-muted opacity-50">-</span>` : `<span class="text-danger font-weight-bold">${valA}</span>`);
+                    }
                 }
             }
 
@@ -1018,7 +1046,7 @@ function harian_renderTabel(dataRows) {
         });
 
         // 4. Inisialisasi DataTable Sultan System
-        var totalColsCount = HARIAN_VIEW_MODE === 'matriks' ? (1 + numDays) : 21;
+        var totalColsCount = HARIAN_VIEW_MODE === 'matriks' ? (1 + numDays) : 22;
         var targetColsArray = Array.from({length: totalColsCount - 1}, function(_, i) { return i + 1; });
 
         HARIAN_TABEL_INSTANCE = SultanTable.init('#harian_tabelUtama', {

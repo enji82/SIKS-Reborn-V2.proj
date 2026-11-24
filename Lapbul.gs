@@ -93,6 +93,99 @@ function searchLapbulPtkGlobal(keyword) {
   }
 }
 
+function getLapbulPresensiAbsenMap(tahun, bulan, unit) {
+  try {
+    if (!tahun || !bulan) return JSON.stringify({ success: false, map: {} });
+    var raw = getSiabaPresensiHarian(String(tahun), String(bulan), unit || "SEMUA");
+    var parsed = JSON.parse(raw);
+    if (parsed.error || !parsed.headers || !parsed.rows) {
+      return JSON.stringify({ success: false, map: {}, message: parsed.error || "Data presensi tidak tersedia." });
+    }
+    var h = parsed.headers.map(function(x) { return String(x || "").toLowerCase().trim(); });
+    var findH = function(names) {
+      for (var k = 0; k < names.length; k++) {
+        var idx = h.indexOf(names[k]);
+        if (idx > -1) return idx;
+      }
+      return -1;
+    };
+    var idxNip = findH(["nip"]);
+    var idxHk = findH(["hk", "hari kerja"]);
+    var idxH = findH(["h", "hadir"]);
+    var idxDd = findH(["dd", "dinas dalam"]);
+    var idxDl = findH(["dl", "dinas luar"]);
+    var idxCt = findH(["ct", "cuti tahunan"]);
+    var idxCap = findH(["cap", "cuti alasan penting"]);
+    var idxCs = findH(["cs", "cuti sakit"]);
+    var idxCm = findH(["cm", "cuti melahirkan"]);
+    var idxA = findH(["a", "alpa", "tk", "tanpa keterangan"]);
+
+    var map = {};
+    if (idxNip === -1) return JSON.stringify({ success: true, map: map });
+
+    var months = ["januari","februari","maret","april","mei","juni","juli","agustus","september","oktober","november","desember"];
+    var mIdx = months.indexOf(String(bulan).toLowerCase().trim()) + 1;
+    var yNum = parseInt(tahun, 10) || new Date().getFullYear();
+    var numDays = mIdx > 0 ? new Date(yNum, mIdx, 0).getDate() : 31;
+    var konfig = parsed.konfig || {};
+    var kalenderLibur = Array.isArray(konfig.kalenderLibur) ? konfig.kalenderLibur : [];
+    var liburSet = {};
+    kalenderLibur.forEach(function(item) {
+      if (item && item.tanggal) liburSet[String(item.tanggal).substring(0, 10)] = true;
+    });
+    var now = new Date();
+    var curY = now.getFullYear(), curM = now.getMonth() + 1, curD = now.getDate();
+
+    parsed.rows.forEach(function(r) {
+      var nip = String(r[idxNip] || "").replace(/[^0-9]/g, "").trim();
+      if (!nip) return;
+      var numAt = function(idx) {
+        if (idx === -1) return 0;
+        var v = parseInt(r[idx], 10);
+        return isNaN(v) ? 0 : v;
+      };
+      var valOrEmpty = function(idx) {
+        var v = numAt(idx);
+        return v > 0 ? String(v) : "";
+      };
+      var valA = 0;
+      if (idxA > -1) {
+        valA = numAt(idxA);
+      } else if (mIdx > 0) {
+        for (var d = 1; d <= numDays; d++) {
+          var isFuture = (yNum > curY) || (yNum === curY && mIdx > curM) || (yNum === curY && mIdx === curM && d > curD);
+          if (isFuture) continue;
+          var dow = new Date(yNum, mIdx - 1, d).getDay();
+          if (dow === 0 || dow === 6) continue;
+          var dStr = yNum + "-" + (mIdx < 10 ? "0" + mIdx : mIdx) + "-" + (d < 10 ? "0" + d : d);
+          if (liburSet[dStr]) continue;
+          var dIdxC = 22 + (d - 1) * 2;
+          var pIdxC = 23 + (d - 1) * 2;
+          var strD = String(r[dIdxC] || "").trim().toUpperCase();
+          var strP = String(r[pIdxC] || "").trim().toUpperCase();
+          var isDValid = (strD && strD !== "-" && strD !== "0" && strD !== "TP");
+          var isPValid = (strP && strP !== "-" && strP !== "0" && strP !== "TP");
+          if (!isDValid && !isPValid) {
+            valA++;
+          }
+        }
+      }
+      map[nip] = {
+        dd: valOrEmpty(idxDd),
+        dl: valOrEmpty(idxDl),
+        ct: valOrEmpty(idxCt),
+        cap: valOrEmpty(idxCap),
+        cs: valOrEmpty(idxCs),
+        cm: valOrEmpty(idxCm),
+        a: valA > 0 ? String(valA) : ""
+      };
+    });
+    return JSON.stringify({ success: true, map: map });
+  } catch (e) {
+    return JSON.stringify({ success: false, map: {}, message: e.message });
+  }
+}
+
 /* ======================================================================
    1. MODUL KELOLA DATA (PARTIAL FETCH)
    ====================================================================== */

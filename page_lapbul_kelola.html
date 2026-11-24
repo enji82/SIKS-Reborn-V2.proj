@@ -2012,6 +2012,27 @@
                 Sultan.notif.gagal("Laporan untuk " + bln + " " + thn + " sudah ada! Silakan gunakan fitur Edit pada tabel data.");
                 return;
             }
+            if (tipe === 'SD') {
+                google.script.run.withSuccessHandler(function (resJson) {
+                    try {
+                        var res = JSON.parse(resJson);
+                        if (res && res.success && res.map && Array.isArray(LAPBULKELOLA_DATA_PTK_INDUK)) {
+                            LAPBULKELOLA_DATA_PTK_INDUK.forEach(function (ptk) {
+                                var st = String(ptk.status || "").toUpperCase();
+                                var isAsn = st.includes('CPNS') || st.includes('PNS') || st.includes('PPPK');
+                                if (!isAsn) return;
+                                var nipClean = String(ptk.nip_niy || "").replace(/[^0-9]/g, "").trim();
+                                var abs = res.map[nipClean];
+                                if (abs) {
+                                    ptk.dd = abs.dd; ptk.dl = abs.dl; ptk.ct = abs.ct;
+                                    ptk.cap = abs.cap; ptk.cs = abs.cs; ptk.cm = abs.cm; ptk.a = abs.a;
+                                }
+                            });
+                            if (typeof lapbulkelola_renderPtkMatrix === 'function') lapbulkelola_renderPtkMatrix();
+                        }
+                    } catch (e) {}
+                }).getLapbulPresensiAbsenMap(thn, bln, "SEMUA");
+            }
         }
 
         Sultan.konfirmasi({
