@@ -445,11 +445,46 @@ function simpanUser(payload) {
       sheetUser.appendRow(rowData);
     }
 
+    // Sinkronkan ke SIKS_DB_MASTER (tbl_users)
+    try {
+      var tblUsers = SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_MASTER).getSheetByName("tbl_users");
+      if (tblUsers) {
+        var uData = tblUsers.getDataRange().getValues();
+        var uRow = -1;
+        for (var ui = 1; ui < uData.length; ui++) {
+          if (String(uData[ui][0]).trim() === username) { uRow = ui + 1; break; }
+        }
+        var nowIso = Utilities.formatDate(new Date(), "Asia/Jakarta", "yyyy-MM-dd HH:mm:ss");
+        var masterRow = [username, passwordCol, String(payload.nama || "").trim(), String(payload.role || "user").trim(), String(payload.unit || "").trim(), "", "Aktif", nowIso];
+        if (uRow > 0) {
+          tblUsers.getRange(uRow, 1, 1, 8).setValues([masterRow]);
+        } else {
+          tblUsers.appendRow(masterRow);
+        }
+      }
+    } catch (eSync) {
+      Logger.log("simpanUser sync tbl_users warning: " + eSync.message);
+    }
+
     // Simpan hak akses jika disertakan
     if (payload.aksesMenu !== undefined) {
       simpanAksesMenuUser(username, payload.aksesMenu);
     }
 
+    // Hapus dari tbl_users (SIKS_DB_MASTER)
+    try {
+      var tblUsers = SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_MASTER).getSheetByName("tbl_users");
+      if (tblUsers) {
+        var uData = tblUsers.getDataRange().getValues();
+        for (var ui = uData.length - 1; ui >= 1; ui--) {
+          if (String(uData[ui][0]).trim() === String(username).trim()) {
+            tblUsers.deleteRow(ui + 1); break;
+          }
+        }
+      }
+    } catch (eSyncDel) {
+      Logger.log("hapusUser sync tbl_users warning: " + eSyncDel.message);
+    }
     SpreadsheetApp.flush();
     return JSON.stringify({ status: "Sukses" });
   } catch (e) {
@@ -498,6 +533,20 @@ function hapusUser(username) {
           sheetAkses.deleteRow(j + 1); break;
         }
       }
+    }
+    // Hapus dari tbl_users (SIKS_DB_MASTER)
+    try {
+      var tblUsers = SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_MASTER).getSheetByName("tbl_users");
+      if (tblUsers) {
+        var uData = tblUsers.getDataRange().getValues();
+        for (var ui = uData.length - 1; ui >= 1; ui--) {
+          if (String(uData[ui][0]).trim() === String(username).trim()) {
+            tblUsers.deleteRow(ui + 1); break;
+          }
+        }
+      }
+    } catch (eSyncDel) {
+      Logger.log("hapusUser sync tbl_users warning: " + eSyncDel.message);
     }
     SpreadsheetApp.flush();
     return JSON.stringify({ status: "Sukses" });
