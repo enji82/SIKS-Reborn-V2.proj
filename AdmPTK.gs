@@ -338,13 +338,16 @@ function getAdmPtkData(npsnFilter) {
   } catch(e) { return JSON.stringify({ success: false, message: e.message }); }
 }
 
-function admPtkCheckDuplikat(sheet, idPtk, idKategori, tahun, periode) {
+function admPtkCheckDuplikat(sheet, idPtk, idKategori, tahun, periode, npsn) {
   var targetId = String(idPtk || "").trim();
   if (!targetId) return { ada: false };
+  var targetNpsn = String(npsn || "").trim().toUpperCase();
   var data = sheet.getDataRange().getDisplayValues();
   for (var i = 1; i < data.length; i++) {
     var rId    = String(data[i][0] || "").trim();
     if (!rId) continue;
+    var rNpsn  = String(data[i][3] || "").trim().toUpperCase();
+    if (targetNpsn && rNpsn && rNpsn !== targetNpsn) continue;
     var rKat   = String(data[i][4] || "").trim();
     var rThn   = String(data[i][6] || "").trim();
     var rPer   = String(data[i][15] || "-").trim();
@@ -374,7 +377,7 @@ function simpanAdmPtkBatch(batchData) {
       var periodeItem = String(item.periode || "-").trim();
 
       // Proteksi duplikat
-      var duplikat = admPtkCheckDuplikat(sheet, item.id_ptk, item.id_kategori, item.tahun, periodeItem);
+      var duplikat = admPtkCheckDuplikat(sheet, item.id_ptk, item.id_kategori, item.tahun, periodeItem, item.npsn);
       if (duplikat.ada) {
         var alasan = (duplikat.status.toLowerCase().includes('setuju') || duplikat.status.toLowerCase().includes('ok'))
           ? "Sudah Disetujui, tidak dapat diubah lagi."
