@@ -54,14 +54,55 @@ function admPtk_getDaftarPtk(npsnFilter) {
     try { return JSON.parse(cachedStr); } catch(ce) {}
   }
 
+  var result = [];
+  // Cek apakah filter berupa angka NPSN murni atau nama sekolah
+  var filterIsNpsn = /^[0-9]+$/.test(targetNpsn);
+
+  // 1. Prioritaskan Master Data Pegawai Terpadu (SIKS_DB_MASTER -> tbl_ptk)
+  try {
+    if (typeof getMasterPegawaiUnified === "function") {
+      var unifiedList = getMasterPegawaiUnified({});
+      if (Array.isArray(unifiedList) && unifiedList.length > 0) {
+        unifiedList.forEach(function(p) {
+          var rNpsn = String(p.npsn || "").trim().toUpperCase();
+          var rUnit = String(p.unit || "").trim().toUpperCase();
+          if (targetNpsn && targetNpsn !== "SEMUA") {
+            var matchNpsn = (rNpsn === targetNpsn);
+            var matchUnit = (!filterIsNpsn && rUnit === targetNpsn);
+            if (!matchNpsn && !matchUnit) return;
+          }
+          var namaBersih = String(p.nama || "").trim();
+          var nip = String(p.nip || "").trim();
+          if (!namaBersih) return;
+          result.push({
+            id:            String(p.id || nip || namaBersih).trim(),
+            npsn:          rNpsn,
+            unit:          String(p.unit || "").trim(),
+            nama:          namaBersih,
+            nama_no_gelar: namaBersih,
+            nama_lengkap:  namaBersih,
+            nip:           nip,
+            jenjang:       String(p.jenjang || "").trim().toUpperCase(),
+            status_peg:    String(p.status || "").trim(),
+            tugas:         String(p.tugas || p.jabatan || "").trim(),
+            folderKey:     nip ? (namaBersih + " - " + nip) : namaBersih
+          });
+        });
+        result.sort(function(a, b) { return a.nama.localeCompare(b.nama); });
+        try { putLargeCache(cacheKey, JSON.stringify(result), 1800); } catch(ce) {}
+        return result;
+      }
+    }
+  } catch (eUnified) {
+    Logger.log("admPtk_getDaftarPtk unified warning: " + eUnified.message);
+  }
+
+  // 2. Fallback ke sheet PTK_DB / PTK_PAUD_DB jika helper terpadu kosong
   var sheets = [
     { dbKey: "PTK_DB",      sheetName: "Master Data GTK",      jenjang: "SD",   namaCol: 6, namaNoGelarCol: 4, nipCol: 7,  statusCol: 19, tugasCol: 25, colCount: 26 },
     { dbKey: "PTK_PAUD_DB", sheetName: "Master Data GTK PAUD", jenjang: "PAUD", namaCol: 7, namaNoGelarCol: 5, nipCol: 8,  statusCol: 20, tugasCol: -1, colCount: 26 },
     { dbKey: "PTK_DB",      sheetName: "Master Data GTK SDS",  jenjang: "SDS",  namaCol: 6, namaNoGelarCol: 4, nipCol: 7,  statusCol: 19, tugasCol: 20, colCount: 26 }
   ];
-  var result = [];
-  // Cek apakah filter berupa angka NPSN murni atau nama sekolah
-  var filterIsNpsn = /^[0-9]+$/.test(targetNpsn);
 
   sheets.forEach(function(s) {
     try {
@@ -179,12 +220,12 @@ function getAdmPtkMasterData(npsnFilter) {
     // Ambil daftar sekolah jika diakses oleh admin
     var resSekolah = [];
     if (isAdminInit) {
-      var shSekolah = getSheet("USER_DB", "Data_Sekolah");
-      var dataSekolah = shSekolah ? shSekolah.getDataRange().getDisplayValues() : [];
-      for (var j = 1; j < dataSekolah.length; j++) {
-        var rNpsn = String(dataSekolah[j][0]).trim();
-        var rNama = String(dataSekolah[j][2]).trim();
-        var rJenjang = String(dataSekolah[j][1] || "").trim();
+      var masterSekolah = getMasterSekolah();
+      for (var j = 0; j < masterSekolah.length; j++) {
+        var sek = masterSekolah[j];
+        var rNpsn = String(sek.npsn || "").trim();
+        var rNama = String(sek.nama || sek.nama_sekolah || "").trim();
+        var rJenjang = String(sek.jenjang || "").trim();
         if (rNpsn !== "") {
           resSekolah.push({ npsn: rNpsn, nama: rNama, jenjang: rJenjang });
         }
@@ -298,13 +339,16 @@ function getAdmPtkData(npsnFilter) {
 }
 
 function admPtkCheckDuplikat(sheet, idPtk, idKategori, tahun, periode) {
+  var targetId = String(idPtk || "").trim();
+  if (!targetId) return { ada: false };
   var data = sheet.getDataRange().getDisplayValues();
   for (var i = 1; i < data.length; i++) {
-    var rId    = String(data[i][0]).trim();
-    var rKat   = String(data[i][4]).trim();
-    var rThn   = String(data[i][6]).trim();
+    var rId    = String(data[i][0] || "").trim();
+    if (!rId) continue;
+    var rKat   = String(data[i][4] || "").trim();
+    var rThn   = String(data[i][6] || "").trim();
     var rPer   = String(data[i][15] || "-").trim();
-    if (rId === String(idPtk).trim() && rKat === String(idKategori).trim() && rThn === String(tahun).trim() && rPer === String(periode).trim()) {
+    if (rId === targetId && rKat === String(idKategori).trim() && rThn === String(tahun).trim() && rPer === String(periode).trim()) {
       return { ada: true, status: String(data[i][9]).trim() };
     }
   }
@@ -316,12 +360,7 @@ function simpanAdmPtkBatch(batchData) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(30000);
-    var ss = getDB(KONFIG_ADM_PTK.DB_KEY);
-    var sheet = ss.getSheetByName("Database_Dokumen");
-    if (!sheet) {
-      sheet = ss.insertSheet("Database_Dokumen");
-      sheet.appendRow(["ID_PTK", "Nama_PTK", "NIP", "NPSN", "ID_Kategori", "Nama_Kategori", "Tahun", "Nama_File", "URL_File", "Status", "Catatan", "Tgl_Upload", "Uploader", "Tgl_Verif", "Verifikator", "Periode", "Tgl_Edit", "User_Edit"]);
-    }
+    var sheet = getOrCreateSheetAdmPtk("Database_Dokumen");
 
     var now = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd-MM-yyyy HH:mm:ss");
     var rootFolder = DriveApp.getFolderById(KONFIG_ADM_PTK.FOLDER_ID);
