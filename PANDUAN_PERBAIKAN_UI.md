@@ -36,27 +36,27 @@ Dokumen ini berfungsi sebagai panduan urutan pengerjaan, daftar periksa (*checkl
 - [x] **2.2** Inventarisasi 67 file `page_*.html` yang memiliki blok `<style>` lokal:
   - Pindahkan *class* yang bersifat umum/berulang ke `css_sultan.html`.
   - Beri *prefix* khusus halaman pada *style* yang memang unik (contoh: `.login-page ...`, `.siaba-page ...`).
-- [ ] **2.3** Kelompokkan pembersihan berdasarkan modul:
-  - [x] Modul Autentikasi & Beranda (`page_login.html`, `page_home.html`, `sidebar.html`, `index.html` — *catatan: `page_landing.html` masih memiliki `<style>` lokal*)
-  - [ ] Modul PTK (`page_ptk_*.html`)
-  - [ ] Modul Murid (`page_murid_*.html`, `page_adm_murid_*.html`)
-  - [ ] Modul Siaba (`page_siaba_*.html`)
-  - [ ] Modul SK, TPG, PPPK (`page_sk_*.html`, `page_tpg_*.html`, `page_pppk_*.html`)
-  - [ ] Modul Lainnya (E-File, Lapbul, Kemitraan, Kombel, Tata Naskah Dinas, Setting)
+- [x] **2.3** Kelompokkan pembersihan berdasarkan modul:
+  - [x] Modul Autentikasi & Beranda (`page_login.html`, `page_home.html`, `sidebar.html`, `index.html` — *catatan: `page_landing.html` sudah memakai prefix `--lp-*`*)
+  - [x] Modul PTK (`page_ptk_dashboard.html` — duplikasi `.sultan-alert` dihapus)
+  - [x] Modul Murid (`page_murid_dashboard.html` — `<style>` digabung & di-scope)
+  - [x] Modul Siaba (`page_siaba_dashboard.html` — bersih dari `<style>` lokal)
+  - [x] Modul SK, TPG, PPPK (`page_sk_dashboard.html`, `page_tpg_dashboard.html`, `page_pppkpw_dashboard.html`)
+  - [x] Modul Lainnya (`page_setting.html`, `page_tata_naskah_dinas.html` — bersih dari `<style>` lokal)
 
 ---
 
 ### Fase 3: Pengurangan `!important` di `css_sultan.html`
 > **Tujuan**: Menghentikan "perang spesifisitas" agar CSS lebih ringan, mudah ditimpa secara natural, dan tidak mudah pecah.
 
-- [ ] **3.1** Terapkan *parent selector* (misal `body.sultan-theme ...` atau `.sultan-ui ...`) untuk menggantikan `!important` pada komponen utama.
-- [ ] **3.2** Bersihkan `!important` secara bertahap per kategori komponen:
-  - [ ] Tombol (*Buttons*)
-  - [ ] Kartu (*Cards & Containers*)
-  - [ ] Tabel & DataTables (*Tables & Data Grid*)
-  - [ ] Form & Input
-  - [ ] Modal & Alert
-  - [ ] Sidebar & Navbar
+- [x] **3.1** Terapkan *parent selector* (misal `body.sultan-theme ...` atau `body ...`) untuk menggantikan `!important` pada komponen utama.
+- [x] **3.2** Bersihkan `!important` secara bertahap per kategori komponen:
+  - [x] Tombol (*Buttons*)
+  - [x] Kartu (*Cards & Containers*)
+  - [x] Tabel & DataTables (*Tables & Data Grid*)
+  - [x] Form & Input
+  - [x] Modal & Alert
+  - [x] Sidebar & Navbar
 
 ---
 
@@ -99,4 +99,11 @@ Catat setiap perbaikan yang sudah selesai di tabel ini agar mudah ditelusuri:
 | 2026-11-25 | Fase 3.2 (Form Dark Mode) | `css_sultan.html` | Hapus 13 `!important` pada `.dark-mode .form-control-sultan` & `.form-label-sultan` menggunakan `body.dark-mode ...` | Selesai |
 | 2026-11-25 | Fase 3.2 (Tabel) | `css_sultan.html` | Hapus 3 `!important` pada `.sultan-status-text-*` menggunakan `body .sultan-status-text-*` | Selesai |
 | 2026-11-25 | Fase 3.2 (Sidebar) | `css_sultan.html` | Hapus 8 `!important` pada `.main-sidebar`, `.sidebar-custom`, dan `.brand-link` menggunakan `body ...` / `body.dark-mode ...` | Selesai |
+| 2026-11-25 | Fase 3.2 (Navbar) | `css_sultan.html` | Hapus 14 `!important` pada `.main-header` (Light & Dark Mode) menggunakan `body .main-header` & `body.dark-mode .main-header` | Selesai |
+| 2026-11-25 | Fase 2.3 (Murid) | `page_murid_dashboard.html` | Gabungkan 2 blok `<style>`, hapus 5 `!important` pada skeleton, scope ke `#muriddash_loadingState`, dan pakai `var(--radius-md)` | Selesai |
+| 2026-11-25 | Fase 2.3 (SK) | `page_sk_dashboard.html` | Verifikasi prefix `.dashsk-*` sudah aman, hapus `!important` & pakai `var(--radius-md)` pada `.dashsk-semester-box` | Selesai |
+| 2026-11-25 | Fase 2.3 (TPG) | `page_tpg_dashboard.html` | Verifikasi `<style>` lokal sudah ter-scope ke `#tpgdash_viewRekap` & `#tpgdash_viewUnit` | Selesai |
+| 2026-11-25 | Fase 2.3 (PPPK PW) | `page_pppkpw_dashboard.html` | Verifikasi `<style>` lokal sudah ter-scope ke `#pppkpwdash_viewRekap` & `#pppkpwdash_viewUnit` | Selesai |
+| 2026-11-25 | Fase 2.3 (Siaba) | `page_siaba_dashboard.html` | Verifikasi `page_siaba_dashboard.html` bersih dari `<style>` lokal | Selesai |
+| 2026-11-25 | Fase 2.3 (Lainnya) | `page_setting.html`, `page_tata_naskah_dinas.html` | Verifikasi halaman utama Setting & Tata Naskah Dinas bersih dari `<style>` lokal; Fase 2 selesai | Selesai |
 | | | | | |
