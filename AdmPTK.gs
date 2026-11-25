@@ -74,6 +74,11 @@ function admPtk_getDaftarPtk(npsnFilter) {
           var namaBersih = String(p.nama || "").trim();
           var nip = String(p.nip || "").trim();
           if (!namaBersih) return;
+          var rawJenj = String(p.jenjang || "").trim().toUpperCase();
+          var normJenj = rawJenj;
+          if (rawJenj === "SD NEGERI" || rawJenj === "SDN") normJenj = "SD";
+          else if (rawJenj === "SD SWASTA" || rawJenj === "SDS") normJenj = "SDS";
+          else if (rawJenj === "TK" || rawJenj === "KB" || rawJenj === "SPS" || rawJenj === "TPA" || rawJenj === "PAUD") normJenj = "PAUD";
           result.push({
             id:            String(p.id || nip || namaBersih).trim(),
             npsn:          rNpsn,
@@ -82,7 +87,7 @@ function admPtk_getDaftarPtk(npsnFilter) {
             nama_no_gelar: namaBersih,
             nama_lengkap:  namaBersih,
             nip:           nip,
-            jenjang:       String(p.jenjang || "").trim().toUpperCase(),
+            jenjang:       normJenj,
             status_peg:    String(p.status || "").trim(),
             tugas:         String(p.tugas || p.jabatan || "").trim(),
             folderKey:     nip ? (namaBersih + " - " + nip) : namaBersih

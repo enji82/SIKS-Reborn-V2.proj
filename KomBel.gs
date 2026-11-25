@@ -77,15 +77,15 @@ function getKombelMasterData(npsnFilter) {
         });
       }
     }
-    var shSekolah = getSheet("USER_DB", "Data_Sekolah");
-    var dataSekolah = shSekolah ? shSekolah.getDataRange().getDisplayValues() : [];
+    var masterSekolah = getMasterSekolah();
     var resSekolah = [];
-    for (var j = 1; j < dataSekolah.length; j++) {
-      var rNpsn = String(dataSekolah[j][0]).trim();
+    for (var j = 0; j < masterSekolah.length; j++) {
+      var sek = masterSekolah[j];
+      var rNpsn = String(sek.npsn || "").trim();
       if (rNpsn !== "") {
         resSekolah.push({
-          npsn: rNpsn, nama: String(dataSekolah[j][2]).trim(),
-          jenjang: dataSekolah[j][1], status: dataSekolah[j][3], kecamatan: dataSekolah[j][4]
+          npsn: rNpsn, nama: String(sek.nama || sek.nama_sekolah || "").trim(),
+          jenjang: sek.jenjang || "", status: sek.status || "", kecamatan: sek.kecamatan || ""
         });
       }
     }
@@ -151,14 +151,14 @@ function hapusKombelMaster(idKategori) {
 /* ---------------------------------------------------------------------- */
 function getKombelData(npsnFilter) {
   try {
-    var shSekolah = getSheet("USER_DB", "Data_Sekolah");
-    var dataSekolah = shSekolah ? shSekolah.getDataRange().getDisplayValues() : [];
+    var masterSekolah = getMasterSekolah();
     var sekolahMap = {}, nameToNpsnMap = {};
-    for (var j = 1; j < dataSekolah.length; j++) {
-      var npsn = String(dataSekolah[j][0]).trim();
-      var sNama = String(dataSekolah[j][2]).trim();
+    for (var j = 0; j < masterSekolah.length; j++) {
+      var sek = masterSekolah[j];
+      var npsn = String(sek.npsn || "").trim();
+      var sNama = String(sek.nama || sek.nama_sekolah || "").trim();
       if (npsn) {
-        sekolahMap[npsn] = { nama: sNama, jenjang: dataSekolah[j][1], status: dataSekolah[j][3] };
+        sekolahMap[npsn] = { nama: sNama, jenjang: sek.jenjang || "", status: sek.status || "" };
         if (sNama) nameToNpsnMap[sNama.toUpperCase()] = npsn;
       }
     }
@@ -216,8 +216,8 @@ function uploadKombelDokumen(payload, fileDataBase64, fileName, mimeType) {
     var user = payload.uploader || Session.getActiveUser().getEmail() || "Anonim";
     var namaSekolah = "";
     try {
-      var shSek = getSheet("USER_DB","Data_Sekolah"); var dSek = shSek ? shSek.getDataRange().getDisplayValues() : [];
-      for (var s=1;s<dSek.length;s++) { if (String(dSek[s][0]).trim()===String(payload.npsn).trim()) { namaSekolah=String(dSek[s][2]).trim(); break; } }
+      var sek = typeof getSekolahByNpsn === "function" ? getSekolahByNpsn(payload.npsn) : null;
+      if (sek && (sek.nama || sek.nama_sekolah)) namaSekolah = String(sek.nama || sek.nama_sekolah).trim();
     } catch(e2) {}
     sheet.appendRow([timestamp, payload.npsn, namaSekolah, payload.idKat, payload.namaKat,
       payload.kelas||"Umum", payload.tahun||"", payload.periode||"-",
@@ -323,12 +323,14 @@ function getKombelDashboardData(idKategori, forceRefresh) {
       if (cached) return cached;
     }
 
-    var shSekolah = getSheet("USER_DB","Data_Sekolah");
-    var dataSekolah = shSekolah ? shSekolah.getDataRange().getDisplayValues() : [];
+    var masterSekolah = getMasterSekolah();
     var sekolahMap = {}, allSekolah = [];
-    for (var j=1;j<dataSekolah.length;j++) {
-      var npsn=String(dataSekolah[j][0]).trim(); var sNama=String(dataSekolah[j][2]).trim(); var jjg=String(dataSekolah[j][1]).trim().toUpperCase();
-      if (npsn) { sekolahMap[npsn]={nama:sNama,jenjang:jjg}; allSekolah.push({npsn:npsn,nama:sNama,jenjang:jjg}); }
+    for (var j = 0; j < masterSekolah.length; j++) {
+      var sek = masterSekolah[j];
+      var npsn = String(sek.npsn || "").trim();
+      var sNama = String(sek.nama || sek.nama_sekolah || "").trim();
+      var jjg = String(sek.jenjang || "").trim().toUpperCase();
+      if (npsn) { sekolahMap[npsn] = { nama: sNama, jenjang: jjg }; allSekolah.push({ npsn: npsn, nama: sNama, jenjang: jjg }); }
     }
     var shKat = getOrCreateSheetKombel("Master_Kategori");
     var dataKat = shKat ? shKat.getDataRange().getDisplayValues() : [];
