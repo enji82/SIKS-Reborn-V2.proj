@@ -106,4 +106,5 @@ Catat setiap perbaikan yang sudah selesai di tabel ini agar mudah ditelusuri:
 | 2026-11-25 | Fase 2.3 (PPPK PW) | `page_pppkpw_dashboard.html` | Verifikasi `<style>` lokal sudah ter-scope ke `#pppkpwdash_viewRekap` & `#pppkpwdash_viewUnit` | Selesai |
 | 2026-11-25 | Fase 2.3 (Siaba) | `page_siaba_dashboard.html` | Verifikasi `page_siaba_dashboard.html` bersih dari `<style>` lokal | Selesai |
 | 2026-11-25 | Fase 2.3 (Lainnya) | `page_setting.html`, `page_tata_naskah_dinas.html` | Verifikasi halaman utama Setting & Tata Naskah Dinas bersih dari `<style>` lokal; Fase 2 selesai | Selesai |
+| 2026-11-25 | Fase 4.2 (Hotfix Light Mode) | `css_sultan.html` | Perbaiki `.brand-link` di Light Mode agar background tetap transparan dan teks "SIKS-REBORN" putih terlihat jelas | Selesai |
 | | | | | |
