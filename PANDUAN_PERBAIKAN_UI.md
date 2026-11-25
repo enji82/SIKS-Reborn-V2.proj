@@ -87,4 +87,16 @@ Catat setiap perbaikan yang sudah selesai di tabel ini agar mudah ditelusuri:
 | 2026-11-25 | Fase 2.3 (PTK) | `page_ptk_dashboard.html` | Hapus duplikasi `.sultan-alert` & `.alert-soft-*` yang sudah ada di `css_sultan.html` | Selesai |
 | 2026-11-25 | Fase 4.1 | `page_ui_kit.html` | Verifikasi katalog komponen standar (Badge, Control Bar, Tabel, Form, Modal, Utilitas) sudah tersedia | Selesai |
 | 2026-11-25 | Fase 3.2 (Buttons) | `css_sultan.html` | Hapus 9 `!important` pada `.btn-sultan-download-xl` menggunakan selector `body .btn-sultan-download-xl` dan pakai `var(--radius-md)` | Selesai |
+| 2026-11-25 | Fase 3.2 (Buttons) | `css_sultan.html` | Hapus 21 `!important` pada `.btn-sultan-del-row` (Light & Dark Mode) menggunakan `body .btn-sultan-del-row`, `var(--radius-sm)`, dan `var(--control-height)` | Selesai |
+| 2026-11-25 | Fase 3.2 (Buttons) | `css_sultan.html` | Hapus 5 `!important` pada `.btn-sultan-navy-gold` menggunakan `body .btn-sultan-navy-gold` dan pakai `var(--radius-pill)` | Selesai |
+| 2026-11-25 | Fase 3.2 (Buttons) | `css_sultan.html` | Hapus 5 `!important` pada `.dark-mode .sultan-btn-tambah-row` menggunakan `body.dark-mode .sultan-btn-tambah-row` | Selesai |
+| 2026-11-25 | Fase 3.2 (Alerts) | `css_sultan.html` | Hapus 25 `!important` pada `.sultan-alert` & variannya menggunakan `body .sultan-alert*` dan pakai `var(--radius-md)` | Selesai |
+| 2026-11-25 | Fase 3.2 (Alerts Dark Mode) | `css_sultan.html` | Hapus 9 `!important` pada `.dark-mode .sultan-alert-*` menggunakan `body.dark-mode .sultan-alert-*` | Selesai |
+| 2026-11-25 | Fase 3.2 (Alerts) | `css_sultan.html` | Hapus 6 `!important` pada `.alert-soft-danger` & `.alert-soft-warning` menggunakan `body .alert-soft-*` dan pakai `var(--radius-md)` | Selesai |
+| 2026-11-25 | Fase 3.2 (Cards) | `css_sultan.html` | Hapus 10 `!important` pada `.card-sultan` & `.card-sultan-terpusat` (Light & Dark Mode) menggunakan `body .card-sultan*` | Selesai |
+| 2026-11-25 | Fase 3.2 (Modals) | `css_sultan.html` | Hapus 12 `!important` pada `.modal-header-sultan-*` (`primary`, `warning`, `danger`, `success`, `info`, `dark`) menggunakan `body .modal-header-sultan-*` | Selesai |
+| 2026-11-25 | Fase 3.2 (Form & Input) | `css_sultan.html` | Hapus 11 `!important` pada `.form-control-sultan` & `.sultan-upload-area` menggunakan `body .form-control-sultan` dan `var(--radius-sm)` / `var(--radius-md)` | Selesai |
+| 2026-11-25 | Fase 3.2 (Form Dark Mode) | `css_sultan.html` | Hapus 13 `!important` pada `.dark-mode .form-control-sultan` & `.form-label-sultan` menggunakan `body.dark-mode ...` | Selesai |
+| 2026-11-25 | Fase 3.2 (Tabel) | `css_sultan.html` | Hapus 3 `!important` pada `.sultan-status-text-*` menggunakan `body .sultan-status-text-*` | Selesai |
+| 2026-11-25 | Fase 3.2 (Sidebar) | `css_sultan.html` | Hapus 8 `!important` pada `.main-sidebar`, `.sidebar-custom`, dan `.brand-link` menggunakan `body ...` / `body.dark-mode ...` | Selesai |
 | | | | | |
