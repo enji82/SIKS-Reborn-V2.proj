@@ -1018,8 +1018,7 @@ function admMurid_getDashboardData(npsnFilter, tahunFilter, forceRefresh) {
     var arsipData = shArsip.getDataRange().getDisplayValues();
     var arsipTkaData = shArsipTka.getDataRange().getDisplayValues();
     
-    var shSekolah = getSheet("USER_DB", "Data_Sekolah");
-    var sekolahData = shSekolah ? shSekolah.getDataRange().getDisplayValues() : [];
+    var masterSekolah = getMasterSekolah();
     
     var targetNpsn = String(npsnFilter || "").trim().toUpperCase();
     var targetTahun = String(tahunFilter || "").trim().toUpperCase();
@@ -1027,14 +1026,15 @@ function admMurid_getDashboardData(npsnFilter, tahunFilter, forceRefresh) {
     var listSekolah = [];
     var countSD = 0;
     
-    for(var j=1; j<sekolahData.length; j++) {
-      var rNpsn = String(sekolahData[j][0]).trim();
-      var rJenjang = String(sekolahData[j][1]).trim().toUpperCase();
-      var rNama = String(sekolahData[j][2]).trim();
+    for (var j = 0; j < masterSekolah.length; j++) {
+      var sek = masterSekolah[j];
+      var rNpsn = String(sek.npsn || "").trim();
+      var rJenjang = String(sek.jenjang || "").trim().toUpperCase();
+      var rNama = String(sek.nama || "").trim();
       
       if (rNpsn !== "") {
         // SPMB, Cetak Ijazah, Arsip Ijazah, dan Arsip TKA merupakan kewajiban tingkat SD
-        var isTargetCategory = (rJenjang === "SD" || rJenjang === "SDS" || rJenjang === "SDN");
+        var isTargetCategory = (rJenjang === "SD" || rJenjang === "SDS" || rJenjang === "SDN" || rJenjang === "SD NEGERI" || rJenjang === "SD SWASTA");
         if (isTargetCategory) {
           countSD++;
           if (!targetNpsn || targetNpsn === "SEMUA" || rNpsn === targetNpsn || rNama.toUpperCase() === targetNpsn) {
@@ -1042,7 +1042,7 @@ function admMurid_getDashboardData(npsnFilter, tahunFilter, forceRefresh) {
               npsn: rNpsn,
               nama: rNama,
               jenjang: rJenjang || "SD",
-              kecamatan: sekolahData[j][4] || "-"
+              kecamatan: sek.kecamatan || "-"
             });
           }
         }

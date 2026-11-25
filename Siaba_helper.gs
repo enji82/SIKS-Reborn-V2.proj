@@ -505,12 +505,20 @@ function getDatabasePegawai() {
  */
 function getUnitKerjaByNPSN(npsn, dbKey) {
   try {
+    if (typeof getSekolahByNpsn === "function") {
+      var sek = getSekolahByNpsn(npsn);
+      if (sek && sek.nama) {
+        return JSON.stringify({ unitKerja: sek.nama });
+      }
+    }
     var key = dbKey || "SIABA_CUTI_DB";
     var sheet = getSheet(key, "Database_Sekolah");
-    var data = sheet.getDataRange().getDisplayValues();
-    for (var i = 1; i < data.length; i++) {
-      if (String(data[i][0]).trim() === String(npsn).trim()) {
-        return JSON.stringify({ unitKerja: data[i][2] });
+    if (sheet) {
+      var data = sheet.getDataRange().getDisplayValues();
+      for (var i = 1; i < data.length; i++) {
+        if (String(data[i][0]).trim() === String(npsn).trim()) {
+          return JSON.stringify({ unitKerja: data[i][2] });
+        }
       }
     }
     return JSON.stringify({ error: "NPSN (" + npsn + ") tidak terdaftar." });

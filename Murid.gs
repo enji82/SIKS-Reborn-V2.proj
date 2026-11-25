@@ -17,109 +17,447 @@ function getMuridSheet_(dbKey, sheetName) {
   return getSheet(dbKey, sheetName);
 }
 
+function murid_toNum_(val) {
+  if (typeof val === 'number') return isNaN(val) ? 0 : val;
+  if (!val) return 0;
+  var n = parseInt(String(val).replace(/[^0-9-]/g, ''), 10);
+  return isNaN(n) ? 0 : n;
+}
+
+function murid_parseBulan_(val) {
+  if (!val) return 0;
+  if (typeof val === 'number') return val;
+  var s = String(val).trim().toLowerCase();
+  if (/^\d+$/.test(s)) return parseInt(s, 10);
+  if (s.indexOf("jan") > -1) return 1;
+  if (s.indexOf("feb") > -1 || s.indexOf("peb") > -1) return 2;
+  if (s.indexOf("mar") > -1) return 3;
+  if (s.indexOf("apr") > -1) return 4;
+  if (s.indexOf("mei") > -1 || s.indexOf("may") > -1) return 5;
+  if (s.indexOf("jun") > -1) return 6;
+  if (s.indexOf("jul") > -1) return 7;
+  if (s.indexOf("agu") > -1 || s.indexOf("aug") > -1) return 8;
+  if (s.indexOf("sep") > -1) return 9;
+  if (s.indexOf("okt") > -1 || s.indexOf("oct") > -1) return 10;
+  if (s.indexOf("nov") > -1) return 11;
+  if (s.indexOf("des") > -1 || s.indexOf("dec") > -1) return 12;
+  return 0;
+}
+
+function murid_readCentralRows_(dbKey, sheetName) {
+  if (typeof USE_CENTRAL_LAYANAN_DB === "undefined" || !USE_CENTRAL_LAYANAN_DB) return null;
+  var sheet = getMuridSheet_(dbKey, sheetName);
+  if (!sheet) return null;
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  if (lastRow < 2 || lastCol < 1) return { headers: [], rows: [] };
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(function(h) {
+    return String(h || "").toLowerCase().trim();
+  });
+  var rawRows = sheet.getRange(2, 1, lastRow - 1, lastCol).getDisplayValues();
+
+  // Ambil daftar sekolah aktif dari SIKS_DB_MASTER (tbl_sekolah)
+  var activeNpsn = {};
+  var activeNama = {};
+  var hasMaster = false;
+  try {
+    if (typeof getMasterSekolah === "function") {
+      var masterList = getMasterSekolah();
+      if (Array.isArray(masterList) && masterList.length > 0) {
+        hasMaster = true;
+        masterList.forEach(function(s) {
+          var sNpsn = String(s.npsn || "").trim();
+          var sNama = String(s.nama || "").trim().toLowerCase();
+          if (sNpsn) activeNpsn[sNpsn] = true;
+          if (sNama) activeNama[sNama] = true;
+        });
+      }
+    }
+  } catch (eM) {}
+
+  // Ambil hanya 1 baris terbaru (tahun & bulan terbesar) per sekolah aktif
+  var iSek = murid_colIdx_(headers, ["nama sekolah", "nama"], 0);
+  var iBln = murid_colIdx_(headers, ["bulan"], 1);
+  var iThn = murid_colIdx_(headers, ["tahun"], 2);
+  var iNpsn = murid_colIdx_(headers, ["npsn"], 3);
+
+  var latestBySchool = {};
+  var orderKeys = [];
+  for (var i = 0; i < rawRows.length; i++) {
+    var r = rawRows[i];
+    var nama = String(r[iSek] || "").trim();
+    var npsn = String(r[iNpsn] || "").trim();
+    if (!nama && !npsn) continue;
+    if (hasMaster && !activeNpsn[npsn] && !activeNama[nama.toLowerCase()]) continue;
+
+    var key = npsn || nama.toLowerCase();
+    var thn = parseInt(String(r[iThn] || "").replace(/[^0-9]/g, ""), 10) || 0;
+    var bln = murid_parseBulan_(r[iBln]);
+    var periodScore = thn * 100 + bln;
+
+    if (!latestBySchool[key]) {
+      latestBySchool[key] = { score: periodScore, row: r };
+      orderKeys.push(key);
+    } else if (periodScore >= latestBySchool[key].score) {
+      latestBySchool[key] = { score: periodScore, row: r };
+    }
+  }
+
+  var rows = orderKeys.map(function(k) { return latestBySchool[k].row; });
+  return { headers: headers, rows: rows };
+}
+
+function murid_colIdx_(headers, names, fallback) {
+  if (!Array.isArray(names)) names = [names];
+  for (var i = 0; i < names.length; i++) {
+    var target = String(names[i]).toLowerCase();
+    var idx = headers.indexOf(target);
+    if (idx > -1) return idx;
+  }
+  for (var j = 0; j < names.length; j++) {
+    var target2 = String(names[j]).toLowerCase();
+    var idx2 = headers.findIndex(function(h) { return h.indexOf(target2) > -1; });
+    if (idx2 > -1) return idx2;
+  }
+  return fallback;
+}
+
 function getDataMuridPAUDRombel() {
+  var central = murid_readCentralRows_(KONFIG_MURID.PAUD_DB, "Input PAUD");
+  if (central) {
+    var h = central.headers;
+    var iSek = murid_colIdx_(h, ["nama sekolah", "nama"], 0);
+    var iBln = murid_colIdx_(h, ["bulan"], 1);
+    var iThn = murid_colIdx_(h, ["tahun"], 2);
+    var iNpsn = murid_colIdx_(h, ["npsn"], 3);
+    var iJenj = murid_colIdx_(h, ["jenjang"], 6);
+    var iRombel = murid_colIdx_(h, ["total rombel", "jumlah rombel", "rombel"], 8);
+
+    var usiaPairs = [
+      [murid_colIdx_(h, ["0-1 l"], 14), murid_colIdx_(h, ["0-1 p"], 15)],
+      [murid_colIdx_(h, ["1-2 l"], 16), murid_colIdx_(h, ["1-2 p"], 17)],
+      [murid_colIdx_(h, ["2-3 l"], 18), murid_colIdx_(h, ["2-3 p"], 19)],
+      [murid_colIdx_(h, ["3-4 l"], 20), murid_colIdx_(h, ["3-4 p"], 21)],
+      [murid_colIdx_(h, ["4-5 l"], 22), murid_colIdx_(h, ["4-5 p"], 23)],
+      [murid_colIdx_(h, ["5-6 l"], 24), murid_colIdx_(h, ["5-6 p"], 25)],
+      [murid_colIdx_(h, ["> 6 l", ">6 l"], 26), murid_colIdx_(h, ["> 6 p", ">6 p"], 27)]
+    ];
+    var iAL = murid_colIdx_(h, ["a l", "a_l", "kel_a_l"], 31), iAP = murid_colIdx_(h, ["a p", "a_p", "kel_a_p"], 32);
+    var iBL = murid_colIdx_(h, ["b l", "b_l", "kel_b_l"], 34), iBP = murid_colIdx_(h, ["b p", "b_p", "kel_b_p"], 35);
+    var iKbL = murid_colIdx_(h, ["kb l", "kb_l", "kel_kb_l"], 37), iKbP = murid_colIdx_(h, ["kb p", "kb_p", "kel_kb_p"], 38);
+
+    var out = [];
+    central.rows.forEach(function(r) {
+      var nama = String(r[iSek] || "").trim();
+      if (!nama) return;
+      var jenj = String(r[iJenj] || "").trim();
+      var row = [
+        nama,
+        String(r[iNpsn] || "").trim(),
+        jenj,
+        String(r[iBln] || "").trim(),
+        String(r[iThn] || "").trim(),
+        String(murid_toNum_(r[iRombel]))
+      ];
+      var totUsia = 0;
+      usiaPairs.forEach(function(p) {
+        var jml = murid_toNum_(r[p[0]]) + murid_toNum_(r[p[1]]);
+        totUsia += jml;
+        row.push(String(jml));
+      });
+      row.push(String(totUsia));
+      var kb = murid_toNum_(r[iKbL]) + murid_toNum_(r[iKbP]);
+      var ka = murid_toNum_(r[iAL]) + murid_toNum_(r[iAP]);
+      var kb2 = murid_toNum_(r[iBL]) + murid_toNum_(r[iBP]);
+      if (kb + ka + kb2 === 0 && totUsia > 0) {
+        kb = totUsia;
+      }
+      row.push(String(kb), String(ka), String(kb2), String(kb + ka + kb2));
+      out.push(row);
+    });
+    return out;
+  }
+
   var sheet = getSheet(KONFIG_MURID.PAUD_DB, "Murid Rombel PAUD");
   if (!sheet) return [];
-  
   var lastRow = sheet.getLastRow();
-  if (lastRow < 3) return []; // Header 2 baris
-  
-  // Ambil Range A3:R (A=1, R=18)
-  var data = sheet.getRange(3, 1, lastRow - 2, 18).getDisplayValues();
-  return data;
+  if (lastRow < 3) return [];
+  return sheet.getRange(3, 1, lastRow - 2, 18).getDisplayValues();
 }
-
-// ==========================================
-// DATA MURID PAUD MENURUT JENIS KELAMIN
-// ID: 1an0oQQPdMh6wrUJIAzTGYk3DKFvYprK5SU7RmRXjIgs
-// Sheet: Murid JK PAUD
-// ==========================================
 
 function getDataMuridPAUDJK() {
+  var central = murid_readCentralRows_(KONFIG_MURID.PAUD_DB, "Input PAUD");
+  if (central) {
+    var h = central.headers;
+    var iSek = murid_colIdx_(h, ["nama sekolah", "nama"], 0);
+    var iBln = murid_colIdx_(h, ["bulan"], 1);
+    var iThn = murid_colIdx_(h, ["tahun"], 2);
+    var iNpsn = murid_colIdx_(h, ["npsn"], 3);
+    var iJenj = murid_colIdx_(h, ["jenjang"], 6);
+    var iRombel = murid_colIdx_(h, ["total rombel", "jumlah rombel", "rombel"], 8);
+
+    var usiaPairs = [
+      [murid_colIdx_(h, ["0-1 l"], 14), murid_colIdx_(h, ["0-1 p"], 15)],
+      [murid_colIdx_(h, ["1-2 l"], 16), murid_colIdx_(h, ["1-2 p"], 17)],
+      [murid_colIdx_(h, ["2-3 l"], 18), murid_colIdx_(h, ["2-3 p"], 19)],
+      [murid_colIdx_(h, ["3-4 l"], 20), murid_colIdx_(h, ["3-4 p"], 21)],
+      [murid_colIdx_(h, ["4-5 l"], 22), murid_colIdx_(h, ["4-5 p"], 23)],
+      [murid_colIdx_(h, ["5-6 l"], 24), murid_colIdx_(h, ["5-6 p"], 25)],
+      [murid_colIdx_(h, ["> 6 l", ">6 l"], 26), murid_colIdx_(h, ["> 6 p", ">6 p"], 27)]
+    ];
+    var iAL = murid_colIdx_(h, ["a l", "a_l", "kel_a_l"], 31), iAP = murid_colIdx_(h, ["a p", "a_p", "kel_a_p"], 32);
+    var iBL = murid_colIdx_(h, ["b l", "b_l", "kel_b_l"], 34), iBP = murid_colIdx_(h, ["b p", "b_p", "kel_b_p"], 35);
+    var iKbL = murid_colIdx_(h, ["kb l", "kb_l", "kel_kb_l"], 37), iKbP = murid_colIdx_(h, ["kb p", "kb_p", "kel_kb_p"], 38);
+
+    var out = [];
+    central.rows.forEach(function(r) {
+      var nama = String(r[iSek] || "").trim();
+      if (!nama) return;
+      var row = [
+        nama,
+        String(r[iNpsn] || "").trim(),
+        String(r[iJenj] || "").trim(),
+        String(r[iBln] || "").trim(),
+        String(r[iThn] || "").trim(),
+        String(murid_toNum_(r[iRombel]))
+      ];
+      var uL = 0, uP = 0;
+      usiaPairs.forEach(function(p) {
+        var l = murid_toNum_(r[p[0]]), pr = murid_toNum_(r[p[1]]);
+        uL += l; uP += pr;
+        row.push(String(l), String(pr), String(l + pr));
+      });
+      row.push(String(uL), String(uP), String(uL + uP));
+
+      var kbL = murid_toNum_(r[iKbL]), kbP = murid_toNum_(r[iKbP]);
+      var aL = murid_toNum_(r[iAL]), aP = murid_toNum_(r[iAP]);
+      var bL = murid_toNum_(r[iBL]), bP = murid_toNum_(r[iBP]);
+      var kL = kbL + aL + bL, kP = kbP + aP + bP;
+      if (kL + kP === 0 && (uL + uP) > 0) {
+        kbL = uL;
+        kbP = uP;
+        kL = uL;
+        kP = uP;
+      }
+      row.push(String(kbL), String(kbP), String(kbL + kbP));
+      row.push(String(aL), String(aP), String(aL + aP));
+      row.push(String(bL), String(bP), String(bL + bP));
+      row.push(String(kL), String(kP), String(kL + kP));
+      out.push(row);
+    });
+    return out;
+  }
+
   var sheet = getSheet(KONFIG_MURID.PAUD_DB, "Murid JK PAUD");
   if (!sheet) return [];
-  
   var lastRow = sheet.getLastRow();
-  if (lastRow < 3) return []; // Header 2 baris
-  
-  // Ambil Range A3:AP (A=1, AP=42)
-  // Data dimulai dari baris 3
-  var data = sheet.getRange(3, 1, lastRow - 2, 42).getDisplayValues();
-  return data;
+  if (lastRow < 3) return [];
+  return sheet.getRange(3, 1, lastRow - 2, 42).getDisplayValues();
 }
-
-// ==========================================
-// DATA MURID SD PER KELAS
-// ID: 1u4tNL3uqt5xHITXYwHnytK6Kul9Siam-vNYuzmdZB4s
-// Sheet: Murid SD per Kelas
-// ==========================================
 
 function getDataMuridSDKelas() {
+  var central = murid_readCentralRows_(KONFIG_MURID.SD_DB, "Input SD");
+  if (central) {
+    var h = central.headers;
+    var iSek = murid_colIdx_(h, ["nama sekolah", "nama"], 0);
+    var iBln = murid_colIdx_(h, ["bulan"], 1);
+    var iThn = murid_colIdx_(h, ["tahun"], 2);
+    var iNpsn = murid_colIdx_(h, ["npsn"], 3);
+    var iStat = murid_colIdx_(h, ["status sekolah", "status"], 4);
+    var iRombel = murid_colIdx_(h, ["total rombel", "jumlah rombel", "rombel"], 8);
+    var classCols = [
+      [murid_colIdx_(h, ["k1 l", "k1_l", "k1_akhir_l", "k1 akhir l"], -1), murid_colIdx_(h, ["k1 p", "k1_p", "k1_akhir_p", "k1 akhir p"], -1)],
+      [murid_colIdx_(h, ["k2 l", "k2_l", "k2_akhir_l", "k2 akhir l"], -1), murid_colIdx_(h, ["k2 p", "k2_p", "k2_akhir_p", "k2 akhir p"], -1)],
+      [murid_colIdx_(h, ["k3 l", "k3_l", "k3_akhir_l", "k3 akhir l"], -1), murid_colIdx_(h, ["k3 p", "k3_p", "k3_akhir_p", "k3 akhir p"], -1)],
+      [murid_colIdx_(h, ["k4 l", "k4_l", "k4_akhir_l", "k4 akhir l"], -1), murid_colIdx_(h, ["k4 p", "k4_p", "k4_akhir_p", "k4 akhir p"], -1)],
+      [murid_colIdx_(h, ["k5 l", "k5_l", "k5_akhir_l", "k5 akhir l"], -1), murid_colIdx_(h, ["k5 p", "k5_p", "k5_akhir_p", "k5 akhir p"], -1)],
+      [murid_colIdx_(h, ["k6 l", "k6_l", "k6_akhir_l", "k6 akhir l"], -1), murid_colIdx_(h, ["k6 p", "k6_p", "k6_akhir_p", "k6 akhir p"], -1)]
+    ];
+
+    var out = [];
+    central.rows.forEach(function(r) {
+      var nama = String(r[iSek] || "").trim();
+      if (!nama) return;
+      var row = [
+        nama,
+        String(r[iNpsn] || "").trim(),
+        String(r[iStat] || "").trim(),
+        String(r[iBln] || "").trim(),
+        String(r[iThn] || "").trim(),
+        String(murid_toNum_(r[iRombel]))
+      ];
+      var totL = 0, totP = 0;
+      classCols.forEach(function(c, idxK) {
+        var kNum = idxK + 1;
+        var l = c[0] > -1 ? murid_toNum_(r[c[0]]) : 0;
+        var p = c[1] > -1 ? murid_toNum_(r[c[1]]) : 0;
+        if (l === 0 && p === 0) {
+          [["1", "a"], ["2", "b"], ["3", "c"]].forEach(function(pair) {
+            var numRb = pair[0], letRb = pair[1];
+            l += murid_toNum_(r[murid_colIdx_(h, ["k" + kNum + "_" + numRb + "_akhir_l", "k" + kNum + " " + numRb + " akhir l", "k" + kNum + letRb + " l", "k" + kNum + "_" + letRb + "_l"], -1)]);
+            p += murid_toNum_(r[murid_colIdx_(h, ["k" + kNum + "_" + numRb + "_akhir_p", "k" + kNum + " " + numRb + " akhir p", "k" + kNum + letRb + " p", "k" + kNum + "_" + letRb + "_p"], -1)]);
+          });
+        }
+        if (l === 0 && p === 0) {
+          ["islam", "kristen", "katolik", "hindu", "buddha", "khonghucu"].forEach(function(ag) {
+            l += murid_toNum_(r[murid_colIdx_(h, ["k" + kNum + " " + ag + " l", "k" + kNum + "_" + ag + "_l"], -1)]);
+            p += murid_toNum_(r[murid_colIdx_(h, ["k" + kNum + " " + ag + " p", "k" + kNum + "_" + ag + "_p"], -1)]);
+          });
+        }
+        totL += l; totP += p;
+        row.push(String(l), String(p), String(l + p));
+      });
+      row.push(String(totL), String(totP), String(totL + totP));
+      out.push(row);
+    });
+    return out;
+  }
+
   var sheet = getSheet(KONFIG_MURID.SD_DB, "Murid SD per Kelas");
   if (!sheet) return [];
-  
   var lastRow = sheet.getLastRow();
-  if (lastRow < 3) return []; // Header 2 baris
-  
-  // Ambil Range A3:AA (A=1, AA=27)
-  // Data dimulai dari baris 3
-  var data = sheet.getRange(3, 1, lastRow - 2, 27).getDisplayValues();
-  return data;
+  if (lastRow < 3) return [];
+  return sheet.getRange(3, 1, lastRow - 2, 27).getDisplayValues();
 }
-
-// ==========================================
-// DATA MURID SD PER ROMBEL (A-BO)
-// ID: 1u4tNL3uqt5xHITXYwHnytK6Kul9Siam-vNYuzmdZB4s
-// ==========================================
 
 function getDataMuridSDRombel() {
+  var central = murid_readCentralRows_(KONFIG_MURID.SD_DB, "Input SD");
+  if (central) {
+    var h = central.headers;
+    var iSek = murid_colIdx_(h, ["nama sekolah", "nama"], 0);
+    var iBln = murid_colIdx_(h, ["bulan"], 1);
+    var iThn = murid_colIdx_(h, ["tahun"], 2);
+    var iNpsn = murid_colIdx_(h, ["npsn"], 3);
+    var iStat = murid_colIdx_(h, ["status sekolah", "status"], 4);
+    var iRombel = murid_colIdx_(h, ["total rombel", "jumlah rombel", "rombel"], 8);
+
+    var out = [];
+    central.rows.forEach(function(r) {
+      var nama = String(r[iSek] || "").trim();
+      if (!nama) return;
+      var row = [
+        nama,
+        String(r[iNpsn] || "").trim(),
+        String(r[iStat] || "").trim(),
+        String(r[iBln] || "").trim(),
+        String(r[iThn] || "").trim(),
+        String(murid_toNum_(r[iRombel]))
+      ];
+      var grandTotal = 0;
+      for (var k = 1; k <= 6; k++) {
+        var rbVals = [];
+        var kTotal = 0;
+        [["1", "a"], ["2", "b"], ["3", "c"]].forEach(function(pair) {
+          var numRb = pair[0], rb = pair[1];
+          var getRbVal = function(tipe, jk) {
+            return murid_toNum_(r[murid_colIdx_(h, [
+              "k" + k + "_" + numRb + "_" + tipe + "_" + jk,
+              "k" + k + " " + numRb + " " + tipe + " " + jk,
+              "k" + k + "_" + rb + "_" + tipe + "_" + jk,
+              "k" + k + " " + rb + " " + tipe + " " + jk
+            ], -1)]);
+          };
+          var l = murid_toNum_(r[murid_colIdx_(h, [
+            "k" + k + "_" + numRb + "_akhir_l", "k" + k + " " + numRb + " akhir l",
+            "k" + k + "_" + rb + "_akhir_l", "k" + k + " " + rb + " akhir l",
+            "k" + k + rb + " l", "k" + k + "_" + rb + "_l", "k" + k + rb + "_l"
+          ], -1)]);
+          var p = murid_toNum_(r[murid_colIdx_(h, [
+            "k" + k + "_" + numRb + "_akhir_p", "k" + k + " " + numRb + " akhir p",
+            "k" + k + "_" + rb + "_akhir_p", "k" + k + " " + rb + " akhir p",
+            "k" + k + rb + " p", "k" + k + "_" + rb + "_p", "k" + k + rb + "_p"
+          ], -1)]);
+          if (l === 0) {
+            var awalL = getRbVal("awal", "l"), masukL = getRbVal("masuk", "l"), keluarL = getRbVal("keluar", "l");
+            if (awalL > 0 || masukL > 0 || keluarL > 0) l = Math.max(0, awalL + masukL - keluarL);
+          }
+          if (p === 0) {
+            var awalP = getRbVal("awal", "p"), masukP = getRbVal("masuk", "p"), keluarP = getRbVal("keluar", "p");
+            if (awalP > 0 || masukP > 0 || keluarP > 0) p = Math.max(0, awalP + masukP - keluarP);
+          }
+          var j = l + p;
+          kTotal += j;
+          rbVals.push([l, p, j]);
+        });
+        if (kTotal === 0) {
+          var fl = murid_toNum_(r[murid_colIdx_(h, ["k" + k + " l", "k" + k + "_l", "k" + k + "_akhir_l", "k" + k + " akhir l"], -1)]);
+          var fp = murid_toNum_(r[murid_colIdx_(h, ["k" + k + " p", "k" + k + "_p", "k" + k + "_akhir_p", "k" + k + " akhir p"], -1)]);
+          if (fl === 0 && fp === 0) {
+            ["islam", "kristen", "katolik", "hindu", "buddha", "khonghucu"].forEach(function(ag) {
+              fl += murid_toNum_(r[murid_colIdx_(h, ["k" + k + " " + ag + " l", "k" + k + "_" + ag + "_l"], -1)]);
+              fp += murid_toNum_(r[murid_colIdx_(h, ["k" + k + " " + ag + " p", "k" + k + "_" + ag + "_p"], -1)]);
+            });
+          }
+          if (fl > 0 || fp > 0) {
+            rbVals[0] = [fl, fp, fl + fp];
+            kTotal = fl + fp;
+          }
+        }
+        rbVals.forEach(function(v) { row.push(String(v[0]), String(v[1]), String(v[2])); });
+        grandTotal += kTotal;
+        row.push(String(kTotal));
+      }
+      row.push(String(grandTotal));
+      out.push(row);
+    });
+    return out;
+  }
+
   var sheet = getSheet(KONFIG_MURID.SD_DB, "Murid SD per Rombel");
   if (!sheet) return [];
-  
   var lastRow = sheet.getLastRow();
-  // Header ada 3 baris (A1-BO3), data mulai baris 4
-  if (lastRow < 4) return []; 
-  
-  // Ambil Range A4:BO (A=1, BO=67)
-  var data = sheet.getRange(4, 1, lastRow - 3, 67).getDisplayValues();
-  return data;
+  if (lastRow < 4) return [];
+  return sheet.getRange(4, 1, lastRow - 3, 67).getDisplayValues();
 }
 
-// ==========================================
-// DATA MURID SD PER AGAMA (A-DN)
-// ID: 1u4tNL3uqt5xHITXYwHnytK6Kul9Siam-vNYuzmdZB4s
-// Sheet: Murid SD per Agama
-// ==========================================
-
 function getDataMuridSDAgama() {
+  var central = murid_readCentralRows_(KONFIG_MURID.SD_DB, "Input SD");
+  if (central) {
+    var h = central.headers;
+    var iSek = murid_colIdx_(h, ["nama sekolah", "nama"], 0);
+    var iBln = murid_colIdx_(h, ["bulan"], 1);
+    var iThn = murid_colIdx_(h, ["tahun"], 2);
+    var iNpsn = murid_colIdx_(h, ["npsn"], 3);
+    var iStat = murid_colIdx_(h, ["status sekolah", "status"], 4);
+    var iRombel = murid_colIdx_(h, ["total rombel", "jumlah rombel", "rombel"], 8);
+    var agamas = ["islam", "kristen", "katolik", "hindu", "buddha", "khonghucu"];
+
+    var out = [];
+    central.rows.forEach(function(r) {
+      var nama = String(r[iSek] || "").trim();
+      if (!nama) return;
+      var row = [
+        nama,
+        String(r[iNpsn] || "").trim(),
+        String(r[iStat] || "").trim(),
+        String(r[iBln] || "").trim(),
+        String(r[iThn] || "").trim(),
+        String(murid_toNum_(r[iRombel]))
+      ];
+      var totAgamaL = [0, 0, 0, 0, 0, 0];
+      var totAgamaP = [0, 0, 0, 0, 0, 0];
+      for (var k = 1; k <= 6; k++) {
+        agamas.forEach(function(ag, idxAg) {
+          var l = murid_toNum_(r[murid_colIdx_(h, ["k" + k + " " + ag + " l", "k" + k + "_" + ag + "_l"], -1)]);
+          var p = murid_toNum_(r[murid_colIdx_(h, ["k" + k + " " + ag + " p", "k" + k + "_" + ag + "_p"], -1)]);
+          totAgamaL[idxAg] += l;
+          totAgamaP[idxAg] += p;
+          row.push(String(l), String(p), String(l + p));
+        });
+      }
+      for (var a = 0; a < 6; a++) {
+        row.push(String(totAgamaL[a]), String(totAgamaP[a]), String(totAgamaL[a] + totAgamaP[a]));
+      }
+      out.push(row);
+    });
+    return out;
+  }
+
   var sheet = getSheet(KONFIG_MURID.SD_DB, "Murid SD per Agama");
   if (!sheet) return [];
-  
   var lastRow = sheet.getLastRow();
-  // Header ada 3 baris, data mulai baris 4
-  if (lastRow < 4) return []; 
-  
-  // Ambil Range A4:DN
-  // Struktur:
-  // Static (A-F) = 6 kolom
-  // Kelas 1-6 + Total = 7 group * 18 kolom = 126 kolom
-  // Total = 6 + 126 = 132 kolom
-  // Kolom ke-132 adalah DN (A=1, Z=26, AA=27... DN=118?? Cek hitungan)
-  
-  // Hitung manual:
-  // A-F = 6
-  // G-X (K1) = 18
-  // Y-AP (K2) = 18
-  // AQ-BH (K3) = 18
-  // BI-BZ (K4) = 18
-  // CA-CR (K5) = 18
-  // CS-DJ (K6) = 18
-  // DK-EB (Total) = 18
-  // Total sampai kolom EB (Kolom ke 132)
-  
-  // Ambil 132 kolom
-  var data = sheet.getRange(4, 1, lastRow - 3, 132).getDisplayValues();
-  return data;
+  if (lastRow < 4) return [];
+  return sheet.getRange(4, 1, lastRow - 3, 132).getDisplayValues();
 }
 
 /* ======================================================================

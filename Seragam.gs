@@ -100,12 +100,12 @@ function seragam_getDataPenerima(tahun, tahap, npsnFilter) {
     var result = [];
     var targetNpsn = String(npsnFilter || "").trim().toUpperCase();
 
-    // Map NPSN to School Name
-    var shSekolah = getSheet("USER_DB", "Data_Sekolah");
-    var sekolahData = shSekolah ? shSekolah.getDataRange().getDisplayValues() : [];
+    // Map NPSN to School Name from SIKS_DB_MASTER (tbl_sekolah)
+    var masterSekolah = getMasterSekolah();
     var npsnToName = {};
-    for (var j = 1; j < sekolahData.length; j++) {
-      npsnToName[String(sekolahData[j][0]).trim()] = String(sekolahData[j][2]).trim();
+    for (var j = 0; j < masterSekolah.length; j++) {
+      var sNpsn = String(masterSekolah[j].npsn || "").trim();
+      if (sNpsn) npsnToName[sNpsn] = String(masterSekolah[j].nama || masterSekolah[j].nama_sekolah || "").trim();
     }
 
     for (var i = 1; i < values.length; i++) {
@@ -193,12 +193,11 @@ function seragam_deleteRecipient(tahun, tahap, rowId) {
  */
 function seragam_getRekap(tahun, tahap) {
   try {
-    var shSekolah = getSheet("USER_DB", "Data_Sekolah");
-    var sekolahData = shSekolah ? shSekolah.getDataRange().getDisplayValues() : [];
-    
+    var masterSekolah = getMasterSekolah();
     var schoolMap = {};
-    for (var j = 1; j < sekolahData.length; j++) {
-      schoolMap[String(sekolahData[j][0]).trim()] = String(sekolahData[j][2]).trim();
+    for (var j = 0; j < masterSekolah.length; j++) {
+      var sNpsn = String(masterSekolah[j].npsn || "").trim();
+      if (sNpsn) schoolMap[sNpsn] = String(masterSekolah[j].nama || masterSekolah[j].nama_sekolah || "").trim();
     }
 
     var targetSizes = ["S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"];
@@ -838,18 +837,18 @@ function seragam_deleteBeritaAcara(rowId, npsn, tahun) {
 }
 
 /**
- * Fetch schools list directly from Data_Sekolah sheet in USER_DB
+ * Fetch schools list from SIKS_DB_MASTER (tbl_sekolah)
  */
 function seragam_getSekolahList() {
   try {
-    var shSekolah = getSheet("USER_DB", "Data_Sekolah");
-    var sekolahData = shSekolah ? shSekolah.getDataRange().getDisplayValues() : [];
+    var masterSekolah = getMasterSekolah();
     var schools = [];
-    for (var j = 1; j < sekolahData.length; j++) {
-      var rNpsn = String(sekolahData[j][0]).trim();
-      var rNama = String(sekolahData[j][2]).trim();
-      var rJenjang = String(sekolahData[j][1]).trim().toUpperCase();
-      var rStatus = String(sekolahData[j][3]).trim().toUpperCase();
+    for (var j = 0; j < masterSekolah.length; j++) {
+      var sek = masterSekolah[j];
+      var rNpsn = String(sek.npsn || "").trim();
+      var rNama = String(sek.nama || sek.nama_sekolah || "").trim();
+      var rJenjang = String(sek.jenjang || "").trim().toUpperCase();
+      var rStatus = String(sek.status || "").trim().toUpperCase();
       if (rNpsn !== "") {
         schools.push({ 
           npsn: rNpsn, 
@@ -925,7 +924,9 @@ function seragam_getDashboardData(tahun, kategori) {
     try {
       var schools = seragam_getSekolahList();
       schools.forEach(function(s) {
-        if (s.jenjang === "SD" && s.status === "NEGERI") {
+        var nmUpper = String(s.nama || "").toUpperCase();
+        var isSdNegeri = (s.jenjang === "SD" && (s.status === "NEGERI" || s.status === "" || nmUpper.indexOf("SDN") === 0)) || s.jenjang === "SD NEGERI" || s.jenjang === "SDN";
+        if (isSdNegeri) {
           masterSekolah[s.npsn] = s.nama;
           sdNegeriNpsn[s.npsn] = true;
         }
