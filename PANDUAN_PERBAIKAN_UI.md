@@ -63,7 +63,7 @@ Dokumen ini berfungsi sebagai panduan urutan pengerjaan, daftar periksa (*checkl
 ### Fase 4: Standardisasi Katalog Komponen (`page_ui_kit.html`)
 > **Tujuan**: Menjadikan `page_ui_kit.html` sebagai patokan resmi pengembangan fitur baru.
 
-- [ ] **4.1** Lengkapi `page_ui_kit.html` dengan contoh standar:
+- [x] **4.1** Lengkapi `page_ui_kit.html` dengan contoh standar:
   - Tombol (utama, sekunder, bahaya, *outline*, *pill*, ukuran kecil/sedang)
   - Form & Input (teks, *select*, *datepicker*, validasi error)
   - Card & Stat Pill
@@ -83,4 +83,8 @@ Catat setiap perbaikan yang sudah selesai di tabel ini agar mudah ditelusuri:
 | 2026-11-25 | Fase 1 (1.1–1.4) | `css_sultan.html`, `index.html` | Verifikasi urutan CSS, seragamkan skala radius (`8/12/16/50px`), perhalus `--warna-cyan` & `--warna-hijau`, naikkan opasitas `--surface-card` ke `0.80` | Selesai |
 | 2026-11-25 | Fase 2 (2.1) | `page_login.html` | Hapus `:root` duplikat, pindahkan variabel lokal ke `.login-screen-wrapper` | Selesai |
 | 2026-11-25 | Fase 1.5 & 2.2 | `css_sultan.html`, `page_*.html` | Verifikasi kontras Dark Mode & inventarisasi 67 file `page_*.html` dengan `<style>` lokal; verifikasi `page_home.html` & `sidebar.html` bersih dari `<style>` lokal | Selesai |
+| 2026-11-25 | Fase 2.1 (lanjutan) | `page_landing.html` | Verifikasi `:root` di `page_landing.html` sudah memakai prefix `--lp-*` sehingga aman dari bentrok variabel global | Selesai |
+| 2026-11-25 | Fase 2.3 (PTK) | `page_ptk_dashboard.html` | Hapus duplikasi `.sultan-alert` & `.alert-soft-*` yang sudah ada di `css_sultan.html` | Selesai |
+| 2026-11-25 | Fase 4.1 | `page_ui_kit.html` | Verifikasi katalog komponen standar (Badge, Control Bar, Tabel, Form, Modal, Utilitas) sudah tersedia | Selesai |
+| 2026-11-25 | Fase 3.2 (Buttons) | `css_sultan.html` | Hapus 9 `!important` pada `.btn-sultan-download-xl` menggunakan selector `body .btn-sultan-download-xl` dan pakai `var(--radius-md)` | Selesai |
 | | | | | |
