@@ -1536,6 +1536,7 @@
                             <th rowspan="3" class="align-middle th-vert">Dapodik</th>
                             <th rowspan="3" class="align-middle" style="min-width: 100px;">Jabatan/ Tugas</th>
                             <th rowspan="3" class="align-middle" style="min-width: 70px;">Mengajar<br>Kelas</th>
+                            <th rowspan="3" class="align-middle" style="min-width: 50px;">Valid</th>
                             <th colspan="8">Tidak Hadir Karena</th>
                         </tr>
                         <tr>
@@ -1571,7 +1572,7 @@
                             <td id="footPTK_A_serdik">-</td><td id="footPTK_A_dapodik">-</td>
                             <td></td>
                             <td></td>
-                            <td id="footPTK_A_dd">-</td><td id="footPTK_A_dl">-</td><td id="footPTK_A_ct">-</td><td id="footPTK_A_cap">-</td><td id="footPTK_A_cs">-</td><td id="footPTK_A_cm">-</td><td id="footPTK_A_a">-</td><td id="footPTK_A_jml">-</td>
+                            <td></td><td id="footPTK_A_dd">-</td><td id="footPTK_A_dl">-</td><td id="footPTK_A_ct">-</td><td id="footPTK_A_cap">-</td><td id="footPTK_A_cs">-</td><td id="footPTK_A_cm">-</td><td id="footPTK_A_a">-</td><td id="footPTK_A_jml">-</td>
                         </tr>
                     </tfoot>
                 </table>
@@ -1600,6 +1601,7 @@
                             <th rowspan="3" class="align-middle th-vert">Dapodik</th>
                             <th rowspan="3" class="align-middle" style="min-width: 100px;">Jabatan/ Tugas</th>
                             <th rowspan="3" class="align-middle" style="min-width: 70px;">Mengajar<br>Kelas</th>
+                            <th rowspan="3" class="align-middle" style="min-width: 50px;">Valid</th>
                             <th colspan="8">Tidak Hadir Karena</th>
                             <th rowspan="3" class="align-middle text-danger"><i class="fas fa-trash"></i></th>
                         </tr>
@@ -1637,7 +1639,7 @@
                             <td id="footPTK_B_serdik">-</td><td id="footPTK_B_dapodik">-</td>
                             <td></td>
                             <td></td>
-                            <td id="footPTK_B_dd">-</td><td id="footPTK_B_dl">-</td><td id="footPTK_B_ct">-</td><td id="footPTK_B_cap">-</td><td id="footPTK_B_cs">-</td><td id="footPTK_B_cm">-</td><td id="footPTK_B_a">-</td><td id="footPTK_B_jml">-</td>
+                            <td></td><td id="footPTK_B_dd">-</td><td id="footPTK_B_dl">-</td><td id="footPTK_B_ct">-</td><td id="footPTK_B_cap">-</td><td id="footPTK_B_cs">-</td><td id="footPTK_B_cm">-</td><td id="footPTK_B_a">-</td><td id="footPTK_B_jml">-</td>
                             <td></td>
                         </tr>
                     </tfoot>
@@ -2397,6 +2399,23 @@
 
             if (ptkIncomplete.length > 0) {
                 Sultan.notif.gagal("Harap isi kolom 'Mengajar' untuk PTK berikut: " + ptkIncomplete.join(', '));
+                return;
+            }
+
+            // Validasi Checkbox Valid pada semua baris PTK
+            var ptkUnchecked = [];
+            var checkValid = function(ptkList) {
+                for (var i = 0; i < ptkList.length; i++) {
+                    if (!ptkList[i].valid) {
+                        ptkUnchecked.push(ptkList[i].nama || ('Baris ' + (i + 1)));
+                    }
+                }
+            };
+            checkValid(LAPBULKELOLA_DATA_PTK_INDUK);
+            checkValid(LAPBULKELOLA_DATA_PTK_NONINDUK);
+
+            if (ptkUnchecked.length > 0) {
+                Sultan.notif.gagal("Harap centang kolom 'Valid' pada semua baris PTK sebelum melanjutkan!");
                 return;
             }
         } else {
@@ -3982,6 +4001,7 @@
 
                 <td class="align-middle text-nowrap" title="Diambil dari Master Data GTK. Jika tidak sesuai, perbaiki di menu Data PTK.">${ptk.jabatan || '-'}</td>
                 <td class="align-middle p-1"><input type="text" class="form-control form-control-sm text-center ptk-input ${type === 'A' ? 'bg-light' : ''}" data-type="${type}" data-idx="${idx}" data-field="mengajar" value="${ptk.mengajar || ''}" ${type === 'A' ? 'readonly title="Diambil dari Master Data GTK. Jika tidak sesuai, perbaiki di menu Data PTK."' : ''} style="font-size: 10px; min-width: 60px; max-width: 80px; padding: 0.2rem;"></td>
+                <td class="align-middle p-1 text-center"><input type="checkbox" class="ptk-valid-cb" data-type="${type}" data-idx="${idx}" ${ptk.valid ? 'checked' : ''} style="width: 16px; height: 16px; cursor: pointer;"></td>
 
                 <td class="align-middle p-1"><input type="number" min="0" class="form-control form-control-sm text-center ptk-input hide-arrow btn-micro" data-type="${type}" data-idx="${idx}" data-field="dd" value="${ptk.dd || ''}" ></td>
                 <td class="align-middle p-1"><input type="number" min="0" class="form-control form-control-sm text-center ptk-input hide-arrow btn-micro" data-type="${type}" data-idx="${idx}" data-field="dl" value="${ptk.dl || ''}" ></td>
@@ -4011,6 +4031,18 @@
         }
         $('#lapbulkelola_formSD input[name="data_ptk"]').val(jsonStr);
     }
+
+    $(document).off('change', '.ptk-valid-cb').on('change', '.ptk-valid-cb', function() {
+        var type = $(this).data('type');
+        var idx = parseInt($(this).data('idx'));
+        var isChecked = $(this).is(':checked');
+        if (type === 'A') {
+            LAPBULKELOLA_DATA_PTK_INDUK[idx].valid = isChecked;
+        } else {
+            LAPBULKELOLA_DATA_PTK_NONINDUK[idx].valid = isChecked;
+        }
+        lapbulkelola_serializePtkData();
+    });
 
     $(document).off('change', '.ptk-input').on('change', '.ptk-input', function() {
         var type = $(this).data('type');
