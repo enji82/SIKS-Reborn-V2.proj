@@ -73,6 +73,24 @@ Dokumen ini berfungsi sebagai panduan urutan pengerjaan, daftar periksa (*checkl
 
 ---
 
+### Fase 5: Audit & Penyempurnaan Per Komponen & Halaman
+> **Tujuan**: Memastikan setiap komponen global dan setiap halaman modul tampil konsisten, rapi, dan bebas bug visual di Light Mode & Dark Mode.
+
+- **Komponen Global (`css_sultan.html`)**:
+  - [x] Sidebar & Mini Sidebar (*SIDEBAR V3* — Light/Dark Mode, Normal/Open/Mini/Hover)
+  - [x] Navbar / Header (`.main-header` — terverifikasi kontras & frosted glass di Light/Dark Mode)
+  - [ ] Card & Metric Card (`.card-sultan`, `.sultan-metric-card`)
+  - [ ] Tabel & DataTables (`.table`, `.dataTables_wrapper`)
+  - [ ] Modal & Form (`.modal-content`, `.form-control-sultan`)
+  - [ ] Tombol & Badge (`.btn-sultan-*`, `.badge-sultan-*`)
+- **Halaman Utama & Modul**:
+  - [ ] Login (`page_login.html`)
+  - [ ] Landing (`page_landing.html`)
+  - [ ] Beranda (`page_home.html`)
+  - [ ] Modul (`Lapbul`, `SK`, `PTK`, `Siaba`, `TPG`, `PPPK PW`, `Murid`, `Setting`)
+
+---
+
 ## Log Perubahan (Change Log)
 
 Catat setiap perbaikan yang sudah selesai di tabel ini agar mudah ditelusuri:
@@ -109,4 +127,5 @@ Catat setiap perbaikan yang sudah selesai di tabel ini agar mudah ditelusuri:
 | 2026-11-25 | Fase 4.2 (Hotfix Light Mode) | `css_sultan.html` | Perbaiki `.brand-link` di Light Mode agar background tetap transparan dan teks "SIKS-REBORN" putih terlihat jelas | Selesai |
 | 2026-11-25 | Fase 4.2 (Redesign Sidebar) | `css_sultan.html` | Ubah sidebar Light Mode menjadi putih bersih dengan pill aktif maroon, parent terbuka soft-pink, dan garis vertikal submenu | Selesai |
 | 2026-11-26 | Fase 4.2 (Sidebar V3) | `css_sultan.html` | Konsolidasi desain sidebar modern (SIDEBAR V3) di akhir file: tombol presisi tanpa terpotong, hierarki warna Level 1/2/3 jelas di Light & Dark Mode, dan animasi hover halus | Selesai |
+| 2026-11-26 | Fase 5 (Navbar) | `css_sultan.html`, `index.html` | Audit `.main-header` & ikon navbar di Light/Dark Mode terverifikasi kontras & konsisten | Selesai |
 | | | | | |
