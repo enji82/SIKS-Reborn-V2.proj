@@ -79,15 +79,15 @@ Dokumen ini berfungsi sebagai panduan urutan pengerjaan, daftar periksa (*checkl
 - **Komponen Global (`css_sultan.html`)**:
   - [x] Sidebar & Mini Sidebar (*SIDEBAR V3* — Light/Dark Mode, Normal/Open/Mini/Hover)
   - [x] Navbar / Header (`.main-header` — terverifikasi kontras & frosted glass di Light/Dark Mode)
-  - [ ] Card & Metric Card (`.card-sultan`, `.sultan-metric-card`)
-  - [ ] Tabel & DataTables (`.table`, `.dataTables_wrapper`)
-  - [ ] Modal & Form (`.modal-content`, `.form-control-sultan`)
-  - [ ] Tombol & Badge (`.btn-sultan-*`, `.badge-sultan-*`)
+  - [x] Card & Metric Card (`.card-sultan`, `.sultan-metric-card` — terverifikasi kontras & radius di Light/Dark Mode)
+  - [x] Tabel & DataTables (`.table`, `.dataTables_wrapper` — terverifikasi header, hover, & sticky column di Light/Dark Mode)
+  - [x] Modal & Form (`.modal-content`, `.form-control-sultan` — terverifikasi di Light/Dark Mode)
+  - [x] Tombol & Badge (`.btn-sultan-*`, `.badge-sultan-*` — terverifikasi di `page_ui_kit.html`)
 - **Halaman Utama & Modul**:
-  - [ ] Login (`page_login.html`)
-  - [ ] Landing (`page_landing.html`)
-  - [ ] Beranda (`page_home.html`)
-  - [ ] Modul (`Lapbul`, `SK`, `PTK`, `Siaba`, `TPG`, `PPPK PW`, `Murid`, `Setting`)
+  - [x] Login (`page_login.html` — `:root` duplikat dihapus, glassmorphism & animasi rapi)
+  - [x] Landing (`page_landing.html` — variabel `--lp-*` ter-scope aman)
+  - [x] Beranda (`page_home.html` — bersih dari `<style>` lokal)
+  - [x] Modul (`Lapbul`, `SK`, `PTK`, `Siaba`, `TPG`, `PPPK PW`, `Murid`, `Setting` — seluruhnya terverifikasi konsisten)
 
 ---
 
@@ -128,4 +128,9 @@ Catat setiap perbaikan yang sudah selesai di tabel ini agar mudah ditelusuri:
 | 2026-11-25 | Fase 4.2 (Redesign Sidebar) | `css_sultan.html` | Ubah sidebar Light Mode menjadi putih bersih dengan pill aktif maroon, parent terbuka soft-pink, dan garis vertikal submenu | Selesai |
 | 2026-11-26 | Fase 4.2 (Sidebar V3) | `css_sultan.html` | Konsolidasi desain sidebar modern (SIDEBAR V3) di akhir file: tombol presisi tanpa terpotong, hierarki warna Level 1/2/3 jelas di Light & Dark Mode, dan animasi hover halus | Selesai |
 | 2026-11-26 | Fase 5 (Navbar) | `css_sultan.html`, `index.html` | Audit `.main-header` & ikon navbar di Light/Dark Mode terverifikasi kontras & konsisten | Selesai |
+| 2026-11-26 | Fase 5 (Card & Metric) | `css_sultan.html` | Audit `.card-sultan` & `.sultan-metric-card` di Light/Dark Mode terverifikasi rapi & kontras | Selesai |
+| 2026-11-26 | Fase 5 (Tabel) | `css_sultan.html`, `index.html` | Audit `.table`, header Dark Mode (`#e5c158`), dan hover state terverifikasi konsisten | Selesai |
+| 2026-11-26 | Fase 5 (Modal, Form, Tombol, Badge) | `css_sultan.html`, `page_ui_kit.html` | Audit seluruh komponen global selesai & terverifikasi di Light/Dark Mode | Selesai |
+| 2026-11-26 | Fase 5 (Halaman Utama) | `page_login.html`, `page_landing.html`, `page_home.html` | Audit Halaman Utama selesai & terverifikasi konsisten | Selesai |
+| 2026-11-26 | Fase 5 (Modul) | `page_*.html` | Audit seluruh modul (`Lapbul`, `SK`, `PTK`, `Siaba`, `TPG`, `PPPK PW`, `Murid`, `Setting`) selesai; seluruh Fase 1–5 tuntas | Selesai |
 | | | | | |
