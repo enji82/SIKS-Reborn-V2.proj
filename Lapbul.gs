@@ -228,7 +228,7 @@ function getLapbulKelolaData(filterJenjang, filterBulan, filterTahun, filterStat
   var fetchDataSmart = function(dbKey, sheetName, sourceLabel) {
       var sourceResult = [];
       try {
-          var sheet = getSheet(dbKey, sheetName);
+          var sheet = getLapbulSheet_(dbKey, sheetName);
           if (!sheet) return [];
 
           var lastRow = sheet.getLastRow();

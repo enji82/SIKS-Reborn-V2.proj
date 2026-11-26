@@ -1970,6 +1970,10 @@
                     return;
                 }
                 LAPBULKELOLA_DATA_PTK_INDUK = Array.isArray(ptkInduk) ? ptkInduk : [];
+                if (window.LAPBULKELOLA_PENDING_ABSEN_MAP && typeof lapbulkelola_applyPresensiAbsenMap === 'function') {
+                    lapbulkelola_applyPresensiAbsenMap(window.LAPBULKELOLA_PENDING_ABSEN_MAP);
+                    window.LAPBULKELOLA_PENDING_ABSEN_MAP = null;
+                }
                 if (typeof lapbulkelola_renderPtkMatrix === 'function') lapbulkelola_renderPtkMatrix();
             }).withFailureHandler(function (e) {
                 LAPBULKELOLA_IS_LOADING_PTK = false;
@@ -2013,22 +2017,17 @@
                 return;
             }
             if (tipe === 'SD') {
+                window.LAPBULKELOLA_PENDING_ABSEN_MAP = null;
                 google.script.run.withSuccessHandler(function (resJson) {
                     try {
                         var res = JSON.parse(resJson);
-                        if (res && res.success && res.map && Array.isArray(LAPBULKELOLA_DATA_PTK_INDUK)) {
-                            LAPBULKELOLA_DATA_PTK_INDUK.forEach(function (ptk) {
-                                var st = String(ptk.status || "").toUpperCase();
-                                var isAsn = st.includes('CPNS') || st.includes('PNS') || st.includes('PPPK');
-                                if (!isAsn) return;
-                                var nipClean = String(ptk.nip_niy || "").replace(/[^0-9]/g, "").trim();
-                                var abs = res.map[nipClean];
-                                if (abs) {
-                                    ptk.dd = abs.dd; ptk.dl = abs.dl; ptk.ct = abs.ct;
-                                    ptk.cap = abs.cap; ptk.cs = abs.cs; ptk.cm = abs.cm; ptk.a = abs.a;
-                                }
-                            });
-                            if (typeof lapbulkelola_renderPtkMatrix === 'function') lapbulkelola_renderPtkMatrix();
+                        if (res && res.success && res.map) {
+                            if (LAPBULKELOLA_IS_LOADING_PTK || !Array.isArray(LAPBULKELOLA_DATA_PTK_INDUK)) {
+                                window.LAPBULKELOLA_PENDING_ABSEN_MAP = res.map;
+                            } else {
+                                lapbulkelola_applyPresensiAbsenMap(res.map);
+                                if (typeof lapbulkelola_renderPtkMatrix === 'function') lapbulkelola_renderPtkMatrix();
+                            }
                         }
                     } catch (e) {}
                 }).getLapbulPresensiAbsenMap(thn, bln, "SEMUA");
@@ -2052,6 +2051,21 @@
                 }
             } else {
                 lapbulkelola_lanjutKeTabMuridPAUD();
+            }
+        });
+    }
+
+    function lapbulkelola_applyPresensiAbsenMap(map) {
+        if (!map || !Array.isArray(LAPBULKELOLA_DATA_PTK_INDUK)) return;
+        LAPBULKELOLA_DATA_PTK_INDUK.forEach(function (ptk) {
+            var st = String(ptk.status || "").toUpperCase();
+            var isAsn = st.includes('CPNS') || st.includes('PNS') || st.includes('PPPK');
+            if (!isAsn) return;
+            var nipClean = String(ptk.nip_niy || "").replace(/[^0-9]/g, "").trim();
+            var abs = map[nipClean];
+            if (abs) {
+                ptk.dd = abs.dd; ptk.dl = abs.dl; ptk.ct = abs.ct;
+                ptk.cap = abs.cap; ptk.cs = abs.cs; ptk.cm = abs.cm; ptk.a = abs.a;
             }
         });
     }
