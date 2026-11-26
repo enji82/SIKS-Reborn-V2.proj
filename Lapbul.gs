@@ -40,6 +40,19 @@ function initLapbulSchema() {
       sheetSD.getRange(1, headers.length + 1).setValue("Data PTK");
     }
   }
+  var sheetPAUD = getLapbulSheet_(KONFIG_LAPBUL.PAUD_DB, "Input PAUD");
+  if (sheetPAUD) {
+    var headersPaud = sheetPAUD.getRange(1, 1, 1, sheetPAUD.getLastColumn()).getValues()[0];
+    var hasDataPtkPaud = false;
+    for (var j = 0; j < headersPaud.length; j++) {
+      if (String(headersPaud[j]).toLowerCase().trim() === "data ptk") {
+        hasDataPtkPaud = true; break;
+      }
+    }
+    if (!hasDataPtkPaud) {
+      sheetPAUD.getRange(1, headersPaud.length + 1).setValue("Data PTK");
+    }
+  }
   return "Schema updated";
 }
 

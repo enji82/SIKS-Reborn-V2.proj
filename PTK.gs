@@ -5786,14 +5786,19 @@ function getPTKSekolahByNpsnLapbul(npsn, jenjang) {
         var statusAktif = c.status_aktif > -1 ? String(r[c.status_aktif] || "AKTIF").trim().toUpperCase() : "AKTIF";
         if (statusAktif === "NON_AKTIF") continue;
         var rowJenjang = c.jenjang > -1 ? String(r[c.jenjang] || "").trim() : "";
-        if (rowJenjang !== "SD Negeri" && rowJenjang !== "SD Swasta") continue;
+        var isPaudRow = rowJenjang.toUpperCase().includes("PAUD") || rowJenjang.toUpperCase().includes("TK") || rowJenjang.toUpperCase().includes("KB") || rowJenjang.toUpperCase().includes("TPA") || rowJenjang.toUpperCase().includes("SPS");
+        if (jenjang === 'PAUD') {
+          if (!isPaudRow) continue;
+        } else {
+          if (rowJenjang !== "SD Negeri" && rowJenjang !== "SD Swasta") continue;
+        }
         var rowNpsn = c.npsn > -1 ? String(r[c.npsn] || "").replace(/'/g, "").trim() : "";
         if (rowNpsn !== searchNpsn) continue;
 
         var isSdn = (rowJenjang === "SD Negeri");
-        var nipNiy = isSdn ? (c.nip > -1 ? String(r[c.nip] || "") : "") : (idxNiy > -1 ? String(r[idxNiy] || "") : "");
+        var nipNiy = isSdn ? (c.nip > -1 ? String(r[c.nip] || "") : "") : (idxNiy > -1 ? String(r[idxNiy] || "") : (c.nip > -1 ? String(r[c.nip] || "") : ""));
         var jabTugas = isSdn ? (c.tugas > -1 ? String(r[c.tugas] || "") : "") : (c.jabatan > -1 ? String(r[c.jabatan] || "") : "");
-        var golAsn = isSdn ? (c.pangkat > -1 ? String(r[c.pangkat] || "") : "") : (idxInpassing > -1 ? String(r[idxInpassing] || "") : "");
+        var golAsn = isSdn ? (c.pangkat > -1 ? String(r[c.pangkat] || "") : "") : (idxInpassing > -1 ? String(r[idxInpassing] || "") : (c.pangkat > -1 ? String(r[c.pangkat] || "") : ""));
         var mengajarVal = c.mengajar_kelas > -1 ? String(r[c.mengajar_kelas] || "").trim() : "";
 
         resCentral.push({
