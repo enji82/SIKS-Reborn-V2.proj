@@ -2429,7 +2429,23 @@ function getDataPTKSDS() {
           user_input: c.user_input > -1 ? (row[c.user_input] || "") : "",
           diedit: c.diedit > -1 ? (row[c.diedit] || "") : "",
           user_edit: c.user_edit > -1 ? (row[c.user_edit] || "") : "",
-          email: c.email > -1 ? (row[c.email] || "") : ""
+          email: c.email > -1 ? (row[c.email] || "") : "",
+          masa_kerja_tahun: extraIdx.masa_kerja_tahun > -1 ? (row[extraIdx.masa_kerja_tahun] || "") : "",
+          masa_kerja_bulan: extraIdx.masa_kerja_bulan > -1 ? (row[extraIdx.masa_kerja_bulan] || "") : "",
+          nip: extraIdx.nip > -1 ? (row[extraIdx.nip] || "") : "",
+          tugas_di_sekolah: extraIdx.tugas_di_sekolah > -1 ? (row[extraIdx.tugas_di_sekolah] || "") : "",
+          diklat_dasar: extraIdx.diklat_dasar > -1 ? (row[extraIdx.diklat_dasar] || "") : "",
+          tahun_diklat_dasar: extraIdx.tahun_diklat_dasar > -1 ? (row[extraIdx.tahun_diklat_dasar] || "") : "",
+          diklat_lanjut: extraIdx.diklat_lanjut > -1 ? (row[extraIdx.diklat_lanjut] || "") : "",
+          tahun_diklat_lanjut: extraIdx.tahun_diklat_lanjut > -1 ? (row[extraIdx.tahun_diklat_lanjut] || "") : "",
+          diklat_mahir: extraIdx.diklat_mahir > -1 ? (row[extraIdx.diklat_mahir] || "") : "",
+          tahun_diklat_mahir: extraIdx.tahun_diklat_mahir > -1 ? (row[extraIdx.tahun_diklat_mahir] || "") : "",
+          diklat_kepala_sekolah: extraIdx.diklat_kepala_sekolah > -1 ? (row[extraIdx.diklat_kepala_sekolah] || "") : "",
+          tahun_diklat_kepala_sekolah: extraIdx.tahun_diklat_kepala_sekolah > -1 ? (row[extraIdx.tahun_diklat_kepala_sekolah] || "") : "",
+          bantuan_tunjangan_profesi: extraIdx.bantuan_tunjangan_profesi > -1 ? (row[extraIdx.bantuan_tunjangan_profesi] || "") : "",
+          bantuan_bosda: extraIdx.bantuan_bosda > -1 ? (row[extraIdx.bantuan_bosda] || "") : "",
+          bantuan_insentif: extraIdx.bantuan_insentif > -1 ? (row[extraIdx.bantuan_insentif] || "") : "",
+          bantuan_lainnya: extraIdx.bantuan_lainnya > -1 ? (row[extraIdx.bantuan_lainnya] || "") : ""
         });
       }
       return JSON.stringify(result);
@@ -2974,6 +2990,17 @@ function updateDataPTKSDS(form) {
     if (c.user_edit > -1) rowArr[c.user_edit] = form.user_login || "";
     if (c.email > -1) rowArr[c.email] = form.email || "";
 
+    ensurePtkPaudExtraColumns_(ctx);
+    while (rowArr.length < ctx.headers.length) rowArr.push("");
+    for (var k = 0; k < PTK_PAUD_EXTRA_COLS_.length; k++) {
+      var colName = PTK_PAUD_EXTRA_COLS_[k];
+      var colIdx = ctx.headers.indexOf(colName);
+      if (colIdx > -1) {
+        var val = form[colName] || "";
+        rowArr[colIdx] = (colName === "nip" && val) ? ("'" + val) : val;
+      }
+    }
+
     ctx.sheet.getRange(rowIdx, 1, 1, rowArr.length).setValues([rowArr]);
     return "Sukses";
   }
@@ -3331,6 +3358,29 @@ const KONFIG_PTK_PAUD = {
   SHEET_PTK: "Master Data GTK PAUD"
 };
 
+var PTK_PAUD_EXTRA_COLS_ = [
+  "masa_kerja_tahun", "masa_kerja_bulan", "nip", "tugas_di_sekolah",
+  "diklat_dasar", "tahun_diklat_dasar",
+  "diklat_lanjut", "tahun_diklat_lanjut",
+  "diklat_mahir", "tahun_diklat_mahir",
+  "diklat_kepala_sekolah", "tahun_diklat_kepala_sekolah",
+  "bantuan_tunjangan_profesi", "bantuan_bosda", "bantuan_insentif", "bantuan_lainnya"
+];
+
+function ensurePtkPaudExtraColumns_(ctx) {
+  var added = false;
+  for (var i = 0; i < PTK_PAUD_EXTRA_COLS_.length; i++) {
+    var colName = PTK_PAUD_EXTRA_COLS_[i];
+    if (ctx.headers.indexOf(colName) === -1) {
+      var newColIdx = ctx.headers.length + 1;
+      ctx.sheet.getRange(1, newColIdx).setValue(colName);
+      ctx.headers.push(colName);
+      added = true;
+    }
+  }
+  return added;
+}
+
 function getDataPTKPAUD() {
   try {
     if (typeof USE_CENTRAL_PTK_DB !== "undefined" && USE_CENTRAL_PTK_DB) {
@@ -3340,6 +3390,11 @@ function getDataPTKPAUD() {
       var idxInpassing = ctx.headers.indexOf("inpassing");
       var idxTmtInpassing = ctx.headers.indexOf("tmt_inpassing");
       var idxJenisPtk = ctx.headers.indexOf("jenis_ptk");
+      var extraIdx = {};
+      for (var k = 0; k < PTK_PAUD_EXTRA_COLS_.length; k++) {
+        var col = PTK_PAUD_EXTRA_COLS_[k];
+        extraIdx[col] = ctx.headers.indexOf(col);
+      }
       var data = ctx.sheet.getDataRange().getDisplayValues();
       var result = [];
       for (var i = 1; i < data.length; i++) {
@@ -3384,7 +3439,23 @@ function getDataPTKPAUD() {
           user_input: c.user_input > -1 ? (row[c.user_input] || "") : "",
           diedit: c.diedit > -1 ? (row[c.diedit] || "") : "",
           user_edit: c.user_edit > -1 ? (row[c.user_edit] || "") : "",
-          email: c.email > -1 ? (row[c.email] || "") : ""
+          email: c.email > -1 ? (row[c.email] || "") : "",
+          masa_kerja_tahun: extraIdx.masa_kerja_tahun > -1 ? (row[extraIdx.masa_kerja_tahun] || "") : "",
+          masa_kerja_bulan: extraIdx.masa_kerja_bulan > -1 ? (row[extraIdx.masa_kerja_bulan] || "") : "",
+          nip: extraIdx.nip > -1 ? (row[extraIdx.nip] || "") : "",
+          tugas_di_sekolah: extraIdx.tugas_di_sekolah > -1 ? (row[extraIdx.tugas_di_sekolah] || "") : "",
+          diklat_dasar: extraIdx.diklat_dasar > -1 ? (row[extraIdx.diklat_dasar] || "") : "",
+          tahun_diklat_dasar: extraIdx.tahun_diklat_dasar > -1 ? (row[extraIdx.tahun_diklat_dasar] || "") : "",
+          diklat_lanjut: extraIdx.diklat_lanjut > -1 ? (row[extraIdx.diklat_lanjut] || "") : "",
+          tahun_diklat_lanjut: extraIdx.tahun_diklat_lanjut > -1 ? (row[extraIdx.tahun_diklat_lanjut] || "") : "",
+          diklat_mahir: extraIdx.diklat_mahir > -1 ? (row[extraIdx.diklat_mahir] || "") : "",
+          tahun_diklat_mahir: extraIdx.tahun_diklat_mahir > -1 ? (row[extraIdx.tahun_diklat_mahir] || "") : "",
+          diklat_kepala_sekolah: extraIdx.diklat_kepala_sekolah > -1 ? (row[extraIdx.diklat_kepala_sekolah] || "") : "",
+          tahun_diklat_kepala_sekolah: extraIdx.tahun_diklat_kepala_sekolah > -1 ? (row[extraIdx.tahun_diklat_kepala_sekolah] || "") : "",
+          bantuan_tunjangan_profesi: extraIdx.bantuan_tunjangan_profesi > -1 ? (row[extraIdx.bantuan_tunjangan_profesi] || "") : "",
+          bantuan_bosda: extraIdx.bantuan_bosda > -1 ? (row[extraIdx.bantuan_bosda] || "") : "",
+          bantuan_insentif: extraIdx.bantuan_insentif > -1 ? (row[extraIdx.bantuan_insentif] || "") : "",
+          bantuan_lainnya: extraIdx.bantuan_lainnya > -1 ? (row[extraIdx.bantuan_lainnya] || "") : ""
         });
       }
       return JSON.stringify(result);
@@ -3822,6 +3893,17 @@ function insertDataPTKPAUD(form, base64Data, fileName, jenisDokumen, userPengusu
       if (c.user_input > -1) rowArr[c.user_input] = form.user_login || userPengusul || "";
       if (c.email > -1) rowArr[c.email] = form.email || "";
 
+      ensurePtkPaudExtraColumns_(ctx);
+      while (rowArr.length < ctx.headers.length) rowArr.push("");
+      for (var k = 0; k < PTK_PAUD_EXTRA_COLS_.length; k++) {
+        var colName = PTK_PAUD_EXTRA_COLS_[k];
+        var colIdx = ctx.headers.indexOf(colName);
+        if (colIdx > -1) {
+          var val = form[colName] || "";
+          rowArr[colIdx] = (colName === "nip" && val) ? ("'" + val) : val;
+        }
+      }
+
       ctx.sheet.appendRow(rowArr);
       return "Sukses";
     }
@@ -3949,6 +4031,17 @@ function updateDataPTKPAUD(form) {
     if (c.diedit > -1) rowArr[c.diedit] = timestamp;
     if (c.user_edit > -1) rowArr[c.user_edit] = form.user_login || "";
     if (c.email > -1) rowArr[c.email] = form.email || "";
+
+    ensurePtkPaudExtraColumns_(ctx);
+    while (rowArr.length < ctx.headers.length) rowArr.push("");
+    for (var k = 0; k < PTK_PAUD_EXTRA_COLS_.length; k++) {
+      var colName = PTK_PAUD_EXTRA_COLS_[k];
+      var colIdx = ctx.headers.indexOf(colName);
+      if (colIdx > -1) {
+        var val = form[colName] || "";
+        rowArr[colIdx] = (colName === "nip" && val) ? ("'" + val) : val;
+      }
+    }
 
     ctx.sheet.getRange(rowIdx, 1, 1, rowArr.length).setValues([rowArr]);
     return "Sukses";
