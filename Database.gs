@@ -6,14 +6,55 @@
    secara langsung ke spreadsheet lama.
    ====================================================================== */
 
+var _ssMemCache = {};
+var _masterSekolahMemCache = null;
+var _masterPtkMemCache = null;
+
+function getCachedSpreadsheet_(id) {
+  if (!id) return null;
+  if (!_ssMemCache[id]) {
+    _ssMemCache[id] = SpreadsheetApp.openById(id);
+  }
+  return _ssMemCache[id];
+}
+
 function getMasterSpreadsheet_() {
-  return SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_MASTER);
+  return getCachedSpreadsheet_(SPREADSHEET_IDS.SIKS_DB_MASTER);
+}
+
+function invalidateMasterCache() {
+  _masterSekolahMemCache = null;
+  _masterPtkMemCache = null;
+  try {
+    if (typeof removeLargeCache === "function") {
+      removeLargeCache("MASTER_SEKOLAH_ALL");
+      removeLargeCache("MASTER_PTK_ALL");
+    } else {
+      var cache = CacheService.getScriptCache();
+      cache.remove("MASTER_SEKOLAH_ALL");
+      cache.remove("MASTER_PTK_ALL");
+    }
+  } catch (e) {}
 }
 
 /**
- * Mengambil seluruh data sekolah dari tbl_sekolah sebagai array of objects.
+ * Mengambil seluruh data sekolah dari tbl_sekolah sebagai array of objects (dengan cache).
  */
 function getMasterSekolah() {
+  if (_masterSekolahMemCache) return _masterSekolahMemCache;
+  try {
+    var cachedStr = (typeof getLargeCache === "function")
+      ? getLargeCache("MASTER_SEKOLAH_ALL")
+      : CacheService.getScriptCache().get("MASTER_SEKOLAH_ALL");
+    if (cachedStr) {
+      var parsed = JSON.parse(cachedStr);
+      if (Array.isArray(parsed)) {
+        _masterSekolahMemCache = parsed;
+        return parsed;
+      }
+    }
+  } catch (e) {}
+
   var sheet = getMasterSpreadsheet_().getSheetByName("tbl_sekolah");
   if (!sheet) return [];
   var data = sheet.getDataRange().getValues();
@@ -30,6 +71,17 @@ function getMasterSekolah() {
     }
     result.push(obj);
   }
+
+  _masterSekolahMemCache = result;
+  try {
+    var json = JSON.stringify(result);
+    if (typeof putLargeCache === "function") {
+      putLargeCache("MASTER_SEKOLAH_ALL", json, 1800);
+    } else if (json.length < 95000) {
+      CacheService.getScriptCache().put("MASTER_SEKOLAH_ALL", json, 1800);
+    }
+  } catch (e) {}
+
   return result;
 }
 
@@ -52,35 +104,67 @@ function getSekolahByNpsn(npsn) {
  * Mengambil data PTK dari tbl_ptk (opsional filter berdasarkan NPSN).
  */
 function getMasterPTK(filterNpsn) {
-  var sheet = getMasterSpreadsheet_().getSheetByName("tbl_ptk");
-  if (!sheet) return [];
-  var data = sheet.getDataRange().getDisplayValues();
-  if (data.length < 2) return [];
-
-  var headers = data[0];
   var targetNpsn = filterNpsn ? String(filterNpsn).trim() : "";
-  var result = [];
-  for (var i = 1; i < data.length; i++) {
-    var row = data[i];
-    var obj = {};
-    for (var c = 0; c < headers.length; c++) {
-      var hName = String(headers[c] || "").trim();
-      if (hName) obj[hName] = row[c];
-    }
-    // Normalisasi field standar agar kompatibel dengan modul lain
-    obj.nama_lengkap = obj.nama_lengkap || obj["Nama Lengkap"] || obj["Nama"] || obj["Nama GTK"] || "";
-    obj.nip = obj.nip || obj["NIP"] || "";
-    obj.nik = obj.nik || obj["NIK"] || "";
-    obj.npsn = obj.npsn || obj["NPSN"] || "";
-    obj.status_kepegawaian = obj.status_kepegawaian || obj["Status Kepegawaian"] || obj["Status Pegawai"] || obj["Status"] || "";
-    obj.jabatan = obj.jabatan || obj["Jabatan"] || obj["Jenis PTK"] || "";
-    obj.no_hp = obj.no_hp || obj["No HP"] || obj["HP"] || "";
+  var allPtk = _masterPtkMemCache;
 
-    if (!obj.nama_lengkap) continue;
-    if (targetNpsn && String(obj.npsn || "").trim() !== targetNpsn) continue;
-    result.push(obj);
+  if (!allPtk) {
+    try {
+      var cachedStr = (typeof getLargeCache === "function")
+        ? getLargeCache("MASTER_PTK_ALL")
+        : CacheService.getScriptCache().get("MASTER_PTK_ALL");
+      if (cachedStr) {
+        var parsed = JSON.parse(cachedStr);
+        if (Array.isArray(parsed)) {
+          allPtk = parsed;
+          _masterPtkMemCache = parsed;
+        }
+      }
+    } catch (e) {}
   }
-  return result;
+
+  if (!allPtk) {
+    var sheet = getMasterSpreadsheet_().getSheetByName("tbl_ptk");
+    if (!sheet) return [];
+    var data = sheet.getDataRange().getDisplayValues();
+    if (data.length < 2) return [];
+
+    var headers = data[0];
+    allPtk = [];
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      var obj = {};
+      for (var c = 0; c < headers.length; c++) {
+        var hName = String(headers[c] || "").trim();
+        if (hName) obj[hName] = row[c];
+      }
+      // Normalisasi field standar agar kompatibel dengan modul lain
+      obj.nama_lengkap = obj.nama_lengkap || obj["Nama Lengkap"] || obj["Nama"] || obj["Nama GTK"] || "";
+      obj.nip = obj.nip || obj["NIP"] || "";
+      obj.nik = obj.nik || obj["NIK"] || "";
+      obj.npsn = obj.npsn || obj["NPSN"] || "";
+      obj.status_kepegawaian = obj.status_kepegawaian || obj["Status Kepegawaian"] || obj["Status Pegawai"] || obj["Status"] || "";
+      obj.jabatan = obj.jabatan || obj["Jabatan"] || obj["Jenis PTK"] || "";
+      obj.no_hp = obj.no_hp || obj["No HP"] || obj["HP"] || "";
+
+      if (!obj.nama_lengkap) continue;
+      allPtk.push(obj);
+    }
+
+    _masterPtkMemCache = allPtk;
+    try {
+      var json = JSON.stringify(allPtk);
+      if (typeof putLargeCache === "function") {
+        putLargeCache("MASTER_PTK_ALL", json, 900);
+      } else if (json.length < 95000) {
+        CacheService.getScriptCache().put("MASTER_PTK_ALL", json, 900);
+      }
+    } catch (e) {}
+  }
+
+  if (!targetNpsn) return allPtk;
+  return allPtk.filter(function(item) {
+    return String(item.npsn || "").trim() === targetNpsn;
+  });
 }
 
 /**
@@ -150,16 +234,16 @@ function getFilterOptionsPTK_Central() {
  * Mengambil sheet dari SIKS_DB_SIABA (tbl_siaba_cuti, tbl_siaba_dinas, tbl_siaba_lupa, tbl_siaba_salah, dll).
  */
 function getSiabaCentralSheet(sheetName) {
-  var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_SIABA);
-  return ss.getSheetByName(sheetName);
+  var ss = getCachedSpreadsheet_(SPREADSHEET_IDS.SIKS_DB_SIABA);
+  return ss ? ss.getSheetByName(sheetName) : null;
 }
 
 /**
  * Mengambil sheet dari SIKS_DB_LAYANAN (tbl_sk, tbl_efile, tbl_tpg_perbaikan, tbl_lapbul_sd, dll).
  */
 function getLayananCentralSheet(sheetName) {
-  var ss = SpreadsheetApp.openById(SPREADSHEET_IDS.SIKS_DB_LAYANAN);
-  return ss.getSheetByName(sheetName);
+  var ss = getCachedSpreadsheet_(SPREADSHEET_IDS.SIKS_DB_LAYANAN);
+  return ss ? ss.getSheetByName(sheetName) : null;
 }
 
 /**
