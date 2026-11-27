@@ -428,7 +428,7 @@ function getDataRiwayatPembaruanSds() {
       if (!ctx) return JSON.stringify({ data: [], lapbulMap: {} });
       var c = ctx.colMap;
       var idxNiy = ctx.headers.indexOf("niy");
-      var data = ctx.sheet.getDataRange().getValues();
+      var data = ctx.sheet.getDataRange().getDisplayValues();
       var result = [];
 
       for (var i = 1; i < data.length; i++) {
@@ -558,7 +558,7 @@ function getDataRiwayatPembaruanPaud() {
       var ctx = getTblPtkSdnContext_();
       if (!ctx) return JSON.stringify({ data: [], lapbulMap: {} });
       var c = ctx.colMap;
-      var data = ctx.sheet.getDataRange().getValues();
+      var data = ctx.sheet.getDataRange().getDisplayValues();
       var result = [];
 
       for (var i = 1; i < data.length; i++) {
@@ -682,7 +682,7 @@ function getDataProyeksiPensiunSDN() {
       var ctx = getTblPtkSdnContext_();
       if (!ctx) return JSON.stringify([]);
       var c = ctx.colMap;
-      var data = ctx.sheet.getDataRange().getValues();
+      var data = ctx.sheet.getDataRange().getDisplayValues();
       var result = [];
       for (var i = 1; i < data.length; i++) {
         var row = data[i];
@@ -3111,7 +3111,7 @@ function hapusPermanenPTKPAUD(id) {
       var ctx = getTblPtkSdnContext_();
       if (!ctx) return "Error: Tabel tbl_ptk tidak ditemukan.";
       var c = ctx.colMap;
-      var data = ctx.sheet.getDataRange().getValues();
+      var data = ctx.sheet.getDataRange().getDisplayValues();
       var idStr = String(id).trim();
       for (var i = 1; i < data.length; i++) {
         var jenjang = c.jenjang > -1 ? String(data[i][c.jenjang] || "").trim() : "";
@@ -3135,7 +3135,7 @@ function hapusPermanenPTKSDS(id) {
       var ctx = getTblPtkSdnContext_();
       if (!ctx) return "Error: Tabel tbl_ptk tidak ditemukan.";
       var c = ctx.colMap;
-      var data = ctx.sheet.getDataRange().getValues();
+      var data = ctx.sheet.getDataRange().getDisplayValues();
       var idStr = String(id).trim();
       for (var i = 1; i < data.length; i++) {
         var jenjang = c.jenjang > -1 ? String(data[i][c.jenjang] || "").trim() : "";
@@ -3851,7 +3851,7 @@ function insertDataPTKPAUD(form, base64Data, fileName, jenisDokumen, userPengusu
       var c = ctx.colMap;
       var idxInpassing = ctx.headers.indexOf("inpassing");
       var idxTmtInpassing = ctx.headers.indexOf("tmt_inpassing");
-      var data = ctx.sheet.getDataRange().getValues();
+      var data = ctx.sheet.getDataRange().getDisplayValues();
       var inputNik = String(form.nik || "").replace(/'/g, "").trim();
 
       for (var i = 1; i < data.length; i++) {
@@ -5894,7 +5894,7 @@ function getPTKSekolahByNpsnLapbul(npsn, jenjang) {
           extraIdx[PTK_PAUD_EXTRA_COLS_[k]] = ctx.headers.indexOf(PTK_PAUD_EXTRA_COLS_[k]);
         }
       }
-      var data = ctx.sheet.getDataRange().getValues();
+      var data = ctx.sheet.getDataRange().getDisplayValues();
       var resCentral = [];
       for (var i = 1; i < data.length; i++) {
         var r = data[i];
@@ -6090,7 +6090,7 @@ function searchPTKGlobalLapbul(keyword, jenjang) {
           extraIdx[PTK_PAUD_EXTRA_COLS_[k]] = ctx.headers.indexOf(PTK_PAUD_EXTRA_COLS_[k]);
         }
       }
-      var data = ctx.sheet.getDataRange().getValues();
+      var data = ctx.sheet.getDataRange().getDisplayValues();
       for (var i = 1; i < data.length; i++) {
         if (results.length >= 50) break;
         var r = data[i];
