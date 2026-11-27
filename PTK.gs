@@ -2385,6 +2385,12 @@ function getDataPTKSDS() {
       var c = ctx.colMap;
       var idxNiy = ctx.headers.indexOf("niy");
       var idxInpassing = ctx.headers.indexOf("inpassing");
+      var extraIdx = {};
+      if (jenjang === 'PAUD' && typeof PTK_PAUD_EXTRA_COLS_ !== "undefined") {
+        for (var k = 0; k < PTK_PAUD_EXTRA_COLS_.length; k++) {
+          extraIdx[PTK_PAUD_EXTRA_COLS_[k]] = ctx.headers.indexOf(PTK_PAUD_EXTRA_COLS_[k]);
+        }
+      }
       var idxTmtInpassing = ctx.headers.indexOf("tmt_inpassing");
       var data = ctx.sheet.getDataRange().getDisplayValues();
       var result = [];
@@ -2564,6 +2570,12 @@ function checkAndGetPtkNonAktifSDSByNIK(nik) {
       var c = ctx.colMap;
       var idxNiy = ctx.headers.indexOf("niy");
       var idxInpassing = ctx.headers.indexOf("inpassing");
+      var extraIdx = {};
+      if (jenjang === 'PAUD' && typeof PTK_PAUD_EXTRA_COLS_ !== "undefined") {
+        for (var k = 0; k < PTK_PAUD_EXTRA_COLS_.length; k++) {
+          extraIdx[PTK_PAUD_EXTRA_COLS_[k]] = ctx.headers.indexOf(PTK_PAUD_EXTRA_COLS_[k]);
+        }
+      }
       var idxTmtInpassing = ctx.headers.indexOf("tmt_inpassing");
       var dataDisplay = ctx.sheet.getDataRange().getDisplayValues();
       for (var i = 1; i < dataDisplay.length; i++) {
@@ -2674,6 +2686,12 @@ function reactivatePtkSDS(form) {
       var c = ctx.colMap;
       var idxNiy = ctx.headers.indexOf("niy");
       var idxInpassing = ctx.headers.indexOf("inpassing");
+      var extraIdx = {};
+      if (jenjang === 'PAUD' && typeof PTK_PAUD_EXTRA_COLS_ !== "undefined") {
+        for (var k = 0; k < PTK_PAUD_EXTRA_COLS_.length; k++) {
+          extraIdx[PTK_PAUD_EXTRA_COLS_[k]] = ctx.headers.indexOf(PTK_PAUD_EXTRA_COLS_[k]);
+        }
+      }
       var idxTmtInpassing = ctx.headers.indexOf("tmt_inpassing");
       var inputNik = String(form.nik).replace(/'/g, "").trim();
       var dataDisplay = ctx.sheet.getDataRange().getDisplayValues();
@@ -5870,6 +5888,12 @@ function getPTKSekolahByNpsnLapbul(npsn, jenjang) {
       var c = ctx.colMap;
       var idxNiy = ctx.headers.indexOf("niy");
       var idxInpassing = ctx.headers.indexOf("inpassing");
+      var extraIdx = {};
+      if (jenjang === 'PAUD' && typeof PTK_PAUD_EXTRA_COLS_ !== "undefined") {
+        for (var k = 0; k < PTK_PAUD_EXTRA_COLS_.length; k++) {
+          extraIdx[PTK_PAUD_EXTRA_COLS_[k]] = ctx.headers.indexOf(PTK_PAUD_EXTRA_COLS_[k]);
+        }
+      }
       var data = ctx.sheet.getDataRange().getValues();
       var resCentral = [];
       for (var i = 1; i < data.length; i++) {
@@ -5916,6 +5940,17 @@ function getPTKSekolahByNpsnLapbul(npsn, jenjang) {
           is_induk     : true,
           jabatan_lapbul : '',
           mengajar     : mengajarVal,
+          masa_kerja_tahun: extraIdx.masa_kerja_tahun > -1 ? String(r[extraIdx.masa_kerja_tahun] || "") : "",
+          masa_kerja_bulan: extraIdx.masa_kerja_bulan > -1 ? String(r[extraIdx.masa_kerja_bulan] || "") : "",
+          tahun_diklat_dasar: extraIdx.tahun_diklat_dasar > -1 ? String(r[extraIdx.tahun_diklat_dasar] || "") : "",
+          tahun_diklat_lanjut: extraIdx.tahun_diklat_lanjut > -1 ? String(r[extraIdx.tahun_diklat_lanjut] || "") : "",
+          tahun_diklat_mahir: extraIdx.tahun_diklat_mahir > -1 ? String(r[extraIdx.tahun_diklat_mahir] || "") : "",
+          diklat_kepala_sekolah: extraIdx.diklat_kepala_sekolah > -1 ? String(r[extraIdx.diklat_kepala_sekolah] || "") : "",
+          tahun_diklat_kepala_sekolah: extraIdx.tahun_diklat_kepala_sekolah > -1 ? String(r[extraIdx.tahun_diklat_kepala_sekolah] || "") : "",
+          bantuan_tunjangan_profesi: extraIdx.bantuan_tunjangan_profesi > -1 ? String(r[extraIdx.bantuan_tunjangan_profesi] || "") : "",
+          bantuan_bosda: extraIdx.bantuan_bosda > -1 ? String(r[extraIdx.bantuan_bosda] || "") : "",
+          bantuan_insentif: extraIdx.bantuan_insentif > -1 ? String(r[extraIdx.bantuan_insentif] || "") : "",
+          bantuan_lainnya: extraIdx.bantuan_lainnya > -1 ? String(r[extraIdx.bantuan_lainnya] || "") : "",
           alpa: '', sakit: '', izin: '', cuti: '', tugas_luar: '', tugas_belajar: '', lainnya: ''
         });
       }
@@ -6049,6 +6084,12 @@ function searchPTKGlobalLapbul(keyword, jenjang) {
       var c = ctx.colMap;
       var idxNiy = ctx.headers.indexOf("niy");
       var idxInpassing = ctx.headers.indexOf("inpassing");
+      var extraIdx = {};
+      if (jenjang === 'PAUD' && typeof PTK_PAUD_EXTRA_COLS_ !== "undefined") {
+        for (var k = 0; k < PTK_PAUD_EXTRA_COLS_.length; k++) {
+          extraIdx[PTK_PAUD_EXTRA_COLS_[k]] = ctx.headers.indexOf(PTK_PAUD_EXTRA_COLS_[k]);
+        }
+      }
       var data = ctx.sheet.getDataRange().getValues();
       for (var i = 1; i < data.length; i++) {
         if (results.length >= 50) break;
