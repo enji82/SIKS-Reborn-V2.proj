@@ -4509,10 +4509,71 @@
                 $btn.removeClass('is-loading').html(oriHtml).prop('disabled', false);
                 if(data.error) { Sultan.notif.gagal(data.error); return; }
                 
-                // Data murid disimpan per-kolom di spreadsheet, bukan dalam kolom JSON
-                // Nama kolom: "K1 1 Awal L", "K1 1 Awal P", "K1 1 Masuk L", dsb
-                // Helper untuk membaca nilai kolom
-                var d = data; // langsung gunakan object data dari backend
+                var d = data;
+                if (report.source === 'PAUD') {
+                    var fmtZ = function(v) { var n = parseFloat(v || 0); return n === 0 ? "-" : n; };
+                    var buildPaudMuridTable = function(title, icon, rows) {
+                        var tbody = '';
+                        rows.forEach(function(rw) {
+                            var awL = parseFloat(lapbulkelola_getDataKey(d, rw.prefix + '_aw_l') || 0);
+                            var awP = parseFloat(lapbulkelola_getDataKey(d, rw.prefix + '_aw_p') || 0);
+                            var msL = parseFloat(lapbulkelola_getDataKey(d, rw.prefix + '_ms_l') || 0);
+                            var msP = parseFloat(lapbulkelola_getDataKey(d, rw.prefix + '_ms_p') || 0);
+                            var klL = parseFloat(lapbulkelola_getDataKey(d, rw.prefix + '_kl_l') || 0);
+                            var klP = parseFloat(lapbulkelola_getDataKey(d, rw.prefix + '_kl_p') || 0);
+                            var akL = awL + msL - klL;
+                            var akP = awP + msP - klP;
+                            var abkL = parseFloat(lapbulkelola_getDataKey(d, rw.prefix + '_abk_l') || 0);
+                            var abkP = parseFloat(lapbulkelola_getDataKey(d, rw.prefix + '_abk_p') || 0);
+                            var isl = parseFloat(lapbulkelola_getDataKey(d, rw.prefix + '_isl') || 0);
+                            var kri = parseFloat(lapbulkelola_getDataKey(d, rw.prefix + '_kri') || 0);
+                            var kat = parseFloat(lapbulkelola_getDataKey(d, rw.prefix + '_kat') || 0);
+                            var hin = parseFloat(lapbulkelola_getDataKey(d, rw.prefix + '_hin') || 0);
+                            var bud = parseFloat(lapbulkelola_getDataKey(d, rw.prefix + '_bud') || 0);
+                            tbody += `<tr>
+                                <td class="font-weight-bold text-left">${rw.label}</td>
+                                <td>${fmtZ(awL)}</td><td>${fmtZ(awP)}</td><td class="font-weight-bold">${fmtZ(awL+awP)}</td>
+                                <td>${fmtZ(msL)}</td><td>${fmtZ(msP)}</td><td class="font-weight-bold">${fmtZ(msL+msP)}</td>
+                                <td>${fmtZ(klL)}</td><td>${fmtZ(klP)}</td><td class="font-weight-bold">${fmtZ(klL+klP)}</td>
+                                <td class="bg-light">${fmtZ(akL)}</td><td class="bg-light">${fmtZ(akP)}</td><td class="bg-light font-weight-bold">${fmtZ(akL+akP)}</td>
+                                <td>${fmtZ(abkL)}</td><td>${fmtZ(abkP)}</td><td class="font-weight-bold">${fmtZ(abkL+abkP)}</td>
+                                <td>${fmtZ(isl)}</td><td>${fmtZ(kri)}</td><td>${fmtZ(kat)}</td><td>${fmtZ(hin)}</td><td>${fmtZ(bud)}</td>
+                            </tr>`;
+                        });
+                        return `<h6 class="font-weight-bold text-maroon mb-2 mt-3"><i class="${icon} mr-2"></i>${title}</h6>
+                        <div class="table-responsive mb-3"><table class="table table-sm table-bordered text-center small mb-0">
+                            <thead class="bg-dark text-white">
+                                <tr>
+                                    <th rowspan="2" class="align-middle">${title.includes('USIA') ? 'Usia' : 'Rombel'}</th>
+                                    <th colspan="3">Awal Bulan</th><th colspan="3">Masuk</th><th colspan="3">Keluar</th>
+                                    <th colspan="3">Akhir Bulan</th><th colspan="3">ABK</th><th colspan="5">Agama</th>
+                                </tr>
+                                <tr>
+                                    <th>L</th><th>P</th><th>Jml</th><th>L</th><th>P</th><th>Jml</th><th>L</th><th>P</th><th>Jml</th>
+                                    <th>L</th><th>P</th><th>Jml</th><th>L</th><th>P</th><th>Jml</th>
+                                    <th>Isl</th><th>Kri</th><th>Kat</th><th>Hin</th><th>Bud</th>
+                                </tr>
+                            </thead>
+                            <tbody>${tbody}</tbody>
+                        </table></div>`;
+                    };
+                    var usiaRows = [
+                        { prefix: 'u01', label: '0-1 Thn' }, { prefix: 'u12', label: '1-2 Thn' },
+                        { prefix: 'u23', label: '2-3 Thn' }, { prefix: 'u34', label: '3-4 Thn' },
+                        { prefix: 'u45', label: '4-5 Thn' }, { prefix: 'u56', label: '5-6 Thn' },
+                        { prefix: 'u6p', label: '> 6 Thn' }
+                    ];
+                    var rombelRows = [
+                        { prefix: 'kb', label: 'KB' }, { prefix: 'kel_a', label: 'Kelompok A' }, { prefix: 'kel_b', label: 'Kelompok B' }
+                    ];
+                    var htmlPaud = `<div class="alert alert-secondary text-center font-weight-bold mb-3 py-2" style="border-radius:8px;">Laporan Periode: <span class="text-maroon">${report.bulan} ${report.tahun}</span></div>` +
+                        buildPaudMuridTable('KEADAAN MURID - BERDASARKAN USIA', 'fas fa-child', usiaRows) +
+                        buildPaudMuridTable('KEADAAN MURID - BERDASARKAN ROMBONGAN BELAJAR', 'fas fa-users', rombelRows);
+                    $('#lapbulkelola_modalViewData_title').html('<i class="fas fa-user-graduate mr-2"></i> DATA MURID - ' + report.namaSekolah);
+                    $('#lapbulkelola_modalViewData_body').html(htmlPaud);
+                    $('#lapbulkelola_modalViewData').modal('show');
+                    return;
+                }
                 
                 // --- B. KEADAAN MURID ---
                 var sum = { al:0, ap:0, ml:0, mp:0, kl:0, kp:0, hl:0, hp:0, s:0, i:0, a:0 };
@@ -4721,6 +4782,63 @@
                     var rawInduk = lapbulkelola_getDataKey(data, 'Data PTK') || lapbulkelola_getDataKey(data, 'DATA PTK') || '';
                     var rawNonInduk = lapbulkelola_getDataKey(data, 'Data PTK Non Induk') || lapbulkelola_getDataKey(data, 'DATA PTK NON INDUK') || '';
                     if(rawInduk) dInduk = JSON.parse(rawInduk);
+                    if (report.source === 'PAUD' && Array.isArray(dInduk) && dInduk.length > 0) {
+                        var $srcTablePaud = $('#ptk-modern-ui-paud table').clone();
+                        var tbodyPaud = '';
+                        var isSudahV = function(val) {
+                            var v = String(val || "").toLowerCase().trim();
+                            return v === 'sudah' || v === 'ya' || v === '1' || v === 'true' || v === '✓';
+                        };
+                        var isBelumV = function(val) {
+                            var v = String(val || "").toLowerCase().trim();
+                            return v === 'belum' || v === 'tidak' || v === '0' || v === 'false';
+                        };
+                        for (var pIdx = 0; pIdx < dInduk.length; pIdx++) {
+                            var r = dInduk[pIdx];
+                            var nipNuptk = [r.nip_niy, r.nuptk].filter(function(x) { return x && String(x).trim() !== '' && String(x).trim() !== '-'; }).join(' / ') || '-';
+                            var ttl = (r.tempat_lahir && r.tempat_lahir !== '-' ? r.tempat_lahir : '-') + ', ' + (r.tgl_lahir || '-');
+                            var ksSudah = isSudahV(r.diklat_kepala_sekolah);
+                            var ksBelum = !ksSudah && (isBelumV(r.diklat_kepala_sekolah) || (String(r.jabatan || '').toLowerCase().includes('kepala') && !r.tahun_diklat_kepala_sekolah));
+                            var ab_dd = parseFloat(r.dd || 0); var ab_dl = parseFloat(r.dl || 0); var ab_ct = parseFloat(r.ct || 0);
+                            var ab_cap = parseFloat(r.cap || 0); var ab_cs = parseFloat(r.cs || 0); var ab_cm = parseFloat(r.cm || 0);
+                            var ab_a = parseFloat(r.a || r.alpa || 0);
+                            var ab_jml = ab_dd + ab_dl + ab_ct + ab_cap + ab_cs + ab_cm + ab_a;
+                            var fmtZ = function(v) { return v === 0 ? "-" : v; };
+                            tbodyPaud += `<tr>
+                                <td class="align-middle">${pIdx + 1}</td>
+                                <td class="align-middle text-left font-weight-bold">${lapbulkelola_escapeHtml(r.nama || "-")}<br><small class="text-muted">${lapbulkelola_escapeHtml(nipNuptk)}</small></td>
+                                <td class="align-middle text-nowrap">${lapbulkelola_escapeHtml(r.jabatan || "-")}</td>
+                                <td class="align-middle">${lapbulkelola_escapeHtml(r.jk || "-")}</td>
+                                <td class="align-middle text-nowrap">${lapbulkelola_escapeHtml(ttl)}</td>
+                                <td class="align-middle">${lapbulkelola_escapeHtml(r.pendidikan || "-")}</td>
+                                <td class="align-middle">${lapbulkelola_escapeHtml(r.status || "-")}</td>
+                                <td class="align-middle">${lapbulkelola_escapeHtml(r.gol_asn || "-")}</td>
+                                <td class="align-middle">${lapbulkelola_escapeHtml(r.masa_kerja_tahun || "-")}</td>
+                                <td class="align-middle">${lapbulkelola_escapeHtml(r.masa_kerja_bulan || "-")}</td>
+                                <td class="align-middle">${lapbulkelola_escapeHtml(r.tahun_diklat_dasar || "-")}</td>
+                                <td class="align-middle">${lapbulkelola_escapeHtml(r.tahun_diklat_lanjut || "-")}</td>
+                                <td class="align-middle">${lapbulkelola_escapeHtml(r.tahun_diklat_mahir || "-")}</td>
+                                <td class="align-middle">${ksBelum ? '<i class="fas fa-check text-success"></i>' : ''}</td>
+                                <td class="align-middle">${ksSudah ? '<i class="fas fa-check text-success"></i>' : ''}</td>
+                                <td class="align-middle">${lapbulkelola_escapeHtml(r.tahun_diklat_kepala_sekolah || "-")}</td>
+                                <td class="align-middle">${isSudahV(r.bantuan_tunjangan_profesi) ? '<i class="fas fa-check text-success"></i>' : ''}</td>
+                                <td class="align-middle">${isSudahV(r.bantuan_bosda) ? '<i class="fas fa-check text-success"></i>' : ''}</td>
+                                <td class="align-middle">${isSudahV(r.bantuan_insentif) ? '<i class="fas fa-check text-success"></i>' : ''}</td>
+                                <td class="align-middle">${lapbulkelola_escapeHtml(r.bantuan_lainnya || "-")}</td>
+                                <td class="align-middle">${r.valid ? '<i class="fas fa-check text-success"></i>' : '-'}</td>
+                                <td class="align-middle">${fmtZ(ab_dd)}</td><td class="align-middle">${fmtZ(ab_dl)}</td><td class="align-middle">${fmtZ(ab_ct)}</td>
+                                <td class="align-middle">${fmtZ(ab_cap)}</td><td class="align-middle">${fmtZ(ab_cs)}</td><td class="align-middle">${fmtZ(ab_cm)}</td>
+                                <td class="align-middle">${fmtZ(ab_a)}</td><td class="align-middle bg-light font-weight-bold">${fmtZ(ab_jml)}</td>
+                            </tr>`;
+                        }
+                        $srcTablePaud.find('thead').removeClass('bg-light').addClass('bg-dark text-white');
+                        var paudTableHtml = $srcTablePaud.prop('outerHTML').replace(/<tbody[^>]*>[\s\S]*?<\/tbody>/i, '<tbody>' + tbodyPaud + '</tbody>');
+                        var htmlViewPaud = `<div class="alert alert-secondary text-center font-weight-bold mb-3 py-2" style="border-radius:8px;">Laporan Periode: <span class="text-maroon">${report.bulan} ${report.tahun}</span></div><div class="table-responsive">${paudTableHtml}</div>`;
+                        $('#lapbulkelola_modalViewData_title').html('<i class="fas fa-user-tie mr-2"></i> DATA PTK - ' + report.namaSekolah);
+                        $('#lapbulkelola_modalViewData_body').html(htmlViewPaud);
+                        $('#lapbulkelola_modalViewData').modal('show');
+                        return;
+                    }
                     if(rawNonInduk) dNonInduk = JSON.parse(rawNonInduk);
                 } catch (e) { console.error("Invalid dataPTK", e); }
         
@@ -4867,6 +4985,63 @@
                     var rawInduk = lapbulkelola_getDataKey(data, 'Data PTK') || lapbulkelola_getDataKey(data, 'DATA PTK') || '';
                     var rawNonInduk = lapbulkelola_getDataKey(data, 'Data PTK Non Induk') || lapbulkelola_getDataKey(data, 'DATA PTK NON INDUK') || '';
                     if(rawInduk) dInduk = JSON.parse(rawInduk);
+                    if (report.source === 'PAUD' && Array.isArray(dInduk) && dInduk.length > 0) {
+                        var $srcTablePaud = $('#ptk-modern-ui-paud table').clone();
+                        var tbodyPaud = '';
+                        var isSudahV = function(val) {
+                            var v = String(val || "").toLowerCase().trim();
+                            return v === 'sudah' || v === 'ya' || v === '1' || v === 'true' || v === '✓';
+                        };
+                        var isBelumV = function(val) {
+                            var v = String(val || "").toLowerCase().trim();
+                            return v === 'belum' || v === 'tidak' || v === '0' || v === 'false';
+                        };
+                        for (var pIdx = 0; pIdx < dInduk.length; pIdx++) {
+                            var r = dInduk[pIdx];
+                            var nipNuptk = [r.nip_niy, r.nuptk].filter(function(x) { return x && String(x).trim() !== '' && String(x).trim() !== '-'; }).join(' / ') || '-';
+                            var ttl = (r.tempat_lahir && r.tempat_lahir !== '-' ? r.tempat_lahir : '-') + ', ' + (r.tgl_lahir || '-');
+                            var ksSudah = isSudahV(r.diklat_kepala_sekolah);
+                            var ksBelum = !ksSudah && (isBelumV(r.diklat_kepala_sekolah) || (String(r.jabatan || '').toLowerCase().includes('kepala') && !r.tahun_diklat_kepala_sekolah));
+                            var ab_dd = parseFloat(r.dd || 0); var ab_dl = parseFloat(r.dl || 0); var ab_ct = parseFloat(r.ct || 0);
+                            var ab_cap = parseFloat(r.cap || 0); var ab_cs = parseFloat(r.cs || 0); var ab_cm = parseFloat(r.cm || 0);
+                            var ab_a = parseFloat(r.a || r.alpa || 0);
+                            var ab_jml = ab_dd + ab_dl + ab_ct + ab_cap + ab_cs + ab_cm + ab_a;
+                            var fmtZ = function(v) { return v === 0 ? "-" : v; };
+                            tbodyPaud += `<tr>
+                                <td class="align-middle">${pIdx + 1}</td>
+                                <td class="align-middle text-left font-weight-bold">${lapbulkelola_escapeHtml(r.nama || "-")}<br><small class="text-muted">${lapbulkelola_escapeHtml(nipNuptk)}</small></td>
+                                <td class="align-middle text-nowrap">${lapbulkelola_escapeHtml(r.jabatan || "-")}</td>
+                                <td class="align-middle">${lapbulkelola_escapeHtml(r.jk || "-")}</td>
+                                <td class="align-middle text-nowrap">${lapbulkelola_escapeHtml(ttl)}</td>
+                                <td class="align-middle">${lapbulkelola_escapeHtml(r.pendidikan || "-")}</td>
+                                <td class="align-middle">${lapbulkelola_escapeHtml(r.status || "-")}</td>
+                                <td class="align-middle">${lapbulkelola_escapeHtml(r.gol_asn || "-")}</td>
+                                <td class="align-middle">${lapbulkelola_escapeHtml(r.masa_kerja_tahun || "-")}</td>
+                                <td class="align-middle">${lapbulkelola_escapeHtml(r.masa_kerja_bulan || "-")}</td>
+                                <td class="align-middle">${lapbulkelola_escapeHtml(r.tahun_diklat_dasar || "-")}</td>
+                                <td class="align-middle">${lapbulkelola_escapeHtml(r.tahun_diklat_lanjut || "-")}</td>
+                                <td class="align-middle">${lapbulkelola_escapeHtml(r.tahun_diklat_mahir || "-")}</td>
+                                <td class="align-middle">${ksBelum ? '<i class="fas fa-check text-success"></i>' : ''}</td>
+                                <td class="align-middle">${ksSudah ? '<i class="fas fa-check text-success"></i>' : ''}</td>
+                                <td class="align-middle">${lapbulkelola_escapeHtml(r.tahun_diklat_kepala_sekolah || "-")}</td>
+                                <td class="align-middle">${isSudahV(r.bantuan_tunjangan_profesi) ? '<i class="fas fa-check text-success"></i>' : ''}</td>
+                                <td class="align-middle">${isSudahV(r.bantuan_bosda) ? '<i class="fas fa-check text-success"></i>' : ''}</td>
+                                <td class="align-middle">${isSudahV(r.bantuan_insentif) ? '<i class="fas fa-check text-success"></i>' : ''}</td>
+                                <td class="align-middle">${lapbulkelola_escapeHtml(r.bantuan_lainnya || "-")}</td>
+                                <td class="align-middle">${r.valid ? '<i class="fas fa-check text-success"></i>' : '-'}</td>
+                                <td class="align-middle">${fmtZ(ab_dd)}</td><td class="align-middle">${fmtZ(ab_dl)}</td><td class="align-middle">${fmtZ(ab_ct)}</td>
+                                <td class="align-middle">${fmtZ(ab_cap)}</td><td class="align-middle">${fmtZ(ab_cs)}</td><td class="align-middle">${fmtZ(ab_cm)}</td>
+                                <td class="align-middle">${fmtZ(ab_a)}</td><td class="align-middle bg-light font-weight-bold">${fmtZ(ab_jml)}</td>
+                            </tr>`;
+                        }
+                        $srcTablePaud.find('thead').removeClass('bg-light').addClass('bg-dark text-white');
+                        var paudTableHtml = $srcTablePaud.prop('outerHTML').replace(/<tbody[^>]*>[\s\S]*?<\/tbody>/i, '<tbody>' + tbodyPaud + '</tbody>');
+                        var htmlViewPaud = `<div class="alert alert-secondary text-center font-weight-bold mb-3 py-2" style="border-radius:8px;">Laporan Periode: <span class="text-maroon">${report.bulan} ${report.tahun}</span></div><div class="table-responsive">${paudTableHtml}</div>`;
+                        $('#lapbulkelola_modalViewData_title').html('<i class="fas fa-user-tie mr-2"></i> DATA PTK - ' + report.namaSekolah);
+                        $('#lapbulkelola_modalViewData_body').html(htmlViewPaud);
+                        $('#lapbulkelola_modalViewData').modal('show');
+                        return;
+                    }
                     if(rawNonInduk) dNonInduk = JSON.parse(rawNonInduk);
                 } catch (e) { console.error("Invalid dataPTK", e); }
         
