@@ -1247,10 +1247,17 @@ function getReferensiPTK() {
 
 function getUnitKerjaByNpsnPTK(npsn) {
   try {
+    var searchNpsn = String(npsn).trim().toUpperCase();
+    if (typeof getSekolahByNPSN === "function") {
+      var sek = getSekolahByNPSN(npsn);
+      if (sek && sek.found && sek.nama_sekolah) {
+        return JSON.stringify({ unitKerja: String(sek.nama_sekolah).trim() });
+      }
+    }
     var sheet = getSheet(KONFIG_PTK.DB_KEY, "Database Sekolah");
     if (!sheet) return JSON.stringify({ error: "Sheet 'Database Sekolah' tidak ditemukan." });
     var lastRow = sheet.getLastRow(); if (lastRow < 2) return JSON.stringify({ error: "Database Sekolah kosong." });
-    var data = sheet.getRange(2, 1, lastRow - 1, 3).getDisplayValues(); var searchNpsn = String(npsn).trim().toUpperCase();
+    var data = sheet.getRange(2, 1, lastRow - 1, 3).getDisplayValues();
     for (var i = 0; i < data.length; i++) { if (String(data[i][0]).trim().toUpperCase() === searchNpsn) return JSON.stringify({ unitKerja: String(data[i][2]).trim() }); }
     return JSON.stringify({ error: "NPSN tidak terdaftar." });
   } catch (e) { return JSON.stringify({ error: "Gagal memuat Database Sekolah PTK: " + e.message }); }
