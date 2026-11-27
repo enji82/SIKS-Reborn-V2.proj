@@ -428,7 +428,12 @@ function getDataRiwayatPembaruanSds() {
       if (!ctx) return JSON.stringify({ data: [], lapbulMap: {} });
       var c = ctx.colMap;
       var idxNiy = ctx.headers.indexOf("niy");
-      var data = ctx.sheet.getDataRange().getDisplayValues();
+      var data = ctx.sheet.getDataRange().getValues();
+      var fmtStr = function(v) {
+        if (v === null || v === undefined) return "";
+        if (v instanceof Date) return Utilities.formatDate(v, tz, 'dd-MM-yyyy');
+        return String(v);
+      };
       var result = [];
 
       for (var i = 1; i < data.length; i++) {
@@ -558,7 +563,12 @@ function getDataRiwayatPembaruanPaud() {
       var ctx = getTblPtkSdnContext_();
       if (!ctx) return JSON.stringify({ data: [], lapbulMap: {} });
       var c = ctx.colMap;
-      var data = ctx.sheet.getDataRange().getDisplayValues();
+      var data = ctx.sheet.getDataRange().getValues();
+      var fmtStr = function(v) {
+        if (v === null || v === undefined) return "";
+        if (v instanceof Date) return Utilities.formatDate(v, tz, 'dd-MM-yyyy');
+        return String(v);
+      };
       var result = [];
 
       for (var i = 1; i < data.length; i++) {
@@ -682,7 +692,12 @@ function getDataProyeksiPensiunSDN() {
       var ctx = getTblPtkSdnContext_();
       if (!ctx) return JSON.stringify([]);
       var c = ctx.colMap;
-      var data = ctx.sheet.getDataRange().getDisplayValues();
+      var data = ctx.sheet.getDataRange().getValues();
+      var fmtStr = function(v) {
+        if (v === null || v === undefined) return "";
+        if (v instanceof Date) return Utilities.formatDate(v, tz, 'dd-MM-yyyy');
+        return String(v);
+      };
       var result = [];
       for (var i = 1; i < data.length; i++) {
         var row = data[i];
@@ -2399,7 +2414,12 @@ function getDataPTKSDS() {
         }
       }
       var idxTmtInpassing = ctx.headers.indexOf("tmt_inpassing");
-      var data = ctx.sheet.getDataRange().getDisplayValues();
+      var data = ctx.sheet.getDataRange().getValues();
+      var fmtStr = function(v) {
+        if (v === null || v === undefined) return "";
+        if (v instanceof Date) return Utilities.formatDate(v, tz, 'dd-MM-yyyy');
+        return String(v);
+      };
       var result = [];
       for (var i = 1; i < data.length; i++) {
         var row = data[i];
@@ -3118,7 +3138,12 @@ function hapusPermanenPTKPAUD(id) {
       var ctx = getTblPtkSdnContext_();
       if (!ctx) return "Error: Tabel tbl_ptk tidak ditemukan.";
       var c = ctx.colMap;
-      var data = ctx.sheet.getDataRange().getDisplayValues();
+      var data = ctx.sheet.getDataRange().getValues();
+      var fmtStr = function(v) {
+        if (v === null || v === undefined) return "";
+        if (v instanceof Date) return Utilities.formatDate(v, tz, 'dd-MM-yyyy');
+        return String(v);
+      };
       var idStr = String(id).trim();
       for (var i = 1; i < data.length; i++) {
         var jenjang = c.jenjang > -1 ? String(data[i][c.jenjang] || "").trim() : "";
@@ -3142,7 +3167,12 @@ function hapusPermanenPTKSDS(id) {
       var ctx = getTblPtkSdnContext_();
       if (!ctx) return "Error: Tabel tbl_ptk tidak ditemukan.";
       var c = ctx.colMap;
-      var data = ctx.sheet.getDataRange().getDisplayValues();
+      var data = ctx.sheet.getDataRange().getValues();
+      var fmtStr = function(v) {
+        if (v === null || v === undefined) return "";
+        if (v instanceof Date) return Utilities.formatDate(v, tz, 'dd-MM-yyyy');
+        return String(v);
+      };
       var idStr = String(id).trim();
       for (var i = 1; i < data.length; i++) {
         var jenjang = c.jenjang > -1 ? String(data[i][c.jenjang] || "").trim() : "";
@@ -3420,7 +3450,12 @@ function getDataPTKPAUD() {
         var col = PTK_PAUD_EXTRA_COLS_[k];
         extraIdx[col] = ctx.headers.indexOf(col);
       }
-      var data = ctx.sheet.getDataRange().getDisplayValues();
+      var data = ctx.sheet.getDataRange().getValues();
+      var fmtStr = function(v) {
+        if (v === null || v === undefined) return "";
+        if (v instanceof Date) return Utilities.formatDate(v, tz, 'dd-MM-yyyy');
+        return String(v);
+      };
       var result = [];
       for (var i = 1; i < data.length; i++) {
         var row = data[i];
@@ -3858,7 +3893,12 @@ function insertDataPTKPAUD(form, base64Data, fileName, jenisDokumen, userPengusu
       var c = ctx.colMap;
       var idxInpassing = ctx.headers.indexOf("inpassing");
       var idxTmtInpassing = ctx.headers.indexOf("tmt_inpassing");
-      var data = ctx.sheet.getDataRange().getDisplayValues();
+      var data = ctx.sheet.getDataRange().getValues();
+      var fmtStr = function(v) {
+        if (v === null || v === undefined) return "";
+        if (v instanceof Date) return Utilities.formatDate(v, tz, 'dd-MM-yyyy');
+        return String(v);
+      };
       var inputNik = String(form.nik || "").replace(/'/g, "").trim();
 
       for (var i = 1; i < data.length; i++) {
@@ -5901,7 +5941,12 @@ function getPTKSekolahByNpsnLapbul(npsn, jenjang) {
           extraIdx[PTK_PAUD_EXTRA_COLS_[k]] = ctx.headers.indexOf(PTK_PAUD_EXTRA_COLS_[k]);
         }
       }
-      var data = ctx.sheet.getDataRange().getDisplayValues();
+      var data = ctx.sheet.getDataRange().getValues();
+      var fmtStr = function(v) {
+        if (v === null || v === undefined) return "";
+        if (v instanceof Date) return Utilities.formatDate(v, tz, 'dd-MM-yyyy');
+        return String(v);
+      };
       var resCentral = [];
       for (var i = 1; i < data.length; i++) {
         var r = data[i];
@@ -5920,7 +5965,7 @@ function getPTKSekolahByNpsnLapbul(npsn, jenjang) {
         if (rowNpsn !== searchNpsn) continue;
 
         var isSdn = (rowJenjang === "SD Negeri");
-        var nipNiy = isSdn ? (c.nip > -1 ? String(r[c.nip] || "") : "") : (idxNiy > -1 ? String(r[idxNiy] || "") : (c.nip > -1 ? String(r[c.nip] || "") : ""));
+        var nipNiy = isSdn ? (c.nip > -1 ? fmtStr(r[c.nip]) : "") : (idxNiy > -1 ? fmtStr(r[idxNiy]) : (c.nip > -1 ? fmtStr(r[c.nip]) : ""));
         var jabTugas = isSdn ? (c.tugas > -1 ? String(r[c.tugas] || "") : "") : (c.jabatan > -1 ? String(r[c.jabatan] || "") : "");
         var golAsn = isSdn ? (c.pangkat > -1 ? String(r[c.pangkat] || "") : "") : (idxInpassing > -1 ? String(r[idxInpassing] || "") : (c.pangkat > -1 ? String(r[c.pangkat] || "") : ""));
         var mengajarVal = c.mengajar_kelas > -1 ? String(r[c.mengajar_kelas] || "").trim() : "";
@@ -6097,7 +6142,12 @@ function searchPTKGlobalLapbul(keyword, jenjang) {
           extraIdx[PTK_PAUD_EXTRA_COLS_[k]] = ctx.headers.indexOf(PTK_PAUD_EXTRA_COLS_[k]);
         }
       }
-      var data = ctx.sheet.getDataRange().getDisplayValues();
+      var data = ctx.sheet.getDataRange().getValues();
+      var fmtStr = function(v) {
+        if (v === null || v === undefined) return "";
+        if (v instanceof Date) return Utilities.formatDate(v, tz, 'dd-MM-yyyy');
+        return String(v);
+      };
       for (var i = 1; i < data.length; i++) {
         if (results.length >= 50) break;
         var r = data[i];
