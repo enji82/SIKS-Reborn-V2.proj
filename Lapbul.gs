@@ -642,7 +642,7 @@ function cekKelengkapanLaporanSebelumnya(npsn, jenjang, bulan, tahun, isEditMode
     
     var dbKey = (String(jenjang).toUpperCase() === "PAUD") ? KONFIG_LAPBUL.PAUD_DB : KONFIG_LAPBUL.SD_DB;
     var namaSheet = (String(jenjang).toUpperCase() === "PAUD") ? "Input PAUD" : "Input SD";
-    var sheet = getSheet(dbKey, namaSheet);
+    var sheet = getLapbulSheet_(dbKey, namaSheet);
     if(!sheet) return { success: true, message: "Sheet tidak ada, lewati validasi." };
     
     var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(function(h) { return String(h).toLowerCase().trim(); });
@@ -674,6 +674,28 @@ function cekKelengkapanLaporanSebelumnya(npsn, jenjang, bulan, tahun, isEditMode
             }
         }
         
+        if (String(jenjang).toUpperCase() === "PAUD") {
+            var hasReportInSelectedYear = false;
+            var targetNpsnClean = String(npsn).trim().replace(/\.0+$/, "");
+            for (var yIdx = rangeValues.length - 1; yIdx >= 0; yIdx--) {
+                var rY = rangeValues[yIdx];
+                var stY = (idxStatus > -1) ? String(rY[idxStatus]).toLowerCase() : "";
+                if (stY.includes("hapus")) continue;
+                var rowNpsnY = String(rY[idxNpsn]).trim().replace(/\.0+$/, "");
+                if (rowNpsnY === targetNpsnClean && String(rY[idxTahun]).trim() === String(tahun)) {
+                    hasReportInSelectedYear = true;
+                    break;
+                }
+            }
+            if (!hasReportInSelectedYear) {
+                if (bulanClean.toLowerCase() === "juli") {
+                    return { success: true, message: "Valid" };
+                } else {
+                    return { success: false, message: "PAUD belum memiliki laporan pada tahun " + tahun + ". Pengisian wajib dimulai dari bulan Juli " + tahun + " sebagai titik awal tahun ajaran." };
+                }
+            }
+        }
+
         if (bulanClean.toLowerCase() === "juli") {
             var lastRep = getLastUploadedReportInfo(sheet, npsn, idxNpsn, idxBulan, idxTahun, idxStatus);
             if (!lastRep) {
